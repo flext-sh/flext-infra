@@ -306,8 +306,17 @@ class FlextInfraGate:
         errors: t.SequenceOf[str],
         started: float,
         ctx: m.Infra.GateContext,
+        advisory: bool = False,
     ) -> m.Infra.GateExecution:
-        """Build a gate result from project-level error strings (no per-file issues)."""
+        """Build a gate result from project-level error strings (no per-file issues).
+
+        ``advisory`` grades the findings as warnings that are reported but do
+        not block acceptance (operator order 2026-09-22: the namespace and
+        runtime-census census machinery stays advisory until its structural
+        campaign converges). Invocation failures never pass through this
+        path: gates must keep hard failures blocking by building them with
+        ``advisory=False``.
+        """
         issues = [
             m.Infra.Issue(
                 file=str(project_dir),
@@ -315,13 +324,13 @@ class FlextInfraGate:
                 column=1,
                 code=self.gate_id,
                 message=error,
-                severity="ERROR",
+                severity="WARNING" if advisory else "ERROR",
             )
             for error in errors
         ]
         return self._build_check_gate_execution(
             project_dir,
-            passed=passed,
+            passed=passed or advisory,
             issues=issues,
             raw_output="\n".join(errors),
             started=started,
