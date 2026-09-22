@@ -127,6 +127,7 @@ class TestsFlextInfraApplyRenames:
         )
         return sample, tmp_path / "config_override"
 
+    @pytest.mark.slow
     def test_dry_run_fails_on_pending_configured_campaign(
         self, mod_workspace: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
