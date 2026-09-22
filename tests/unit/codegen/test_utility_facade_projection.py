@@ -36,8 +36,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         """Derive the required owner from the executable public consumer."""
         package = tmp_path / "src" / "flext_sample"
         conflicted = (
-            c.Infra.AUTOGEN_HEADERS[0] + "\n"
-            "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
+            c.Infra.AUTOGEN_HEADERS[0] + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         )
         self._write(package / "__init__.py", conflicted)
         self._write(
@@ -74,14 +73,15 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that((package / "__init__.py").read_text(), eq=conflicted)
 
-    def test_unresolved_consumer_import_fails_before_projection(self, tmp_path: Path) -> None:
+    def test_unresolved_consumer_import_fails_before_projection(
+        self, tmp_path: Path
+    ) -> None:
         """Unknown provenance is an error, never an empty owner selection."""
         package = tmp_path / "src" / "flext_sample"
         self._write(package / "__init__.py", "")
         self._write(package / "_utilities" / "owner.py", "class Owner:\n    pass\n")
         self._write(
-            package / "utilities.py",
-            "class Facade:\n    class Sample:\n        pass\n",
+            package / "utilities.py", "class Facade:\n    class Sample:\n        pass\n"
         )
         self._write(
             package / "consumer.py",
@@ -147,9 +147,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(package / "utilities.py", original)
         conflicted = (
-            (c.Infra.AUTOGEN_HEADERS[0] + "\n" if generated else "")
-            + "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
-        )
+            c.Infra.AUTOGEN_HEADERS[0] + "\n" if generated else ""
+        ) + "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         initializer = package / c.Infra.INIT_PY
         self._write(initializer, conflicted)
 

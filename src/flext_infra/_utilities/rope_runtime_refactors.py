@@ -79,7 +79,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             raise TypeError(msg)
         end = 0
         for rewrite in sorted(rewrites, key=lambda item: (item.start, item.end)):
-            if rewrite.start < end or not 0 <= rewrite.start <= rewrite.end <= len(source):
+            if rewrite.start < end or not 0 <= rewrite.start <= rewrite.end <= len(
+                source
+            ):
                 msg = "Rope source edits overlap or escape their snapshot"
                 raise ValueError(msg)
             add(rewrite.start, rewrite.end, rewrite.text)

@@ -25,7 +25,6 @@ class FlextInfraModelsCodemod:
             m.Field(description="Member-name collision resolution policy"),
         ]
 
-
     class ModFixtureDirectories(m.ArbitraryTypesModel):
         """Validated physical directories selected by one ast-grep owner."""
 

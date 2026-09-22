@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraNamespaceValidator, FlextInfraRuntimeAliasDetector, infra
+from flext_infra import (
+    FlextInfraNamespaceValidator,
+    FlextInfraRuntimeAliasDetector,
+    infra,
+)
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -21,7 +25,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
     @staticmethod
     def _workspace(tmp_path: Path) -> tuple[Path, Path]:
         repository, package = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-declarations", package_name="flext_declarations"
+            tmp_path,
+            project_name="flext-declarations",
+            package_name="flext_declarations",
         )
         (package / "owner.py").write_text(
             "class Parent:\n    class Domain:\n        pass\n\n"
@@ -49,7 +55,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
         with infra.rope_workspace(repository) as rope:
             policy = rope.convention(source).module_policy
             findings = FlextInfraRuntimeAliasDetector.detect_file(
-                m.Infra.DetectorContext(file_path=source, rope_project=rope.rope_project),
+                m.Infra.DetectorContext(
+                    file_path=source, rope_project=rope.rope_project
+                ),
                 policy=policy,
             )
             tm.that(len(findings), eq=1)
@@ -61,7 +69,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
                 target_name="Local",
             )
         source.write_text(repaired, encoding=c.Cli.ENCODING_DEFAULT)
-        with tm.scope(python_paths=[str(repository), str(repository / c.Infra.DEFAULT_SRC_DIR)]):
+        with tm.scope(
+            python_paths=[str(repository), str(repository / c.Infra.DEFAULT_SRC_DIR)]
+        ):
             module = importlib.import_module("workflows.facets")
             parent = importlib.import_module("flext_declarations.owner")
             tm.that(module.capability is module.Local, eq=True)
@@ -73,7 +83,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             policy = rope.convention(source).module_policy
             tm.that(
                 FlextInfraRuntimeAliasDetector.detect_file(
-                    m.Infra.DetectorContext(file_path=source, rope_project=rope.rope_project),
+                    m.Infra.DetectorContext(
+                        file_path=source, rope_project=rope.rope_project
+                    ),
                     policy=policy,
                 ),
                 eq=[],
@@ -92,11 +104,15 @@ class TestsFlextInfraRuntimeAliasDeclarations:
                 empty=True,
             )
         tm.that(
-            u.Infra.ensure_runtime_alias(repaired, alias="capability", target_name="Local"),
+            u.Infra.ensure_runtime_alias(
+                repaired, alias="capability", target_name="Local"
+            ),
             eq=repaired,
         )
 
-    def test_ambiguous_parent_aliases_fail_at_semantic_owner(self, tmp_path: Path) -> None:
+    def test_ambiguous_parent_aliases_fail_at_semantic_owner(
+        self, tmp_path: Path
+    ) -> None:
         repository, package = self._workspace(tmp_path)
         (package / "other.py").write_text(
             "class Other:\n    pass\n\n"
@@ -123,7 +139,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
         """Local ownership needs neither unrelated imports nor inherited lookup."""
         repository, package = self._workspace(tmp_path)
         initializer = package / c.Infra.INIT_PY
-        conflicted = c.Infra.AUTOGEN_HEADERS[0] + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
+        conflicted = (
+            c.Infra.AUTOGEN_HEADERS[0] + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
+        )
         initializer.write_text(conflicted, encoding=c.Cli.ENCODING_DEFAULT)
         source = package / "facets.py"
         source.write_text(
@@ -167,8 +185,12 @@ class TestsFlextInfraRuntimeAliasDeclarations:
         )
         with infra.rope_workspace(repository) as rope:
             resource = tm.not_none(rope.resource(source))
-            tm.that(u.Infra.get_module_classes(rope.rope_project, resource), eq=("Api",))
-            tm.that(u.Infra.declared_facade_owner(rope.rope_project, resource), none=True)
+            tm.that(
+                u.Infra.get_module_classes(rope.rope_project, resource), eq=("Api",)
+            )
+            tm.that(
+                u.Infra.declared_facade_owner(rope.rope_project, resource), none=True
+            )
 
     def test_publication_preserves_inherited_settings_without_inventing_alias(
         self, tmp_path: Path
@@ -194,7 +216,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             tm.that(policy.expected_alias, none=True)
             resource = tm.not_none(rope.resource(source))
             tm.that(
-                u.Infra.get_declared_module_imports(rope.rope_project, resource)["Settings"],
+                u.Infra.get_declared_module_imports(rope.rope_project, resource)[
+                    "Settings"
+                ],
                 eq="flext_declarations.Settings",
             )
 
@@ -213,7 +237,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             tm.that(policy.expected_alias, none=True)
             tm.that(
                 FlextInfraRuntimeAliasDetector.detect_file(
-                    m.Infra.DetectorContext(file_path=source, rope_project=rope.rope_project),
+                    m.Infra.DetectorContext(
+                        file_path=source, rope_project=rope.rope_project
+                    ),
                     policy=policy,
                 ),
                 eq=[],
@@ -227,7 +253,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             "__all__ = ['Local', 'capability']\n"
         )
         with pytest.raises(ValueError, match="shares a source line"):
-            u.Infra.ensure_runtime_alias(source, alias="capability", target_name="Local")
+            u.Infra.ensure_runtime_alias(
+                source, alias="capability", target_name="Local"
+            )
 
 
 __all__: list[str] = ["TestsFlextInfraRuntimeAliasDeclarations"]

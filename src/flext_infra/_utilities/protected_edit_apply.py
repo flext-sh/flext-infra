@@ -357,8 +357,10 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
             if request.post_write is not None:
                 request.post_write()
-            ok, reports = FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
-                normalized_updates, before_sources, before_lints, request
+            ok, reports = (
+                FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
+                    normalized_updates, before_sources, before_lints, request
+                )
             )
             write_completed = True
         finally:

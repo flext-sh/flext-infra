@@ -14,20 +14,19 @@ from .family_references import FlextInfraUtilitiesSemanticFamilyReferences
 
 
 class FlextInfraUtilitiesSemanticFamilyFlatten(
-    FlextInfraUtilitiesSemanticFamilyReferences,
+    FlextInfraUtilitiesSemanticFamilyReferences
 ):
     """Flatten only private family parts, preserving real entity classes."""
 
     @classmethod
     def _family_flatten_edits(
-        cls,
-        workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
+        cls, workspace: p.Infra.RopeWorkspaceDsl, sources: t.MappingKV[Path, str]
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         from flext_infra import u
 
         candidates = tuple(
-            path for path in sources
+            path
+            for path in sources
             if path.parent.name in c.Infra.FAMILY_DIRECTORIES.values()
             and not sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
         )
@@ -58,12 +57,16 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                 change = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
                     resource, sources[path], changes
                 )
-                edits.append(m.Infra.SemanticMigrationEdit(
-                    file_path=path,
-                    original_source=sources[path],
-                    updated_source=change.new_contents,
-                    changes=(f"{rule.id}: wrappers={wrappers}, edits={len(changes)}",),
-                ))
+                edits.append(
+                    m.Infra.SemanticMigrationEdit(
+                        file_path=path,
+                        original_source=sources[path],
+                        updated_source=change.new_contents,
+                        changes=(
+                            f"{rule.id}: wrappers={wrappers}, edits={len(changes)}",
+                        ),
+                    )
+                )
             return tuple(edits)
         finally:
             project.close()
@@ -78,13 +81,22 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         rewrites: dict[Path, list[m.Infra.SourceRewrite]],
     ) -> int:
         root = Path(project.root.real_path)
-        module = project.get_pymodule(project.get_resource(path.relative_to(root).as_posix()))
+        module = project.get_pymodule(
+            project.get_resource(path.relative_to(root).as_posix())
+        )
         scope = module.get_scope()
         if scope is None:
             msg = f"family part has no Rope scope: {path}"
             raise ValueError(msg)
         owner_name = workspace.convention(path).module_policy.expected_family
-        owner_scope = next((item for item in scope.get_scopes() if item.pyobject.get_name() == owner_name), None)
+        owner_scope = next(
+            (
+                item
+                for item in scope.get_scopes()
+                if item.pyobject.get_name() == owner_name
+            ),
+            None,
+        )
         if owner_scope is None:
             return 0
         children = owner_scope.get_scopes()
@@ -98,7 +110,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         header = next(item for item in facts if item.line == child.get_start())
         if header.category != c.Infra.StatementCategory.CLASS_DEF:
             return 0
-        preceding = sources[path].splitlines()[:header.line - 1]
+        preceding = sources[path].splitlines()[: header.line - 1]
         if preceding and preceding[-1].lstrip().startswith("@"):
             return 0
         if FlextInfraUtilitiesRopeStructure.class_base_names(header) or any(
@@ -108,13 +120,16 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         names = child.get_defined_names()
         if not names:
             return 0
-        body = tuple(item for item in facts if header.end_line < item.line <= child.get_end())
+        body = tuple(
+            item for item in facts if header.end_line < item.line <= child.get_end()
+        )
         if not body:
             msg = f"inline namespace wrapper cannot be flattened safely: {path}"
             raise ValueError(msg)
         if any(
             item.enclosing_name == wrapper_name
-            and item.category not in {
+            and item.category
+            not in {
                 c.Infra.StatementCategory.CLASS_DEF,
                 c.Infra.StatementCategory.ASSIGN,
                 c.Infra.StatementCategory.ANN_ASSIGN,
@@ -125,13 +140,22 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         ):
             msg = f"namespace wrapper contains executable statements: {path}:{wrapper_name}"
             raise ValueError(msg)
-        owner_header = next(item for item in facts if item.line == owner_scope.get_start())
-        if len(owner_scope.pyobject.get_superclasses()) != len(FlextInfraUtilitiesRopeStructure.class_base_names(owner_header)):
+        owner_header = next(
+            item for item in facts if item.line == owner_scope.get_start()
+        )
+        if len(owner_scope.pyobject.get_superclasses()) != len(
+            FlextInfraUtilitiesRopeStructure.class_base_names(owner_header)
+        ):
             msg = f"family owner inheritance is unresolved: {path}:{owner_name}"
             raise ValueError(msg)
         occupied = set(owner_scope.pyobject.get_attributes()) - {wrapper_name}
-        renamed = {name: f"{wrapper_name}{name}" if name in occupied else name for name in names}
-        if any(name in occupied for name in renamed.values()) or len(set(renamed.values())) != len(renamed):
+        renamed = {
+            name: f"{wrapper_name}{name}" if name in occupied else name
+            for name in names
+        }
+        if any(name in occupied for name in renamed.values()) or len(
+            set(renamed.values())
+        ) != len(renamed):
             msg = f"family wrapper prefix collision is ambiguous: {path}:{wrapper_name}"
             raise ValueError(msg)
         wrapper = owner_scope.get_defined_names()[wrapper_name]
@@ -140,15 +164,23 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                 continue
             resource = project.get_resource(consumer.relative_to(root).as_posix())
             changes = cls._family_consumer_rewrites(
-                project, resource, source, owner_name=owner_name,
-                wrapper_name=wrapper_name, wrapper=wrapper, names=renamed,
+                project,
+                resource,
+                source,
+                owner_name=owner_name,
+                wrapper_name=wrapper_name,
+                wrapper=wrapper,
+                names=renamed,
             )
             if changes:
                 rewrites.setdefault(consumer, []).extend(changes)
         rewrites.setdefault(path, []).extend(
             FlextInfraUtilitiesRopeRuntimeRefactors.unwrap_class_rewrites(
-                sources[path], header_start=header.line, header_end=header.end_line,
-                body_end=child.get_end(), indentation=body[0].indent - header.indent,
+                sources[path],
+                header_start=header.line,
+                header_end=header.end_line,
+                body_end=child.get_end(),
+                indentation=body[0].indent - header.indent,
             )
         )
         return 1

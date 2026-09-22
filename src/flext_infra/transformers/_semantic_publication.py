@@ -21,9 +21,9 @@ def publish_semantic_file_plan(
     plan: m.Infra.SemanticFilePlan, *, repository_root: Path
 ) -> p.Result[bool]:
     """Publish one plan with the same batch preflight and rollback contract."""
-    return publish_semantic_file_plans(
-        (plan,), repository_root=repository_root
-    ).map(lambda _: True)
+    return publish_semantic_file_plans((plan,), repository_root=repository_root).map(
+        lambda _: True
+    )
 
 
 def publish_semantic_file_plans(
@@ -65,7 +65,8 @@ def publish_semantic_file_plans(
     if not files:
         return r[tuple[Path, ...]].ok(())
     analysis = m.Infra.CodegenPhaseAnalysis(
-        phase="semantic", files=tuple(files),
+        phase="semantic",
+        files=tuple(files),
         inputs=tuple(plan.before for plan in plans),
     )
     roots = {str(plan.project): plan.project for plan in files}

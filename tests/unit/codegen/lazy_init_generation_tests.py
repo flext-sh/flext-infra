@@ -41,7 +41,9 @@ class TestsFlextInfraCodegenGeneration:
             action=c.Infra.LazyInitAction.WRITE,
             exports=exports,
             lazy_map=MappingProxyType(dict(lazy_map)),
-            type_checking_map=MappingProxyType(dict(lazy_map if type_checking_map is None else type_checking_map)),
+            type_checking_map=MappingProxyType(
+                dict(lazy_map if type_checking_map is None else type_checking_map)
+            ),
             eager_dunders=MappingProxyType(dict(eager_dunders or {})),
             child_packages_for_lazy=child_packages,
             excluded_lazy_names=("internal_only",),

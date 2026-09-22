@@ -19,6 +19,50 @@ if TYPE_CHECKING:
 class TestsFlextInfraRopeAnalysis:
     """Behavior contract for Rope-backed semantic analysis."""
 
+    @pytest.mark.parametrize(
+        ("statement", "suffix"),
+        [
+            ("from . import Owner as Local", ".inner.leaf.Owner"),
+            ("from .. import Owner as Local", ".inner.Owner"),
+            ("from ... import Owner as Local", ".Owner"),
+            ("from ..leaf import Owner as Local", ".inner.leaf.Owner"),
+        ],
+    )
+    def test_declared_imports_preserve_relative_levels(
+        self, tmp_path: Path, statement: str, suffix: str
+    ) -> None:
+        """Bare dots and renamed symbols retain their actual package provenance."""
+        project, package = test_u.Tests.demo_project(tmp_path)
+        nested = package / "inner" / "leaf"
+        nested.mkdir(parents=True)
+        for directory in (package, nested.parent, nested):
+            (directory / "__init__.py").write_text(
+                "class Owner:\n    pass\n", encoding="utf-8"
+            )
+        source = nested / "consumer.py"
+        source.write_text(
+            statement + "\nimport os.path as path_alias\nfrom pathlib import Path\n",
+            encoding="utf-8",
+        )
+        with u.Infra.open_project(project) as rope_project:
+            resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
+            imports = u.Infra.get_declared_module_imports(rope_project, resource)
+        tm.that(imports["Local"], eq=package.name + suffix)
+        tm.that(imports["path_alias"], eq="os.path")
+        tm.that(imports["Path"], eq="pathlib.Path")
+
+    def test_declared_imports_reject_relative_level_beyond_package(
+        self, tmp_path: Path
+    ) -> None:
+        """An invalid relative import is not converted into an absolute import."""
+        project, package = test_u.Tests.demo_project(tmp_path)
+        source = package / "consumer.py"
+        source.write_text("from .. import Owner\n", encoding="utf-8")
+        with u.Infra.open_project(project) as rope_project:
+            resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
+            with pytest.raises(ImportError, match="beyond top-level package"):
+                u.Infra.get_declared_module_imports(rope_project, resource)
+
     def test_ast_boundary_validates_before_traversal(self) -> None:
         """Accept actual ASTs and reject unrelated external runtime objects."""
         source_tree = ast.parse("value = 1")

@@ -18,8 +18,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     ) -> None:
         """A configuration failure is not a remaining-findings receipt."""
         project_config = (
-            "[project]\nname = 'sample'\n"
-            "[tool.ruff.lint]\nselect = ['F401']\n"
+            "[project]\nname = 'sample'\n[tool.ruff.lint]\nselect = ['F401']\n"
         )
         package = u.Tests.src_package(tmp_path, "sample", pyproject=project_config)
         py_file = package / "sample.py"

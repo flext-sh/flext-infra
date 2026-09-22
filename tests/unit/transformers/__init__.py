@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .test_infra_transformer_cast_remover import (
         TestsFlextInfraCastRemoverDeactivated,
     )
@@ -23,29 +21,17 @@ if TYPE_CHECKING:
     from .test_infra_transformer_pydantic_modernizer import (
         TestsFlextInfraTransformersPydanticModernizer,
     )
+    from .test_infra_transformer_runtime_model_alias import (
+        TestsFlextInfraRuntimeModelAlias,
+    )
     from .test_infra_transformer_typing_dict import TestsFlextInfraTypingDictDeactivated
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCastRemoverDeactivated",
+    "TestsFlextInfraRuntimeModelAlias",
     "TestsFlextInfraTransformersEnforcementFixers",
     "TestsFlextInfraTransformersMroRemover",
     "TestsFlextInfraTransformersPydanticModernizer",
     "TestsFlextInfraTypingDictDeactivated",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -63,26 +49,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_transformer_pydantic_modernizer": (
                 "TestsFlextInfraTransformersPydanticModernizer",
             ),
+            ".test_infra_transformer_runtime_model_alias": (
+                "TestsFlextInfraRuntimeModelAlias",
+            ),
             ".test_infra_transformer_typing_dict": (
                 "TestsFlextInfraTypingDictDeactivated",
-            ),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

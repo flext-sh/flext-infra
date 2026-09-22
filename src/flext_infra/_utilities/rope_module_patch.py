@@ -28,7 +28,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             if isinstance(node, ast.Assign | ast.AnnAssign)
             and any(
                 isinstance(target, ast.Name) and target.id == alias
-                for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+                for target in (
+                    node.targets if isinstance(node, ast.Assign) else [node.target]
+                )
             )
         )
 
@@ -48,9 +50,14 @@ class FlextInfraUtilitiesRopeModulePatch:
             if binding.end_lineno is None or binding.end_col_offset is None:
                 message = f"facade assignment has no complete source span: {alias}"
                 raise ValueError(message)
-            if lines[binding.lineno - 1][:binding.col_offset].strip() or (
-                trailing := lines[binding.end_lineno - 1][binding.end_col_offset:].strip()
-            ) and not trailing.startswith("#"):
+            if lines[binding.lineno - 1][: binding.col_offset].strip() or (
+                (
+                    trailing := lines[binding.end_lineno - 1][
+                        binding.end_col_offset :
+                    ].strip()
+                )
+                and not trailing.startswith("#")
+            ):
                 message = f"facade assignment shares a source line with another statement: {alias}"
                 raise ValueError(message)
             del lines[binding.lineno - 1 : binding.end_lineno]
@@ -59,7 +66,9 @@ class FlextInfraUtilitiesRopeModulePatch:
     @staticmethod
     def _ensure_all_entry(source: str, *, name: str) -> str:
         """Publish the name using the canonical export parser and exact AST span."""
-        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(source)
+        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+            source
+        )
         if name in exports:
             return source
         declarations = [
@@ -68,7 +77,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             if isinstance(node, ast.Assign | ast.AnnAssign)
             and any(
                 isinstance(target, ast.Name) and target.id == "__all__"
-                for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+                for target in (
+                    node.targets if isinstance(node, ast.Assign) else [node.target]
+                )
             )
         ]
         if len(declarations) > 1:
@@ -78,9 +89,8 @@ class FlextInfraUtilitiesRopeModulePatch:
         if not declarations:
             return source.rstrip() + "\n\n" + rendered
         declaration = declarations[0]
-        if (
-            not isinstance(declaration.value, ast.List | ast.Tuple)
-            or isinstance(declaration, ast.Assign) and len(declaration.targets) != 1
+        if not isinstance(declaration.value, ast.List | ast.Tuple) or (
+            isinstance(declaration, ast.Assign) and len(declaration.targets) != 1
         ):
             message = "facade repair requires an explicit literal __all__ declaration"
             raise ValueError(message)
@@ -88,9 +98,14 @@ class FlextInfraUtilitiesRopeModulePatch:
         if declaration.end_lineno is None or declaration.end_col_offset is None:
             message = "__all__ declaration has no complete source span"
             raise ValueError(message)
-        if lines[declaration.lineno - 1][:declaration.col_offset].strip() or (
-            trailing := lines[declaration.end_lineno - 1][declaration.end_col_offset:].strip()
-        ) and not trailing.startswith("#"):
+        if lines[declaration.lineno - 1][: declaration.col_offset].strip() or (
+            (
+                trailing := lines[declaration.end_lineno - 1][
+                    declaration.end_col_offset :
+                ].strip()
+            )
+            and not trailing.startswith("#")
+        ):
             message = "__all__ declaration shares a source line with another statement"
             raise ValueError(message)
         lines[declaration.lineno - 1 : declaration.end_lineno] = [rendered]

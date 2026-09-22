@@ -246,7 +246,6 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 alias_name=alias_name,
                 alias_as=alias_as,
                 declared_imports=declared_imports,
-                module_name=module_name,
                 resolved_module=resolved_module,
                 semantic_imports=semantic_imports,
             )
@@ -255,12 +254,12 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def _resolved_import_module(
         *, current_package: str, module_name: str, level: int
     ) -> str:
-        """Resolve the module path represented by one Rope import info."""
+        """Resolve from-imports, including bare dots; invalid levels propagate."""
         return (
             FlextInfraUtilitiesRopeAnalysisImportState._resolve_import_module(
                 current_package=current_package, module_name=module_name, level=level
             )
-            if module_name
+            if module_name or level > 0
             else ""
         )
 
@@ -270,18 +269,15 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         alias_name: str,
         alias_as: str | None,
         declared_imports: MutableMapping[str, str],
-        module_name: str,
         resolved_module: str,
         semantic_imports: MutableMapping[str, str],
     ) -> None:
         """Merge one import alias into declared and semantic maps."""
         if alias_name == "*":
             return
-        if module_name:
+        if resolved_module:
             local_name = alias_as or alias_name
-            target = (
-                f"{resolved_module}.{alias_name}" if resolved_module else alias_name
-            )
+            target = f"{resolved_module}.{alias_name}"
         else:
             local_name = alias_as or alias_name.partition(".")[0]
             target = alias_name
@@ -343,7 +339,8 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         """Return {local_name: declared import path} without resolving re-exports."""
         module = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         imports, _ = FlextInfraUtilitiesRopeAnalysisImportState._module_import_maps(
-            rope_project=rope_project, resource=resource,
+            rope_project=rope_project,
+            resource=resource,
             current_package=FlextInfraUtilitiesRopeAnalysisImportState._package_name_for_module(
                 module.get_name(), resource
             ),
@@ -378,8 +375,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
     @classmethod
     def _facade_owner(
-        cls, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource,
-        *, infer_missing: bool,
+        cls,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        *,
+        infer_missing: bool,
     ) -> t.StrPair | None:
         """Resolve a published local class's alias from declarations and its MRO.
 
@@ -393,13 +393,15 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         )
         attributes = module.get_attributes()
         missing_aliases = frozenset(
-            name for name in exports
+            name
+            for name in exports
             if name.islower() and not name.startswith("_") and name not in attributes
         )
         owners: set[tuple[str, str]] = set()
         scope = module.get_scope()
         if scope is None:
-            raise ValueError(f"module has no declaration scope: {resource.path}")
+            msg = f"module has no declaration scope: {resource.path}"
+            raise ValueError(msg)
         for child in scope.get_scopes():
             if child.get_kind() != "Class":
                 continue
@@ -421,7 +423,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 )
             owners.update((alias, name) for alias in aliases)
         if len(owners) > 1:
-            message = f"ambiguous facade declaration in {resource.path}: {sorted(owners)}"
+            message = (
+                f"ambiguous facade declaration in {resource.path}: {sorted(owners)}"
+            )
             raise ValueError(message)
         return next(iter(owners)) if owners else None
 
@@ -457,7 +461,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         target = module.get_attribute(class_name).get_object()
         attributes = target.get_attributes()
         names: set[str] = set()
-        pending = [(base, frozenset({id(target)})) for base in target.get_superclasses()]
+        pending = [
+            (base, frozenset({id(target)})) for base in target.get_superclasses()
+        ]
         while pending:
             base, ancestors = pending.pop()
             if id(base) in ancestors:

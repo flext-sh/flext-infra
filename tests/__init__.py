@@ -9,16 +9,16 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
+    from pydantic_core import from_json, to_json, to_jsonable_python
 
     from . import integration, refactor, unit
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
-    from .constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
+    from .constants import TestsFlextInfraConstants, c
     from .constants_scan import TestsFlextInfraConstantsScanMixin
-    from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
-    from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
-    from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
-    from .utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
+    from .models import TestsFlextInfraModels, m
+    from .protocols import TestsFlextInfraProtocols, p
+    from .typings import TestsFlextInfraTypes, t
+    from .utilities import TestsFlextInfraUtilities, u
     from .utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
     from .utilities_deps import TestsFlextInfraUtilitiesDepsMixin
     from .utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from .utilities_toml import TestsFlextInfraUtilitiesTomlMixin
     from .utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 __all__: tuple[str, ...] = (
-    "FlextTestsConstants",
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsScanMixin",
     "TestsFlextInfraModels",
@@ -59,24 +58,17 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
     "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
     "c",
-    "d",
-    "e",
-    "h",
+    "from_json",
     "integration",
     "m",
     "p",
-    "r",
     "refactor",
     "s",
     "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
+    "to_json",
+    "to_jsonable_python",
     "u",
     "unit",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -114,19 +106,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".utilities_toml": ("TestsFlextInfraUtilitiesTomlMixin",),
             ".utilities_workspace_env": ("TestsFlextInfraUtilitiesWorkspaceEnvMixin",),
-            "flext_tests": (
-                "FlextTestsConstants",
-                "d",
-                "e",
-                "h",
-                "r",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "x",
-            ),
+            "pydantic_core": ("from_json", "to_json", "to_jsonable_python"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

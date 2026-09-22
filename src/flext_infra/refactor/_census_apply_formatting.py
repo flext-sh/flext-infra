@@ -21,8 +21,14 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
         """Normalize staged source with the destination's real Ruff configuration."""
         checked = u.Cli.run(
             [
-                "ruff", "check", *config.Infra.codegen.make.ruff.lint_fix,
-                "--select", "I,W", "--stdin-filename", str(path), "-",
+                "ruff",
+                "check",
+                *config.Infra.codegen.make.ruff.lint_fix,
+                "--select",
+                "I,W",
+                "--stdin-filename",
+                str(path),
+                "-",
             ],
             cwd=repository_root,
             input_data=source,
@@ -31,8 +37,12 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
         return checked.flat_map(
             lambda output: u.Cli.run(
                 [
-                    "ruff", "format", *config.Infra.codegen.make.ruff.format_apply,
-                    "--stdin-filename", str(path), "-",
+                    "ruff",
+                    "format",
+                    *config.Infra.codegen.make.ruff.format_apply,
+                    "--stdin-filename",
+                    str(path),
+                    "-",
                 ],
                 cwd=repository_root,
                 input_data=output.stdout,

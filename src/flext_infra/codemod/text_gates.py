@@ -271,10 +271,7 @@ class FlextInfraModTextGateEngine:
                 )
                 if published.failure:
                     return r[tuple[Path, ...]].from_failure(published)
-                return transaction.commit_locked(
-                    published.value,
-                    validate_published,
-                )
+                return transaction.commit_locked(published.value, validate_published)
 
             return transaction.publish_prepared_locked(started.value, apply)
 

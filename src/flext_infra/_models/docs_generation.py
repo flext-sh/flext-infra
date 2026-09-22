@@ -226,8 +226,7 @@ class FlextInfraModelsDocsGeneration:
                 msg = "docs generation source paths must be unique"
                 raise ValueError(msg)
             if any(
-                not _source_state_authenticated(state)
-                for state in self.source_states
+                not _source_state_authenticated(state) for state in self.source_states
             ):
                 msg = "docs generation source state is absent or unauthenticated"
                 raise ValueError(msg)

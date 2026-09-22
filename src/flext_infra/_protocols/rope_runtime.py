@@ -55,9 +55,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_name(self) -> str: ...
 
-        def get_module(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
 
         def get_kind(self) -> str: ...
 
@@ -147,9 +145,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         source_code: str
 
-        def get_module(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
 
         def get_attribute(
             self, name: str

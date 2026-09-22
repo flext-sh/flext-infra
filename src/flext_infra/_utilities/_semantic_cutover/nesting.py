@@ -117,9 +117,13 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
-                original_source=(previous.original_source if previous else edit.original_source),
+                original_source=(
+                    previous.original_source if previous else edit.original_source
+                ),
                 updated_source=edit.updated_source,
-                changes=(*previous.changes, *edit.changes) if previous else edit.changes,
+                changes=(*previous.changes, *edit.changes)
+                if previous
+                else edit.changes,
             )
         return planned.ok(tuple(merged[path] for path in sorted(merged)))
 

@@ -9,41 +9,27 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .test_api_alias_cutover import TestsFlextInfraApiAliasCutover
     from .test_batch_apply_validation import TestsFlextInfraCodemodBatchApplyValidation
+    from .test_family_flatten import TestsFlextInfraFamilyFlatten
     from .test_mod_circuit import TestsFlextInfraModCliRoute
     from .test_mod_text_circuit import TestsFlextInfraModTextGateEngine
     from .test_nesting_cst_output_is_clean import TestsFlextInfraNestingCutoverOutput
     from .test_private_import_cutover import TestsFlextInfraPrivateImportCutover
     from .test_rule_expected_receipt import TestsFlextInfraModRuleExpectedReceipt
     from .test_rule_fixture_staging import TestsFlextInfraModRuleFixtureStaging
+    from .test_semantic_publication import TestsSemanticPublication
 __all__: tuple[str, ...] = (
     "TestsFlextInfraApiAliasCutover",
     "TestsFlextInfraCodemodBatchApplyValidation",
+    "TestsFlextInfraFamilyFlatten",
     "TestsFlextInfraModCliRoute",
     "TestsFlextInfraModRuleExpectedReceipt",
     "TestsFlextInfraModRuleFixtureStaging",
     "TestsFlextInfraModTextGateEngine",
     "TestsFlextInfraNestingCutoverOutput",
     "TestsFlextInfraPrivateImportCutover",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
+    "TestsSemanticPublication",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -53,6 +39,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_batch_apply_validation": (
                 "TestsFlextInfraCodemodBatchApplyValidation",
             ),
+            ".test_family_flatten": ("TestsFlextInfraFamilyFlatten",),
             ".test_mod_circuit": ("TestsFlextInfraModCliRoute",),
             ".test_mod_text_circuit": ("TestsFlextInfraModTextGateEngine",),
             ".test_nesting_cst_output_is_clean": (
@@ -61,24 +48,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_private_import_cutover": ("TestsFlextInfraPrivateImportCutover",),
             ".test_rule_expected_receipt": ("TestsFlextInfraModRuleExpectedReceipt",),
             ".test_rule_fixture_staging": ("TestsFlextInfraModRuleFixtureStaging",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
+            ".test_semantic_publication": ("TestsSemanticPublication",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

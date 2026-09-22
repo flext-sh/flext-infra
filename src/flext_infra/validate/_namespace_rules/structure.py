@@ -109,7 +109,9 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         expected = (
             policy.expected_family
             if policy.expected_alias is not None and policy.expected_family is not None
-            else f"Tests{class_stem}" if is_test_file else class_stem
+            else f"Tests{class_stem}"
+            if is_test_file
+            else class_stem
         )
         if len(classes) < 1:
             messages.append(
@@ -148,10 +150,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             if kind in {"Assign", "AnnAssign"} and not (
                 cls._dunder_assignment(node)
                 or cls._canonical_facade_alias(
-                    node,
-                    tree,
-                    policy=policy,
-                    exports=exports,
+                    node, tree, policy=policy, exports=exports
                 )
             ):
                 messages.append(

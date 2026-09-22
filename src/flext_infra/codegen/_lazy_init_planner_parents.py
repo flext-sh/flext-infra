@@ -39,7 +39,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         seen.add(str(module_path.resolve()))
         resource = self.rope_workspace.resource(module_path)
         if resource is None:
-            raise ValueError(f"parent declaration source unavailable: {module_path}")
+            msg = f"parent declaration source unavailable: {module_path}"
+            raise ValueError(msg)
         imports = u.Infra.get_declared_module_imports(
             self.rope_workspace.rope_project, resource
         )
@@ -49,9 +50,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             for class_info in classes
             if "Constants" in class_info.name
             for base_name in class_info.bases
-            if (
-                target := imports.get(base_name)
-            )
+            if (target := imports.get(base_name))
         )
         declared_packages = tuple(
             package_name
@@ -117,11 +116,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         return target
 
     def _resolve_inherited_alias_source(
-        self,
-        package_names: t.StrSequence,
-        alias_name: str,
-        *,
-        current_pkg: str,
+        self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str
     ) -> str:
         """Return the package that owns the given alias in the inheritance chain."""
         candidate_packages: t.StrSequence = tuple(

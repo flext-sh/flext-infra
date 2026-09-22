@@ -33,11 +33,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         ) -> t.StrSequence: ...
 
         def _resolve_inherited_alias_source(
-            self,
-            package_names: t.StrSequence,
-            alias_name: str,
-            *,
-            current_pkg: str,
+            self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str
         ) -> str: ...
 
     def _resolve_aliases(
@@ -60,25 +56,27 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         local_owners = {
             alias
             for module_path in sorted(pkg_dir.glob("*.py"))
-            if module_path.name != c.Infra.INIT_PY
-            and module_path.stem.isidentifier()
+            if module_path.name != c.Infra.INIT_PY and module_path.stem.isidentifier()
             if (
                 alias := u.Infra.publication_policy(
                     module_path, rope_project=self.rope_workspace.rope_project
                 ).expected_alias
-            ) is not None
+            )
+            is not None
         }
         inherited_packages = self._resolve_transitive_parent_packages((
             *self._parent_packages(pkg_dir),
             *self._local_parent_packages(pkg_dir),
             self._source_package_name(pkg_dir, surface),
         ))
-        alias_names = tuple(dict.fromkeys(
-            name
-            for package_name in inherited_packages
-            for name in self._export_names_for_package(package_name)
-            if name.isidentifier() and name.islower() and not name.startswith("_")
-        ))
+        alias_names = tuple(
+            dict.fromkeys(
+                name
+                for package_name in inherited_packages
+                for name in self._export_names_for_package(package_name)
+                if name.isidentifier() and name.islower() and not name.startswith("_")
+            )
+        )
         for alias_name in alias_names:
             # A missing local declaration is a source finding. Inheriting a
             # parent's value here would conceal it and change the local MRO.
@@ -88,9 +86,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             if existing is not None and existing[0] != current_pkg:
                 continue
             package_name = self._resolve_inherited_alias_source(
-                inherited_packages,
-                alias_name,
-                current_pkg=current_pkg,
+                inherited_packages, alias_name, current_pkg=current_pkg
             )
             if package_name and package_name != current_pkg:
                 lazy_map[alias_name] = (package_name, alias_name)
@@ -105,7 +101,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         package_entry = self._package_entry(pkg_dir)
         current_name = package_entry.package_name if package_entry is not None else ""
         imports = u.Infra.get_declared_module_imports(
-            self.rope_workspace.rope_project, resource,
+            self.rope_workspace.rope_project, resource
         )
         return tuple(
             package_name

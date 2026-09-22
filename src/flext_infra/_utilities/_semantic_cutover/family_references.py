@@ -7,6 +7,7 @@ from flext_infra import c, m, p, t
 from ..rope_runtime_refactors import FlextInfraUtilitiesRopeRuntimeRefactors
 from ..rope_structure import FlextInfraUtilitiesRopeStructure
 
+
 class FlextInfraUtilitiesSemanticFamilyReferences:
     """Use Rope occurrences, never textual wrapper-name substitutions."""
 
@@ -31,15 +32,19 @@ class FlextInfraUtilitiesSemanticFamilyReferences:
             _start, end = occurrence.get_word_range()
             if not source[end:].lstrip().startswith("."):
                 msg = "namespace wrapper is used as a value or inheritance base: "
-                raise ValueError(f"{msg}{resource.real_path}:{occurrence.lineno}")
+                msg_0 = f"{msg}{resource.real_path}:{occurrence.lineno}"
+                raise ValueError(msg_0)
             suffix = source[end:]
             member_offset = end + len(suffix) - len(suffix.lstrip()) + 1
             while source[member_offset].isspace():
                 member_offset += 1
-            member_name = runtime.word_primary_at(source, member_offset).rpartition(".")[2]
+            member_name = runtime.word_primary_at(source, member_offset).rpartition(
+                "."
+            )[2]
             if member_name not in names:
                 msg = "namespace wrapper consumer has an unresolved member: "
-                raise ValueError(f"{msg}{resource.real_path}:{occurrence.lineno}")
+                msg_0 = f"{msg}{resource.real_path}:{occurrence.lineno}"
+                raise ValueError(msg_0)
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         edits: list[m.Infra.SourceRewrite] = []
         for name, replacement in names.items():
@@ -59,7 +64,8 @@ class FlextInfraUtilitiesSemanticFamilyReferences:
                     if not separator:
                         in_function = any(
                             statement.line <= occurrence.lineno <= statement.end_line
-                            and statement.enclosing_kind == c.Infra.RopeScopeKind.FUNCTION
+                            and statement.enclosing_kind
+                            == c.Infra.RopeScopeKind.FUNCTION
                             for statement in statements
                         )
                         parent = owner_name if in_function else ""
@@ -70,7 +76,9 @@ class FlextInfraUtilitiesSemanticFamilyReferences:
                         )
                     )
                 elif name != replacement:
-                    edits.append(m.Infra.SourceRewrite(start=start, end=end, text=replacement))
+                    edits.append(
+                        m.Infra.SourceRewrite(start=start, end=end, text=replacement)
+                    )
         return tuple(edits)
 
 

@@ -59,28 +59,47 @@ class TestsFlextInfraFamilyFlatten:
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope, sources=sources,
+                rope_workspace=rope,
+                sources=sources,
             )
             tm.ok(planned)
             proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in planned.value})
+            proposed.update({
+                edit.file_path: edit.updated_source for edit in planned.value
+            })
             expected_member = "GroupingEntity" if collision else "Entity"
             tm.that(proposed[path], has=f"    class {expected_member}(Enum):")
-            tm.that(proposed[path], has="'''first\n        literal indentation\n        last'''")
+            tm.that(
+                proposed[path],
+                has="'''first\n        literal indentation\n        last'''",
+            )
             tm.that(proposed[consumer], has=f"VALUE = Public.{expected_member}.VALUE")
             tm.that(proposed[consumer], has="TEXT = Part.TEXT")
             tm.that(proposed[homonym], eq=unrelated)
             remaining = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope, sources=proposed,
+                rope_workspace=rope,
+                sources=proposed,
             )
             tm.ok(remaining)
             tm.that(remaining.value, empty=True)
-        for file_path, original in {path: source, consumer: references, homonym: unrelated}.items():
+        for file_path, original in {
+            path: source,
+            consumer: references,
+            homonym: unrelated,
+        }.items():
             tm.that(file_path.read_text(encoding="utf-8"), eq=original)
 
-    @pytest.mark.parametrize("entity", ["class Entity(Enum):\n        VALUE = 'one'", "class Entity:\n        def value(self) -> int:\n            return 1"])
-    def test_entity_classes_are_not_namespace_wrappers(self, tmp_path: Path, entity: str) -> None:
+    @pytest.mark.parametrize(
+        "entity",
+        [
+            "class Entity(Enum):\n        VALUE = 'one'",
+            "class Entity:\n        def value(self) -> int:\n            return 1",
+        ],
+    )
+    def test_entity_classes_are_not_namespace_wrappers(
+        self, tmp_path: Path, entity: str
+    ) -> None:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         family = package / c.Infra.FAMILY_DIRECTORIES["m"]
         family.mkdir()
@@ -92,12 +111,15 @@ class TestsFlextInfraFamilyFlatten:
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope, sources={path: source},
+                rope_workspace=rope,
+                sources={path: source},
             )
         tm.ok(planned)
         tm.that(planned.value, empty=True)
 
-    def test_wrapper_used_as_a_value_fails_without_partial_edits(self, tmp_path: Path) -> None:
+    def test_wrapper_used_as_a_value_fails_without_partial_edits(
+        self, tmp_path: Path
+    ) -> None:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         directory = c.Infra.FAMILY_DIRECTORIES["c"]
         family = package / directory
@@ -110,7 +132,8 @@ class TestsFlextInfraFamilyFlatten:
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope, sources={path: source},
+                rope_workspace=rope,
+                sources={path: source},
             )
         tm.fail(planned, has="used as a value or inheritance base")
         tm.that(path.read_text(encoding="utf-8"), eq=source)

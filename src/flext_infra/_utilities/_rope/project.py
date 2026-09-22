@@ -39,10 +39,7 @@ class FlextInfraRopeProject(Project):
 
     @classmethod
     def from_snapshot(
-        cls,
-        root: str,
-        sources: Mapping[Path, str],
-        source_folders: list[str],
+        cls, root: str, sources: Mapping[Path, str], source_folders: list[str]
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state."""
         if not Path(root).is_dir():

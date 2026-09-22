@@ -103,13 +103,15 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             if is_generated_or_test or is_child_package:
                 continue
             policy = u.Infra.publication_policy(
-                py_file, rel_path=py_file.relative_to(context.pkg_dir),
+                py_file,
+                rel_path=py_file.relative_to(context.pkg_dir),
                 current_pkg=context.current_pkg,
                 rope_project=self.rope_workspace.rope_project,
             )
             entry = self.rope_workspace.module(py_file)
             if entry is None:
-                raise ValueError(f"unindexed publication source: {py_file}")
+                msg = f"unindexed publication source: {py_file}"
+                raise ValueError(msg)
             module_path = entry.module_name
             root_private_contract = (
                 py_file.parent == context.pkg_dir

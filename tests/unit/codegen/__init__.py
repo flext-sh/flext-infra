@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from ._support import CodegenTestSupport
     from .autofix_workspace_tests import TestsFlextInfraCodegenAutofixWorkspace
     from .census_models_tests import TestsFlextInfraCodegenCensusModels
@@ -43,7 +41,6 @@ if TYPE_CHECKING:
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
     from .lazy_init_tests import TestsFlextInfraCodegenLazyInit
     from .main_tests import TestsFlextInfraCodegenMain
-    from .protocol_models_tests import DemoMemberProtocols, ManualPort
     from .scaffolder_naming_tests import TestsFlextInfraCodegenScaffolderNaming
     from .scaffolder_tests import TestsFlextInfraCodegenScaffolder
     from .submodule_recipe_shell_tests import TestsFlextInfraSubmoduleRecipeShell
@@ -130,8 +127,6 @@ if TYPE_CHECKING:
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
-    "DemoMemberProtocols",
-    "ManualPort",
     "TestsFlextInfraCiCheckoutModeNormalization",
     "TestsFlextInfraCiDeclaredSecretsContract",
     "TestsFlextInfraCiIntegrationBranchTriggers",
@@ -206,23 +201,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
     "archive_root",
     "build_loose_project",
-    "c",
-    "d",
-    "e",
-    "h",
     "layout_engine",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -264,7 +243,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
             ".lazy_init_tests": ("TestsFlextInfraCodegenLazyInit",),
             ".main_tests": ("TestsFlextInfraCodegenMain",),
-            ".protocol_models_tests": ("DemoMemberProtocols", "ManualPort"),
             ".scaffolder_naming_tests": ("TestsFlextInfraCodegenScaffolderNaming",),
             ".scaffolder_tests": ("TestsFlextInfraCodegenScaffolder",),
             ".submodule_recipe_shell_tests": ("TestsFlextInfraSubmoduleRecipeShell",),
@@ -369,24 +347,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraWorkflowCommentSpacing",
             ),
             ".workflow_orphan_guard_tests": ("TestsFlextInfraWorkflowOrphanGuard",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

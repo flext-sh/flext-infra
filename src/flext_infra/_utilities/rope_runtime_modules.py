@@ -15,9 +15,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def snapshot_project(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        cls, project: p.Infra.RopeProject, sources: t.MappingKV[Path, str]
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.
 
@@ -76,7 +74,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             module = imported.importing_module.get_module()
             source = module.get_resource() if module is not None else None
             if name is None or source is None:
-                message = f"import has no declared module location: {binding.imported_name}"
+                message = (
+                    f"import has no declared module location: {binding.imported_name}"
+                )
                 raise ValueError(message)
             resource = (
                 project.find_module(name, source.parent)

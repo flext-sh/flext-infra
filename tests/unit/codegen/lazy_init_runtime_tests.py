@@ -17,6 +17,30 @@ from tests import c, t, u
 class TestsFlextInfraLazyInitRuntime:
     """Exercise generated roots through Python's real import machinery."""
 
+    def test_pytest_private_source_is_not_reintroduced_by_typing_projection(
+        self, tmp_path: Path
+    ) -> None:
+        repository, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-fixtures", package_name="flext_fixtures"
+        )
+        package = repository / "tests" / "unit"
+        package.mkdir(parents=True, exist_ok=True)
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (package / "support.py").write_text(
+            "class PublishedSupport:\n    pass\n__all__ = ['PublishedSupport']\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        conftest = package / "conftest.py"
+        private_source = "pytest_plugins = []\n__all__ = ['pytest_plugins']\n"
+        conftest.write_text(private_source, encoding=c.Cli.ENCODING_DEFAULT)
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+
+        generated = (package / c.Infra.INIT_PY).read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        tm.that(generated, has="PublishedSupport")
+        tm.that(generated, lacks="pytest_plugins")
+        tm.that(conftest.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=private_source)
+
     @staticmethod
     def _generate_package(tmp_path: Path) -> t.Pair[Path, Path]:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -116,16 +140,19 @@ class TestsFlextInfraLazyInitRuntime:
             generated = importlib.import_module("flext_rebuilt")
             declared = importlib.import_module("flext_rebuilt.models")
             tm.that(generated.m is declared.FlextRebuiltModels, eq=True)
-            tm.that(all(hasattr(generated, name) for name in generated.__all__), eq=True)
+            tm.that(
+                all(hasattr(generated, name) for name in generated.__all__), eq=True
+            )
         declaration.write_text(
-            "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n", encoding=c.Cli.ENCODING_DEFAULT
         )
         with infra.rope_workspace(repository) as rope:
             with pytest.raises(SyntaxError):
                 rope.layout(repository)
 
-    def test_internal_facade_requires_its_local_declaration(self, tmp_path: Path) -> None:
+    def test_internal_facade_requires_its_local_declaration(
+        self, tmp_path: Path
+    ) -> None:
         """Repair a missing local alias without substituting the parent class."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-local", package_name="flext_local"
@@ -146,8 +173,11 @@ class TestsFlextInfraLazyInitRuntime:
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(
-            "c" in u.Infra.public_export_names_source(
-                examples.joinpath("__init__.py").read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            "c"
+            in u.Infra.public_export_names_source(
+                examples.joinpath("__init__.py").read_text(
+                    encoding=c.Cli.ENCODING_DEFAULT
+                )
             ),
             eq=False,
         )
@@ -162,7 +192,9 @@ class TestsFlextInfraLazyInitRuntime:
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         probe_env = dict(os.environ)
         probe_env["PYTHONPATH"] = os.pathsep.join([
-            str(repository), str(repository / c.Infra.DEFAULT_SRC_DIR), *sys.path,
+            str(repository),
+            str(repository / c.Infra.DEFAULT_SRC_DIR),
+            *sys.path,
         ])
         probe = (
             "import examples as generated\n"
@@ -173,7 +205,9 @@ class TestsFlextInfraLazyInitRuntime:
             "print(generated.c.__bases__ == (parent.Parent,))\n"
             "print(all(hasattr(generated, name) for name in generated.__all__))\n"
         )
-        result = tm.ok(u.Cli.run([sys.executable, "-c", probe], env=probe_env, cwd=repository))
+        result = tm.ok(
+            u.Cli.run([sys.executable, "-c", probe], env=probe_env, cwd=repository)
+        )
         tm.that(result.stdout.splitlines(), eq=["True", "True", "True", "True"])
 
 

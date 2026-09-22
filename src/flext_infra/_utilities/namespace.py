@@ -468,7 +468,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_prefix=cls._resolve_project_prefix(file_path),
             expected_alias=expected_alias,
             expected_family=expected_family,
-            is_internal_namespace=project_root is not None and file_path.parent.parent == project_root,
+            is_internal_namespace=project_root is not None
+            and file_path.parent.parent == project_root,
             family_tokens=family_tokens,
             accepted_suffixes=((expected_family,) if expected_family else ()),
             allow_main_export="main" in cls._declared_exports(file_path),
@@ -482,12 +483,19 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def policy(
-        cls, file_path: Path, *, rope_project: t.Infra.RopeProject,
-        rel_path: Path | None = None, current_pkg: str = "",
+        cls,
+        file_path: Path,
+        *,
+        rope_project: t.Infra.RopeProject,
+        rel_path: Path | None = None,
+        current_pkg: str = "",
     ) -> m.Infra.NamespaceModulePolicy:
         """Enrich publication declarations with repair and inherited-shape evidence."""
         policy = cls.publication_policy(
-            file_path, rope_project=rope_project, rel_path=rel_path, current_pkg=current_pkg
+            file_path,
+            rope_project=rope_project,
+            rel_path=rel_path,
+            current_pkg=current_pkg,
         )
         project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         if project_root is None:
@@ -497,22 +505,32 @@ class FlextInfraUtilitiesCodegenNamespace:
             layout is None or file_path.parent != layout.package_dir
         ):
             return policy
-        resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(rope_project, file_path)
+        resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
+            rope_project, file_path
+        )
         if resource is None:
-            raise ValueError(f"facade source is unavailable to Rope: {file_path}")
-        owner = FlextInfraUtilitiesRopeAnalysis.declared_facade_owner(rope_project, resource)
+            msg = f"facade source is unavailable to Rope: {file_path}"
+            raise ValueError(msg)
+        owner = FlextInfraUtilitiesRopeAnalysis.declared_facade_owner(
+            rope_project, resource
+        )
         if owner is None:
             return policy
         alias, family = owner
         inherited = FlextInfraUtilitiesRopeAnalysis.inherited_facade_namespaces(
             rope_project, resource, class_name=family
         )
-        return policy.model_copy(update={
-            "expected_alias": alias, "expected_family": family,
-            "family_tokens": (family,), "accepted_suffixes": (family,),
-            "inherited_namespaces": inherited, "enforce_contract": True,
-            "export_symbols": True,
-        })
+        return policy.model_copy(
+            update={
+                "expected_alias": alias,
+                "expected_family": family,
+                "family_tokens": (family,),
+                "accepted_suffixes": (family,),
+                "inherited_namespaces": inherited,
+                "enforce_contract": True,
+                "export_symbols": True,
+            }
+        )
 
     @classmethod
     def projects(

@@ -19,18 +19,14 @@ class FlextInfraRuntimeAliasDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
-        *,
-        policy: m.Infra.NamespaceModulePolicy,
+        ctx: m.Infra.DetectorContext, *, policy: m.Infra.NamespaceModulePolicy
     ) -> t.SequenceOf[m.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
         file_path = ctx.file_path
         family = policy.expected_alias
         if family is None:
             return []
-        resource = u.Infra.fetch_python_resource(
-            ctx.rope_project, file_path
-        )
+        resource = u.Infra.fetch_python_resource(ctx.rope_project, file_path)
         if resource is None:
             message = f"facade source is unavailable to Rope: {file_path}"
             raise ValueError(message)
@@ -58,7 +54,11 @@ class FlextInfraRuntimeAliasDetector:
         attributes = module.get_attributes()
         target = attributes.get(policy.expected_family or "")
         binding = attributes.get(family)
-        if target is None or binding is None or binding.get_object() is not target.get_object():
+        if (
+            target is None
+            or binding is None
+            or binding.get_object() is not target.get_object()
+        ):
             return [
                 m.Infra.RuntimeAliasViolation(
                     file=str(file_path),
