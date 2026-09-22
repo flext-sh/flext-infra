@@ -69,7 +69,10 @@ def publish_semantic_file_plans(
         files=tuple(files),
         inputs=tuple(plan.before for plan in plans),
     )
-    roots = {str(plan.project): plan.project for plan in files}
+    roots = {
+        f"@semantic-{index}": project
+        for index, project in enumerate(sorted({plan.project for plan in files}))
+    }
     transaction = FlextInfraCodegenTransaction(
         FlextInfraCodegenMiseArtifacts(repository_root=repository_root)
     )
