@@ -314,6 +314,11 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 passed=execution.result.passed or warning,
                 elapsed=execution.result.duration,
             )
+            if execution.issues and gate_id in c.Infra.WARNING_GATE_IDS:
+                u.Cli.info(
+                    f"WARNING (non-blocking): {gate_id} reported "
+                    f"{len(execution.issues)} finding(s) for {project_name}"
+                )
             if not execution.result.passed:
                 for finding in execution.result.errors:
                     u.Cli.info(finding)

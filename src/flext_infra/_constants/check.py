@@ -105,7 +105,7 @@ class FlextInfraConstantsCheck:
         "runtime-census",
         "duplication",
         "tier-whitelist",
-        PYREFLY,
+        "pyrefly",
     })
     "Gates whose findings are reported without failing the check verdict. "
     "Operator law 2026-09-22: the census/structural flood (namespace, "
