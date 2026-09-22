@@ -595,10 +595,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         home, so the whole move validates red and is reverted. Filtering here
         rather than at each caller keeps one owner for the rule.
         """
-        alias_names = frozenset(
+        public_alias_names = {
             name for name in alias_names if not name.startswith("_")
-        )
-        if not alias_names:
+        }
+        if not public_alias_names:
             return
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
@@ -616,7 +616,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             should_move = any(
                 stripped.startswith((f"type {name} =", f"{name}: TypeAlias ="))
                 or typing_name == name
-                for name in alias_names
+                for name in public_alias_names
             )
             if should_move:
                 moved_lines.append(
@@ -632,7 +632,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         kept_source = "\n".join(kept_lines)
         kept_source = (
             FlextInfraUtilitiesRefactorNamespaceMoves._drop_moved_alias_exports(
-                source=kept_source, alias_names=alias_names
+                source=kept_source, alias_names=public_alias_names
             )
         )
         kept_lines = kept_source.splitlines()

@@ -7,7 +7,7 @@ from collections.abc import MutableMapping, Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_core import c
 
@@ -46,7 +46,7 @@ class FlextInfraConstantsRefactor:
         Path(cb.REPORTS_DIR_NAME) / "refactor" / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
-    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 1
+    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
     "Exact structured mod evidence schema version."
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."

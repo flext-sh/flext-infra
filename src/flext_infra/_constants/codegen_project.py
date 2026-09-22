@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -126,7 +126,7 @@ class FlextInfraConstantsCodegenProject:
     BEADS_DIRECTORY_MODE: ClassVar[int] = 0o700
     BEADS_LOCAL_VERSION_FILENAME: ClassVar[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: ClassVar[str] = "last-touched"
-    BEADS_CONFIG_VERSION: ClassVar[int] = 1
+    BEADS_CONFIG_VERSION: ClassVar[Literal[1]] = 1
     CONFORM_NAMESPACE_TABLE: ClassVar[t.VariadicTuple[str]] = (
         "tool",
         "flext",

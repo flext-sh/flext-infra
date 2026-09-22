@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import config, m, t
+
+if TYPE_CHECKING:
+    from flext_infra import FlextInfraConfig
 
 _GITHUB_BLOB_TREE_RE = re.compile(
     r"^https://github\.com/"
@@ -27,9 +31,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
     """Governed GitHub URL helpers for docs audit and fix."""
 
     @staticmethod
-    def _config() -> config.FlextInfraConfig:
-        from flext_infra import config
-
+    def _config() -> FlextInfraConfig:
         return config
 
     @staticmethod

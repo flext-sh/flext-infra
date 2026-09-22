@@ -12,6 +12,7 @@ from flext_infra import c, m, t
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
+from .exports import FlextInfraUtilitiesRopeAnalysisExports
 
 
 class FlextInfraUtilitiesRopeAnalysisImportState:
@@ -370,7 +371,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         determine the missing declaration that the repair must publish locally.
         """
         module = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        exports = FlextInfraUtilitiesRopeAnalysisAstHelpers.public_export_names_source(
+        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             resource.read()
         )
         attributes = module.get_attributes()
@@ -394,7 +395,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         module = target.get_module()
         if module is None or (resource := module.get_resource()) is None:
             return frozenset()
-        exports = FlextInfraUtilitiesRopeAnalysisAstHelpers.public_export_names_source(
+        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             resource.read()
         )
         return frozenset(
