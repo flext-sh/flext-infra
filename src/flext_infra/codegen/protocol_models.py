@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import tomllib
 from importlib import import_module
 from pathlib import Path
 from types import UnionType
@@ -13,7 +12,7 @@ from flext_cli import cli
 
 from flext_core import r
 
-from .. import FlextInfraServiceBase, m, p, t
+from .. import FlextInfraServiceBase, m, p, t, u
 from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
 from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
 
@@ -49,9 +48,13 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         manifest = root / "pyproject.toml"
         if not manifest.is_file():
             return r[_Target].fail(f"no pyproject manifest at {manifest}")
-        declared = tomllib.loads(manifest.read_text(encoding="utf-8"))
-        name = declared.get("project", {}).get("name")
-        if not isinstance(name, str) or not name:
+        declared = u.Cli.toml_read_json(manifest)
+        if declared.failure:
+            return r[_Target].from_failure(declared)
+        name = u.Cli.json_pick_str(
+            u.Cli.json_deep_mapping(declared.value, "project"), "name"
+        )
+        if not name:
             return r[_Target].fail(
                 f"pyproject manifest declares no project name: {manifest}"
             )

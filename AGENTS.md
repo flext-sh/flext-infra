@@ -101,6 +101,14 @@ transitive overrides; local workspace members cannot be overridden. Publish the 
 a merge-commit PR into that integration branch and verify the remote merge SHA before
 claiming delivery.
 
+Every checkout owns its physical `.venv` directory. Setup and runtime verbs reject
+symlinked environments before bootstrap, environment activation, or hooks; they never
+borrow another checkout's environment or editable sources. Caller environment and
+command-line variables cannot redirect the derived workspace or interpreter paths.
+Attached members use only their containing workspace's environment. Managed base
+interpreter symlinks inside the environment remain valid; the environment itself must
+belong to this workspace.
+
 ```bash
 make setup
 make check
