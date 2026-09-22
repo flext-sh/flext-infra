@@ -23,9 +23,13 @@ if TYPE_CHECKING:
     from .test_infra_transformer_pydantic_modernizer import (
         TestsFlextInfraTransformersPydanticModernizer,
     )
+    from .test_infra_transformer_runtime_model_alias import (
+        TestsFlextInfraRuntimeModelAlias,
+    )
     from .test_infra_transformer_typing_dict import TestsFlextInfraTypingDictDeactivated
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCastRemoverDeactivated",
+    "TestsFlextInfraRuntimeModelAlias",
     "TestsFlextInfraTransformersEnforcementFixers",
     "TestsFlextInfraTransformersMroRemover",
     "TestsFlextInfraTransformersPydanticModernizer",
@@ -62,6 +66,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_infra_transformer_pydantic_modernizer": (
                 "TestsFlextInfraTransformersPydanticModernizer",
+            ),
+            ".test_infra_transformer_runtime_model_alias": (
+                "TestsFlextInfraRuntimeModelAlias",
             ),
             ".test_infra_transformer_typing_dict": (
                 "TestsFlextInfraTypingDictDeactivated",
