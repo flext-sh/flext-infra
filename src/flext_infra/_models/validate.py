@@ -12,6 +12,11 @@ from . import FlextInfraModelsMixins as mm
 from ._defaults import FlextInfraModelsDefaults
 
 
+def _fresh_import_default() -> FlextInfraModelsCore.FreshImportEntryPoints:
+    """Deferred factory: resolves after FlextInfraModelsCore is fully defined."""
+    return FlextInfraModelsCore.FreshImportEntryPoints()
+
+
 class FlextInfraModelsCore:
     """Models for core infrastructure services (subprocess, validation).
 
@@ -61,7 +66,7 @@ class FlextInfraModelsCore:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         project: FlextInfraModelsCore.FreshImportEntryPoints = m.Field(
-            default_factory=lambda: FlextInfraModelsCore.FreshImportEntryPoints(),
+            default_factory=_fresh_import_default,
             description="Executable metadata from the published project table",
         )
 

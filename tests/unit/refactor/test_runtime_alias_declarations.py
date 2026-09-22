@@ -129,9 +129,11 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             "__all__ = ['Local']\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        with infra.rope_workspace(repository) as rope:
-            with pytest.raises(ValueError, match="ambiguous facade declaration"):
-                rope.convention(source)
+        with (
+            infra.rope_workspace(repository) as rope,
+            pytest.raises(ValueError, match="ambiguous facade declaration"),
+        ):
+            rope.convention(source)
 
     def test_explicit_alias_does_not_evaluate_unpublished_imports(
         self, tmp_path: Path

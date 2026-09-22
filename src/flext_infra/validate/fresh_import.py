@@ -37,7 +37,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     )
     _ORIGIN_CODE: ClassVar[str] = (
         "for name, module in tuple(sys.modules.items()):\n"
-        "    for package, directory in {origins!r}:\n"
+        "    for package, directory in __ORIGINS__:\n"
         "        if name == package or name.startswith(package + '.'):\n"
         "            origin = getattr(module, '__file__', None)\n"
         "            if origin is None or not Path(origin).resolve().is_relative_to(Path(directory)):\n"
@@ -64,7 +64,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        origin_code = self._ORIGIN_CODE.replace("{origins!r}", repr(origins))
+        origin_code = self._ORIGIN_CODE.replace("__ORIGINS__", repr(origins))
         probes: t.MutableSequenceOf[m.Infra.FreshImportProbe] = []
         for layout in layouts:
             source = u.Cli.files_read_text(
