@@ -112,7 +112,7 @@ class FlextInfraCodegenLazyInitClassReceipts:
         self._entries = {
             key: [item for item in value if isinstance(item, str)]
             for key, value in entries.items()
-            if isinstance(key, str) and isinstance(value, list)
+            if isinstance(value, list)
         }
         return r[bool].ok(True)
 

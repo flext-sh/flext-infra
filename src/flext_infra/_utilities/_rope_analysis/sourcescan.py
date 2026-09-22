@@ -336,6 +336,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             tree = ast.parse(source)
         except SyntaxError:
             return ""
+        value: ast.expr | None
         for node in tree.body:
             if isinstance(node, ast.Assign):
                 targets: list[ast.expr] = list(node.targets)

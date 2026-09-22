@@ -59,14 +59,14 @@ class FlextInfraUtilitiesPyprojectOverlay:
         for key in project_keys:
             if key in live_project:
                 if key == c.Infra.DEPENDENCIES:
-                    validated_required = u.validate_value(
+                    validated_required: p.Result[t.StrSequence] = u.validate_value(
                         t.Infra.STR_SEQ_ADAPTER, project.get(key, []), strict=True
                     )
                     if validated_required.failure:
                         return r[str].fail_op(
                             "validate runtime dependencies", validated_required.error
                         )
-                    validated_custom = u.validate_value(
+                    validated_custom: p.Result[t.StrSequence] = u.validate_value(
                         t.Infra.STR_SEQ_ADAPTER, live_project[key], strict=True
                     )
                     if validated_custom.failure:

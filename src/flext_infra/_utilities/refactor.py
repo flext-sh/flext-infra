@@ -34,7 +34,9 @@ class FlextInfraUtilitiesRefactor:
             return []
         if isinstance(value, str):
             return [value]
-        validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, value)
+        validated: p.Result[t.StrSequence] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER, value
+        )
         if validated.failure:
             msg = f"expected list value: {validated.error}"
             raise TypeError(msg) from validated.exception

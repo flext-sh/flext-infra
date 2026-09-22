@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import u
+from flext_infra import config, u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -458,6 +458,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 f"git+{provider.base_url.rstrip('/')}/flext-core.git@"
                 f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"
             )
+            infra = config.Infra.codegen.infra_repository.distribution
+            tooling_names = {
+                infra,
+                *(
+                    name
+                    for requirement in config.Infra.codegen.scaffold.project.dev
+                    if (name := u.Infra.dep_name(requirement)) is not None
+                    and name.startswith("flext-")
+                ),
+            } - {distribution}
+            tooling_requirements = ", ".join(
+                f'"{name} @ git+{cls.governed_repository_url(name)}@'
+                f'{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"'
+                for name in sorted(tooling_names)
+            )
+            tooling = f"\n[dependency-groups]\ndev = [{tooling_requirements}]\n"
             # A governed project always declares its description: the derived
             # render identity reads it and rejects an empty one, exactly as it
             # does for a real checkout.
@@ -470,7 +486,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 'requires-python = ">=3.13,<3.14"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
-                f'[project.urls]\nRepository = "{repository_url}"\n',
+                f'[project.urls]\nRepository = "{repository_url}"\n{tooling}',
                 encoding="utf-8",
             )
             package = root / "src" / distribution.replace("-", "_")
