@@ -21,6 +21,7 @@ from pathlib import Path
 from flext_core import r
 
 from .. import c, m, p, t, u
+from ..codegen import FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction
 
 
 class FlextInfraModTextGateEngine:
@@ -29,33 +30,41 @@ class FlextInfraModTextGateEngine:
     @classmethod
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
-        # One catalogue, owned by the repository under work. The package-side
-        # lookup addressed a file the distribution does not ship, so it could
-        # only ever contribute nothing.
-        sources = (root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,)
+        snapshot = u.Cli.atomic_read_binary_file_state(
+            root / c.Infra.CODEMOD_TEXT_RULES_RELPATH, required=False
+        )
+        if snapshot.failure:
+            return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(snapshot)
+        return cls._rules_from_state(snapshot.value)
+
+    @classmethod
+    def _rules_from_state(
+        cls, snapshot: m.Cli.AtomicFileState
+    ) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
+        """Parse only the exact authenticated catalogue bytes used by the plan."""
+        if snapshot.content is None:
+            return r[t.VariadicTuple[m.Infra.ModTextRule]].ok(())
+        source = snapshot.path
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()
-        for source in sources:
-            if not source.is_file():
-                continue
-            parsed = u.Cli.yaml_parse(source.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-            if parsed.failure:
-                return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
-            listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
-            if not isinstance(listing, list):
+        parsed = u.Cli.yaml_parse(snapshot.content.decode(c.Cli.ENCODING_DEFAULT))
+        if parsed.failure:
+            return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
+        listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
+        if not isinstance(listing, list):
+            return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
+                f"text rule file declares no rules list: {source}"
+            )
+        for raw in listing:
+            rule = cls._build_rule(raw, source)
+            if rule.failure:
+                return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(rule)
+            if rule.value.rule_id in seen:
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
-                    f"text rule file declares no rules list: {source}"
+                    f"duplicate text rule id {rule.value.rule_id} in {source}"
                 )
-            for raw in listing:
-                rule = cls._build_rule(raw, source)
-                if rule.failure:
-                    return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(rule)
-                if rule.value.rule_id in seen:
-                    return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
-                        f"duplicate text rule id {rule.value.rule_id} in {source}"
-                    )
-                seen.add(rule.value.rule_id)
-                rules.append(rule.value)
+            seen.add(rule.value.rule_id)
+            rules.append(rule.value)
         return r[t.VariadicTuple[m.Infra.ModTextRule]].ok(tuple(rules))
 
     @staticmethod
@@ -130,7 +139,14 @@ class FlextInfraModTextGateEngine:
         cls, root: Path, *, fix: bool, validate_receipts: bool = False
     ) -> p.Result[m.Infra.ModTextReport]:
         """Scan the governed surface or apply every rule rewrite in place."""
-        loaded = cls.load_rules(root)
+        root = root.absolute()
+        catalogue_result = u.Cli.atomic_read_binary_file_state(
+            root / c.Infra.CODEMOD_TEXT_RULES_RELPATH, required=False
+        )
+        if catalogue_result.failure:
+            return r[m.Infra.ModTextReport].from_failure(catalogue_result)
+        catalogue = catalogue_result.value
+        loaded = cls._rules_from_state(catalogue)
         if loaded.failure:
             return r[m.Infra.ModTextReport].from_failure(loaded)
         rules = loaded.value
@@ -138,6 +154,9 @@ class FlextInfraModTextGateEngine:
         entries: list[m.Infra.ModTextFinding] = []
         files: set[Path] = set()
         actionable = 0
+        inputs = [catalogue]
+        plans: list[m.Infra.CodegenFilePlan] = []
+        inventoried: set[Path] = set()
         for target in targets:
             candidate = root / target
             paths = (
@@ -146,8 +165,20 @@ class FlextInfraModTextGateEngine:
                 else (candidate,)
             )
             for path in paths:
+                if path in inventoried:
+                    continue
+                inventoried.add(path)
                 relative = path.relative_to(root).as_posix()
-                source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+                if captured.failure:
+                    return r[m.Infra.ModTextReport].from_failure(captured)
+                before = captured.value
+                if before.content is None:
+                    return r[m.Infra.ModTextReport].fail(
+                        f"text source disappeared during inventory: {path}"
+                    )
+                inputs.append(before)
+                source = before.content.decode(c.Cli.ENCODING_DEFAULT)
                 updated, target_entries, target_actionable = cls._rewrite_source(
                     source, relative, rules
                 )
@@ -156,22 +187,108 @@ class FlextInfraModTextGateEngine:
                 if target_entries:
                     files.add(Path(relative))
                 if fix and updated != source:
-                    path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+                    if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                        return r[m.Infra.ModTextReport].fail(
+                            f"generated findings require canonical generator repair: {path}"
+                        )
+                    plans.append(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=path,
+                            before=before,
+                            desired_content=updated.encode(c.Cli.ENCODING_DEFAULT),
+                            desired_mode=before.mode,
+                            source_states=(catalogue, before),
+                            owner="mod-text",
+                        )
+                    )
         report = m.Infra.ModTextReport(
             findings=len(entries),
             actionable=actionable,
             files=frozenset(files),
             entries=tuple(entries),
         )
-        if validate_receipts and not fix:
+        if validate_receipts:
             cls._validate_expected_receipts(rules, report)
+        if fix and plans:
+            published = cls._publish(root, tuple(plans), tuple(inputs))
+            if published.failure:
+                return r[m.Infra.ModTextReport].from_failure(published)
         return r[m.Infra.ModTextReport].ok(report)
+
+    @staticmethod
+    def _publish(
+        root: Path,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish the complete authenticated batch through the shared journal."""
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        roots = {"@mod-text": root}
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase="mod-text", files=plans, inputs=inputs
+        )
+
+        def validate_inventory() -> p.Result[bool]:
+            expected = {
+                state.path
+                for state in inputs
+                if state.path != root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
+            }
+            observed: set[Path] = set()
+            for target in u.Infra.ast_grep_scan_targets(root):
+                candidate = root / target
+                observed.update(
+                    candidate.rglob(f"*{c.Infra.EXT_PYTHON}")
+                    if candidate.is_dir()
+                    else (candidate,)
+                )
+            if observed != expected:
+                return r[bool].fail("text source inventory changed before publication")
+            return r[bool].ok(True)
+
+        def validate_published() -> p.Result[bool]:
+            inventory = validate_inventory()
+            if inventory.failure:
+                return inventory
+            return transaction.validate_phase_analysis_locked(analysis)
+
+        def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
+            inventory = validate_inventory()
+            if inventory.failure:
+                return r[tuple[Path, ...]].from_failure(inventory)
+            started = transaction.begin_files_locked(scope_root, roots, inputs)
+            if started.failure:
+                return r[tuple[Path, ...]].from_failure(started)
+
+            def apply(
+                session: m.Infra.CodegenTransactionSession,
+            ) -> p.Result[t.VariadicTuple[Path]]:
+                published = transaction.append_phase_locked(
+                    session, analysis.phase, plans
+                )
+                if published.failure:
+                    return r[tuple[Path, ...]].from_failure(published)
+                return transaction.commit_locked(
+                    published.value,
+                    validate_published,
+                )
+
+            return transaction.publish_prepared_locked(started.value, apply)
+
+        return transaction.run_files_locked(roots, publish)
 
     @staticmethod
     def _validate_expected_receipts(
         rules: t.VariadicTuple[m.Infra.ModTextRule], report: m.Infra.ModTextReport
     ) -> None:
-        """Require every declared expected-count receipt to match exactly."""
+        """Require exact migration preconditions, including zero-match mismatches.
+
+        A positive expected count is a one-invocation precondition, not an
+        idempotence promise after that migration has consumed its matches.
+        """
         counts: dict[str, int] = {}
         for entry in report.entries:
             counts[entry.rule_id] = counts.get(entry.rule_id, 0) + 1

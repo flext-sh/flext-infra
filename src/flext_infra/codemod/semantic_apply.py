@@ -17,6 +17,16 @@ class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
+    def source_fingerprint(
+        cls, root: Path, preflight: m.Infra.ModScanReport
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Identify the complete governed source state between mod phases."""
+        return tuple(
+            (path.as_posix(), u.Cli.sha256_bytes(source.encode(c.Cli.ENCODING_DEFAULT)))
+            for path, source in sorted(cls._source_inventory(root, preflight).items())
+        )
+
+    @classmethod
     def plan_transaction_paths(
         cls, root: Path, preflight: m.Infra.ModScanReport
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
@@ -126,8 +136,11 @@ class FlextInfraCodemodSemanticApply:
             return verified
         cls._publish(root, original, working, changed)
         # Final fixed-point verification against the published sources.
-        return cls._verify_fixed_point(
-            root, dict(cls._source_inventory(root, preflight)), preflight
+        published = dict(cls._source_inventory(root, preflight))
+        return cls._verify_fixed_point(root, published, preflight).flat_map(
+            lambda _: cls._check_residue(
+                "import-alignment", cls._phase_import_alignment(root, published)
+            )
         )
 
     @classmethod
@@ -273,6 +286,16 @@ class FlextInfraCodemodSemanticApply:
             for finding in preflight.entries
             if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
         )
+        for target in u.Infra.ast_grep_scan_targets(root):
+            candidate = root / target
+            paths.update(
+                path.absolute()
+                for path in (
+                    candidate.rglob(f"*{c.Infra.EXT_PYTHON}")
+                    if candidate.is_dir()
+                    else (candidate,)
+                )
+            )
         sources: MutableMapping[Path, str] = {}
         for path in sorted(paths):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
