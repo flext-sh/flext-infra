@@ -104,9 +104,10 @@ class FlextInfraRefactorCensusCollectMixin(
                 )
                 inventory_failed = True
             else:
+                inventory_objects = module_objects or ()
                 objects = tuple(
                     item
-                    for item in module_objects
+                    for item in inventory_objects
                     if self._include_object(
                         item,
                         kind_names=scan_config.kind_names,
