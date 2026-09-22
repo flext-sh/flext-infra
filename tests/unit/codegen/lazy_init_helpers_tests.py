@@ -107,7 +107,7 @@ class TestsFlextInfraLazyInitHelpers:
         """Keep module-local public helpers outside the package-root ABI."""
         repository_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: t.VariadicTuple[str] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
+            '__all__: tuple[str, ...] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -147,7 +147,7 @@ class TestsFlextInfraLazyInitHelpers:
     ) -> None:
         """Remove stale projected names that have no current source owner."""
         repository_root, package_root = self._workspace(tmp_path)
-        declared_contract = '__all__: t.VariadicTuple[str] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        declared_contract = '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
         package_root.joinpath(c.Infra.INIT_PY).write_text(
             declared_contract, encoding=c.Cli.ENCODING_DEFAULT
         )
@@ -181,7 +181,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         exports_content = self._generated_init(package_root)
         public_exports = exports_content.split(
-            "__all__: t.VariadicTuple[str] =", maxsplit=1
+            "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
 
         # Private child classes never become root ABI.
@@ -447,7 +447,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(init_content, lacks="_LAZY_MODULES")
         tm.that(exports_content, has='"flext_cli": (')
-        tm.that(init_content, has="__all__: t.VariadicTuple[str]")
+        tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
         tm.that(init_content, lacks="_root_typing_parts")
@@ -470,9 +470,9 @@ class TestsFlextInfraLazyInitHelpers:
         # to own it, and until then the generator propagates, never infers.
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
         )
-        tm.that(init_content, lacks="FlextMeltanoConstants as c")
+        tm.that(init_content, has="FlextMeltanoConstants as c")
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
@@ -588,7 +588,7 @@ class TestsFlextInfraLazyInitHelpers:
             tmp_path, project_name="ai-hub", package_name="ai_hub"
         )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: t.VariadicTuple[str] = ("AiHubModels", "m")\n',
+            '__all__: tuple[str, ...] = ("AiHubModels", "m")\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         u.Tests.write_lazy_init_namespace_module(

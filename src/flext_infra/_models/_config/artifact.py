@@ -624,6 +624,20 @@ class FlextInfraConfigModelsArtifact:
             m.Field(default=(), description="Ordered substitution patterns"),
         ] = ()
 
+    class CheckPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Quality-gate blocking policy: warning gates report without failing."""
+
+        warning_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Gate ids whose findings stay visible as warnings and never "
+                    "block the check verdict"
+                ),
+            ),
+        ] = ()
+
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 

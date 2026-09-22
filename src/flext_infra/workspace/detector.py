@@ -491,6 +491,17 @@ class FlextInfraWorkspaceDetector(
                 f"subproject escapes workspace root: {path.as_posix()}"
             )
         if not subproject_root.is_dir():
+            # An indexed gitlink whose checkout was never initialized is an
+            # intentionally absent working tree: Git already records the
+            # commit it must materialize, so the entry classifies as an
+            # external dependency instead of a missing governed checkout.
+            indexed = u.Infra.git_staged_gitlink_oid(
+                m.Infra.GitRefRequest(
+                    repo_root=repository_root, reference=path.as_posix()
+                )
+            )
+            if indexed.success:
+                return result_type.ok(path)
             return result_type.fail(
                 f"governed subproject checkout is missing: {path.as_posix()}"
             )
@@ -612,7 +623,7 @@ class FlextInfraWorkspaceDetector(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects
+                    if subprojects or external
                     else c.Infra.MakeProfile.STANDALONE
                 )
             }

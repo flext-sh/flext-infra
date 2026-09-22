@@ -687,9 +687,27 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 encoding="utf-8",
             )
             # Declaring members makes this root a workspace: its own manifest
-            # must declare the same role or the detector rejects the drift.
+            # must declare the same role or the detector rejects the drift. The
+            # rewrite keeps the distribution the root already declared (its Git
+            # origin was minted from it); the checkout directory name is
+            # arbitrary in tmp fixtures and must never become the identity. A
+            # .gitmodules without members declares no topology change, so the
+            # root stays standalone.
+            declared = root.name
+            existing = root / "config" / "workspace.yaml"
+            if existing.is_file():
+                loaded = u.Cli.config_load(existing, expand_env=False)
+                if loaded.success:
+                    loaded_name = loaded.value.data.get("name")
+                    if isinstance(loaded_name, str) and loaded_name:
+                        declared = loaded_name
+            role = (
+                c.Infra.MakeProfile.WORKSPACE
+                if projects
+                else c.Infra.MakeProfile.STANDALONE
+            )
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-                root, root.name, role=c.Infra.MakeProfile.WORKSPACE
+                root, declared, role=role
             )
             return path
 

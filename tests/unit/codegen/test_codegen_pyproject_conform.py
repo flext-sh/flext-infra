@@ -9,7 +9,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
-from tests import u as test_u
+from tests import t, u as test_u
 
 
 class TestsFlextInfraCodegenPyprojectConform:
@@ -39,6 +39,28 @@ class TestsFlextInfraCodegenPyprojectConform:
                     "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
                 ),
             ),
+        )
+
+    @staticmethod
+    def _detached_dev_floors() -> t.StrSequence:
+        """SSOT dev floors seeded for a project outside the workspace overlay.
+
+        A source-less internal dependency is legal only for the workspace
+        context root; every other project must carry its declared direct Git
+        source (the scaffold seeds exactly this line), so the same SSOT floor
+        set is rendered the way a real detached checkout declares it.
+        """
+        branch = test_u.Tests.provider_branch()
+        return tuple(
+            (
+                f"{floor} @ git+{test_u.Tests.WorktreeFixture.governed_repository_url(name)}"
+                f"@{branch}"
+                if (name := u.Infra.dep_name(floor))
+                and name.startswith("flext-")
+                and "@" not in floor
+                else floor
+            )
+            for floor in config.Infra.codegen.scaffold.project.dev
         )
 
     def test_leaf_conformance_preserves_parent_workspace_execution(
@@ -101,7 +123,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 workspace=self._workspace(),
                 workspace_mode=profile,
                 toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                required_dev_dependencies=self._detached_dev_floors(),
             )
         )
         uv_config = test_u.Tests.toml_table_at(first, "tool", "uv")
@@ -118,7 +140,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 workspace=self._workspace(),
                 workspace_mode=profile,
                 toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                required_dev_dependencies=self._detached_dev_floors(),
             )
         )
         tm.that(second, eq=first)
@@ -195,7 +217,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 workspace=self._workspace(),
                 workspace_mode=c.Infra.MakeProfile.WORKSPACE,
                 toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                required_dev_dependencies=self._detached_dev_floors(),
             )
         )
         original = test_u.Tests.toml_mapping(test_u.Tests.toml_payload(live)["project"])
@@ -360,7 +382,7 @@ constraint-dependencies = ["uv>=0"]
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
-        required_dev = config.Infra.codegen.scaffold.project.dev
+        required_dev = self._detached_dev_floors()
         declared_member_source = (
             f"flext-core @ git+{workspace.subprojects[0].url}@"
             f"{test_u.Tests.provider_branch()}"
@@ -450,7 +472,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                required_dev_dependencies=self._detached_dev_floors(),
             )
         )
         tm.that(test_u.Tests.toml_table_at(conformed, "project")["version"], eq="0.0.1")
@@ -498,7 +520,7 @@ dependencies = []
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                required_dev_dependencies=self._detached_dev_floors(),
                 uv_exclude_dependencies=(exclusion,),
             )
         )
@@ -518,7 +540,9 @@ dependencies = ["pydantic>=2"]
 scripts = {flext = "flext.cli:main"}
 
 [dependency-groups]
-codegen = ["flext-infra"]
+codegen = [
+    "flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev",
+]
 dev = ["rumdl>=0.2.45"]
 
 [tool.ruff]
@@ -605,7 +629,12 @@ skips = ["B101"]
         tm.that("rumdl>=0.2.40" not in dev, eq=True)
         tm.that(
             tuple(test_u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
-            eq=("flext-infra",),
+            eq=(
+                (
+                    "flext-infra @ git+https://github.com/flext-sh/flext-infra.git"
+                    "@0.12.0-dev"
+                ),
+            ),
         )
         tm.that("flext-dev" in test_u.Tests.toml_mapping(project["scripts"]), eq=True)
         tool = u.Cli.toml_mapping_child(document, "tool")
