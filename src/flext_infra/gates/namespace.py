@@ -40,9 +40,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
         # Operator order 2026-09-22: namespace-rule findings stay advisory
         # (reported as warnings, non-blocking) until the structural namespace
         # campaign converges; they must never hide a broken invocation.
-        violations: list[str] = (
-            [] if passed else list(report_result.value.violations)
-        )
+        violations: list[str] = [] if passed else list(report_result.value.violations)
         return self._build_project_error_gate_result(
             project_dir,
             passed=passed,
