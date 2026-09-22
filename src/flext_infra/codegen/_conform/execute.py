@@ -67,9 +67,10 @@ class FlextInfraCodegenConformExecute(
         root = request.root.expanduser().resolve()
         bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
         initialized_git = False
-        if initial_workspace is not None and not (
-            root / c.Infra.PYPROJECT_FILENAME
-        ).exists():
+        if (
+            initial_workspace is not None
+            and not (root / c.Infra.PYPROJECT_FILENAME).exists()
+        ):
             source = u.Infra.flext_integration_line(
                 codegen=config.Infra.codegen,
                 repository_root=root,

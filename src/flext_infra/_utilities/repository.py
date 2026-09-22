@@ -9,6 +9,7 @@ is detected from live Git or declared explicitly by a caller.
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, m, p, t
@@ -232,21 +233,39 @@ class FlextInfraUtilitiesRepository:
             f"and no workspace manifest entry: {repository_root}"
         )
 
+    @classmethod
+    def validate_git_remote_url(cls, url: str) -> p.Result[str]:
+        """Return the canonical HTTPS form of one declared Git remote URL.
+
+        A bootstrap declares its remotes before any project metadata exists,
+        so an unusable URL must fail here — before a directory or Git effect —
+        instead of surfacing later as a generated dependency source.
+        """
+        return cls._canonical_https_url(url.strip())
+
     @staticmethod
     def _canonical_https_url(url: str) -> p.Result[str]:
         """Canonicalize one Git remote URL to its HTTPS form, fail loud."""
         if url.startswith("https://"):
-            return r[str].ok(url)
-        if url.startswith("http://"):
-            return r[str].ok(f"https://{url.removeprefix('http://')}")
-        if url.startswith("ssh://"):
-            return r[str].ok(
-                f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
-            )
-        if url.startswith("git@") and ":" in url:
+            candidate = url
+        elif url.startswith("http://"):
+            candidate = f"https://{url.removeprefix('http://')}"
+        elif url.startswith("ssh://"):
+            candidate = f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
+        elif url.startswith("git@") and ":" in url:
             host, _, path = url.removeprefix("git@").partition(":")
-            return r[str].ok(f"https://{host}/{path}")
-        return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
+            candidate = f"https://{host}/{path}"
+        else:
+            return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
+        # A URL without a host (``https:///repo``) or without a repository
+        # path (``https://host``) carries no origin identity: reject it as a
+        # declared remote rather than letting a generated source point at it.
+        parsed = urlparse(candidate)
+        if not parsed.netloc or not parsed.path.strip("/"):
+            return r[str].fail(
+                f"git remote url must name a host and repository path: {url}"
+            )
+        return r[str].ok(candidate)
 
     @classmethod
     def _declared_dependency_source(
