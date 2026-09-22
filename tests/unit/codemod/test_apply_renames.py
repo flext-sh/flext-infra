@@ -1,0 +1,179 @@
+"""Public CSV-driven rename engine contract and its mod-verb wiring."""
+
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+import pytest
+from flext_tests import tm
+
+from flext_infra import FlextInfraConfig, m, main as infra_main, p, u
+from flext_infra.codemod import FlextInfraApplyRenames
+
+
+class TestsFlextInfraApplyRenames:
+    """Exercise the rename engine and its configured campaign wiring."""
+
+    @staticmethod
+    def _campaign(tmp_path: Path) -> tuple[Path, Path, Path]:
+        """One workspace file, its driver CSV, and the scan root."""
+        root = tmp_path / "campaign_ws"
+        tm.ok(u.Cli.ensure_dir(root))
+        target = root / "values.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                target, 'CAMPAIGN_TOKEN: str = "campaign_token"\n'
+            )
+        )
+        csv = root / "renames.csv"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                csv, "old,new\ncampaign_token,campaign_renamed_token\n"
+            )
+        )
+        return root, csv, target
+
+    @staticmethod
+    def _run_engine(
+        csv: Path, root: Path, *, apply: bool
+    ) -> p.Result[m.Infra.ApplyRenamesReport]:
+        return FlextInfraApplyRenames.run(
+            m.Infra.ApplyRenamesInput(csv=str(csv), roots=(str(root),), apply=apply)
+        )
+
+    def test_check_counts_occurrences_and_preserves_every_file(
+        self, tmp_path: Path
+    ) -> None:
+        """Check mode reports pending work and never touches the workspace."""
+        root, csv, target = self._campaign(tmp_path)
+        original = target.read_bytes()
+
+        report = tm.ok(self._run_engine(csv, root, apply=False))
+
+        # The driver CSV owns its pairs and is excluded from its own scope, so
+        # only the workspace file is scanned and exactly one token is pending.
+        tm.that(report.files_scanned, eq=1)
+        tm.that(report.occurrences, eq=1)
+        tm.that(report.applied, eq=False)
+        tm.that(target.read_bytes(), eq=original)
+
+    def test_apply_rewrites_targets_and_reaches_idempotent_fixed_point(
+        self, tmp_path: Path
+    ) -> None:
+        """Apply rewrites the workspace file once and never its driver CSV."""
+        root, csv, target = self._campaign(tmp_path)
+        csv_document = csv.read_text(encoding="utf-8")
+
+        first = tm.ok(self._run_engine(csv, root, apply=True))
+
+        tm.that(first.files_changed, eq=1)
+        rewritten = target.read_text(encoding="utf-8")
+        tm.that(rewritten, has='CAMPAIGN_TOKEN: str = "campaign_renamed_token"')
+        tm.that(rewritten, lacks="campaign_token")
+        tm.that(csv.read_text(encoding="utf-8"), eq=csv_document)
+
+        second = tm.ok(self._run_engine(csv, root, apply=True))
+        tm.that(second.files_changed, eq=0)
+
+    def test_rejects_malformed_driver_lists(self, tmp_path: Path) -> None:
+        """Malformed CSV sources fail loudly and rewrite nothing."""
+        root, csv, target = self._campaign(tmp_path)
+        original = target.read_bytes()
+
+        tm.ok(u.Cli.atomic_write_text_file(csv, "from,to\ncampaign_token,x\n"))
+        tm.fail(self._run_engine(csv, root, apply=False), has="header must be exactly")
+
+        tm.ok(u.Cli.atomic_write_text_file(csv, "old,new\ncampaign_token,\n"))
+        tm.fail(
+            self._run_engine(csv, root, apply=False), has="non-empty old,new values"
+        )
+
+        tm.that(target.read_bytes(), eq=original)
+
+    @staticmethod
+    def _declare_campaign_override(config_dir: Path) -> None:
+        """Copy the tracked configs and overlay one repository-root campaign."""
+        for tracked in FlextInfraConfig.ssot_config_dir().glob("*.yaml"):
+            shutil.copy(tracked, config_dir / tracked.name)
+        (config_dir / "codegen-overrides.local.yaml").write_text(
+            "Infra:\n"
+            "  refactor_csv_campaigns:\n"
+            "    campaigns:\n"
+            "      - csv: renames.csv\n",
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _campaign_workspace(tmp_path: Path) -> tuple[Path, Path]:
+        """Seed the mod workspace with one pending campaign rename."""
+        sample = tmp_path / "sample.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                sample,
+                '"""Campaign rename fixture module."""\n'
+                "\n"
+                "from __future__ import annotations\n"
+                "\n"
+                "\n"
+                'CAMPAIGN_TOKEN: str = "campaign_token"\n',
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / "renames.csv",
+                "old,new\ncampaign_token,campaign_renamed_token\n",
+            )
+        )
+        return sample, tmp_path / "config_override"
+
+    def test_dry_run_fails_on_pending_configured_campaign(
+        self, mod_workspace: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Check mode fails while a configured campaign still has work."""
+        sample, config_dir = self._campaign_workspace(mod_workspace)
+        tm.ok(u.Cli.ensure_dir(config_dir))
+        self._declare_campaign_override(config_dir)
+        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(config_dir))
+        FlextInfraConfig.reset_for_testing()
+        try:
+            exit_code = infra_main([
+                "refactor",
+                "mod",
+                "--repository-root",
+                str(mod_workspace),
+            ])
+        finally:
+            FlextInfraConfig.reset_for_testing()
+
+        tm.that(exit_code != 0, eq=True)
+        tm.that(sample.read_text(encoding="utf-8"), has='"campaign_token"')
+
+    @pytest.mark.slow
+    def test_apply_converges_configured_campaign_through_the_public_mod_route(
+        self, mod_workspace: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The mod verb consumes the config campaigns and reaches a fixed point."""
+        sample, config_dir = self._campaign_workspace(mod_workspace)
+        tm.ok(u.Cli.ensure_dir(config_dir))
+        self._declare_campaign_override(config_dir)
+        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(config_dir))
+        FlextInfraConfig.reset_for_testing()
+        try:
+            exit_code = infra_main([
+                "refactor",
+                "mod",
+                "--repository-root",
+                str(mod_workspace),
+                "--apply",
+            ])
+        finally:
+            FlextInfraConfig.reset_for_testing()
+
+        tm.that(exit_code, eq=0)
+        rewritten = sample.read_text(encoding="utf-8")
+        tm.that(rewritten, has='"campaign_renamed_token"')
+        tm.that(rewritten, lacks="campaign_token")
+
+
+__all__: list[str] = ["TestsFlextInfraApplyRenames"]
