@@ -100,7 +100,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             and project not in c.Infra.BOUNDARY_TOML_ALLOWED
         ):
             issues.append(
-                self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file")
+                self._issue(path, "imports tomllib/tomlkit — use u.Cli.toml_read_json")
             )
         issues.extend(self._ast_boundary_issues(path, text, posix))
         return issues

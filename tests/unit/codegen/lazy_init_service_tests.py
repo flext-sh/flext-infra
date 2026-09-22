@@ -438,6 +438,44 @@ class TestsFlextInfraCodegenLazyInitService:
             msg=f"{ruff_check.value.stdout}\n{ruff_check.value.stderr}",
         )
 
+    @pytest.mark.parametrize("width_offset", [-1, 0, 1])
+    def test_export_tuple_is_formatter_stable_at_line_width(
+        self, tmp_path: Path, width_offset: int
+    ) -> None:
+        """Public generation agrees with Ruff on both sides of its wrap boundary."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        first, second = "FlextTestsFirst", "FlextTestsSecond"
+        compact = f'__all__: tuple[str, ...] = ("{first}", "{second}")'
+        second += "x" * (c.Infra.MAX_LINE_LENGTH + width_offset - len(compact))
+        package_root.joinpath("runner.py").write_text(
+            f'class {first}:\n    """First export."""\n\n'
+            f'class {second}:\n    """Second export."""\n\n'
+            f'__all__ = ["{first}", "{second}"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(repository_root)
+        service.target_module = "flext_test_project"
+        service.apply_changes = True
+        result = u.Tests.materialize_lazy_init(service)
+        tm.that(result.success, eq=True)
+
+        formatted = u.Cli.run_raw([
+            c.Infra.RUFF,
+            "format",
+            "--check",
+            "--config",
+            str(Path(__file__).resolve().parents[3] / c.Infra.PYPROJECT_FILENAME),
+            "--line-length",
+            str(c.Infra.MAX_LINE_LENGTH),
+            str(package_root / c.Infra.INIT_PY),
+        ])
+        tm.that(formatted.success, eq=True)
+        tm.that(
+            u.Cli.process_succeeded(formatted.value.outcome),
+            eq=True,
+            msg=f"{formatted.value.stdout}\n{formatted.value.stderr}",
+        )
+
     def test_execute_command_rejects_publication_outside_conform(
         self, tmp_path: Path
     ) -> None:

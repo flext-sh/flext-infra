@@ -1,9 +1,8 @@
 """``setup`` provisions tooling and never destroys tracked working trees.
 
-``setup`` is invoked automatically, from every verb and from the pre-commit
-hook, so anything it mutates it mutates constantly and unattended. That makes
-it the one verb allowed to *create* what is missing and forbidden to *destroy*
-what exists.
+``setup`` preserves project source and Git state. It may replace its own
+physical virtualenv when the managed base interpreter changes. The public
+Make environment tests exercise that replacement and preserve foreign targets.
 
 ``git checkout`` and ``git reset`` are completely prohibited on the setup path.
 Absent checkouts are initialized at the recorded gitlink. Present checkouts are
@@ -62,12 +61,6 @@ class TestsFlextInfraSetupNeverDestroys:
         }
 
         assert not offenders, f"setup reaches destructive git operations: {offenders}"
-
-    def test_setup_never_clears_the_virtualenv(self) -> None:
-        """A present virtualenv is repaired in place, never recreated."""
-        offenders = self._offending_lines(r"venv\b[^\n]*--clear")
-
-        assert not offenders, f"setup clears the virtualenv: {offenders}"
 
     def test_submodule_setup_initializes_absent_and_verifies_present(self) -> None:
         """Setup creates an absent gitlink and only validates a present checkout."""
