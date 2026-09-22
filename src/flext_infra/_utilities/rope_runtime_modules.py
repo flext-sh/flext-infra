@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from pathlib import Path
 
 from flext_infra import p, t
 
@@ -14,44 +13,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope project/module/import objects behind protocols."""
 
     @classmethod
-    def snapshot_project(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Infra.RopeProject:
-        """Capture a complete identity graph with proposed sources authoritative.
-
-        Unchanged dependencies are captured once before graph construction;
-        subsequent imports and MRO resolution only read that closed inventory.
-        """
-        inventory = {
-            Path(resource.real_path).resolve(): resource.read()
-            for resource in project.get_python_files()
-        }
-        for path, source in sources.items():
-            resolved = path.resolve()
-            if resolved not in inventory:
-                msg = f"Rope proposed source is outside its input inventory: {path}"
-                raise ValueError(msg)
-            inventory[resolved] = source
-        owner = cls.runtime_type(
-            "flext_infra._utilities._rope.project", "FlextInfraRopeProject"
-        )
-        factory = getattr(owner, "from_snapshot", None)
-        if not callable(factory):
-            msg = "Rope project owner does not expose snapshot construction"
-            raise TypeError(msg)
-        snapshot = factory(
-            project.root.real_path,
-            inventory,
-            [folder.path for folder in project.get_source_folders()],
-        )
-        if not isinstance(snapshot, p.Infra.RopeProject):
-            msg = "Rope snapshot does not satisfy its project contract"
-            raise TypeError(msg)
-        return snapshot
-
-    @classmethod
     def imported_name_at(
         cls, pymodule: t.Infra.RopePyModule, offset: int
     ) -> p.Infra.RopeImportedName | None:
@@ -59,34 +20,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         resolver = cls._runtime_callable("rope.base.evaluate", "eval_location")
         result = resolver(pymodule, offset)
         return result if isinstance(result, p.Infra.RopeImportedName) else None
-
-    @staticmethod
-    def imported_module_path(
-        project: p.Infra.RopeProject, binding: p.Infra.RopeImportedName
-    ) -> Path:
-        """Resolve import provenance through Rope without evaluating its target.
-
-        Generated initializers may still await publication. Their content is
-        not required to identify which module an authored import names.
-        """
-        imported = binding.imported_module
-        resource = imported.resource
-        if resource is None:
-            name = imported.module_name
-            module = imported.importing_module.get_module()
-            source = module.get_resource() if module is not None else None
-            if name is None or source is None:
-                message = f"import has no declared module location: {binding.imported_name}"
-                raise ValueError(message)
-            resource = (
-                project.find_module(name, source.parent)
-                if imported.level == 0
-                else project.find_relative_module(name, source.parent, imported.level)
-            )
-        if resource is None:
-            message = f"unresolved imported module: {imported.module_name}"
-            raise ValueError(message)
-        return Path(resource.real_path).resolve()
 
     @classmethod
     def new_project(

@@ -73,7 +73,7 @@ class FlextInfraConstantsCodegen(
     )
     """Regenerable class-receipt cache path under the ignored ``.state`` root."""
 
-    LAZY_INIT_CLASS_RECEIPTS_VERSION: ClassVar[int] = 2
+    LAZY_INIT_CLASS_RECEIPTS_VERSION: ClassVar[int] = 1
     """Receipt document schema version; a mismatch discards the cache."""
 
     SRC_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (

@@ -102,22 +102,18 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             is_child_package = child_entry is not None and child_entry.package_name
             if is_generated_or_test or is_child_package:
                 continue
-            policy = u.Infra.publication_policy(
-                py_file, rel_path=py_file.relative_to(context.pkg_dir),
-                current_pkg=context.current_pkg,
-                rope_project=self.rope_workspace.rope_project,
+            convention = self.rope_workspace.convention(
+                py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
-            entry = self.rope_workspace.module(py_file)
-            if entry is None:
-                raise ValueError(f"unindexed publication source: {py_file}")
-            module_path = entry.module_name
+            policy = convention.module_policy
+            module_path = convention.module_name
             root_private_contract = (
                 py_file.parent == context.pkg_dir
                 and py_file.stem in {"_config", "_settings"}
                 and bool(
                     self._module_exports(
                         py_file,
-                        module_path,
+                        convention.module_name,
                         export_options=m.Infra.ExportOptions(
                             allow_main=True,
                             allow_assignments=True,
@@ -152,6 +148,15 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     require_explicit_all=require_explicit_all,
                 ),
             )
+            if (
+                policy.expected_alias
+                and u.Infra.matches_project_namespace_package(context.current_pkg)
+                and u.Infra.matches_root_namespace_file(py_file.name)
+                and "." not in context.current_pkg
+            ):
+                targets.setdefault(
+                    policy.expected_alias, (module_path, policy.expected_alias)
+                )
             for name, target in targets.items():
                 self._add(index, name, target)
         return index

@@ -34,7 +34,7 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @staticmethod
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
-        """Filter static imports already resolved by the semantic planner."""
+        """Return supported static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
         public_names = frozenset(plan.exports)
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
@@ -48,6 +48,22 @@ class FlextInfraCodegenGenerationStandardMixin(
             and name not in c.Infra.ROOT_TEMPLATE_BINDINGS
             and not FlextInfraCodegenGenerationStandardMixin._is_stdlib_import(target)
         }
+        for (
+            alias_name,
+            class_suffix,
+        ) in c.Infra.PUBLIC_ROOT_TYPING_FACADE_SUFFIXES.items():
+            alias_target = filtered.get(alias_name)
+            if alias_target is None or alias_target[1] != alias_name:
+                continue
+            module_name = alias_target[0]
+            candidates = tuple(
+                export_name
+                for export_name, target in filtered.items()
+                if target == (module_name, export_name)
+                and export_name.endswith(class_suffix)
+            )
+            if len(candidates) == 1:
+                filtered[alias_name] = (module_name, candidates[0])
         return filtered
 
     @classmethod

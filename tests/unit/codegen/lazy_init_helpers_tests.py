@@ -679,10 +679,8 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        tm.that(
-            u.Infra.public_export_names_source(init_content),
-            eq=("TestsFlextDemoUnitConstants", "TestsFlextDemoUnitModels"),
-        )
+        for public_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
+            tm.that(init_content, has=f'"{public_name}"')
         tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 

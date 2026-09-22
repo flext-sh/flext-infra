@@ -28,9 +28,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         module_file = self._module_file(module_path)
         if module_file is None:
             return score
-        policy = u.Infra.publication_policy(
-            module_file, rope_project=self.rope_workspace.rope_project
-        )
+        convention = self.rope_workspace.convention(module_file)
+        policy = convention.module_policy
         if policy.expected_alias == name:
             score += 100
         elif policy.expected_family and name.endswith(policy.expected_family):

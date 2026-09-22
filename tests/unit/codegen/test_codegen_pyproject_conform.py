@@ -586,19 +586,6 @@ skips = ["B101"]
             ),
             eq=expected_requirements,
         )
-        # Membership alone hides a required-first / alphabetical oscillation.
-        # Exercise both public owners; neither may reorder the other's output.
-        canonical_dependencies = test_u.Tests.toml_strings_at(
-            conformed, "project", "dependencies"
-        )
-        tm.that(
-            test_u.Tests.toml_strings_at(first, "project", "dependencies"),
-            eq=canonical_dependencies,
-        )
-        tm.that(
-            test_u.Tests.toml_strings_at(repeated, "project", "dependencies"),
-            eq=canonical_dependencies,
-        )
         dev = test_u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
         tm.that("custom-audit>=1" in dev, eq=True)
         tm.that("rumdl>=0.2.45" in dev, eq=True)

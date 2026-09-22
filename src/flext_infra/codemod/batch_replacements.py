@@ -99,7 +99,7 @@ class FlextInfraModReplacements:
                     changes=tuple(finding.rule_id for finding in findings),
                 )
             )
-        published = publish_semantic_file_plans(plans, repository_root=root)
+        published = publish_semantic_file_plans(plans)
         if published.failure:
             return r[bool].from_failure(published)
         return r[bool].ok(True)

@@ -32,9 +32,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         path: str
         real_path: str
 
-        @property
-        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
-
         def read(self) -> str: ...
 
         def write(self, contents: str) -> None: ...
@@ -101,19 +98,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         assignments: t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeAssignment]
 
     @runtime_checkable
-    class RopeImportedModule(RopePyName, Protocol):
-        """Declared import provenance, before its module is evaluated."""
-
-        importing_module: FlextInfraProtocolsRopeRuntime.RopePyModule
-        module_name: str | None
-        level: int
-        resource: FlextInfraProtocolsRopeRuntime.RopeResource | None
-
-    @runtime_checkable
     class RopeImportedName(RopePyName, Protocol):
         """Import binding with its declaring module and original symbol."""
 
-        imported_module: FlextInfraProtocolsRopeRuntime.RopeImportedModule
+        imported_module: FlextInfraProtocolsRopeRuntime.RopePyName
         imported_name: str
 
     @runtime_checkable
@@ -146,10 +134,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope parsed module shape."""
 
         source_code: str
-
-        def get_module(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
 
         def get_attribute(
             self, name: str
@@ -188,21 +172,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
         ) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
-        def get_source_folders(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
-
         def find_module(
-            self,
-            module_name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
-
-        def find_relative_module(
-            self,
-            module_name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
-            level: int,
+            self, module_name: str
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def get_module(
@@ -329,11 +300,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         offset: int
 
-        lineno: int
-
         def get_word_range(self) -> tuple[int, int]: ...
-
-        def is_defined(self) -> bool: ...
 
     @runtime_checkable
     class RopeOccurrenceFinder(Protocol):

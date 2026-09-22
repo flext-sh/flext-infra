@@ -111,12 +111,6 @@ class FlextInfraUtilitiesCodegenFacades:
                 if path == facade_path:
                     continue
                 source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                # Generated initializers propagate declarations; they are not
-                # authored consumers and may await replacement in this plan.
-                if path.name == c.Infra.INIT_PY and source.startswith(
-                    c.Infra.AUTOGEN_HEADERS
-                ):
-                    continue
                 tree = ast.parse(source, filename=str(path))
                 pymodule: t.Infra.RopePyModule | None = None
                 lines = source.splitlines(keepends=True)
@@ -153,8 +147,12 @@ class FlextInfraUtilitiesCodegenFacades:
                     )
                     if binding is None or binding.imported_name != family:
                         continue
-                    declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
-                        project, binding
+                    imported, _line = binding.imported_module.get_definition_location()
+                    if imported is None or (origin := imported.get_resource()) is None:
+                        msg = f"unresolved facade import {family} in {path}"
+                        raise ValueError(msg)
+                    declared = FlextInfraUtilitiesRopeCore.resource_file_path(
+                        project, origin
                     )
                     if declared not in {
                         pkg_dir,

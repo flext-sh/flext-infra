@@ -10,7 +10,7 @@ from flext_infra import c, config, u
 from .base import FlextInfraNamespaceRulesBase
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
@@ -86,9 +86,8 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         filepath: Path,
         *,
         class_stem: str,
+        package_name: str,
         is_test_file: bool,
-        policy: m.Infra.NamespaceModulePolicy,
-        source: str,
     ) -> t.StrSequence:
         """Return structural and logical-size violations for one module."""
         if filepath.name in {"__init__.py", "__version__.py"}:
@@ -97,20 +96,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             return ()
         messages: list[str] = []
         classes = cls.outer_classes(tree)
-        exports = u.Infra.public_export_names_source(source)
-        if policy.expected_alias is not None and not any(
-            cls._canonical_facade_alias(node, tree, policy=policy, exports=exports)
-            for node in getattr(tree, "body", ()) or ()
-        ):
-            messages.append(
-                f"{filepath}:1 — facade {policy.expected_alias!r} must bind and publish "
-                f"its local owner {policy.expected_family!r} in __all__"
-            )
-        expected = (
-            policy.expected_family
-            if policy.expected_alias is not None and policy.expected_family is not None
-            else f"Tests{class_stem}" if is_test_file else class_stem
-        )
+        expected = f"Tests{class_stem}" if is_test_file else class_stem
         if len(classes) < 1:
             messages.append(
                 f"{filepath}:1 — module must declare at least one top-level class; "
@@ -150,8 +136,22 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 or cls._canonical_facade_alias(
                     node,
                     tree,
-                    policy=policy,
-                    exports=exports,
+                    filepath,
+                    class_stem=class_stem,
+                    package_name=package_name,
+                )
+                or (
+                    filepath.name == "api.py"
+                    and cls.kind(node) == "AnnAssign"
+                    and (
+                        cls.name_of(facade_value := getattr(node, "value", None))
+                        == class_stem
+                        or (
+                            cls.kind(facade_value) == "Call"
+                            and cls.dotted_name(getattr(facade_value, "func", None))
+                            == f"{class_stem}.fetch_global"
+                        )
+                    )
                 )
             ):
                 messages.append(
@@ -175,48 +175,80 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             messages.append(
                 f"{filepath}:1 — {logical} logical statements exceed the {cap} limit"
             )
-        messages.extend(cls._facade_shape(tree, filepath, policy=policy))
+        messages.extend(cls._facade_shape(tree, filepath))
         return cls.violations("NS-STRUCT", messages)
 
     @classmethod
-    def _facade_shape(
-        cls, tree: object, filepath: Path, *, policy: m.Infra.NamespaceModulePolicy
-    ) -> t.StrSequence:
-        """Validate declared facade composition using real inherited namespaces."""
-        if policy.expected_alias is None:
+    def _facade_shape(cls, tree: object, filepath: Path) -> t.StrSequence:
+        """Require an explicit outer+Infra MRO on canonical family facades.
+
+        A reserved facade filename also carries a placement law: it names the
+        package's public facade, so it belongs beside the package initializer
+        and nowhere else. A nested module borrowing the name claims the same
+        facade letter the root already owns, and the generator then cannot
+        decide which one publishes it.
+        """
+        layer = c.Infra.NAMESPACE_LAYER_BY_FILE.get(filepath.name)
+        if layer not in {"c", "t", "p", "m", "u"}:
             return ()
+        # A package root is calculated, not listed: the directory holds an
+        # initializer and its parent does not. That accepts src/<pkg>/ and
+        # tests/ alike, and still rejects a nested services/ borrowing the
+        # name. Testing the parent against a literal "src" was my error -- it
+        # rejected every legitimate tests facade in the fleet, five per
+        # repository.
+        package_dir = filepath.parent
+        is_package_root = (package_dir / c.Infra.INIT_PY).is_file() and not (
+            package_dir.parent / c.Infra.INIT_PY
+        ).is_file()
+        if not is_package_root:
+            message = (
+                f"{filepath}:1 — {filepath.name} is a reserved facade name and"
+                f" belongs at a package root, not inside {package_dir.name}/;"
+                f" name the module after what it does"
+            )
+            return (message,)
         classes = cls.outer_classes(tree)
         if len(classes) != 1:
-            return (f"{filepath}:1 — facade must declare exactly one outer class",)
+            return ()
         outer = classes[0]
-        messages: list[str] = []
-        if not (getattr(outer, "bases", ()) or ()):
-            messages.append(
-                f"{filepath}:{cls.line(outer)} — facade must extend its declared owner"
-            )
+        outer_bases = tuple(
+            cls.name_of(base) for base in (getattr(outer, "bases", ()) or ())
+        )
+        # The nested namespace is named after the project that owns the facade
+        # (`FlextLdifModels` nests `Ldif`), so the expected name is derived from
+        # the outer class. Naming `Infra` here made the rule pass only inside
+        # this project and reject every other member of the fleet.
+        namespace = (
+            getattr(outer, "name", "")
+            .removesuffix(c.Infra.FAMILY_SUFFIXES.get(layer, ""))
+            .removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE.rstrip("_").capitalize())
+        )
+        test_facade = filepath.parent == Path(c.Infra.DIR_TESTS)
+        if test_facade:
+            namespace = "Tests"
         nested = tuple(
             node
             for node in (getattr(outer, "body", ()) or ())
-            if cls.kind(node) == "ClassDef"
+            if cls.kind(node) == "ClassDef" and getattr(node, "name", "") == namespace
         )
-        if len(nested) > 1:
+        messages: list[str] = []
+        if layer not in outer_bases:
             messages.append(
-                f"{filepath}:{cls.line(outer)} — facade must compose one local namespace"
+                f"{filepath}:{cls.line(outer)} — facade must inherit canonical {layer!r}"
             )
-        elif not nested and not policy.inherited_namespaces:
+        if len(nested) != 1:
             messages.append(
-                f"{filepath}:{cls.line(outer)} — facade must declare or inherit "
-                "a nested namespace through its actual MRO"
+                f"{filepath}:{cls.line(outer)} — facade must declare one nested "
+                f"{namespace} MRO"
             )
-        elif nested:
-            minimum_bases = (
-                1 if policy.is_internal_namespace else c.Infra.FACADE_MINIMUM_BASES
+        elif len(getattr(nested[0], "bases", ()) or ()) < (
+            1 if test_facade else c.Infra.FACADE_MINIMUM_BASES
+        ):
+            messages.append(
+                f"{filepath}:{cls.line(nested[0])} — {namespace} must explicitly "
+                "compose its private family through multiple inheritance"
             )
-            if len(getattr(nested[0], "bases", ()) or ()) < minimum_bases:
-                messages.append(
-                    f"{filepath}:{cls.line(nested[0])} — local namespace must compose "
-                    "its declared family bases"
-                )
         return tuple(messages)
 
     @classmethod
@@ -224,16 +256,43 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         cls,
         node: object,
         tree: object,
+        filepath: Path,
         *,
-        policy: m.Infra.NamespaceModulePolicy,
-        exports: t.StrSequence,
+        class_stem: str,
+        package_name: str,
     ) -> bool:
-        """Accept the published binding selected by the shared semantic policy."""
-        alias = policy.expected_alias
-        facade_class_name = policy.expected_family
-        if facade_class_name is None:
+        """Recognize the required bottom alias only at its discovered public owner.
+
+        Canonical facade singletons come in two codegen-emitted forms:
+        a plain ``alias = Class`` (e.g. ``s = FlextApiServiceBase``) and the
+        typed global-fetcher ``alias: Class = Class.fetch_global()`` (e.g.
+        ``api = FlextApi.fetch_global()``). Both are permitted only on the
+        canonical facade files registered in NAMESPACE_FAMILY_EXPECTED_ALIAS
+        (constants/typings/protocols/models/utilities) and on the platform
+        service-facade files in NAMESPACE_PLATFORM_FACADE_SINGLETONS
+        (api.py, base.py, config.py, settings.py). Anything else remains a
+        banned module alias.
+        """
+        spec = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(filepath.name)
+        if spec is None:
+            spec = c.Infra.NAMESPACE_PLATFORM_FACADE_SINGLETONS.get(filepath.name)
+        test_facade = (
+            filepath.parent == Path(c.Infra.DIR_TESTS)
+            and filepath.name in c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS
+        )
+        source_facade = filepath.parent == Path(c.Infra.DEFAULT_SRC_DIR).joinpath(
+            *package_name.split(".")
+        )
+        if spec is None or not (test_facade or source_facade):
             return False
+        alias, suffix = spec
+        canonical_alias = u.Infra.package_alias(package_name=package_name)
+        accepted_aliases = {alias} if test_facade else {alias, canonical_alias}
         classes = cls.outer_classes(tree)
+        # Secondary support classes at module level are allowed (see the loop
+        # in check_structure); only the facade class itself must exist with the
+        # canonical stem+suffix name.
+        facade_class_name = f"{'Tests' if test_facade else ''}{class_stem}{suffix}"
         facade_classes = [
             node for node in classes if getattr(node, "name", "") == facade_class_name
         ]
@@ -250,16 +309,11 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             and cls.dotted_name(getattr(value, "func", None))
             == f"{facade_class_name}.fetch_global"
         )
-        if alias is None and value_is_global_singleton and len(targets) == 1:
-            # A declared singleton is a value, not a class facade alias. Its
-            # existing factory binding remains owned by its local class.
-            alias = cls.name_of(targets[0])
         if not (
             cls.kind(node) in {"Assign", "AnnAssign"}
             and len(targets) == 1
             and cls.kind(targets[0]) == "Name"
-            and cls.name_of(targets[0]) == alias
-            and alias in exports
+            and cls.name_of(targets[0]) in accepted_aliases
             and (value_is_class or value_is_global_singleton)
             and cls.line(node) > cls.line(facade)
         ):

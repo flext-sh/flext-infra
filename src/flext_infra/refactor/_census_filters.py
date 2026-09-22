@@ -129,15 +129,31 @@ class FlextInfraRefactorCensusFiltersMixin:
     @staticmethod
     def _runtime_alias_target_name(convention: m.Infra.RopeModuleConvention) -> str:
         """Return the expected runtime alias target name."""
-        return convention.module_policy.expected_family or ""
+        layout = convention.project_layout
+        family = convention.module_policy.expected_family or ""
+        if layout is None or not family:
+            return ""
+        return (
+            family
+            if family.startswith(layout.class_stem)
+            else f"{layout.class_stem}{family}"
+        )
 
     @staticmethod
     def _rewrite_runtime_alias_source(
         source: str, *, alias: str, target_name: str
     ) -> str:
         """Rewrite runtime alias source."""
+        filtered_lines = [
+            line
+            for line in source.splitlines()
+            if not line.strip().startswith(f"{alias} =")
+        ]
+        cleaned_source = "\n".join(filtered_lines).rstrip()
+        if cleaned_source:
+            cleaned_source = f"{cleaned_source}\n"
         updated_source: str = u.Infra.ensure_runtime_alias(
-            source, alias=alias, target_name=target_name
+            cleaned_source, alias=alias, target_name=target_name
         )
         return updated_source
 

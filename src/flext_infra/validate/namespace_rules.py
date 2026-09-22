@@ -11,7 +11,7 @@ from ._namespace_rules.structure import FlextInfraNamespaceRulesStructure
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraNamespaceRules(
@@ -31,7 +31,6 @@ class FlextInfraNamespaceRules(
         package_name: str,
         source: str,
         is_test_file: bool,
-        policy: m.Infra.NamespaceModulePolicy,
     ) -> t.StrSequence:
         """Evaluate the complete strict contract for one Rope AST module."""
         return (
@@ -39,9 +38,8 @@ class FlextInfraNamespaceRules(
                 tree,
                 filepath,
                 class_stem=class_stem,
+                package_name=package_name,
                 is_test_file=is_test_file,
-                policy=policy,
-                source=source,
             ),
             *cls.check_imports(tree, filepath, package_name=package_name),
             *cls.check_contracts(tree, filepath, source=source),

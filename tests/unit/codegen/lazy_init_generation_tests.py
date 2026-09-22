@@ -26,7 +26,6 @@ class TestsFlextInfraCodegenGeneration:
         *,
         eager_dunders: t.MappingKV[str, t.StrPair] | None = None,
         child_packages: t.StrSequence = (),
-        type_checking_map: t.LazyAliasMap | None = None,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
         package_dir = Path.cwd() / current_pkg.replace(".", "/")
@@ -41,7 +40,7 @@ class TestsFlextInfraCodegenGeneration:
             action=c.Infra.LazyInitAction.WRITE,
             exports=exports,
             lazy_map=MappingProxyType(dict(lazy_map)),
-            type_checking_map=MappingProxyType(dict(lazy_map if type_checking_map is None else type_checking_map)),
+            type_checking_map=MappingProxyType(dict(lazy_map)),
             eager_dunders=MappingProxyType(dict(eager_dunders or {})),
             child_packages_for_lazy=child_packages,
             excluded_lazy_names=("internal_only",),
@@ -371,10 +370,6 @@ class TestsFlextInfraCodegenGeneration:
                 "FlextDemoProtocols": ("demo_pkg.protocols", "FlextDemoProtocols"),
                 "p": ("demo_pkg.protocols", "p"),
             }),
-            type_checking_map={
-                "FlextDemoProtocols": ("demo_pkg.protocols", "FlextDemoProtocols"),
-                "p": ("demo_pkg.protocols", "FlextDemoProtocols"),
-            },
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
@@ -395,10 +390,6 @@ class TestsFlextInfraCodegenGeneration:
                 "FlextDemoServiceBase": ("demo_pkg.base", "FlextDemoServiceBase"),
                 "s": ("demo_pkg.base", "s"),
             }),
-            type_checking_map={
-                "FlextDemoServiceBase": ("demo_pkg.base", "FlextDemoServiceBase"),
-                "s": ("demo_pkg.base", "FlextDemoServiceBase"),
-            },
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
