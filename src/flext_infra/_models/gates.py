@@ -21,15 +21,11 @@ class SccFile(m.FlexibleModel):
     location: Annotated[
         str,
         m.Field(
-            alias="Location",
-            min_length=1,
-            strict=True,
-            description="Scanned file path",
+            alias="Location", min_length=1, strict=True, description="Scanned file path"
         ),
     ]
     code: Annotated[
-        int,
-        m.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
+        int, m.Field(alias="Code", ge=0, strict=True, description="Logical code lines")
     ]
 
 

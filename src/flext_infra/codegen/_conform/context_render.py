@@ -308,9 +308,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         # same wheel path and hatchling rejects the duplicate archive entry.
         # Force-include stays reserved for root data that the package does not
         # already carry (mirrors the ensure-packaging phase rule).
-        package_root = (
-            repository_root / c.Infra.DEFAULT_SRC_DIR / project.package_name
-        )
+        package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / project.package_name
         packaged_data_dirs = (
             tuple(
                 data_dir

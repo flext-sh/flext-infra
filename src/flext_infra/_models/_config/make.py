@@ -316,6 +316,16 @@ class FlextInfraConfigModelsMake:
                 description="Regex patterns that mark a branch as work-in-progress",
             ),
         ]
+        head_subject_patterns: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Regex patterns that mark a commit subject as work-in-progress; "
+                    "matched case-insensitively by the merge guard"
+                ),
+            ),
+        ]
         merge_lock_target_branches: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(

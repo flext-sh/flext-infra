@@ -40,9 +40,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
 
         journal = transaction.journal_io.begin(
-            plan,
-            transaction_id=self._TRANSACTION_ID,
-            sources=(("lazy-init", source),),
+            plan, transaction_id=self._TRANSACTION_ID, sources=(("lazy-init", source),)
         )
 
         recorded = tm.ok(journal)
