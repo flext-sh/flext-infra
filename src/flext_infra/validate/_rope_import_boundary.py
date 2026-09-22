@@ -126,6 +126,13 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
         """Return banned-import violation strings for one module."""
         out: t.MutableSequenceOf[str] = []
         for stmt in u.Infra.import_statements(module_imports):
+            # A relative import (``from .yaml import X``) is intra-package by
+            # definition and can never be a bare external-library import. Rope
+            # reports only the declared tail as ``module_name`` for it, so
+            # treating it as absolute turned ``.yaml`` into a banned ``yaml``
+            # import and flagged the owning project's own modules.
+            if (getattr(stmt.import_info, "level", 0) or 0) > 0:
+                continue
             module_name = u.Infra.import_statement_module_name(stmt)
             if module_name is not None:
                 if self._top_module(
