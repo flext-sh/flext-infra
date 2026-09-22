@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from .existing_plan import FlextInfraCodegenConformExistingPlan
     from .file_plans import FlextInfraCodegenConformFilePlans
     from .gitignore import FlextInfraCodegenConformGitignore
-    from .misc import FlextInfraCodegenConformMisc
     from .plan import FlextInfraCodegenConformPlan
     from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
     from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
@@ -35,7 +34,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformGitignore",
-    "FlextInfraCodegenConformMisc",
     "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformRequestFields",
@@ -56,7 +54,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".existing_plan": ("FlextInfraCodegenConformExistingPlan",),
             ".file_plans": ("FlextInfraCodegenConformFilePlans",),
             ".gitignore": ("FlextInfraCodegenConformGitignore",),
-            ".misc": ("FlextInfraCodegenConformMisc",),
             ".plan": ("FlextInfraCodegenConformPlan",),
             ".pyproject_policy": ("FlextInfraCodegenConformPyprojectPolicy",),
             ".scaffold_plan": ("FlextInfraCodegenConformScaffoldPlan",),
