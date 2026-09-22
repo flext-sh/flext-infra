@@ -139,6 +139,12 @@ class FlextInfraConstantsSourceCode:
     "Header for shell auto-generated content."
     FUTURE_ANNOTATIONS: ClassVar[str] = "from __future__ import annotations"
     "Standard future annotations import line."
+    RUNTIME_MODEL_BASES: ClassVar[frozenset[str]] = frozenset({
+        "BaseModel",
+        "BaseSettings",
+        "FlextModelsBase",
+    })
+    "Pydantic bases that resolve class-body annotations at runtime, not only for a type checker."
     ENCODING_COOKIE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^[ \t\f]*#.*?coding[:=][ \t]*[-\w.]+"
     )
