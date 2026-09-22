@@ -474,33 +474,43 @@ class FlextInfraMiseArtifactsState:
                 # generation owns and rewrites). Only residents the journal
                 # itself authenticated preserve the directory; anything else
                 # inside is foreign state and the cleanup still fails closed.
+                preserved = frozenset(removed_temporary_roots) | frozenset(
+                    d.path for d in removable if d.path != entry.path
+                )
                 residents = tuple(target.value.iterdir()) if target.value.is_dir() else ()
-                journaled = {j.path for j in journal.entries}
-                preserved = set(removed_temporary_roots) | {
-                    d.path
-                    for d in removable
-                    if d.path != entry.path
-                }
-
-                def _journaled_resident(resident: Path) -> bool:
-                    selector = files.workspace_relative(layout.scope_root, resident)
-                    if not selector.success:
-                        return False
-                    relative = selector.value
-                    if relative in journaled or relative in preserved:
-                        return True
-                    # An ancestor is preservable when everything between it
-                    # and a preserved descendant is itself journaled: the
-                    # descendant's own guard already authenticated its subtree.
-                    prefix = relative + "/"
-                    return any(
-                        candidate.startswith(prefix) for candidate in preserved
+                journaled = frozenset(j.path for j in journal.entries)
+                if residents and all(
+                    cls._resident_is_journaled(
+                        resident, layout.scope_root, journaled, preserved
                     )
-
-                if residents and all(_journaled_resident(r) for r in residents):
+                    for resident in residents
+                ):
                     continue
                 return r[bool].from_failure(removed)
         return r[bool].ok(True)
+
+    @staticmethod
+    def _resident_is_journaled(
+        resident: Path,
+        scope_root: Path,
+        journaled: frozenset[str],
+        preserved: frozenset[str],
+    ) -> bool:
+        """Whether one cleanup-blocking resident is journal-authenticated.
+
+        A resident the journal itself recorded preserves its directory; so
+        does an ancestor of a preserved descendant when everything between
+        them is journaled — the descendant's own guard already authenticated
+        its subtree. Anything else is foreign state and stays a failure.
+        """
+        selector = files.workspace_relative(scope_root, resident)
+        if selector.failure:
+            return False
+        relative = selector.value
+        if relative in journaled or relative in preserved:
+            return True
+        prefix = relative + "/"
+        return any(candidate.startswith(prefix) for candidate in preserved)
 
     @staticmethod
     def _hosts_lease_lock(

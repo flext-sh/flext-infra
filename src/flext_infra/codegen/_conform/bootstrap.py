@@ -112,6 +112,12 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                     pyproject=False,
                     custom=False,
                 )
+            case _:
+                return m.Infra.CodegenConformSurfaceContract(
+                    destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
+                    delegates=False,
+                    custom=False,
+                )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformBootstrap"]
