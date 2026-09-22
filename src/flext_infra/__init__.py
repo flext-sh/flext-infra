@@ -20,7 +20,10 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
+    from flext_cli import cli
     from pydantic_core import from_json, to_json, to_jsonable_python
+
+    from flext_core import core, d, e, h, lazy_attribute, r, x
 
     from . import (
         check,
@@ -469,22 +472,29 @@ __all__: tuple[str, ...] = (
     "__version_info__",
     "c",
     "check",
+    "cli",
     "codegen",
     "codemod",
     "collect_markdown_files",
     "config",
+    "core",
+    "d",
     "deps",
     "detectors",
     "docs",
     "docs_main",
+    "e",
     "fixers",
     "from_json",
     "gates",
+    "h",
     "infra",
+    "lazy_attribute",
     "m",
     "main",
     "maintenance",
     "p",
+    "r",
     "read_ignore_patterns",
     "refactor",
     "release",
@@ -501,6 +511,7 @@ __all__: tuple[str, ...] = (
     "workspace",
     "write_docstring_sources",
     "write_fenced_block_sources",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -778,6 +789,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
+            "flext_cli": ("cli",),
+            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
             "pydantic_core": ("from_json", "to_json", "to_jsonable_python"),
         }),
         alias_groups=MappingProxyType({}),
