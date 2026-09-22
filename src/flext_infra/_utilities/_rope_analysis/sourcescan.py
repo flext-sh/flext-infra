@@ -346,8 +346,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             else:
                 continue
             if not any(
-                isinstance(target, ast.Name) and target.id == name
-                for target in targets
+                isinstance(target, ast.Name) and target.id == name for target in targets
             ):
                 continue
             if value is None:

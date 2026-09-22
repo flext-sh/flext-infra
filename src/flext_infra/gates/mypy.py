@@ -193,7 +193,9 @@ class FlextInfraMypyGate(FlextInfraGate):
             if validated.failure:
                 return False, (
                     self._malformed_report_issue(
-                        str(validated.error), tool=c.Infra.MYPY, file=str(project_dir)
+                        f"{validated.error}\nstdout: {raw_line}\nstderr: {result.stderr}",
+                        tool=c.Infra.MYPY,
+                        file=str(project_dir),
                     ),
                 )
             diagnostic = validated.value

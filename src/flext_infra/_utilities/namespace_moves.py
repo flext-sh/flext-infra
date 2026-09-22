@@ -595,9 +595,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         home, so the whole move validates red and is reverted. Filtering here
         rather than at each caller keeps one owner for the rule.
         """
-        public_alias_names = {
-            name for name in alias_names if not name.startswith("_")
-        }
+        public_alias_names = {name for name in alias_names if not name.startswith("_")}
         if not public_alias_names:
             return
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)

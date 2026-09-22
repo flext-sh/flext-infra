@@ -246,6 +246,88 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 eq=["pre-status", "_custom-status", "post-status"],
             )
 
+    @pytest.mark.parametrize("verb", ["setup", "check", "gen", "status"])
+    @pytest.mark.parametrize("broken", [False, True])
+    def test_foreign_environment_is_rejected_before_effects(
+        self, tmp_path: Path, verb: str, *, broken: bool
+    ) -> None:
+        """A borrowed environment is preserved and rejected before activation."""
+        project_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        foreign = tmp_path / "foreign" / ".venv"
+        marker = foreign / "owner.txt"
+        if not broken:
+            foreign.mkdir(parents=True)
+            marker.write_text("foreign workspace", encoding="utf-8")
+        (project_root / ".venv").symlink_to(foreign, target_is_directory=True)
+        effect = project_root / "activation-effect"
+        (project_root / ".envrc").write_text(f'touch "{effect}"\n', encoding="utf-8")
+        process = tm.ok(
+            u.Tests.run_isolated_make(["--no-print-directory", verb], cwd=project_root)
+        )
+        tm.that(process.outcome.raw_return_code, ne=0)
+        tm.that(process.stderr, has="workspace environment must be physical")
+        tm.that(effect.exists(), eq=False)
+        tm.that((project_root / ".venv").is_symlink(), eq=True)
+        if not broken:
+            tm.that(marker.read_text(encoding="utf-8"), eq="foreign workspace")
+            tm.that(tuple(foreign.iterdir()), eq=(marker,))
+        else:
+            tm.that(foreign.exists(), eq=False)
+
+    def test_derived_workspace_paths_ignore_command_line_redirection(
+        self, tmp_path: Path
+    ) -> None:
+        """Even explicit variable overrides cannot select a different checkout."""
+        project_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        foreign = tmp_path / "foreign"
+        names = (
+            "MAKEFILE_ROOT",
+            "PROJECT_ROOT",
+            "REPOSITORY_ROOT",
+            "RUNTIME_ROOT",
+            "RUNTIME_VENV",
+            "RUNTIME_BIN",
+            "RUNTIME_PYTHON",
+            "FLEXT_INFRA_PYTHON",
+            "UV_PROJECT",
+            "UV_PROJECT_ENVIRONMENT",
+            "VIRTUAL_ENV",
+        )
+        (project_root / "custom.mk").write_text(
+            "post-help:\n\t@printf '%s\\n' "
+            + " ".join(f"'{name}=$({name})'" for name in names)
+            + "\n",
+            encoding="utf-8",
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "help",
+                    *(f"{name}={foreign}" for name in names),
+                ],
+                cwd=project_root,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr
+        )
+        tm.that(process.stdout, lacks=str(foreign))
+        for name in (
+            "MAKEFILE_ROOT",
+            "PROJECT_ROOT",
+            "REPOSITORY_ROOT",
+            "RUNTIME_ROOT",
+            "UV_PROJECT",
+        ):
+            tm.that(process.stdout, has=f"{name}={project_root}\n")
+        for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT", "VIRTUAL_ENV"):
+            tm.that(process.stdout, has=f"{name}={project_root / '.venv'}\n")
+
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
