@@ -9,38 +9,39 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import u
 
-from flext_core import m, mp
+from flext_core import m
 from flext_infra import c, t
 
 from .duplication import FlextInfraModelsDuplication
 
 
+class SccFile(m.FlexibleModel):
+    """Required per-file SCC fields; unrelated scanner metrics are ignored."""
+
+    location: Annotated[
+        str,
+        m.Field(
+            alias="Location",
+            min_length=1,
+            strict=True,
+            description="Scanned file path",
+        ),
+    ]
+    code: Annotated[
+        int,
+        m.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
+    ]
+
+
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
     """Quality gate execution domain models."""
-
-    class SccFile(m.FlexibleModel):
-        """Required per-file SCC fields; unrelated scanner metrics are ignored."""
-
-        location: Annotated[
-            str,
-            mp.Field(
-                alias="Location",
-                min_length=1,
-                strict=True,
-                description="Scanned file path",
-            ),
-        ]
-        code: Annotated[
-            int,
-            mp.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
-        ]
 
     class SccLanguage(m.FlexibleModel):
         """Required language group from SCC's JSON by-file output."""
 
         name: Annotated[
             str,
-            mp.Field(
+            m.Field(
                 alias="Name",
                 min_length=1,
                 strict=True,
@@ -49,13 +50,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         files: Annotated[
             t.VariadicTuple[SccFile],
-            mp.Field(
-                alias="Files",
-                description="Every scanned file in this language",
-            ),
+            m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 
-    class SccReport(mp.RootModel[t.VariadicTuple[SccLanguage]]):
+    class SccReport(m.RootModel[t.VariadicTuple[SccLanguage]]):
         """Native SCC groups, including an empty scan; malformed JSON fails."""
 
     class GateContext(m.ContractModel):
