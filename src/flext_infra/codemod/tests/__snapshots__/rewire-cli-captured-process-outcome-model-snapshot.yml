@@ -24,17 +24,15 @@ snapshots:
             )
         )
   : fixed: |+
-      def _captured_process_result(
-          cls,
-          return_code: int | None,
-          received_signals: list[int],
-          diagnostics: t.VariadicTuple[str],
-          stdout_output: bytearray,
-          stderr_output: bytearray,
-          duration: float,
-          *,
-          timed_out: bool,
-      ) -> p.Result[p.Cli.CommandBytesOutput]:
+      def _captured_process_result(cls,
+      return_code: int | None,
+      received_signals: list[int],
+      diagnostics: t.VariadicTuple[str],
+      stdout_output: bytearray,
+      stderr_output: bytearray,
+      duration: float,
+      *,
+      timed_out: bool,) -> p.Result[p.Cli.CommandBytesOutput]:
           """Attach captured bytes only after the owned process boundary is empty."""
           return cls._process_exit_result(
               return_code, received_signals, diagnostics, timed_out=timed_out

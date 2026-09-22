@@ -35,11 +35,13 @@ class FlextInfraUtilitiesCodegen(
         """Return the single typed isolation contract used by setup and codegen."""
         return m.Infra.MiseBootstrapEnvironmentSpec(
             storage_root_variable=c.Infra.MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE,
-            fixed_environment=c.Infra.MISE_BOOTSTRAP_FIXED_ENVIRONMENT,
-            transient_environment=c.Infra.MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT,
-            persistent_environment=c.Infra.MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT,
-            empty_files=c.Infra.MISE_BOOTSTRAP_EMPTY_FILES,
-            passthrough_environment=c.Infra.MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT,
+            fixed_environment=tuple(c.Infra.MISE_BOOTSTRAP_FIXED_ENVIRONMENT),
+            transient_environment=tuple(c.Infra.MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT),
+            persistent_environment=tuple(c.Infra.MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT),
+            empty_files=tuple(c.Infra.MISE_BOOTSTRAP_EMPTY_FILES),
+            passthrough_environment=tuple(
+                c.Infra.MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT
+            ),
         )
 
     @staticmethod

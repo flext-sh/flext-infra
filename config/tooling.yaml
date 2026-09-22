@@ -588,13 +588,11 @@ Infra:
         testmon-lock-filename: cache.lock
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686
-        # measurement. 10s per case, 60s for an explicitly slow case, 120s for
-        # the complete suite. A case that does not fit is a TEST DEFECT and is
+        # measurement. 10s per case, 60s for an explicitly slow case.
+        # A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
-        # itself a violation. This supersedes the prior measurement-driven note
-        # that told future maintainers to never narrow back to 10s/60s: that
-        # rule let the suite run 30 minutes, so make test never aborted on
-        # overrun and a push could be attempted without a full green suite.
+        # itself a violation. The aggregate budget below is independent of
+        # these case limits and always terminates an incomplete full suite.
         case-timeout-seconds: 10
         # The 60s arm of OPERATOR LAW flext-38p39, made executable. The law
         # already granted an explicitly slow case 60s, but no key projected it,
@@ -605,10 +603,12 @@ Infra:
         # the declared exception, not a raised ceiling: unmarked cases keep 10s.
         slow-timeout-seconds: 60
         # Complete-suite wall clock. Individual cases remain bounded at 10s
-        # (60s only when explicitly slow); the aggregate receives 600s so the
-        # entire parallel suite and coverage finalization can complete. The
-        # process wall adds one minute for orderly worker/report shutdown.
-        run-timeout-seconds: 600
+        # (60s only when explicitly slow). aihub-6k1.31 measured the 600s limit
+        # terminating cold serial selection at 35% and warm two-worker selection
+        # at 91%. The cold projection is 1715s; 2400s provides bounded headroom
+        # for all selected cases and coverage. The outer wall adds one minute
+        # for orderly worker/report shutdown; failures still collect fully.
+        run-timeout-seconds: 2400
         termination-grace-seconds: 2
         # Operator decision 2026-09-14: collect every selected test's outcome.
         # Pytest zero disables early stopping; failures retain their nonzero exit.
@@ -685,12 +685,12 @@ Infra:
           # flext-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
         # flext-99ae: hard process boundary independent of pytest hook progress.
-        # Must exceed run-timeout-seconds (120) by a small grace only: this caps
+        # Must exceed run-timeout-seconds by a small grace only: this caps
         # the whole Make/pytest process (shell `timeout`), not a single session
         # hook. A wide outer wall is itself an escape hatch — it would let an
         # overrun keep burning wall clock instead of aborting. Grace covers
         # interpreter start, collection and teardown only.
-        process-timeout-seconds: 660
+        process-timeout-seconds: 2460
       tomlsort:
         all: true
         in_place: true

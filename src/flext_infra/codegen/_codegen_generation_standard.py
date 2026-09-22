@@ -166,10 +166,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         if len(exports) == 1:
             inner = f"{inner},"
         compact = f"({inner})"
-        if (
-            len("__all__: t.VariadicTuple[str] = ") + len(compact)
-            <= c.Infra.MAX_LINE_LENGTH
-        ):
+        if len("__all__: tuple[str, ...] = ") + len(compact) <= c.Infra.MAX_LINE_LENGTH:
             return compact
         # A wrapped export set renders exactly as Ruff formats it (one name per
         # line): the projection is a formatter fixed point, never re-packed to

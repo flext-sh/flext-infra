@@ -13,7 +13,12 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import config, m, t
+from flext_infra import m, t
+
+# Concrete-owner imports: this module resolves during the root's lazy ``u``
+# export, when the root namespace is still initializing — a root from-import
+# would re-enter the partial namespace and fail.
+from .._config import config
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraConfig

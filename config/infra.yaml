@@ -190,3 +190,10 @@ Infra:
         replacement: "cli.display_text("
         file_glob: "*.py"
         description: "Replace print() with cli.display_text()"
+
+  # CSV-driven rename campaigns applied by the mod verb's rename phase
+  # through the apply-renames engine. Each entry: csv (repository-root-
+  # relative path to an old,new list) and optional roots (scan directories;
+  # empty selects the whole repository root).
+  refactor_csv_campaigns:
+    campaigns: []

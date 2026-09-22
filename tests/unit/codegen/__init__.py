@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .init_tests import TestsFlextInfraCodegenInit
     from .layout_fixture import archive_root, build_loose_project, layout_engine
     from .layout_gitignore_tests import TestsFlextInfraCodegenLayoutGitignore
-    from .layout_make_root_tests import TestsFlextInfraCodegenLayoutMakeRoot
     from .layout_tests import TestsFlextInfraCodegenLayout
     from .lazy_init_alias_inheritance_tests import (
         TestsFlextInfraLazyInitAliasInheritance,
@@ -151,7 +150,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenInit",
     "TestsFlextInfraCodegenLayout",
     "TestsFlextInfraCodegenLayoutGitignore",
-    "TestsFlextInfraCodegenLayoutMakeRoot",
     "TestsFlextInfraCodegenLazyInit",
     "TestsFlextInfraCodegenLazyInitClassReceipts",
     "TestsFlextInfraCodegenLazyInitFilePlans",
@@ -241,7 +239,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".init_tests": ("TestsFlextInfraCodegenInit",),
             ".layout_fixture": ("archive_root", "build_loose_project", "layout_engine"),
             ".layout_gitignore_tests": ("TestsFlextInfraCodegenLayoutGitignore",),
-            ".layout_make_root_tests": ("TestsFlextInfraCodegenLayoutMakeRoot",),
             ".layout_tests": ("TestsFlextInfraCodegenLayout",),
             ".lazy_init_alias_inheritance_tests": (
                 "TestsFlextInfraLazyInitAliasInheritance",
