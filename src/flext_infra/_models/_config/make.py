@@ -370,11 +370,6 @@ class FlextInfraConfigModelsMake:
     class MakeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
-        git_attributes_template: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Template for merge policy derived from generation plans"),
-        ]
-
         ruff: Annotated[
             FlextInfraConfigModelsMake.MakeRuffSpec,
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),

@@ -13,50 +13,6 @@ from .beads_routes import FlextInfraCodegenConformBeadsRoutes
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     """Desired-state file, environment, and retirement plans."""
 
-    @classmethod
-    def git_attributes_plans(
-        cls,
-        plan: m.Infra.CodegenPlan,
-        lazy_files: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Derive merge policy from full projections, preserving mixed files."""
-        codegen = config.Infra.codegen
-        template = u.Infra.codegen_templates_root(codegen) / plan.make_spec.git_attributes_template
-        source = u.Cli.atomic_read_binary_file_state(template, required=True)
-        if source.failure:
-            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(source)
-        files = tuple(file for file in plan.files if file.policy == "full") + tuple(lazy_files)
-        result: list[m.Infra.CodegenFilePlan] = []
-        for environment in plan.uv_environments:
-            root = environment.project_root
-            paths = sorted({
-                "/" + file.path.relative_to(root).as_posix()
-                for file in files
-                if file.project == root
-                and file.desired_content is not None
-                and file.path != root / c.Infra.GITATTRIBUTES_FILENAME
-            })
-            patterns = tuple(
-                path.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?").replace("[", "\\[")
-                for path in paths
-            )
-            rendered = u.Cli.template_render(
-                template,
-                m.Infra.MakeWorkflowRenderSpec(
-                    dist=root.name, make=plan.make_spec, generated_paths=patterns
-                ),
-            )
-            if rendered.failure:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(rendered)
-            planned = cls.file_plan(
-                root, c.Infra.GITATTRIBUTES_FILENAME, rendered.value,
-                source_states=(source.value,),
-            )
-            if planned.failure:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(planned)
-            result.append(planned.value)
-        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(result))
-
     @staticmethod
     def file_plan(
         root: Path,
