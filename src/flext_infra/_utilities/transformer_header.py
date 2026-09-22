@@ -148,9 +148,50 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         )
 
     @staticmethod
+    def _runtime_model_annotation_ids(module: ast.Module) -> frozenset[int]:
+        """Return ids of class-body annotations a model resolves at runtime.
+
+        A pydantic model evaluates its field annotations while the class is
+        built, so an alias used there is a runtime dependency even though the
+        syntax is an annotation. Deferring such an alias under
+        ``if TYPE_CHECKING:`` made ``_SmellData.model_validate_json`` raise
+        ``PydanticUserError`` during package import (flext-dk13k).
+        """
+        parents: dict[int, ast.AST] = {}
+        for parent in ast.walk(module):
+            for child in ast.iter_child_nodes(parent):
+                parents[id(child)] = parent
+        runtime_ids: set[int] = set()
+        for node in ast.walk(module):
+            if not isinstance(node, ast.AnnAssign) or node.annotation is None:
+                continue
+            owner = parents.get(id(node))
+            if not isinstance(owner, ast.ClassDef):
+                continue
+            if not any(
+                (isinstance(base, ast.Name) and base.id in c.Infra.RUNTIME_MODEL_BASES)
+                or (
+                    isinstance(base, ast.Attribute)
+                    and base.attr in c.Infra.RUNTIME_MODEL_BASES
+                )
+                for base in owner.bases
+            ):
+                continue
+            runtime_ids.add(id(node.annotation))
+        return frozenset(runtime_ids)
+
+    @staticmethod
     def _alias_is_annotation_only(source: str, alias: str) -> bool:
-        """Report whether every use of ``alias`` sits inside an annotation."""
+        """Report whether every use of ``alias`` sits inside an annotation.
+
+        Class-body annotations on a runtime model are excluded from that set:
+        the model resolves them at import time, so the alias must stay
+        importable at runtime (flext-dk13k).
+        """
         module = ast.parse(source)
+        runtime_ids = (
+            FlextInfraUtilitiesTransformerHeader._runtime_model_annotation_ids(module)
+        )
         spans: list[tuple[int, int, int, int]] = []
         for node in ast.walk(module):
             annotations = []
@@ -160,6 +201,8 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
                 annotations.append(node.returns)
             for annotation in annotations:
                 if annotation is None or annotation.end_lineno is None:
+                    continue
+                if id(annotation) in runtime_ids:
                     continue
                 spans.append((
                     annotation.lineno,

@@ -416,6 +416,10 @@ Infra:
         branch_patterns:
           - "^wip/"
           - WIP
+        head_subject_patterns:
+          - "^\\[WIP\\]"
+          - "^WIP"
+          - "^wip"
         merge_lock_target_branches:
           - dev
           - develop

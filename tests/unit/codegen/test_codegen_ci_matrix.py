@@ -519,8 +519,12 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(ci_job, has="github.event.pull_request.draft == false")
         tm.that(ci_job, has="make test")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
+        # The merge guard must inspect the PR head, not the refs/pull/N/merge
+        # commit that actions/checkout selects by default on pull_request.
+        tm.that(merge_guard, has="ref: ${{ github.event.pull_request.head.sha }}")
         tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
-        tm.that(merge_guard, has='[[ "$subject" == \\[WIP\\]* ]]')
+        # WIP markers are config-owned data; the guard matches them generically.
+        tm.that(merge_guard, has="grep -qiE")
         tm.that(merge_guard, has="WIP head cannot merge")
         tm.that(merge_guard, lacks="DRAFT PR cannot merge")
 

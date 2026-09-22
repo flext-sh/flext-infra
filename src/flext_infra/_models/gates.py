@@ -21,15 +21,11 @@ class SccFile(m.FlexibleModel):
     location: Annotated[
         str,
         m.Field(
-            alias="Location",
-            min_length=1,
-            strict=True,
-            description="Scanned file path",
+            alias="Location", min_length=1, strict=True, description="Scanned file path"
         ),
     ]
     code: Annotated[
-        int,
-        m.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
+        int, m.Field(alias="Code", ge=0, strict=True, description="Logical code lines")
     ]
 
 
@@ -49,11 +45,11 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         files: Annotated[
-            t.VariadicTuple[SccFile],
+            tuple[SccFile, ...],
             m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 
-    class SccReport(m.RootModel[t.VariadicTuple[SccLanguage]]):
+    class SccReport(m.RootModel[tuple[SccLanguage, ...]]):
         """Native SCC groups, including an empty scan; malformed JSON fails."""
 
     class GateContext(m.ContractModel):
@@ -307,7 +303,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.StrSequence, m.Field(min_length=1, description="Exactly covered gates")
         ]
         commands: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
+            tuple[FlextInfraModelsGates.GateCommandEvidence, ...],
             m.Field(min_length=1, description="Successful canonical invocations"),
         ]
 

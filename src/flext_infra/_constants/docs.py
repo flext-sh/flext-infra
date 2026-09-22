@@ -70,20 +70,40 @@ class FlextInfraConstantsDocs:
     """Regex matching ``python`` fenced blocks; ``body`` group yields contents."""
 
     PYTHON_FENCE_FIX_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<open>```python[ \t]*\n)(?P<body>.*?)^```[ \t]*$",
+        r"^(?P<indent>[ \t]*)(?P<open>```python[ \t]*\n)(?P<body>.*?)^```[ \t]*$",
         re.MULTILINE | re.DOTALL,
     )
     """Regex matching ``python`` fenced blocks for fix-in-place replacement."""
 
     WELDED_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<body>.*[^`\n])```[ \t]*$", re.MULTILINE
+        r"^(?P<indent>[ \t]*)(?P<body>.*[^\s`])```[ \t]*$", re.MULTILINE
     )
-    """Match a closing fence welded to the final code line by an older fixer."""
+    """Match a closing fence welded to the final code line by an older fixer.
+
+    The body must end in a non-whitespace, non-backtick character so that a
+    legitimately indented closing fence (``   ``` ``) and an existing
+    four-backtick fence are never rewritten; only a code line with the fence
+    welded onto it matches, and its indentation is preserved on repair.
+    """
 
     FENCE_NOTEST_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^```(\S+)\s+notest\s*$", re.MULTILINE
     )
     """Regex matching fenced code blocks with a ``notest`` info qualifier."""
+
+    FENCE_NOTEST_ATTR_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^```([A-Za-z0-9_+-]+)\s+notest\s*$", re.MULTILINE
+    )
+    """Regex matching a bare ``notest`` qualifier for the buildable rewrite.
+
+    ``pymdownx.superfences`` rejects an info string whose second token is not a
+    known option, so a bare ``python notest`` fence is not rendered as code and
+    its contents leak into the page as prose, swallowing the headings that
+    follow. The fix phase rewrites it to the ``attr_list`` form
+    ``{.python .notest}``, which superfences renders and whose info string still
+    carries the marker the code gates skip. The language token excludes ``{``
+    so an already-rewritten fence never matches again.
+    """
 
     MANUAL_TOC_RE: ClassVar[t.RegexPattern] = re.compile(
         r"<!--\s*TOC\s+START\s*-->.*?<!--\s*TOC\s+END\s*-->", re.DOTALL

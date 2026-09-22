@@ -299,6 +299,47 @@ class FlextInfraConfigModelsContexts:
             """Settings environment prefix derived from the distribution name."""
             return f"{self.dist.upper().replace('-', '_')}_"
 
+        @m.computed_field
+        @property
+        def config_base_class(self) -> str:
+            """ENFORCE-042 config base class derived from the declared profile.
+
+            The fleet-converged ``_config.py`` composes ``FlextSettings`` FIRST
+            with the project's capability base. The base is a property of the
+            declared dependency profile, never a per-project hand choice:
+
+            - ``FlextMeltanoConfig`` when the profile consumes ``flext-meltano``
+              (the Singer tap/target/dbt family);
+            - ``FlextCliConfig`` when the profile consumes ``flext-cli``;
+            - ``FlextConfig`` otherwise (the core-only API/Auth family).
+            """
+            runtime = tuple(self.dependency_profile.runtime)
+            has_meltano = any(
+                requirement.split(">")[0].split("=")[0].split("[")[0].strip()
+                in {"flext-meltano", "flext_meltano"}
+                for requirement in runtime
+            )
+            has_cli = any(
+                requirement.split(">")[0].split("=")[0].split("[")[0].strip()
+                in {"flext-cli", "flext_cli"}
+                for requirement in runtime
+            )
+            if has_meltano:
+                return "FlextMeltanoConfig"
+            if has_cli:
+                return "FlextCliConfig"
+            return "FlextConfig"
+
+        @m.computed_field
+        @property
+        def config_base_module(self) -> str:
+            """Import module exposing ``config_base_class``."""
+            return {
+                "FlextMeltanoConfig": "flext_meltano",
+                "FlextCliConfig": "flext_cli",
+                "FlextConfig": "flext_core",
+            }[self.config_base_class]
+
         scaffold: Annotated[
             FlextInfraConfigModelsScaffold.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
