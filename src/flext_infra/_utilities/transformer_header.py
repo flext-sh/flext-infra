@@ -150,10 +150,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     @staticmethod
     def _imports_type_checking(source: str) -> bool:
         """Return whether the module already imports ``TYPE_CHECKING``."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return "TYPE_CHECKING" in source
+        module = ast.parse(source)
         for node in ast.walk(module):
             if not isinstance(node, ast.ImportFrom) or node.module != "typing":
                 continue

@@ -16,7 +16,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests import m
+from tests import c, m
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,13 +59,15 @@ class TestsFlextInfraFreshImport:
         tm.that(report.violations, length=1)
         tm.that(report.violations[0], has="nonexistent_xyz_qqq")
 
-    def test_summary_reports_failure_count(
+    def test_stops_at_first_causal_failure(
         self, v: FlextInfraValidateFreshImport
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_a_qqq", "nonexistent_b_qqq"))
         )
-        tm.that(report.summary, has="2")
+        tm.that(report.violations, length=1)
+        tm.that(report.violations[0], has="nonexistent_a_qqq")
+        tm.that(report.violations[0], lacks="nonexistent_b_qqq")
         tm.that(report.summary, has="failed")
 
     def test_passing_summary_is_human_readable(
@@ -83,6 +85,94 @@ class TestsFlextInfraFreshImport:
             validator.build_report(packages=("demo_external",))
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
+
+    def test_advertised_lazy_export_must_resolve(self, tmp_path: Path) -> None:
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        (package / c.Infra.INIT_PY).write_text(
+            "__all__ = ('missing_export',)\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        report = tm.ok(FlextInfraValidateFreshImport(
+            repository_root=tmp_path
+        ).build_report(packages=(package.name,)))
+        tm.that(report.passed, eq=False)
+        tm.that(report.violations[0], has="missing_export")
+        tm.that(report.violations[0], has="Traceback")
+
+    @pytest.mark.parametrize("dependency_present", [False, True])
+    def test_declared_consumer_catches_exports_omitted_from_plan(
+        self, tmp_path: Path, dependency_present: bool
+    ) -> None:
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            "__all__ = ()\n" + ("required = 17\n" if dependency_present else ""),
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (package / "consumer.py").write_text(
+            f"from {package.name} import required\n"
+            "def main():\n    raise RuntimeError('entrypoint must not execute')\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n'
+            f'[project.scripts]\nprobe = "{package.name}.consumer:main"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package, init_path=initializer,
+                current_pkg=package.name, surface=package.name,
+                importable=True, generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+        )
+        report = tm.ok(FlextInfraValidateFreshImport(
+            repository_root=tmp_path
+        ).build_report(publications=(publication,), repository_roots=(tmp_path,)))
+        tm.that(report.passed, eq=dependency_present, msg=str(report.violations))
+        if not dependency_present:
+            tm.that(report.violations[0], has="required")
+            tm.that(report.violations[0], has="consumer.py")
+            tm.that(report.violations[0], has="Traceback")
+
+    def test_rejects_owned_module_imported_from_another_directory(
+        self, tmp_path: Path
+    ) -> None:
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        (foreign / "dependency.py").write_text(
+            "value = 17\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            f"__path__ = [{str(foreign)!r}]\n"
+            "from .dependency import value\n__all__ = ('value',)\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package, init_path=initializer,
+                current_pkg=package.name, surface=package.name,
+                importable=True, generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("value",),
+        )
+        report = tm.ok(FlextInfraValidateFreshImport(
+            repository_root=tmp_path
+        ).build_report(publications=(publication,), repository_roots=(tmp_path,)))
+        tm.that(report.passed, eq=False)
+        tm.that(report.violations[0], has="is outside")
+        tm.that(report.violations[0], has=str(foreign))
 
     def test_flext_core_imports_cleanly(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(

@@ -101,6 +101,14 @@ class FlextInfraModelsCodegenFixModels:
             str | None,
             m.Field(description="Canonical namespace family suffix for the file."),
         ] = None
+        inherited_namespaces: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Nested class attributes inherited unchanged through the actual facade MRO.",
+        )
+        is_internal_namespace: bool = m.Field(
+            default=False,
+            description="Whether the facade belongs to a discovered non-public root tier.",
+        )
         family_tokens: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Accepted family markers for private namespace modules.",

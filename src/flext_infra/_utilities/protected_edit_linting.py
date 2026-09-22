@@ -131,7 +131,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         the SAME Ruff configuration for the same file.
         """
         for py_file in paths:
-            _ = u.Cli.run_checked(
+            output = u.Cli.run_raw(
                 [
                     *cls._workspace_tool_command(workspace, "ruff"),
                     c.Infra.CHECK,
@@ -140,7 +140,24 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ],
                 cwd=cls._command_cwd(py_file, workspace),
                 env=cls._command_env(),
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            ).unwrap()
+            outcome = output.outcome
+            # Ruff's exit 1 means remaining findings, which the delta judge owns.
+            findings_remain = (
+                outcome.raw_return_code == 1
+                and not outcome.timed_out
+                and outcome.forwarded_signal is None
             )
+            if not u.Cli.process_succeeded(outcome) and not findings_remain:
+                detail = (output.stderr or output.stdout).strip()
+                msg = (
+                    f"ruff normalization failed for {py_file}: "
+                    f"exit={outcome.raw_return_code}, timed_out={outcome.timed_out}, "
+                    f"signal={outcome.forwarded_signal}: {detail}"
+                )
+                raise RuntimeError(msg)
 
     @staticmethod
     def _relative_path(py_file: Path, workspace: Path) -> Path:

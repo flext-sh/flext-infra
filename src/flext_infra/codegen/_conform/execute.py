@@ -9,6 +9,7 @@ from flext_core import r
 
 from ... import c, config, m, p, t, u
 from ...docs import FlextInfraDocGenerator
+from ...validate import FlextInfraValidateFreshImport
 from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
     FlextInfraCodegenLazyInit,
@@ -463,6 +464,7 @@ class FlextInfraCodegenConformExecute(
                 if file.path not in conform_paths
             ),
             inputs=lazy_analysis.value.inputs,
+            publications=lazy_analysis.value.publications,
         )
         extended = transaction.append_phase_locked(
             session, owned_lazy_analysis.phase, owned_lazy_analysis.files
@@ -701,6 +703,22 @@ class FlextInfraCodegenConformExecute(
             validated = mise.validate_artifacts(project_layout.root)
             if validated.failure:
                 return r[bool].from_failure(validated)
+        u.Cli.info("stage=verify-fresh-imports")
+        imported = FlextInfraValidateFreshImport(
+            repository_root=request.root
+        ).build_report(
+            publications=lazy_analysis.publications,
+            repository_roots=tuple(
+                request.root / repository.path
+                for repository in verified.value.repositories
+            ),
+        )
+        if imported.failure:
+            return r[bool].from_failure(imported)
+        if not imported.value.passed:
+            return r[bool].fail("\n".join((
+                imported.value.summary, *imported.value.violations
+            )))
         return r[bool].ok(True)
 
 
