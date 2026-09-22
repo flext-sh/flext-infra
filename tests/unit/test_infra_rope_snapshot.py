@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
@@ -54,10 +54,12 @@ class TestsFlextInfraRopeSnapshot:
             package_init.resolve(): package_init.read_text(encoding="utf-8"),
             outsider.resolve(): "value = 1\n",
         }
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            with pytest.raises(
+        with (
+            FlextInfraRopeWorkspace.open_workspace(repository_root) as rope,
+            pytest.raises(
                 ValueError, match=r"outside its input inventory"
-            ) as guard_error:
-                u.Infra.snapshot_project(rope.rope_project, sources)
+            ) as guard_error,
+        ):
+            u.Infra.snapshot_project(rope.rope_project, sources)
 
         tm.that(str(outsider.resolve()) in str(guard_error.value), eq=True)
