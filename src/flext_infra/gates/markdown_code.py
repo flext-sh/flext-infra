@@ -221,19 +221,27 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         ):
             content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
             relative_posix = md_path.relative_to(project_dir).as_posix()
-            parseable = [
-                match.group("code")
+            # Enumerate every non-``notest`` fence exactly like
+            # ``write_fenced_block_sources``: the extraction index counts
+            # fragments that do not compile, so the splice must preserve that
+            # same index. Re-enumerating only parseable blocks shifted every
+            # later source name and silently skipped whole files whenever a
+            # fragment preceded a valid block.
+            staged: t.MutableSequenceOf[t.Pair[int, str]] = []
+            for index, match in enumerate(
+                match
                 for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
                 if TEST_SKIP_MARKER not in match.group("info")
-            ]
-            parseable = [
-                code for code in parseable if not _is_syntax_broken(code, md_path)
-            ]
-            if not parseable:
+            ):
+                code = match.group("code")
+                if _is_syntax_broken(code, md_path):
+                    continue
+                staged.append((index, code))
+            if not staged:
                 continue
             blocks: t.MutableSequenceOf[str] = []
             round_trips = True
-            for index, _original in enumerate(parseable):
+            for index, _original in staged:
                 source = sources_dir / source_name(relative_posix, index)
                 if not source.is_file():
                     round_trips = False
