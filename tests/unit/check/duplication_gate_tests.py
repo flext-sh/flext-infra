@@ -134,8 +134,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
         root = tmp_path / "sibling-workspace"
         root.mkdir()
         module = "".join(
-            f"def helper_{index}(value: int) -> int:\n"
-            f"    return value + {index}\n\n"
+            f"def helper_{index}(value: int) -> int:\n    return value + {index}\n\n"
             for index in range(12)
         )
         for name in ("fixture-dup", "fixture-dup-extra"):
