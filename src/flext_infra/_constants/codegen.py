@@ -52,6 +52,18 @@ class FlextInfraConstantsCodegen(
 
     JOURNAL_MODE: ClassVar[int] = 0o600
 
+    JOURNAL_LEASE_WAIT_SECONDS: ClassVar[float] = 1800.0
+    """Bounded polite wait for a held lease before failing loud.
+
+    A legitimate fleet ``make gen`` holds the lease for minutes; an immediate
+    non-blocking refusal turned ordinary multi-agent traffic into a spurious
+    ``JournalLeaseTimeoutError`` (flext-c2kp3). The wait is bounded so a truly
+    wedged holder still fails loud instead of hanging forever.
+    """
+
+    JOURNAL_LEASE_POLL_SECONDS: ClassVar[float] = 1.0
+    """Polling interval while waiting for a held journal lease."""
+
     TRANSACTION_DIR_PREFIX: ClassVar[str] = "transaction-"
 
     TRANSACTION_ID_LENGTH: ClassVar[int] = 32

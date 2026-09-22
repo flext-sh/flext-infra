@@ -9,6 +9,7 @@ from __future__ import annotations
 import difflib
 import fcntl
 import os
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from itertools import islice
@@ -17,7 +18,7 @@ from typing import TYPE_CHECKING, Literal
 from flext_cli import m as cli_m, u
 
 from flext_core import r
-from flext_infra import m, p, t
+from flext_infra import c, m, p, t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,21 +39,34 @@ class FlextInfraUtilitiesCodegenFilePlan:
     def codegen_transaction_lease(journal_path: Path) -> Generator[None]:
         """Hold native ownership without unlinking the journal's lock identity.
 
-        The lease is a non-blocking exclusive ``flock`` on a ``0o600`` lock
-        file that outlives the lease: closing the descriptor releases the
-        kernel lock while the file keeps its identity (stable device/inode),
-        and close-time errors propagate instead of being swallowed.
+        The lease is an exclusive ``flock`` on a ``0o600`` lock file that
+        outlives the lease: closing the descriptor releases the kernel lock
+        while the file keeps its identity (stable device/inode), and close-time
+        errors propagate instead of being swallowed.
+
+        Acquisition waits politely for a held lease up to
+        ``c.Infra.JOURNAL_LEASE_WAIT_SECONDS`` (flext-c2kp3): a legitimate fleet
+        ``make gen`` holds the lease for minutes, so an immediate non-blocking
+        refusal manufactured spurious ``JournalLeaseTimeoutError`` failures
+        under ordinary multi-agent traffic. The wait stays bounded, so a truly
+        wedged holder still fails loud rather than hanging forever.
         """
         lock_path = journal_path.with_name(f"{journal_path.name}.lock")
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
         try:
-            try:
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError as error:
-                raise FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeoutError(
-                    lock_path
-                ) from error
+            deadline = time.monotonic() + c.Infra.JOURNAL_LEASE_WAIT_SECONDS
+            while True:
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError as error:
+                    if time.monotonic() >= deadline:
+                        raise FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeoutError(
+                            lock_path
+                        ) from error
+                    time.sleep(c.Infra.JOURNAL_LEASE_POLL_SECONDS)
+                    continue
+                break
             yield
         finally:
             os.close(descriptor)

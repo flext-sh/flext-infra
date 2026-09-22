@@ -70,11 +70,24 @@ class TestsFlextInfraTransactionLease:
 
         tm.ok(transaction.run_locked(prepare=True, operation=publish))
 
+    @staticmethod
+    def _acquire_when_granted(scope: Path, acquired: Event) -> None:
+        """Wait politely for the scope lease, then report the grant.
+
+        flext-c2kp3: a same-scope contender must wait for a live holder instead
+        of failing fast, so this child only publishes ``acquired`` once the
+        kernel actually grants the lease.
+        """
+        owner = FlextInfraCodegenMiseArtifacts(repository_root=scope)
+        transaction = FlextInfraCodegenTransaction(owner)
+        tm.ok(transaction.run_locked(prepare=True, operation=r[Path].ok))
+        acquired.set()
+
     @pytest.mark.slow
     def test_contenders_cannot_reconcile_live_journal_across_member_scope(
         self, tmp_path: Path
     ) -> None:
-        """Reject root/member contenders while a separate scope stays independent."""
+        """A same-scope contender waits for a live holder; another scope is independent."""
         root = test_u.Tests.git_repository(tmp_path, "workspace")
         seed = test_u.Tests.git_repository(tmp_path, "member-source")
         test_u.Tests.copy_tracked_mise_seeds(seed)
@@ -102,6 +115,7 @@ class TestsFlextInfraTransactionLease:
             target=self._hold_transaction, args=(member, ready, release)
         )
         holder.start()
+        waiter: multiprocessing.process.BaseProcess | None = None
         try:
             tm.that(
                 ready.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),
@@ -109,14 +123,15 @@ class TestsFlextInfraTransactionLease:
             )
             journal_before = journal_path.read_bytes()
             lock_before = lock_path.stat()
-            for contender_root in (root, member):
-                contender = FlextInfraCodegenTransaction(
-                    FlextInfraCodegenMiseArtifacts(repository_root=contender_root)
-                )
-                with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
-                    contender.run_locked(prepare=True, operation=self._ok_path)
-                tm.that(failure.value.lock_file, eq=str(lock_path))
-                tm.that(journal_path.read_bytes(), eq=journal_before)
+            granted = context.Event()
+            waiter = context.Process(
+                target=self._acquire_when_granted, args=(member, granted)
+            )
+            waiter.start()
+            # While the holder is live the contender stays blocked: it neither
+            # acquires the lease nor touches the journal.
+            tm.that(granted.wait(timeout=5.0), eq=False)
+            tm.that(journal_path.read_bytes(), eq=journal_before)
 
             independent_owner = FlextInfraCodegenMiseArtifacts(
                 repository_root=independent
@@ -127,11 +142,27 @@ class TestsFlextInfraTransactionLease:
                 )
             )
             tm.that(journal_path.read_bytes(), eq=journal_before)
+
+            # Releasing the holder hands the lease to the waiting contender.
+            release.set()
+            tm.that(
+                granted.wait(
+                    timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds
+                ),
+                eq=True,
+            )
+            waiter.join(timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds)
+            tm.that(waiter.exitcode, eq=0)
         finally:
             release.set()
             holder.join(timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds)
             tm.that(holder.exitcode, eq=0)
             holder.close()
+            if waiter is not None:
+                waiter.join(
+                    timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds
+                )
+                waiter.close()
 
         tm.that(journal_path.exists(), eq=False)
         lock_after = lock_path.stat()
