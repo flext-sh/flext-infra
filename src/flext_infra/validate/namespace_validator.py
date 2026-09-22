@@ -80,6 +80,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                         package_name=package_name,
                         source=filepath.read_text(encoding=c.Cli.ENCODING_DEFAULT),
                         is_test_file=self._is_test_file(rel),
+                        project_root=project_root,
                     )
                 )
         return self._validation_report(files=files, violations=violations)
