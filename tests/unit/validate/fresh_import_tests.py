@@ -86,6 +86,72 @@ class TestsFlextInfraFreshImport:
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
 
+    def test_declared_script_follows_configured_posture(self, tmp_path: Path) -> None:
+        """A declared script whose target lacks main warns or blocks per SSOT."""
+        from flext_infra import config
+
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
+        package.mkdir(parents=True)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        (package / "cli.py").write_text(
+            "VALUE = 1\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
+            f'[project.scripts]\nprobe = "{package.name}.cli:main"\n',
+            encoding="utf-8",
+        )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package, init_path=initializer,
+                current_pkg=package.name, surface=package.name,
+                importable=True, generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+        )
+        report = tm.ok(FlextInfraValidateFreshImport(
+            repository_root=tmp_path
+        ).build_report(publications=(publication,), repository_roots=(tmp_path,)))
+        warns = config.Infra.codegen.fresh_import_entry_points_warn_only
+        tm.that(report.passed, eq=warns)
+        tm.that(report.violations[0], has="console_scripts/probe=")
+        tm.that(report.violations[0], has="has no attribute 'main'")
+
+    def test_declared_script_contract_violation_stays_blocking(
+        self, tmp_path: Path
+    ) -> None:
+        """A missing export surfacing through a loadable script is never warn."""
+        from flext_infra import config
+
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
+        package.mkdir(parents=True)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        (package / "cli.py").write_text(
+            "from flext_probe_script import gone\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
+            f'[project.scripts]\nprobe = "{package.name}.cli:main"\n',
+            encoding="utf-8",
+        )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package, init_path=initializer,
+                current_pkg=package.name, surface=package.name,
+                importable=True, generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+        )
+        report = tm.ok(FlextInfraValidateFreshImport(
+            repository_root=tmp_path
+        ).build_report(publications=(publication,), repository_roots=(tmp_path,)))
+        _ = config.Infra.codegen.fresh_import_entry_points_warn_only
+        tm.that(report.passed, eq=False)
+        tm.that(report.violations[0], has="ImportError")
+
     def test_advertised_lazy_export_must_resolve(self, tmp_path: Path) -> None:
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)
