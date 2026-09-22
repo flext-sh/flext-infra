@@ -84,7 +84,10 @@ class TestsFlextInfraGateErrorReporting:
         project_dir = u.Tests.mk_project(
             tmp_path,
             "p1",
-            pyproject='[tool.mypy]\nplugins = ["broken_plugin.py"]\n',
+            pyproject=(
+                '[tool.mypy]\nplugins = ["broken_plugin.py"]\n'
+                'show_traceback = true\n'
+            ),
             with_src=True,
         )
         (project_dir / "src" / "p1" / "value.py").write_text(
