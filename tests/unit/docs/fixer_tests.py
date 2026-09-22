@@ -81,5 +81,41 @@ class TestsFlextInfraDocsFixer:
         tm.ok(result)
         tm.that(document.read_text(encoding="utf-8"), has="value = 1\n```\n\n## Next")
 
+    def test_fix_preserves_indented_closes_and_four_backtick_fences(
+        self, tmp_path: Path
+    ) -> None:
+        """Only a welded code line is repaired, never a legitimate fence.
+
+        Rewriting an indented closing fence de-indents the block, leaves a
+        whitespace-only line and moves the block boundary, which swallows the
+        headings that follow and breaks the mkdocs anchors.
+        """
+        workspace = u.Tests.create_docs_workspace(tmp_path)
+        document = workspace / "docs/indented.md"
+        document.write_text(
+            (
+                "# Example\n"
+                "\n"
+                "1. **Check**\n"
+                "\n"
+                "   ```bash\n"
+                "   make check\n"
+                "   ```\n"
+                "\n"
+                "````\n"
+                "\n"
+                "## Next\n"
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraDocFixer().fix(workspace, apply=True)
+
+        tm.ok(result)
+        content = document.read_text(encoding="utf-8")
+        tm.that("   ```\n" in content, eq=True)
+        tm.that("````\n" in content, eq=True)
+        tm.that("   \n```\n" in content, eq=False)
+
 
 __all__: list[str] = ["TestsFlextInfraDocsFixer"]

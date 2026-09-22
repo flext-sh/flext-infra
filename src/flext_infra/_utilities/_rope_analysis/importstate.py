@@ -359,6 +359,73 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             ).class_infos
         )
 
+    @classmethod
+    def declared_facade_owner(
+        cls, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
+    ) -> t.StrPair | None:
+        """Resolve a published local class's alias from declarations and its MRO.
+
+        The spelling of a module or class supplies no ownership information.
+        An existing exported alias wins; otherwise the nearest declaring bases
+        determine the missing declaration that the repair must publish locally.
+        """
+        module = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        exports = FlextInfraUtilitiesRopeAnalysisAstHelpers.public_export_names_source(
+            resource.read()
+        )
+        attributes = module.get_attributes()
+        owners: set[tuple[str, str]] = set()
+        for info in cls.get_module_semantic_state(rope_project, resource).class_infos:
+            if info.name not in exports:
+                continue
+            target = attributes[info.name].get_object()
+            aliases = cls._declared_class_aliases(target)
+            if not aliases:
+                aliases = cls._inherited_class_aliases(target, visited=frozenset())
+            owners.update((alias, info.name) for alias in aliases)
+        if len(owners) > 1:
+            message = f"ambiguous facade declaration in {resource.path}: {sorted(owners)}"
+            raise ValueError(message)
+        return next(iter(owners)) if owners else None
+
+    @staticmethod
+    def _declared_class_aliases(target: t.Infra.RopePyObject) -> frozenset[str]:
+        """Return explicitly exported names bound to this exact class object."""
+        module = target.get_module()
+        if module is None or (resource := module.get_resource()) is None:
+            return frozenset()
+        exports = FlextInfraUtilitiesRopeAnalysisAstHelpers.public_export_names_source(
+            resource.read()
+        )
+        return frozenset(
+            name
+            for name, binding in module.get_attributes().items()
+            if name in exports
+            and name.islower()
+            and not name.startswith("_")
+            and binding.get_object() is target
+        )
+
+    @classmethod
+    def _inherited_class_aliases(
+        cls, target: t.Infra.RopePyObject, *, visited: frozenset[int]
+    ) -> frozenset[str]:
+        """Follow real base identities, stopping at each nearest declaration."""
+        identity = id(target)
+        if identity in visited:
+            message = f"cyclic facade inheritance at {target.get_name()}"
+            raise ValueError(message)
+        aliases: set[str] = set()
+        for base in target.get_superclasses():
+            if not FlextInfraUtilitiesRopeRuntime.is_abstract_class(base):
+                continue
+            declared = cls._declared_class_aliases(base)
+            aliases.update(
+                declared
+                or cls._inherited_class_aliases(base, visited=visited | {identity})
+            )
+        return frozenset(aliases)
+
     @staticmethod
     def is_pyclass(obj: t.Infra.RopePyObject) -> bool:
         """Return whether a rope object is a ``PyClass`` (abstract class type)."""

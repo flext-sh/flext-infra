@@ -76,9 +76,15 @@ class FlextInfraConstantsDocs:
     """Regex matching ``python`` fenced blocks for fix-in-place replacement."""
 
     WELDED_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<body>.*[^`\n])```[ \t]*$", re.MULTILINE
+        r"^(?P<indent>[ \t]*)(?P<body>.*[^\s`])```[ \t]*$", re.MULTILINE
     )
-    """Match a closing fence welded to the final code line by an older fixer."""
+    """Match a closing fence welded to the final code line by an older fixer.
+
+    The body must end in a non-whitespace, non-backtick character so that a
+    legitimately indented closing fence (``   ``` ``) and an existing
+    four-backtick fence are never rewritten; only a code line with the fence
+    welded onto it matches, and its indentation is preserved on repair.
+    """
 
     FENCE_NOTEST_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^```(\S+)\s+notest\s*$", re.MULTILINE
