@@ -11,7 +11,7 @@ import pytest
 from flext_tests import tm
 
 import flext_core
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
@@ -81,6 +81,25 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="    from .api import Demo")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
+
+    def test_export_width_is_a_real_formatter_fixed_point(self, tmp_path: Path) -> None:
+        """The rendered tuple annotation owns the compact-line width budget."""
+        names = ("FlextInfraCleanService", "FlextInfraPythonVersionEnforcer")
+        plan = self._plan(
+            "demo_pkg", names, {name: ("demo_pkg.owner", name) for name in names}
+        )
+        rendered = FlextInfraCodegenGeneration.render_init(plan)
+        target = tmp_path / "__init__.py"
+        target.write_text(rendered, encoding="utf-8")
+        formatted = u.Cli.run([
+            "ruff",
+            "format",
+            "--config",
+            str(Path.cwd() / "pyproject.toml"),
+            str(target),
+        ])
+        assert formatted.success, formatted.error
+        assert target.read_text(encoding="utf-8") == rendered
 
     def test_sibling_private_exports_use_relative_owners(self) -> None:
         """Static and lazy imports resolve the same private sibling module."""

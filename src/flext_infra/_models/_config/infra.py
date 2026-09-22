@@ -57,6 +57,13 @@ class FlextInfraConfigModelsInfra:
                 description="Sed-by-list mass replacement patterns for literal refactoring",
             ),
         ]
+        refactor_csv_campaigns: Annotated[
+            FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
+            m.Field(
+                default_factory=FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
+                description="Declared CSV-driven rename campaigns for the mod verb",
+            ),
+        ]
 
 
 __all__: list[str] = ["FlextInfraConfigModelsInfra"]

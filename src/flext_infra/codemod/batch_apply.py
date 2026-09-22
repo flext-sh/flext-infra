@@ -9,8 +9,9 @@ from flext_cli import cli
 
 from flext_core import r
 
-from .. import FlextInfraServiceBase, m, p, t, u
+from .. import FlextInfraConfig, FlextInfraServiceBase, m, p, t, u
 from . import (
+    FlextInfraApplyRenames,
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
     FlextInfraModTextGateEngine,
@@ -38,15 +39,21 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 self.repository_root, fix=False, validate_receipts=True
             ).unwrap()
             pending_count += text_pending.findings
-            if pending_count:
+            renames_pending = FlextInfraCodemodBatchApply._pending_renames(
+                self.repository_root
+            )
+            if renames_pending.failure:
+                return r[t.Cli.ResultValue].from_failure(renames_pending)
+            if pending_count or renames_pending.value:
                 return r[t.Cli.ResultValue].fail(
                     f"{pending.findings} pending ast-grep finding(s), "
                     f"{pending.actionable} actionable and "
                     f"{pending.detection_only} detection-only and "
                     f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
                     f"{text_pending.findings} pending sed-by-list finding(s) "
-                    f"({text_pending.actionable} actionable), across "
-                    f"{len(rules)} rule file(s)"
+                    f"({text_pending.actionable} actionable) and "
+                    f"{renames_pending.value} pending CSV-rename occurrence(s), "
+                    f"across {len(rules)} rule file(s)"
                 )
             validated = FlextInfraModGateEngine.validate(self.repository_root)
             if validated.failure:
@@ -117,6 +124,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             # Exact optional migration receipts apply once per invocation,
             # not to every internal convergence pass after consuming matches.
             text_precondition_pending = False
+            configured_renames = FlextInfraCodemodBatchApply._rename_inputs(
+                root, apply=True
+            )
+            for rename_params in configured_renames:
+                renamed = FlextInfraApplyRenames.run(rename_params)
+                if renamed.failure:
+                    return r[t.Cli.ResultValue].from_failure(renamed)
             current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
             current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
             after = fingerprint(root, current)
@@ -170,6 +184,44 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "with zero actionable findings"
             )
             return r[t.Cli.ResultValue].ok(True)
+
+    @staticmethod
+    def _rename_inputs(
+        root: Path, *, apply: bool
+    ) -> t.SequenceOf[m.Infra.ApplyRenamesInput]:
+        """Resolve configured rename campaigns into engine inputs anchored at root.
+
+        Campaign paths are declared repository-root-relative so the config SSOT
+        stays independent of the caller's working directory.
+        """
+        campaigns = (
+            FlextInfraConfig.fetch_global().Infra.refactor_csv_campaigns.campaigns
+        )
+        inputs: list[m.Infra.ApplyRenamesInput] = []
+        for campaign in campaigns:
+            csv_declared = Path(campaign.csv)
+            csv = csv_declared if csv_declared.is_absolute() else root / csv_declared
+            roots = tuple(
+                str(path if path.is_absolute() else root / path)
+                for path in (Path(value) for value in campaign.roots)
+            )
+            inputs.append(
+                m.Infra.ApplyRenamesInput(
+                    csv=str(csv), roots=roots or (str(root),), apply=apply
+                )
+            )
+        return tuple(inputs)
+
+    @staticmethod
+    def _pending_renames(root: Path) -> p.Result[int]:
+        """Count pending rename occurrences across the configured campaigns."""
+        pending = 0
+        for params in FlextInfraCodemodBatchApply._rename_inputs(root, apply=False):
+            report = FlextInfraApplyRenames.run(params)
+            if report.failure:
+                return r[int].from_failure(report)
+            pending += report.value.occurrences
+        return r[int].ok(pending)
 
     @staticmethod
     def validate_fix_match(

@@ -93,9 +93,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         args = ["format", "--no-cache", "--output-format", "concise"]
         config_path = project_dir / c.Infra.PYPROJECT_FILENAME
         args += (
-            ["--config", str(config_path)]
-            if config_path.is_file()
-            else ["--isolated"]
+            ["--config", str(config_path)] if config_path.is_file() else ["--isolated"]
         )
         return self._python_console_script_command(
             c.Infra.RUFF, *args, *(("--check",) if not write else ()), str(sources_dir)

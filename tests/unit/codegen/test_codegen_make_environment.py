@@ -161,7 +161,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                     project_root / "custom.mk",
                     ".PHONY: pre-setup post-setup _custom-status\n"
                     "pre-setup:\n"
-                    '\t@test ! -e "$(RUNTIME_PYTHON)"\n'
+                    '\t@test ! -L "$(RUNTIME_VENV)"\n'
                     "post-setup:\n"
                     '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
                     '\t@test -x "$(MAKE_COMMAND)"\n'
@@ -210,6 +210,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 cwd=project_root,
             )
         )
+        tm.that((project_root / ".venv").is_symlink(), eq=False)
+        tm.that((project_root / ".venv" / "bin" / "python").is_symlink(), eq=True)
         (project_root / ".envrc.local").write_text(
             "printf 'activated\\n' >> activation.log\n"
             'export MAKE_ACTIVATION_PROOF="$PROJECT_ROOT"\n'
@@ -222,6 +224,11 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 f"{target}:\n"
                 '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
                 f"\t@printf '%s\\n' '{target}' >> dispatch.log\n"
+                + (
+                    '\t@"$(RUNTIME_PYTHON)" -c "import sys; print(sys.prefix)" > runtime.log\n'
+                    if target == "_custom-status"
+                    else ""
+                )
                 for target in ("pre-status", "_custom-status", "post-status")
             ),
             encoding="utf-8",
@@ -245,21 +252,133 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 (project_root / "dispatch.log").read_text().splitlines(),
                 eq=["pre-status", "_custom-status", "post-status"],
             )
+            tm.that(
+                (project_root / "runtime.log").read_text().strip(),
+                eq=str(project_root / ".venv"),
+            )
+
+    @pytest.mark.parametrize("verb", ["setup", "check", "gen", "status"])
+    @pytest.mark.parametrize("broken", [False, True])
+    @pytest.mark.parametrize("environment_part", [".venv", ".venv/bin"])
+    def test_foreign_environment_is_rejected_before_effects(
+        self, tmp_path: Path, verb: str, environment_part: str, *, broken: bool
+    ) -> None:
+        """A borrowed environment is preserved and rejected before activation."""
+        project_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        foreign = tmp_path / "foreign" / ".venv"
+        marker = foreign / "owner.txt"
+        if not broken:
+            foreign.mkdir(parents=True)
+            marker.write_text("foreign workspace", encoding="utf-8")
+        borrowed = project_root / environment_part
+        borrowed.parent.mkdir(exist_ok=True)
+        borrowed.symlink_to(foreign, target_is_directory=True)
+        effect = project_root / "activation-effect"
+        (project_root / ".envrc").write_text(f'touch "{effect}"\n', encoding="utf-8")
+        process = tm.ok(
+            u.Tests.run_isolated_make(["--no-print-directory", verb], cwd=project_root)
+        )
+        tm.that(process.outcome.raw_return_code, ne=0)
+        tm.that(process.stderr, has="workspace environment must be physical")
+        tm.that(effect.exists(), eq=False)
+        tm.that(borrowed.is_symlink(), eq=True)
+        if not broken:
+            tm.that(marker.read_text(encoding="utf-8"), eq="foreign workspace")
+            tm.that(tuple(foreign.iterdir()), eq=(marker,))
+        else:
+            tm.that(foreign.exists(), eq=False)
+
+    @pytest.mark.parametrize("command_line", [False, True])
+    def test_derived_workspace_paths_ignore_foreign_redirection(
+        self, tmp_path: Path, *, command_line: bool
+    ) -> None:
+        """Even explicit variable overrides cannot select a different checkout."""
+        project_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        foreign = tmp_path / "foreign"
+        names = (
+            "MAKEFILE_ROOT",
+            "PROJECT_ROOT",
+            "REPOSITORY_ROOT",
+            "RUNTIME_ROOT",
+            "RUNTIME_VENV",
+            "RUNTIME_BIN",
+            "RUNTIME_PYTHON",
+            "FLEXT_INFRA_PYTHON",
+            "UV_PROJECT",
+            "UV_PROJECT_ENVIRONMENT",
+            "VIRTUAL_ENV",
+        )
+        (project_root / "custom.mk").write_text(
+            "post-help:\n\t@printf '%s\\n' "
+            + " ".join(f"'{name}=$({name})'" for name in names)
+            + "\n",
+            encoding="utf-8",
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "help",
+                    *(f"{name}={foreign}" for name in names if command_line),
+                ],
+                cwd=project_root,
+                env=None if command_line else dict.fromkeys(names, str(foreign)),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)
+        tm.that(process.stdout, lacks=str(foreign))
+        for name in (
+            "MAKEFILE_ROOT",
+            "PROJECT_ROOT",
+            "REPOSITORY_ROOT",
+            "RUNTIME_ROOT",
+            "UV_PROJECT",
+        ):
+            tm.that(process.stdout, has=f"{name}={project_root}\n")
+        for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT", "VIRTUAL_ENV"):
+            tm.that(process.stdout, has=f"{name}={project_root / '.venv'}\n")
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
+    @pytest.mark.parametrize("provisioned", [False, True])
     # Why: `make setup` provisions a real environment from the remote
     # index and GitHub sources (an external gate); it never runs inside
     # the offline unit gate and is selected only by direct invocation.
     @pytest.mark.remote
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile
+        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, provisioned: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
         project_root, runtime_root = self._render_makefile(
             tmp_path, profile, bootstrap=True
         )
+        source_marker = project_root / "source-marker"
+        source_marker.write_text("preserve project source", encoding="utf-8")
+        previous_environment_marker = runtime_root / ".venv" / "old-environment"
+        if provisioned:
+            # A copied real interpreter exercises replacement when its physical
+            # location differs from the managed interpreter selected by Mise.
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        sys.executable,
+                        "-m",
+                        "venv",
+                        "--without-pip",
+                        "--copies",
+                        str(runtime_root / ".venv"),
+                    ],
+                    cwd=project_root,
+                )
+            )
+            previous_environment_marker.write_text(
+                "replace owned environment", encoding="utf-8"
+            )
         if profile == c.Infra.MakeProfile.STANDALONE:
             # Without Make's explicit binding, uv selects this parent's default
             # .venv even when --project names the member checkout.
@@ -283,6 +402,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
             msg=setup.stdout + setup.stderr,
         )
         tm.that(setup.stdout, has="installed-runtime-verified")
+        tm.that(source_marker.read_text(encoding="utf-8"), eq="preserve project source")
+        if provisioned:
+            tm.that(setup.stdout, has="setup: replacing environment for Python")
+            tm.that(previous_environment_marker.exists(), eq=False)
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_python = runtime_bin / "python"
         tm.that(runtime_python.is_file(), eq=True)
@@ -785,6 +908,38 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(makefile, has="--rewrite-constraints")
         tm.that(makefile, has="--upgrade --refresh")
         tm.that(makefile, lacks="--constraint-policy")
+
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_help_prints_description_as_literal_data(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Help preserves quotes and expansion syntax without executing them."""
+        description = (
+            'Print checkout\'s "$HOME", $(shell touch make-effect), '
+            "and `touch shell-effect`."
+        )
+        project_root, _repository_root = self._render_makefile(
+            tmp_path,
+            profile,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(name="literal-help", description=description),
+            ),
+        )
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "help"],
+                cwd=project_root,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(process.stdout, has=description)
+        tm.that((project_root / "make-effect").exists(), eq=False)
+        tm.that((project_root / "shell-effect").exists(), eq=False)
 
     def test_generated_make_ignores_forbidden_makeflags_overrides(
         self, tmp_path: Path
