@@ -341,10 +341,12 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.StrMapping:
         """Return {local_name: declared import path} without resolving re-exports."""
-        imports: t.StrMapping = (
-            FlextInfraUtilitiesRopeAnalysisImportState.get_module_semantic_state(
-                rope_project, resource
-            ).declared_imports
+        module = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        imports, _ = FlextInfraUtilitiesRopeAnalysisImportState._module_import_maps(
+            rope_project=rope_project, resource=resource,
+            current_package=FlextInfraUtilitiesRopeAnalysisImportState._package_name_for_module(
+                module.get_name(), resource
+            ),
         )
         return imports
 
@@ -364,6 +366,21 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def declared_facade_owner(
         cls, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.StrPair | None:
+        """Resolve declared or missing local aliases through actual inheritance."""
+        return cls._facade_owner(rope_project, resource, infer_missing=True)
+
+    @classmethod
+    def published_facade_owner(
+        cls, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
+    ) -> t.StrPair | None:
+        """Return only an existing class alias suitable for publication."""
+        return cls._facade_owner(rope_project, resource, infer_missing=False)
+
+    @classmethod
+    def _facade_owner(
+        cls, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource,
+        *, infer_missing: bool,
+    ) -> t.StrPair | None:
         """Resolve a published local class's alias from declarations and its MRO.
 
         The spelling of a module or class supplies no ownership information.
@@ -375,15 +392,34 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             resource.read()
         )
         attributes = module.get_attributes()
+        missing_aliases = frozenset(
+            name for name in exports
+            if name.islower() and not name.startswith("_") and name not in attributes
+        )
         owners: set[tuple[str, str]] = set()
-        for info in cls.get_module_semantic_state(rope_project, resource).class_infos:
-            if info.name not in exports:
+        scope = module.get_scope()
+        if scope is None:
+            raise ValueError(f"module has no declaration scope: {resource.path}")
+        for child in scope.get_scopes():
+            if child.get_kind() != "Class":
                 continue
-            target = attributes[info.name].get_object()
+            target = child.pyobject
+            name = target.get_name()
+            binding = attributes.get(name)
+            if name not in exports or binding is None:
+                continue
+            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
+                binding, resource
+            ):
+                continue
+            if binding.get_object() is not target:
+                continue
             aliases = cls._declared_class_aliases(target)
-            if not aliases:
-                aliases = cls._inherited_class_aliases(target, visited=frozenset())
-            owners.update((alias, info.name) for alias in aliases)
+            if not aliases and infer_missing:
+                aliases = missing_aliases or cls._inherited_class_aliases(
+                    target, visited=frozenset()
+                )
+            owners.update((alias, name) for alias in aliases)
         if len(owners) > 1:
             message = f"ambiguous facade declaration in {resource.path}: {sorted(owners)}"
             raise ValueError(message)
@@ -402,10 +438,50 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             name
             for name, binding in module.get_attributes().items()
             if name in exports
+            and name != target.get_name()
             and name.islower()
             and not name.startswith("_")
+            and FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(binding, resource)
             and binding.get_object() is target
         )
+
+    @staticmethod
+    def inherited_facade_namespaces(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        *,
+        class_name: str,
+    ) -> t.StrSequence:
+        """Prove nested namespace inheritance by Rope scope and attribute identity."""
+        module = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        target = module.get_attribute(class_name).get_object()
+        attributes = target.get_attributes()
+        names: set[str] = set()
+        pending = [(base, frozenset({id(target)})) for base in target.get_superclasses()]
+        while pending:
+            base, ancestors = pending.pop()
+            if id(base) in ancestors:
+                message = f"cyclic facade namespace inheritance at {class_name}"
+                raise ValueError(message)
+            if (
+                not FlextInfraUtilitiesRopeRuntime.is_abstract_class(base)
+                or base.get_module() is None
+            ):
+                continue
+            scope = base.get_scope()
+            if scope is not None:
+                for child in scope.get_scopes():
+                    if child.get_kind() != "Class":
+                        continue
+                    nested = child.pyobject
+                    name = nested.get_name()
+                    binding = attributes.get(name)
+                    if binding is not None and binding.get_object() is nested:
+                        names.add(name)
+            pending.extend(
+                (parent, ancestors | {id(base)}) for parent in base.get_superclasses()
+            )
+        return tuple(sorted(names))
 
     @classmethod
     def _inherited_class_aliases(

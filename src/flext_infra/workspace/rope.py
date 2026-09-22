@@ -394,7 +394,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         if cached is not None:
             return cached
         policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
-            resolved_file, rel_path=resolved_rel_path, current_pkg=current_pkg
+            resolved_file,
+            rope_project=self.rope_project,
+            rel_path=resolved_rel_path,
+            current_pkg=current_pkg,
         )
         self._module_policy_cache[cache_key] = policy
         return policy

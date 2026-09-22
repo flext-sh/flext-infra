@@ -218,10 +218,7 @@ class FlextInfraCodegenLazyInit(
                 f"{name}: {', '.join(locations)}"
                 for name, locations in sorted(duplicates.items())
             )
-            return r[m.Infra.CodegenPhaseAnalysis].fail(
-                "lazy-init duplicate class names must be renamed before planning: "
-                f"{details}"
-            )
+            u.Cli.warning(f"lazy-init duplicate class names: {details}")
         planner = FlextInfraCodegenLazyInitPlanner(
             rope_workspace=rope, lazy_init=config.Infra.tooling.lazy_init
         )
@@ -341,22 +338,13 @@ class FlextInfraCodegenLazyInit(
             if cached is not None:
                 class_names: t.StrSequence = cached
             else:
-                # flext-8hctr: rope's scope_path carries the object's own
-                # qualified tail (a top-level class yields its own name), so
-                # this guard currently skips every object and the scan returns
-                # no collisions; 59 structural part-file convention groups fire
-                # fleet-wide if the predicate is naively corrected. Receipts
-                # key whatever this filter selects by content hash.
+                # Collisions depend on declarations, not imported objects or MRO.
                 class_names = tuple(
                     obj.name
-                    for obj in rope.objects(
-                        entry.file_path,
-                        include_local_scopes=False,
-                        include_references=False,
+                    for obj in u.Infra.class_info_from_source(
+                        entry.file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                     )
-                    if obj.kind == "class"
-                    and not obj.scope_path
-                    and len(obj.name) >= c.Infra.DUPLICATE_CLASS_MIN_LEN
+                    if len(obj.name) >= c.Infra.DUPLICATE_CLASS_MIN_LEN
                     and obj.name[0].isupper()
                 )
                 if snapshot is not None and snapshot.content is not None:

@@ -26,7 +26,7 @@ class TestsFlextInfraRefactorMainCli:
 
     _MISSING_RUNTIME_ALIAS_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels"]\n\n'
+        '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
         "class FlextDemoModels:\n"
         "    pass\n"
     )
@@ -416,7 +416,7 @@ class TestsFlextInfraRefactorMainCli:
         self._apply_census(workspace, rules="runtime_alias")
 
         source = module_path.read_text(encoding="utf-8")
-        tm.that(source, has='"m"')
+        tm.that("m" in u.Infra.public_export_names_source(source), eq=True)
         tm.that(source, has="m = FlextDemoModels")
 
     def test_refactor_census_reports_duplicate_runtime_alias(
