@@ -21,16 +21,28 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
         Unchanged dependencies are captured once before graph construction;
         subsequent imports and MRO resolution only read that closed inventory.
+        Governed project-root entry modules (e.g. conftest.py) are real project
+        resources outside every source folder; they join the closed inventory
+        from disk so consumer rewrites still resolve inside the snapshot.
         """
         inventory = {
             Path(resource.real_path).resolve(): resource.read()
             for resource in project.get_python_files()
         }
+        root = Path(project.root.real_path).resolve()
         for path, source in sources.items():
             resolved = path.resolve()
             if resolved not in inventory:
-                msg = f"Rope proposed source is outside its input inventory: {path}"
-                raise ValueError(msg)
+                try:
+                    relative = resolved.relative_to(root)
+                except ValueError as error:
+                    msg = f"Rope proposed source is outside its input inventory: {path}"
+                    raise ValueError(msg) from error
+                resource = project.get_resource(relative.as_posix())
+                if not Path(resource.real_path).is_file():
+                    msg = f"Rope proposed source is outside its input inventory: {path}"
+                    raise ValueError(msg)
+                inventory[resolved] = resource.read()
             inventory[resolved] = source
         owner = cls.runtime_type(
             "flext_infra._utilities._rope.project", "FlextInfraRopeProject"
