@@ -335,11 +335,15 @@ class FlextInfraConstantsCheck:
         "**/__init__.py",
         "**/api_cases/**",
         "**/_cases/**",
+        "**/codemod/tests/**",
         "**/_cov.py",
         "**/_parts/**",
     )
     "Generated Python surfaces and structured test-case parameterization files "
-    "excluded semantically; Git owns artifact visibility."
+    "excluded semantically; Git owns artifact visibility. ast-grep rule "
+    "fixtures mirror their rule pattern/fix text by design (the fix output IS "
+    "the next stage's valid input), so jscpd would always report the fixture "
+    "pair; the corpus is validated by `ast-grep test`, never by clone count."
 
     # --- Extended duplication gate (R2 consumer+family scope) ---
     JSCPD_CONSUMER_FAMILY_SCOPE: ClassVar[bool] = True
