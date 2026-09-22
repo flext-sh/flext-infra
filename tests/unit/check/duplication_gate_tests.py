@@ -123,5 +123,58 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.issues, eq=())
 
+    @staticmethod
+    def _sibling_prefix_workspace(tmp_path: Path) -> Path:
+        """One workspace whose member directories prefix each other.
+
+        ``fixture-dup`` and ``fixture-dup-extra`` share a string prefix but are
+        distinct projects; a clone between them must never be attributed to the
+        shorter one.
+        """
+        root = tmp_path / "sibling-workspace"
+        root.mkdir()
+        module = "".join(
+            f"def helper_{index}(value: int) -> int:\n"
+            f"    return value + {index}\n\n"
+            for index in range(12)
+        )
+        for name in ("fixture-dup", "fixture-dup-extra"):
+            member = root / name
+            member.mkdir()
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member,
+                name,
+                workspace="sibling-workspace",
+                database="sibling_workspace",
+                issue_prefix="sibling",
+            )
+            package = member / "src" / name.replace("-", "_")
+            package.mkdir(parents=True, exist_ok=True)
+            (package / "duplicated.py").write_text(module, encoding="utf-8")
+        u.Tests.write_workspace_manifest(
+            root, "sibling-workspace", role=c.Infra.MakeProfile.WORKSPACE
+        )
+        u.Tests.declare_workspace_projects(root, ("fixture-dup", "fixture-dup-extra"))
+        return root
+
+    def test_sibling_prefix_project_never_claims_foreign_clones(
+        self, tmp_path: Path
+    ) -> None:
+        """A prefix-named sibling is a separate owner, never a crash.
+
+        Regression: ownership used a string prefix, so ``fixture-dup`` claimed
+        ``fixture-dup-extra``'s clone and ``Path.relative_to`` raised
+        ``ValueError`` instead of reporting a finding.
+        """
+        root = self._sibling_prefix_workspace(tmp_path)
+        own = root / "fixture-dup"
+
+        execution = FlextInfraDuplicationGate(root).check(own, self._ctx(root))
+
+        files = tuple(issue.file for issue in execution.issues)
+        tm.that(execution.result.passed, eq=False)
+        tm.that(files, has="src/fixture_dup/duplicated.py")
+        tm.that(tuple(name for name in files if ".." in name), eq=())
+
 
 __all__ = ["TestsFlextInfraDuplicationGate"]

@@ -203,7 +203,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
                 parents[id(child)] = parent
         runtime_ids: set[int] = set()
         for node in ast.walk(module):
-            if not isinstance(node, ast.AnnAssign) or node.annotation is None:
+            if not isinstance(node, ast.AnnAssign):
                 continue
             owner = parents.get(id(node))
             if not isinstance(owner, ast.ClassDef):

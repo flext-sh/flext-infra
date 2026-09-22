@@ -63,13 +63,22 @@ class FlextInfraCodegenConformExecute(
         cls: type[Self],
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-        *,
-        initial_branch: str | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         root = request.root.expanduser().resolve()
         bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
         initialized_git = False
+        # The supplied WorkspaceSpec already owns the declared integration branch.
+        # Require it before materialization instead of a second divergent input.
+        if (
+            initial_workspace is not None
+            and not (root / c.Infra.GIT_DIR).exists()
+            and initial_workspace.integration is None
+        ):
+            return r[m.Infra.CodegenResult].fail(
+                "initial integration is required to initialize repository Git: "
+                "declare --repository-branch"
+            )
         if initial_workspace is not None and not root.is_dir():
             planned = u.Cli.atomic_plan_directory_chain(root)
             if planned.failure:
@@ -83,7 +92,7 @@ class FlextInfraCodegenConformExecute(
         if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
             # Git owns no answer for an unborn repository: the caller declares
             # the integration branch and a missing declaration fails loudly.
-            if not initial_branch or not initial_branch.strip():
+            if initial_workspace.integration is None:
                 return r[m.Infra.CodegenResult].fail(
                     "initial branch is required to initialize the repository "
                     "Git: declare --repository-branch"
@@ -92,7 +101,7 @@ class FlextInfraCodegenConformExecute(
                 c.Infra.GIT,
                 "init",
                 "--initial-branch",
-                initial_branch.strip(),
+                initial_workspace.integration.branch,
                 str(root),
             ])
             if initialized.failure:

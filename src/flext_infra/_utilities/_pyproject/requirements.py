@@ -106,7 +106,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if raw_value is None:
             return r[bool].ok(True)
         raw_items = u.Cli.json_as_sequence(raw_value)
-        validated_items = u.validate_value(
+        validated_items: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER, raw_items, strict=True
         )
         if validated_items.failure:

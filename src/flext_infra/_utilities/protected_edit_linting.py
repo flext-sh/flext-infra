@@ -79,8 +79,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         ``make check CI=N``. A per-file snapshot validator never runs those.
         """
         lint_tool_gates = {
-            "lint" if entry[0] == "ruff" else entry[0]
-            for entry in c.Infra.LINT_TOOLS
+            "lint" if entry[0] == "ruff" else entry[0] for entry in c.Infra.LINT_TOOLS
         }
         return tuple(
             gate
@@ -102,9 +101,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         selected = tuple(
             entry
             for entry in c.Infra.LINT_TOOLS
-            if gate_names.intersection(
-                {"lint" if entry[0] == "ruff" else entry[0], entry[0]}
-            )
+            if gate_names.intersection({
+                "lint" if entry[0] == "ruff" else entry[0],
+                entry[0],
+            })
         )
         if not selected:
             msg = (

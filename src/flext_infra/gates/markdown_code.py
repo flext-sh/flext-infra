@@ -79,12 +79,24 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Markdown Code"
     can_fix: ClassVar[bool] = True
 
-    def _format_command(self, sources_dir: Path, *, write: bool) -> t.StrSequence:
+    def _format_command(
+        self, project_dir: Path, sources_dir: Path, *, write: bool
+    ) -> t.StrSequence:
         """Build one ruff format invocation (verdict with ``--check``, write otherwise).
 
-        Concise output keeps the verdict line one-match-per-file for the parser.
+        The project's own ``pyproject.toml`` is the format contract owner: embedded
+        blocks must satisfy the exact same configuration (notably ``preview``) that
+        ``make fmt`` and ``refactor mod`` apply to authored source. ``--isolated``
+        ignored that contract and produced a second, divergent formatting, so a
+        documented block could never satisfy both surfaces at once.
         """
-        args = ["format", "--isolated", "--no-cache", "--output-format", "concise"]
+        args = ["format", "--no-cache", "--output-format", "concise"]
+        config_path = project_dir / c.Infra.PYPROJECT_FILENAME
+        args += (
+            ["--config", str(config_path)]
+            if config_path.is_file()
+            else ["--isolated"]
+        )
         return self._python_console_script_command(
             c.Infra.RUFF, *args, *(("--check",) if not write else ()), str(sources_dir)
         )
@@ -172,7 +184,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 return False, True, ()
             ran = True
             formatted = self._run(
-                self._format_command(sources_dir, write=fix), project_dir
+                self._format_command(project_dir, sources_dir, write=fix), project_dir
             )
             format_ok = u.Cli.process_succeeded(formatted.outcome)
             if fix:
@@ -221,19 +233,27 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         ):
             content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
             relative_posix = md_path.relative_to(project_dir).as_posix()
-            parseable = [
-                match.group("code")
+            # Enumerate every non-``notest`` fence exactly like
+            # ``write_fenced_block_sources``: the extraction index counts
+            # fragments that do not compile, so the splice must preserve that
+            # same index. Re-enumerating only parseable blocks shifted every
+            # later source name and silently skipped whole files whenever a
+            # fragment preceded a valid block.
+            staged: t.MutableSequenceOf[t.Pair[int, str]] = []
+            for index, match in enumerate(
+                match
                 for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
                 if TEST_SKIP_MARKER not in match.group("info")
-            ]
-            parseable = [
-                code for code in parseable if not _is_syntax_broken(code, md_path)
-            ]
-            if not parseable:
+            ):
+                code = match.group("code")
+                if _is_syntax_broken(code, md_path):
+                    continue
+                staged.append((index, code))
+            if not staged:
                 continue
             blocks: t.MutableSequenceOf[str] = []
             round_trips = True
-            for index, _original in enumerate(parseable):
+            for index, _original in staged:
                 source = sources_dir / source_name(relative_posix, index)
                 if not source.is_file():
                     round_trips = False

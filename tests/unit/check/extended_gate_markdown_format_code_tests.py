@@ -25,6 +25,12 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     UNFORMATTED = "# Test\n\n```python\nx=1\n```\n"
     SYNTAX_BROKEN = "# Test\n\n```python\ndef broken(:\n    return 1\n```\n"
     NOTEST_PSEUDO = "# Test\n\n```python notest\nthis is @@@ not python\n```\n"
+    FRAGMENT_THEN_UNFORMATTED = (
+        "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n```python\nx=1\n```\n"
+    )
+    FRAGMENT_THEN_FORMATTED = (
+        "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n```python\nx = 1\n```\n"
+    )
     # Prettier only rewraps prose under proseWrap=always (the projected fleet
     # contract); fixtures materialize that config the way `make gen` does.
     PROSE_CONFIG = '{"printWidth": 40, "proseWrap": "always"}'
@@ -153,6 +159,25 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
         tm.that(result.result.passed, eq=True)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED)
+
+    def test_code_gate_fix_splices_block_after_fragment(self, tmp_path: Path) -> None:
+        """A parseable block keeps its extractor index when a fragment precedes it.
+
+        Regression: enumerating only parseable blocks shifted every later
+        source name, so a valid block after a fragment was never spliced.
+        """
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix-after-fragment")
+        readme = project_dir / "README.md"
+        readme.write_text(self.FRAGMENT_THEN_UNFORMATTED, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
+        context = m.Infra.GateContext(
+            repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
+        )
+
+        result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(readme.read_text(encoding="utf-8"), eq=self.FRAGMENT_THEN_FORMATTED)
 
     def test_code_gate_does_not_splice_broken_blocks(self, tmp_path: Path) -> None:
         """A fragment that cannot parse stays untouched and reports nothing."""
