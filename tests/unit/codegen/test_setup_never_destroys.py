@@ -63,11 +63,27 @@ class TestsFlextInfraSetupNeverDestroys:
 
         assert not offenders, f"setup reaches destructive git operations: {offenders}"
 
-    def test_setup_never_clears_the_virtualenv(self) -> None:
-        """A present virtualenv is repaired in place, never recreated."""
-        offenders = self._offending_lines(r"venv\b[^\n]*--clear")
+    def test_setup_clears_the_virtualenv_only_on_interpreter_change(self) -> None:
+        """A present virtualenv on the desired interpreter is repaired in place.
 
-        assert not offenders, f"setup clears the virtualenv: {offenders}"
+        ``venv --clear`` is legal only inside the guarded branch that first
+        proves the live interpreter differs from the resolved desired one and
+        announces the replacement; the plain create path never clears.
+        """
+        stripped_lines = [
+            stripped
+            for line in self._setup_recipe_text().splitlines()
+            if (stripped := line.strip()) and not stripped.startswith("#")
+        ]
+        for index, line in enumerate(stripped_lines):
+            if "--clear" not in line or line.startswith(("printf", "echo")):
+                continue
+            assert "venv" in line, f"unexpected --clear outside venv: {line}"
+            announced = any(
+                "replacing environment for Python" in earlier
+                for earlier in stripped_lines[:index]
+            )
+            assert announced, f"venv --clear without a replacement announcement: {line}"
 
     def test_submodule_setup_initializes_absent_and_verifies_present(self) -> None:
         """Setup creates an absent gitlink and only validates a present checkout."""

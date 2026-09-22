@@ -145,6 +145,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 project_root if relative.parts[0] == c.Infra.DIR_TESTS else package_dir
             ) / relative
             target.parent.mkdir(parents=True, exist_ok=True)
+            if relative.parts[0] == c.Infra.DIR_TESTS:
+                tests_initializer = (
+                    project_root / c.Infra.DIR_TESTS / c.Infra.INIT_PY
+                )
+                if not tests_initializer.exists():
+                    _ = tests_initializer.write_text("", encoding="utf-8")
             _ = target.write_text(module_source, encoding="utf-8")
             TestsFlextInfraUtilities.Tests.initialize_git_repo(project_root)
             return project_root, target
