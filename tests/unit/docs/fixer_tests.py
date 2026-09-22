@@ -117,5 +117,29 @@ class TestsFlextInfraDocsFixer:
         tm.that("````\n" in content, eq=True)
         tm.that("   \n```\n" in content, eq=False)
 
+    def test_fix_rewrites_bare_notest_fences_for_the_mkdocs_build(
+        self, tmp_path: Path
+    ) -> None:
+        """A bare ``notest`` qualifier is rewritten to the attr_list form.
+
+        pymdownx.superfences rejects an info string whose second token is not a
+        known option, so the fence is not rendered as code, its contents leak
+        as prose and the following headings lose their anchors. The attr_list
+        form renders and still carries the marker the code gates skip.
+        """
+        workspace = u.Tests.create_docs_workspace(tmp_path)
+        document = workspace / "docs/notest.md"
+        document.write_text(
+            "# Example\n\n```python notest\n# comment\nimport os\n```\n\n## Next\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraDocFixer().fix(workspace, apply=True)
+
+        tm.ok(result)
+        content = document.read_text(encoding="utf-8")
+        tm.that("```{.python .notest}" in content, eq=True)
+        tm.that("```python notest" in content, eq=False)
+
 
 __all__: list[str] = ["TestsFlextInfraDocsFixer"]

@@ -133,11 +133,18 @@ class FlextInfraUtilitiesDocsFix:
             return f"[{text}]({fixed})"
 
         updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
+        fence_changed = c.Infra.FENCE_NOTEST_ATTR_RE.subn(
+            r"```{.\1 .notest}", updated
+        )
+        updated = fence_changed[0]
         updated, toc_changed = FlextInfraUtilitiesDocs.update_toc(updated)
-        if apply and (link_count > 0 or toc_changed > 0) and updated != original:
+        if apply and updated != original:
             _ = md_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.DocsPhaseItemModel(
-            phase="fix", file=md_file.as_posix(), links=link_count, toc=toc_changed
+            phase="fix",
+            file=md_file.as_posix(),
+            links=link_count + fence_changed[1],
+            toc=toc_changed,
         )
 
     @staticmethod
