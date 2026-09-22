@@ -69,14 +69,14 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         try:
             state = path.lstat()
         except OSError as exc:
-            return r[tuple[int, ...]].fail_op(f"inspect {purpose}", exc)
+            return r[t.VariadicTuple[int]].fail_op(f"inspect {purpose}", exc)
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:
-            return r[tuple[int, ...]].fail(
+            return r[t.VariadicTuple[int]].fail(
                 f"{purpose} is not a physical directory: {path}"
             )
-        return r[tuple[int, ...]].ok(cls._directory_state_key(state))
+        return r[t.VariadicTuple[int]].ok(cls._directory_state_key(state))
 
     @classmethod
     def _config_directory_identity(
@@ -85,16 +85,18 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         try:
             state = config_dir.lstat()
         except FileNotFoundError:
-            return r[tuple[int, ...]].ok(())
+            return r[t.VariadicTuple[int]].ok(())
         except OSError as exc:
-            return r[tuple[int, ...]].fail_op("inspect project config directory", exc)
+            return r[t.VariadicTuple[int]].fail_op(
+                "inspect project config directory", exc
+            )
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:
-            return r[tuple[int, ...]].fail(
+            return r[t.VariadicTuple[int]].fail(
                 f"project config path is not a physical directory: {config_dir}"
             )
-        return r[tuple[int, ...]].ok(cls._directory_state_key(state))
+        return r[t.VariadicTuple[int]].ok(cls._directory_state_key(state))
 
     @staticmethod
     def empty_snapshot() -> m.Infra.ProjectManagedArtifactsSnapshot:
@@ -115,15 +117,17 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 sorted(path for path in config_dir.iterdir() if path.suffix == ".yaml")
             )
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op("enumerate project config sources", exc)
+            return r[t.VariadicTuple[Path]].fail_op(
+                "enumerate project config sources", exc
+            )
         current = cls._config_directory_identity(config_dir)
         if current.failure:
-            return r[tuple[Path, ...]].from_failure(current)
+            return r[t.VariadicTuple[Path]].from_failure(current)
         if current.value != expected_identity:
-            return r[tuple[Path, ...]].fail(
+            return r[t.VariadicTuple[Path]].fail(
                 f"project config directory changed during snapshot: {config_dir}"
             )
-        return r[tuple[Path, ...]].ok(paths)
+        return r[t.VariadicTuple[Path]].ok(paths)
 
     @staticmethod
     def _directory_state_key(state: os.stat_result) -> t.VariadicTuple[int]:

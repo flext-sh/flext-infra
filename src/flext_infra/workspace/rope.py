@@ -56,9 +56,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         default_factory=dict
     )
     _name_index: (
-        MutableMapping[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None
+        MutableMapping[str, tuple[tuple[Path, str, t.VariadicTuple[int]], ...]] | None
     ) = u.PrivateAttr(default_factory=lambda: None)
-    _import_dependents_index: MutableMapping[str, tuple[Path, ...]] | None = (
+    _import_dependents_index: MutableMapping[str, t.VariadicTuple[Path]] | None = (
         u.PrivateAttr(default_factory=lambda: None)
     )
 

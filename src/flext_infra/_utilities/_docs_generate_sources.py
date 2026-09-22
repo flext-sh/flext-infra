@@ -39,13 +39,13 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         """List regular source files through one authenticated tree inventory."""
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
-            return r[tuple[Path, ...]].from_failure(planned)
+            return r[t.VariadicTuple[Path]].from_failure(planned)
         if planned.value.directories:
-            return r[tuple[Path, ...]].ok(())
+            return r[t.VariadicTuple[Path]].ok(())
         inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
         if inventory.failure:
-            return r[tuple[Path, ...]].from_failure(inventory)
-        return r[tuple[Path, ...]].ok(
+            return r[t.VariadicTuple[Path]].from_failure(inventory)
+        return r[t.VariadicTuple[Path]].ok(
             tuple(
                 entry.path
                 for entry in inventory.value.entries
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             repository_root, extra_roots
         )
         if roots.failure:
-            return r[tuple[Path, ...]].from_failure(roots)
+            return r[t.VariadicTuple[Path]].from_failure(roots)
         paths: set[Path] = set()
         for root in roots.value:
             # The docs configuration lives one directory down, and a repository
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 )
             )
             if docs_root_present.failure:
-                return r[tuple[Path, ...]].from_failure(docs_root_present)
+                return r[t.VariadicTuple[Path]].from_failure(docs_root_present)
             fixed_paths = (
                 root / c.Infra.GITMODULES,
                 root / c.Infra.PYPROJECT_FILENAME,
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     fixed_path, required=False
                 )
                 if state.failure:
-                    return r[tuple[Path, ...]].from_failure(state)
+                    return r[t.VariadicTuple[Path]].from_failure(state)
                 if state.value.content is not None:
                     paths.add(fixed_path)
             config_paths = (
@@ -104,7 +104,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 )
             )
             if config_paths.failure:
-                return r[tuple[Path, ...]].from_failure(config_paths)
+                return r[t.VariadicTuple[Path]].from_failure(config_paths)
             paths.update(config_paths.value)
             source_paths = (
                 FlextInfraUtilitiesDocsGenerateSourcesMixin._source_tree_files(
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 )
             )
             if source_paths.failure:
-                return r[tuple[Path, ...]].from_failure(source_paths)
+                return r[t.VariadicTuple[Path]].from_failure(source_paths)
             paths.update(source_paths.value)
             guide_paths = (
                 FlextInfraUtilitiesDocsGenerateSourcesMixin._source_tree_files(
@@ -125,14 +125,14 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 )
             )
             if guide_paths.failure:
-                return r[tuple[Path, ...]].from_failure(guide_paths)
+                return r[t.VariadicTuple[Path]].from_failure(guide_paths)
             paths.update(guide_paths.value)
         templates_root = Path(__file__).absolute().parent.parent / "templates"
         paths.update({
             templates_root / c.Infra.TEMPLATE_MKDOCS_PROJECT,
             templates_root / c.Infra.TEMPLATE_MKDOCS_ROOT,
         })
-        return r[tuple[Path, ...]].ok(tuple(sorted(paths)))
+        return r[t.VariadicTuple[Path]].ok(tuple(sorted(paths)))
 
     @staticmethod
     def docs_verify_sources(

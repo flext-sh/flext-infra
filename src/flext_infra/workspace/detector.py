@@ -399,7 +399,7 @@ class FlextInfraWorkspaceDetector(
     ]:
         """Validate every direct governed .gitmodules entry before planning writes."""
         declared = u.Infra.git_declared_submodule_paths(repository_root)
-        result_type = r[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]
+        result_type = r[tuple[tuple[m.Infra.RepositoryRef, ...], t.VariadicTuple[Path]]]
         if declared.failure:
             return result_type.from_failure(declared)
         subprojects: list[m.Infra.RepositoryRef] = []
@@ -715,7 +715,7 @@ class FlextInfraWorkspaceDetector(
         """Load exclusions for governed repositories; ignore ungoverned trees."""
         resolved_root = repository_root.expanduser().resolve()
         if not cls._beads_path(resolved_root).is_file():
-            return r[tuple[Path, ...]].ok(())
+            return r[t.VariadicTuple[Path]].ok(())
         # External analysis exclusions are declared exclusively by this
         # checkout's own .gitmodules. A composed project may follow its Beads
         # ledger from the parent, but that does not make the parent's complete
@@ -723,24 +723,24 @@ class FlextInfraWorkspaceDetector(
         # inherited workspace here revalidated every sibling once per tooling
         # phase and turned one member conform into thousands of Git processes.
         if not (resolved_root / c.Infra.GITMODULES).is_file():
-            return r[tuple[Path, ...]].ok(())
+            return r[t.VariadicTuple[Path]].ok(())
         # Why (flext-gajwa): a governed root owns its own repository. A tree
         # that carries .beads/.gitmodules but no .git (a test sandbox, a
         # scratch copy) is ungoverned; asking Git here would discover an
         # ancestor checkout and validate *its* submodules against *this*
         # .gitmodules (sandbox escape observed under flext/.flext-runtime).
         if not (resolved_root / ".git").exists():
-            return r[tuple[Path, ...]].ok(())
+            return r[t.VariadicTuple[Path]].ok(())
         # Governance is declared, not matched: only a checkout that declares
         # its own workspace manifest (provider key plus canonical URL) is a
         # governed repository; anything else is an ungoverned tree whose
         # exclusions are none.
         if not u.Infra.workspace_manifest_path(resolved_root).is_file():
-            return r[tuple[Path, ...]].ok(())
+            return r[t.VariadicTuple[Path]].ok(())
         workspace = cls.load_workspace_spec(resolved_root)
         if workspace.failure:
-            return r[tuple[Path, ...]].from_failure(workspace)
-        return r[tuple[Path, ...]].ok(
+            return r[t.VariadicTuple[Path]].from_failure(workspace)
+        return r[t.VariadicTuple[Path]].ok(
             cls.workspace_analysis_exclusion_paths(workspace.value)
         )
 

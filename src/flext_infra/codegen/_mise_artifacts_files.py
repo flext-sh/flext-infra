@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraMiseArtifactsFiles:
@@ -95,13 +95,13 @@ class FlextInfraMiseArtifactsFiles:
             path = seed_directory / Path(name).name
             loaded = u.Cli.files_read_binary(path)
             if loaded.failure:
-                return r[tuple[bytes, ...]].from_failure(loaded)
+                return r[t.VariadicTuple[bytes]].from_failure(loaded)
             if not loaded.value:
-                return r[tuple[bytes, ...]].fail(
+                return r[t.VariadicTuple[bytes]].fail(
                     f"packaged Mise launcher seed is empty: {path}"
                 )
             contents.append(loaded.value)
-        return r[tuple[bytes, ...]].ok(tuple(contents))
+        return r[t.VariadicTuple[bytes]].ok(tuple(contents))
 
     @classmethod
     def read_state(

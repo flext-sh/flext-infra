@@ -156,12 +156,12 @@ class TestsFlextInfraAuditorStaleSymbols:
                 "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
                 "if TYPE_CHECKING:\n"
                 "    from demo_pkg.facade import LiveSymbol as LiveSymbol\n\n"
-                "_LAZY_MODULES: dict[str, tuple[str, ...]] = {\n"
+                "_LAZY_MODULES: dict[str, t.VariadicTuple[str]] = {\n"
                 '    ".facade": ("LiveSymbol",),\n'
                 "}\n\n"
                 "_LAZY_IMPORTS = build_lazy_import_map(_LAZY_MODULES, sort_keys=False)\n\n"
-                '_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
-                "__all__: tuple[str, ...] = tuple(_PUBLIC_EXPORTS)\n\n"
+                '_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
+                "__all__: t.VariadicTuple[str] = tuple(_PUBLIC_EXPORTS)\n\n"
                 "install_lazy_exports(\n"
                 "    __name__,\n"
                 "    globals(),\n"
@@ -219,7 +219,7 @@ class TestsFlextInfraAuditorStaleSymbols:
             package_root / "_exports_parts" / "all_names.py",
             (
                 '"""Demo public export names."""\n\n'
-                'DEMO_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
+                'DEMO_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
             ),
         )
 
@@ -261,7 +261,7 @@ class TestsFlextInfraAuditorStaleSymbols:
                 '"""Demo export registry."""\n\n'
                 "from demo_pkg._exports_part import DEMO_LAZY_IMPORTS_PART\n\n"
                 "DEMO_LAZY_IMPORTS = {**DEMO_LAZY_IMPORTS_PART}\n"
-                'DEMO_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
+                'DEMO_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
             ),
         )
         self._write(

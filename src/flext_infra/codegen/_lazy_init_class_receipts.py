@@ -43,7 +43,7 @@ class FlextInfraCodegenLazyInitClassReceipts:
         """Return the content address of one module's bytes."""
         return hashlib.sha256(content).hexdigest()
 
-    def class_names(self, content: bytes) -> tuple[str, ...] | None:
+    def class_names(self, content: bytes) -> t.VariadicTuple[str] | None:
         """Return the cached class names for these bytes, or None on miss."""
         cached = self._entries.get(self.content_key(content))
         return tuple(cached) if cached is not None else None

@@ -174,7 +174,7 @@ def real_python_package(tmp_path: Path) -> Path:
     (src_dir / "identity.py").write_text(
         '"""Substantive unique source consumed by real scanner fixtures."""\n\n'
         "from __future__ import annotations\n\n"
-        "def normalize_identity(parts: tuple[str, ...]) -> str:\n"
+        "def normalize_identity(parts: t.VariadicTuple[str]) -> str:\n"
         '    """Normalize one ordered identity without duplicated code."""\n'
         "    normalized = tuple(part.strip() for part in parts if part.strip())\n"
         "    if not normalized:\n"
@@ -288,7 +288,7 @@ def mod_workspace(tmp_path: Path) -> Path:
                 "\n"
                 "    @staticmethod\n"
                 "    def serialization_lock_execute(\n"
-                "        paths: tuple[str, ...], timeout: float\n"
+                "        paths: t.VariadicTuple[str], timeout: float\n"
                 "    ) -> None:\n"
                 '        """Accept the governed call shape without any effect."""\n'
                 "\n"
@@ -300,7 +300,7 @@ def mod_workspace(tmp_path: Path) -> Path:
                 "\n"
                 "\n"
                 "u = _FixtureFacade()\n"
-                "paths: tuple[str, ...] = ()\n"
+                "paths: t.VariadicTuple[str] = ()\n"
                 "timeout: float = 1.0\n"
                 "\n"
                 "u.Infra.serialization_lock_execute(paths, timeout)\n"

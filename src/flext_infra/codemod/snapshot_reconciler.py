@@ -51,7 +51,7 @@ class FlextInfraCodemodSnapshotReconciler:
                 raise TypeError(msg)
             test_dirs.append(raw_test_config.get(c.Infra.CODEMOD_TEST_DIR_KEY))
         declared[c.Infra.CODEMOD_TEST_DIR_KEY] = test_dirs
-        resolved: MutableMapping[str, tuple[Path, ...]] = {}
+        resolved: MutableMapping[str, t.VariadicTuple[Path]] = {}
         for key, declared_paths in declared.items():
             directories: list[Path] = []
             for raw_dir in declared_paths:

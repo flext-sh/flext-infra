@@ -103,7 +103,7 @@ class FlextInfraMiseWorkspacePlanner:
     def layout_from_selectors(
         self,
         scope_root: Path,
-        selectors: tuple[str, ...],
+        selectors: t.VariadicTuple[str],
         *,
         transaction_id: str | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
@@ -171,7 +171,7 @@ class FlextInfraMiseWorkspacePlanner:
     def _layout_from_identity(
         self,
         identity: m.Infra.GitIdentityReport,
-        selectors: tuple[str, ...],
+        selectors: t.VariadicTuple[str],
         *,
         transaction_id: str | None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:

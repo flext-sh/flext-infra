@@ -42,22 +42,22 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 or ".." in project.parts
                 or ".." in target.parts
             ):
-                return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
+                return r[t.VariadicTuple[DocsRenderedArtifactTuple]].fail(
                     f"docs publication paths must be absolute and lexical: {target}"
                 )
             try:
                 target.relative_to(project)
             except ValueError:
-                return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
+                return r[t.VariadicTuple[DocsRenderedArtifactTuple]].fail(
                     f"docs publication target escapes project {project}: {target}"
                 )
             if target in targets:
-                return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
+                return r[t.VariadicTuple[DocsRenderedArtifactTuple]].fail(
                     f"duplicate docs publication target: {target}"
                 )
             targets.add(target)
             normalized.append((project, target, content))
-        return r[tuple[DocsRenderedArtifactTuple, ...]].ok(tuple(normalized))
+        return r[t.VariadicTuple[DocsRenderedArtifactTuple]].ok(tuple(normalized))
 
     @staticmethod
     def docs_required_directories(
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 for part in artifact.relative_path.parent.parts:
                     parent /= part
                     required.add(parent)
-        return r[tuple[Path, ...]].ok(
+        return r[t.VariadicTuple[Path]].ok(
             tuple(
                 sorted(
                     required,
@@ -121,16 +121,16 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         """Describe stale files owned by one generated tree as absent artifacts."""
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(planned)
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(planned)
         if planned.value.directories:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].ok(())
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].ok(())
         inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
         if inventory.failure:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(inventory)
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(inventory)
         expected_paths = {
             path for path, _content in rendered if path.is_relative_to(root)
         }
-        return r[tuple[DocsRenderedArtifactTuple, ...]].ok(
+        return r[t.VariadicTuple[DocsRenderedArtifactTuple]].ok(
             tuple(
                 (project, entry.path, None)
                 for entry in inventory.value.entries

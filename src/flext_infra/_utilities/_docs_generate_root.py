@@ -51,7 +51,9 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 )
             )
             if src_exists.failure:
-                return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(src_exists)
+                return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(
+                    src_exists
+                )
             if src_exists.value:
                 src_paths.append(src_dir.relative_to(repository_root).as_posix())
             if scope.path == repository_root:
@@ -153,14 +155,16 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             )
         )
         if api_pruned.failure:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(api_pruned)
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(
+                api_pruned
+            )
         projects_pruned = (
             FlextInfraUtilitiesDocsGenerateRootMixin._prune_generated_tree_artifacts(
                 repository_root, repository_root / "docs/projects/generated", rendered
             )
         )
         if projects_pruned.failure:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(
                 projects_pruned
             )
         return FlextInfraUtilitiesDocsGenerateRootMixin.docs_normalize_artifacts((
