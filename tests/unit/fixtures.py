@@ -60,6 +60,16 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         "yaml": "pyyaml",
     }
     dependencies = ", ".join(f'"{distributions[name]}"' for name in modules)
+    infrastructure = tm.ok(
+        u.Infra.configured_repository_ref(
+            codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
+        )
+    )
+    integration = tm.ok(
+        u.Infra.flext_integration_line(
+            codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
+        )
+    )
     root = u.Tests.mk_project(
         tmp_path,
         "detector-fixture",
@@ -71,7 +81,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
             '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
-            f'"flext-infra @ {_PROJECT_ROOT.as_uri()}"]\n'
+            f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration.branch}"]\n'
             "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),

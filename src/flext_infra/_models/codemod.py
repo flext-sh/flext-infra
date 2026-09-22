@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_core import m
 from flext_infra import t
@@ -11,6 +11,19 @@ from flext_infra import t
 
 class FlextInfraModelsCodemod:
     """Typed reports emitted by ``make mod``."""
+
+    class FamilyFlattenRule(m.ContractModel):
+        """One installed, closed family-shape operation (ADR-017)."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Exact rule receipt identity")]
+        operation: Annotated[
+            Literal["flatten-single-wrapper"],
+            m.Field(description="Supported semantic family transformation"),
+        ]
+        collision: Annotated[
+            Literal["prefix-wrapper"],
+            m.Field(description="Member-name collision resolution policy"),
+        ]
 
     class ModFixtureDirectories(m.ArbitraryTypesModel):
         """Validated physical directories selected by one ast-grep owner."""

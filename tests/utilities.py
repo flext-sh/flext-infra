@@ -145,13 +145,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 project_root if relative.parts[0] == c.Infra.DIR_TESTS else package_dir
             ) / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            # The tests tier is a package exactly like src/<pkg> (ADR-018:
-            # internal tiers declare their own letter beside an initializer);
-            # the facade placement law counts a package root by that
-            # initializer, so the fixture must materialize it.
-            tests_init = project_root / c.Infra.DIR_TESTS / c.Infra.INIT_PY
-            if relative.parts[0] == c.Infra.DIR_TESTS and not tests_init.is_file():
-                tests_init.write_text("", encoding="utf-8")
+            if relative.parts[0] == c.Infra.DIR_TESTS:
+                tests_initializer = project_root / c.Infra.DIR_TESTS / c.Infra.INIT_PY
+                if not tests_initializer.exists():
+                    _ = tests_initializer.write_text("", encoding="utf-8")
             _ = target.write_text(module_source, encoding="utf-8")
             TestsFlextInfraUtilities.Tests.initialize_git_repo(project_root)
             return project_root, target

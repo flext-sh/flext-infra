@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import shlex
+from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 
 from ..base import FlextInfraServiceBase
 from ._workspace_check_reports import FlextInfraWorkspaceCheckReportsMixin
@@ -104,8 +105,40 @@ class FlextInfraWorkspaceChecker(
         )
         if run_result.failure:
             return r[bool].from_failure(run_result)
+        # Operator law 2026-09-22: warning-gate findings stay visible in the
+        # logs and reports but never decide the check verdict. The policy is
+        # owned by the CHECKED repository's config/tooling.yaml when it
+        # declares one (each repo warns its own known debt); the producer's
+        # declared policy is the fallback. Unknown gate ids fail closed so a
+        # typo cannot silently unblock.
+        policy_result = cls._repository_warning_policy(params.repository_root)
+        if policy_result.failure:
+            return r[bool].from_failure(policy_result)
+        warning_gates = policy_result.value
+        unknown_policy_gates = warning_gates - c.Infra.ALLOWED_GATES
+        if unknown_policy_gates:
+            return r[bool].fail(
+                "check policy declares unknown warning gates: "
+                f"{', '.join(sorted(unknown_policy_gates))}"
+            )
+        for project in run_result.value:
+            warned = sorted(
+                gate_id
+                for gate_id, execution in project.gates.items()
+                if gate_id in warning_gates and not execution.result.passed
+            )
+            if warned:
+                u.Cli.info(
+                    f"WARNING: {project.project} non-blocking gate findings: "
+                    f"{', '.join(warned)} (visible in reports; does not fail)"
+                )
         failed_projects = [
-            project for project in run_result.value if not project.passed
+            project
+            for project in run_result.value
+            if any(
+                gate_id not in warning_gates and not execution.result.passed
+                for gate_id, execution in project.gates.items()
+            )
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
@@ -115,6 +148,43 @@ class FlextInfraWorkspaceChecker(
                 f"({total_findings} findings; see the check summary and reports)"
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def _repository_warning_policy(repository_root: Path) -> p.Result[frozenset[str]]:
+        """Resolve the checked repository's own warning-gate policy.
+
+        ``config/tooling.yaml`` under the checked repository declares the
+        gates whose known debt stays non-blocking FOR THAT REPOSITORY; a
+        repository that declares no policy inherits the producer's declared
+        default. Malformed per-repo declarations fail closed here instead of
+        silently widening the verdict.
+        """
+        policy_path = repository_root / "config" / "tooling.yaml"
+        if not policy_path.is_file():
+            return r[frozenset[str]].ok(
+                frozenset(config.Infra.check_policy.warning_gates)
+            )
+        loaded = u.Cli.config_load(policy_path, expand_env=False)
+        if loaded.failure:
+            return r[frozenset[str]].from_failure(loaded)
+        infra_section = loaded.value.data.get("Infra")
+        if not isinstance(infra_section, Mapping):
+            return r[frozenset[str]].ok(
+                frozenset(config.Infra.check_policy.warning_gates)
+            )
+        policy_section = infra_section.get("check_policy")
+        if policy_section is None:
+            return r[frozenset[str]].ok(
+                frozenset(config.Infra.check_policy.warning_gates)
+            )
+        validated = u.validate_value(
+            m.Infra.CheckPolicySpec, policy_section
+        )
+        if validated.failure:
+            return r[frozenset[str]].fail_op(
+                f"invalid check policy ({policy_path})", validated.error
+            )
+        return r[frozenset[str]].ok(frozenset(validated.value.warning_gates))
 
     @staticmethod
     def _resolve_project_targets(

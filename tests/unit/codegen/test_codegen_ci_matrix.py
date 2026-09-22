@@ -33,6 +33,8 @@ class TestsFlextInfraCodegenCiMatrix:
             output_root=root,
             repository_url="https://github.com/flext-sh/flext-demo.git",
             repository_branch="0.12.0-dev",
+            flext_repository_url=u.Tests.repository_ref(config.Infra.name).url,
+            flext_repository_ref=u.Tests.provider_branch(),
             provider="flext-sh",
             license="MIT",
             author_name="FLEXT Team",

@@ -82,13 +82,11 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             changed = False
             if action == "rewrite_runtime_alias":
                 convention = rope.convention(file_path)
-                alias = (
-                    convention.module_policy.expected_alias
-                    or c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name, "")
-                )
-                target_name = next(iter(sorted(object_names)), "")
-                if not alias or not target_name:
-                    continue
+                alias = convention.module_policy.expected_alias
+                target_name = convention.module_policy.expected_family
+                if not alias or not target_name or object_names != {target_name}:
+                    message = f"ambiguous runtime alias repair for {file_path}"
+                    raise ValueError(message)
                 source = rope.source(file_path)
                 updated = self._rewrite_runtime_alias_source(
                     source, alias=alias, target_name=target_name

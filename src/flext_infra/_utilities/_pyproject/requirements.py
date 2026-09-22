@@ -124,14 +124,18 @@ class FlextInfraUtilitiesPyprojectRequirements:
             normalized_items.append(normalized.value)
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
-
-            def requirement_key(requirement: str) -> t.Pair[str, str]:
-                name = FlextInfraUtilitiesDependencies.dep_name(requirement) or ""
-                return name, requirement
-
-            canonical = tuple(sorted(canonical, key=requirement_key))
+            canonical = tuple(sorted(canonical, key=cls.dependency_order_key))
         u.Cli.toml_sync_string_list(container, key, canonical)
         return r[bool].ok(True)
+
+    @staticmethod
+    def dependency_order_key(requirement: str) -> t.Pair[str, str]:
+        """Order preserved and conformed requirements by name and complete spec."""
+        name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+        if name is None:
+            message = "dependency ordering requires a named requirement"
+            raise ValueError(message)
+        return name, requirement
 
     @classmethod
     def _canonical_requirement(

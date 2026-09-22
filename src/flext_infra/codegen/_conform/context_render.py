@@ -296,7 +296,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         flext_line = u.Infra.flext_integration_line(
             codegen=codegen,
             repository_root=repository_root,
-            declared=workspace.integration,
+            bootstrap_source=(
+                workspace.flext_source
+                if not (repository_root / c.Infra.PYPROJECT_FILENAME).exists()
+                else None
+            ),
         )
         if flext_line.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(flext_line)
@@ -442,11 +446,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=integration_branch.value,
-                # Only the workspace-context root may render internal
-                # dependencies bare: pyproject_conform rejects direct `@`
-                # sources for workspace members at the root, where the
-                # [tool.uv.sources] workspace overlay owns the source.
-                workspace_context_root=profile is c.Infra.MakeProfile.WORKSPACE,
+                # A workspace root owns sources only for its actual members.
+                # External FLEXT dependencies still need their own Git source.
+                workspace_dependency_distributions=(
+                    tuple(member.distribution for member in workspace.subprojects)
+                    if profile is c.Infra.MakeProfile.WORKSPACE
+                    else ()
+                ),
                 year=project.year,
             )
         )

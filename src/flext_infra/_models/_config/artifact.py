@@ -94,6 +94,17 @@ class FlextInfraConfigModelsArtifact:
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        fresh_import_entry_points_warn_only: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Report declared console/gui script entry points that fail "
+                    "to import as fresh-import warnings instead of failing the "
+                    "conformance transaction; package-export probes always "
+                    "stay blocking"
+                )
+            ),
+        ] = False
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
@@ -611,6 +622,20 @@ class FlextInfraConfigModelsArtifact:
         patterns: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
+        ] = ()
+
+    class CheckPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Quality-gate blocking policy: warning gates report without failing."""
+
+        warning_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Gate ids whose findings stay visible as warnings and never "
+                    "block the check verdict"
+                ),
+            ),
         ] = ()
 
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):

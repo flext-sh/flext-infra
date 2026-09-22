@@ -9,6 +9,7 @@ is detected from live Git or declared explicitly by a caller.
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, m, p, t
@@ -115,7 +116,7 @@ class FlextInfraUtilitiesRepository:
         *,
         codegen: m.Infra.CodegenConfigSpec,
         repository_root: Path,
-        declared: m.Infra.WorkspaceIntegrationSpec | None = None,
+        bootstrap_source: m.Infra.CodegenBootstrapSource | None = None,
     ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
         """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
 
@@ -141,30 +142,21 @@ class FlextInfraUtilitiesRepository:
         source = codegen.infra_repository
         distribution = source.distribution
         preference = codegen.branch_policy.integration_branch_preference
-        if (
-            declared is not None
-            and declared.organization
-            and declared.base_url
-            and declared.provider == source.provider
-        ):
-            base_url = declared.base_url.removesuffix("/")
-            if not base_url.startswith("https://"):
+        if bootstrap_source is not None:
+            if (repository_root / c.Infra.PYPROJECT_FILENAME).exists():
                 return r[m.Infra.WorkspaceIntegrationSpec].fail(
-                    f"declared FLEXT line base URL must be HTTPS: {base_url}"
+                    "bootstrap provenance cannot replace existing project sources"
                 )
-            return r[m.Infra.WorkspaceIntegrationSpec].ok(
-                m.Infra.WorkspaceIntegrationSpec(
-                    provider=declared.provider,
-                    branch=declared.branch,
-                    organization=declared.organization,
-                    base_url=base_url,
-                )
+            canonical = cls._canonical_https_url(bootstrap_source.url)
+            if canonical.failure:
+                return r[m.Infra.WorkspaceIntegrationSpec].from_failure(canonical)
+            detected = r[t.Pair[str, str]].ok((canonical.value, bootstrap_source.ref))
+        else:
+            detected = cls._detected_infra_source(
+                repository_root=repository_root,
+                distribution=distribution,
+                preference=preference,
             )
-        detected = cls._detected_infra_source(
-            repository_root=repository_root,
-            distribution=distribution,
-            preference=preference,
-        )
         if detected.failure:
             return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
         url, ref = detected.value
@@ -248,21 +240,39 @@ class FlextInfraUtilitiesRepository:
             f"and no workspace manifest entry: {repository_root}"
         )
 
+    @classmethod
+    def validate_git_remote_url(cls, url: str) -> p.Result[str]:
+        """Return the canonical HTTPS form of one declared Git remote URL.
+
+        A bootstrap declares its remotes before any project metadata exists,
+        so an unusable URL must fail here — before a directory or Git effect —
+        instead of surfacing later as a generated dependency source.
+        """
+        return cls._canonical_https_url(url.strip())
+
     @staticmethod
     def _canonical_https_url(url: str) -> p.Result[str]:
         """Canonicalize one Git remote URL to its HTTPS form, fail loud."""
         if url.startswith("https://"):
-            return r[str].ok(url)
-        if url.startswith("http://"):
-            return r[str].ok(f"https://{url.removeprefix('http://')}")
-        if url.startswith("ssh://"):
-            return r[str].ok(
-                f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
-            )
-        if url.startswith("git@") and ":" in url:
+            candidate = url
+        elif url.startswith("http://"):
+            candidate = f"https://{url.removeprefix('http://')}"
+        elif url.startswith("ssh://"):
+            candidate = f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
+        elif url.startswith("git@") and ":" in url:
             host, _, path = url.removeprefix("git@").partition(":")
-            return r[str].ok(f"https://{host}/{path}")
-        return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
+            candidate = f"https://{host}/{path}"
+        else:
+            return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
+        # A URL without a host (``https:///repo``) or without a repository
+        # path (``https://host``) carries no origin identity: reject it as a
+        # declared remote rather than letting a generated source point at it.
+        parsed = urlparse(candidate)
+        if not parsed.netloc or not parsed.path.strip("/"):
+            return r[str].fail(
+                f"git remote url must name a host and repository path: {url}"
+            )
+        return r[str].ok(candidate)
 
     @classmethod
     def _declared_dependency_source(
@@ -282,7 +292,10 @@ class FlextInfraUtilitiesRepository:
 
         from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
 
-        text = u.Cli.files_read_text(pyproject_path)
+        # Identity detection consumes the same owner-recovered declaration as
+        # metadata and template composition. Raw projection bytes may still
+        # carry managed merge blocks while the transaction is only planning.
+        text = u.Infra.live_pyproject_text(pyproject_path)
         if text.failure:
             return r[t.Pair[str, str]].from_failure(text)
         payload = u.Cli.toml_mapping_from_text(text.value)

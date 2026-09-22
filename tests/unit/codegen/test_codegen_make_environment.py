@@ -909,6 +909,26 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(makefile, has="--upgrade --refresh")
         tm.that(makefile, lacks="--constraint-policy")
 
+    def test_workspace_without_local_members_retains_external_flext_sources(
+        self, tmp_path: Path
+    ) -> None:
+        """Workspace role alone cannot turn external dependencies into members."""
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE, bootstrap=True
+        )
+        rendered = (project_root / "pyproject.toml").read_text(encoding="utf-8")
+        requirements = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
+        external = tuple(
+            requirement
+            for requirement in requirements
+            if (name := u.Infra.dep_name(requirement)) and name.startswith("flext-")
+        )
+        assert external
+        for requirement in external:
+            url, ref = tm.ok(u.Infra.declared_git_source(requirement))
+            assert url.endswith(f"/{u.Infra.dep_name(requirement)}.git")
+            assert ref == u.Tests.provider_branch()
+
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_help_prints_description_as_literal_data(
         self, tmp_path: Path, profile: c.Infra.MakeProfile

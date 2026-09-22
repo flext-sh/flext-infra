@@ -3,6 +3,14 @@ Infra:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
 
+    # Operator law 2026-09-22: the pyproject template declares `.cli:main`
+    # for every distribution while most member cli facades predate that
+    # contract. Until the fleet converges the facades (bead
+    # flext-1pquc, gen-fixed-point campaign), declared-script import
+    # failures warn instead of failing the conformance transaction.
+    # Package-export probes stay blocking either way.
+    fresh_import_entry_points_warn_only: true
+
     # Per-module scc code-LOC ceiling. Operator instruction 2026-09-07:
     # the former 1000-LOC allowance stands (supersedes the 200 constant).
     loc_cap:
@@ -1508,12 +1516,14 @@ Infra:
       # machine-written settings/hooks surface and its digest sidecar is
       # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
+          # settings.json stays out of this runtime-state block: the governed
+          # provider-projections section (and its tests) own it as a tracked
+          # governance artifact, and in gitignore the last matching rule wins,
+          # so a name block here silently re-ignored the whitelisted file.
           patterns:
             - ".github/hooks/"
             - "*/.hooks.json.agents-governance.json"
-            - ".claude/settings.json"
             - ".claude/*.agents-governance.json"
-            - ".gemini/settings.json"
             - ".gemini/*.agents-governance.json"
             - ".claude/settings.local.json"
         - name: "Operator-private local config overrides"

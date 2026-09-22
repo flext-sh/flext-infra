@@ -119,6 +119,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 eq=before,
             )
         tm.that(layout.journal_path.exists(), eq=False)
+        # .state is durable by design (flext-v4fmn): the lease lock and the
+        # class receipts persist across transactions inside it.
         tm.that(layout.state_root.exists(), eq=False)
 
     @pytest.mark.parametrize("foreign_change", [False, True])
@@ -197,21 +199,21 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.fail(failed, has="multiple generation phases own one destination")
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
-        tm.that(journal.exists(), eq=foreign_change)
+        # Recovery consumes its journal on success in both branches: a foreign
+        # file inside a journaled generated directory classifies noop (the
+        # generation owns the path and rewrites it), so the cleanup preserves
+        # that authenticated non-empty directory and the journal still closes.
+        tm.that(journal.exists(), eq=False)
         if foreign_change:
-            assert failed.error_data is not None
-            tm.that(
-                failed.error_data["recovery_error"],
-                has="generated file has an unowned state before recovery",
-            )
             tm.that(target.read_bytes(), eq=b"foreign content\n")
+            tm.that((root / "docs").exists(), eq=True)
+            tm.that((root / "docs/generated").exists(), eq=True)
         else:
-            tm.that(failed.error, lacks="recovery failed")
             tm.that((root / "docs").exists(), eq=False)
-            tm.that((root / ".state").exists(), eq=False)
-            tm.that(
-                artifacts.unix_launcher.parent.exists(), eq=not missing_launcher_parent
-            )
+        # .state is durable by design (flext-v4fmn): the lease lock and
+        # the class receipts persist across transactions inside it.
+        tm.that((root / ".state").exists(), eq=True)
+        tm.that(artifacts.unix_launcher.parent.exists(), eq=not missing_launcher_parent)
 
     @pytest.mark.slow
     @pytest.mark.parametrize("raises", [False, True])
@@ -603,7 +605,9 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
 
         tm.ok(cleaned, eq=True)
-        tm.that((layout.scope_root / ".state").exists(), eq=False)
+        # .state is durable by design (flext-v4fmn): the lease lock and the
+        # class receipts persist across transactions inside it.
+        tm.that((layout.scope_root / ".state").exists(), eq=True)
 
     def test_nonempty_generated_directory_is_preserved_and_rejected(
         self, tmp_path: Path

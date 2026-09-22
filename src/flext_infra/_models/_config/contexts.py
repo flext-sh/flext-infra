@@ -536,18 +536,16 @@ class FlextInfraConfigModelsContexts:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
-        workspace_context_root: Annotated[
-            bool,
+        workspace_dependency_distributions: Annotated[
+            t.VariadicTuple[str],
             m.Field(
                 description=(
-                    "Whether this render is the workspace-context root: true "
-                    "means internal dependencies render as bare names and the "
-                    "[tool.uv.sources] workspace overlay owns their source; "
-                    "false (standalone/publishable members) renders direct Git "
-                    "requirement sources."
+                    "Exact local distributions whose source is owned by this "
+                    "workspace root's uv overlay. Every external dependency and "
+                    "every standalone member retains its declared Git source."
                 )
             ),
-        ] = False
+        ] = ()
         year: Annotated[int, m.Field(description="Copyright year")]
 
         @m.field_validator("hatch_build_hook_path")
