@@ -27,8 +27,7 @@ class FlextInfraDepsFloorProfileWriter:
         # Round-trip load preserves comments and ordering
         loaded = u.Cli.yaml_roundtrip_load_map(ssot_path)
         if loaded.failure:
-            u.Cli.error(f"failed to load {ssot_path}: {loaded.failure}")
-            return ()
+            raise ValueError(loaded.error or f"failed to load {ssot_path}")
 
         document = loaded.value
 
@@ -92,14 +91,12 @@ class FlextInfraDepsFloorProfileWriter:
         # Dump back with comments preserved
         dumped = u.Cli.yaml_roundtrip_dump_text(document)
         if dumped.failure:
-            u.Cli.error(f"failed to dump codegen.yaml: {dumped.failure}")
-            return ()
+            raise ValueError(dumped.error or "failed to dump codegen.yaml")
 
         # Atomic write
         write_result = u.Cli.atomic_write_text_file(ssot_path, dumped.value)
         if write_result.failure:
-            u.Cli.error(f"failed to write {ssot_path}: {write_result.failure}")
-            return ()
+            raise ValueError(write_result.error or f"failed to write {ssot_path}")
 
         return tuple(changes)
 

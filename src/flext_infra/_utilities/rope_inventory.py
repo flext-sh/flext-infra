@@ -583,8 +583,8 @@ class FlextInfraUtilitiesRopeInventory:
         if expected:
             return expected
         if kind == "constant":
-            constants: str = c.Infra.FAMILY_SUFFIXES.get("c", "Constants")
-            return constants
+            # Closed SSOT map: an absent key is a defect, never a fallback.
+            return c.Infra.FAMILY_SUFFIXES["c"]
         return FlextInfraUtilitiesRopeInventory._actual_tier(convention)
 
     @staticmethod

@@ -188,7 +188,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             "[project]\n"
             f'name = "{name}"\n'
             'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             "dependencies = []\n"
             "[dependency-groups]\n"
             f'dev = ["{infra.distribution} @ git+{infra.url}@{branch}"]\n',
@@ -489,7 +489,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             pyproject.write_text(
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} governed fixture"\n'
-                'requires-python = ">=3.13,<3.14"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
                 f'[project.urls]\nRepository = "{repository_url}"\n{tooling}',

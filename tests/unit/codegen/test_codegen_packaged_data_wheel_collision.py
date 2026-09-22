@@ -57,7 +57,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             "[project]\n"
             f'name = "{FIXTURE_DISTRIBUTION}"\n'
             'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             f'dependencies = ["{declared_source}"]\n',
             encoding="utf-8",
         )

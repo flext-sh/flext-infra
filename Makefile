@@ -1013,7 +1013,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
-		--apply --rewrite-constraints --skip-check "$$@"
+		--apply --rewrite-constraints "$$@"
 	$(call _run_for_all_projects,--check)
 
 

@@ -97,10 +97,19 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
     def _is_except_sentinel(self, node: ast.ExceptHandler) -> bool:
         if node.type is not None and self._declares_broad_exception(node):
             return False
-        return (
-            not self._body_has_raise_or_fail(node.body)
-            and self._first_sentinel_return(node.body) is not None
+        if self._body_has_raise_or_fail(node.body):
+            return False
+        returned = self._first_sentinel_return(node.body)
+        if returned is None:
+            return False
+        # A ``True`` return inside a narrow except branch is a fail-closed
+        # predicate decision ("treat as broken / has behavior"), not a
+        # swallowed failure. Guards keep ``True`` flagged: a failure branch
+        # returning True is fail-open.
+        is_true_constant = (
+            isinstance(returned.value, ast.Constant) and returned.value.value is True
         )
+        return not is_true_constant
 
     @staticmethod
     def _guard_info(node: ast.If) -> str | None:
@@ -135,6 +144,8 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
         function = self._enclosing_function(node)
         if function is not None and self._is_findings_collector(function):
             return
+        if self._body_records_failure(node.body):
+            return
         context = self._sentinel_return_context(node)
         if context is None:
             return
@@ -166,6 +177,8 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
     def _add_except_sentinel(self, node: ast.ExceptHandler) -> None:
         function = self._enclosing_function(node)
         if function is not None and self._is_boolean_predicate(function):
+            return
+        if self._body_records_failure(node.body):
             return
         context = self._sentinel_return_context(node)
         if context is None:

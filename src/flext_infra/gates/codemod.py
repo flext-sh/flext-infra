@@ -139,7 +139,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
         """Resolve the composed ast-grep rule files for one project."""
         planned = u.Infra.codemod_rule_plan(project_dir)
         if planned.failure:
-            return ()
+            # A failed rule plan must never read as "no rules to scan" — that
+            # would let the codemod gate pass on absent scrutiny.
+            raise ValueError(planned.error or "codemod rule plan failed")
         return tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
 
     @override
