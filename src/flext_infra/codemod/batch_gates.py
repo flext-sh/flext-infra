@@ -59,7 +59,9 @@ class FlextInfraModGateEngine:
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
                 cls.stage_rule_fixture_root(
-                    config_root=config_root, temp_root=temp_root
+                    config_root=config_root,
+                    temp_root=temp_root,
+                    regenerate_snapshots=owner_is_governed,
                 )
                 if owner_is_governed:
                     for fixture_root in (config_root, temp_root):
@@ -85,11 +87,17 @@ class FlextInfraModGateEngine:
         return r.ok(True)
 
     @staticmethod
-    def stage_rule_fixture_root(*, config_root: Path, temp_root: Path) -> None:
+    def stage_rule_fixture_root(
+        *, config_root: Path, temp_root: Path, regenerate_snapshots: bool = False
+    ) -> None:
         """Copy declared ast-grep inputs only, rejecting links and special files."""
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
             config_root
         )
+        snapshot_roots = {
+            directory / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
+            for directory in directories.test_dirs
+        }
         pending = [config_root / c.Infra.CODEMOD_CONFIG_FILENAME]
         pending.extend((
             *directories.rule_dirs,
@@ -117,6 +125,14 @@ class FlextInfraModGateEngine:
                 parents=True, exist_ok=True
             )
         for source in sorted(files):
+            if (
+                regenerate_snapshots
+                and source.parent in snapshot_roots
+                and source.name.endswith(c.Infra.CODEMOD_SNAPSHOT_SUFFIX)
+            ):
+                # Owned projections are regenerated from all declared test cases.
+                # Foreign providers retain their snapshots for verification.
+                continue
             shutil.copy2(
                 source,
                 temp_root / source.relative_to(config_root),

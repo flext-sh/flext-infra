@@ -102,12 +102,8 @@ class FlextInfraModelsMixins:
             """Resolved output directory when provided."""
             if self.output_dir is None:
                 return None
-            path = (
-                self.output_dir
-                if isinstance(self.output_dir, Path)
-                else Path(self.output_dir)
-            )
-            return path.resolve()
+            # The validated field is a string; resolve it at the Path boundary.
+            return Path(self.output_dir).resolve()
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.

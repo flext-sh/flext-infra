@@ -127,6 +127,7 @@ class TestsFlextInfraTransactionLease:
             waiter = context.Process(
                 target=self._acquire_when_granted, args=(member, granted)
             )
+            assert waiter is not None
             waiter.start()
             # While the holder is live the contender stays blocked: it neither
             # acquires the lease nor touches the journal.
