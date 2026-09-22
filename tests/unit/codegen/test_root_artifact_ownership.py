@@ -129,7 +129,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     "[project]\n"
                     'name = "flext-demo"\n'
                     'version = "0.1.0"\n'
-                    'requires-python = ">=3.13,<3.14"\n'
+                    f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                     "dependencies = []\n"
                     "[project.urls]\n"
                     'Repository = "https://github.com/flext-sh/flext-demo"\n'
@@ -188,7 +188,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     root / "pyproject.toml",
                     f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
                     f'description = "{dist} governed fixture"\n'
-                    'requires-python = ">=3.13,<3.14"\n'
+                    f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                     'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                     'dependencies = ["flext-core>=0.1.0"]\n',
                 )

@@ -115,7 +115,15 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     def git_add_paths(
         cls, request: m.Infra.GitPathsRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
-        """Stage multiple paths via ``git add --force``."""
+        """Stage multiple paths via ``git add --force``.
+
+        The sole caller is the release stamp stage: it stages exactly the
+        paths the preceding ``git status --porcelain`` listed (the preflight
+        proved the checkout clean, so every listed path was produced by the
+        stamp). ``--force`` is required because generated release artifacts
+        may also match ``.gitignore`` projections; ignore rules must never
+        silently drop a proven produced path from the release commit.
+        """
         try:
             repo = cls._repo(request.repo_root)
             repo.index.add(list(request.paths), force=True)

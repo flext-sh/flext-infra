@@ -28,13 +28,21 @@ class TestsFlextInfraConfigLocalOverrides:
     def test_tracked_configs_keep_fleet_defaults(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Without a local file the tracked scalar survives untouched."""
+        """Without a local file the tracked scalar survives untouched.
+
+        The expectation is the tracked SSOT read itself (P0): any legitimate
+        config change keeps both loads equal, and only a broken merge diverges.
+        """
         self._copy_tracked_configs(tmp_path)
+        baseline = FlextInfraConfig.fetch_global()
         monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
         FlextInfraConfig.reset_for_testing()
         try:
             fresh = FlextInfraConfig.fetch_global()
-            tm.that(fresh.Infra.codegen.loc_cap.max_lines, eq=1000)
+            tm.that(
+                fresh.Infra.codegen.loc_cap.max_lines,
+                eq=baseline.Infra.codegen.loc_cap.max_lines,
+            )
         finally:
             FlextInfraConfig.reset_for_testing()
 
@@ -143,7 +151,10 @@ class TestsFlextInfraConfigLocalOverrides:
         monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
         FlextInfraConfig.reset_for_testing()
         try:
-            with pytest.raises(e.ValidationError, match="providers"):
+            # The settings boundary surfaces pydantic's own ValidationError
+            # (public alias e.PydanticValidationError); the exterminated
+            # providers registry is rejected as a forbidden extra field.
+            with pytest.raises(e.PydanticValidationError, match="providers"):
                 FlextInfraConfig.fetch_global()
         finally:
             FlextInfraConfig.reset_for_testing()

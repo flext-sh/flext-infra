@@ -92,8 +92,6 @@ if TYPE_CHECKING:
     from .test_pyproject_conform_topology_sources import (
         TestsFlextInfraPyprojectConformTopologySources,
     )
-    from .test_version_diag import TestsFlextInfraVersionDiag
-    from .test_version_diag2 import TestsFlextInfraVersionDiagExtra
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCheckReportContract",
@@ -119,8 +117,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraPyprojectConformPreservesLintScope",
     "TestsFlextInfraPyprojectConformTopologySources",
     "TestsFlextInfraServiceBaseAlias",
-    "TestsFlextInfraVersionDiag",
-    "TestsFlextInfraVersionDiagExtra",
     "TestsFlextInfraWorkspaceFactory",
     "_utilities",
     "c",
@@ -257,8 +253,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_pyproject_conform_topology_sources": (
                 "TestsFlextInfraPyprojectConformTopologySources",
             ),
-            ".test_version_diag": ("TestsFlextInfraVersionDiag",),
-            ".test_version_diag2": ("TestsFlextInfraVersionDiagExtra",),
             ".transformers": ("transformers",),
             ".validate": ("validate",),
             ".workspace": ("workspace",),

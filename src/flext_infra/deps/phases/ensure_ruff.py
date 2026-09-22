@@ -32,7 +32,13 @@ class FlextInfraEnsureRuffConfigPhase:
             return ()
         discovered = u.Infra.discover_projects(project_dir)
         if discovered.failure:
-            return ()
+            # A real discovery error (malformed pyproject, IO) must never
+            # silently generate root Ruff settings with an empty child-package
+            # list — that conformed artifact would drift from the workspace
+            # with no signal. Mirrors _workspace_exclusion_globs fail-loud.
+            raise ValueError(
+                discovered.error or "workspace project discovery is unavailable"
+            )
         return sorted({
             project.package_name
             for project in discovered.value

@@ -112,6 +112,20 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         return FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
 
     @staticmethod
+    def docs_scope_enabled(docs_meta: t.JsonMapping) -> bool:
+        """Return the ``enabled`` docs-scope flag for pre-loaded metadata.
+
+        The flag defaults to ``True`` only when the key is absent. A present
+        but non-bool value is config drift and fails loud — it must never be
+        coerced into silently opting the project in or out.
+        """
+        enabled = docs_meta.get("enabled", True)
+        if not isinstance(enabled, bool):
+            msg = f"[tool.flext.docs].enabled must be a bool, got {enabled!r}"
+            raise TypeError(msg)
+        return enabled
+
+    @staticmethod
     def package_name_from_payload(
         project_root: Path, payload: t.JsonMapping, docs_meta: t.JsonMapping
     ) -> str:
