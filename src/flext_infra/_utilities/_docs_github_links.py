@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 # export, when the root namespace is still initializing — a root from-import
 # would re-enter the partial namespace and fail.
 from flext_infra._config import config
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import m
+from flext_infra import t
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraConfig
