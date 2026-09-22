@@ -314,9 +314,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
             if not execution.result.passed:
                 for finding in execution.result.errors:
                     u.Cli.info(finding)
-                # A parser finding must not hide the producer's original failure.
-                if execution.raw_output.strip() and any(
-                    issue.code == "TOOL_ERROR" for issue in execution.issues
+                # Missing or malformed findings must retain the producer's failure.
+                if execution.raw_output.strip() and (
+                    not execution.result.errors
+                    or any(issue.code == "TOOL_ERROR" for issue in execution.issues)
                 ):
                     u.Cli.info(execution.raw_output)
                 return r[m.Cli.PipelineStageResult].fail(

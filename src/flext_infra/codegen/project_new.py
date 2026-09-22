@@ -184,7 +184,7 @@ class FlextInfraCodegenProjectNew(
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         return FlextInfraCodegenConform.execute_request(
-            request, initial_workspace=workspace, initial_branch=repository_branch
+            request, initial_workspace=workspace
         )
 
 
