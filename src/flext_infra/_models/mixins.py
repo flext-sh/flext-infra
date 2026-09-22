@@ -102,6 +102,7 @@ class FlextInfraModelsMixins:
             """Resolved output directory when provided."""
             if self.output_dir is None:
                 return None
+            # The validated field is a string; resolve it at the Path boundary.
             return Path(self.output_dir).resolve()
 
     class WriteMixin(ScopeMixin):

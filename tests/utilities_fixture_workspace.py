@@ -177,6 +177,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         """Materialize and load the canonical minimal standalone fixture."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+        infra = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            config.Infra.name
+        )
+        branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()
         package_root = project_dir / "src" / name.replace("-", "_")
         package_root.mkdir(parents=True, exist_ok=True)
         (package_root / "__init__.py").write_text("", encoding="utf-8")
@@ -185,7 +189,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             f'name = "{name}"\n'
             'version = "0.1.0"\n'
             'requires-python = ">=3.13,<3.14"\n'
-            "dependencies = []\n",
+            "dependencies = []\n"
+            "[dependency-groups]\n"
+            f'dev = ["{infra.distribution} @ git+{infra.url}@{branch}"]\n',
             encoding="utf-8",
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(

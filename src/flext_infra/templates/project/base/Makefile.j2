@@ -422,10 +422,8 @@ _setup_activated:
 
 _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
-{% for verb in make.verbs %}
-	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
-{% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
+{% for verb in (make.verbs | list) + (extra_verbs | list) %}
+	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}';
 {% endfor %}
 
 # A project owns the sources declared by its manifest. The generated setup

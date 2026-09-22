@@ -1292,6 +1292,7 @@ Infra:
             - "!docs/"
             - "!examples/"
             - "!.github/"
+            - "!codemod/"
             - "!src/"
             - "!tests/"
             - "!typings/"

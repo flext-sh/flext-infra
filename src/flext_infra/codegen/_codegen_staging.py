@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import stat
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, get_args
 
 from flext_core import r
 from flext_infra import m, u
@@ -16,7 +16,10 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-_PHASES = frozenset({"conform", "lazy-init", "docs"})
+_PHASES = frozenset({
+    "conform",
+    *get_args(m.Infra.CodegenPhaseAnalysis.model_fields["phase"].annotation),
+})
 
 
 def stage_file_plans(
