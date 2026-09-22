@@ -99,7 +99,11 @@ class TestsFlextInfraCodegenPackagedDataWheel:
     def _wheel_force_include(root: Path) -> t.JsonMapping:
         """Read the rendered force-include map, empty when the table is absent."""
         wheel = TestsFlextInfraCodegenPackagedDataWheel._wheel_target(root)
-        return u.Tests.toml_mapping(wheel["force-include"]) if "force-include" in wheel else {}
+        return (
+            u.Tests.toml_mapping(wheel["force-include"])
+            if "force-include" in wheel
+            else {}
+        )
 
     @staticmethod
     def _sdist_only_include(root: Path) -> t.JsonList:
@@ -111,7 +115,9 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         return u.Tests.toml_list(sdist["only-include"])
 
     @pytest.mark.slow
-    def test_root_only_data_dir_stays_force_included(self, infra_git_repo: Path) -> None:
+    def test_root_only_data_dir_stays_force_included(
+        self, infra_git_repo: Path
+    ) -> None:
         """A root data dir the package does not carry still reaches the wheel."""
         self._prepare_project(infra_git_repo, package_config=False)
 

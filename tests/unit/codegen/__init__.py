@@ -73,6 +73,9 @@ if TYPE_CHECKING:
         TestsFlextInfraCodegenManifestlessExisting,
     )
     from .test_codegen_mise_artifacts import TestsFlextInfraCodegenMiseArtifacts
+    from .test_codegen_packaged_data_wheel_collision import (
+        TestsFlextInfraCodegenPackagedDataWheel,
+    )
     from .test_codegen_pipeline_performance import (
         TestsFlextInfraCodegenPipelinePerformance,
     )
@@ -86,6 +89,9 @@ if TYPE_CHECKING:
     from .test_codegen_runtime_profiles import TestsFlextInfraCodegenRuntimeProfiles
     from .test_codegen_setup_submodules import TestsFlextInfraCodegenSetupSubmodules
     from .test_codegen_version_file import TestsFlextInfraCodegenVersionFile
+    from .test_codegen_workflow_retirement import (
+        TestsFlextInfraCodegenWorkflowRetirement,
+    )
     from .test_file_participant_recovery import TestsFlextInfraFileParticipantRecovery
     from .test_gen_respects_invocation_scope import (
         TestsFlextInfraGenRespectsInvocationScope,
@@ -159,6 +165,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenMakeEnvironment",
     "TestsFlextInfraCodegenManifestlessExisting",
     "TestsFlextInfraCodegenMiseArtifacts",
+    "TestsFlextInfraCodegenPackagedDataWheel",
     "TestsFlextInfraCodegenPipelinePerformance",
     "TestsFlextInfraCodegenPyprojectConform",
     "TestsFlextInfraCodegenRenderPurityGolden",
@@ -169,6 +176,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenSetupSubmodules",
     "TestsFlextInfraCodegenVersionFile",
     "TestsFlextInfraCodegenViolationKey",
+    "TestsFlextInfraCodegenWorkflowRetirement",
     "TestsFlextInfraFileParticipantRecovery",
     "TestsFlextInfraGenRespectsInvocationScope",
     "TestsFlextInfraLazyInitAliasInheritance",
@@ -294,6 +302,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenManifestlessExisting",
             ),
             ".test_codegen_mise_artifacts": ("TestsFlextInfraCodegenMiseArtifacts",),
+            ".test_codegen_packaged_data_wheel_collision": (
+                "TestsFlextInfraCodegenPackagedDataWheel",
+            ),
             ".test_codegen_pipeline_performance": (
                 "TestsFlextInfraCodegenPipelinePerformance",
             ),
@@ -313,6 +324,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenSetupSubmodules",
             ),
             ".test_codegen_version_file": ("TestsFlextInfraCodegenVersionFile",),
+            ".test_codegen_workflow_retirement": (
+                "TestsFlextInfraCodegenWorkflowRetirement",
+            ),
             ".test_file_participant_recovery": (
                 "TestsFlextInfraFileParticipantRecovery",
             ),

@@ -216,9 +216,7 @@ class FlextInfraModelsCodegenJournalModels:
         link_count: Annotated[
             int | None,
             m.Field(
-                ge=1,
-                strict=True,
-                description="Observed physical source link count",
+                ge=1, strict=True, description="Observed physical source link count"
             ),
         ]
         absent_parent: Annotated[
