@@ -20,7 +20,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     """
 
     _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(
-        tool for tool, _ in c.Infra.LINT_TOOLS
+        entry[0] for entry in c.Infra.LINT_TOOLS
     )
 
     @classmethod

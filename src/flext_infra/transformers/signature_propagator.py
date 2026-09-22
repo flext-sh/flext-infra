@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
 
-from .._utilities.transformer_base import FlextInfraChangeTrackingTransformer
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import m, t
 
 
-class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer):
+class FlextInfraRefactorSignaturePropagator(FlextInfraRopeTransformer):
     """Apply declarative signature migrations to call sites via rope + regex.
 
     Uses rope's ``parse_string_module`` to locate ``Call`` nodes by name,

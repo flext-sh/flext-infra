@@ -17,7 +17,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
-        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
+        self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
@@ -268,7 +268,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         return "."
 
     @staticmethod
-    @override
     def _repository_provider(
         repository: m.Infra.RepositoryRef,
     ) -> p.Result[m.Infra.ProviderIdentitySpec]:
