@@ -70,7 +70,7 @@ class FlextInfraConstantsDocs:
     """Regex matching ``python`` fenced blocks; ``body`` group yields contents."""
 
     PYTHON_FENCE_FIX_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<open>```python[ \t]*\n)(?P<body>.*?)^```[ \t]*$",
+        r"^(?P<indent>[ \t]*)(?P<open>```python[ \t]*\n)(?P<body>.*?)^```[ \t]*$",
         re.MULTILINE | re.DOTALL,
     )
     """Regex matching ``python`` fenced blocks for fix-in-place replacement."""

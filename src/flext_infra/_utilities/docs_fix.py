@@ -92,7 +92,8 @@ class FlextInfraUtilitiesDocsFix:
                 closed_body = (
                     fixed_body if fixed_body.endswith("\n") else f"{fixed_body}\n"
                 )
-                return f"{match.group('open')}{closed_body}```"
+                indent = match.group("indent")
+                return f"{indent}{match.group('open')}{closed_body}{indent}```"
 
             repaired = c.Infra.WELDED_FENCE_RE.sub(
                 lambda match: (
