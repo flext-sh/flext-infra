@@ -236,6 +236,36 @@ class FlextInfraModelsRefactor(
             m.Field(description="Per-file textual edits planned (dry-run only)"),
         ] = None
 
+    # -- CSV-driven Rename Models ---------------------------------------------
+
+    class ApplyRenamesInput(mm.WriteMixin, m.ContractModel):
+        """Validated CLI request for CSV-driven symbol renames."""
+
+        csv: Annotated[
+            t.NonEmptyStr, m.Field(description="Path to the old,new rename-list CSV")
+        ]
+        roots: Annotated[
+            t.StrSequence,
+            m.Field(min_length=1, description="Directories to scan for rename targets"),
+        ]
+
+    class ApplyRenamesReport(m.ArbitraryTypesModel):
+        """Summary of one CSV-driven rename pass."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+
+        label: Annotated[t.NonEmptyStr, m.Field(description="Rename-list label")]
+        files_scanned: Annotated[
+            t.NonNegativeInt, m.Field(description="Text files scanned")
+        ]
+        occurrences: Annotated[
+            t.NonNegativeInt, m.Field(description="Pending occurrences in check mode")
+        ] = 0
+        files_changed: Annotated[
+            t.NonNegativeInt, m.Field(description="Files rewritten in apply mode")
+        ] = 0
+        applied: Annotated[bool, m.Field(description="Whether changes were applied")]
+
     # -- Namespace Enforcer Models ---------------------------------------------
 
     class ParsedPythonModule(m.ArbitraryTypesModel):
