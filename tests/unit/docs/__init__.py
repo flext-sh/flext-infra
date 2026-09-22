@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from .builder_tests import TestsFlextInfraBuilder
     from .fixer_internals_tests import TestsFlextInfraFixerInternals
     from .fixer_tests import TestsFlextInfraDocsFixer
+    from .formatter_tests import TestsFlextInfraDocsFormatter
     from .generator_bundle_tests import TestsFlextInfraDocsGeneratorBundle
     from .generator_guides_tests import TestsFlextInfraDocsGeneratorGuides
     from .generator_internals_tests import TestsFlextInfraDocsGeneratorInternals
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from .main_commands_tests import TestsFlextInfraDocsMainCommands
     from .main_entry_tests import TestsFlextInfraDocsMainEntry
     from .main_tests import TestsFlextInfraDocsMain
+    from .make_docs_config_tests import TestsFlextInfraMakeDocsActionsConfig
     from .render_guides_index_tests import TestsFlextInfraDocsRenderGuidesIndex
     from .render_tests import TestsFlextInfraDocsRender
     from .server_tests import TestsFlextInfraDocServer
@@ -56,6 +58,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraBuilderScope",
     "TestsFlextInfraDocServer",
     "TestsFlextInfraDocsFixer",
+    "TestsFlextInfraDocsFormatter",
     "TestsFlextInfraDocsGenerator",
     "TestsFlextInfraDocsGeneratorBundle",
     "TestsFlextInfraDocsGeneratorGuides",
@@ -73,6 +76,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraDocsValidator",
     "TestsFlextInfraDocsValidatorInternals",
     "TestsFlextInfraFixerInternals",
+    "TestsFlextInfraMakeDocsActionsConfig",
     "TestsFlextInfraWorkspaceManifest",
 )
 
@@ -94,6 +98,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".builder_tests": ("TestsFlextInfraBuilder",),
             ".fixer_internals_tests": ("TestsFlextInfraFixerInternals",),
             ".fixer_tests": ("TestsFlextInfraDocsFixer",),
+            ".formatter_tests": ("TestsFlextInfraDocsFormatter",),
             ".generator_bundle_tests": ("TestsFlextInfraDocsGeneratorBundle",),
             ".generator_guides_tests": ("TestsFlextInfraDocsGeneratorGuides",),
             ".generator_internals_tests": ("TestsFlextInfraDocsGeneratorInternals",),
@@ -102,6 +107,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".main_commands_tests": ("TestsFlextInfraDocsMainCommands",),
             ".main_entry_tests": ("TestsFlextInfraDocsMainEntry",),
             ".main_tests": ("TestsFlextInfraDocsMain",),
+            ".make_docs_config_tests": ("TestsFlextInfraMakeDocsActionsConfig",),
             ".render_guides_index_tests": ("TestsFlextInfraDocsRenderGuidesIndex",),
             ".render_tests": ("TestsFlextInfraDocsRender",),
             ".server_tests": ("TestsFlextInfraDocServer",),
