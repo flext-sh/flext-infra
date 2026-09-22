@@ -13,6 +13,7 @@ from flext_cli import u as cli_u
 
 from ._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from ._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
+from ._utilities._rope.signature_patch import FlextInfraUtilitiesRopeSignaturePatch
 from ._utilities.base import FlextInfraUtilitiesBase
 from ._utilities.census import FlextInfraUtilitiesRefactorCensus
 from ._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -164,6 +165,9 @@ class FlextInfraUtilities(cli_u):
 
         _rope_pep695_patch_applied: bool = (
             FlextInfraUtilitiesRopePep695Patch.apply() or True
+        )
+        _rope_signature_patch_applied: bool = (
+            FlextInfraUtilitiesRopeSignaturePatch.apply() or True
         )
 
 

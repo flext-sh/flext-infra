@@ -158,12 +158,33 @@ class FlextInfraProtocolsRope(Protocol):
         type-parameter handlers without depending on rope's private class.
         """
 
-        # The two handler slots the PEP 695 patch replaces. Rope exposes them
-        # under private names because it has no public registration API; the
-        # protocol states that shape so the patch stays statically typed
+        # The handler slots the rope patches replace. Rope exposes them under
+        # private names because it has no public registration API; the
+        # protocol states that shape so the patches stay statically typed
         # instead of reaching into an untyped probe.
         _handle_function_def_node: Callable[..., None]
         _ClassDef: Callable[..., None]
+        _arguments: Callable[..., None]
+        _arg: Callable[..., None]
+
+        @runtime_checkable
+        class ArgumentsNode(Protocol):
+            """Signature capabilities consumed by the rope signature patch."""
+
+            posonlyargs: t.SequenceOf[p.AttributeProbe]
+            args: t.SequenceOf[p.AttributeProbe]
+            vararg: p.AttributeProbe | None
+            kwonlyargs: t.SequenceOf[p.AttributeProbe]
+            kw_defaults: t.SequenceOf[p.AttributeProbe | None]
+            kwarg: p.AttributeProbe | None
+            defaults: t.SequenceOf[p.AttributeProbe]
+
+        @runtime_checkable
+        class ArgumentNode(Protocol):
+            """Single-parameter capabilities consumed by the rope patch."""
+
+            arg: str
+            annotation: p.AttributeProbe | None
 
         # flext-j47u (codex): model Rope node capabilities structurally; the
         # FLEXT static path never imports or traverses Python's AST directly.
