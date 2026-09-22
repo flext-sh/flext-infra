@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from .smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .typing_unifier import FlextInfraRefactorTypingUnifier
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraBooleanLogicFixer",
     "FlextInfraEnsureCanonicalTImportMixin",

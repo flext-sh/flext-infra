@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from .generator import FlextInfraDocGenerator
     from .server import FlextInfraDocServer
     from .validator import FlextInfraDocValidator
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorChecksMixin",

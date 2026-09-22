@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from .test_modernizer_workspace import TestsFlextInfraDepsModernizerWorkspace
     from .test_project_gitignore_patterns import TestsFlextInfraProjectGitignorePatterns
     from .test_project_mise_tools import TestsFlextInfraProjectMiseTools
+
+
 __all__: tuple[str, ...] = (
     "ExtraPathsTestSupport",
     "TestsFlextInfraDepsDetectionTypings",
