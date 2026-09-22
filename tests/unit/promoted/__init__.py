@@ -9,11 +9,29 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .test_execution_contract import TestsFlextInfraPromotedExecutionContract
     from .test_process_boundary import TestsFlextInfraPromotedProcessBoundary
 __all__: tuple[str, ...] = (
     "TestsFlextInfraPromotedExecutionContract",
     "TestsFlextInfraPromotedProcessBoundary",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -21,6 +39,24 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".test_execution_contract": ("TestsFlextInfraPromotedExecutionContract",),
             ".test_process_boundary": ("TestsFlextInfraPromotedProcessBoundary",),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

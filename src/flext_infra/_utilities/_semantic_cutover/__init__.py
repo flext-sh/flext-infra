@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     from .aliases import FlextInfraUtilitiesSemanticCutoverAliases
     from .base import FlextInfraUtilitiesSemanticCutoverBase
     from .edits import FlextInfraUtilitiesSemanticCutoverEdits
-    from .family_flatten import FlextInfraUtilitiesSemanticFamilyFlatten
-    from .family_references import FlextInfraUtilitiesSemanticFamilyReferences
     from .nesting import FlextInfraUtilitiesSemanticCutoverNesting
     from .nesting_cst import FlextInfraUtilitiesSemanticCutoverNestingCst
     from .nesting_references import FlextInfraUtilitiesSemanticCutoverNestingReferences
@@ -30,8 +28,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
-    "FlextInfraUtilitiesSemanticFamilyFlatten",
-    "FlextInfraUtilitiesSemanticFamilyReferences",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -41,8 +37,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".aliases": ("FlextInfraUtilitiesSemanticCutoverAliases",),
             ".base": ("FlextInfraUtilitiesSemanticCutoverBase",),
             ".edits": ("FlextInfraUtilitiesSemanticCutoverEdits",),
-            ".family_flatten": ("FlextInfraUtilitiesSemanticFamilyFlatten",),
-            ".family_references": ("FlextInfraUtilitiesSemanticFamilyReferences",),
             ".nesting": ("FlextInfraUtilitiesSemanticCutoverNesting",),
             ".nesting_cst": ("FlextInfraUtilitiesSemanticCutoverNestingCst",),
             ".nesting_references": (
