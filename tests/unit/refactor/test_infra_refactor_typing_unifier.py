@@ -266,8 +266,8 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         tm.that(updated, eq=source)
         tm.that(changes, eq=[])
 
-    def test_removes_unused_preserves_used_when_import_precedes_usage(self) -> None:
-        """Verify removes unused preserves used when import precedes usage."""
+    def test_unifier_preserves_used_names_when_import_precedes_usage(self) -> None:
+        """Used typing names survive the unification of the import header."""
         source = (
             "from __future__ import annotations\n"
             "from typing import ClassVar, Final, Literal, override\n\n"
@@ -279,10 +279,16 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "id": "unify-typings",
             "fix_action": "unify_typings",
         })
-        _updated, _changes = rule.apply(source)
+        updated, _changes = rule.apply(source)
+        tm.that(updated, has="NAME: Final[str] = 'app'")
+        tm.that(updated, has="ITEMS: ClassVar[t.StrSequence]")
 
-    def test_removes_all_imports_when_none_used_import_first(self) -> None:
-        """Verify removes all imports when none used import first."""
+    def test_unifier_leaves_fully_unused_import_line_untouched(self) -> None:
+        """The unifier unifies used names; unused-only imports stay as-is.
+
+        Unused-import removal belongs to the dead-import owner, not the
+        typing unifier — this test pins that boundary.
+        """
         source = (
             "from typing import Literal, override\n\ndef foo() -> None:\n    pass\n"
         )
@@ -290,7 +296,9 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "id": "unify-typings",
             "fix_action": "unify_typings",
         })
-        _updated, _changes = rule.apply(source)
+        updated, changes = rule.apply(source)
+        tm.that(updated, eq=source)
+        tm.that(changes, eq=[])
 
     def test_typealias_conversion_preserves_used_typing_siblings(self) -> None:
         """Verify typealias conversion preserves used typing siblings."""

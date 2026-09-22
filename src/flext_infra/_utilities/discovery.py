@@ -75,12 +75,9 @@ class FlextInfraUtilitiesDiscovery(
     @staticmethod
     def _relative_path_parts(resolved: Path, project_root: Path | None) -> t.StrTuple:
         """Return path parts relative to project root when possible."""
-        if project_root is None:
+        if project_root is None or not resolved.is_relative_to(project_root):
             return ()
-        try:
-            return resolved.relative_to(project_root).parts
-        except ValueError:
-            return ()
+        return resolved.relative_to(project_root).parts
 
     @staticmethod
     def _normalized_python_parts(resolved: Path, path_parts: t.StrTuple) -> t.StrTuple:

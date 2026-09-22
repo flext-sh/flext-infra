@@ -13,7 +13,24 @@ class FlextInfraConstantsDocs:
     """Docs infrastructure constants."""
 
     DEFAULT_DOCS_OUTPUT_DIR: ClassVar[str] = ".reports/docs"
+    # Registered docs CLI action names; make.docs.actions must stay inside this
+    # surface so the generated Makefile loop can never dispatch a missing verb.
+    DOCS_ACTION_IDS: ClassVar[frozenset[str]] = frozenset({
+        "audit",
+        "build",
+        "collect",
+        "fix",
+        "fmt",
+        "generate",
+        "serve",
+        "validate",
+    })
     DOCS_CONFIG_FILENAME: ClassVar[str] = "docs_config.json"
+    # Prettier --write lists every processed file as "<path> <duration>ms";
+    # the fmt phase report surfaces exactly that surface per scope.
+    DOCS_PRETTIER_WRITE_LINE_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^(?P<file>\S+)\s+\d+(?:\.\d+)?ms$"
+    )
     DOCS_INSECURE_WEB_SCHEME: ClassVar[str] = "http"
     DOCS_SECURE_WEB_SCHEME: ClassVar[str] = "https"
     # A generated document may point outward, never carry a payload: a `data:`

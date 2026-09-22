@@ -10,6 +10,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .test_api_alias_cutover import TestsFlextInfraApiAliasCutover
+    from .test_apply_renames import TestsFlextInfraApplyRenames
     from .test_batch_apply_validation import TestsFlextInfraCodemodBatchApplyValidation
     from .test_family_flatten import TestsFlextInfraFamilyFlatten
     from .test_mod_circuit import TestsFlextInfraModCliRoute
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from .test_semantic_publication import TestsSemanticPublication
 __all__: tuple[str, ...] = (
     "TestsFlextInfraApiAliasCutover",
+    "TestsFlextInfraApplyRenames",
     "TestsFlextInfraCodemodBatchApplyValidation",
     "TestsFlextInfraFamilyFlatten",
     "TestsFlextInfraModCliRoute",
@@ -36,6 +38,7 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".test_api_alias_cutover": ("TestsFlextInfraApiAliasCutover",),
+            ".test_apply_renames": ("TestsFlextInfraApplyRenames",),
             ".test_batch_apply_validation": (
                 "TestsFlextInfraCodemodBatchApplyValidation",
             ),

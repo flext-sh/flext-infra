@@ -73,7 +73,11 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
             return set()
         loaded = u.Cli.config_load(manifest_path, expand_env=False)
         if loaded.failure:
-            return set()
+            # A present-but-unreadable manifest must never read as "no
+            # exclusions": that would silently widen the docs scope.
+            raise ValueError(
+                loaded.error or f"cannot load workspace manifest: {manifest_path}"
+            )
         data = loaded.value.data
         if not isinstance(data, dict):
             return set()
@@ -151,8 +155,9 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         docs_meta = FlextInfraUtilitiesDocsScopePolicyMixin.project_docs_meta(
             project_root
         )
-        enabled = docs_meta.get("enabled", True)
-        is_enabled = enabled if isinstance(enabled, bool) else True
+        is_enabled = FlextInfraUtilitiesDocsScopePolicyMixin.docs_scope_enabled(
+            docs_meta
+        )
         return (
             project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
             and project_name

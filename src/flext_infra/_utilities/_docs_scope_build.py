@@ -66,8 +66,9 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         """Build docs scopes without exception wrapping."""
         resolved_root = repository_root.resolve()
         project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
-        enabled = project_state.docs_meta.get("enabled", True)
-        is_enabled = enabled if isinstance(enabled, bool) else True
+        is_enabled = FlextInfraUtilitiesDocsScope.docs_scope_enabled(
+            project_state.docs_meta
+        )
         discovered = FlextInfraUtilitiesDocsScopeBuildMixin._discover_projects(
             resolved_root
         )

@@ -144,7 +144,10 @@ class FlextInfraApplyRenames:
             if run_result.failure:
                 return r[bool].from_failure(run_result)
             output = run_result.value
-            if output.outcome.raw_return_code != 0:
+            # ast-grep documents grep-like status: exit 0 rewrote matches and
+            # exit 1 found nothing pending — the converged rename state, not
+            # a failure. Any other status is a real ast-grep error.
+            if output.outcome.raw_return_code > 1:
                 detail = output.stderr.strip() or output.stdout.strip()
                 return r[bool].fail(
                     detail or f"ast-grep failed while renaming {old} to {new}"

@@ -344,7 +344,7 @@ class TestsFlextInfraCodegenConform:
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             'dependencies = ["flext-cli"]\n',
             encoding="utf-8",
@@ -387,7 +387,7 @@ class TestsFlextInfraCodegenConform:
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             'dependencies = ["flext-cli"]\n'
             "\n"

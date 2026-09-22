@@ -10,6 +10,7 @@ from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.collector import FlextInfraDocCollector
 from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra.docs.formatter import FlextInfraDocFormatter
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
@@ -66,6 +67,12 @@ class ValidationRoutes(ValidationCommandRoutes):
                         "Fix documentation issues",
                         FlextInfraDocFixer,
                         "Fix completed successfully",
+                    ),
+                    (
+                        "fmt",
+                        "Format documentation through the canonical markdown-format gate",
+                        FlextInfraDocFormatter,
+                        "Format completed successfully",
                     ),
                     (
                         "build",

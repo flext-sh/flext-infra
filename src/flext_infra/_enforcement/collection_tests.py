@@ -57,7 +57,12 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
                 rule,
                 f"flext_tests validator method {source.method!r} failed: {exc}",
             )
-        if getattr(result, "failure", False):
+        failure = getattr(result, "failure", None)
+        if not isinstance(failure, bool):
+            return self._empty_failure(
+                project_dir, rule, "validator returned a non-Result payload"
+            )
+        if failure:
             error = getattr(result, "error", "") or "validator returned failure"
             return self._empty_failure(project_dir, rule, str(error))
         scan = getattr(result, "value", None)
@@ -65,10 +70,22 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
             return self._empty_failure(
                 project_dir, rule, "validator returned empty scan payload"
             )
+        violations = getattr(scan, "violations", None)
+        if violations is None:
+            # Shape drift must fail the rule, never satisfy it with zero
+            # violations.
+            return self._empty_failure(
+                project_dir, rule, "scan payload missing violations collection"
+            )
         wanted_ids = frozenset(source.rule_ids)
         out: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]] = []
-        for violation in getattr(scan, "violations", ()):
-            if wanted_ids and getattr(violation, "rule_id", "") not in wanted_ids:
+        for violation in violations:
+            rule_id = getattr(violation, "rule_id", None)
+            if rule_id is None:
+                return self._empty_failure(
+                    project_dir, rule, "violation payload missing rule_id"
+                )
+            if wanted_ids and rule_id not in wanted_ids:
                 continue
             out.append((rule, violation))
         return out, []

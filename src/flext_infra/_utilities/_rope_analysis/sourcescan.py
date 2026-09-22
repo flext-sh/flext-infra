@@ -340,7 +340,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         for node in tree.body:
             if isinstance(node, ast.Assign):
                 targets: list[ast.expr] = list(node.targets)
-                value: ast.expr | None = node.value
+                value = node.value
             elif isinstance(node, ast.AnnAssign):
                 targets = [node.target]
                 value = node.value
