@@ -98,6 +98,12 @@ Infra:
           # External CRG tool output: pipe-separated rows (MD075) and long JSON
           # lines (MD013) originate from code-review-graph, not hand-authored docs.
           - docs/architecture/crg-reports/**
+          # Generated api-reference and project-catalog projections (make gen /
+          # docs generate): the renderer's output is canonical as emitted —
+          # operator law 2026-09-22 — so prettier never rewrites generated
+          # docs and the codegen fixed point stays stable.
+          - docs/api-reference/generated/**
+          - docs/projects/generated/**
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
