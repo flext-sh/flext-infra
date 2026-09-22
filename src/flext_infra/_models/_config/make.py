@@ -267,8 +267,7 @@ class FlextInfraConfigModelsMake:
                 ("warning_actions", self.warning_actions),
             ):
                 outside = next(
-                    (action for action in selected if action not in self.actions),
-                    None,
+                    (action for action in selected if action not in self.actions), None
                 )
                 if outside is not None:
                     msg = f"{label} entry is not part of the docs lifecycle: {outside}"

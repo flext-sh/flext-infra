@@ -68,6 +68,17 @@ class FlextInfraCodegenConformExecute(
         root = request.root.expanduser().resolve()
         bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
         initialized_git = False
+        if (
+            initial_workspace is not None
+            and not (root / c.Infra.PYPROJECT_FILENAME).exists()
+        ):
+            source = u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=root,
+                bootstrap_source=initial_workspace.flext_source,
+            )
+            if source.failure:
+                return r[m.Infra.CodegenResult].from_failure(source)
         # The supplied WorkspaceSpec already owns the declared integration branch.
         # Require it before materialization instead of a second divergent input.
         if (
@@ -716,9 +727,9 @@ class FlextInfraCodegenConformExecute(
         if imported.failure:
             return r[bool].from_failure(imported)
         if not imported.value.passed:
-            return r[bool].fail("\n".join((
-                imported.value.summary, *imported.value.violations
-            )))
+            return r[bool].fail(
+                "\n".join((imported.value.summary, *imported.value.violations))
+            )
         return r[bool].ok(True)
 
 

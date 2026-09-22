@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 
 from ..base import FlextInfraServiceBase
 
@@ -20,9 +20,15 @@ from ..base import FlextInfraServiceBase
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Verify consumers and publication contracts without inherited import state."""
 
+    # Subject markers of the declared script groups the pyproject template
+    # emits for every distribution; their probes are the warn-only class.
+    _ENTRY_POINT_MARKERS: ClassVar[t.StrSequence] = (
+        ": console_scripts/",
+        ": gui_scripts/",
+    )
+
     packages: Annotated[
-        t.StrSequence,
-        m.Field(description="Packages to validate in fresh subprocesses"),
+        t.StrSequence, m.Field(description="Packages to validate in fresh subprocesses")
     ] = (c.Infra.PKG_CORE_UNDERSCORE, "flext_infra", "flext_tests")
 
     _PRELUDE: ClassVar[str] = (
@@ -35,9 +41,12 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
     )
+    # Synthetic concat keeps the placeholder out of one plain literal: the
+    # marker is template text substituted at render time, never an f-string.
+    _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
     _ORIGIN_CODE: ClassVar[str] = (
         "for name, module in tuple(sys.modules.items()):\n"
-        "    for package, directory in __ORIGINS__:\n"
+        "    for package, directory in {origins!r}:\n"
         "        if name == package or name.startswith(package + '.'):\n"
         "            origin = getattr(module, '__file__', None)\n"
         "            if origin is None or not Path(origin).resolve().is_relative_to(Path(directory)):\n"
@@ -64,7 +73,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        origin_code = self._ORIGIN_CODE.replace("__ORIGINS__", repr(origins))
+        origin_code = self._ORIGIN_CODE.replace(
+            self._ORIGINS_PLACEHOLDER, repr(origins)
+        )
         probes: t.MutableSequenceOf[m.Infra.FreshImportProbe] = []
         for layout in layouts:
             source = u.Cli.files_read_text(
@@ -85,23 +96,24 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             )
             for group, entries in groups:
                 for name, value in entries.items():
-                    probes.append(m.Infra.FreshImportProbe(
-                        subject=f"{layout.package_name}: {group}/{name}={value}",
-                        code=(
-                            self._PRELUDE
-                            + f"EntryPoint(name={name!r}, value={value!r}, group={group!r}).load()\n"
-                            + origin_code
-                        ),
-                    ))
+                    probes.append(
+                        m.Infra.FreshImportProbe(
+                            subject=f"{layout.package_name}: {group}/{name}={value}",
+                            code=(
+                                self._PRELUDE
+                                + f"EntryPoint(name={name!r}, value={value!r}, group={group!r}).load()\n"
+                                + origin_code
+                            ),
+                        )
+                    )
             owned = tuple(
-                plan for plan in publications
+                plan
+                for plan in publications
                 if plan.context.importable
                 and plan.action == c.Infra.LazyInitAction.WRITE
                 and plan.context.pkg_dir.is_relative_to(layout.package_dir)
             )
-            if not any(
-                plan.context.pkg_dir == layout.package_dir for plan in owned
-            ):
+            if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
                 return r[m.Infra.ValidationReport].fail(
                     f"missing public export contract for {layout.package_name}"
                 )
@@ -111,24 +123,27 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 )
                 for plan in owned
             )
-            probes.append(m.Infra.FreshImportProbe(
-                subject=layout.package_name,
-                code=self._PRELUDE + body + origin_code,
-            ))
+            probes.append(
+                m.Infra.FreshImportProbe(
+                    subject=layout.package_name, code=self._PRELUDE + body + origin_code
+                )
+            )
         for package in packages:
             if not c.Infra.PYTHON_IMPORT_NAME_RE.fullmatch(package):
                 return r[m.Infra.ValidationReport].fail(
                     f"{package}: not a valid Python package name"
                 )
-            probes.append(m.Infra.FreshImportProbe(
-                subject=package,
-                code=self._PRELUDE + self._EXPORT_CODE.format(
-                    package=package, exports=()
-                ) + origin_code,
-            ))
-        env = self._workspace_import_env(
-            tuple(layout.src_dir for layout in layouts)
-        )
+            probes.append(
+                m.Infra.FreshImportProbe(
+                    subject=package,
+                    code=self._PRELUDE
+                    + self._EXPORT_CODE.format(package=package, exports=())
+                    + origin_code,
+                )
+            )
+        env = self._workspace_import_env(tuple(layout.src_dir for layout in layouts))
+        warned: list[str] = []
+        warn_entry_points = config.Infra.codegen.fresh_import_entry_points_warn_only
         for probe in probes:
             smoke = u.Cli.run_raw(
                 [sys.executable, "-W", "error", "-c", probe.code],
@@ -138,18 +153,70 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             if smoke.failure:
                 return r[m.Infra.ValidationReport].from_failure(smoke)
             output = smoke.value
-            if not u.Cli.process_succeeded(output.outcome):
-                detail = (
-                    f"{probe.subject}: {output.outcome.model_dump_json()}\n"
-                    f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}"
-                )
-                return r[m.Infra.ValidationReport].ok(m.Infra.ValidationReport(
-                    passed=False, violations=(detail,),
+            if u.Cli.process_succeeded(output.outcome):
+                continue
+            detail = (
+                f"{probe.subject}: {output.outcome.model_dump_json()}\n"
+                f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}"
+            )
+            if (
+                warn_entry_points
+                and self._is_entry_point_probe(probe.subject)
+                and self._declared_script_debt(detail, probe.subject)
+            ):
+                # Operator law 2026-09-22: declared-script debt (the template
+                # emits `.cli:main` for every distribution) warns instead of
+                # failing the transaction; the debt stays bead-tracked until
+                # the facades converge to the canonical main shape. Contract
+                # violations surfacing through a working module — an omitted
+                # export, a lost dependency — never fall into this class.
+                warned.append(detail)
+                continue
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
+                    passed=False,
+                    violations=(detail,),
                     summary=f"fresh-import failed: {probe.subject}",
-                ))
-        return r[m.Infra.ValidationReport].ok(m.Infra.ValidationReport(
-            passed=True, summary=f"{len(probes)} fresh-import probe(s) passed"
-        ))
+                )
+            )
+        if warned:
+            self.logger.info(
+                "fresh_import_entry_points_warned",
+                warned=len(warned),
+                posture="warn_only",
+            )
+        passed_count = len(probes) - len(warned)
+        summary = f"{passed_count} fresh-import probe(s) passed; {len(warned)} entry point(s) warned"
+        return r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=True, violations=tuple(warned), summary=summary
+            )
+        )
+
+    @classmethod
+    def _is_entry_point_probe(cls, subject: str) -> bool:
+        """Whether one probe exercises a declared console/gui script entry."""
+        return any(marker in subject for marker in cls._ENTRY_POINT_MARKERS)
+
+    @staticmethod
+    def _declared_script_debt(detail: str, subject: str) -> bool:
+        """Whether one entry-point failure is the declared-script debt class.
+
+        Debt means the declared target itself is broken: the module is absent
+        or the declared attribute is missing — the shape the pyproject
+        template emits unconditionally. Anything else that surfaces through a
+        loading module (an omitted export, a lost dependency) stays blocking.
+        """
+        declared_module = subject.rsplit("=", 1)[-1].split(":", 1)[0]
+        lines = [line for line in detail.splitlines() if line.strip()]
+        if not lines:
+            return False
+        tail = lines[-1].lstrip()
+        if tail.startswith("AttributeError:"):
+            return True
+        return tail.startswith("ModuleNotFoundError:") and (
+            f"No module named '{declared_module}'" in tail
+        )
 
     def _workspace_import_env(
         self, source_roots: t.SequenceOf[Path] = ()

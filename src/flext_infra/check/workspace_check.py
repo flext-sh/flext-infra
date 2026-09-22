@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 
 from ..base import FlextInfraServiceBase
 from ._workspace_check_reports import FlextInfraWorkspaceCheckReportsMixin
@@ -104,8 +104,34 @@ class FlextInfraWorkspaceChecker(
         )
         if run_result.failure:
             return r[bool].from_failure(run_result)
+        # Operator law 2026-09-22: warning-gate findings stay visible in the
+        # logs and reports but never decide the check verdict. Unknown gate
+        # ids in the policy fail closed so a typo cannot silently unblock.
+        warning_gates = frozenset(config.Infra.check_policy.warning_gates)
+        unknown_policy_gates = warning_gates - c.Infra.ALLOWED_GATES
+        if unknown_policy_gates:
+            return r[bool].fail(
+                "check policy declares unknown warning gates: "
+                f"{', '.join(sorted(unknown_policy_gates))}"
+            )
+        for project in run_result.value:
+            warned = sorted(
+                gate_id
+                for gate_id, execution in project.gates.items()
+                if gate_id in warning_gates and not execution.result.passed
+            )
+            if warned:
+                u.Cli.info(
+                    f"WARNING: {project.project} non-blocking gate findings: "
+                    f"{', '.join(warned)} (visible in reports; does not fail)"
+                )
         failed_projects = [
-            project for project in run_result.value if not project.passed
+            project
+            for project in run_result.value
+            if any(
+                gate_id not in warning_gates and not execution.result.passed
+                for gate_id, execution in project.gates.items()
+            )
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)

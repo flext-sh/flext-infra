@@ -20,9 +20,19 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import cli
-
-    from flext_core import core, d, e, h, lazy_attribute, r, x
+    from flext_cli import (
+        cli,
+        core,
+        d,
+        e,
+        from_json,
+        h,
+        lazy_attribute,
+        r,
+        to_json,
+        to_jsonable_python,
+        x,
+    )
 
     from . import (
         check,
@@ -488,6 +498,7 @@ __all__: tuple[str, ...] = (
     "docs_main",
     "e",
     "fixers",
+    "from_json",
     "gates",
     "h",
     "infra",
@@ -505,6 +516,8 @@ __all__: tuple[str, ...] = (
     "settings",
     "source_name",
     "t",
+    "to_json",
+    "to_jsonable_python",
     "transformers",
     "u",
     "validate",
@@ -791,8 +804,19 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("cli",),
-            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
+            "flext_cli": (
+                "cli",
+                "core",
+                "d",
+                "e",
+                "from_json",
+                "h",
+                "lazy_attribute",
+                "r",
+                "to_json",
+                "to_jsonable_python",
+                "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

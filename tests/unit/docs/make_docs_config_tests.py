@@ -28,10 +28,7 @@ class TestsFlextInfraMakeDocsActionsConfig:
     def test_live_config_actions_stay_on_the_registered_cli_surface(self) -> None:
         """The declared workspace lifecycle dispatches only existing verbs."""
         docs = config.Infra.codegen.make.docs
-        tm.that(
-            set(docs.actions) <= c.Infra.DOCS_ACTION_IDS,
-            eq=True,
-        )
+        tm.that(set(docs.actions) <= c.Infra.DOCS_ACTION_IDS, eq=True)
         tm.that(set(docs.mutable_actions) <= set(docs.actions), eq=True)
         tm.that(set(docs.warning_actions) <= set(docs.actions), eq=True)
 
@@ -60,7 +57,9 @@ class TestsFlextInfraMakeDocsActionsConfig:
 
     def test_warning_action_outside_lifecycle_is_rejected(self) -> None:
         with pytest.raises(c.ValidationError, match="not part of the docs lifecycle"):
-            m.Infra.MakeDocsSpec.model_validate(_spec_payload(warning_actions=["audit"]))
+            m.Infra.MakeDocsSpec.model_validate(
+                _spec_payload(warning_actions=["audit"])
+            )
 
 
 __all__: list[str] = ["TestsFlextInfraMakeDocsActionsConfig"]

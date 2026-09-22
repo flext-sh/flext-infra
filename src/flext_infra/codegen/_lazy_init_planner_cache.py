@@ -25,7 +25,9 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
         ) -> m.Infra.LazyInitPlan: ...
 
-        def _declared_alias_names_for_package(self, package_name: str) -> frozenset[str]: ...
+        def _declared_alias_names_for_package(
+            self, package_name: str
+        ) -> frozenset[str]: ...
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
         """Return all export names for a package (init + source plans)."""

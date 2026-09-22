@@ -28,7 +28,8 @@ class TestsFlextInfraLazyInitAliasInheritance:
     ) -> None:
         """A generated parent cannot erase a declared result needed at bootstrap."""
         repository, child = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-bootstrap-result",
+            tmp_path,
+            project_name="flext-bootstrap-result",
             package_name="flext_bootstrap_child",
         )
         parent = repository / c.Infra.DEFAULT_SRC_DIR / "flext_bootstrap_parent"
@@ -69,7 +70,8 @@ class TestsFlextInfraLazyInitAliasInheritance:
         tm.that((child / c.Infra.INIT_PY).read_bytes(), eq=first)
         probe_env = dict(os.environ)
         probe_env["PYTHONPATH"] = os.pathsep.join([
-            str(repository / c.Infra.DEFAULT_SRC_DIR), *sys.path,
+            str(repository / c.Infra.DEFAULT_SRC_DIR),
+            *sys.path,
         ])
         probe = (
             "from flext_bootstrap_child.consumer import execute\n"
@@ -80,10 +82,12 @@ class TestsFlextInfraLazyInitAliasInheritance:
             "print('compile' in generated.__all__)\n"
             "print(execute().value)\n"
         )
-        result = tm.ok(u.Cli.run(
-            [sys.executable, "-c", probe], env=probe_env, cwd=repository
-        ))
-        tm.that(result.stdout.splitlines(), eq=["True", "True", "False", "bootstrap-ready"])
+        result = tm.ok(
+            u.Cli.run([sys.executable, "-c", probe], env=probe_env, cwd=repository)
+        )
+        tm.that(
+            result.stdout.splitlines(), eq=["True", "True", "False", "bootstrap-ready"]
+        )
 
     def test_child_inherits_exactly_the_indexed_parent_letters(
         self, tmp_path: Path

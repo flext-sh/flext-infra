@@ -12,8 +12,14 @@ from . import FlextInfraModelsMixins as mm
 from ._defaults import FlextInfraModelsDefaults
 
 
-def _fresh_import_default() -> FlextInfraModelsCore.FreshImportEntryPoints:
-    """Deferred factory: resolves after FlextInfraModelsCore is fully defined."""
+def _default_fresh_import_entry_points() -> FlextInfraModelsCore.FreshImportEntryPoints:
+    """Default factory for the fresh-import entry-points payload.
+
+    Module-level on purpose: neither a qualified nor a bare reference to the
+    nested model resolves inside the class body at definition time (class
+    scopes do not nest, and the outer class is still being defined), so the
+    deferred lookup must live outside it.
+    """
     return FlextInfraModelsCore.FreshImportEntryPoints()
 
 
@@ -53,11 +59,13 @@ class FlextInfraModelsCore:
         )
         gui_scripts: t.StrMapping = m.Field(
             default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
-            alias="gui-scripts", description="Declared graphical entrypoints",
+            alias="gui-scripts",
+            description="Declared graphical entrypoints",
         )
         entry_points: t.MappingKV[str, t.StrMapping] = m.Field(
             default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
-            alias="entry-points", description="Declared plugin entrypoint groups",
+            alias="entry-points",
+            description="Declared plugin entrypoint groups",
         )
 
     class FreshImportMetadata(m.Value):
@@ -66,7 +74,7 @@ class FlextInfraModelsCore:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         project: FlextInfraModelsCore.FreshImportEntryPoints = m.Field(
-            default_factory=_fresh_import_default,
+            default_factory=_default_fresh_import_entry_points,
             description="Executable metadata from the published project table",
         )
 

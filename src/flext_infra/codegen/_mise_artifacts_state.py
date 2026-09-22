@@ -469,6 +469,38 @@ class FlextInfraMiseArtifactsState:
                 continue
             removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             if removed.failure:
+                # A journaled generated directory may keep journaled residents
+                # whose recovery classified noop (unrecognized state the
+                # generation owns and rewrites). Only residents the journal
+                # itself authenticated preserve the directory; anything else
+                # inside is foreign state and the cleanup still fails closed.
+                residents = (
+                    tuple(target.value.iterdir()) if target.value.is_dir() else ()
+                )
+                journaled = {j.path for j in journal.entries}
+                preserved = set(removed_temporary_roots) | {
+                    d.path for d in removable if d.path != entry.path
+                }
+
+                def _journaled_resident(
+                    resident: Path, journaled: set[str], preserved: set[str]
+                ) -> bool:
+                    selector = files.workspace_relative(layout.scope_root, resident)
+                    if not selector.success:
+                        return False
+                    relative = selector.value
+                    if relative in journaled or relative in preserved:
+                        return True
+                    # An ancestor is preservable when everything between it
+                    # and a preserved descendant is itself journaled: the
+                    # descendant's own guard already authenticated its subtree.
+                    prefix = relative + "/"
+                    return any(candidate.startswith(prefix) for candidate in preserved)
+
+                if residents and all(
+                    _journaled_resident(r, journaled, preserved) for r in residents
+                ):
+                    continue
                 return r[bool].from_failure(removed)
         return r[bool].ok(True)
 
