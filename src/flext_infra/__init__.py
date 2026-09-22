@@ -20,9 +20,7 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import cli
-
-    from flext_core import core, d, e, h, lazy_attribute, r, x
+    from flext_cli import cli, d, e, h, r, x
 
     from . import (
         check,
@@ -133,6 +131,7 @@ if TYPE_CHECKING:
     from .docs.builder import FlextInfraDocBuilder
     from .docs.collector import FlextInfraDocCollector
     from .docs.fixer import FlextInfraDocFixer
+    from .docs.formatter import FlextInfraDocFormatter
     from .docs.generator import FlextInfraDocGenerator
     from .docs.server import FlextInfraDocServer
     from .docs.validator import FlextInfraDocValidator
@@ -327,6 +326,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocBuilder",
     "FlextInfraDocCollector",
     "FlextInfraDocFixer",
+    "FlextInfraDocFormatter",
     "FlextInfraDocGenerator",
     "FlextInfraDocServer",
     "FlextInfraDocServiceBase",
@@ -478,7 +478,6 @@ __all__: tuple[str, ...] = (
     "codemod",
     "collect_markdown_files",
     "config",
-    "core",
     "d",
     "deps",
     "detectors",
@@ -489,7 +488,6 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
-    "lazy_attribute",
     "m",
     "main",
     "maintenance",
@@ -621,6 +619,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs.builder": ("FlextInfraDocBuilder",),
             ".docs.collector": ("FlextInfraDocCollector",),
             ".docs.fixer": ("FlextInfraDocFixer",),
+            ".docs.formatter": ("FlextInfraDocFormatter",),
             ".docs.generator": ("FlextInfraDocGenerator",),
             ".docs.server": ("FlextInfraDocServer",),
             ".docs.validator": ("FlextInfraDocValidator",),
@@ -788,8 +787,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("cli",),
-            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
+            "flext_cli": ("cli", "d", "e", "h", "r", "x"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
