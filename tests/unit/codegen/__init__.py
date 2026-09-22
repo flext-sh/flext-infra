@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
     from .lazy_init_tests import TestsFlextInfraCodegenLazyInit
     from .main_tests import TestsFlextInfraCodegenMain
-    from .protocol_models_tests import DemoMemberProtocols, ManualPort
     from .scaffolder_naming_tests import TestsFlextInfraCodegenScaffolderNaming
     from .scaffolder_tests import TestsFlextInfraCodegenScaffolder
     from .submodule_recipe_shell_tests import TestsFlextInfraSubmoduleRecipeShell
@@ -130,8 +129,6 @@ if TYPE_CHECKING:
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
-    "DemoMemberProtocols",
-    "ManualPort",
     "TestsFlextInfraCiCheckoutModeNormalization",
     "TestsFlextInfraCiDeclaredSecretsContract",
     "TestsFlextInfraCiIntegrationBranchTriggers",
@@ -264,7 +261,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
             ".lazy_init_tests": ("TestsFlextInfraCodegenLazyInit",),
             ".main_tests": ("TestsFlextInfraCodegenMain",),
-            ".protocol_models_tests": ("DemoMemberProtocols", "ManualPort"),
             ".scaffolder_naming_tests": ("TestsFlextInfraCodegenScaffolderNaming",),
             ".scaffolder_tests": ("TestsFlextInfraCodegenScaffolder",),
             ".submodule_recipe_shell_tests": ("TestsFlextInfraSubmoduleRecipeShell",),
