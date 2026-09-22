@@ -159,11 +159,12 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             msg = f"family wrapper prefix collision is ambiguous: {path}:{wrapper_name}"
             raise ValueError(msg)
         wrapper = owner_scope.get_defined_names()[wrapper_name]
+        candidate_rewrites: dict[Path, list[m.Infra.SourceRewrite]] = {}
         for consumer, source in sources.items():
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             resource = project.get_resource(consumer.relative_to(root).as_posix())
-            changes = cls._family_consumer_rewrites(
+            blocked, changes = cls._family_consumer_rewrites(
                 project,
                 resource,
                 source,
@@ -172,9 +173,13 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                 wrapper=wrapper,
                 names=renamed,
             )
+            if blocked:
+                # A consumer treats the wrapper as a real entity; preserve the
+                # candidate instead of publishing partial rewrites.
+                return 0
             if changes:
-                rewrites.setdefault(consumer, []).extend(changes)
-        rewrites.setdefault(path, []).extend(
+                candidate_rewrites.setdefault(consumer, []).extend(changes)
+        candidate_rewrites.setdefault(path, []).extend(
             FlextInfraUtilitiesRopeRuntimeRefactors.unwrap_class_rewrites(
                 sources[path],
                 header_start=header.line,
@@ -183,6 +188,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                 indentation=body[0].indent - header.indent,
             )
         )
+        for consumer, changes in candidate_rewrites.items():
+            rewrites.setdefault(consumer, []).extend(changes)
         return 1
 
 

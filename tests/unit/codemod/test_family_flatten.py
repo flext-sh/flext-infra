@@ -39,6 +39,7 @@ class TestsFlextInfraFamilyFlatten:
             "        class Entity(Enum):\n"
             "            VALUE = 'member'\n"
             "        TEXT = '''first\n        literal indentation\n        last'''\n"
+        f"\n__all__ = ['{owner}']\n"
         )
         path.write_text(source, encoding="utf-8")
         consumer = package / "consumer.py"
@@ -106,7 +107,7 @@ class TestsFlextInfraFamilyFlatten:
         (family / "__init__.py").write_text("", encoding="utf-8")
         path = family / "payload.py"
         owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
-        source = f"from enum import Enum\nclass {owner}:\n    {entity}\n"
+        source = f"from enum import Enum\nclass {owner}:\n    {entity}\n\n__all__ = ['{owner}']\n"
         path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
@@ -117,7 +118,7 @@ class TestsFlextInfraFamilyFlatten:
         tm.ok(planned)
         tm.that(planned.value, empty=True)
 
-    def test_wrapper_used_as_a_value_fails_without_partial_edits(
+    def test_wrapper_used_as_a_value_is_preserved_without_edits(
         self, tmp_path: Path
     ) -> None:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -127,7 +128,7 @@ class TestsFlextInfraFamilyFlatten:
         (family / "__init__.py").write_text("", encoding="utf-8")
         path = family / "payload.py"
         owner = f"{u.derive_class_stem(root.name)}ConstantsPayload"
-        source = f"class {owner}:\n    class Wrapper:\n        VALUE = 1\n\nALIAS = {owner}.Wrapper\n"
+        source = f"class {owner}:\n    class Wrapper:\n        VALUE = 1\n\nALIAS = {owner}.Wrapper\n\n__all__ = ['{owner}']\n"
         path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
@@ -135,7 +136,8 @@ class TestsFlextInfraFamilyFlatten:
                 rope_workspace=rope,
                 sources={path: source},
             )
-        tm.fail(planned, has="used as a value or inheritance base")
+        tm.ok(planned)
+        tm.that(planned.value, empty=True)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
 

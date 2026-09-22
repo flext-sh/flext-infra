@@ -21,7 +21,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences:
         wrapper_name: str,
         wrapper: p.Infra.RopePyName,
         names: t.MappingKV[str, str],
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
         runtime = FlextInfraUtilitiesRopeRuntimeRefactors
         finder = runtime.create_occurrence_finder(
             project, wrapper_name, wrapper, imports=True, in_hierarchy=False
@@ -31,20 +31,23 @@ class FlextInfraUtilitiesSemanticFamilyReferences:
                 continue
             _start, end = occurrence.get_word_range()
             if not source[end:].lstrip().startswith("."):
-                msg = "namespace wrapper is used as a value or inheritance base: "
-                msg_0 = f"{msg}{resource.real_path}:{occurrence.lineno}"
-                raise ValueError(msg_0)
+                # Used as a value or inheritance base: the wrapper is a real
+                # entity class, preserved instead of flattened.
+                return (True, ())
             suffix = source[end:]
             member_offset = end + len(suffix) - len(suffix.lstrip()) + 1
             while source[member_offset].isspace():
                 member_offset += 1
-            member_name = runtime.word_primary_at(source, member_offset).rpartition(
-                "."
-            )[2]
+            member_end = member_offset
+            while member_end < len(source) and (
+                source[member_end].isalnum() or source[member_end] == "_"
+            ):
+                member_end += 1
+            member_name = source[member_offset:member_end]
             if member_name not in names:
-                msg = "namespace wrapper consumer has an unresolved member: "
-                msg_0 = f"{msg}{resource.real_path}:{occurrence.lineno}"
-                raise ValueError(msg_0)
+                # The consumer reaches a member the flatten does not own
+                # (e.g. inherited); preserving the wrapper keeps the reference.
+                return (True, ())
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         edits: list[m.Infra.SourceRewrite] = []
         for name, replacement in names.items():
@@ -79,7 +82,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences:
                     edits.append(
                         m.Infra.SourceRewrite(start=start, end=end, text=replacement)
                     )
-        return tuple(edits)
+        return (False, tuple(edits))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticFamilyReferences"]
