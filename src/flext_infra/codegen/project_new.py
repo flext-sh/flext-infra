@@ -95,6 +95,14 @@ class FlextInfraCodegenProjectNew(
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
+    flext_repository_url: Annotated[
+        str,
+        m.Field(min_length=1, description="Git URL of the FLEXT infrastructure source."),
+    ]
+    flext_repository_ref: Annotated[
+        str,
+        m.Field(min_length=1, description="Git ref consumed from the FLEXT source."),
+    ]
     author_name: Annotated[
         str, m.Field(min_length=1, description="Author/maintainer display name.")
     ]
@@ -144,6 +152,9 @@ class FlextInfraCodegenProjectNew(
         )
         workspace = m.Infra.WorkspaceSpec(
             name=self.name,
+            flext_source=m.Infra.CodegenBootstrapSource(
+                url=self.flext_repository_url, ref=self.flext_repository_ref
+            ),
             beads=m.Infra.BeadsProjectSpec(
                 version=c.Infra.BEADS_CONFIG_VERSION,
                 workspace=self.name,

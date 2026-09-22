@@ -111,7 +111,11 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def flext_integration_line(
-        cls, *, codegen: m.Infra.CodegenConfigSpec, repository_root: Path
+        cls,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+        repository_root: Path,
+        bootstrap_source: m.Infra.CodegenBootstrapSource | None = None,
     ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
         """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
 
@@ -130,11 +134,21 @@ class FlextInfraUtilitiesRepository:
         source = codegen.infra_repository
         distribution = source.distribution
         preference = codegen.branch_policy.integration_branch_preference
-        detected = cls._detected_infra_source(
-            repository_root=repository_root,
-            distribution=distribution,
-            preference=preference,
-        )
+        if bootstrap_source is not None:
+            if (repository_root / c.Infra.PYPROJECT_FILENAME).exists():
+                return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                    "bootstrap provenance cannot replace existing project sources"
+                )
+            canonical = cls._canonical_https_url(bootstrap_source.url)
+            if canonical.failure:
+                return r[m.Infra.WorkspaceIntegrationSpec].from_failure(canonical)
+            detected = r[t.Pair[str, str]].ok((canonical.value, bootstrap_source.ref))
+        else:
+            detected = cls._detected_infra_source(
+                repository_root=repository_root,
+                distribution=distribution,
+                preference=preference,
+            )
         if detected.failure:
             return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
         url, ref = detected.value
