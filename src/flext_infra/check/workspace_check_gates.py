@@ -315,7 +315,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 for finding in execution.result.errors:
                     u.Cli.info(finding)
                 # A parser finding must not hide the producer's original failure.
-                if execution.raw_output.strip():
+                if execution.raw_output.strip() and any(
+                    issue.code == "TOOL_ERROR" for issue in execution.issues
+                ):
                     u.Cli.info(execution.raw_output)
                 return r[m.Cli.PipelineStageResult].fail(
                     f"{gate_id} failed for {project_name} "

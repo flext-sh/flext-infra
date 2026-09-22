@@ -7,11 +7,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import u
+from flext_cli import t, u
 
 from flext_core import m
-from flext_infra import c, t
+from flext_infra import c
 
+# Gate models use base type primitives; importing the composing project facade
+# here creates unresolved aliases while Pydantic analyzes nested root models.
 from .duplication import FlextInfraModelsDuplication
 
 
