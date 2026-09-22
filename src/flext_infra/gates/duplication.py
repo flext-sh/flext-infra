@@ -322,7 +322,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if parsed.failure:
             return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)
-        prefix = str(project_dir)
         issues: list[m.Infra.Issue] = []
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             first = u.Cli.json_deep_mapping(duplicate, "firstFile")
@@ -331,13 +330,21 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second_name = u.Cli.json_pick_str(second, "name")
             if not cls._is_semantic_clone(duplicate, first, second):
                 continue
-            if first_name.startswith(prefix) and first_name != second_name:
+            # Ownership is path containment, never a string prefix: a sibling
+            # project whose directory name extends this one (``flext-x`` vs
+            # ``flext-x-extra``) shares the prefix but owns its own clones.
+            # ``startswith`` claimed those siblings and then raised ValueError
+            # from ``relative_to``, turning a real cross-project clone into a
+            # crashed gate.
+            if Path(first_name).is_relative_to(project_dir) and first_name != second_name:
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, first, first_name, second_name, project_dir
                     )
                 )
-            elif second_name.startswith(prefix) and second_name != first_name:
+            elif Path(second_name).is_relative_to(
+                project_dir
+            ) and second_name != first_name:
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, second, second_name, first_name, project_dir
