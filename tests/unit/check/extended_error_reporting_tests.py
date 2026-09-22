@@ -85,8 +85,7 @@ class TestsFlextInfraGateErrorReporting:
             tmp_path,
             "p1",
             pyproject=(
-                '[tool.mypy]\nplugins = ["broken_plugin.py"]\n'
-                'show_traceback = true\n'
+                '[tool.mypy]\nplugins = ["broken_plugin.py"]\nshow_traceback = true\n'
             ),
             with_src=True,
         )
