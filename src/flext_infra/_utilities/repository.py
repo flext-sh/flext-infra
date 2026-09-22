@@ -129,6 +129,13 @@ class FlextInfraUtilitiesRepository:
         the distribution (URL and ref), or the owning workspace manifest's
         member entry on that workspace's integration branch. Two declared
         sources that disagree, or none at all, fail loudly.
+
+        A fully explicit caller declaration (``declared`` carrying both
+        organization and base URL) outranks detection: ``codegen new`` has no
+        checkout to detect from — the caller declares the provider and
+        integration branch up front, and that declaration is the line. A
+        provider key plus branch alone is NOT a line (a consumer's own
+        provider identity never fabricates one) and detection still runs.
         """
         from flext_infra import u
 
