@@ -152,9 +152,18 @@ class FlextInfraCodegenProjectNew(
             ),
             repository=repository,
             # The integration branch of a repository that has published nothing
-            # yet is a declaration, never a Git guess (ADR-018 p.10).
+            # yet is a declaration, never a Git guess (ADR-018 p.10). The
+            # declaration carries the full line (organization and base URL
+            # derived from the explicit repository URL): a fresh checkout has
+            # nothing to detect from, and the caller's explicit facts are the
+            # line the whole family renders from.
             integration=m.Infra.WorkspaceIntegrationSpec(
-                provider=self.provider, branch=repository_branch
+                provider=self.provider,
+                branch=repository_branch,
+                organization=u.Infra.git_remote_identity(repository_url).partition(
+                    "/"
+                )[0],
+                base_url=repository_page.rsplit("/", maxsplit=1)[0],
             ),
             project=m.Infra.ProjectSpec(
                 package_name=package_name,

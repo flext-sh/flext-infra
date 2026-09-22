@@ -463,6 +463,38 @@ class FlextInfraConfigModelsMake:
             ),
         ] = ()
 
+        check_gates_advisory: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Gates whose findings render as warnings and never fail "
+                    "the check run. Operator ruling 2026-09-22: the "
+                    "fleet-wide structural sweeps still in progress "
+                    "(namespace, runtime-census, duplication) stay visible "
+                    "in every report without blocking CI while the waves "
+                    "grind; each entry is removed the moment its wave "
+                    "closes. A gate's declared severity means what it says: "
+                    "advisory declares warning."
+                ),
+            ),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_check_gates_advisory(self) -> Self:
+            """Advisory gates must be known and unique."""
+            if len(set(self.check_gates_advisory)) != len(self.check_gates_advisory):
+                msg = "make check_gates_advisory must be unique"
+                raise ValueError(msg)
+            unknown = set(self.check_gates_advisory) - set(self.check_gates_allowed)
+            if unknown:
+                msg = (
+                    "make check_gates_advisory contains unknown gates: "
+                    f"{', '.join(sorted(unknown))}"
+                )
+                raise ValueError(msg)
+            return self
+
         @u.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
             """Project gates must be unique and must not shadow a built-in."""

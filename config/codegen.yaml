@@ -316,6 +316,12 @@ Infra:
       # read-only side runs in `make check`; `make fix` never repeats them
       # (single-pass verb law: one operation per tool per verb).
       fmt_gates: [markdown-format]
+      # Operator 2026-09-22 (flext-jeasw): findings from the fleet-wide
+      # structural sweeps still in progress render as warnings and never
+      # block CI. Each entry is removed the moment its wave closes; the
+      # gates stay in the default check set and every report keeps the
+      # findings visible.
+      check_gates_advisory: [namespace, runtime-census, duplication]
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).

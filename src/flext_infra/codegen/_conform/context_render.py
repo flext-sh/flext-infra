@@ -294,7 +294,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         # the consumer's organization or branch: a repository in another org
         # otherwise renders a mixed family and uv rejects conflicting URLs.
         flext_line = u.Infra.flext_integration_line(
-            codegen=codegen, repository_root=repository_root
+            codegen=codegen,
+            repository_root=repository_root,
+            declared=workspace.integration,
         )
         if flext_line.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(flext_line)

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import m
+from flext_infra import config, m
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 from .base_gate import FlextInfraGate
@@ -27,7 +27,14 @@ class FlextInfraNamespaceGate(FlextInfraGate):
         started = time.monotonic()
         validator = FlextInfraNamespaceValidator()
         report_result = validator.validate_project(project_dir)
-        passed = report_result.success and report_result.value.passed
+        # Operator ruling 2026-09-22 (make.check_gates_advisory): while the
+        # structural wave grinds, namespace findings render as warnings and
+        # the gate passes — but ONLY when validation itself ran: a broken
+        # scanner still fails, never reading as a clean pass.
+        advisory = (
+            self.gate_id in config.Infra.codegen.make.check_gates_advisory
+        )
+        passed = report_result.success and (report_result.value.passed or advisory)
         errors: list[str] = []
         if report_result.failure:
             errors.append(report_result.error or "namespace validation failed")

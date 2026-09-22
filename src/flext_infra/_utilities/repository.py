@@ -111,7 +111,11 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def flext_integration_line(
-        cls, *, codegen: m.Infra.CodegenConfigSpec, repository_root: Path
+        cls,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+        repository_root: Path,
+        declared: m.Infra.WorkspaceIntegrationSpec | None = None,
     ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
         """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
 
@@ -124,12 +128,38 @@ class FlextInfraUtilitiesRepository:
         the distribution (URL and ref), or the owning workspace manifest's
         member entry on that workspace's integration branch. Two declared
         sources that disagree, or none at all, fail loudly.
+
+        A fully explicit caller declaration (``declared`` carrying both
+        organization and base URL) outranks detection: ``codegen new`` has no
+        checkout to detect from — the caller declares the provider and
+        integration branch up front, and that declaration is the line. A
+        provider key plus branch alone is NOT a line (a consumer's own
+        provider identity never fabricates one) and detection still runs.
         """
         from flext_infra import u
 
         source = codegen.infra_repository
         distribution = source.distribution
         preference = codegen.branch_policy.integration_branch_preference
+        if (
+            declared is not None
+            and declared.organization
+            and declared.base_url
+            and declared.provider == source.provider
+        ):
+            base_url = declared.base_url.removesuffix("/")
+            if not base_url.startswith("https://"):
+                return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                    f"declared FLEXT line base URL must be HTTPS: {base_url}"
+                )
+            return r[m.Infra.WorkspaceIntegrationSpec].ok(
+                m.Infra.WorkspaceIntegrationSpec(
+                    provider=declared.provider,
+                    branch=declared.branch,
+                    organization=declared.organization,
+                    base_url=base_url,
+                )
+            )
         detected = cls._detected_infra_source(
             repository_root=repository_root,
             distribution=distribution,

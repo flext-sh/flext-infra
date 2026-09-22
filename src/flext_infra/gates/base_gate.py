@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -245,6 +245,13 @@ class FlextInfraGate:
         the residue a fixer could not repair and do not decide acceptance.
         """
         _ = ctx
+        # Operator ruling 2026-09-22 (config: make.check_gates_advisory): an
+        # advisory gate keeps every finding visible in reports and SARIF, but
+        # its findings render as warnings and never fail the run. Downgrading
+        # happens here, at the shared verdict point, so a gate's declared
+        # severity still means what it says — advisory DECLARES warning, and
+        # a warning is, by definition, not a failure.
+        issues = self._resolve_reported_issues(issues)
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -272,6 +279,23 @@ class FlextInfraGate:
             ),
             issues=tuple(issues),
             raw_output=raw_output,
+        )
+
+    def _resolve_reported_issues(
+        self, issues: t.SequenceOf[m.Infra.Issue]
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Downgrade ERROR findings to warnings for advisory gates."""
+        if self.gate_id not in config.Infra.codegen.make.check_gates_advisory:
+            return issues
+        error_value = str(c.Infra.GateSeverity.ERROR.value)
+        warning_value = str(c.Infra.GateSeverity.WARNING.value)
+        return tuple(
+            (
+                issue.model_copy(update={"severity": warning_value})
+                if issue.severity.lower() == error_value
+                else issue
+            )
+            for issue in issues
         )
 
     def _build_project_error_gate_result(
