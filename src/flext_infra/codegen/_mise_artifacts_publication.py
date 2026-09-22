@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 def _invalidate_project_document(path: Path) -> None:
@@ -73,10 +73,10 @@ def publish(
         u.Cli.emit_raw(f"  publish [{index}/{total}] {publication.before.path}\n")
         changed = files.write_publication(publication)
         if changed.failure:
-            return r[tuple[Path, ...]].from_failure(changed)
+            return r[t.VariadicTuple[Path]].from_failure(changed)
         _invalidate_project_document(publication.before.path)
         written.append(publication.before.path)
-    return r[tuple[Path, ...]].ok(tuple(written))
+    return r[t.VariadicTuple[Path]].ok(tuple(written))
 
 
 __all__: list[str] = ["publish", "publish_file_plan"]

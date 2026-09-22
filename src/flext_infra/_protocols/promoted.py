@@ -40,7 +40,7 @@ class FlextInfraProtocolsPromoted(Protocol):
                 """Default."""
 
             @property
-            def choices(self) -> tuple[str, ...]:
+            def choices(self) -> t.VariadicTuple[str]:
                 """Choices."""
 
         class Command(Protocol):
@@ -79,7 +79,7 @@ class FlextInfraProtocolsPromoted(Protocol):
                 """Mutates."""
 
             @property
-            def aliases(self) -> tuple[str, ...]:
+            def aliases(self) -> t.VariadicTuple[str]:
                 """Aliases."""
 
             @property
@@ -87,7 +87,7 @@ class FlextInfraProtocolsPromoted(Protocol):
                 """Params."""
 
             @property
-            def rules(self) -> tuple[str, ...]:
+            def rules(self) -> t.VariadicTuple[str]:
                 """Rules."""
 
         class AliasTarget(Protocol):
@@ -117,7 +117,7 @@ class FlextInfraProtocolsPromoted(Protocol):
                 """Declared local ``.venv`` interpreter."""
 
             @property
-            def submodule_script_roots(self) -> tuple[Path, ...]:
+            def submodule_script_roots(self) -> t.VariadicTuple[Path]:
                 """Submodule script roots in first-wins order."""
 
             @property

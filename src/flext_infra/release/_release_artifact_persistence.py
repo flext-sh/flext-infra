@@ -25,7 +25,7 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
         try:
             entries = tuple(sorted(output_dir.iterdir()))
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op(
+            return r[t.VariadicTuple[Path]].fail_op(
                 f"list uv build output {output_dir}", exc
             )
         wheels = tuple(path for path in entries if path.suffix == ".whl")
@@ -34,15 +34,15 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
         unexpected = tuple(path for path in entries if path not in artifacts)
         if unexpected:
             names = ", ".join(path.name for path in unexpected)
-            return r[tuple[Path, ...]].fail(
+            return r[t.VariadicTuple[Path]].fail(
                 f"uv build emitted unexpected output: {names}"
             )
         if len(wheels) != 1 or len(sdists) != 1:
-            return r[tuple[Path, ...]].fail(
+            return r[t.VariadicTuple[Path]].fail(
                 f"expected one wheel and one sdist, found "
                 f"{len(wheels)} wheel(s) and {len(sdists)} sdist(s)"
             )
-        return r[tuple[Path, ...]].ok(artifacts)
+        return r[t.VariadicTuple[Path]].ok(artifacts)
 
     @staticmethod
     def _validate_existing_artifact_set(
@@ -56,23 +56,23 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
         try:
             existing = tuple(sorted(destination_dir.iterdir()))
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op("list persisted artifact set", exc)
+            return r[t.VariadicTuple[Path]].fail_op("list persisted artifact set", exc)
         if existing != tuple(sorted(destinations)):
-            return r[tuple[Path, ...]].fail(
+            return r[t.VariadicTuple[Path]].fail(
                 f"immutable artifact set collision at {destination_dir}"
             )
         for (source, _, _), destination in zip(artifacts, destinations, strict=True):
             try:
                 matches = source.read_bytes() == destination.read_bytes()
             except OSError as exc:
-                return r[tuple[Path, ...]].fail_op(
+                return r[t.VariadicTuple[Path]].fail_op(
                     f"compare immutable artifact {destination}", exc
                 )
             if not matches:
-                return r[tuple[Path, ...]].fail(
+                return r[t.VariadicTuple[Path]].fail(
                     f"immutable artifact collision at {destination}"
                 )
-        return r[tuple[Path, ...]].ok(destinations)
+        return r[t.VariadicTuple[Path]].ok(destinations)
 
     @staticmethod
     def _commit_artifact_set(
@@ -92,8 +92,8 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
                     shutil.copy2(source, staging_dir / source.name)
                 staging_dir.replace(destination_dir)
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op("persist release artifact set", exc)
-        return r[tuple[Path, ...]].ok(destinations)
+            return r[t.VariadicTuple[Path]].fail_op("persist release artifact set", exc)
+        return r[t.VariadicTuple[Path]].ok(destinations)
 
     @classmethod
     def _persist_artifact_set(
@@ -110,7 +110,9 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
         try:
             destination_dir.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op("create artifact output parent", exc)
+            return r[t.VariadicTuple[Path]].fail_op(
+                "create artifact output parent", exc
+            )
         if destination_dir.exists():
             return cls._validate_existing_artifact_set(
                 artifacts, destinations, destination_dir

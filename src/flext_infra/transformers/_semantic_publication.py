@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 def publish_semantic_file_plan(plan: m.Infra.SemanticFilePlan) -> p.Result[bool]:
@@ -59,9 +59,9 @@ def publish_semantic_file_plans(
         u.Cli.emit_raw(f"  semantic publish [{index}/{total}] {plan.path}\n")
         changed = publish_semantic_file_plan(plan)
         if changed.failure:
-            return r[tuple[Path, ...]].from_failure(changed)
+            return r[t.VariadicTuple[Path]].from_failure(changed)
         written.append(plan.path)
-    return r[tuple[Path, ...]].ok(tuple(written))
+    return r[t.VariadicTuple[Path]].ok(tuple(written))
 
 
 __all__: list[str] = ["publish_semantic_file_plan", "publish_semantic_file_plans"]

@@ -34,7 +34,7 @@ invalid:
         cmd: t.StrSequence,
         return_code: int | None,
         received_signals: list[int],
-        diagnostics: tuple[str, ...],
+        diagnostics: t.VariadicTuple[str],
         stdout_output: bytearray,
         stderr_output: bytearray,
         duration: float,

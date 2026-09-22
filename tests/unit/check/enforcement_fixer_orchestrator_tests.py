@@ -255,8 +255,8 @@ class TestsFlextInfraEnforcementFixerOrchestrator:
             'MODULE_KIND: ClassVar[str] = "demo"\n\n\n'
             "class DemoWorker:\n"
             '    """Worker with one misplaced constant."""\n\n'
-            '    GROUPS: ClassVar[tuple[str, ...]] = ("alpha", "beta")\n\n'
-            "    def groups(self) -> tuple[str, ...]:\n"
+            '    GROUPS: ClassVar[t.VariadicTuple[str]] = ("alpha", "beta")\n\n'
+            "    def groups(self) -> t.VariadicTuple[str]:\n"
             '        """Return the configured groups."""\n'
             "        return self.GROUPS\n",
             encoding="utf-8",

@@ -77,22 +77,22 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         overrides: list[str] = []
         for name in sorted(revisions):
             if name in members or not name.startswith("flext-"):
-                return r[tuple[str, ...]].fail(
+                return r[t.VariadicTuple[str]].fail(
                     f"dependency revision must name an external provider dependency: {name}"
                 )
             source = FlextInfraUtilitiesRepository.declared_git_source(
                 declared.get(name, name)
             )
             if source.failure:
-                return r[tuple[str, ...]].from_failure(source)
+                return r[t.VariadicTuple[str]].from_failure(source)
             url, _ref = source.value
             if not url:
-                return r[tuple[str, ...]].fail(
+                return r[t.VariadicTuple[str]].fail(
                     "pinned dependency declares no direct git source to detect "
                     f"its URL from: {name}"
                 )
             overrides.append(f"{name} @ git+{url}@{revisions[name]}")
-        return r[tuple[str, ...]].ok(tuple(overrides))
+        return r[t.VariadicTuple[str]].ok(tuple(overrides))
 
     @classmethod
     def _sync_uv_sources(

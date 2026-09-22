@@ -16,7 +16,7 @@ class TestsFlextInfraDuplicationGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
     _DUPLICATED_MODULE = """\
-def normalize_records(records: list[str]) -> tuple[str, ...]:
+def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
     normalized: list[str] = []
     seen: set[str] = set()
     for record in records:

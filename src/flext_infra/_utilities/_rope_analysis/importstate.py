@@ -385,7 +385,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 aliases = cls._inherited_class_aliases(target, visited=frozenset())
             owners.update((alias, info.name) for alias in aliases)
         if len(owners) > 1:
-            message = f"ambiguous facade declaration in {resource.path}: {sorted(owners)}"
+            message = (
+                f"ambiguous facade declaration in {resource.path}: {sorted(owners)}"
+            )
             raise ValueError(message)
         return next(iter(owners)) if owners else None
 

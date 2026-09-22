@@ -8,12 +8,11 @@ from importlib.metadata import Distribution, distributions
 from importlib.util import find_spec
 from pathlib import Path
 
-from flext_cli import p, r, u
+from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, t
-
+from .. import c, m, p, r, t
 from .dependencies import FlextInfraUtilitiesDependencies
 
 
@@ -405,17 +404,19 @@ class FlextInfraUtilitiesCodemodRules:
         """
         metadata = document.get(c.Infra.CODEMOD_RULE_METADATA_KEY)
         if metadata is None:
-            return r[tuple[int, ...]].ok(())
+            return r[t.VariadicTuple[int]].ok(())
         if not isinstance(metadata, Mapping):
-            return r[tuple[int, ...]].fail("ast-grep rule metadata must be a mapping")
+            return r[t.VariadicTuple[int]].fail(
+                "ast-grep rule metadata must be a mapping"
+            )
         expected = metadata.get(c.Infra.CODEMOD_TEXT_KEY_EXPECTED)
         if expected is None:
-            return r[tuple[int, ...]].ok(())
+            return r[t.VariadicTuple[int]].ok(())
         if not isinstance(expected, int) or isinstance(expected, bool) or expected < 0:
-            return r[tuple[int, ...]].fail(
+            return r[t.VariadicTuple[int]].fail(
                 "ast-grep rule expected receipt must be a non-negative integer"
             )
-        return r[tuple[int, ...]].ok((expected,))
+        return r[t.VariadicTuple[int]].ok((expected,))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodRules"]

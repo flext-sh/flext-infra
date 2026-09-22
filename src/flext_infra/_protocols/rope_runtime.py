@@ -52,9 +52,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_name(self) -> str: ...
 
-        def get_module(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
 
         def get_kind(self) -> str: ...
 
@@ -73,7 +71,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         declares the common fields that appear across all node types.
         """
 
-        _fields: tuple[str, ...]
+        _fields: t.VariadicTuple[str]
 
     @runtime_checkable
     class RopeAssignment(Protocol):
