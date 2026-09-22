@@ -21,7 +21,6 @@ from .__version__ import (
 
 if TYPE_CHECKING:
     from flext_cli import cli
-    from pydantic_core import from_json, to_json, to_jsonable_python
 
     from flext_core import core, d, e, h, lazy_attribute, r, x
 
@@ -485,7 +484,6 @@ __all__: tuple[str, ...] = (
     "docs_main",
     "e",
     "fixers",
-    "from_json",
     "gates",
     "h",
     "infra",
@@ -503,8 +501,6 @@ __all__: tuple[str, ...] = (
     "settings",
     "source_name",
     "t",
-    "to_json",
-    "to_jsonable_python",
     "transformers",
     "u",
     "validate",
@@ -791,7 +787,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".worktree": ("FlextInfraWorktreeService",),
             "flext_cli": ("cli",),
             "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
-            "pydantic_core": ("from_json", "to_json", "to_jsonable_python"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
