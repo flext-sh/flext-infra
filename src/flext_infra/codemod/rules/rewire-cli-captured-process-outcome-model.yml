@@ -32,14 +32,7 @@ rule:
                     legacy_timeout=timeout_seconds is not None,
                     legacy_timeout_seconds=timeout_seconds,
                     timeout_exit_code=timeout_exit_code,
-                ).map(
-                    lambda outcome: m.Cli.CommandBytesOutput(
-                        stdout=bytes(stdout_output),
-                        stderr=bytes(stderr_output),
-                        outcome=outcome,
-                        duration=duration,
-                    )
-                )
+                ).map($CONVERT)
         selector: function_definition
 fix: |
     def _captured_process_result(
@@ -59,14 +52,7 @@ fix: |
             received_signals,
             diagnostics,
             timed_out=timed_out,
-        ).map(
-            lambda outcome: m.Cli.CommandBytesOutput(
-                stdout=bytes(stdout_output),
-                stderr=bytes(stderr_output),
-                outcome=outcome,
-                duration=duration,
-            )
-        )
+        ).map($CONVERT)
 message: Remove timeout policy from captured ProcessOutcome construction.
 ---
 id: rewire-cli-captured-process-outcome-model

@@ -703,7 +703,7 @@ class FlextInfraMiseArtifactsVerification:
                 and entry.sha256 == files.digest(receipt.content)
                 and entry.link_count == receipt.link_count
             )
-        return entry.kind == "directory" and receipt.exists
+        return entry.kind == "directory" and receipt.exists is True
 
     @classmethod
     def _journal_file_specs(

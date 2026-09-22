@@ -15,33 +15,18 @@ rule:
                 legacy_timeout_seconds: int | None,
                 timeout_exit_code: int,
             ) -> p.Result[p.Cli.ProcessOutcome]:
-                """Preserve a primary exit while surfacing additive diagnostics."""
+                $DOC
                 if legacy_timeout and timed_out:
-                    failure = f"timeout {legacy_timeout_seconds}s: {shlex.join(list(cmd))}"
-                    if diagnostics:
-                        failure = f"{failure}; {'; '.join(diagnostics)}"
-                    return r[p.Cli.ProcessOutcome].fail(failure)
+                    $$$LEGACY_FAILURE
                 if received_signals:
-                    primary_exit = -abs(received_signals[0])
+                    $$$SIGNAL_EXIT
                 elif timed_out:
                     primary_exit = timeout_exit_code
                 elif return_code is None:
-                    primary_exit = None
+                    $$$MISSING_EXIT
                 else:
-                    primary_exit = return_code
-                if diagnostics:
-                    return r[p.Cli.ProcessOutcome].fail("; ".join(diagnostics))
-                if primary_exit is None:
-                    return r[p.Cli.ProcessOutcome].fail(
-                        "root process did not expose an exit status"
-                    )
-                return r[p.Cli.ProcessOutcome].ok(
-                    m.Cli.ProcessOutcome(
-                        raw_return_code=primary_exit,
-                        timed_out=timed_out,
-                        forwarded_signal=(received_signals[0] if received_signals else None),
-                    )
-                )
+                    $$$NATIVE_EXIT
+                $$$OUTCOME
         selector: function_definition
 fix: |
     def _process_exit_result(
@@ -51,24 +36,12 @@ fix: |
         *,
         timed_out: bool,
     ) -> p.Result[p.Cli.ProcessOutcome]:
-        """Preserve a primary exit while surfacing additive diagnostics."""
+        $DOC
         if received_signals:
-            primary_exit = -abs(received_signals[0])
+            $$$SIGNAL_EXIT
         elif return_code is None:
-            primary_exit = None
+            $$$MISSING_EXIT
         else:
-            primary_exit = return_code
-        if diagnostics:
-            return r[p.Cli.ProcessOutcome].fail("; ".join(diagnostics))
-        if primary_exit is None:
-            return r[p.Cli.ProcessOutcome].fail(
-                "root process did not expose an exit status"
-            )
-        return r[p.Cli.ProcessOutcome].ok(
-            m.Cli.ProcessOutcome(
-                raw_return_code=primary_exit,
-                timed_out=timed_out,
-                forwarded_signal=(received_signals[0] if received_signals else None),
-            )
-        )
+            $$$NATIVE_EXIT
+        $$$OUTCOME
 message: Remove per-call timeout policy from the causal outcome owner.

@@ -85,5 +85,6 @@ class FlextInfraConfig(FlextCliConfig):
         return files
 
 
-config = FlextInfraConfig()
+# The public singleton keeps its type through circular facade analysis.
+config: FlextInfraConfig = FlextInfraConfig()
 __all__: list[str] = ["FlextInfraConfig", "config"]
