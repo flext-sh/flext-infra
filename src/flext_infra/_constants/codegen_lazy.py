@@ -107,7 +107,7 @@ class FlextInfraConstantsCodegenLazy:
     )
     "Regex: malformed ``from import`` statement (missing module name)."
 
-    LINT_TOOLS: ClassVar[tuple[tuple[str, tuple[str, ...]], ...]] = (
+    LINT_TOOLS: ClassVar[t.StrSequencePairTuple] = (
         # Ruff runs with NO --select override: the project's pyproject.toml
         # (select=ALL + narrow whitelist + preview) is the ONLY rule policy.
         ("ruff", ("ruff", "check", "{file}", "--no-fix")),

@@ -79,7 +79,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
         ``make check CI=N``. A per-file snapshot validator never runs those.
         """
         lint_tool_gates = {
-            "lint" if tool == "ruff" else tool for tool, _ in c.Infra.LINT_TOOLS
+            "lint" if entry[0] == "ruff" else entry[0]
+            for entry in c.Infra.LINT_TOOLS
         }
         return tuple(
             gate
@@ -99,15 +100,17 @@ class FlextInfraUtilitiesProtectedEditLinting:
             requested or FlextInfraUtilitiesProtectedEditLinting.snapshot_lint_gates()
         )
         selected = tuple(
-            (tool, tmpl)
-            for tool, tmpl in c.Infra.LINT_TOOLS
-            if gate_names.intersection({"lint" if tool == "ruff" else tool, tool})
+            entry
+            for entry in c.Infra.LINT_TOOLS
+            if gate_names.intersection(
+                {"lint" if entry[0] == "ruff" else entry[0], entry[0]}
+            )
         )
         if not selected:
             msg = (
                 "lint snapshot gates select no lint tool: "
                 f"{sorted(gate_names)} (tools: "
-                f"{', '.join(tool for tool, _ in c.Infra.LINT_TOOLS)})"
+                f"{', '.join(entry[0] for entry in c.Infra.LINT_TOOLS)})"
             )
             raise ValueError(msg)
         return selected
@@ -117,7 +120,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls, gates: t.StrSequence | None = None
     ) -> t.StrSequence:
         """Return the canonical lint tool names selected for a gate set."""
-        return tuple(tool for tool, _ in cls._selected_lint_tools(gates))
+        return tuple(entry[0] for entry in cls._selected_lint_tools(gates))
 
     @classmethod
     def ruff_fix_files(cls, paths: t.SequenceOf[Path], workspace: Path) -> None:
@@ -204,16 +207,16 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_cwd = cls._command_cwd(py_file, workspace)
         return tuple(
             (
-                tool_name,
+                entry[0],
                 cls._lint_command(
                     py_file,
                     workspace,
                     command_cwd=command_cwd,
-                    tool_name=tool_name,
-                    template=template,
+                    tool_name=entry[0],
+                    template=entry[1],
                 ),
             )
-            for tool_name, template in cls._selected_lint_tools(gates)
+            for entry in cls._selected_lint_tools(gates)
         )
 
     @classmethod
@@ -270,7 +273,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         # resource-limited deadline of its own); a shorter pool budget cut the
         # gate short and reported the cut as lint errors, reverting valid edits.
         timeout_budget = (
-            max(cls._gate_deadline(tool, gate_timeout) for tool, _ in selected_tools)
+            max(cls._gate_deadline(entry[0], gate_timeout) for entry in selected_tools)
             + 10
         )
         pool = concurrent.futures.ThreadPoolExecutor(
@@ -284,10 +287,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 command_cwd=command_cwd,
                 command_env=command_env,
                 gate_timeout=gate_timeout,
-                tool_name=tool,
-                template=tmpl,
-            ): tool
-            for tool, tmpl in selected_tools
+                tool_name=entry[0],
+                template=entry[1],
+            ): entry[0]
+            for entry in selected_tools
         }
         try:
             done, not_done = concurrent.futures.wait(
@@ -395,7 +398,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if not selected_tools:
             return {}
 
-        gate_key = tuple(tool for tool, _ in selected_tools)
+        gate_key = tuple(entry[0] for entry in selected_tools)
         cache_key = cls._lint_snapshot_cache_key(py_file, gate_key)
         if (
             cache_key is not None
