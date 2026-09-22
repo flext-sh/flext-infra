@@ -92,12 +92,7 @@ class TestsFlextInfraCodegenLazyInitReceiptScan:
         (package / f"{name}.py").write_text(body, encoding="utf-8")
 
     def test_scan_outcome_is_stable_across_receipt_runs(self, tmp_path: Path) -> None:
-        """Cold and warm scans agree on identical bytes (flext-8hctr semantics).
-
-        The scan's scope_path guard currently selects no objects, so both runs
-        succeed without collisions; the receipts record that same (empty)
-        selection per content hash and the warm run must reproduce it exactly.
-        """
+        """Cold and warm scans retain real duplicate findings without blocking gen."""
         shared_body = (
             '"""Shared duplicate class."""\n\n\nclass DupliCollisionProbe:\n'
             '    """Long uppercase name cleared the duplicate predicate."""\n'
@@ -108,6 +103,12 @@ class TestsFlextInfraCodegenLazyInitReceiptScan:
         cold = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
         tm.ok(cold)
         tm.that(self._receipt_path(tmp_path).is_file(), eq=True)
+        tm.that(
+            FlextInfraCodegenLazyInitClassReceipts(tmp_path).class_names(
+                shared_body.encode(c.Cli.ENCODING_DEFAULT)
+            ),
+            eq=("DupliCollisionProbe",),
+        )
 
         warm = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
         tm.ok(warm)

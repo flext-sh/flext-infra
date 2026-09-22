@@ -37,26 +37,31 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         """
         seen = visited if visited is not None else set()
         seen.add(str(module_path.resolve()))
-        state = self.rope_workspace.semantic(module_path)
+        resource = self.rope_workspace.resource(module_path)
+        if resource is None:
+            raise ValueError(f"parent declaration source unavailable: {module_path}")
+        imports = u.Infra.get_declared_module_imports(
+            self.rope_workspace.rope_project, resource
+        )
+        classes = u.Infra.class_info_from_source(resource.read())
         base_packages = tuple(
             self._declared_parent_package(target)
-            for class_info in state.class_infos
+            for class_info in classes
             if "Constants" in class_info.name
             for base_name in class_info.bases
             if (
-                target := state.declared_imports.get(base_name)
-                or state.semantic_imports.get(base_name, "")
+                target := imports.get(base_name)
             )
         )
         declared_packages = tuple(
             package_name
-            for target in state.declared_imports.values()
+            for target in imports.values()
             if (package_name := self._package_name_from_target(target))
             and package_name != current_pkg
         )
         same_package_parents = tuple(
             parent
-            for target in state.declared_imports.values()
+            for target in imports.values()
             if target.startswith(f"{current_pkg}.")
             and (
                 module_file := self._module_file(self._module_path_from_target(target))
@@ -117,22 +122,11 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         alias_name: str,
         *,
         current_pkg: str,
-        use_test_runtime_aliases: bool,
     ) -> str:
         """Return the package that owns the given alias in the inheritance chain."""
         candidate_packages: t.StrSequence = tuple(
             name for name in package_names if name
         )
-        canonical_target = (
-            c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
-            if use_test_runtime_aliases
-            else None
-        )
-        if canonical_target is not None:
-            # flext-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
-            canonical_package: str = canonical_target[0]
-            if canonical_package != current_pkg:
-                return canonical_package
         # ADR-018 p.1: the owner of a letter is the package whose own module
         # DECLARES it in its explicit __all__ (flext_core/result.py owns `r`).
         # Every generated initializer re-exports the letters it inherits, so

@@ -11,11 +11,13 @@ from pathlib import Path
 from flext_infra import c, m, t
 
 from .discovery import FlextInfraUtilitiesDiscovery
+from .namespace import FlextInfraUtilitiesCodegenNamespace
 from .namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
 from .protected_edit import FlextInfraUtilitiesProtectedEdit
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from .rope_core import FlextInfraUtilitiesRopeCore
 from .rope_imports import FlextInfraUtilitiesRopeImports
+from .rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 from .rope_source import FlextInfraUtilitiesRopeSource
 
@@ -158,37 +160,20 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         )
         with FlextInfraUtilitiesRopeCore.open_project(repository_root) as rope_project:
             for file_path in py_files:
-                expected = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(file_path.name)
-                if expected is None:
-                    continue
-                alias_name, expected_suffix = expected
-                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project, file_path
+                policy = FlextInfraUtilitiesCodegenNamespace.policy(
+                    file_path, rope_project=rope_project
                 )
-                if resource is None:
+                alias_name = policy.expected_alias
+                target_class = policy.expected_family
+                if alias_name is None:
                     continue
-                class_candidates = [
-                    info.name
-                    for info in FlextInfraUtilitiesRopeAnalysis.get_class_info(
-                        rope_project, resource
-                    )
-                    if info.name.endswith(expected_suffix)
-                ]
-                if len(class_candidates) != 1:
-                    continue
-                target_class = class_candidates[0]
-                lines = file_path.read_text(
-                    encoding=c.Cli.ENCODING_DEFAULT
-                ).splitlines()
-                kept = [
-                    line
-                    for line in lines
-                    if not line.strip().startswith(f"{alias_name} = ")
-                ]
-                rewritten = (
-                    "\n".join(kept).rstrip() + f"\n\n{alias_name} = {target_class}\n"
-                )
+                if target_class is None:
+                    message = f"facade alias {alias_name!r} has no owner in {file_path}"
+                    raise ValueError(message)
                 original_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                rewritten = FlextInfraUtilitiesRopeModulePatch.ensure_runtime_alias(
+                    original_source, alias=alias_name, target_name=target_class
+                )
                 if rewritten == original_source:
                     continue
                 _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(

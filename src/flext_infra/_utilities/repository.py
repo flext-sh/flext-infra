@@ -252,7 +252,10 @@ class FlextInfraUtilitiesRepository:
 
         from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
 
-        text = u.Cli.files_read_text(pyproject_path)
+        # Identity detection consumes the same owner-recovered declaration as
+        # metadata and template composition. Raw projection bytes may still
+        # carry managed merge blocks while the transaction is only planning.
+        text = u.Infra.live_pyproject_text(pyproject_path)
         if text.failure:
             return r[t.Pair[str, str]].from_failure(text)
         payload = u.Cli.toml_mapping_from_text(text.value)

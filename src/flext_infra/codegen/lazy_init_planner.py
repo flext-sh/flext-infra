@@ -198,6 +198,29 @@ class FlextInfraCodegenLazyInitPlanner(
             child_lazy = ()
             excluded_lazy_names = ()
         type_checking_map = dict(lazy_map)
+        for module_path in sorted(context.pkg_dir.glob("*.py")):
+            if module_path.name == c.Infra.INIT_PY or not module_path.stem.isidentifier():
+                continue
+            policy = u.Infra.publication_policy(
+                module_path, rope_project=self.rope_workspace.rope_project
+            )
+            entry = self.rope_workspace.module(module_path)
+            if entry is None:
+                raise ValueError(f"unindexed publication source: {module_path}")
+            alias = policy.expected_alias
+            family = policy.expected_family
+            if (
+                alias is not None
+                and family is not None
+                and lazy_map.get(alias) == (entry.module_name, alias)
+                and alias in self.rope_workspace.exports(
+                    module_path,
+                    export_options=m.Infra.ExportOptions(
+                        allow_assignments=True, require_explicit_all=True
+                    ),
+                )
+            ):
+                type_checking_map[alias] = (entry.module_name, family)
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,

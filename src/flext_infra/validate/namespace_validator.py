@@ -80,6 +80,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                         package_name=package_name,
                         source=filepath.read_text(encoding=c.Cli.ENCODING_DEFAULT),
                         is_test_file=self._is_test_file(rel),
+                        policy=u.Infra.policy(filepath, rope_project=rope_project),
                     )
                 )
         return self._validation_report(files=files, violations=violations)
@@ -102,14 +103,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         )
 
     def _is_exempt_file(self, filepath: Path) -> bool:
-        """Check whether a file should be skipped from validation.
-
-        Files under ``examples/`` are didactic exercises, not production
-        code — they intentionally violate namespace conventions (no Flext
-        prefix, reverse imports) as teaching tools.
-        """
-        if "examples" in filepath.parts:
-            return True
+        """Leave generated package projections to their generation contract."""
         name = filepath.name
         return name in {"__init__.py", "__version__.py"}
 
