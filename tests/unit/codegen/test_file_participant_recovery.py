@@ -34,27 +34,34 @@ class TestsFlextInfraFileParticipantRecovery:
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
         roots = {"@lazy-init": root}
-        publication = tm.ok(u.Infra.planned_file(
-            root, initializer, required=True,
-            desired_content=b"__all__ = ('missing_export',)\n",
-            desired_mode=before.mode, owner="lazy-init",
-        ))
+        publication = tm.ok(
+            u.Infra.planned_file(
+                root,
+                initializer,
+                required=True,
+                desired_content=b"__all__ = ('missing_export',)\n",
+                desired_mode=before.mode,
+                owner="lazy-init",
+            )
+        )
         validator = FlextInfraValidateFreshImport(
             repository_root=root, packages=(package.name,)
         )
 
         def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
             session = tm.ok(owner.begin_files_locked(scope, roots, (before,)))
-            published = tm.ok(owner.append_phase_locked(
-                session, "lazy-init", (publication,)
-            ))
+            published = tm.ok(
+                owner.append_phase_locked(session, "lazy-init", (publication,))
+            )
             return owner.commit_locked(published, validator.execute)
 
         failed = owner.run_files_locked(roots, publish)
 
         tm.fail(failed, has="missing_export")
         tm.that(failed.error, has="Traceback")
-        restored = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
+        restored = tm.ok(
+            u.Cli.atomic_read_binary_file_state(initializer, required=True)
+        )
         tm.that(restored.content, eq=before.content)
         tm.that(restored.mode, eq=before.mode)
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(True)))

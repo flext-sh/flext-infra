@@ -102,7 +102,7 @@ class FlextInfraConfigModelsArtifact:
                     "to import as fresh-import warnings instead of failing the "
                     "conformance transaction; package-export probes always "
                     "stay blocking"
-                ),
+                )
             ),
         ] = False
         loc_cap: Annotated[

@@ -59,11 +59,13 @@ class FlextInfraModelsCore:
         )
         gui_scripts: t.StrMapping = m.Field(
             default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
-            alias="gui-scripts", description="Declared graphical entrypoints",
+            alias="gui-scripts",
+            description="Declared graphical entrypoints",
         )
         entry_points: t.MappingKV[str, t.StrMapping] = m.Field(
             default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
-            alias="entry-points", description="Declared plugin entrypoint groups",
+            alias="entry-points",
+            description="Declared plugin entrypoint groups",
         )
 
     class FreshImportMetadata(m.Value):

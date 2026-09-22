@@ -111,9 +111,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         apply: bool,
     ) -> None:
         """Persist the standard fmt summary and markdown report."""
-        changes_payload: t.JsonList = [
-            {c.Infra.RK_FILE: item.file} for item in items
-        ]
+        changes_payload: t.JsonList = [{c.Infra.RK_FILE: item.file} for item in items]
         summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
             c.Infra.RK_SUMMARY: {
                 c.Infra.RK_SCOPE: scope.name,

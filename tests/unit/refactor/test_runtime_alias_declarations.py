@@ -129,8 +129,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             "__all__ = ['Local']\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        with infra.rope_workspace(repository) as rope, pytest.raises(
-            ValueError, match="ambiguous facade declaration"
+        with (
+            infra.rope_workspace(repository) as rope,
+            pytest.raises(ValueError, match="ambiguous facade declaration"),
         ):
             rope.convention(source)
 

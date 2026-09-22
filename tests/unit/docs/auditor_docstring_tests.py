@@ -194,9 +194,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
             eq=True,
         )
 
-    def test_coverage_above_minimum_keeps_every_finding(
-        self, tmp_path: Path
-    ) -> None:
+    def test_coverage_above_minimum_keeps_every_finding(self, tmp_path: Path) -> None:
         project = self._write_project(tmp_path)
 
         result = FlextInfraDocAuditor(

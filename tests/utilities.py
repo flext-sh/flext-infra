@@ -146,9 +146,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             ) / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             if relative.parts[0] == c.Infra.DIR_TESTS:
-                tests_initializer = (
-                    project_root / c.Infra.DIR_TESTS / c.Infra.INIT_PY
-                )
+                tests_initializer = project_root / c.Infra.DIR_TESTS / c.Infra.INIT_PY
                 if not tests_initializer.exists():
                     _ = tests_initializer.write_text("", encoding="utf-8")
             _ = target.write_text(module_source, encoding="utf-8")

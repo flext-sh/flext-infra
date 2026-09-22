@@ -55,8 +55,7 @@ class TestsFlextInfraDocsFormatter:
         tm.that(applied.value[0].result, eq=c.Infra.ResultStatus.OK)
         tm.that(applied.value[0].passed, eq=True)
         tm.that(
-            (workspace / "docs/README.md").read_text(encoding="utf-8"),
-            has="# Docs\n",
+            (workspace / "docs/README.md").read_text(encoding="utf-8"), has="# Docs\n"
         )
 
         fixed_point = formatter.format(workspace, apply=False)

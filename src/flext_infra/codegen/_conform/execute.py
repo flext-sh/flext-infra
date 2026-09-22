@@ -727,9 +727,9 @@ class FlextInfraCodegenConformExecute(
         if imported.failure:
             return r[bool].from_failure(imported)
         if not imported.value.passed:
-            return r[bool].fail("\n".join((
-                imported.value.summary, *imported.value.violations
-            )))
+            return r[bool].fail(
+                "\n".join((imported.value.summary, *imported.value.violations))
+            )
         return r[bool].ok(True)
 
 

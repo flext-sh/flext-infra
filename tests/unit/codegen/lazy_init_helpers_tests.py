@@ -147,7 +147,9 @@ class TestsFlextInfraLazyInitHelpers:
     ) -> None:
         """Remove stale projected names that have no current source owner."""
         repository_root, package_root = self._workspace(tmp_path)
-        declared_contract = '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        declared_contract = (
+            '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
             declared_contract, encoding=c.Cli.ENCODING_DEFAULT
         )

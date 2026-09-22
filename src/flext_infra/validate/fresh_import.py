@@ -28,8 +28,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     )
 
     packages: Annotated[
-        t.StrSequence,
-        m.Field(description="Packages to validate in fresh subprocesses"),
+        t.StrSequence, m.Field(description="Packages to validate in fresh subprocesses")
     ] = (c.Infra.PKG_CORE_UNDERSCORE, "flext_infra", "flext_tests")
 
     _PRELUDE: ClassVar[str] = (
@@ -97,23 +96,24 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             )
             for group, entries in groups:
                 for name, value in entries.items():
-                    probes.append(m.Infra.FreshImportProbe(
-                        subject=f"{layout.package_name}: {group}/{name}={value}",
-                        code=(
-                            self._PRELUDE
-                            + f"EntryPoint(name={name!r}, value={value!r}, group={group!r}).load()\n"
-                            + origin_code
-                        ),
-                    ))
+                    probes.append(
+                        m.Infra.FreshImportProbe(
+                            subject=f"{layout.package_name}: {group}/{name}={value}",
+                            code=(
+                                self._PRELUDE
+                                + f"EntryPoint(name={name!r}, value={value!r}, group={group!r}).load()\n"
+                                + origin_code
+                            ),
+                        )
+                    )
             owned = tuple(
-                plan for plan in publications
+                plan
+                for plan in publications
                 if plan.context.importable
                 and plan.action == c.Infra.LazyInitAction.WRITE
                 and plan.context.pkg_dir.is_relative_to(layout.package_dir)
             )
-            if not any(
-                plan.context.pkg_dir == layout.package_dir for plan in owned
-            ):
+            if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
                 return r[m.Infra.ValidationReport].fail(
                     f"missing public export contract for {layout.package_name}"
                 )
@@ -123,28 +123,27 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 )
                 for plan in owned
             )
-            probes.append(m.Infra.FreshImportProbe(
-                subject=layout.package_name,
-                code=self._PRELUDE + body + origin_code,
-            ))
+            probes.append(
+                m.Infra.FreshImportProbe(
+                    subject=layout.package_name, code=self._PRELUDE + body + origin_code
+                )
+            )
         for package in packages:
             if not c.Infra.PYTHON_IMPORT_NAME_RE.fullmatch(package):
                 return r[m.Infra.ValidationReport].fail(
                     f"{package}: not a valid Python package name"
                 )
-            probes.append(m.Infra.FreshImportProbe(
-                subject=package,
-                code=self._PRELUDE + self._EXPORT_CODE.format(
-                    package=package, exports=()
-                ) + origin_code,
-            ))
-        env = self._workspace_import_env(
-            tuple(layout.src_dir for layout in layouts)
-        )
+            probes.append(
+                m.Infra.FreshImportProbe(
+                    subject=package,
+                    code=self._PRELUDE
+                    + self._EXPORT_CODE.format(package=package, exports=())
+                    + origin_code,
+                )
+            )
+        env = self._workspace_import_env(tuple(layout.src_dir for layout in layouts))
         warned: list[str] = []
-        warn_entry_points = (
-            config.Infra.codegen.fresh_import_entry_points_warn_only
-        )
+        warn_entry_points = config.Infra.codegen.fresh_import_entry_points_warn_only
         for probe in probes:
             smoke = u.Cli.run_raw(
                 [sys.executable, "-W", "error", "-c", probe.code],
@@ -160,9 +159,11 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 f"{probe.subject}: {output.outcome.model_dump_json()}\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}"
             )
-            if warn_entry_points and self._is_entry_point_probe(
-                probe.subject
-            ) and self._declared_script_debt(detail, probe.subject):
+            if (
+                warn_entry_points
+                and self._is_entry_point_probe(probe.subject)
+                and self._declared_script_debt(detail, probe.subject)
+            ):
                 # Operator law 2026-09-22: declared-script debt (the template
                 # emits `.cli:main` for every distribution) warns instead of
                 # failing the transaction; the debt stays bead-tracked until
@@ -171,10 +172,13 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 # export, a lost dependency — never fall into this class.
                 warned.append(detail)
                 continue
-            return r[m.Infra.ValidationReport].ok(m.Infra.ValidationReport(
-                passed=False, violations=(detail,),
-                summary=f"fresh-import failed: {probe.subject}",
-            ))
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
+                    passed=False,
+                    violations=(detail,),
+                    summary=f"fresh-import failed: {probe.subject}",
+                )
+            )
         if warned:
             self.logger.info(
                 "fresh_import_entry_points_warned",
@@ -183,9 +187,11 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             )
         passed_count = len(probes) - len(warned)
         summary = f"{passed_count} fresh-import probe(s) passed; {len(warned)} entry point(s) warned"
-        return r[m.Infra.ValidationReport].ok(m.Infra.ValidationReport(
-            passed=True, violations=tuple(warned), summary=summary,
-        ))
+        return r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=True, violations=tuple(warned), summary=summary
+            )
+        )
 
     @classmethod
     def _is_entry_point_probe(cls, subject: str) -> bool:

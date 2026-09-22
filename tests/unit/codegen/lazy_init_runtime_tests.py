@@ -36,7 +36,9 @@ class TestsFlextInfraLazyInitRuntime:
 
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
 
-        generated = (package / c.Infra.INIT_PY).read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        generated = (package / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
         tm.that(generated, has="PublishedSupport")
         tm.that(generated, lacks="pytest_plugins")
         tm.that(conftest.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=private_source)

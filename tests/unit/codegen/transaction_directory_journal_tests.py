@@ -213,9 +213,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         # .state is durable by design (flext-v4fmn): the lease lock and
         # the class receipts persist across transactions inside it.
         tm.that((root / ".state").exists(), eq=True)
-        tm.that(
-            artifacts.unix_launcher.parent.exists(), eq=not missing_launcher_parent
-        )
+        tm.that(artifacts.unix_launcher.parent.exists(), eq=not missing_launcher_parent)
 
     @pytest.mark.slow
     @pytest.mark.parametrize("raises", [False, True])

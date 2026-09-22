@@ -73,8 +73,7 @@ class TestsFlextInfraAuditorCli:
         tm.that(result, eq=0 if warns else 1)
         captured = capsys.readouterr()
         tm.that(
-            ("Audit completed successfully" in captured.out + captured.err),
-            eq=warns,
+            ("Audit completed successfully" in captured.out + captured.err), eq=warns
         )
         tm.that(
             (workspace / ".reports/docs/audit-report.md").read_text(encoding="utf-8"),
