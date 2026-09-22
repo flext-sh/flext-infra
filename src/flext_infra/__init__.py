@@ -20,11 +20,7 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-<<<<<<< HEAD
     from flext_cli import cli, core, d, e, h, lazy_attribute, r, x
-=======
-    from flext_cli import cli, d, e, h, r, x
->>>>>>> d9fc4a453d7a680f49754ddf6455620a0c1a72e6
 
     from . import (
         check,
@@ -482,6 +478,7 @@ __all__: tuple[str, ...] = (
     "codemod",
     "collect_markdown_files",
     "config",
+    "core",
     "d",
     "deps",
     "detectors",
@@ -492,6 +489,7 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
+    "lazy_attribute",
     "m",
     "main",
     "maintenance",
@@ -791,11 +789,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-<<<<<<< HEAD
             "flext_cli": ("cli", "core", "d", "e", "h", "lazy_attribute", "r", "x"),
-=======
-            "flext_cli": ("cli", "d", "e", "h", "r", "x"),
->>>>>>> d9fc4a453d7a680f49754ddf6455620a0c1a72e6
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

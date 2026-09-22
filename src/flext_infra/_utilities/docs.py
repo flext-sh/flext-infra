@@ -151,31 +151,6 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         apply: bool,
     ) -> None:
         """Persist the standard fmt summary and markdown report."""
-<<<<<<< HEAD
-        changes_payload: t.JsonList = [{c.Infra.RK_FILE: item.file} for item in items]
-        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
-            c.Infra.RK_SUMMARY: {
-                c.Infra.RK_SCOPE: scope.name,
-                "changed_files": len(items),
-                "apply": apply,
-            },
-            "changes": changes_payload,
-        })
-        _ = u.Cli.json_write(scope.report_dir / "fmt-summary.json", summary_payload)
-        _ = FlextInfraUtilitiesDocs.write_markdown(
-            scope.report_dir / "fmt-report.md",
-            [
-                "# Docs Format Report",
-                "",
-                f"Scope: {scope.name}",
-                f"Apply: {int(apply)}",
-                f"Changed files: {len(items)}",
-                "",
-                "| file |",
-                "|---|",
-                *[f"| {item.file} |" for item in items],
-            ],
-=======
         FlextInfraUtilitiesDocs.docs_write_phase_reports(
             scope,
             phase="fmt",
@@ -184,7 +159,6 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             rows=[(item.file,) for item in items],
             items=items,
             apply=apply,
->>>>>>> d9fc4a453d7a680f49754ddf6455620a0c1a72e6
         )
 
     @staticmethod
