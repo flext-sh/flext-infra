@@ -181,7 +181,11 @@ class FlextInfraApplyRenames:
         roots_result = cls._roots(params.roots)
         if roots_result.failure:
             return r[m.Infra.ApplyRenamesReport].from_failure(roots_result)
-        files = cls._text_files(roots_result.value)
+        # The driver list owns its old,new pairs and can never be a rename
+        # target of its own campaign: rewriting it would corrupt the SSOT.
+        files = tuple(
+            path for path in cls._text_files(roots_result.value) if path != csv_path
+        )
         scan_result = cls._scan(files, pairs_result.value)
         if scan_result.failure:
             return r[m.Infra.ApplyRenamesReport].from_failure(scan_result)
