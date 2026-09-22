@@ -105,6 +105,14 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
 
         local_parent_packages = self._local_parent_packages(pkg_dir)
         local_import_alias_targets = self._local_import_alias_targets(pkg_dir)
+        # Operator law (2026-09-16): a private implementation package declares no
+        # short alias at all — its symbols live under the folder's own __all__.
+        # Republishing an upstream facade letter from a private segment (e.g.
+        # ``flext_ldif.servers._base``) claimed ownership of a letter the real
+        # facade already owns and aborted generation with a collision; only a
+        # project namespace root or a governed test surface inherits letters.
+        if any(part.startswith("_") for part in current_pkg.split(".")[1:]):
+            return
         if (
             not u.Infra.matches_project_namespace_package(current_pkg)
             and not is_test_runtime_alias_surface
