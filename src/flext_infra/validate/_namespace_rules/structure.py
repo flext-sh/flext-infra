@@ -228,6 +228,11 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         exports: t.StrSequence,
     ) -> bool:
         """Accept the published binding selected by the shared semantic policy."""
+        if cls.kind(node) not in {"Assign", "AnnAssign"}:
+            return False
+        value = getattr(node, "value", None)
+        if value is None:
+            return False
         alias = policy.expected_alias
         facade_class_name = policy.expected_family
         if facade_class_name is None:
@@ -240,7 +245,6 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             return False
         facade = facade_classes[0]
         targets = getattr(node, "targets", ()) or (getattr(node, "target", None),)
-        value = getattr(node, "value", None)
         value_is_class = (
             cls.kind(value) == "Name" and cls.name_of(value) == facade_class_name
         )

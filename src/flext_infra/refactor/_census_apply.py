@@ -297,7 +297,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         source = rope.source(file_path)
         lines = source.splitlines(keepends=True)
         line_ranges_to_remove: list[tuple[int, int]] = []
-        imports_to_add: list[tuple[str, tuple[str, ...]]] = []
+        imports_to_add: list[tuple[str, t.VariadicTuple[str]]] = []
         for violation in violations:
             target = self._find_inline_import_node(tree, violation.line)
             if target is None:

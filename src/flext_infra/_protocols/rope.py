@@ -30,7 +30,7 @@ class FlextInfraProtocolsRope(Protocol):
         """Fields required by production-source discovery."""
 
         @property
-        def project_roots(self) -> tuple[Path, ...]:
+        def project_roots(self) -> t.VariadicTuple[Path]:
             """Non-empty ordered project roots selected at the boundary."""
             ...
 
@@ -109,9 +109,9 @@ class FlextInfraProtocolsRope(Protocol):
 
         def name_index(
             self,
-        ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]: ...
+        ) -> t.MappingKV[str, tuple[tuple[Path, str, t.VariadicTuple[int]], ...]]: ...
 
-        def import_dependents(self, import_target: str) -> tuple[Path, ...]: ...
+        def import_dependents(self, import_target: str) -> t.VariadicTuple[Path]: ...
 
         def objects(
             self,

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, m
+from flext_infra import config, m, t
 
 from ._docs_generate_plan import (
     DocsRenderedArtifactTuple,
@@ -18,7 +18,7 @@ from .docs_contract import FlextInfraUtilitiesDocsContract
 from .docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsGenerateProjectMixin(
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             scope, repository_root=repository_root, source_states=source_states
         )
         if guides.failure:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(guides)
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(guides)
         guide_paths = {
             state.path
             for state in source_states
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             )
         )
         if pruned.failure:
-            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(pruned)
+            return r[t.VariadicTuple[DocsRenderedArtifactTuple]].from_failure(pruned)
         return FlextInfraUtilitiesDocsGenerateProjectMixin.docs_normalize_artifacts((
             *((scope.path, path, content) for path, content in rendered),
             *guides.value,

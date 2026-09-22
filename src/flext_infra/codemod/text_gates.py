@@ -258,10 +258,10 @@ class FlextInfraModTextGateEngine:
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
             inventory = validate_inventory()
             if inventory.failure:
-                return r[tuple[Path, ...]].from_failure(inventory)
+                return r[t.VariadicTuple[Path]].from_failure(inventory)
             started = transaction.begin_files_locked(scope_root, roots, inputs)
             if started.failure:
-                return r[tuple[Path, ...]].from_failure(started)
+                return r[t.VariadicTuple[Path]].from_failure(started)
 
             def apply(
                 session: m.Infra.CodegenTransactionSession,
@@ -270,7 +270,7 @@ class FlextInfraModTextGateEngine:
                     session, analysis.phase, plans
                 )
                 if published.failure:
-                    return r[tuple[Path, ...]].from_failure(published)
+                    return r[t.VariadicTuple[Path]].from_failure(published)
                 return transaction.commit_locked(published.value, validate_published)
 
             return transaction.publish_prepared_locked(started.value, apply)

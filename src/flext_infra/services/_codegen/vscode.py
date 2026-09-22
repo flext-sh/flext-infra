@@ -301,7 +301,7 @@ class FlextInfraCodegenVscodeMixin:
     ) -> p.Result[t.VariadicTuple[str]]:
         """Return one canonical list without consulting repository topology."""
         del key, repository_root
-        return r[tuple[str, ...]].ok(base_entries)
+        return r[t.VariadicTuple[str]].ok(base_entries)
 
 
 __all__: list[str] = ["FlextInfraCodegenVscodeMixin"]

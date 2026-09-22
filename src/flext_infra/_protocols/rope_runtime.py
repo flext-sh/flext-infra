@@ -74,7 +74,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         declares the common fields that appear across all node types.
         """
 
-        _fields: tuple[str, ...]
+        _fields: t.VariadicTuple[str]
 
     @runtime_checkable
     class RopeAssignment(Protocol):

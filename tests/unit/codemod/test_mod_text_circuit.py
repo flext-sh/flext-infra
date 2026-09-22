@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -14,6 +15,9 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraModTextGateEngine
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class TestsFlextInfraModTextGateEngine:
@@ -119,12 +123,12 @@ class TestsFlextInfraModTextGateEngine:
                 raise failure
             return r[bool].fail("text publication acceptance rejected")
 
-        def publish(scope: Path) -> p.Result[tuple[Path, ...]]:
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
             session = transaction.begin_files_locked(scope, roots, states).unwrap()
 
             def apply(
                 active: m.Infra.CodegenTransactionSession,
-            ) -> p.Result[tuple[Path, ...]]:
+            ) -> p.Result[t.VariadicTuple[Path]]:
                 updated = transaction.append_phase_locked(
                     active, analysis.phase, plans
                 ).unwrap()

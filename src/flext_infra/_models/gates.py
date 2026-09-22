@@ -45,11 +45,11 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         files: Annotated[
-            tuple[SccFile, ...],
+            t.VariadicTuple[SccFile],
             m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 
-    class SccReport(m.RootModel[tuple[SccLanguage, ...]]):
+    class SccReport(m.RootModel[t.VariadicTuple[SccLanguage]]):
         """Native SCC groups, including an empty scan; malformed JSON fails."""
 
     class GateContext(m.ContractModel):

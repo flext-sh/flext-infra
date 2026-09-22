@@ -9,6 +9,7 @@ from flext_cli import m, u
 from ... import p, t
 from .._config.base import FlextInfraConfigModels
 from .fix import FlextInfraModelsCodegenFixModels
+from .lazy_init import FlextInfraModelsCodegenLazyInitModels
 from .scaffold import FlextInfraModelsCodegenScaffoldModels
 
 
@@ -32,6 +33,10 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
+        publications: Annotated[
+            t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
+            m.Field(description="Resolved export contracts verified before commit"),
+        ] = ()
 
         @u.model_validator(mode="after")
         def _validate_unique_paths(self) -> Self:

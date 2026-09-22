@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Annotated, override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 
@@ -249,6 +249,7 @@ class FlextInfraCodegenLazyInit(
                 phase="lazy-init",
                 files=all_plans,
                 inputs=tuple(snapshots.value[path] for path in sorted(snapshots.value)),
+                publications=tuple(package_plans),
             )
         )
 

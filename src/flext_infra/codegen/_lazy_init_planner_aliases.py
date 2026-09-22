@@ -66,7 +66,6 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         }
         inherited_packages = self._resolve_transitive_parent_packages((
             *self._parent_packages(pkg_dir),
-            *self._local_parent_packages(pkg_dir),
             self._source_package_name(pkg_dir, surface),
         ))
         alias_names = tuple(
@@ -92,23 +91,6 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 lazy_map[alias_name] = (package_name, alias_name)
             elif existing is not None and existing[0] == current_pkg:
                 del lazy_map[alias_name]
-
-    def _local_parent_packages(self, pkg_dir: Path) -> t.StrSequence:
-        constants_path = pkg_dir / c.Infra.CONSTANTS_PY
-        resource = self.rope_workspace.resource(constants_path)
-        if resource is None:
-            return ()
-        package_entry = self._package_entry(pkg_dir)
-        current_name = package_entry.package_name if package_entry is not None else ""
-        imports = u.Infra.get_declared_module_imports(
-            self.rope_workspace.rope_project, resource
-        )
-        return tuple(
-            package_name
-            for target in imports.values()
-            if (package_name := self._package_name_from_target(target))
-            and package_name != current_name
-        )
 
     def _resolve_transitive_parent_packages(
         self, package_names: t.StrSequence

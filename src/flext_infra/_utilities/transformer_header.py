@@ -116,7 +116,47 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             )
             lines.insert(index + 1, f"{indent}from {module} import {alias}\n")
             return "".join(lines)
-        return None
+        return cls._create_type_checking_block(source, module, alias)
+
+    @classmethod
+    def _create_type_checking_block(cls, source: str, module: str, alias: str) -> str:
+        """Create the type-checking block an annotation-only import needs.
+
+        Without a block to extend, the injector fell through to a module-level
+        import, which is exactly what breaks a module the package imports while
+        initialising itself (flext-dk13k): ``__version__.py`` then raised
+        ImportError on a partially initialised package. Deferred annotations
+        make the alias a type-checker-only read, so the block is the correct
+        destination and the facade law prescribes it.
+        """
+        info = cls._parse_header(source)
+        offset = info.span.last_import_end or max(
+            info.span.shebang_end,
+            info.span.encoding_end,
+            info.span.comments_end,
+            info.span.docstring_end,
+        )
+        prefix = source[:offset]
+        if prefix and not prefix.endswith("\n"):
+            prefix = f"{prefix}\n"
+        if not prefix.endswith("\n\n"):
+            prefix = f"{prefix}\n"
+        guard = ""
+        if not cls._imports_type_checking(source):
+            guard = "from typing import TYPE_CHECKING\n\n"
+        block = f"if TYPE_CHECKING:\n    from {module} import {alias}\n"
+        return f"{prefix}{guard}{block}{source[offset:]}"
+
+    @staticmethod
+    def _imports_type_checking(source: str) -> bool:
+        """Return whether the module already imports ``TYPE_CHECKING``."""
+        module = ast.parse(source)
+        for node in ast.walk(module):
+            if not isinstance(node, ast.ImportFrom) or node.module != "typing":
+                continue
+            if any(entry.name == "TYPE_CHECKING" for entry in node.names):
+                return True
+        return False
 
     @staticmethod
     def alias_used(source: str, alias: str) -> bool:

@@ -28,7 +28,7 @@ class Order(m.FrozenModel):
 
     sku: str
     quantity: int = 1
-    tags: tuple[str, ...] = ()
+    tags: t.VariadicTuple[str] = ()
 
 
 class Shipment(m.FrozenModel):

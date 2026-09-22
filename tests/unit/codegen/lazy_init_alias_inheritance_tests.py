@@ -40,8 +40,15 @@ class TestsFlextInfraLazyInitAliasInheritance:
         u.Tests.write_lazy_init_namespace_module(
             parent / "constants.py", class_name="BootstrapParentConstants", alias="c"
         )
+        parent_constants = parent / c.Infra.CONSTANTS_PY
+        parent_constants.write_text(
+            parent_constants.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            + "\nimport re\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
         (parent / "result.py").write_text(
-            "from flext_core import FlextResult, r\n__all__ = ['FlextResult', 'r']\n",
+            "from flext_core import FlextResult\nr = FlextResult\n"
+            "__all__ = ['FlextResult', 'r']\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child / "constants.py").write_text(
@@ -70,12 +77,13 @@ class TestsFlextInfraLazyInitAliasInheritance:
             "from flext_core import r\n"
             "print(generated.r is r)\n"
             "print('r' in generated.__all__)\n"
+            "print('compile' in generated.__all__)\n"
             "print(execute().value)\n"
         )
         result = tm.ok(u.Cli.run(
             [sys.executable, "-c", probe], env=probe_env, cwd=repository
         ))
-        tm.that(result.stdout.splitlines(), eq=["True", "True", "bootstrap-ready"])
+        tm.that(result.stdout.splitlines(), eq=["True", "True", "False", "bootstrap-ready"])
 
     def test_child_inherits_exactly_the_indexed_parent_letters(
         self, tmp_path: Path
