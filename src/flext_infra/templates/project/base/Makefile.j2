@@ -169,7 +169,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 endif
-DOCS_ACTIONS := generate fix audit build validate
+DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -578,7 +578,11 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all: _builtin_gen_all
+# Operator law 2026-09-22: `docs` is a docs-only lifecycle (generate, fix,
+# fmt, validate, audit); the actions render from make.docs.actions and never
+# depend on the workspace-wide codegen conform — docs actions render their
+# own outputs from the live configuration and sources.
+_builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
 		mode=; \

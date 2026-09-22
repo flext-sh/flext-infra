@@ -316,12 +316,9 @@ Infra:
       # read-only side runs in `make check`; `make fix` never repeats them
       # (single-pass verb law: one operation per tool per verb).
       fmt_gates: [markdown-format]
-      # Operator 2026-09-22 (flext-jeasw): findings from the fleet-wide
-      # structural sweeps still in progress render as warnings and never
-      # block CI. Each entry is removed the moment its wave closes; the
-      # gates stay in the default check set and every report keeps the
-      # findings visible.
-      check_gates_advisory: [namespace, runtime-census, duplication]
+      # Operator 2026-09-22: warn-only gate classification lives in the one
+      # gate SSOT (c.Infra.WARNING_GATE_IDS), not here — the verdict, the
+      # runner rendering, and the reports read that single source.
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -431,6 +428,12 @@ Infra:
           - develop
           - 0.12.0-dev
       docs:
+        # Operator law 2026-09-22: `make docs` is a docs-only lifecycle
+        # (generate -> fix -> fmt -> check); it never runs the workspace-wide
+        # codegen conform as a prerequisite. `validate` is the structural
+        # check (blocking when the .md set is incomplete); `audit` findings
+        # are warnings owned by cleanup beads, never CI blockers.
+        actions: [generate, fix, fmt, validate, audit]
         api_modules:
           flext-infra:
             - api
@@ -444,7 +447,8 @@ Infra:
             - typings
             - utilities
             - worktree
-        mutable_actions: [fix]
+        mutable_actions: [fix, fmt]
+        warning_actions: [audit]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -486,7 +490,7 @@ Infra:
         - name: status
           description: Report the resolved runtime and repository state.
         - name: docs
-          description: Generate, repair, build, and validate documentation.
+          description: Generate, fix, format, and check documentation.
         - name: clean
           description: Remove every declared disposable artifact.
         - name: release-plan

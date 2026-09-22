@@ -83,7 +83,11 @@ class FlextInfraPytestRunnerExecution(
             report_dir / f"{artifact}.log", outcome.stdout or ""
         ).unwrap()
         if not node_ids and not complete:
-            self._resolve_selection(report_dir, complete=True)
+            # The hot selection can be legitimately empty (all known tests
+            # clean); the complete inventory must then drive the suite, so its
+            # resolution is returned — discarding it ran the suite against the
+            # hot cache again and collected nothing.
+            return self._resolve_selection(report_dir, complete=True)
         return node_ids
 
     def _run_suite(

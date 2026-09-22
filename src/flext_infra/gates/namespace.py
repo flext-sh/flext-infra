@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import config, m
+from flext_infra import m
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 from .base_gate import FlextInfraGate
@@ -27,21 +27,27 @@ class FlextInfraNamespaceGate(FlextInfraGate):
         started = time.monotonic()
         validator = FlextInfraNamespaceValidator()
         report_result = validator.validate_project(project_dir)
-        # Operator ruling 2026-09-22 (make.check_gates_advisory): while the
-        # structural wave grinds, namespace findings render as warnings and
-        # the gate passes — but ONLY when validation itself ran: a broken
-        # scanner still fails, never reading as a clean pass.
-        advisory = (
-            self.gate_id in config.Infra.codegen.make.check_gates_advisory
-        )
-        passed = report_result.success and (report_result.value.passed or advisory)
-        errors: list[str] = []
+        passed = report_result.success and report_result.value.passed
         if report_result.failure:
-            errors.append(report_result.error or "namespace validation failed")
-        elif not passed:
-            errors.extend(report_result.value.violations)
+            # A broken invocation is a blocking defect, not advisory residue.
+            return self._build_project_error_gate_result(
+                project_dir,
+                passed=False,
+                errors=[report_result.error or "namespace validation failed"],
+                started=started,
+                ctx=ctx,
+            )
+        # Operator order 2026-09-22: namespace-rule findings stay advisory
+        # (reported as warnings, non-blocking) until the structural namespace
+        # campaign converges; they must never hide a broken invocation.
+        violations: list[str] = [] if passed else list(report_result.value.violations)
         return self._build_project_error_gate_result(
-            project_dir, passed=passed, errors=errors, started=started, ctx=ctx
+            project_dir,
+            passed=passed,
+            errors=violations,
+            started=started,
+            ctx=ctx,
+            advisory=True,
         )
 
 

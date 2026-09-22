@@ -12,6 +12,7 @@ from ... import t
 from ..._constants import (
     FlextInfraConstantsCheck,
     FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsDocs,
     FlextInfraConstantsMake,
 )
 from .._defaults import FlextInfraModelsDefaults
@@ -163,6 +164,16 @@ class FlextInfraConfigModelsMake:
     class MakeDocsSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
+        actions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Docs verb lifecycle actions in execution order; every "
+                    "entry must be a registered docs CLI action"
+                ),
+            ),
+        ]
         api_modules: Annotated[
             Mapping[t.NonEmptyStr, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
@@ -177,6 +188,16 @@ class FlextInfraConfigModelsMake:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Docs actions that mutate"),
         ]
+        warning_actions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Docs actions whose findings are reported as warnings "
+                    "instead of failing the phase"
+                ),
+            ),
+        ] = ()
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
         ]
@@ -221,6 +242,36 @@ class FlextInfraConfigModelsMake:
                 )
                 if invalid is not None:
                     msg = f"docs api module is not importable: {invalid}"
+                    raise ValueError(msg)
+            return self
+
+        @u.model_validator(mode="after")
+        def _validate_actions(self) -> Self:
+            """Reject unknown, duplicated, or out-of-lifecycle docs actions."""
+            if len(set(self.actions)) != len(self.actions):
+                msg = "docs actions must be unique"
+                raise ValueError(msg)
+            unknown = next(
+                (
+                    action
+                    for action in self.actions
+                    if action not in FlextInfraConstantsDocs.DOCS_ACTION_IDS
+                ),
+                None,
+            )
+            if unknown is not None:
+                msg = f"docs action is not a registered CLI action: {unknown}"
+                raise ValueError(msg)
+            for label, selected in (
+                ("mutable_actions", self.mutable_actions),
+                ("warning_actions", self.warning_actions),
+            ):
+                outside = next(
+                    (action for action in selected if action not in self.actions),
+                    None,
+                )
+                if outside is not None:
+                    msg = f"{label} entry is not part of the docs lifecycle: {outside}"
                     raise ValueError(msg)
             return self
 
@@ -462,38 +513,6 @@ class FlextInfraConfigModelsMake:
                 ),
             ),
         ] = ()
-
-        check_gates_advisory: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description=(
-                    "Gates whose findings render as warnings and never fail "
-                    "the check run. Operator ruling 2026-09-22: the "
-                    "fleet-wide structural sweeps still in progress "
-                    "(namespace, runtime-census, duplication) stay visible "
-                    "in every report without blocking CI while the waves "
-                    "grind; each entry is removed the moment its wave "
-                    "closes. A gate's declared severity means what it says: "
-                    "advisory declares warning."
-                ),
-            ),
-        ] = ()
-
-        @u.model_validator(mode="after")
-        def _validate_check_gates_advisory(self) -> Self:
-            """Advisory gates must be known and unique."""
-            if len(set(self.check_gates_advisory)) != len(self.check_gates_advisory):
-                msg = "make check_gates_advisory must be unique"
-                raise ValueError(msg)
-            unknown = set(self.check_gates_advisory) - set(self.check_gates_allowed)
-            if unknown:
-                msg = (
-                    "make check_gates_advisory contains unknown gates: "
-                    f"{', '.join(sorted(unknown))}"
-                )
-                raise ValueError(msg)
-            return self
 
         @u.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:

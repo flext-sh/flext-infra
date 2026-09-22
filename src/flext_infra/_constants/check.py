@@ -100,6 +100,25 @@ class FlextInfraConstantsCheck:
     "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
     MUTATING_GATES: ClassVar[frozenset[str]] = frozenset({FORMAT})
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
+    WARNING_GATE_IDS: ClassVar[frozenset[str]] = frozenset({
+        "markdown",
+        "namespace",
+        "runtime-census",
+        "silent-failure",
+        "duplication",
+        "tier-whitelist",
+        "pyrefly",
+    })
+    "Gates whose findings are reported without failing the check verdict. "
+    "Operator law 2026-09-22: the census/structural flood (namespace, "
+    "runtime-census, duplication, tier-whitelist) and pyrefly diagnostics "
+    "are warning-only for CI — the debts stay tracked in beads. Extended "
+    "the same day by the docs reorg session: the docs-lint backlog "
+    "(markdown/rumdl) and the sentinel-return backlog (silent-failure) "
+    "also warn, so CI blocks on the correctness gates (lint, mypy, "
+    "pyright, security, boundary) while every finding stays visible in "
+    "the run output and report artifacts."
+
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )

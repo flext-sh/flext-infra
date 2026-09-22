@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import config, m
+from flext_infra import m
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 
 from .base_gate import FlextInfraGate
@@ -33,20 +33,29 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraRuntimeCensusValidator(repository_root=project_dir)
-        result = validator.execute()
-        # Operator ruling 2026-09-22 (make.check_gates_advisory): while the
-        # structural wave grinds, census findings render as warnings and never
-        # block the run. The validator reports violations as a failed Result
-        # whose error carries the full findings report — advisory keeps that
-        # report visible while passing. A census that truly crashes raises:
-        # the runner's crash path still fails, never reading as a clean pass.
-        advisory = self.gate_id in config.Infra.codegen.make.check_gates_advisory
-        passed = (result.success and result.value is True) or advisory
-        errors: list[str] = []
-        if result.failure or (not passed and result.success):
-            errors.append(result.error or "runtime census found violations")
+        # ``build_report`` (not ``execute``) keeps violations structured so the
+        # gate can grade a broken invocation separately from found violations.
+        report_result = validator.build_report()
+        if report_result.failure:
+            # A broken invocation is a blocking defect, not advisory residue.
+            return self._build_project_error_gate_result(
+                project_dir,
+                passed=False,
+                errors=[report_result.error or "runtime census failed"],
+                started=started,
+                ctx=ctx,
+            )
+        report = report_result.value
+        # Operator order 2026-09-22: census findings stay advisory (reported
+        # as warnings, non-blocking) until the enforcement campaign
+        # converges; they must never hide a broken invocation.
         return self._build_project_error_gate_result(
-            project_dir, passed=passed, errors=errors, started=started, ctx=ctx
+            project_dir,
+            passed=report.passed,
+            errors=[] if report.passed else [report.summary],
+            started=started,
+            ctx=ctx,
+            advisory=True,
         )
 
 
