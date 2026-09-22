@@ -245,6 +245,18 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
+        if (
+            context.current_pkg.split(".", maxsplit=1)[0]
+            == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            and frozenset(context.current_pkg.split("."))
+            & c.Infra.BOOTSTRAP_CYCLE_EXCEPTION_SEGMENTS
+        ):
+            # Bootstrap-cycle exception (see _codegen_generation_file): these
+            # initializers render side-effect-free and publish nothing. The
+            # discovered lazy map stays so parent resolution and dir_exports
+            # are unchanged; exports=() is the publication contract the
+            # fresh-import probe validates against the empty static init.
+            plan = plan.model_copy(update={"exports": ()})
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return self._publish_plan(plan)
 
