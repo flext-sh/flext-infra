@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from collections.abc import Mapping, MutableMapping, Sequence
 from importlib.metadata import Distribution, distributions
 from importlib.util import find_spec
@@ -110,7 +111,10 @@ class FlextInfraUtilitiesCodemodRules:
     @staticmethod
     def _distributions() -> MutableMapping[str, Distribution]:
         indexed: MutableMapping[str, Distribution] = {}
-        for installed in distributions():
+        # Import search paths may repeat the same physical directory. Query each
+        # directory once; distinct installations with the same name still fail.
+        paths = list(dict.fromkeys(str(Path(path).resolve()) for path in sys.path))
+        for installed in distributions(path=paths):
             raw_name = installed.metadata.get("Name")
             if not isinstance(raw_name, str) or not raw_name.strip():
                 continue
