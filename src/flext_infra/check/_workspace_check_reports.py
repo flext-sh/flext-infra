@@ -7,7 +7,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, m, p, t, u
+from flext_infra.__version__ import FlextInfraVersion
 
 
 class FlextInfraWorkspaceCheckReportsMixin:
@@ -55,15 +56,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
 
     @staticmethod
     def _generate_sarif(
-        results: t.SequenceOf[m.Infra.ProjectResult],
-        gates: t.StrSequence,
-        *,
-        repository_root: Path,
+        results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
-        repository = u.Infra.configured_repository_ref(
-            codegen=config.Infra.codegen, repository_root=repository_root
-        ).unwrap()
         rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
         sarif_results: list[m.Infra.SarifResult] = []
         for project in results:
@@ -102,7 +97,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             runs=(
                 m.Infra.SarifRun(
                     tool_name="flext-infra-check",
-                    information_uri=repository.url.removesuffix(".git"),
+                    information_uri=FlextInfraVersion.__url__,
                     rules=tuple(rules_by_id.values()),
                     results=tuple(sarif_results),
                 ),
@@ -115,8 +110,6 @@ class FlextInfraWorkspaceCheckReportsMixin:
         resolved_gates: t.StrSequence,
         report_base: Path,
         outcome: p.Infra.WorkspaceLoopOutcome,
-        *,
-        repository_root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
@@ -131,9 +124,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         if md_write_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(md_write_result)
         sarif_path = report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME
-        sarif_report = cls._generate_sarif(
-            results, resolved_gates, repository_root=repository_root
-        )
+        sarif_report = cls._generate_sarif(results, resolved_gates)
         try:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
         except OSError as exc:

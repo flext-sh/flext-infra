@@ -336,15 +336,19 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             # ``startswith`` claimed those siblings and then raised ValueError
             # from ``relative_to``, turning a real cross-project clone into a
             # crashed gate.
-            if Path(first_name).is_relative_to(project_dir) and first_name != second_name:
+            if (
+                Path(first_name).is_relative_to(project_dir)
+                and first_name != second_name
+            ):
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, first, first_name, second_name, project_dir
                     )
                 )
-            elif Path(second_name).is_relative_to(
-                project_dir
-            ) and second_name != first_name:
+            elif (
+                Path(second_name).is_relative_to(project_dir)
+                and second_name != first_name
+            ):
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, second, second_name, first_name, project_dir

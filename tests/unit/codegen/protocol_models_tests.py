@@ -20,7 +20,7 @@ MODELS = '''\
 """Demo member models."""
 
 
-from flext_core import m
+from flext_core import m, t
 
 
 class Order(m.FrozenModel):

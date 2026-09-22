@@ -174,7 +174,7 @@ def real_python_package(tmp_path: Path) -> Path:
     (src_dir / "identity.py").write_text(
         '"""Substantive unique source consumed by real scanner fixtures."""\n\n'
         "from __future__ import annotations\n\n"
-        "def normalize_identity(parts: t.VariadicTuple[str]) -> str:\n"
+        "def normalize_identity(parts: tuple[str, ...]) -> str:\n"
         '    """Normalize one ordered identity without duplicated code."""\n'
         "    normalized = tuple(part.strip() for part in parts if part.strip())\n"
         "    if not normalized:\n"

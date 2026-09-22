@@ -11,9 +11,10 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
+from flext_infra.__version__ import FlextInfraVersion
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from tests import c, u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -146,6 +147,12 @@ class TestsFlextInfraGateErrorReporting:
         tm.that(result.value[0].passed, eq=False)
         captured = capsys.readouterr()
         tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
+        report = m.Infra.SarifReport.model_validate_json(
+            (tmp_path / "reports" / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
+                encoding="utf-8"
+            )
+        )
+        tm.that(report.runs[0].information_uri, eq=FlextInfraVersion.__url__)
 
 
 __all__: t.StrSequence = ["TestsFlextInfraGateErrorReporting"]
