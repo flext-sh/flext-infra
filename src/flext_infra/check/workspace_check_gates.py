@@ -305,10 +305,13 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 gate=gate_id,
                 passed=execution.result.passed,
             )
+            warning = (
+                not execution.result.passed and gate_id in c.Infra.WARNING_GATE_IDS
+            )
             u.Cli.gate_result(
                 gate_id,
                 execution.error_count,
-                passed=execution.result.passed,
+                passed=execution.result.passed or warning,
                 elapsed=execution.result.duration,
             )
             if not execution.result.passed:
@@ -320,6 +323,21 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     or any(issue.code == "TOOL_ERROR" for issue in execution.issues)
                 ):
                     u.Cli.info(execution.raw_output)
+                if warning:
+                    # Operator law 2026-09-22: census/structural flood gates
+                    # report findings without blocking the verdict; their
+                    # debts stay owned by beads, not by CI redness.
+                    u.Cli.info(
+                        f"WARNING (non-blocking): {gate_id} reported "
+                        f"{execution.error_count} findings for {project_name}"
+                    )
+                    return r[m.Cli.PipelineStageResult].ok(
+                        cli.stage_result(
+                            gate_id,
+                            status=c.Cli.PipelineStageStatus.OK,
+                            output={"warnings": execution.error_count},
+                        )
+                    )
                 return r[m.Cli.PipelineStageResult].fail(
                     f"{gate_id} failed for {project_name} "
                     f"with {execution.error_count} findings"

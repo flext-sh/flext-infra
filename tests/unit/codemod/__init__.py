@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .test_api_alias_cutover import TestsFlextInfraApiAliasCutover
+    from .test_apply_renames import TestsFlextInfraApplyRenames
     from .test_batch_apply_validation import TestsFlextInfraCodemodBatchApplyValidation
     from .test_mod_circuit import TestsFlextInfraModCliRoute
     from .test_mod_text_circuit import TestsFlextInfraModTextGateEngine
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from .test_rule_fixture_staging import TestsFlextInfraModRuleFixtureStaging
 __all__: tuple[str, ...] = (
     "TestsFlextInfraApiAliasCutover",
+    "TestsFlextInfraApplyRenames",
     "TestsFlextInfraCodemodBatchApplyValidation",
     "TestsFlextInfraModCliRoute",
     "TestsFlextInfraModRuleExpectedReceipt",
@@ -50,6 +52,7 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".test_api_alias_cutover": ("TestsFlextInfraApiAliasCutover",),
+            ".test_apply_renames": ("TestsFlextInfraApplyRenames",),
             ".test_batch_apply_validation": (
                 "TestsFlextInfraCodemodBatchApplyValidation",
             ),
