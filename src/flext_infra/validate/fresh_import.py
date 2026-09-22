@@ -160,8 +160,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 f"{probe.subject}: {output.outcome.model_dump_json()}\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}"
             )
-            if warn_entry_points and any(
-                marker in probe.subject for marker in self._ENTRY_POINT_MARKERS
+            if warn_entry_points and self._is_entry_point_probe(
+                probe.subject
             ) and self._declared_script_debt(detail, probe.subject):
                 # Operator law 2026-09-22: declared-script debt (the template
                 # emits `.cli:main` for every distribution) warns instead of
@@ -181,15 +181,16 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 warned=len(warned),
                 posture="warn_only",
             )
+        passed_count = len(probes) - len(warned)
+        summary = f"{passed_count} fresh-import probe(s) passed; {len(warned)} entry point(s) warned"
         return r[m.Infra.ValidationReport].ok(m.Infra.ValidationReport(
-            passed=True,
-            violations=tuple(warned),
-            summary=(
-                f"{len(probes) - len(warned)} fresh-import probe(s) passed; "
-                f"{len(warned)} declared entry point(s) warned "
-                "(warn-only posture)"
-            ),
+            passed=True, violations=tuple(warned), summary=summary,
         ))
+
+    @classmethod
+    def _is_entry_point_probe(cls, subject: str) -> bool:
+        """Whether one probe exercises a declared console/gui script entry."""
+        return any(marker in subject for marker in cls._ENTRY_POINT_MARKERS)
 
     @staticmethod
     def _declared_script_debt(detail: str, subject: str) -> bool:
