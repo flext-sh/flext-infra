@@ -68,7 +68,11 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
             return True
         bl_data_result = u.Cli.json_read(baseline_path)
         if bl_data_result.failure:
-            return True
+            # A present-but-unreadable risk baseline must fail loud, never
+            # read as "allowed" (missing baselines legitimately allow above).
+            raise ValueError(
+                bl_data_result.error or f"cannot read baseline: {baseline_path}"
+            )
         bl_data = u.Cli.json_as_mapping(bl_data_result.value)
         bl_counts_raw_map = u.Cli.json_deep_mapping(bl_data, "counts")
         bl_counts: t.MutableIntMapping = {}

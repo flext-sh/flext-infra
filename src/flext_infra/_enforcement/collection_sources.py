@@ -93,9 +93,20 @@ class FlextInfraEnforcementSourceCollectors(
         files, errors = self.collect_python_file_probes(project_dir, rules[0])
         if errors:
             return [], errors
-        file_paths = [
-            Path(str(getattr(probe, "file_path", ""))) for _rule, probe in files
-        ]
+        file_paths: list[Path] = []
+        for _rule, probe in files:
+            # Probe payloads are untrusted at this boundary (AttributeProbe is
+            # a deliberately empty structural marker): a probe without a
+            # usable file_path is a collection failure, never Path("")
+            # silently resolving to the project root.
+            path_value = getattr(probe, "file_path", None)
+            if not isinstance(path_value, str) or not path_value:
+                return [], [
+                    self.collection_failure(
+                        project_dir, rules[0], "probe payload missing file_path"
+                    )
+                ]
+            file_paths.append(Path(path_value))
         if any(self.rule_requires_stub_file(rule) for rule in rules):
             file_paths.extend(self.stub_file_paths(project_dir))
         probes: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]] = []

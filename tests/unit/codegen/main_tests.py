@@ -33,7 +33,7 @@ class TestsFlextInfraCodegenMain:
         repository = u.Tests.repository_ref(repo.name)
         (repo / "pyproject.toml").write_text(
             f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             'dependencies = ["flext-core>=0.1.0"]\n\n'
             f'[project.urls]\nRepository = "{repository.url}"\n',
@@ -244,7 +244,7 @@ class TestsFlextInfraCodegenMain:
             (root / "pyproject.toml").write_text(
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} governed fixture"\n'
-                'requires-python = ">=3.13,<3.14"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 'dependencies = ["flext-cli"]\n'
                 "\n"

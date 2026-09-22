@@ -95,8 +95,9 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         ):
             return None
         is_workspace_declared_repository = entry in workspace_declared_repositories
-        enabled = project_state.docs_meta.get("enabled", True)
-        if isinstance(enabled, bool) and not enabled:
+        if not FlextInfraUtilitiesDocsScopeProjectsMixin.docs_scope_enabled(
+            project_state.docs_meta
+        ):
             return None
         has_src = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
             entry / c.Infra.DEFAULT_SRC_DIR

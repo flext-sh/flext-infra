@@ -22,7 +22,12 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         fix_action: str
         replacement: t.Triple[int, int, str] | None = None
 
-    _SENTINEL_CONSTANTS: ClassVar[frozenset[object]] = frozenset({False, None})
+    # ``True`` is included deliberately: an error branch returning True is a
+    # fail-open path, strictly worse than the already-flagged False. ``0`` and
+    # ``""`` stay OUT: a zero count or empty string is frequently the correct
+    # computed result, and the AST cannot distinguish that from a sentinel —
+    # flagging them would drown the gate in false positives (flext-t5uhw).
+    _SENTINEL_CONSTANTS: ClassVar[frozenset[object]] = frozenset({False, None, True})
     _BOOLEAN_PREDICATE_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
         "has_",
         "is_",
@@ -132,9 +137,18 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
             return True
         if isinstance(node, ast.Constant) and node.value in cls._SENTINEL_CONSTANTS:
             return True
-        if isinstance(node, ast.List) and not node.elts:
+        if isinstance(node, (ast.List, ast.Tuple)) and not node.elts:
             return True
-        return isinstance(node, ast.Dict) and not node.keys
+        if isinstance(node, ast.Dict) and not node.keys:
+            return True
+        # set()/frozenset() carry the same "no result" semantics as [] and {}.
+        return (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in {"set", "frozenset"}
+            and not node.args
+            and not node.keywords
+        )
 
     def _first_sentinel_return(self, body: t.SequenceOf[ast.stmt]) -> ast.Return | None:
         return next(
@@ -157,6 +171,21 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
                 and isinstance(child.func, ast.Attribute)
                 and child.func.attr.startswith("fail")
             )
+            for statement in body
+            for child in ast.walk(statement)
+        )
+
+    @staticmethod
+    def _body_records_failure(body: t.SequenceOf[ast.stmt]) -> bool:
+        """Whether the branch records the failure through an explicit skip.
+
+        Gate and fixer flows own a loud skip channel (recorded with the error
+        and rendered in reports) — a branch that skips is not silent.
+        """
+        return any(
+            isinstance(child, ast.Call)
+            and isinstance(child.func, ast.Attribute)
+            and child.func.attr == "skip"
             for statement in body
             for child in ast.walk(statement)
         )

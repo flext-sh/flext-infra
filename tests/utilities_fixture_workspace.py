@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import u
+from flext_infra import config, u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -184,7 +184,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             "[project]\n"
             f'name = "{name}"\n'
             'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             "dependencies = []\n",
             encoding="utf-8",
         )
@@ -467,7 +467,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             pyproject.write_text(
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} governed fixture"\n'
-                'requires-python = ">=3.13,<3.14"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
                 f'[project.urls]\nRepository = "{repository_url}"\n',

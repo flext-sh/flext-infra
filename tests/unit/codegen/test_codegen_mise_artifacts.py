@@ -99,7 +99,7 @@ class TestsFlextInfraCodegenMiseArtifacts:
         (root / ".mise.toml").write_text(
             "\n".join((
                 "[tools]",
-                'python = "3.13"',
+                f'python = "{config.Infra.codegen.toolchain.python_version}"',
                 f'"{selector}" = "{version}"',
                 "",
             )),
@@ -121,7 +121,7 @@ class TestsFlextInfraCodegenMiseArtifacts:
             "[project]\n"
             f'name = "{config.Infra.name}"\n'
             'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             "dependencies = []\n",
             encoding="utf-8",
         )

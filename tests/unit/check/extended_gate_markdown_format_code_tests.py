@@ -28,9 +28,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     FRAGMENT_THEN_UNFORMATTED = (
         "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n```python\nx=1\n```\n"
     )
-    FRAGMENT_THEN_FORMATTED = (
-        "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n```python\nx = 1\n```\n"
-    )
+    FRAGMENT_THEN_FORMATTED = "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n```python\nx = 1\n```\n"
     # Prettier only rewraps prose under proseWrap=always (the projected fleet
     # contract); fixtures materialize that config the way `make gen` does.
     PROSE_CONFIG = '{"printWidth": 40, "proseWrap": "always"}'
