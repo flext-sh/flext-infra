@@ -87,6 +87,8 @@ if TYPE_CHECKING:
     from .py_typed import FlextInfraCodegenPyTyped
     from .scaffolder import FlextInfraCodegenScaffolder
     from .version_file import FlextInfraCodegenVersionFile
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",

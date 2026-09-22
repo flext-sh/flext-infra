@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from .test_deferred_self_reference_ast import (
         TestsFlextInfraDeferredSelfReferenceDetector,
     )
+
+
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCyclicImportDetector",
     "TestsFlextInfraDeferredSelfReferenceDetector",

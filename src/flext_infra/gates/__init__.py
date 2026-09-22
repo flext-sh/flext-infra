@@ -43,6 +43,8 @@ if TYPE_CHECKING:
     from .silent_failure import FlextInfraSilentFailureGate
     from .smells import FlextInfraSmellsGate
     from .tier_whitelist import FlextInfraTierWhitelistGate
+
+
 __all__: tuple[str, ...] = (
     "TEST_SKIP_MARKER",
     "FlextInfraAbstractionBoundaryGate",

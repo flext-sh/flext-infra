@@ -47,6 +47,8 @@ if TYPE_CHECKING:
     from .test_cli import TestsFlextInfraWorkspaceCheckCli
     from .tests_workspace_check import TestsFlextInfraWorkspaceCheckModule
     from .workspace_tests import TestsFlextInfraWorkspaceChecker
+
+
 __all__: tuple[str, ...] = (
     "TestsFlextInfraAbstractionBoundaryGate",
     "TestsFlextInfraBanditAndMarkdownGates",

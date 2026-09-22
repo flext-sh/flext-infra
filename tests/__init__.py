@@ -16,7 +16,6 @@ if TYPE_CHECKING:
         core,
         d,
         e,
-        from_json,
         h,
         install_local_packages,
         lazy_attribute,
@@ -28,8 +27,6 @@ if TYPE_CHECKING:
         tf,
         tk,
         tm,
-        to_json,
-        to_jsonable_python,
         tv,
         x,
     )
@@ -60,6 +57,8 @@ if TYPE_CHECKING:
     from .utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequenceMixin
     from .utilities_toml import TestsFlextInfraUtilitiesTomlMixin
     from .utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+
+
 __all__: tuple[str, ...] = (
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsScanMixin",
@@ -90,7 +89,6 @@ __all__: tuple[str, ...] = (
     "d",
     "docs_main",
     "e",
-    "from_json",
     "h",
     "infra",
     "install_local_packages",
@@ -110,8 +108,6 @@ __all__: tuple[str, ...] = (
     "tf",
     "tk",
     "tm",
-    "to_json",
-    "to_jsonable_python",
     "tv",
     "u",
     "unit",
@@ -161,7 +157,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "core",
                 "d",
                 "e",
-                "from_json",
                 "h",
                 "install_local_packages",
                 "lazy_attribute",
@@ -173,8 +168,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tf",
                 "tk",
                 "tm",
-                "to_json",
-                "to_jsonable_python",
                 "tv",
                 "x",
             ),
