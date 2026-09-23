@@ -1,4 +1,4 @@
-"""Facade-parent alias inheritance elects declaring owners in every scan scope."""
+"""Facade-parent alias inheritance elects the nearest re-exporting parent."""
 
 from __future__ import annotations
 
@@ -12,15 +12,12 @@ from tests import c, u
 
 
 class TestsFlextInfraLazyInitAliasInheritance:
-    """A parent's letters come from declaring source modules, never manifests.
+    """A letter comes from the nearest parent whose published ABI exports it.
 
-    Regression coverage for flext-b3xmn: root/member lazy-init renders used to
-    union in ambient ``importlib`` introspection, and later read an external
-    parent's generated ``__init__`` as its export list, whenever a declared
-    facade parent was not indexed by the current Rope workspace scan. Both
-    made generated ``__init__.py`` content diverge between a workspace render
-    and a standalone CI checkout. Parents are now walked through their
-    declared source in either scope, and an unresolvable parent fails loud.
+    Regression coverage for flext-b3xmn and flext-2rizg: the generated
+    ``__init__`` of a parent is read as its published export list whether the
+    parent is indexed (workspace) or installed (standalone CI), so both scopes
+    render the same bytes. An unresolvable declared parent fails loud.
     """
 
     def test_generated_parent_retains_operational_result_alias_in_child(
@@ -140,14 +137,14 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         tm.that(generated, lacks="from flext_test_inherit_parent import c, m, p, ")
 
-    def test_external_parent_letters_are_sourced_from_their_owner(
+    def test_external_parent_letters_come_from_the_nearest_exporter(
         self, tmp_path: Path
     ) -> None:
-        """A parent outside the scan scope never replaces the owner of a letter.
+        """The nearest parent re-exporting a letter is its source.
 
         ``flext_cli`` is not indexed here; its generated ``__init__`` re-exports
-        ``r``. The standalone plan must still walk to ``flext_core`` (ADR-018
-        p.1) so that CI and workspace renders are the same bytes.
+        ``r`` from ``flext_core``. The child inherits ``r`` through
+        ``flext_cli``, the nearest facade that publishes it.
         """
         repository_root, child_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -173,9 +170,9 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         sources = dict(entries)
 
-        tm.that(sources.get("flext_core", ()), has="r")
-        tm.that(sources.get("flext_cli", ()), lacks="r")
+        tm.that(sources.get("flext_cli", ()), has="r")
         tm.that(sources.get("flext_cli", ()), has="cli")
+        tm.that(sources.get("flext_core", ()), lacks="r")
         tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
 
     def test_declared_parent_resolving_nowhere_fails_loud(self, tmp_path: Path) -> None:

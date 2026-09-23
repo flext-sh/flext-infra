@@ -97,10 +97,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
     ) -> t.StrSequence:
         """Return package_names plus transitive parents, ordered nearest-first.
 
-        Breadth-first over declared facade bases, indexed or read from the
-        active environment (R32), so every ancestry reaches the root owner of
-        each letter whatever the scan scope. Owner election (ADR-018 p.1) is
-        ``_resolve_inherited_alias_source``'s job; this order only breaks ties.
+        Breadth-first from the immediate parents outward: a directly declared
+        parent (e.g. ``flext_web`` for ``flext_api``) is always resolved before
+        its own ancestors (``flext_core`` and its submodules). This guarantees
+        an inherited alias is sourced from the nearest owning facade rather than
+        falling through to a distant root package that also re-exports it.
         """
         ordered: list[str] = []
         queue: list[str] = list(package_names)
@@ -111,7 +112,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             ordered.append(package_name)
             package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
                 package_name
-            ) or u.Infra.declared_package_dir(package_name)
+            )
             if package_dir is not None:
                 queue.extend(self._parent_packages(package_dir))
         return tuple(ordered)
@@ -123,16 +124,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         if cached is not None:
             return cached
         package_entry = self._package_entry(pkg_dir)
+        current_pkg = package_entry.package_name if package_entry is not None else ""
         constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
-        external = self.rope_workspace.resource(constants_path) is None
-        current_pkg = (
-            package_entry.package_name
-            if package_entry is not None
-            else pkg_dir.name
-            if external
-            else ""
-        )
-        if not constants_path.is_file():
+        if self.rope_workspace.resource(constants_path) is None:
             self._parent_package_cache[cache_key] = ()
             return ()
         parents = self._parents_from_constants_module(constants_path, current_pkg)
