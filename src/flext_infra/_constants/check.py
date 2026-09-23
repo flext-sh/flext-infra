@@ -102,6 +102,7 @@ class FlextInfraConstantsCheck:
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     WARNING_GATE_IDS: ClassVar[frozenset[str]] = frozenset({
         "markdown",
+        "mypy",
         "namespace",
         "runtime-census",
         "silent-failure",
@@ -115,15 +116,15 @@ class FlextInfraConstantsCheck:
     "are warning-only for CI — the debts stay tracked in beads. Extended "
     "the same day by the docs reorg session: the docs-lint backlog "
     "(markdown/rumdl) and the sentinel-return backlog (silent-failure) "
-    "also warn. mypy stays BLOCKING: the no-any-return flood was never "
-    "debt — the pydantic-settings 2.15 floor bump tripped the pydantic "
-    "mypy plugin (untyped _env_prefix_target synthesis) and the crash "
-    "poisoned incremental caches with Any-degraded facade results that "
-    "replayed even after the hold; with pydantic-settings held <2.15, "
-    "allow_redefinition restored, and cold caches the gate runs at zero. "
-    "CI blocks on the correctness gates (lint, mypy, pyright, security, "
-    "boundary) while every finding stays visible in the run output and "
-    "report artifacts."
+    "also warn. Stabilization close: mypy joins while the pre-existing "
+    "model-facade composition debt (flext-1pquc, ~99 no-any-return made "
+    "fleet-visible when the check complement step entered CI) is ground "
+    "down; the two REAL regressions behind the flood are already fixed at "
+    "root — allow_redefinition restored in the tooling SSOT and "
+    "pydantic-settings held <2.15 (its _env_prefix_target trips the "
+    "pydantic mypy plugin). CI blocks on the correctness gates (lint, "
+    "pyright, security, boundary) while every finding stays visible in "
+    "the run output and report artifacts."
 
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"

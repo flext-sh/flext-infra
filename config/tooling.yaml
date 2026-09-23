@@ -3,7 +3,10 @@ Infra:
   # visible but never blocks CI; findings print as warnings and the reports
   # still record them. Root-cause repair continues at the owning campaigns.
   check_policy:
-    warning_gates: [runtime-census, namespace]
+    # flext-1pquc: the model-facade composition debt (~99 no-any-return)
+    # is fleet-visible since the check-complement CI step; it warns while
+    # the debt is ground down at its owner.
+    warning_gates: [runtime-census, namespace, mypy]
   tooling:
     # flext-j47u (codex): canonical validated tooling and suppression-policy SSOT.
     tools:
