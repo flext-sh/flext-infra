@@ -311,8 +311,14 @@ Infra:
         - "**/.scannerwork/**"
       cpd_exclusions:
         - "tests/**"
-      # Applied through each project's SonarCloud settings (the file cannot
-      # carry them); rendered into the generated file as documentation only.
+      # Web API that `make sonarcloud-sync` writes the server-side issue
+      # exclusions through (bead flext-c8yle). The project key is derived from
+      # the checkout's origin identity as <organization>_<repository>.
+      api_url: "https://sonarcloud.io"
+      api_timeout_seconds: 30
+      # Applied through each project's SonarCloud settings by
+      # `make sonarcloud-sync` (the file cannot carry them); rendered into the
+      # generated file as documentation only.
       issue_exclusions:
         - rule_key: "text:S8565"
           resource_key: "pyproject.toml"
@@ -552,6 +558,8 @@ Infra:
           description: Validate provider-neutral governance semantics with Waza.
         - name: duplication
           description: Run the canonical jscpd duplicate-code gate.
+        - name: sonarcloud-sync
+          description: Write the SSOT SonarCloud issue exclusions to the server-side project settings (requires SONAR_TOKEN).
       custom_handler_profile_overrides: {}
       custom_handler_policy:
         filename: custom.mk

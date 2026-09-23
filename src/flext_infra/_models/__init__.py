@@ -77,6 +77,7 @@ if TYPE_CHECKING:
     from .rope_move import FlextInfraModelsRopeMove
     from .scan import FlextInfraModelsScan
     from .settings import FlextInfraSettingsModels
+    from .sonarcloud import FlextInfraModelsSonarcloud
     from .testmon import FlextInfraModelsTestmon
     from .transformers import FlextInfraModelsTransformers
     from .validate import FlextInfraModelsCore
@@ -146,6 +147,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsRope",
     "FlextInfraModelsRopeMove",
     "FlextInfraModelsScan",
+    "FlextInfraModelsSonarcloud",
     "FlextInfraModelsTestmon",
     "FlextInfraModelsTransformers",
     "FlextInfraModelsWorkspace",
@@ -233,6 +235,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_move": ("FlextInfraModelsRopeMove",),
             ".scan": ("FlextInfraModelsScan",),
             ".settings": ("FlextInfraSettingsModels",),
+            ".sonarcloud": ("FlextInfraModelsSonarcloud",),
             ".testmon": ("FlextInfraModelsTestmon",),
             ".transformers": ("FlextInfraModelsTransformers",),
             ".validate": ("FlextInfraModelsCore",),
