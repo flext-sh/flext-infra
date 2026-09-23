@@ -201,17 +201,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
         if destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME:
-            # Why: automatic analysis aborts when sonar.tests names an absent
-            # directory, so its presence is read from the checkout, never
-            # declared per project.
+            # Why: conform itself projects managed tests/fixtures/ci/docker files
+            # into every profile, so the tests directory always exists and
+            # sonar.tests never names an absent directory.
             return r[p.Model].ok(
                 m.Infra.SonarcloudRenderSpec(
-                    sonarcloud=codegen.sonarcloud,
-                    tests_dir=(
-                        c.Infra.DIR_TESTS
-                        if (repository_root / c.Infra.DIR_TESTS).is_dir()
-                        else None
-                    ),
+                    sonarcloud=codegen.sonarcloud, tests_dir=c.Infra.DIR_TESTS
                 )
             )
         if destination == c.Infra.ENVRC_FILENAME:
