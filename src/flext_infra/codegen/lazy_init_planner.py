@@ -134,20 +134,7 @@ class FlextInfraCodegenLazyInitPlanner(
                 m.Infra.LazyInitPlan(context=context, action=empty_action)
             )
         excluded_lazy_names: t.StrSequence = ()
-        is_public_project_root = (
-            context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
-            and context.current_pkg
-            and "." not in context.current_pkg
-            # Why (flext-27a9e.1, multi-agent): governed consumers such as ai_hub
-            # are first-class project roots; package prefixes are not architecture.
-            and u.Infra.matches_project_namespace_package(context.current_pkg)
-        )
-        is_test_facade_root = (
-            context.current_pkg == c.Infra.DIR_TESTS
-            and context.pkg_dir.name == c.Infra.DIR_TESTS
-            and context.surface == c.Infra.DIR_TESTS
-        )
-        is_facade_root = is_public_project_root or is_test_facade_root
+        is_facade_root = self._is_facade_root(context)
         export_names = {*lazy_map, *eager_dunders}
         if not is_facade_root:
             # flext-udpm5: a nested package's own modules commonly consume

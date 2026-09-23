@@ -30,7 +30,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         # the plan is identical whichever root the planner was opened from.
         declared_contract = self._declared_root_contract(context)
 
-
         governed_lazy_map = {
             name: target
             for name, target in lazy_map.items()
@@ -112,16 +111,39 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             module_path == f"{root_pkg}._settings" and name.endswith("Settings")
         ):
             return True
-        if module_path == root_pkg:
-            return True
-        if module_path.startswith(f"{root_pkg}."):
-            # Any underscore-prefixed source segment
-            # marks the owner as private; the symbol stays behind its facade.
-            tail = module_path[len(root_pkg) + 1 :].split(".")
-            return not any(
-                part.startswith("_") and not part.startswith("__") for part in tail
-            )
-        return True
+        return not FlextInfraCodegenLazyInitPlannerPublicRootMixin._is_private_owner(
+            module_path, root_pkg=root_pkg
+        )
+
+    @staticmethod
+    def _is_private_owner(module_path: str, *, root_pkg: str) -> bool:
+        """Return whether a module below ``root_pkg`` sits behind a private segment.
+
+        Any underscore-prefixed source segment below the root marks the owner as
+        private; its symbols stay behind their facade and never widen the root ABI.
+        """
+        if not module_path.startswith(f"{root_pkg}."):
+            return False
+        tail = module_path[len(root_pkg) + 1 :].split(".")
+        return any(part.startswith("_") and not part.startswith("__") for part in tail)
+
+    @staticmethod
+    def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool:
+        """Return whether a package is a public project root or the tests facade root."""
+        is_public_project_root = bool(
+            context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
+            and context.current_pkg
+            and "." not in context.current_pkg
+            # Why (flext-27a9e.1, multi-agent): governed consumers such as ai_hub
+            # are first-class project roots; package prefixes are not architecture.
+            and u.Infra.matches_project_namespace_package(context.current_pkg)
+        )
+        is_test_facade_root = (
+            context.current_pkg == c.Infra.DIR_TESTS
+            and context.pkg_dir.name == c.Infra.DIR_TESTS
+            and context.surface == c.Infra.DIR_TESTS
+        )
+        return is_public_project_root or is_test_facade_root
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlannerPublicRootMixin"]
