@@ -11,7 +11,7 @@ sonar.tests={{ tests_dir }}
 sonar.test.inclusions={{ tests_dir }}/**/*.py
 {% endif -%}
 sonar.sourceEncoding=UTF-8
-sonar.exclusions={{ sonarcloud.exclusions | join(",") }}
+sonar.exclusions={{ sonarcloud.exclusions | join(",") }}{% if tests_dir %},{{ tests_dir }}/**{% endif %}
 {% if sonarcloud.cpd_exclusions -%}
 sonar.cpd.exclusions={{ sonarcloud.cpd_exclusions | join(",") }}
 {% endif -%}

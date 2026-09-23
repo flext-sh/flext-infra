@@ -650,9 +650,15 @@ class TestsFlextInfraCodegenCiMatrix:
             )
         }
         tm.that(properties["sonar.sources"], eq=".")
+        # Main and test sets must be disjoint: sonar.exclusions narrows only
+        # the main set, so the tests root is excluded from it exactly when
+        # sonar.tests declares it.
         tm.that(
             properties["sonar.exclusions"].split(","),
-            eq=list(codegen.sonarcloud.exclusions),
+            eq=[
+                *codegen.sonarcloud.exclusions,
+                *(() if tests_dir is None else (f"{tests_dir}/**",)),
+            ],
         )
         tm.that(
             properties["sonar.cpd.exclusions"].split(","),
