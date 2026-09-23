@@ -562,6 +562,28 @@ class TestsFlextInfraCodegenCiMatrix:
         for branch in config.Infra.codegen.branch_policy.ci_trigger_branches:
             tm.that(content, has=f"      - {branch}")
 
+    def test_docs_workflow_jobs_authenticate_toolchain_resolution(
+        self, tmp_path: Path
+    ) -> None:
+        """Every Docs job running make setup resolves the toolchain authenticated.
+
+        Shared-egress runners exhaust the anonymous REST budget before mise
+        resolves the moving @latest backends, so each job that provisions the
+        toolchain carries the job token exactly like blocking CI.
+        """
+        root = self._render_project(tmp_path / "external")
+        content = (root / ".github" / "workflows" / "docs.yml").read_text(
+            encoding="utf-8"
+        )
+        _, jobs = content.split("\njobs:\n", maxsplit=1)
+        setup_jobs = [
+            job for job in re.split(r"\n  (?=\S)", jobs) if "run: make setup" in job
+        ]
+        tm.that(setup_jobs, empty=False)
+        for job in setup_jobs:
+            tm.that(job, has="GITHUB_TOKEN: ${{ github.token }}")
+            tm.that(job, has="MISE_GITHUB_TOKEN: ${{ github.token }}")
+
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path
     ) -> None:
