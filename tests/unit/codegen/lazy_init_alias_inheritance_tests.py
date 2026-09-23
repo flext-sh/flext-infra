@@ -1,4 +1,4 @@
-"""Facade-parent alias inheritance sources only from the indexed workspace."""
+"""Facade-parent alias inheritance elects the nearest re-exporting parent."""
 
 from __future__ import annotations
 
@@ -12,15 +12,12 @@ from tests import c, u
 
 
 class TestsFlextInfraLazyInitAliasInheritance:
-    """A parent's exported letters come only from the indexed workspace scan.
+    """A letter comes from the nearest parent whose published ABI exports it.
 
-    Regression coverage for flext-b3xmn: root/member lazy-init renders used to
-    union in ``u.Infra.installed_package_exports`` (ambient ``importlib``
-    introspection of whatever happens to be installed) whenever a declared
-    facade parent was not indexed by the current Rope workspace scan. That
-    made generated ``__init__.py`` content diverge between a local editable
-    venv and a pinned CI checkout. The fix removes the ambient union/fallback
-    and fails loud instead.
+    Regression coverage for flext-b3xmn and flext-2rizg: the generated
+    ``__init__`` of a parent is read as its published export list whether the
+    parent is indexed (workspace) or installed (standalone CI), so both scopes
+    render the same bytes. An unresolvable declared parent fails loud.
     """
 
     def test_generated_parent_retains_operational_result_alias_in_child(
@@ -139,6 +136,44 @@ class TestsFlextInfraLazyInitAliasInheritance:
             has="    from flext_test_inherit_parent import c, m, p",
         )
         tm.that(generated, lacks="from flext_test_inherit_parent import c, m, p, ")
+
+    def test_external_parent_letters_come_from_the_nearest_exporter(
+        self, tmp_path: Path
+    ) -> None:
+        """The nearest parent re-exporting a letter is its source.
+
+        ``flext_cli`` is not indexed here; its generated ``__init__`` re-exports
+        ``r`` from ``flext_core``. The child inherits ``r`` through
+        ``flext_cli``, the nearest facade that publishes it.
+        """
+        repository_root, child_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-external",
+            package_name="flext_test_external_child",
+        )
+        child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import c as cli_c\n\n"
+            "class FlextTestExternalChildConstants(cli_c):\n"
+            "    pass\n\n"
+            "c = FlextTestExternalChildConstants\n"
+            '__all__: list[str] = ["FlextTestExternalChildConstants", "c"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        entries, _refs = u.Infra.module_mapping_assignment_source(
+            generated, u.Infra.lazy_imports_name_source(generated)
+        )
+        sources = dict(entries)
+
+        tm.that(sources.get("flext_cli", ()), has="r")
+        tm.that(sources.get("flext_cli", ()), has="cli")
+        tm.that(sources.get("flext_core", ()), lacks="r")
+        tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
 
     def test_declared_parent_resolving_nowhere_fails_loud(self, tmp_path: Path) -> None:
         """A declared parent that resolves nowhere in the environment is a typed failure."""
