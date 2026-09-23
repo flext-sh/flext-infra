@@ -20,7 +20,6 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-<<<<<<< HEAD
     from flext_cli import cli
     from flext_tests import (
         active_rules,
@@ -37,9 +36,6 @@ if TYPE_CHECKING:
     )
 
     from flext_core import core, d, e, h, lazy_attribute, r, x
-=======
-    from flext_cli import cli, core, d, e, h, lazy_attribute, r, x
->>>>>>> 0.12.0-dev
 
     from . import (
         check,
@@ -821,7 +817,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-<<<<<<< HEAD
             "flext_cli": ("cli",),
             "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
             "flext_tests": (
@@ -837,9 +832,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tm",
                 "tv",
             ),
-=======
-            "flext_cli": ("cli", "core", "d", "e", "h", "lazy_attribute", "r", "x"),
->>>>>>> 0.12.0-dev
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

@@ -180,8 +180,7 @@ class TestsFlextInfraCodegenCiMatrix:
         audit_index = workflow.index("run: CI=Y make audit")
         check_index = workflow.index("run: CI=Y make check")
         tm.that(
-            setup_index < gen_fixed_point_index < audit_index < check_index,
-            eq=True,
+            setup_index < gen_fixed_point_index < audit_index < check_index, eq=True
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
