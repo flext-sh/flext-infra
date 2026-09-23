@@ -60,6 +60,7 @@ class TestsFlextInfraLazyInitDeterminism:
             re.DOTALL,
         )
         tm.that(map_block, empty=False)
+        assert map_block is not None
         keys = re.findall(r'"([^"]+)":', map_block.group(0))
         tm.that(keys, empty=False)
         tm.that(keys, eq=sorted(keys))
