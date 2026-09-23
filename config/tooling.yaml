@@ -315,6 +315,12 @@ Infra:
         boolean-settings:
           # Discovery + namespace (retained)
           ignore_missing_imports: true
+          # The canonical facade rebind (import the upstream single letter,
+          # then rebind it to the composed namespace class, mro-j47u) is a
+          # deliberate same-name redefinition; without this flag Mypy treats
+          # every facade root as an error-degraded Any (removed and restored
+          # 2026-09-22 — the removal flooded CI with no-any-return shadows).
+          allow_redefinition: true
           namespace_packages: true
           explicit_package_bases: true
           check_untyped_defs: true

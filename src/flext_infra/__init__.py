@@ -20,7 +20,9 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import cli, core, d, e, h, lazy_attribute, r, x
+    from flext_cli import cli
+
+    from flext_core import core, d, e, h, lazy_attribute, r, x
 
     from . import (
         check,
@@ -225,7 +227,7 @@ if TYPE_CHECKING:
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
     from .typings import FlextInfraTypes, t
-    from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
+    from .utilities import FlextInfraUtilities, u
     from .validate.cprofile_report import FlextInfraCProfileReport
     from .validate.fresh_import import FlextInfraValidateFreshImport
     from .validate.gate_contract import FlextInfraGateContractValidator
@@ -791,7 +793,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("cli", "core", "d", "e", "h", "lazy_attribute", "r", "x"),
+            "flext_cli": ("cli",),
+            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

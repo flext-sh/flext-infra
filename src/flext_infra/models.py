@@ -9,14 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_cli import m as cli_m
-
-from flext_core import m
-
-if TYPE_CHECKING:
-    from flext_cli.models import FlextCliModels
+from flext_cli import m as _cli_m
 
 from ._models._config import FlextInfraConfigModels
 from ._models.base import FlextInfraModelsBase
@@ -45,29 +38,17 @@ from ._models.workspace import FlextInfraModelsWorkspace
 from ._models.worktree import FlextInfraModelsWorktree
 
 
-class FlextInfraModels(m):
+class FlextInfraModels(_cli_m):
     """Merged model namespace for flext-infra domain objects."""
-
-    # NOTE (multi-agent): keep CLI route contracts available as FlextInfraModels.Cli
-    # for legacy facade usage from CLI service route declarations.
-    if TYPE_CHECKING:
-        Cli: type[FlextCliModels.Cli]
-    else:
-        Cli = cli_m.Cli
 
     class Infra(
         FlextInfraModelsCensus,
         FlextInfraModelsCheck,
-        # NOTE (multi-agent, flext-wkii.17 / agent: codex): conform contracts are
-        # isolated from the active detector work in _models/codegen.py while
-        # remaining exposed through the single public m.Infra facade.
         FlextInfraConfigModels,
         FlextInfraCodegen,
         FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
-        # NOTE (multi-agent): enforcement/transformers model
-        # facades added for the deep-FLEXT dataclass -> m.Infra migration.
         FlextInfraModelsEnforcement,
         FlextInfraModelsGates,
         FlextInfraModelsLayout,
@@ -77,8 +58,6 @@ class FlextInfraModels(m):
         FlextInfraModelsMixins,
         FlextInfraModelsTransformers,
         FlextInfraModelsWorkspace,
-        # flext-wkii.17.26 (codex): all fix/codegen mutations share one typed
-        # worktree transaction report rather than command-local backup shapes.
         FlextInfraModelsWorktree,
         FlextInfraModelsGit,
         FlextInfraModelsRope,
@@ -92,6 +71,6 @@ class FlextInfraModels(m):
         """Infrastructure-domain models - all classes exposed directly."""
 
 
-m = FlextInfraModels
+m: type[FlextInfraModels] = FlextInfraModels
 
 __all__: list[str] = ["FlextInfraModels", "m"]
