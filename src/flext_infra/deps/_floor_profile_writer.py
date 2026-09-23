@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import config, u
+from flext_infra import c, u
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import t
 
 
@@ -15,14 +17,23 @@ class FlextInfraDepsFloorProfileWriter:
 
     @classmethod
     def rewrite_profiles_from_resolution(
-        cls, *, resolved_versions: t.MappingKV[str, str], internal_names: t.StrSequence
+        cls,
+        *,
+        root: Path,
+        resolved_versions: t.MappingKV[str, str],
+        internal_names: t.StrSequence,
     ) -> t.StrSequence:
-        """Update dependency_profiles in config/codegen.yaml with raised floors.
+        """Update dependency_profiles in ``<root>/config/codegen.yaml``.
+
+        ``root`` is the modernizer's own declared ``--repository-root``: the
+        governed SSOT belongs to the repository being modernized, never the
+        installed/editable ``flext_infra`` package location (flext-eles2). A
+        second caller's ``root`` never leaks into a different checkout's
+        tracked config, including this generator's own tests.
 
         Returns a list of change descriptions for the deps report.
         """
-        # Resolve the config/codegen.yaml path through the loaded config's own dir
-        ssot_path = type(config).ssot_config_dir() / "codegen.yaml"
+        ssot_path = root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
 
         # Round-trip load preserves comments and ordering
         loaded = u.Cli.yaml_roundtrip_load_map(ssot_path)

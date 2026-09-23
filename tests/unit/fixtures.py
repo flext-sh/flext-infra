@@ -37,6 +37,28 @@ def _modernizer_workspace_pyproject(*members: str) -> str:
     return f"{base}\n[tool.uv.workspace]\nmembers = [{members_text}]\n"
 
 
+def _write_modernizer_codegen_config(workspace: Path) -> None:
+    """Give the workspace its own governed SSOT so ``--rewrite-constraints``.
+
+    stays inside the fixture (flext-eles2): the floor writer resolves its
+    target from the modernizer's own ``repository_root``, never the real
+    flext-infra checkout, so every isolated workspace needs a minimal
+    ``config/codegen.yaml`` of its own.
+    """
+    config_dir = workspace / c.Infra.CODEGEN_CONFIG_DIR
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / c.Infra.CODEGEN_CONFIG_FILENAME).write_text(
+        (
+            "Infra:\n"
+            "  codegen:\n"
+            "    scaffold:\n"
+            "      project:\n"
+            "        dependency_profiles: []\n"
+        ),
+        encoding="utf-8",
+    )
+
+
 @pytest.fixture
 def deptry_report_payload() -> t.JsonPayload:
     parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
@@ -362,6 +384,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
     u.Tests.write_beads_project(
         workspace, workspace="workspace", database="workspace", issue_prefix="workspace"
     )
+    _write_modernizer_codegen_config(workspace)
     return workspace
 
 
