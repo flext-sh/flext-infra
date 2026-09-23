@@ -154,6 +154,11 @@ class TestsFlextInfraCodegenCiMatrix:
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
+        # A verb whose workflow row omits the ci context never renders into CI
+        # (operator ruling 2026-09-23: make test runs locally and on pre-push).
+        for step in config.Infra.codegen.make.workflow:
+            if "ci" not in step.contexts:
+                tm.that(workflow, lacks=f"run: CI=Y make {step.verb}\n")
         tm.that(ci_step_runs, has="run: CI=Y make setup")
         # `conform` no longer exists as a Make verb (S1, operator law
         # 2026-09-14); the blocking generation gate is the "gen fixed point"
@@ -174,13 +179,8 @@ class TestsFlextInfraCodegenCiMatrix:
         gen_fixed_point_index = workflow.index("- name: gen fixed point (blocking)")
         audit_index = workflow.index("run: CI=Y make audit")
         check_index = workflow.index("run: CI=Y make check")
-        test_index = workflow.index("run: CI=Y make test")
         tm.that(
-            setup_index
-            < gen_fixed_point_index
-            < audit_index
-            < check_index
-            < test_index,
+            setup_index < gen_fixed_point_index < audit_index < check_index,
             eq=True,
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
@@ -519,7 +519,7 @@ class TestsFlextInfraCodegenCiMatrix:
         ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
 
         tm.that(ci_job, has="github.event.pull_request.draft == false")
-        tm.that(ci_job, has="make test")
+        tm.that(ci_job, has="make check")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
         # The merge guard must inspect the PR head, not the refs/pull/N/merge
         # commit that actions/checkout selects by default on pull_request.
