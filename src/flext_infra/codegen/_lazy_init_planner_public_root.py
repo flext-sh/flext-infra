@@ -30,9 +30,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         # the plan is identical whichever root the planner was opened from.
         declared_contract = self._declared_root_contract(context)
 
-        u.Cli.info(
-            f"lazy-init: filtering exports for {context.current_pkg} ({context.pkg_dir}): export_names={len(export_names)}, lazy_map={len(lazy_map)}, eager_names={len(eager_names)}, declared_contract={len(declared_contract) if declared_contract else 0}"
-        )
 
         governed_lazy_map = {
             name: target
@@ -44,9 +41,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
                 declared_contract=declared_contract,
             )
         }
-        u.Cli.info(
-            f"lazy-init: governed_lazy_map={len(governed_lazy_map)} after filtering"
-        )
         lazy_map.clear()
         lazy_map.update(governed_lazy_map)
         # The published surface is what the package actually delivers: the eager
@@ -66,7 +60,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             for name, target in lazy_map.items()
             if name in public_export_names
         }
-        u.Cli.info(f"lazy-init: public_export_names={len(public_export_names)}")
         return public_export_names, filtered_lazy_map
 
     def _declared_root_contract(
