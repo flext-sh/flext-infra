@@ -36,8 +36,14 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
     )
-    _EXPORT_CODE: ClassVar[str] = (
+    _EXPORT_IMPORT_CODE: ClassVar[str] = (
         "module = importlib.import_module({package!r})\n"
+    )
+    # The origin gate runs between the import and the name resolution: a
+    # module loaded from outside this checkout must fail with the origin
+    # error naming the foreign path, never with a phantom-attribute error
+    # raised while resolving a stale export name.
+    _EXPORT_RESOLVE_CODE: ClassVar[str] = (
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
     )
@@ -118,9 +124,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     f"missing public export contract for {layout.package_name}"
                 )
             body = "".join(
-                self._EXPORT_CODE.format(
-                    package=plan.context.current_pkg, exports=tuple(plan.exports)
-                )
+                self._EXPORT_IMPORT_CODE.format(package=plan.context.current_pkg)
+                + origin_code
+                + self._EXPORT_RESOLVE_CODE.format(exports=tuple(plan.exports))
                 for plan in owned
             )
             probes.append(
@@ -137,8 +143,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 m.Infra.FreshImportProbe(
                     subject=package,
                     code=self._PRELUDE
-                    + self._EXPORT_CODE.format(package=package, exports=())
-                    + origin_code,
+                    + self._EXPORT_IMPORT_CODE.format(package=package)
+                    + origin_code
+                    + self._EXPORT_RESOLVE_CODE.format(exports=()),
                 )
             )
         env = self._workspace_import_env(tuple(layout.src_dir for layout in layouts))

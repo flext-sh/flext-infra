@@ -20,7 +20,8 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 _TRACKED_CODEGEN_CONFIG_PATH = (
-    Path(__file__).resolve().parent.parent / c.Infra.CODEGEN_CONFIG_DIR
+    Path(__file__).resolve().parent.parent
+    / c.Infra.CODEGEN_CONFIG_DIR
     / c.Infra.CODEGEN_CONFIG_FILENAME
 )
 

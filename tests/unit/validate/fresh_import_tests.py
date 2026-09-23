@@ -258,6 +258,43 @@ class TestsFlextInfraFreshImport:
         tm.that(report.violations[0], has="is outside")
         tm.that(report.violations[0], has=str(foreign))
 
+    def test_foreign_origin_is_reported_before_phantom_export(
+        self, tmp_path: Path
+    ) -> None:
+        """A module loaded from outside this checkout names the origin first.
+
+        The origin gate runs between the import and the name resolution, so
+        stale-checkout contamination fails with the foreign path instead of a
+        phantom-attribute error raised while resolving an unserved name.
+        """
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        (foreign / "dependency.py").write_text(
+            "value = 17\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            f"__path__ = [{str(foreign)!r}]\n"
+            "from .dependency import value\n"
+            "__all__ = ('value', 'phantom_export')\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+                packages=(package.name,)
+            )
+        )
+        tm.that(report.passed, eq=False)
+        tm.that(report.violations[0], has="is outside")
+        tm.that(report.violations[0], has=str(foreign))
+        tm.that(report.violations[0], lacks="has no attribute")
+
     def test_flext_core_imports_cleanly(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",))
