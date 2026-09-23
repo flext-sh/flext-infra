@@ -78,7 +78,7 @@ if TYPE_CHECKING:
     from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .codemod.text_gates import FlextInfraModTextGateEngine
-    from .constants import FlextInfraConstants, c
+    from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
     from .deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
     from .deps.detector import FlextInfraRuntimeDevDependencyDetector
@@ -176,9 +176,9 @@ if TYPE_CHECKING:
     from .git import FlextInfraGitService
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
-    from .models import FlextInfraModels, m
+    from .models import FlextInfraModels, FlextInfraModels as m
     from .promoted import FlextInfraPromoted
-    from .protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+    from .protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from .refactor.accessor_migration import FlextInfraAccessorMigrationOrchestrator
     from .refactor.census import FlextInfraRefactorCensus
     from .refactor.classvar_constant_autofix import (
@@ -224,8 +224,8 @@ if TYPE_CHECKING:
     from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from .typings import FlextInfraTypes, t
-    from .utilities import FlextInfraUtilities, u
+    from .typings import FlextInfraTypes, FlextInfraTypes as t
+    from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .validate.cprofile_report import FlextInfraCProfileReport
     from .validate.fresh_import import FlextInfraValidateFreshImport
     from .validate.gate_contract import FlextInfraGateContractValidator
@@ -390,7 +390,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraPromoted",
     "FlextInfraProtocols",
-    "FlextInfraProtocolsBase",
     "FlextInfraPyprojectModernizer",
     "FlextInfraPyreflyGate",
     "FlextInfraPyrightGate",
@@ -673,7 +672,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
             ".models": ("FlextInfraModels", "m"),
             ".promoted": ("FlextInfraPromoted",),
-            ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
+            ".protocols": ("FlextInfraProtocols", "p"),
             ".refactor": ("refactor",),
             ".refactor.accessor_migration": (
                 "FlextInfraAccessorMigrationOrchestrator",

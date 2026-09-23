@@ -80,6 +80,15 @@ if TYPE_CHECKING:
     from ._semantic_cutover.aliases import FlextInfraUtilitiesSemanticCutoverAliases
     from ._semantic_cutover.base import FlextInfraUtilitiesSemanticCutoverBase
     from ._semantic_cutover.edits import FlextInfraUtilitiesSemanticCutoverEdits
+    from ._semantic_cutover.facade_base_cst import (
+        FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
+    )
+    from ._semantic_cutover.facade_bases import (
+        FlextInfraUtilitiesSemanticCutoverFacadeBases,
+    )
+    from ._semantic_cutover.facade_owners import (
+        FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+    )
     from ._semantic_cutover.family_flatten import (
         FlextInfraUtilitiesSemanticFamilyFlatten,
     )
@@ -347,6 +356,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverAliases",
     "FlextInfraUtilitiesSemanticCutoverBase",
     "FlextInfraUtilitiesSemanticCutoverEdits",
+    "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",
+    "FlextInfraUtilitiesSemanticCutoverFacadeBases",
+    "FlextInfraUtilitiesSemanticCutoverFacadeOwners",
     "FlextInfraUtilitiesSemanticCutoverNesting",
     "FlextInfraUtilitiesSemanticCutoverNestingCst",
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
@@ -470,6 +482,15 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._semantic_cutover.base": ("FlextInfraUtilitiesSemanticCutoverBase",),
             "._semantic_cutover.edits": ("FlextInfraUtilitiesSemanticCutoverEdits",),
+            "._semantic_cutover.facade_base_cst": (
+                "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",
+            ),
+            "._semantic_cutover.facade_bases": (
+                "FlextInfraUtilitiesSemanticCutoverFacadeBases",
+            ),
+            "._semantic_cutover.facade_owners": (
+                "FlextInfraUtilitiesSemanticCutoverFacadeOwners",
+            ),
             "._semantic_cutover.family_flatten": (
                 "FlextInfraUtilitiesSemanticFamilyFlatten",
             ),
