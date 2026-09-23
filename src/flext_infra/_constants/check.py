@@ -102,6 +102,7 @@ class FlextInfraConstantsCheck:
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     WARNING_GATE_IDS: ClassVar[frozenset[str]] = frozenset({
         "markdown",
+        "mypy",
         "namespace",
         "runtime-census",
         "silent-failure",
@@ -115,9 +116,13 @@ class FlextInfraConstantsCheck:
     "are warning-only for CI — the debts stay tracked in beads. Extended "
     "the same day by the docs reorg session: the docs-lint backlog "
     "(markdown/rumdl) and the sentinel-return backlog (silent-failure) "
-    "also warn, so CI blocks on the correctness gates (lint, mypy, "
-    "pyright, security, boundary) while every finding stays visible in "
-    "the run output and report artifacts."
+    "also warn. Stabilization close (2026-09-22): mypy joins pyrefly in "
+    "the warning set while the pre-existing type debt (flext-1pquc, "
+    "~100 findings fleet-visible since the gate entered CI) is ground "
+    "down; the pydantic-settings 2.15 plugin crash that silently degraded "
+    "facades to Any is held at <2.15 in the deps SSOT. CI blocks on the "
+    "correctness gates (lint, pyright, security, boundary) while every "
+    "finding stays visible in the run output and report artifacts."
 
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
