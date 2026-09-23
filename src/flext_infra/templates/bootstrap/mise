@@ -3,15 +3,16 @@
 set -eu
 
 __mise_bootstrap() {
-    local mise_data_dir="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}"
+    local mise_data_dir="${MISE_DATA_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/mise}"
     # mise itself expands a leading ~ in these (env::var_path -> file::replace_path); parameter
     # expansion does not, so without this a tilde value ends up as a relative directory. CI YAML
     # supplies exactly this shape (MISE_DATA_DIR: ~/.local/share/mise).
-    case $mise_data_dir in
-      "~") mise_data_dir=$HOME ;;
-      "~/"*) mise_data_dir=$HOME/${mise_data_dir#\~/} ;;
+    case ${mise_data_dir} in
+      "~") mise_data_dir=${HOME} ;;
+      "~/"*) mise_data_dir=${HOME}/${mise_data_dir#\~/} ;;
+      *) mise_data_dir=${mise_data_dir} ;;
     esac
-    local cache_home="${XDG_CACHE_HOME:-$HOME/.cache}/mise"
+    local cache_home="${XDG_CACHE_HOME:-${HOME}/.cache}/mise"
     # Unlocked fleet: converge on the newest published mise release. Only an
     # explicit MISE_VERSION pins; the default resolves the latest tag through
     # the releases/latest redirect and fails loud when resolution is impossible.
@@ -19,7 +20,7 @@ __mise_bootstrap() {
       mise_version="${MISE_VERSION#v}"
     else
       mise_version="$(command -p curl -fsSI -o /dev/null -w '%{redirect_url}' https://github.com/jdx/mise/releases/latest)"
-      case $mise_version in
+      case ${mise_version} in
         */tag/*) mise_version="${mise_version##*/tag/}" ; mise_version="${mise_version#v}" ;;
         *) echo "mise bootstrap: could not resolve the latest mise release; set MISE_VERSION to pin one" >&2; exit 1 ;;
       esac
@@ -27,16 +28,16 @@ __mise_bootstrap() {
     # Only a defaulted path may fall back: an explicit MISE_INSTALL_PATH wins even while its file
     # does not exist yet.
     if [ -z "${MISE_INSTALL_PATH:-}" ]; then
-      export MISE_INSTALL_PATH="$mise_data_dir/bootstrap/mise-$mise_version"
+      export MISE_INSTALL_PATH="${mise_data_dir}/bootstrap/mise-${mise_version}"
       # Wrappers generated before the data-dir default put the binary in the cache dir; run that
       # one instead of re-downloading it. -x so a non-executable leftover reinstalls rather than
       # dying at exec.
-      if [ ! -f "$MISE_INSTALL_PATH" ] && [ -x "$cache_home/mise-$mise_version" ]; then
-        MISE_INSTALL_PATH="$cache_home/mise-$mise_version"
+      if [ ! -f "${MISE_INSTALL_PATH}" ] && [ -x "${cache_home}/mise-${mise_version}" ]; then
+        MISE_INSTALL_PATH="${cache_home}/mise-${mise_version}"
       fi
     fi
     install() {
-        local initial_working_dir="$PWD"
+        local initial_working_dir="${PWD}"
         #!/bin/sh
         set -eu
 
@@ -72,7 +73,7 @@ __mise_bootstrap() {
 
         unsupported_arch() {
           arch="$1"
-          warn "unsupported architecture: $arch"
+          warn "unsupported architecture: ${arch}"
           warn ""
           warn "mise does not provide prebuilt binaries for this platform."
           warn "If Rust/Cargo is available, install from source with:"
@@ -84,12 +85,12 @@ __mise_bootstrap() {
         #region environment setup
         get_os() {
           os="$(uname -s)"
-          if [ "$os" = Darwin ]; then
+          if [ "${os}" = Darwin ]; then
             echo "macos"
-          elif [ "$os" = Linux ]; then
+          elif [ "${os}" = Linux ]; then
             echo "linux"
           else
-            error "unsupported OS: $os"
+            error "unsupported OS: ${os}"
           fi
         }
 
@@ -98,32 +99,37 @@ __mise_bootstrap() {
           if type ldd >/dev/null 2>/dev/null; then
             if [ "${MISE_INSTALL_MUSL-}" = "1" ] || [ "${MISE_INSTALL_MUSL-}" = "true" ]; then
               musl="-musl"
-            elif [ "$(uname -o)" = "Android" ]; then
-              # Android (Termux) always uses musl
-              musl="-musl"
             else
-              libc=$(ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1)
-              if [ -n "$libc" ]; then
+              uname_o="$(uname -o 2>/dev/null || true)"
+              if [ "${uname_o}" = "Android" ]; then
+                # Android (Termux) always uses musl
                 musl="-musl"
+              else
+                ldd_output="$(ldd /bin/ls 2>/dev/null || true)"
+                grep_output="$(echo "${ldd_output}" | grep 'musl' | head -1 || true)"
+                libc="$(echo "${grep_output}" | cut -d ' ' -f1 || true)"
+                if [ -n "${libc}" ]; then
+                  musl="-musl"
+                fi
               fi
             fi
           fi
           arch="$(uname -m)"
-          if [ "$arch" = x86_64 ]; then
-            echo "x64$musl"
-          elif [ "$arch" = aarch64 ] || [ "$arch" = arm64 ]; then
-            echo "arm64$musl"
-          elif [ "$arch" = armv7l ]; then
-            echo "armv7$musl"
+          if [ "${arch}" = x86_64 ]; then
+            echo "x64${musl}"
+          elif [ "${arch}" = aarch64 ] || [ "${arch}" = arm64 ]; then
+            echo "arm64${musl}"
+          elif [ "${arch}" = armv7l ]; then
+            echo "armv7${musl}"
           else
-            unsupported_arch "$arch"
+            unsupported_arch "${arch}"
           fi
         }
 
         get_ext() {
           if [ -n "${MISE_INSTALL_EXT:-}" ]; then
-            echo "$MISE_INSTALL_EXT"
-          elif [ -n "${MISE_VERSION:-}" ] && echo "$MISE_VERSION" | grep -q '^v2024'; then
+            echo "${MISE_INSTALL_EXT}"
+          elif [ -n "${MISE_VERSION:-}" ] && echo "${MISE_VERSION}" | grep -q '^v2024'; then
             # 2024 versions don't have zstd tarballs
             echo "tar.gz"
           elif tar_supports_zstd; then
@@ -137,18 +143,21 @@ __mise_bootstrap() {
           if ! command -v zstd >/dev/null 2>&1; then
             false
           # tar is bsdtar
-          elif tar --version | grep -q 'bsdtar'; then
-            true
-          # busybox tar reports a "1.3x" version that matches the GNU check below, but it
-          # cannot decompress .tar.zst itself. Detect it so we fall back to the zstd pipe
-          # (or a .tar.gz download) instead of running `tar -xf` on a zstd tarball.
-          elif tar --version 2>&1 | grep -qi 'busybox'; then
-            false
-          # tar version is >= 1.31
-          elif tar --version | grep -q '1\.\(3[1-9]\|[4-9][0-9]\)'; then
-            true
           else
-            false
+            tar_version="$(tar --version 2>/dev/null || true)"
+            if echo "${tar_version}" | grep -q 'bsdtar'; then
+              true
+            # busybox tar reports a "1.3x" version that matches the GNU check below, but it
+            # cannot decompress .tar.zst itself. Detect it so we fall back to the zstd pipe
+            # (or a .tar.gz download) instead of running `tar -xf` on a zstd tarball.
+            elif echo "${tar_version}" | grep -qi 'busybox'; then
+              false
+            # tar version is >= 1.31
+            elif echo "${tar_version}" | grep -q '1\.\(3[1-9]\|[4-9][0-9]\)'; then
+              true
+            else
+              false
+            fi
           fi
         }
 
