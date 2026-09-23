@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
@@ -43,8 +44,20 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         # surface. When the rope index does not track the package, enumerate
         # direct children from the filesystem instead of rendering an empty
         # init; emptiness here is a defect, never canonical.
+        # The rope index exposes modules in its own scan order, which follows
+        # the filesystem's directory-entry order and therefore differs between
+        # machines. Sorting the entries makes the rendered lazy map — whose
+        # insertion order the generated ``__init__`` preserves — byte-identical
+        # for the same sources on every host, so a render on one machine can
+        # never drift against a render on another.
         module_entries: t.MutableSequenceOf[t.Pair[Path, str]] = (
-            [(entry.file_path, entry.module_name) for entry in package_entry.modules]
+            sorted(
+                (
+                    (entry.file_path, entry.module_name)
+                    for entry in package_entry.modules
+                ),
+                key=operator.itemgetter(0, 1),
+            )
             if package_entry is not None
             else []
         )
