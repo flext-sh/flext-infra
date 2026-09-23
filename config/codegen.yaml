@@ -393,9 +393,11 @@ Infra:
         - {verb: fmt, contexts: [local, pre_commit]}
         - {verb: fix, contexts: [local, pre_commit]}
         - {verb: check, contexts: [local, ci, pre_push, pre_commit]}
-      # Review CI proves the complete native gate set. Draft PRs do not select
-      # the job, while attestation reuse is selected externally by AI Hub.
-        - {verb: test, contexts: [local, ci, pre_push]}
+      # Operator ruling 2026-09-23: CI runs setup, the gen fixed point, the
+      # deps audit and check only; make test runs locally and on pre-push,
+      # never in CI. The CI test-only steps (testmon cache, test reports)
+      # render only while a test row declares the ci context.
+        - {verb: test, contexts: [local, pre_push]}
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -1177,7 +1179,7 @@ Infra:
               - dependency-injector>=4.49.1
               - packaging>=26.3
               - pydantic>=2.13.5
-              - pydantic-settings>=2.14.0,<2.15
+              - pydantic-settings>=2.14.2,<2.15
               - pyyaml>=6.0.3
               - structlog>=25.5.0,<27
               - typing-extensions>=4.16.0
@@ -1187,7 +1189,7 @@ Infra:
               - flext-cli
               - flext-core
               - pydantic>=2.13.5
-              - pydantic-settings>=2.14.0,<2.15
+              - pydantic-settings>=2.14.2,<2.15
             codegen: [flext-infra]
         # Project-scoped requirements extend the shared profile without
         # leaking API/Web dependencies into core consumers. Unbounded entries
