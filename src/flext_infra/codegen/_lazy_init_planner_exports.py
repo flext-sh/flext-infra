@@ -52,7 +52,10 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         # never drift against a render on another.
         module_entries: t.MutableSequenceOf[t.Pair[Path, str]] = (
             sorted(
-                ((entry.file_path, entry.module_name) for entry in package_entry.modules),
+                (
+                    (entry.file_path, entry.module_name)
+                    for entry in package_entry.modules
+                ),
                 key=operator.itemgetter(0, 1),
             )
             if package_entry is not None
