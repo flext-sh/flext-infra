@@ -116,21 +116,16 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
     def _resolve_inherited_alias_source(
         self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str
     ) -> str:
-        """Return the package that owns the given alias in the inheritance chain."""
+        """Return the nearest parent that re-exports the alias.
+
+        Operator ruling 2026-09-23: an inherited letter is sourced from the
+        nearest facade parent whose published export list carries it (e.g.
+        ``flext_web`` for ``flext_api``), in every scan scope. ``package_names``
+        is nearest-first, so the first exporter wins.
+        """
         candidate_packages: t.StrSequence = tuple(
             name for name in package_names if name
         )
-        # ADR-018 p.1: the owner of a letter is the package whose own module
-        # DECLARES it in its explicit __all__ (flext_core/result.py owns `r`).
-        # Every generated initializer re-exports the letters it inherits, so
-        # "the nearest parent whose init lists the name" would elect whichever
-        # dependency sorts first — a tooling package re-exporting `r` made a
-        # test package import it through flext_infra and cycle at runtime.
-        for package_name in candidate_packages:
-            if package_name == current_pkg:
-                continue
-            if alias_name in self._declared_alias_names_for_package(package_name):
-                return f"{package_name}"
         for package_name in candidate_packages:
             if package_name == current_pkg:
                 continue
