@@ -73,8 +73,15 @@ class FlextInfraConstantsCodegen(
     )
     """Regenerable class-receipt cache path under the ignored ``.state`` root."""
 
-    LAZY_INIT_CLASS_RECEIPTS_VERSION: ClassVar[int] = 2
-    """Receipt document schema version; a mismatch discards the cache."""
+    LAZY_INIT_CLASS_RECEIPTS_VERSION: ClassVar[int] = 3
+    """Receipt document schema version; a mismatch discards the cache.
+
+    Version 3 discards receipts rendered before dependency-closure alias
+    parity: inherited-alias discovery now reads each candidate package's
+    published initializer ABI instead of the wider declared ``__all__``
+    superset, so facets carrying phantom re-exports (names the owner root
+    never serves) must re-render once.
+    """
 
     SRC_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
