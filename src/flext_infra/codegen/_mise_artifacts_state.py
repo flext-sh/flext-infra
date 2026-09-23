@@ -485,7 +485,7 @@ class FlextInfraMiseArtifactsState:
                 def _journaled_resident(
                     resident: Path, journaled: set[str], preserved: set[str]
                 ) -> p.Result[bool]:
-                    selector = files.workspace_relative(layout.scope_root, resident)
+                    selector = files.transaction_relative(layout, resident)
                     if selector.failure:
                         return r[bool].from_failure(selector)
                     relative = selector.value

@@ -35,12 +35,12 @@ if TYPE_CHECKING:
 
     from . import integration, refactor, unit
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
-    from .constants import TestsFlextInfraConstants, c
+    from .constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
     from .constants_scan import TestsFlextInfraConstantsScanMixin
-    from .models import TestsFlextInfraModels, m
-    from .protocols import TestsFlextInfraProtocols, p
-    from .typings import TestsFlextInfraTypes, t
-    from .utilities import TestsFlextInfraUtilities, u
+    from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
+    from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
+    from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
+    from .utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
     from .utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
     from .utilities_deps import TestsFlextInfraUtilitiesDepsMixin
     from .utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin

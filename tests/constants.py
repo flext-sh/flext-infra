@@ -15,14 +15,14 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import c
+from flext_infra import FlextInfraConstants
 from tests.constants_scan import TestsFlextInfraConstantsScanMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class TestsFlextInfraConstants(FlextTestsConstants, c):
+class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
@@ -74,18 +74,24 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "VALIDATE_GATES",
             "WHAT",
             "REPOSITORY_ROOT",
-            *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            *FlextInfraConstants.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         """Environment inherited from an outer Make invocation to discard in tests."""
 
         # ClassVar, not Final: these rebindings live on a Pydantic model
         # class, and Pydantic 2.11 deprecates final-annotated defaults
         # (filterwarnings=error turns that into a collection failure).
-        RELEASE_PHASE_PLAN: ClassVar[str] = c.Infra.ReleasePhase.PLAN
-        RELEASE_PHASE_VERSION: ClassVar[str] = c.Infra.ReleasePhase.VERSION
-        RELEASE_PHASE_TAG: ClassVar[str] = c.Infra.ReleasePhase.TAG
-        RELEASE_PHASE_BUILD: ClassVar[str] = c.Infra.ReleasePhase.BUILD
-        RELEASE_PHASE_PUBLISH: ClassVar[str] = c.Infra.ReleasePhase.PUBLISH
+        RELEASE_PHASE_PLAN: ClassVar[str] = FlextInfraConstants.Infra.ReleasePhase.PLAN
+        RELEASE_PHASE_VERSION: ClassVar[str] = (
+            FlextInfraConstants.Infra.ReleasePhase.VERSION
+        )
+        RELEASE_PHASE_TAG: ClassVar[str] = FlextInfraConstants.Infra.ReleasePhase.TAG
+        RELEASE_PHASE_BUILD: ClassVar[str] = (
+            FlextInfraConstants.Infra.ReleasePhase.BUILD
+        )
+        RELEASE_PHASE_PUBLISH: ClassVar[str] = (
+            FlextInfraConstants.Infra.ReleasePhase.PUBLISH
+        )
 
         INFRA_PUBLIC_ROOT_EXPORTS: ClassVar[t.StrSequence] = (
             "FlextInfra",

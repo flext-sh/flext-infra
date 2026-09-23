@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     from .aliases import FlextInfraUtilitiesSemanticCutoverAliases
     from .base import FlextInfraUtilitiesSemanticCutoverBase
     from .edits import FlextInfraUtilitiesSemanticCutoverEdits
+    from .facade_base_cst import FlextInfraUtilitiesSemanticCutoverFacadeBaseCst
+    from .facade_bases import FlextInfraUtilitiesSemanticCutoverFacadeBases
+    from .facade_owners import FlextInfraUtilitiesSemanticCutoverFacadeOwners
     from .family_flatten import FlextInfraUtilitiesSemanticFamilyFlatten
     from .family_references import FlextInfraUtilitiesSemanticFamilyReferences
     from .nesting import FlextInfraUtilitiesSemanticCutoverNesting
@@ -27,6 +30,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverAliases",
     "FlextInfraUtilitiesSemanticCutoverBase",
     "FlextInfraUtilitiesSemanticCutoverEdits",
+    "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",
+    "FlextInfraUtilitiesSemanticCutoverFacadeBases",
+    "FlextInfraUtilitiesSemanticCutoverFacadeOwners",
     "FlextInfraUtilitiesSemanticCutoverNesting",
     "FlextInfraUtilitiesSemanticCutoverNestingCst",
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
@@ -43,6 +49,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".aliases": ("FlextInfraUtilitiesSemanticCutoverAliases",),
             ".base": ("FlextInfraUtilitiesSemanticCutoverBase",),
             ".edits": ("FlextInfraUtilitiesSemanticCutoverEdits",),
+            ".facade_base_cst": ("FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",),
+            ".facade_bases": ("FlextInfraUtilitiesSemanticCutoverFacadeBases",),
+            ".facade_owners": ("FlextInfraUtilitiesSemanticCutoverFacadeOwners",),
             ".family_flatten": ("FlextInfraUtilitiesSemanticFamilyFlatten",),
             ".family_references": ("FlextInfraUtilitiesSemanticFamilyReferences",),
             ".nesting": ("FlextInfraUtilitiesSemanticCutoverNesting",),

@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import FlextTestsUtilities, tm
 
 from flext_core import r
-from flext_infra import u
+from flext_infra import FlextInfraUtilities
 from tests import c, m, p, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
@@ -27,7 +27,7 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 
 
-class TestsFlextInfraUtilities(FlextTestsUtilities, u):
+class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(

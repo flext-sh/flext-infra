@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r
-from tests import c, m, p, t, u
+from flext_infra import u
+from tests import c, m, p, t
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 
