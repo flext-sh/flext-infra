@@ -313,8 +313,6 @@ Infra:
         # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         boolean-settings:
-          # Discovery + namespace (retained)
-          ignore_missing_imports: true
           # The canonical facade rebind (import the upstream single letter,
           # then rebind it to the composed namespace class, mro-j47u) is a
           # deliberate same-name redefinition; without this flag Mypy treats
