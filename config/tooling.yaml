@@ -311,7 +311,7 @@ Infra:
         # alongside five disable rows and ignore_missing_imports was the
         # root cause of that flood, restored here from the canonical
         # pre-regression section (commit 7691100a4).
-        plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
+        plugins: [pydantic.mypy]
         exclude: ^legado(?:/|$)
         # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
