@@ -1116,6 +1116,11 @@ Infra:
           - mkdocs-section-index>=0.3.12
           - mkdocstrings>=1.0.6
           - mkdocstrings-python>=2.0.8
+          # uv installs this as a side effect of the editable root install
+          # (hatchling editable-detection backend) but a later sync prunes it,
+          # breaking editable wheel builds (release/wheel tests) after any
+          # re-sync; declared here so every projected project keeps it.
+          - editables>=0.6
           - mypy>=2.3.1
           - pymdown-extensions
           - pyrefly>=1.2.0
