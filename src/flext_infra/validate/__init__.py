@@ -46,6 +46,8 @@ if TYPE_CHECKING:
     from .stub_chain import FlextInfraStubSupplyChain
     from .testmon_db import FlextInfraTestmonDbInspector
     from .tier_whitelist import FlextInfraValidateTierWhitelist
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraCProfileReport",
     "FlextInfraGateContractChecksMixin",

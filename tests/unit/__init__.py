@@ -91,6 +91,8 @@ if TYPE_CHECKING:
         TestsFlextInfraPyprojectConformTopologySources,
     )
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
+
+
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCheckReportContract",
     "TestsFlextInfraCliRepositoryRootContract",

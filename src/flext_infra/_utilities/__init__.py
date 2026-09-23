@@ -197,6 +197,8 @@ if TYPE_CHECKING:
     from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
     "FlextInfraMypyDarwinSupervisor",

@@ -484,22 +484,31 @@ class FlextInfraMiseArtifactsState:
 
                 def _journaled_resident(
                     resident: Path, journaled: set[str], preserved: set[str]
-                ) -> bool:
-                    selector = files.transaction_relative(layout, resident)
-                    if not selector.success:
-                        return False
+                ) -> p.Result[bool]:
+                    selector = files.workspace_relative(layout.scope_root, resident)
+                    if selector.failure:
+                        return r[bool].from_failure(selector)
                     relative = selector.value
                     if relative in journaled or relative in preserved:
-                        return True
+                        return r[bool].ok(True)
                     # An ancestor is preservable when everything between it
                     # and a preserved descendant is itself journaled: the
                     # descendant's own guard already authenticated its subtree.
                     prefix = relative + "/"
-                    return any(candidate.startswith(prefix) for candidate in preserved)
+                    return r[bool].ok(
+                        any(candidate.startswith(prefix) for candidate in preserved)
+                    )
 
-                if residents and all(
-                    _journaled_resident(r, journaled, preserved) for r in residents
-                ):
+                authenticated = r[bool].ok(True)
+                for resident in residents:
+                    authenticated = _journaled_resident(
+                        resident, journaled, preserved
+                    )
+                    if authenticated.failure:
+                        break
+                if authenticated.failure:
+                    return r[bool].from_failure(authenticated)
+                if residents and authenticated.value:
                     continue
                 return r[bool].from_failure(removed)
         return r[bool].ok(True)

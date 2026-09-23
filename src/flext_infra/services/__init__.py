@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from .cli_routes_validate_commands import ValidationCommandRoutes
     from .cli_routes_workspace import WorkspaceRoutes
     from .codegen import FlextInfraCodegen
+
+
 __all__: tuple[str, ...] = (
     "CliDispatchService",
     "CliRouteBase",

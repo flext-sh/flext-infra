@@ -10,6 +10,8 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .gate_attestation_tests import TestsFlextInfraGithubGateAttestation
+
+
 __all__: tuple[str, ...] = ("TestsFlextInfraGithubGateAttestation",)
 
 _LAZY_IMPORTS = MappingProxyType(

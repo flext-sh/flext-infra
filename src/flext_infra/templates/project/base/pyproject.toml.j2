@@ -343,6 +343,11 @@ exclude = [
 ]
 fix = {{ tooling.tools.ruff.fix | lower }}
 line-length = {{ tooling.tools.ruff.line_length }}
+namespace-packages = [
+{% for item in tooling.tools.ruff.namespace_packages %}
+  {{ item | tojson }},
+{% endfor %}
+]
 preview = {{ tooling.tools.ruff.preview | lower }}
 respect-gitignore = {{ tooling.tools.ruff.respect_gitignore | lower }}
 show-fixes = {{ tooling.tools.ruff.show_fixes | lower }}
