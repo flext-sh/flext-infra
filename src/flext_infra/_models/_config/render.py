@@ -288,15 +288,15 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Fleet SonarCloud scope policy"),
         ]
         tests_dir: Annotated[
-            t.NonEmptyStr | None,
+            t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Project-relative tests directory present in the checkout, "
-                    "or None; automatic analysis fails when sonar.tests names "
-                    "an absent directory, so it is read from disk"
+                    "Project-relative tests directory; conform always "
+                    "materializes it (managed tests/fixtures/ci/docker "
+                    "projections), so sonar.tests always names a real directory"
                 )
             ),
-        ] = None
+        ]
 
     class UvPackageSelectorSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
