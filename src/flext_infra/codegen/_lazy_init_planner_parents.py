@@ -114,7 +114,12 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         return target
 
     def _resolve_inherited_alias_source(
-        self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str
+        self,
+        package_names: t.StrSequence,
+        alias_name: str,
+        *,
+        current_pkg: str,
+        environment_packages: t.StrSequence = (),
     ) -> str:
         """Return the package that owns the given alias in the inheritance chain."""
         candidate_packages: t.StrSequence = tuple(
@@ -128,6 +133,14 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         # test package import it through flext_infra and cycle at runtime.
         for package_name in candidate_packages:
             if package_name == current_pkg:
+                continue
+            if alias_name in self._declared_alias_names_for_package(package_name):
+                return f"{package_name}"
+        # Environment declarers vote before any re-export fallback: a plan that
+        # cannot walk the full inheritance chain (standalone scan scope) still
+        # elects the true declaring package, so both modes render one owner.
+        for package_name in environment_packages:
+            if package_name in candidate_packages or package_name == current_pkg:
                 continue
             if alias_name in self._declared_alias_names_for_package(package_name):
                 return f"{package_name}"
