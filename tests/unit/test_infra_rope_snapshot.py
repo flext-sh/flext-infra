@@ -24,8 +24,7 @@ class TestsFlextInfraRopeSnapshot:
         )
         conftest = repository_root / "conftest.py"
         conftest.write_text(
-            '"""Root entry module outside every source folder."""\n',
-            encoding="utf-8",
+            '"""Root entry module outside every source folder."""\n', encoding="utf-8"
         )
         package_init = package_root / "__init__.py"
         sources = {
@@ -40,9 +39,7 @@ class TestsFlextInfraRopeSnapshot:
             finally:
                 snapshot.close()
 
-    def test_snapshot_rejects_sources_outside_the_project(
-        self, tmp_path: Path
-    ) -> None:
+    def test_snapshot_rejects_sources_outside_the_project(self, tmp_path: Path) -> None:
         """A path outside the workspace root never enters the closed inventory."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"

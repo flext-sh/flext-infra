@@ -159,9 +159,7 @@ class FlextInfraUtilitiesDocsFix:
             phase="fix",
             heading="Docs Fix Report",
             columns=("file", "link_fixes", "toc_updates"),
-            rows=tuple(
-                (item.file, str(item.links), str(item.toc)) for item in items
-            ),
+            rows=tuple((item.file, str(item.links), str(item.toc)) for item in items),
             items=items,
             apply=apply,
         )

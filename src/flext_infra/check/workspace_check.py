@@ -177,9 +177,7 @@ class FlextInfraWorkspaceChecker(
             return r[frozenset[str]].ok(
                 frozenset(config.Infra.check_policy.warning_gates)
             )
-        validated = u.validate_value(
-            m.Infra.CheckPolicySpec, policy_section
-        )
+        validated = u.validate_value(m.Infra.CheckPolicySpec, policy_section)
         if validated.failure:
             return r[frozenset[str]].fail_op(
                 f"invalid check policy ({policy_path})", validated.error

@@ -180,8 +180,7 @@ class FlextInfraMiseRecovery:
 
     @staticmethod
     def _staging_tree_is_absent(
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        entry: m.Infra.CodegenJournalEntry,
+        layout: m.Infra.MiseToolchainWorkspaceLayout, entry: m.Infra.CodegenJournalEntry
     ) -> bool:
         """Whether the entry's staged rollback tree is gone entirely."""
         if entry.original_backup is None:
