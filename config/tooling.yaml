@@ -319,6 +319,11 @@ Infra:
           # every facade root as an error-degraded Any (removed and restored
           # 2026-09-22 — the removal flooded CI with no-any-return shadows).
           allow_redefinition: true
+          # Analyze installed implementations without py.typed; do not ignore
+          # them — the stricter discovery the tip adopted over
+          # ignore_missing_imports.
+          # https://mypy.readthedocs.io/en/stable/config_file.html#confval-follow_untyped_imports
+          follow_untyped_imports: true
           namespace_packages: true
           explicit_package_bases: true
           check_untyped_defs: true
