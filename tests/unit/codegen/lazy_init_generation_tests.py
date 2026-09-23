@@ -507,5 +507,59 @@ class TestsFlextInfraCodegenGeneration:
             ),
         )
 
+    def test_project_package_name_reads_manifest_not_directory_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Worktree checkouts keep the manifest's package name.
+
+        A project root directory named after a git branch (``0.12.0-dev``)
+        must not leak into isort sectioning: the distribution package is
+        declared by the manifest, never proxied from the directory name,
+        so a wrapper root renders the project import in the first-party
+        section below the third-party block.
+        """
+        project_root = tmp_path / "0.12.0-dev"
+        wrapper_root = project_root / "examples"
+        wrapper_root.mkdir(parents=True)
+        (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "demo-worktree-pkg"\nversion = "1.0.0"\n',
+            encoding="utf-8",
+        )
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=wrapper_root,
+                init_path=wrapper_root / c.Infra.INIT_PY,
+                current_pkg="examples",
+                surface="examples",
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("cli_c", "project_p"),
+            lazy_map=MappingProxyType({
+                "cli_c": ("flext_cli", "c"),
+                "project_p": ("demo_worktree_pkg", "p"),
+            }),
+            type_checking_map=MappingProxyType({
+                "cli_c": ("flext_cli", "c"),
+                "project_p": ("demo_worktree_pkg", "p"),
+            }),
+            eager_dunders=MappingProxyType({}),
+            child_packages_for_lazy=(),
+            excluded_lazy_names=("internal_only",),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(
+            init_content,
+            contains=(
+                "if TYPE_CHECKING:\n"
+                "    from flext_cli import c as cli_c\n"
+                "\n"
+                "    from demo_worktree_pkg import p as project_p\n"
+            ),
+        )
+
 
 __all__: list[str] = ["TestsFlextInfraCodegenGeneration"]
