@@ -36,13 +36,32 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         seen = visited if visited is not None else set()
         seen.add(str(module_path.resolve()))
         resource = self.rope_workspace.resource(module_path)
-        if resource is None:
-            msg = f"parent declaration source unavailable: {module_path}"
-            raise ValueError(msg)
-        imports = u.Infra.get_declared_module_imports(
-            self.rope_workspace.rope_project, resource
+        # R32: a parent outside the scan scope is read from the copy the active
+        # environment declares, so a standalone plan walks the same ancestry
+        # (up to the owner of each letter) as a workspace plan.
+        source = (
+            resource.read()
+            if resource is not None
+            else module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         )
-        classes = u.Infra.class_info_from_source(resource.read())
+        classes = u.Infra.class_info_from_source(source)
+        imports = (
+            u.Infra.get_declared_module_imports(
+                self.rope_workspace.rope_project, resource
+            )
+            if resource is not None
+            else self._source_declared_imports(
+                source,
+                f"{current_pkg}.{module_path.stem}",
+                heads=tuple(
+                    dict.fromkeys(
+                        base_name.partition(".")[0]
+                        for class_info in classes
+                        for base_name in class_info.bases
+                    )
+                ),
+            )
+        )
         base_targets = tuple(
             target + (f".{tail}" if tail else "")
             for class_info in classes
@@ -80,6 +99,25 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             ):
                 parents.append(package_name)
         return tuple(parents)
+
+    @staticmethod
+    def _source_declared_imports(
+        source: str, current_module: str, *, heads: t.StrSequence
+    ) -> t.StrMapping:
+        """Return {head: declared import path} for the requested bound names."""
+        return {
+            bound_name: f"{module_name}.{original_name}"
+            for bound_name in heads
+            for module_name, original_name in (
+                u.Infra.imported_symbol_binding_source(
+                    source,
+                    current_module=current_module,
+                    symbol_name=bound_name,
+                    package_module=False,
+                ),
+            )
+            if module_name
+        }
 
     def _declared_parent_package(self, target: str) -> str:
         """Return the package a class base declares as facade parent.
