@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from sys import stdlib_module_names
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 
 from ._codegen_generation_renderers import FlextInfraCodegenGenerationRenderersMixin
 
@@ -225,13 +225,25 @@ class FlextInfraCodegenGenerationStandardMixin(
         """Return the distribution package that owns ``pkg_dir``.
 
         The nearest ancestor carrying the project manifest is the project
-        root, and its directory name is the distribution package under the
-        convention every FLEXT repository follows. Return ``None`` when no
-        manifest is reachable so the caller keeps its prior behavior.
+        root, and the distribution package is its manifest-declared name
+        (``u.Infra.read_project_metadata_result``). The root directory
+        name was the historical proxy; it broke every checkout whose root
+        directory is not named after the package — a git worktree named
+        after its branch (``0.12.0-dev``) rendered wrapper roots
+        (``examples/``, ``scripts/``, ``tests/``) whose TYPE_CHECKING
+        block sorted the project package as third-party, diverging from
+        CI renders and failing ruff I001 at the generated fixed point.
+        Return ``None`` when no manifest is reachable and the directory
+        proxy when the manifest is unreadable, so the caller keeps its
+        prior behavior.
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
-            if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
-                return candidate.name.replace("-", "_")
+            if not (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                continue
+            metadata_result = u.Infra.read_project_metadata_result(candidate)
+            if metadata_result.success:
+                return metadata_result.value.package_name
+            return candidate.name.replace("-", "_")
         return None
 
     @classmethod
