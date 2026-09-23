@@ -225,7 +225,7 @@ if TYPE_CHECKING:
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
     from .typings import FlextInfraTypes, t
-    from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
+    from .utilities import FlextInfraUtilities, u
     from .validate.cprofile_report import FlextInfraCProfileReport
     from .validate.fresh_import import FlextInfraValidateFreshImport
     from .validate.gate_contract import FlextInfraGateContractValidator

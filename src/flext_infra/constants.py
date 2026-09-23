@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import c
+from flext_cli import c as _cli_c
 
 from flext_infra import t
 
@@ -30,7 +30,7 @@ from ._constants.source_code import FlextInfraConstantsSourceCode
 from ._constants.workspace import FlextInfraConstantsWorkspace
 
 
-class FlextInfraConstants(c):
+class FlextInfraConstants(_cli_c):
     """Infra constants facade — access via c.Infra.*."""
 
     class Infra(
@@ -56,5 +56,6 @@ class FlextInfraConstants(c):
         """Infra-domain constants — merged mixin namespace."""
 
 
-c = FlextInfraConstants
+c: type[FlextInfraConstants] = FlextInfraConstants
+
 __all__: t.VariadicTuple[str] = ("FlextInfraConstants", "c")
