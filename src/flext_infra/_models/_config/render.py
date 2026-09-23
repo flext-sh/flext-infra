@@ -223,6 +223,70 @@ class FlextInfraConfigModelsRender:
             ),
         ] = None
 
+    class SonarcloudIssueExclusionSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One SonarCloud issue exclusion applied as a server-side project setting.
+
+        SonarCloud automatic analysis ignores ``sonar.issue.ignore.*`` in
+        ``.sonarcloud.properties``; the exclusion lives in each project's
+        SonarCloud settings. This record is its single fleet owner, rendered
+        into the generated file only as documentation.
+        """
+
+        rule_key: Annotated[
+            t.NonEmptyStr, m.Field(description="Sonar rule key, e.g. 'text:S8565'")
+        ]
+        resource_key: Annotated[
+            t.NonEmptyStr, m.Field(description="Project-relative resource pattern")
+        ]
+        reason: Annotated[
+            t.NonEmptyStr, m.Field(description="Operator justification and bead")
+        ]
+
+    class SonarcloudSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Fleet SonarCloud automatic-analysis scope policy."""
+
+        exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "sonar.exclusions: generated, cache, vendored, and build "
+                    "output only; never governed source"
+                ),
+            ),
+        ]
+        cpd_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="sonar.cpd.exclusions duplication-scope patterns"),
+        ] = ()
+        issue_exclusions: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsRender.SonarcloudIssueExclusionSpec],
+            m.Field(
+                description=(
+                    "Server-side issue exclusions applied through SonarCloud "
+                    "project settings; never written as file properties"
+                )
+            ),
+        ] = ()
+
+    class SonarcloudRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed only by the generated ``.sonarcloud.properties``."""
+
+        sonarcloud: Annotated[
+            FlextInfraConfigModelsRender.SonarcloudSpec,
+            m.Field(description="Fleet SonarCloud scope policy"),
+        ]
+        tests_dir: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Project-relative tests directory present in the checkout, "
+                    "or None; automatic analysis fails when sonar.tests names "
+                    "an absent directory, so it is read from disk"
+                )
+            ),
+        ] = None
+
     class UvPackageSelectorSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
 
