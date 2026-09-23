@@ -201,7 +201,8 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
             if cls.kind(node) not in {"Assign", "AnnAssign"}:
                 continue
             value = getattr(node, "value", None)
-            if cls.kind(value) == "Call":
+            # A bare module annotation (AnnAssign without value) constructs nothing.
+            if value is not None and cls.kind(value) == "Call":
                 messages.append(
                     f"{filepath}:{cls.line(node)} — import-time wiring is forbidden; "
                     "compose dependencies in api.py"

@@ -154,6 +154,11 @@ class TestsFlextInfraCodegenCiMatrix:
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
+        # A verb whose workflow row omits the ci context never renders into CI
+        # (operator ruling 2026-09-23: make test runs locally and on pre-push).
+        for step in config.Infra.codegen.make.workflow:
+            if "ci" not in step.contexts:
+                tm.that(workflow, lacks=f"run: CI=Y make {step.verb}\n")
         tm.that(ci_step_runs, has="run: CI=Y make setup")
         # `conform` no longer exists as a Make verb (S1, operator law
         # 2026-09-14); the blocking generation gate is the "gen fixed point"
@@ -174,13 +179,8 @@ class TestsFlextInfraCodegenCiMatrix:
         gen_fixed_point_index = workflow.index("- name: gen fixed point (blocking)")
         audit_index = workflow.index("run: CI=Y make audit")
         check_index = workflow.index("run: CI=Y make check")
-        test_index = workflow.index("run: CI=Y make test")
         tm.that(
-            setup_index
-            < gen_fixed_point_index
-            < audit_index
-            < check_index
-            < test_index,
+            setup_index < gen_fixed_point_index < audit_index < check_index,
             eq=True,
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
@@ -519,7 +519,7 @@ class TestsFlextInfraCodegenCiMatrix:
         ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
 
         tm.that(ci_job, has="github.event.pull_request.draft == false")
-        tm.that(ci_job, has="make test")
+        tm.that(ci_job, has="make check")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
         # The merge guard must inspect the PR head, not the refs/pull/N/merge
         # commit that actions/checkout selects by default on pull_request.
@@ -561,6 +561,28 @@ class TestsFlextInfraCodegenCiMatrix:
 
         for branch in config.Infra.codegen.branch_policy.ci_trigger_branches:
             tm.that(content, has=f"      - {branch}")
+
+    def test_docs_workflow_jobs_authenticate_toolchain_resolution(
+        self, tmp_path: Path
+    ) -> None:
+        """Every Docs job running make setup resolves the toolchain authenticated.
+
+        Shared-egress runners exhaust the anonymous REST budget before mise
+        resolves the moving @latest backends, so each job that provisions the
+        toolchain carries the job token exactly like blocking CI.
+        """
+        root = self._render_project(tmp_path / "external")
+        content = (root / ".github" / "workflows" / "docs.yml").read_text(
+            encoding="utf-8"
+        )
+        _, jobs = content.split("\njobs:\n", maxsplit=1)
+        setup_jobs = [
+            job for job in re.split(r"\n  (?=\S)", jobs) if "run: make setup" in job
+        ]
+        tm.that(setup_jobs, empty=False)
+        for job in setup_jobs:
+            tm.that(job, has="GITHUB_TOKEN: ${{ github.token }}")
+            tm.that(job, has="MISE_GITHUB_TOKEN: ${{ github.token }}")
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path
