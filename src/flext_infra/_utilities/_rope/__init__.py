@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from .pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from .project import FlextInfraRopeProject
     from .signature_patch import FlextInfraUtilitiesRopeSignaturePatch
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraRopeProject",
     "FlextInfraUtilitiesRopePep695Patch",
