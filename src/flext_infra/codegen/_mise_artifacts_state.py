@@ -501,9 +501,7 @@ class FlextInfraMiseArtifactsState:
 
                 authenticated = r[bool].ok(True)
                 for resident in residents:
-                    authenticated = _journaled_resident(
-                        resident, journaled, preserved
-                    )
+                    authenticated = _journaled_resident(resident, journaled, preserved)
                     if authenticated.failure:
                         break
                 if authenticated.failure:

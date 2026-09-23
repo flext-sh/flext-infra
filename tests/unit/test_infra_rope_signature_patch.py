@@ -48,10 +48,7 @@ class TestsFlextInfraRopeSignaturePatch:
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             objects = rope.objects(module_path)
 
-        tm.that(
-            [item.name for item in objects],
-            has="command",
-        )
+        tm.that([item.name for item in objects], has="command")
 
     def test_objects_walk_full_signature_shapes(self, tmp_path: Path) -> None:
         """Positional-only, vararg, keyword-only and kwargs walk in order."""
@@ -79,7 +76,4 @@ class TestsFlextInfraRopeSignaturePatch:
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             objects = rope.objects(module_path)
 
-        tm.that(
-            [item.name for item in objects],
-            has="shapes",
-        )
+        tm.that([item.name for item in objects], has="shapes")

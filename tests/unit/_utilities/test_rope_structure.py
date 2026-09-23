@@ -78,14 +78,8 @@ class TestsFlextInfraRopeStructure:
         )
         statements = {s.line: s for s in u.Infra.logical_statements(source)}
 
-        tm.that(
-            statements[2].category,
-            eq=c.Infra.StatementCategory.OTHER,
-        )
-        tm.that(
-            statements[4].category,
-            eq=c.Infra.StatementCategory.ANN_ASSIGN,
-        )
+        tm.that(statements[2].category, eq=c.Infra.StatementCategory.OTHER)
+        tm.that(statements[4].category, eq=c.Infra.StatementCategory.ANN_ASSIGN)
 
     def test_categorizes_type_checking_guard(self) -> None:
         by_line = self._by_line()
