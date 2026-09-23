@@ -172,6 +172,8 @@ class FlextInfraConstantsSharedInfra:
     PRETTIER_IGNORE_FILENAME: ClassVar[str] = ".prettierignore"
     "Generated markdown-formatting projections (SSOT: tooling.tools.markdown)."
     "Hook-config projection whose presence decides whether a checkout runs hooks."
+    SONARCLOUD_PROPERTIES_FILENAME: ClassVar[str] = ".sonarcloud.properties"
+    "Generated SonarCloud automatic-analysis scope (SSOT: codegen.sonarcloud)."
     BEADS_CONFIG_RELPATH: ClassVar[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: ClassVar[str] = ".beads/metadata.json"
     "Generated project-owned Beads configuration paths."

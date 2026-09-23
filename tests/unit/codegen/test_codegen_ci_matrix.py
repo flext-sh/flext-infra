@@ -13,6 +13,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, t
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from tests import u
 
@@ -626,6 +627,113 @@ class TestsFlextInfraCodegenCiMatrix:
             content,
             has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';",
         )
+
+    @staticmethod
+    def _assert_sonarcloud_scope(rendered: str, *, tests_dir: str | None) -> None:
+        """Assert one rendered .sonarcloud.properties against the codegen SSOT."""
+        codegen = config.Infra.codegen
+        entry = next(
+            item
+            for item in codegen.templates.entries
+            if item.destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME
+        )
+        template = u.Infra.codegen_templates_root(codegen) / entry.source
+        header = template.read_text(encoding="utf-8").split("\n\n", 1)[0]
+        tm.that(header, has="# @flext-regenerate: make gen")
+        tm.that(rendered.startswith(header), eq=True)
+        properties = {
+            key: value
+            for key, _, value in (
+                line.partition("=")
+                for line in rendered.splitlines()
+                if line and not line.startswith("#")
+            )
+        }
+        tm.that(properties["sonar.sources"], eq=".")
+        # Main and test sets must be disjoint: sonar.exclusions narrows only
+        # the main set, so the tests root is excluded from it exactly when
+        # sonar.tests declares it.
+        tm.that(
+            properties["sonar.exclusions"].split(","),
+            eq=[
+                *codegen.sonarcloud.exclusions,
+                *(() if tests_dir is None else (f"{tests_dir}/**",)),
+            ],
+        )
+        tm.that(
+            properties["sonar.cpd.exclusions"].split(","),
+            eq=list(codegen.sonarcloud.cpd_exclusions),
+        )
+        if tests_dir is None:
+            tm.that("sonar.tests" in properties, eq=False)
+            tm.that("sonar.test.inclusions" in properties, eq=False)
+        else:
+            tm.that(properties["sonar.tests"], eq=tests_dir)
+            tm.that(properties["sonar.test.inclusions"], has=tests_dir)
+        tm.that(
+            any(key.startswith("sonar.issue.ignore") for key in properties), eq=False
+        )
+        comments = "\n".join(
+            line for line in rendered.splitlines() if line.startswith("#")
+        )
+        for exclusion in codegen.sonarcloud.issue_exclusions:
+            tm.that(comments, has=exclusion.rule_key)
+            tm.that(comments, has=exclusion.resource_key)
+
+    def test_sonarcloud_properties_projects_ssot_scope(self, tmp_path: Path) -> None:
+        """A generated project carries the SSOT SonarCloud scope and its tests root."""
+        root = self._render_project(tmp_path / "external")
+        rendered = (root / c.Infra.SONARCLOUD_PROPERTIES_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that((root / c.Infra.DIR_TESTS).is_dir(), eq=True)
+        self._assert_sonarcloud_scope(rendered, tests_dir=c.Infra.DIR_TESTS)
+
+    def test_sonarcloud_properties_omit_tests_when_checkout_has_none(
+        self, tmp_path: Path
+    ) -> None:
+        """A checkout without tests/ never declares sonar.tests (analysis would fail)."""
+        profiles = config.Infra.codegen.scaffold.project.dependency_profiles
+        profile = next(
+            item
+            for item in profiles
+            if item.project is None
+            and not any(
+                other.upstream.replace("_", "-")
+                in {u.Infra.dep_name(dependency) for dependency in item.runtime}
+                for other in profiles
+                if other is not item and other.project is None
+            )
+        )
+        distribution = profile.upstream.replace("_", "-")
+        root = tmp_path / distribution
+        package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
+        package.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.PYPROJECT_FILENAME,
+                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+                f'description = "{distribution} fixture"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
+                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                "dependencies = []\n",
+            )
+        )
+        u.Tests.write_project_beads_config(root, distribution)
+        u.Tests.initialize_git_repo(
+            root, origin_url=u.Tests.repository_ref(distribution).url
+        )
+        tm.that((root / c.Infra.DIR_TESTS).exists(), eq=False)
+        plan = tm.ok(
+            FlextInfraCodegenConform(repository_root=root).plan(
+                u.Tests.conform_request(root)
+            )
+        )
+        rendered = tm.not_none(
+            u.Tests.planned_text(plan, c.Infra.SONARCLOUD_PROPERTIES_FILENAME)
+        )
+        self._assert_sonarcloud_scope(rendered, tests_dir=None)
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""

@@ -190,6 +190,10 @@ class FlextInfraConfigModelsArtifact:
             ],
             m.Field(description="Project-scoped official uv dependency exclusions"),
         ] = ()
+        sonarcloud: Annotated[
+            FlextInfraConfigModelsRender.SonarcloudSpec,
+            m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
+        ]
         infra_repository: Annotated[
             FlextInfraConfigModelsProvider.RepositorySourceSpec,
             m.Field(description="Canonical infrastructure repository identity"),
