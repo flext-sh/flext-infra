@@ -176,6 +176,7 @@ if TYPE_CHECKING:
     from .git import FlextInfraGitService
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
+    from .maintenance.sonarcloud import FlextInfraSonarcloudSettingsSync
     from .models import FlextInfraModels, FlextInfraModels as m
     from .promoted import FlextInfraPromoted
     from .protocols import FlextInfraProtocols, FlextInfraProtocols as p
@@ -435,6 +436,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraSkillValidator",
     "FlextInfraSmellFixer",
     "FlextInfraSmellsGate",
+    "FlextInfraSonarcloudSettingsSync",
     "FlextInfraStubSupplyChain",
     "FlextInfraTestmonDbInspector",
     "FlextInfraTextPatternScanner",
@@ -670,6 +672,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
+            ".maintenance.sonarcloud": ("FlextInfraSonarcloudSettingsSync",),
             ".models": ("FlextInfraModels", "m"),
             ".promoted": ("FlextInfraPromoted",),
             ".protocols": ("FlextInfraProtocols", "p"),
