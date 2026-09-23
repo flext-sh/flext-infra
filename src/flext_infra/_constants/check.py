@@ -102,6 +102,7 @@ class FlextInfraConstantsCheck:
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     WARNING_GATE_IDS: ClassVar[frozenset[str]] = frozenset({
         "markdown",
+        "mypy",
         "namespace",
         "runtime-census",
         "silent-failure",
@@ -115,11 +116,12 @@ class FlextInfraConstantsCheck:
     "are warning-only for CI — the debts stay tracked in beads. Extended "
     "the same day by the docs reorg session: the docs-lint backlog "
     "(markdown/rumdl) and the sentinel-return backlog (silent-failure) "
-    "also warn. mypy stayed out of the warning set: with allow_redefinition "
-    "restored in the tooling SSOT (the canonical facade rebind) and "
-    "pydantic-settings held <2.15 (the 2.15 release trips the pydantic "
-    "mypy plugin), the gate runs at zero findings and stays blocking. "
-    "CI blocks on the correctness gates (lint, mypy, pyright, security, "
+    "also warn. Stabilization close: mypy joins while the model-facade "
+    "degradation debt (m/u composed members invisible to mypy, ~99 "
+    "no-any-return, flext-1pquc) is ground down; its two real regressions "
+    "are fixed — allow_redefinition restored in the tooling SSOT (facade "
+    "rebinds) and pydantic-settings held <2.15 (plugin init-synthesis "
+    "crash). CI blocks on the correctness gates (lint, pyright, security, "
     "boundary) while every finding stays visible in the run output and "
     "report artifacts."
 
