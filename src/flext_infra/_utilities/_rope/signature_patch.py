@@ -47,9 +47,9 @@ class FlextInfraUtilitiesRopeSignaturePatch:
             """Walk every signature token in source order."""
             children: list[p.AttributeProbe] = []
             positional: list[p.AttributeProbe] = [*node.posonlyargs, *node.args]
-            defaults: list[p.AttributeProbe | None] = [
-                None
-            ] * (len(positional) - len(node.defaults)) + list(node.defaults)
+            defaults: list[p.AttributeProbe | None] = [None] * (
+                len(positional) - len(node.defaults)
+            ) + list(node.defaults)
             for index, (argument, default) in enumerate(
                 zip(positional, defaults, strict=False)
             ):

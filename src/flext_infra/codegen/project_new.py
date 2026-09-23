@@ -187,9 +187,9 @@ class FlextInfraCodegenProjectNew(
             integration=m.Infra.WorkspaceIntegrationSpec(
                 provider=self.provider,
                 branch=repository_branch,
-                organization=u.Infra.git_remote_identity(repository_url).partition(
-                    "/"
-                )[0],
+                organization=u.Infra.git_remote_identity(repository_url).partition("/")[
+                    0
+                ],
                 base_url=repository_page.rsplit("/", maxsplit=1)[0],
             ),
             project=m.Infra.ProjectSpec(

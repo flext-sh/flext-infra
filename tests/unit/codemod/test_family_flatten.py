@@ -39,7 +39,7 @@ class TestsFlextInfraFamilyFlatten:
             "        class Entity(Enum):\n"
             "            VALUE = 'member'\n"
             "        TEXT = '''first\n        literal indentation\n        last'''\n"
-        f"\n__all__ = ['{owner}']\n"
+            f"\n__all__ = ['{owner}']\n"
         )
         path.write_text(source, encoding="utf-8")
         consumer = package / "consumer.py"
