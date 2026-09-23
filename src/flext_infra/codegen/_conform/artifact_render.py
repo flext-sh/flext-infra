@@ -200,6 +200,20 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return r[p.Model].ok(
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
+        if destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME:
+            # Why: automatic analysis aborts when sonar.tests names an absent
+            # directory, so its presence is read from the checkout, never
+            # declared per project.
+            return r[p.Model].ok(
+                m.Infra.SonarcloudRenderSpec(
+                    sonarcloud=codegen.sonarcloud,
+                    tests_dir=(
+                        c.Infra.DIR_TESTS
+                        if (repository_root / c.Infra.DIR_TESTS).is_dir()
+                        else None
+                    ),
+                )
+            )
         if destination == c.Infra.ENVRC_FILENAME:
             # Conform targets always own a governed Beads identity, so the
             # rendered tier is binary here: city server wiring when the

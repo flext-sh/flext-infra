@@ -290,6 +290,35 @@ Infra:
         - develop
         - dev
         - main
+    # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
+    # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
+    # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
+    # else (python.version, coverage, sonar.issue.ignore.*) is silently
+    # ignored, so issue exclusions are server-side project settings. This
+    # block is the single fleet owner of both.
+    sonarcloud:
+      # Generated, cache, vendored and build output only; never governed source.
+      exclusions:
+        - "**/.venv/**"
+        - "**/__pycache__/**"
+        - "**/*.py[cod]"
+        - "**/build/**"
+        - "**/dist/**"
+        - "**/*.egg-info/**"
+        - "**/.pytest_cache/**"
+        - "**/.reports/**"
+        - "**/node_modules/**"
+        - "**/.scannerwork/**"
+      cpd_exclusions:
+        - "tests/**"
+      # Applied through each project's SonarCloud settings (the file cannot
+      # carry them); rendered into the generated file as documentation only.
+      issue_exclusions:
+        - rule_key: "text:S8565"
+          resource_key: "pyproject.toml"
+          reason: >-
+            fleet lockfile ban (operator order); dependency ranges live in
+            pyproject.toml; bead flext-c8yle
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
@@ -1011,6 +1040,11 @@ Infra:
     # Qlty refuses to scan without a repository configuration. Keep the
     # blocking smells posture fleet-wide and generated from this SSOT.
       - path: .qlty/qlty.toml
+        owner: codegen
+        policy: full
+    # SonarCloud automatic analysis reads its scope from this file; generated
+    # fleet-wide from the sonarcloud block above.
+      - path: .sonarcloud.properties
         owner: codegen
         policy: full
       - path: .vscode/settings.json
@@ -1937,6 +1971,11 @@ Infra:
           overwrite: false
         - source: base/qlty.toml.j2
           destination: .qlty/qlty.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/sonarcloud.properties.j2
+          destination: .sonarcloud.properties
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
