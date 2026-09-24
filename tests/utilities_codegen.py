@@ -36,7 +36,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             })
         )
         rows = "\n".join(
-            f'"{pattern}" = [{", ".join(f'"{rule}"' for rule in rules)}]'
+            f'"{pattern}" = [{", ".join(f"\"{rule}\"" for rule in rules)}]'
             for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
         )
         isort = ruff_cfg.lint.isort
