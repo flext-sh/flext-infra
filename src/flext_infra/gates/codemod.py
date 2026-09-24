@@ -1,8 +1,10 @@
 """Codemod enforcement quality gate.
 
 Runs ``ast-grep scan`` with the codemod rules discovered via
-``importlib.resources`` cascade (ADR-014). Rules with ``severity: error``
-block the build; violations are not warnings.
+``importlib.resources`` cascade (ADR-014). Policy findings are observational:
+they are reported for migration tracking and never block the build (operator
+order 2026-09-24). Machinery failures — a broken rule plan or an ast-grep
+crash — remain blocking, because silent scrutiny loss is never acceptable.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodemodGate(FlextInfraGate):
-    """Enforce codemod rules as error gates across every project."""
+    """Report codemod rule findings observationally across every project."""
 
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
@@ -62,25 +64,67 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 started=started,
             )
 
-        issues: list[m.Infra.Issue] = []
+        findings: list[m.Infra.Issue] = []
+        failures: list[m.Infra.Issue] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
                 self._scan_command(ruleset, project_dir),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
-            issues.extend(self._issues_from_scan(scan, ruleset.provider))
+            if not u.Cli.process_succeeded(scan.outcome):
+                # A crashed scanner is a machinery failure: it stays blocking
+                # (with whatever output the scan produced before dying) and
+                # is never observable debt.
+                failures.append(
+                    m.Infra.Issue(
+                        file=c.Infra.PYPROJECT_FILENAME,
+                        line=1,
+                        column=0,
+                        code=self.gate_id,
+                        message=(
+                            f"{ruleset.provider}: ast-grep execution failed — "
+                            f"{scan.stderr or scan.stdout or 'unknown error'}"
+                        ),
+                        severity=str(c.Infra.GateSeverity.ERROR.value),
+                    )
+                )
+            findings.extend(self._observational_findings(scan, ruleset.provider))
 
         return self._build_check_gate_execution(
             project_dir,
-            passed=not issues,
-            issues=issues,
+            # Operator order (2026-09-24): codemod policy findings are
+            # observational — they are reported for migration tracking and
+            # never block the build. Machinery failures (a broken rule plan
+            # or an ast-grep crash) remain blocking above.
+            passed=not failures,
+            issues=[*failures, *findings],
             raw_output=(
                 f"{len(planned.value.rules)} rules from "
                 f"{len(planned.value.rulesets)} providers scanned, "
-                f"{len(issues)} violations"
+                f"{len(findings)} violations"
             ),
             started=started,
+        )
+
+    @staticmethod
+    def _observational_findings(
+        scan: p.Cli.CommandOutput, provider: str
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Turn one successful scan's stdout into reported policy findings."""
+        if not u.Cli.process_succeeded(scan.outcome):
+            return ()
+        return tuple(
+            m.Infra.Issue(
+                file=provider,
+                line=1,
+                column=0,
+                code=FlextInfraCodemodGate.gate_id,
+                message=line.strip(),
+                severity=str(c.Infra.GateSeverity.ERROR.value),
+            )
+            for line in scan.stdout.splitlines()
+            if line.strip()
         )
 
     @staticmethod
@@ -103,37 +147,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
             cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
         cmd.append(str(project_dir))
         return tuple(cmd)
-
-    def _issues_from_scan(
-        self, scan: p.Cli.CommandOutput, provider: str
-    ) -> t.SequenceOf[m.Infra.Issue]:
-        """Turn one rule scan into issues; a scanner crash is never a silent pass."""
-        if not u.Cli.process_succeeded(scan.outcome) and not scan.stdout.strip():
-            return (
-                m.Infra.Issue(
-                    file=c.Infra.PYPROJECT_FILENAME,
-                    line=1,
-                    column=0,
-                    code=self.gate_id,
-                    message=(
-                        f"{provider}: ast-grep execution failed — "
-                        f"{scan.stderr or 'unknown error'}"
-                    ),
-                    severity=str(c.Infra.GateSeverity.ERROR.value),
-                ),
-            )
-        return tuple(
-            m.Infra.Issue(
-                file=provider,
-                line=1,
-                column=0,
-                code=self.gate_id,
-                message=line.strip(),
-                severity=str(c.Infra.GateSeverity.ERROR.value),
-            )
-            for line in scan.stdout.splitlines()
-            if line.strip()
-        )
 
     def _rule_paths(self, project_dir: Path) -> t.SequenceOf[Path]:
         """Resolve the composed ast-grep rule files for one project."""
