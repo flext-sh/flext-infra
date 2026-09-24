@@ -1075,6 +1075,18 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(
             makefile, has="_builtin-self-fix-enforcement: _builtin_require_environment"
         )
+        tm.that(makefile, has="_builtin-sonarcloud-sync: _builtin_sonarcloud_sync_all")
+        tm.that(
+            makefile,
+            has="_builtin_sonarcloud_sync_all: _builtin_sonarcloud_sync_project",
+        )
+        tm.that(
+            makefile,
+            has=(
+                "@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-sync "
+                '--repository-root "$(PROJECT_ROOT)"'
+            ),
+        )
         tm.that(makefile, has="_builtin-gen: _builtin_gen_all")
         tm.that(makefile, has="_builtin-mod: _builtin_mod_apply")
         tm.that(makefile, has="mode=--apply ;;")
