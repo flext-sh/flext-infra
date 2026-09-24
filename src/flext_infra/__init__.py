@@ -78,7 +78,13 @@ if TYPE_CHECKING:
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-    from .codegen.pipeline import FlextInfraCodegenPipeline
+    from .codegen.pipeline import (
+        FlextInfraCodegenLazyInitGenerationMixin,
+        FlextInfraCodegenPipeline,
+        FlextInfraCodegenPipelineStagesMixin,
+        FlextInfraMiseArtifactsFiles,
+        publish_file_plan,
+    )
     from .codegen.project_new import FlextInfraCodegenProjectNew
     from .codegen.protocol_models import FlextInfraCodegenProtocolModels
     from .codegen.py_typed import FlextInfraCodegenPyTyped
@@ -93,7 +99,7 @@ if TYPE_CHECKING:
     from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .codemod.text_gates import FlextInfraModTextGateEngine
-    from .constants import FlextInfraConstants, c
+    from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
     from .deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
     from .deps.detector import FlextInfraRuntimeDevDependencyDetector
@@ -191,9 +197,13 @@ if TYPE_CHECKING:
     from .git import FlextInfraGitService
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
-    from .models import FlextInfraModels, m
+    from .models import FlextInfraModels, FlextInfraModels as m
     from .promoted import FlextInfraPromoted
-    from .protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+    from .protocols import (
+        FlextInfraProtocols,
+        FlextInfraProtocols as p,
+        FlextInfraProtocolsBase,
+    )
     from .refactor.accessor_migration import FlextInfraAccessorMigrationOrchestrator
     from .refactor.census import FlextInfraRefactorCensus
     from .refactor.classvar_constant_autofix import (
@@ -219,6 +229,7 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate import ValidationRoutes
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
+    from .services.codegen import FlextInfraCodegen
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.dataclass_modelizer import FlextInfraRefactorDataclassModelizer
@@ -239,8 +250,8 @@ if TYPE_CHECKING:
     from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from .typings import FlextInfraTypes, t
-    from .utilities import FlextInfraUtilities, u
+    from .typings import FlextInfraTypes, FlextInfraTypes as t
+    from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .validate.cprofile_report import FlextInfraCProfileReport
     from .validate.fresh_import import FlextInfraValidateFreshImport
     from .validate.gate_contract import FlextInfraGateContractValidator
@@ -302,6 +313,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
+    "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConsolidator",
@@ -309,10 +321,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
@@ -386,6 +400,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownFormatGate",
     "FlextInfraMarkdownGate",
     "FlextInfraMarkdownGateBase",
+    "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -516,6 +531,7 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
+    "publish_file_plan",
     "r",
     "read_ignore_patterns",
     "refactor",
@@ -569,7 +585,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
-            ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
+            ".codegen.pipeline": (
+                "FlextInfraCodegenLazyInitGenerationMixin",
+                "FlextInfraCodegenPipeline",
+                "FlextInfraCodegenPipelineStagesMixin",
+                "FlextInfraMiseArtifactsFiles",
+                "publish_file_plan",
+            ),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
             ".codegen.protocol_models": ("FlextInfraCodegenProtocolModels",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
@@ -736,6 +758,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_validate": ("ValidationRoutes",),
             ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
+            ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
             ".transformers.class_reconstructor": (
                 "FlextInfraRefactorClassReconstructor",
