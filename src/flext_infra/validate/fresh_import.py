@@ -50,13 +50,15 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.
     _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    # The origin gate runs inside the same probe namespace as the export
+    # resolution, so its loop names must never rebind the probed ``module``.
     _ORIGIN_CODE: ClassVar[str] = (
-        "for name, module in tuple(sys.modules.items()):\n"
+        "for loaded_name, loaded_module in tuple(sys.modules.items()):\n"
         "    for package, directory in {origins!r}:\n"
-        "        if name == package or name.startswith(package + '.'):\n"
-        "            origin = getattr(module, '__file__', None)\n"
+        "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
+        "            origin = getattr(loaded_module, '__file__', None)\n"
         "            if origin is None or not Path(origin).resolve().is_relative_to(Path(directory)):\n"
-        "                raise ImportError(f'{name}: origin {origin!r} is outside {directory}')\n"
+        "                raise ImportError(f'{loaded_name}: origin {origin!r} is outside {directory}')\n"
     )
 
     def build_report(
