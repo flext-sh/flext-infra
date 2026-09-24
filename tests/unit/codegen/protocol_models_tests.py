@@ -7,9 +7,11 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
+from typing import get_type_hints
 
 import pytest
 
+from flext_infra import t
 from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
 
 MEMBER = "demo_member"
@@ -29,6 +31,12 @@ class Order(m.FrozenModel):
     sku: str
     quantity: int = 1
     tags: t.VariadicTuple[str] = ()
+    permuted: Permuted[int, str] = ("tag", 1)
+    repeated: Repeated[int] = (1, 2)
+    unused: Unused[str, int] = ()
+    identity: Identity[str] = "identity"
+    nested: Nested[int] = ([1], 1)
+    factory: type[str] = str
 
 
 class Shipment(m.FrozenModel):
@@ -87,6 +95,19 @@ def ship(order: p.DemoMember.Order) -> p.DemoMember.Payload:
     raise NotImplementedError
 '''
 
+TYPINGS = '''\
+"""Demo member typings container."""
+
+
+from flext_core import t
+
+
+class DemoMemberTypes:
+    """Member typings container."""
+
+    VariadicTuple = t.VariadicTuple
+'''
+
 
 def _write_member(root: Path) -> None:
     """Materialize the demo member on disk."""
@@ -96,6 +117,7 @@ def _write_member(root: Path) -> None:
     (package / "__init__.py").write_text("", encoding="utf-8")
     (package / "models.py").write_text(MODELS, encoding="utf-8")
     (package / "protocols.py").write_text(PROTOCOLS, encoding="utf-8")
+    (package / "typings.py").write_text(TYPINGS, encoding="utf-8")
     (package / "consumer.py").write_text(CONSUMER, encoding="utf-8")
     (package / "_protocols" / "manual_ports.py").write_text(
         MANUAL_PORTS, encoding="utf-8"
@@ -159,6 +181,34 @@ def test_apply_generates_runtime_checkable_contracts(member_root: Path) -> None:
 
     generated = module.ModelsProtocolsGeneratedPart01
     assert isinstance(models.Order(sku="a"), generated.Order)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "expected"),
+    [
+        ("tags", tuple[str, ...]),
+        ("permuted", tuple[str, int]),
+        ("repeated", tuple[int, int]),
+        ("unused", tuple[str, ...]),
+        ("identity", str),
+        ("nested", tuple[list[int], int]),
+        ("factory", type[str]),
+    ],
+)
+def test_generated_annotations_resolve_specialized_aliases(
+    member_root: Path, field_name: str, expected: t.TypeHintSpecifier
+) -> None:
+    """Real consumers resolve specialized aliases without free parameters."""
+    result = _service(member_root, apply=True).execute()
+    assert result.success, result.error
+    part = member_root / "src" / MEMBER / "_protocols" / "generated_models_models_01.py"
+    module = _load_module(part)
+    generated = module.ModelsProtocolsGeneratedPart01.Order
+    accessor = getattr(generated, field_name)
+
+    assert get_type_hints(accessor.fget)["return"] == expected
+    models = importlib.import_module("demo_member.models")
+    assert isinstance(models.Order(sku="alias consumer"), generated)
 
 
 def test_apply_is_idempotent(member_root: Path) -> None:

@@ -74,12 +74,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             *self._parent_packages(pkg_dir),
             self._source_package_name(pkg_dir, surface),
         ))
-        environment_packages = self._declared_dependency_closure_packages(pkg_dir)
-        # Discovery reads each candidate's published initializer ABI (the names
-        # its __init__ actually serves at runtime), never the wider declared
-        # __all__ superset: a module may re-export a name its package root
-        # never publishes, and inheriting such a name would render an import
-        # the fresh-import probe cannot resolve.
+        # Discovery reads only the facade parents, never the dependency closure:
+        # a dev or codegen dependency is a consumer, never a facade ancestor.
+        # An indexed parent is read from its declared sources (its generated
+        # initializer is this run's output, never its input); an external
+        # parent is read from its published initializer.
         alias_names = tuple(
             dict.fromkeys(
                 name

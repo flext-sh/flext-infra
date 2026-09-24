@@ -144,7 +144,8 @@ class TestsFlextInfraLazyInitAliasInheritance:
 
         ``flext_cli`` is not indexed here; its generated ``__init__`` re-exports
         ``r`` from ``flext_core``. The child inherits ``r`` through
-        ``flext_cli``, the nearest facade that publishes it.
+        ``flext_cli``, the nearest facade that publishes it. The ``cli``
+        singleton is not a facade letter and stays in ``flext_cli``.
         """
         repository_root, child_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -171,8 +172,56 @@ class TestsFlextInfraLazyInitAliasInheritance:
         sources = dict(entries)
 
         tm.that(sources.get("flext_cli", ()), has="r")
-        tm.that(sources.get("flext_cli", ()), has="cli")
+        tm.that(sources.get("flext_cli", ()), lacks="cli")
         tm.that(sources.get("flext_core", ()), lacks="r")
+        tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
+
+    def test_dependency_groups_and_entry_points_are_never_inherited(
+        self, tmp_path: Path
+    ) -> None:
+        """Dev/codegen dependencies and non-letter names stay out of the root.
+
+        A dev or codegen dependency is a consumer, never a facade ancestor, and
+        singletons or entry points (``cli``, ``main``, ``infra``, ``docs_main``)
+        are declared and consumed only from their own namespace root.
+        """
+        repository_root, child_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-groups",
+            package_name="flext_test_groups_child",
+        )
+        pyproject = repository_root / c.Infra.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            + '\n[dependency-groups]\ncodegen = ["flext-infra"]\n'
+            'dev = ["flext-tests"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import c as cli_c\n\n"
+            "class FlextTestGroupsChildConstants(cli_c):\n"
+            "    pass\n\n"
+            "c = FlextTestGroupsChildConstants\n"
+            '__all__: list[str] = ["FlextTestGroupsChildConstants", "c"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        entries, _refs = u.Infra.module_mapping_assignment_source(
+            generated, u.Infra.lazy_imports_name_source(generated)
+        )
+        sources = dict(entries)
+        inherited = {name for names in sources.values() for name in names}
+
+        tm.that(sources, lacks="flext_tests")
+        tm.that(sources, lacks="flext_infra")
+        tm.that(sources.get("flext_cli", ()), has="r")
+        for entry_point in ("cli", "main", "infra", "docs_main"):
+            tm.that(inherited, lacks=entry_point)
         tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
 
     def test_declared_parent_resolving_nowhere_fails_loud(self, tmp_path: Path) -> None:

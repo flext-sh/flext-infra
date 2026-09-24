@@ -130,7 +130,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLayoutGitignoreMixin",
     "FlextInfraCodegenLayoutPlanMixin",
     "FlextInfraCodegenLazyInit",
-    "FlextInfraCodegenLazyInitClassReceipts",
     "FlextInfraCodegenLazyInitGenerationFilePlanMixin",
     "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitGenerationRegistryMixin",

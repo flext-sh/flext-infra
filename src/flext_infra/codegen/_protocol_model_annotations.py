@@ -95,9 +95,19 @@ class FlextInfraCodegenProtocolModelAnnotations:
             return cls.render(annotation.__value__, target)
         origin = get_origin(annotation)
         arguments = get_args(annotation)
+        if isinstance(origin, TypeAliasType):
+            bindings = dict(zip(origin.__type_params__, arguments, strict=True))
+            value = origin.__value__
+            for parameter, argument in bindings.items():
+                if value is parameter:
+                    return cls.render(argument, target)
+            parameters = getattr(value, "__parameters__", ())
+            if parameters:
+                value = value[tuple(bindings[parameter] for parameter in parameters)]
+            return cls.render(value, target)
         if origin is Annotated:
             return cls.render(arguments[0], target)
-        if origin is UnionType or origin is type:
+        if origin is UnionType:
             return " | ".join(cls.render(argument, target) for argument in arguments)
         if origin is Literal:
             return f"Literal[{', '.join(repr(argument) for argument in arguments)}]"
@@ -156,7 +166,15 @@ class FlextInfraCodegenProtocolModelAnnotations:
         """Return the existing public facade path for an identical runtime type."""
         for prefix, probe in target.facade_probes:
             module_path, _, attribute = probe.rpartition(".")
-            facade = getattr(import_module(module_path), attribute)
+            try:
+                module = import_module(module_path)
+            except ImportError:
+                # A member without that facade surface cannot hold the value;
+                # probing continues with the next surface.
+                continue
+            facade = getattr(module, attribute, None)
+            if facade is None:
+                continue
             for name in dir(facade):
                 if getattr(facade, name, None) is value:
                     return f"{prefix}.{name}"

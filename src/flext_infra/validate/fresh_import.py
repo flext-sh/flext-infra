@@ -36,21 +36,29 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
     )
-    _EXPORT_CODE: ClassVar[str] = (
+    _EXPORT_IMPORT_CODE: ClassVar[str] = (
         "module = importlib.import_module({package!r})\n"
+    )
+    # The origin gate runs between the import and the name resolution: a
+    # module loaded from outside this checkout must fail with the origin
+    # error naming the foreign path, never with a phantom-attribute error
+    # raised while resolving a stale export name.
+    _EXPORT_RESOLVE_CODE: ClassVar[str] = (
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.
     _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    # The origin gate runs inside the same probe namespace as the export
+    # resolution, so its loop names must never rebind the probed ``module``.
     _ORIGIN_CODE: ClassVar[str] = (
-        "for name, module in tuple(sys.modules.items()):\n"
+        "for loaded_name, loaded_module in tuple(sys.modules.items()):\n"
         "    for package, directory in {origins!r}:\n"
-        "        if name == package or name.startswith(package + '.'):\n"
-        "            origin = getattr(module, '__file__', None)\n"
+        "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
+        "            origin = getattr(loaded_module, '__file__', None)\n"
         "            if origin is None or not Path(origin).resolve().is_relative_to(Path(directory)):\n"
-        "                raise ImportError(f'{name}: origin {origin!r} is outside {directory}')\n"
+        "                raise ImportError(f'{loaded_name}: origin {origin!r} is outside {directory}')\n"
     )
 
     def build_report(
@@ -110,7 +118,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 plan
                 for plan in publications
                 if plan.context.importable
-                and plan.action == c.Infra.LazyInitAction.WRITE
+                and plan.action
+                in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.SKIP}
                 and plan.context.pkg_dir.is_relative_to(layout.package_dir)
             )
             if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
@@ -118,9 +127,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     f"missing public export contract for {layout.package_name}"
                 )
             body = "".join(
-                self._EXPORT_CODE.format(
-                    package=plan.context.current_pkg, exports=tuple(plan.exports)
-                )
+                self._EXPORT_IMPORT_CODE.format(package=plan.context.current_pkg)
+                + origin_code
+                + self._EXPORT_RESOLVE_CODE.format(exports=tuple(plan.exports))
                 for plan in owned
             )
             probes.append(
@@ -137,26 +146,34 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 m.Infra.FreshImportProbe(
                     subject=package,
                     code=self._PRELUDE
-                    + self._EXPORT_CODE.format(package=package, exports=())
-                    + origin_code,
+                    + self._EXPORT_IMPORT_CODE.format(package=package)
+                    + origin_code
+                    + self._EXPORT_RESOLVE_CODE.format(exports=()),
                 )
             )
         env = self._workspace_import_env(tuple(layout.src_dir for layout in layouts))
         warned: list[str] = []
         warn_entry_points = config.Infra.codegen.fresh_import_entry_points_warn_only
         for probe in probes:
+            # The probe source travels on stdin: a workspace probe carries every
+            # owned publication and outgrows the kernel's single-argument limit
+            # (E2BIG) long before it outgrows the interpreter.
             smoke = u.Cli.run_raw(
-                [sys.executable, "-W", "error", "-c", probe.code],
+                [sys.executable, "-W", "error", "-"],
                 cwd=self.repository_root,
                 env=env,
+                input_data=probe.code,
             )
             if smoke.failure:
                 return r[m.Infra.ValidationReport].from_failure(smoke)
             output = smoke.value
             if u.Cli.process_succeeded(output.outcome):
                 continue
+            outcome = m.Cli.ProcessOutcome.model_validate(
+                output.outcome, from_attributes=True
+            )
             detail = (
-                f"{probe.subject}: {output.outcome.model_dump_json()}\n"
+                f"{probe.subject}: {outcome.model_dump_json()}\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}"
             )
             if (

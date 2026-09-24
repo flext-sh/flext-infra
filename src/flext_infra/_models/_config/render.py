@@ -259,6 +259,16 @@ class FlextInfraConfigModelsRender:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="sonar.cpd.exclusions duplication-scope patterns"),
         ] = ()
+        api_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://[^/]+$",
+                description="SonarCloud web API origin the settings sync writes to",
+            ),
+        ]
+        api_timeout_seconds: Annotated[
+            t.PositiveInt, m.Field(description="Per-request SonarCloud web API timeout")
+        ]
         issue_exclusions: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsRender.SonarcloudIssueExclusionSpec],
             m.Field(
