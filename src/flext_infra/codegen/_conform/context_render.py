@@ -9,6 +9,7 @@ from flext_core import r
 
 from ... import c, config, m, p, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
+from .._layout_plan import FlextInfraCodegenLayoutPlanMixin
 from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
 
 
@@ -366,7 +367,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 gitignore_sections=u.Infra.gitignore_sections(
                     codegen,
                     profile=profile,
-                    project_name=repository_root.name,
+                    project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
+                        repository_root
+                    ),
                     workspace=workspace,
                     project_patterns=project_patterns,
                 ),
@@ -389,13 +392,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
-                beads_tool_selector=codegen.toolchain.beads.selector,
-                beads_tool_version=codegen.toolchain.beads.version,
-                # prerelease is load-bearing: every fork release of bd carries a
-                # suffixed tag (-fdN) and mise refuses to resolve one unless
-                # told the release is a prerelease. Omitting it silently pinned
-                # every rig to upstream, which lacks the bd list cycle guard.
-                beads_tool_prerelease=codegen.toolchain.beads.prerelease,
                 beads=workspace.beads,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,

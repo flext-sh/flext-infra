@@ -20,7 +20,22 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
+    from flext_cli import cli
+    from flext_tests import (
+        active_rules,
+        api,
+        discover_repository_root,
+        install_local_packages,
+        load_infra_report,
+        split_csv,
+        td,
+        tf,
+        tk,
+        tm,
+        tv,
+    )
+
+    from flext_core import core, d, e, h, lazy_attribute, r, x
 
     from . import (
         check,
@@ -63,7 +78,13 @@ if TYPE_CHECKING:
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-    from .codegen.pipeline import FlextInfraCodegenPipeline
+    from .codegen.pipeline import (
+        FlextInfraCodegenLazyInitGenerationMixin,
+        FlextInfraCodegenPipeline,
+        FlextInfraCodegenPipelineStagesMixin,
+        FlextInfraMiseArtifactsFiles,
+        publish_file_plan,
+    )
     from .codegen.project_new import FlextInfraCodegenProjectNew
     from .codegen.protocol_models import FlextInfraCodegenProtocolModels
     from .codegen.py_typed import FlextInfraCodegenPyTyped
@@ -301,10 +322,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
@@ -378,6 +401,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownFormatGate",
     "FlextInfraMarkdownGate",
     "FlextInfraMarkdownGateBase",
+    "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -481,6 +505,8 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
+    "active_rules",
+    "api",
     "c",
     "check",
     "codegen",
@@ -490,6 +516,7 @@ __all__: tuple[str, ...] = (
     "d",
     "deps",
     "detectors",
+    "discover_repository_root",
     "docs",
     "docs_main",
     "e",
@@ -497,10 +524,14 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
+    "install_local_packages",
+    "lazy_attribute",
+    "load_infra_report",
     "m",
     "main",
     "maintenance",
     "p",
+    "publish_file_plan",
     "r",
     "read_ignore_patterns",
     "refactor",
@@ -509,8 +540,14 @@ __all__: tuple[str, ...] = (
     "services",
     "settings",
     "source_name",
+    "split_csv",
     "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
     "transformers",
+    "tv",
     "u",
     "validate",
     "workspace",
@@ -548,7 +585,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
-            ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
+            ".codegen.pipeline": (
+                "FlextInfraCodegenLazyInitGenerationMixin",
+                "FlextInfraCodegenPipeline",
+                "FlextInfraCodegenPipelineStagesMixin",
+                "FlextInfraMiseArtifactsFiles",
+                "publish_file_plan",
+            ),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
             ".codegen.protocol_models": ("FlextInfraCodegenProtocolModels",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
@@ -798,7 +841,21 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("d", "e", "h", "r", "x"),
+            "flext_cli": ("cli",),
+            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
+            "flext_tests": (
+                "active_rules",
+                "api",
+                "discover_repository_root",
+                "install_local_packages",
+                "load_infra_report",
+                "split_csv",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

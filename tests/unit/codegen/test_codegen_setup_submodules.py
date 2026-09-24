@@ -25,24 +25,43 @@ class TestsFlextInfraCodegenSetupSubmodules:
         self, tmp_path_factory: pytest.TempPathFactory
     ) -> Path:
         root = tmp_path_factory.mktemp("setup-submodules") / "project"
-        # Mirror the production `codegen new` spec assembly (its single delegate is
-        # the conform pipeline below) so the template is the full managed render.
         repository = test_u.Tests.repository_ref(
             "flext-demo", role=c.Infra.MakeProfile.STANDALONE
+        )
+        beads = test_u.Tests.beads_project(repository.distribution)
+        test_u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            repository.distribution,
+            workspace=beads.workspace,
+            database=beads.database,
+            issue_prefix=beads.issue_prefix,
         )
         workspace = test_u.Tests.workspace_spec(
             repository, project=test_u.Tests.project_spec(repository.name)
         )
-        tm.ok(
-            FlextInfraCodegenConform.execute_request(
-                test_u.Tests.conform_request(
-                    root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                ),
-                initial_workspace=workspace,
-            )
+        request = test_u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
         )
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root, request=request, initial_workspace=workspace
+            ).plan(request)
+        )
+        # Setup consumes generated environment declarations and tracked Mise
+        # seeds; documentation publication belongs to the conform tests.
+        for filename in (
+            c.Infra.MAKEFILE_FILENAME,
+            c.Infra.PYPROJECT_FILENAME,
+            c.Infra.ENVRC_FILENAME,
+        ):
+            planned = next(file for file in plan.files if file.path.name == filename)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / filename, test_u.Tests.codegen_file_text(planned)
+                )
+            )
         return root
 
     @staticmethod
@@ -64,10 +83,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
 
     @classmethod
     def _generated_project(cls, root: Path, template: Path) -> None:
-        # The scaffolded template now carries the framework-initialized git
-        # root (conform provisions an unpublished repository); a scenario
-        # model re-initializes its own topology, so it must not inherit the
-        # template's origin.
+        # Each scenario initializes its own topology and origin.
         shutil.copytree(template, root, ignore=shutil.ignore_patterns(c.Infra.GIT_DIR))
         test_u.Tests.initialize_git_repo(root)
 

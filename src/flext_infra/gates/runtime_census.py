@@ -37,7 +37,6 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         # gate can grade a broken invocation separately from found violations.
         report_result = validator.build_report()
         if report_result.failure:
-            # A broken invocation is a blocking defect, not advisory residue.
             return self._build_project_error_gate_result(
                 project_dir,
                 passed=False,
@@ -46,16 +45,12 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
                 ctx=ctx,
             )
         report = report_result.value
-        # Operator order 2026-09-22: census findings stay advisory (reported
-        # as warnings, non-blocking) until the enforcement campaign
-        # converges; they must never hide a broken invocation.
         return self._build_project_error_gate_result(
             project_dir,
             passed=report.passed,
-            errors=[] if report.passed else [report.summary],
+            errors=list(report.violations),
             started=started,
             ctx=ctx,
-            advisory=True,
         )
 
 

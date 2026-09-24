@@ -57,13 +57,6 @@ class FlextInfraConfigModelsInfra:
                 description="Sed-by-list mass replacement patterns for literal refactoring",
             ),
         ]
-        check_policy: Annotated[
-            FlextInfraConfigModelsArtifact.CheckPolicySpec,
-            m.Field(
-                default_factory=FlextInfraConfigModelsArtifact.CheckPolicySpec,
-                description="Quality-gate blocking policy (warning gates)",
-            ),
-        ]
         refactor_csv_campaigns: Annotated[
             FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
             m.Field(
