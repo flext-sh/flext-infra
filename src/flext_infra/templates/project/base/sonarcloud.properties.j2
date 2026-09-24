@@ -6,12 +6,10 @@
 # SonarCloud automatic analysis honors only the scope keys below.
 
 sonar.sources=.
-{% if tests_dir -%}
 sonar.tests={{ tests_dir }}
 sonar.test.inclusions={{ tests_dir }}/**/*.py
-{% endif -%}
 sonar.sourceEncoding=UTF-8
-sonar.exclusions={{ sonarcloud.exclusions | join(",") }}{% if tests_dir %},{{ tests_dir }}/**{% endif %}
+sonar.exclusions={{ sonarcloud.exclusions | join(",") }},{{ tests_dir }}/**
 {% if sonarcloud.cpd_exclusions -%}
 sonar.cpd.exclusions={{ sonarcloud.cpd_exclusions | join(",") }}
 {% endif -%}

@@ -81,10 +81,12 @@ class FlextInfraConstantsRefactor:
         CLASS_NESTING = "class-nesting"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
+        FACADE_BASE = "facade-base"
 
     SEMANTIC_CUTOVER_RULE_IDS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
         SemanticCutoverPhase.COMPAT_ALIAS: "ban-compat-alias",
         SemanticCutoverPhase.PRIVATE_IMPORT: "ban-private-import",
+        SemanticCutoverPhase.FACADE_BASE: "facade-base-by-class-name",
     })
     "ast-grep rule whose findings select each finding-driven semantic cutover."
 

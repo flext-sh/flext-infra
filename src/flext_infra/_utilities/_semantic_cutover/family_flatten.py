@@ -6,7 +6,6 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, t
 
-from ..._models.codemod import FlextInfraModelsCodemod
 from ..rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
 from ..rope_runtime_refactors import FlextInfraUtilitiesRopeRuntimeRefactors
 from ..rope_structure import FlextInfraUtilitiesRopeStructure
@@ -32,7 +31,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         )
         if not candidates:
             return ()
-        rule = FlextInfraModelsCodemod.FamilyFlattenRule.model_validate(
+        rule = m.Infra.FamilyFlattenRule.model_validate(
             u.Cli.yaml_safe_load(
                 type(config).ssot_config_dir()
                 / "rules/rope/flatten-family-namespace-wrapper.yaml"

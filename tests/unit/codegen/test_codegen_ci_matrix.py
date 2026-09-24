@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,7 @@ from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from tests import u
 
 from ._support import CodegenTestSupport
+from .conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
 
@@ -629,8 +631,9 @@ class TestsFlextInfraCodegenCiMatrix:
         )
 
     @staticmethod
-    def _assert_sonarcloud_scope(rendered: str, *, tests_dir: str | None) -> None:
+    def _assert_sonarcloud_scope(rendered: str) -> None:
         """Assert one rendered .sonarcloud.properties against the codegen SSOT."""
+        tests_dir = c.Infra.DIR_TESTS
         codegen = config.Infra.codegen
         entry = next(
             item
@@ -651,25 +654,17 @@ class TestsFlextInfraCodegenCiMatrix:
         }
         tm.that(properties["sonar.sources"], eq=".")
         # Main and test sets must be disjoint: sonar.exclusions narrows only
-        # the main set, so the tests root is excluded from it exactly when
-        # sonar.tests declares it.
+        # the main set, so the tests root that sonar.tests declares is excluded.
         tm.that(
             properties["sonar.exclusions"].split(","),
-            eq=[
-                *codegen.sonarcloud.exclusions,
-                *(() if tests_dir is None else (f"{tests_dir}/**",)),
-            ],
+            eq=[*codegen.sonarcloud.exclusions, f"{tests_dir}/**"],
         )
         tm.that(
             properties["sonar.cpd.exclusions"].split(","),
             eq=list(codegen.sonarcloud.cpd_exclusions),
         )
-        if tests_dir is None:
-            tm.that("sonar.tests" in properties, eq=False)
-            tm.that("sonar.test.inclusions" in properties, eq=False)
-        else:
-            tm.that(properties["sonar.tests"], eq=tests_dir)
-            tm.that(properties["sonar.test.inclusions"], has=tests_dir)
+        tm.that(properties["sonar.tests"], eq=tests_dir)
+        tm.that(properties["sonar.test.inclusions"], has=tests_dir)
         tm.that(
             any(key.startswith("sonar.issue.ignore") for key in properties), eq=False
         )
@@ -687,53 +682,42 @@ class TestsFlextInfraCodegenCiMatrix:
             encoding="utf-8"
         )
         tm.that((root / c.Infra.DIR_TESTS).is_dir(), eq=True)
-        self._assert_sonarcloud_scope(rendered, tests_dir=c.Infra.DIR_TESTS)
+        self._assert_sonarcloud_scope(rendered)
 
-    def test_sonarcloud_properties_omit_tests_when_checkout_has_none(
-        self, tmp_path: Path
+    def test_sonarcloud_tests_root_is_always_materialized_by_conform(
+        self, infra_git_repo: Path
     ) -> None:
-        """A checkout without tests/ never declares sonar.tests (analysis would fail)."""
-        profiles = config.Infra.codegen.scaffold.project.dependency_profiles
-        profile = next(
-            item
-            for item in profiles
-            if item.project is None
-            and not any(
-                other.upstream.replace("_", "-")
-                in {u.Infra.dep_name(dependency) for dependency in item.runtime}
-                for other in profiles
-                if other is not item and other.project is None
-            )
-        )
-        distribution = profile.upstream.replace("_", "-")
-        root = tmp_path / distribution
-        package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
-        package.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.PYPROJECT_FILENAME,
-                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
-                f'description = "{distribution} fixture"\n'
-                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
-                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-                "dependencies = []\n",
-            )
-        )
-        u.Tests.write_project_beads_config(root, distribution)
-        u.Tests.initialize_git_repo(
-            root, origin_url=u.Tests.repository_ref(distribution).url
-        )
+        """sonar.tests always names a real directory, even from a checkout without one.
+
+        Automatic analysis aborts when sonar.tests names an absent directory. The
+        file declares tests/ unconditionally because conform itself projects the
+        managed tests/ artifacts into every profile: starting from a
+        provider-governed clone with no tests/, the plan still materializes them.
+        """
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
+        # The seed ships a tests package; this case starts from a checkout without one.
+        shutil.rmtree(root / c.Infra.DIR_TESTS)
         tm.that((root / c.Infra.DIR_TESTS).exists(), eq=False)
-        plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(
-                u.Tests.conform_request(root)
-            )
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
         )
+        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        managed_tests_files = [
+            item.path.as_posix()
+            for item in config.Infra.codegen.managed_files
+            if item.path.parts[0] == c.Infra.DIR_TESTS
+        ]
+        tm.that(managed_tests_files, empty=False)
+        for relative in managed_tests_files:
+            tm.not_none(u.Tests.planned_text(plan, relative))
         rendered = tm.not_none(
             u.Tests.planned_text(plan, c.Infra.SONARCLOUD_PROPERTIES_FILENAME)
         )
-        self._assert_sonarcloud_scope(rendered, tests_dir=None)
+        self._assert_sonarcloud_scope(rendered)
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
