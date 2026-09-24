@@ -111,7 +111,11 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def flext_integration_line(
-        cls, *, codegen: m.Infra.CodegenConfigSpec, repository_root: Path
+        cls,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+        repository_root: Path,
+        declared_source: str | None = None,
     ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
         """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
 
@@ -130,14 +134,28 @@ class FlextInfraUtilitiesRepository:
         source = codegen.infra_repository
         distribution = source.distribution
         preference = codegen.branch_policy.integration_branch_preference
-        detected = cls._detected_infra_source(
-            repository_root=repository_root,
-            distribution=distribution,
-            preference=preference,
-        )
+        if declared_source is None:
+            detected = cls._detected_infra_source(
+                repository_root=repository_root,
+                distribution=distribution,
+                preference=preference,
+            )
+        else:
+            if (
+                FlextInfraUtilitiesDependencies.dep_name(declared_source)
+                != distribution
+            ):
+                return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                    f"scaffold source must declare {distribution}: {declared_source}"
+                )
+            detected = cls.declared_git_source(declared_source)
         if detected.failure:
             return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
         url, ref = detected.value
+        if not url.startswith("https://") or not ref:
+            return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                "infrastructure source must declare an HTTPS Git URL and ref"
+            )
         # The detected source arrives in either canonical form (with or
         # without the .git suffix — GitHub checkouts omit it); normalize
         # before comparing so URL spelling never fails the line detection.

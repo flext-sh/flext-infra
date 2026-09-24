@@ -116,6 +116,11 @@ class TestsFlextInfraTransactionLease:
         )
         holder.start()
         waiter: multiprocessing.process.BaseProcess | None = None
+        granted = context.Event()
+        waiter = context.Process(
+            target=self._acquire_when_granted, args=(member, granted)
+        )
+        assert waiter is not None
         try:
             tm.that(
                 ready.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),
@@ -123,10 +128,6 @@ class TestsFlextInfraTransactionLease:
             )
             journal_before = journal_path.read_bytes()
             lock_before = lock_path.stat()
-            granted = context.Event()
-            waiter = context.Process(
-                target=self._acquire_when_granted, args=(member, granted)
-            )
             waiter.start()
             # While the holder is live the contender stays blocked: it neither
             # acquires the lease nor touches the journal.

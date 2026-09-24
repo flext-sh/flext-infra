@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .consolidator_tests import TestsFlextInfraCodegenConsolidator
     from .constants_quality_gate_tests import TestsFlextInfraCodegenConstantsQualityGate
     from .docs_workflow_profile_tests import TestsFlextInfraCodegenDocsWorkflowProfile
+    from .git_attributes_tests import TestsGeneratedGitAttributes
     from .init_tests import TestsFlextInfraCodegenInit
     from .layout_fixture import archive_root, build_loose_project, layout_engine
     from .layout_gitignore_tests import TestsFlextInfraCodegenLayoutGitignore
@@ -43,7 +44,6 @@ if TYPE_CHECKING:
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
     from .lazy_init_tests import TestsFlextInfraCodegenLazyInit
     from .main_tests import TestsFlextInfraCodegenMain
-    from .protocol_models_tests import DemoMemberProtocols, ManualPort
     from .scaffolder_naming_tests import TestsFlextInfraCodegenScaffolderNaming
     from .scaffolder_tests import TestsFlextInfraCodegenScaffolder
     from .submodule_recipe_shell_tests import TestsFlextInfraSubmoduleRecipeShell
@@ -130,8 +130,6 @@ if TYPE_CHECKING:
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
-    "DemoMemberProtocols",
-    "ManualPort",
     "TestsFlextInfraCiCheckoutModeNormalization",
     "TestsFlextInfraCiDeclaredSecretsContract",
     "TestsFlextInfraCiIntegrationBranchTriggers",
@@ -204,6 +202,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkflowCommentSpacing",
     "TestsFlextInfraWorkflowOrphanGuard",
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
+    "TestsGeneratedGitAttributes",
     "archive_root",
     "build_loose_project",
     "c",
@@ -241,6 +240,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_workflow_profile_tests": (
                 "TestsFlextInfraCodegenDocsWorkflowProfile",
             ),
+            ".git_attributes_tests": ("TestsGeneratedGitAttributes",),
             ".init_tests": ("TestsFlextInfraCodegenInit",),
             ".layout_fixture": ("archive_root", "build_loose_project", "layout_engine"),
             ".layout_gitignore_tests": ("TestsFlextInfraCodegenLayoutGitignore",),
@@ -264,7 +264,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
             ".lazy_init_tests": ("TestsFlextInfraCodegenLazyInit",),
             ".main_tests": ("TestsFlextInfraCodegenMain",),
-            ".protocol_models_tests": ("DemoMemberProtocols", "ManualPort"),
             ".scaffolder_naming_tests": ("TestsFlextInfraCodegenScaffolderNaming",),
             ".scaffolder_tests": ("TestsFlextInfraCodegenScaffolder",),
             ".submodule_recipe_shell_tests": ("TestsFlextInfraSubmoduleRecipeShell",),

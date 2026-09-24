@@ -229,7 +229,13 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """Ignore every parent input when deriving one child repository."""
         parent = tmp_path / "parent"
-        parent.mkdir()
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            parent,
+            "parent",
+            workspace="parent-workspace",
+            database="parent-database",
+            issue_prefix="parent-prefix",
+        )
         u.Tests.WorktreeFixture.write_gitmodules(parent, ("child",))
         child = parent / "child"
         u.Tests.WorktreeFixture.initialize_governed_project(

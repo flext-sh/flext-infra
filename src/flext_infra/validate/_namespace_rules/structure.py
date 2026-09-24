@@ -85,6 +85,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         tree: object,
         filepath: Path,
         *,
+        repository_root: Path,
         class_stem: str,
         package_name: str,
         is_test_file: bool,
@@ -175,11 +176,15 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             messages.append(
                 f"{filepath}:1 — {logical} logical statements exceed the {cap} limit"
             )
-        messages.extend(cls._facade_shape(tree, filepath))
+        messages.extend(
+            cls._facade_shape(tree, filepath, repository_root=repository_root)
+        )
         return cls.violations("NS-STRUCT", messages)
 
     @classmethod
-    def _facade_shape(cls, tree: object, filepath: Path) -> t.StrSequence:
+    def _facade_shape(
+        cls, tree: object, filepath: Path, *, repository_root: Path
+    ) -> t.StrSequence:
         """Require an explicit outer+Infra MRO on canonical family facades.
 
         A reserved facade filename also carries a placement law: it names the
@@ -197,7 +202,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # name. Testing the parent against a literal "src" was my error -- it
         # rejected every legitimate tests facade in the fleet, five per
         # repository.
-        package_dir = filepath.parent
+        package_dir = (repository_root / filepath).parent
         is_package_root = (package_dir / c.Infra.INIT_PY).is_file() and not (
             package_dir.parent / c.Infra.INIT_PY
         ).is_file()

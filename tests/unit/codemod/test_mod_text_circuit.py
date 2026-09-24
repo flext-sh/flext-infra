@@ -191,7 +191,9 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(final.findings, eq=0)
         # This optional migration precondition deliberately does not promise
         # idempotence once the invocation has consumed its exact matches.
-        with pytest.raises(RuntimeError, match="expected 1 finding\\(s\\), scan produced 0"):
+        with pytest.raises(
+            RuntimeError, match="expected 1 finding\\(s\\), scan produced 0"
+        ):
             FlextInfraModTextGateEngine.scan(
                 mod_workspace, fix=True, validate_receipts=True
             )

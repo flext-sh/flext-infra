@@ -337,6 +337,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         except SyntaxError:
             return ""
         for node in tree.body:
+            value: ast.expr | None
             if isinstance(node, ast.Assign):
                 targets: list[ast.expr] = list(node.targets)
                 value = node.value
@@ -346,8 +347,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             else:
                 continue
             if not any(
-                isinstance(target, ast.Name) and target.id == name
-                for target in targets
+                isinstance(target, ast.Name) and target.id == name for target in targets
             ):
                 continue
             if value is None:

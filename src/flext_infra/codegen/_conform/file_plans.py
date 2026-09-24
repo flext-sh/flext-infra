@@ -17,15 +17,20 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     def git_attributes_plans(
         cls,
         plan: m.Infra.CodegenPlan,
-        lazy_files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        phase_files: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Derive merge policy from full projections, preserving mixed files."""
         codegen = config.Infra.codegen
-        template = u.Infra.codegen_templates_root(codegen) / plan.make_spec.git_attributes_template
+        template = (
+            u.Infra.codegen_templates_root(codegen)
+            / plan.make_spec.git_attributes_template
+        )
         source = u.Cli.atomic_read_binary_file_state(template, required=True)
         if source.failure:
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(source)
-        files = tuple(file for file in plan.files if file.policy == "full") + tuple(lazy_files)
+        files = tuple(file for file in plan.files if file.policy == "full") + tuple(
+            phase_files
+        )
         result: list[m.Infra.CodegenFilePlan] = []
         for environment in plan.uv_environments:
             root = environment.project_root
@@ -36,10 +41,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 and file.desired_content is not None
                 and file.path != root / c.Infra.GITATTRIBUTES_FILENAME
             })
-            patterns = tuple(
-                path.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?").replace("[", "\\[")
-                for path in paths
-            )
+            patterns = tuple(u.Infra.git_attribute_pattern(path) for path in paths)
             rendered = u.Cli.template_render(
                 template,
                 m.Infra.MakeWorkflowRenderSpec(
@@ -47,9 +49,13 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 ),
             )
             if rendered.failure:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(rendered)
+                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(
+                    rendered
+                )
             planned = cls.file_plan(
-                root, c.Infra.GITATTRIBUTES_FILENAME, rendered.value,
+                root,
+                c.Infra.GITATTRIBUTES_FILENAME,
+                rendered.value,
                 source_states=(source.value,),
             )
             if planned.failure:
@@ -69,14 +75,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """Snapshot one target and bind it to exact desired bytes and mode."""
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
-        # Generation owns the destination directory of every artifact it
-        # declares. Reading the before-state of a declared file whose parent
-        # does not exist yet fails on the missing parent rather than reporting
-        # an absent file, so a repository that has never rendered a nested
-        # artifact — `.beads/config.yaml` on a fresh clone — could not even be
-        # planned. Materializing the empty destination is idempotent and is the
-        # generator's own responsibility.
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Optional snapshots represent missing parents without effects. The
+        # transaction journals and materializes directories before publication.
         before = u.Cli.atomic_read_binary_file_state(path, required=False)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
@@ -157,7 +157,19 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan removal of generated projections excluded from this profile."""
         planned: list[m.Infra.CodegenFilePlan] = []
-        for filename in config.Infra.codegen.toolchain.retired_dependency_artifacts:
+        for filename in (
+            *config.Infra.codegen.toolchain.retired_dependency_artifacts,
+            *config.Infra.codegen.retired_projections,
+        ):
+            relative = Path(filename)
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or relative.as_posix() != filename
+            ):
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"Retired projection must be a normalized relative path: {filename}"
+                )
             path = root / filename
             if path.is_symlink() or (path.exists() and not path.is_file()):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(

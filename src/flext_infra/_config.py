@@ -85,5 +85,5 @@ class FlextInfraConfig(FlextCliConfig):
         return files
 
 
-config = FlextInfraConfig()
+config: FlextInfraConfig = FlextInfraConfig()
 __all__: list[str] = ["FlextInfraConfig", "config"]

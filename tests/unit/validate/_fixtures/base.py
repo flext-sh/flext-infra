@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import m, u
+from tests import c, m, u
 
 
 class TestsFlextInfraValidateNamespaceBase:
@@ -38,9 +38,14 @@ class TestsFlextInfraValidateNamespaceBase:
         self, tmp_path: Path, *, module_source: str, module_path: str
     ) -> tuple[Path, Path]:
         """Create a namespace test project at a specific module path."""
-        return u.Tests.namespace_project_path(
+        root, target = u.Tests.namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
+        if Path(module_path).parts[0] == c.Infra.DIR_TESTS:
+            (root / c.Infra.DIR_TESTS / c.Infra.INIT_PY).write_text(
+                "", encoding="utf-8"
+            )
+        return root, target
 
     def _validate_project(self, root: Path) -> m.Infra.ValidationReport:
         """Run validator on project and return successful result."""

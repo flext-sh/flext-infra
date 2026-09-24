@@ -37,7 +37,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
             ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
         )
         return type(spec).model_validate({
-            **spec.model_dump(),
+            **spec.model_dump(exclude_computed_fields=True),
             "workspace_repositories": workspace_repositories,
             "has_devcontainer": has_devcontainer,
         })

@@ -72,12 +72,15 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     def build_selection_command(
         self, *, complete: bool = False
     ) -> t.VariadicTuple[str]:
-        """Build the read-only argv that resolves the testmon selection once.
+        """Resolve selection and register the collected inventory before workers.
 
         Every xdist worker otherwise resolves the selection itself, and two
         workers reading the database while a third writes it collect different
-        sets, which xdist aborts with "Different tests were collected". This
-        pass runs no test and writes nothing.
+        sets, which xdist aborts with "Different tests were collected".
+        The collection pass records testmon's unexecuted placeholders for new
+        node IDs. Without those rows, worker startup can race with controller
+        synchronization and reorder renamed or added tests differently. No
+        test outcome or executed coverage is claimed by this pass.
         """
         return (
             sys.executable,
@@ -85,7 +88,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "pytest",
             str(self.target),
             "--testmon",
-            "--testmon-nocollect",
             # Why: the external-gate deselection is a ``-m`` expression, and
             # testmon deactivates its selection whenever ``-m`` is present;
             # ``--testmon-forceselect`` is testmon's declared override for

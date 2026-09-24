@@ -94,6 +94,12 @@ class FlextInfraConfigModelsArtifact:
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        retired_projections: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                description="Repository-relative projections removed by generation"
+            ),
+        ] = ()
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),

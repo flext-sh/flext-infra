@@ -29,7 +29,7 @@ _HOOK_TEMPLATE = (
 
 
 class TestsFlextInfraCodegenHookConformance:
-    """Prove generated hook configs and installed shims converge together."""
+    """Prove generation owns hook artifacts and preserves runtime installation."""
 
     @staticmethod
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
@@ -64,16 +64,10 @@ class TestsFlextInfraCodegenHookConformance:
             initial_workspace=workspace,
         )
 
-    def test_check_never_requires_hook_shims_when_gates_are_off(
+    def test_check_never_requires_runtime_hook_installation(
         self, infra_git_repo: Path
     ) -> None:
-        """Operator law 2026-08-24: disabled stage gates demand no shims.
-
-        Conform owns generated files only, and with both gates off the rendered
-        config declares no stages, so an absent shim is not drift. The check
-        may still report unrelated managed-file drift; it must never mention
-        hook installation.
-        """
+        """Conform owns generated files; AI Hub owns hook installation."""
         root = infra_git_repo
         workspace = self._standalone_workspace(root)
         self._render_hooks(root)
@@ -104,14 +98,10 @@ class TestsFlextInfraCodegenHookConformance:
             if hook.is_file():
                 tm.that(hook.read_text(encoding="utf-8"), lacks=f"--hook-type={stage}")
 
-    def test_generated_hooks_use_one_make_only_shell_per_step(
+    def test_generated_hooks_use_one_make_sequence_per_stage(
         self, infra_git_repo: Path
     ) -> None:
-        """Generated hooks expose no executable path outside canonical Make.
-
-        Why (operator law 2026-08-24): stage gates default off, so the step
-        contract is proven on an explicitly enabled copy of the SSOT make spec.
-        """
+        """Each enabled stage runs its Make sequence in one strict shell."""
         root = infra_git_repo
         make = config.Infra.codegen.make.model_copy(
             update={"pre_commit": True, "pre_push": True}
@@ -123,12 +113,7 @@ class TestsFlextInfraCodegenHookConformance:
             )
         )
         tm.ok(u.Cli.atomic_write_text_file(root / ".pre-commit-config.yaml", rendered))
-        hook_contexts = {"pre_commit", "pre_push"}
-        expected = sum(
-            len(hook_contexts.intersection(step.contexts))
-            for step in config.Infra.codegen.make.workflow
-        )
-
+        expected = int(make.pre_commit) + int(make.pre_push)
         tm.that(rendered.count("bash -eu -o pipefail -c"), eq=expected)
         tm.that(rendered, lacks=".local")
 
@@ -158,12 +143,17 @@ class TestsFlextInfraCodegenHookConformance:
         for stage in ("pre-commit", "pre-push"):
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)
 
-    def test_hook_stages_are_disabled_by_default(self) -> None:
-        """Operator law 2026-08-24: both git-hook stage gates default to off."""
+    def test_hook_stages_follow_configuration(self) -> None:
+        """The projection follows the current typed configuration."""
         make = config.Infra.codegen.make
-
-        tm.that(make.pre_commit, eq=False)
-        tm.that(make.pre_push, eq=False)
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+            )
+        )
+        tm.that("flext-pre-commit-" in rendered, eq=make.pre_commit)
+        tm.that("flext-pre-push-" in rendered, eq=make.pre_push)
 
     def test_disabled_gates_render_no_hook_stages(self) -> None:
         """With both gates off the generated config carries zero hook steps."""
@@ -171,7 +161,10 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    dist="flext-demo", make=config.Infra.codegen.make
+                    dist="flext-demo",
+                    make=config.Infra.codegen.make.model_copy(
+                        update={"pre_commit": False, "pre_push": False}
+                    ),
                 ),
             )
         )
@@ -194,21 +187,21 @@ class TestsFlextInfraCodegenHookConformance:
                 ),
             )
         )
-        expected = sum(
-            len({"pre_commit", "pre_push"}.intersection(step.contexts))
-            for step in make.workflow
-        )
+        expected = len({"pre_commit", "pre_push"})
         tm.that(both.count("bash -eu -o pipefail -c"), eq=expected)
 
         commit_only = tm.ok(
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    dist="flext-demo", make=make.model_copy(update={"pre_commit": True})
+                    dist="flext-demo",
+                    make=make.model_copy(
+                        update={"pre_commit": True, "pre_push": False}
+                    ),
                 ),
             )
         )
-        tm.that(commit_only, has="stages: [pre-commit]")
+        tm.that(commit_only, has="stages: [pre-commit, pre-merge-commit]")
         tm.that(commit_only, lacks="stages: [pre-push]")
 
     def test_standalone_hook_config_is_not_retired(self, tmp_path: Path) -> None:

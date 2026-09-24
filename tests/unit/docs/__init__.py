@@ -15,11 +15,7 @@ if TYPE_CHECKING:
     from .auditor_codeblocks_tests import TestsFlextInfraAuditorCodeblocks
     from .auditor_command_contract_tests import TestsFlextInfraAuditorCommandContract
     from .auditor_contract_tests import TestsFlextInfraAuditorContract
-    from .auditor_docstring_tests import (
-        TestsFlextInfraAuditorDocstring,
-        documented_fn,
-        undocumented_fn,
-    )
+    from .auditor_docstring_tests import TestsFlextInfraAuditorDocstring
     from .auditor_links_tests import TestsFlextInfraAuditorLinks
     from .auditor_scope_tests import TestsFlextInfraAuditorScope
     from .auditor_stale_symbols_tests import TestsFlextInfraAuditorStaleSymbols
@@ -82,7 +78,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceManifest",
     "c",
     "d",
-    "documented_fn",
     "e",
     "h",
     "m",
@@ -96,7 +91,6 @@ __all__: tuple[str, ...] = (
     "tm",
     "tv",
     "u",
-    "undocumented_fn",
     "x",
 )
 
@@ -109,11 +103,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraAuditorCommandContract",
             ),
             ".auditor_contract_tests": ("TestsFlextInfraAuditorContract",),
-            ".auditor_docstring_tests": (
-                "TestsFlextInfraAuditorDocstring",
-                "documented_fn",
-                "undocumented_fn",
-            ),
+            ".auditor_docstring_tests": ("TestsFlextInfraAuditorDocstring",),
             ".auditor_links_tests": ("TestsFlextInfraAuditorLinks",),
             ".auditor_scope_tests": ("TestsFlextInfraAuditorScope",),
             ".auditor_stale_symbols_tests": ("TestsFlextInfraAuditorStaleSymbols",),

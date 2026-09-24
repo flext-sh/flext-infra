@@ -51,7 +51,7 @@ class FlextInfraFlextBindingService:
             payload_result.unwrap()
         )
         return r[tuple[str, ...]].ok(
-            tuple(u.Infra.project_dependency_names_from_payload(payload))
+            tuple(u.Infra.declared_dependency_names_from_payload(payload))
         )
 
     @classmethod
@@ -71,7 +71,10 @@ class FlextInfraFlextBindingService:
             )
         available = {
             declared_repository.distribution: declared_repository
-            for declared_repository in workspace.value.subprojects
+            for declared_repository in (
+                workspace.value.repository,
+                *workspace.value.subprojects,
+            )
             if declared_repository.package
         }
         declared = cls._declared_distributions(consumer_root)
@@ -100,7 +103,10 @@ class FlextInfraFlextBindingService:
             declared_repository.distribution: (
                 flext_root / declared_repository.path
             ).resolve()
-            for declared_repository in workspace.value.subprojects
+            for declared_repository in (
+                workspace.value.repository,
+                *workspace.value.subprojects,
+            )
             if declared_repository.package
         }
         editables: list[str] = []

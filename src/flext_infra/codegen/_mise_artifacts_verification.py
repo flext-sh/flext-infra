@@ -696,14 +696,14 @@ class FlextInfraMiseArtifactsVerification:
             receipt.reparse_tag,
         ):
             return False
-        if isinstance(receipt, m.Cli.AtomicFileState):
-            return (
-                entry.kind == "file"
-                and receipt.content is not None
-                and entry.sha256 == files.digest(receipt.content)
-                and entry.link_count == receipt.link_count
-            )
-        return entry.kind == "directory" and receipt.exists
+        if isinstance(receipt, m.Cli.AtomicDirectoryState):
+            return entry.kind == "directory" and receipt.exists
+        return (
+            entry.kind == "file"
+            and receipt.content is not None
+            and entry.sha256 == files.digest(receipt.content)
+            and entry.link_count == receipt.link_count
+        )
 
     @classmethod
     def _journal_file_specs(

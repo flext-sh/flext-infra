@@ -151,7 +151,7 @@ class TestsFlextInfraDepsModernizerPyright:
             eq=sorted(set(rules.default_excludes)),
         )
         tm.that(
-            sorted(u.Tests.toml_strings(pyright["ignore"])),
+            sorted(u.Tests.toml_strings(pyright.get("ignore", []))),
             eq=sorted({*rules.ignored_diagnostic_globs}),
         )
         tm.that(list(u.Tests.toml_strings(pyright["include"])), eq=[rules.source_dir])
@@ -284,7 +284,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
 
         tm.that(
-            sorted(u.Tests.toml_strings(pyright["ignore"])),
+            sorted(u.Tests.toml_strings(pyright.get("ignore", []))),
             eq=sorted({*rules.ignored_diagnostic_globs}),
         )
         tm.that(

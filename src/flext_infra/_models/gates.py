@@ -15,22 +15,25 @@ from flext_infra import c, t
 from .duplication import FlextInfraModelsDuplication
 
 
-class SccFile(m.FlexibleModel):
-    """Required per-file SCC fields; unrelated scanner metrics are ignored."""
-
-    location: Annotated[
-        str,
-        m.Field(
-            alias="Location", min_length=1, strict=True, description="Scanned file path"
-        ),
-    ]
-    code: Annotated[
-        int, m.Field(alias="Code", ge=0, strict=True, description="Logical code lines")
-    ]
-
-
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
     """Quality gate execution domain models."""
+
+    class SccFile(m.FlexibleModel):
+        """Required per-file SCC fields; unrelated scanner metrics are ignored."""
+
+        location: Annotated[
+            str,
+            m.Field(
+                alias="Location",
+                min_length=1,
+                strict=True,
+                description="Scanned file path",
+            ),
+        ]
+        code: Annotated[
+            int,
+            m.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
+        ]
 
     class SccLanguage(m.FlexibleModel):
         """Required language group from SCC's JSON by-file output."""
@@ -45,7 +48,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         files: Annotated[
-            tuple[SccFile, ...],
+            tuple[FlextInfraModelsGates.SccFile, ...],
             m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 

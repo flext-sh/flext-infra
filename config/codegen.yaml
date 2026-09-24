@@ -2,6 +2,7 @@ Infra:
   codegen:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
+    retired_projections: [.github/scripts/install-git-hooks.sh]
 
     # Per-module scc code-LOC ceiling. Operator instruction 2026-09-07:
     # the former 1000-LOC allowance stands (supersedes the 200 constant).
@@ -368,20 +369,15 @@ Infra:
         # not here -- ruff is cheap, so making CI skip it buys nothing and
         # leaves the fast leg without a linter.
         local_check_gates: [pyrefly, mypy]
-      # Why (operator law 2026-08-24): git-hook stages are disabled by default;
-      # the workflow below still declares stage membership so re-enabling is a
-      # one-key change, case by case. CI owns read-only setup, generation drift,
-      # and checks; it never renders an apply/fmt/fix invocation.
-      pre_commit: false
-      pre_push: false
+      # AI Hub installs runtime hooks; generation owns their declared checks.
+      pre_commit: true
+      pre_push: true
       workflow:
-      # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
-      # gates as CI: mypy pyright security markdown smells). This bans
-      # broken code from ever being committed. pre-push adds gen+test.
         - {verb: setup, contexts: [local, ci]}
-        - {verb: gen, contexts: [local, pre_push]}
-        - {verb: fmt, contexts: [local, pre_commit]}
-        - {verb: fix, contexts: [local, pre_commit]}
+        - {verb: gen, contexts: [local, ci, pre_commit]}
+        - {verb: fix, contexts: [local, ci, pre_commit]}
+        - {verb: fmt, contexts: [local, ci, pre_commit]}
+        - {verb: audit, contexts: [local, pre_push]}
         - {verb: check, contexts: [local, ci, pre_push, pre_commit]}
       # Review CI proves the complete native gate set. Draft PRs do not select
       # the job, while attestation reuse is selected externally by AI Hub.
@@ -918,7 +914,7 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
-      - path: .github/scripts/install-git-hooks.sh
+      - path: .github/scripts/validate-git-hook.sh
         owner: codegen
         policy: full
         mode: 493 # 0o755
@@ -1854,9 +1850,9 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
-          profiles: [workspace]
+        - source: base/.github/scripts/validate-git-hook.sh.j2
+          destination: .github/scripts/validate-git-hook.sh
+          profiles: [workspace, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/flext-law-loop.sh.j2

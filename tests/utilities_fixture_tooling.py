@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import shlex
 import shutil
+import sys
 from pathlib import Path
 
 from flext_infra import u
-from tests import c, p, t
+from tests import c, m, p, t
 
 
 class TestsFlextInfraUtilitiesToolingFixtureMixin:
@@ -55,7 +57,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         )
         TestsFlextInfraUtilitiesToolingFixtureMixin.write_executable(
             path,
-            "#!/bin/sh\n"
+            "#!/bin/sh\nset -eu\n"
             # Never invoked: `local` is only valid inside a function, and the
             # setup owner parses this declaration statically, never runs it.
             "mise_pinned_release() {\n"
@@ -84,9 +86,13 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             ";; esac\n"
             'case "$*" in *" which direnv"*) '
             "printf '%s\\n' \"${0%/*}/direnv\"; exit ;; esac\n"
+            'case "$*" in *" which python"*) '
+            f"printf '%s\\n' {shlex.quote(sys.executable)}; exit ;; esac\n"
             'if [ "$1" = "trust" ]; then exit; fi\n'
             'case "$*" in *" install "*) exit ;; esac\n'
-            'while [ "$1" != "--" ]; do shift; done\n'
+            'case "$*" in *" upgrade --no-prune python") exit ;; esac\n'
+            'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
+            'test "$#" -gt 0\n'
             "shift\n"
             'exec "$@"\n',
         )
@@ -115,7 +121,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             capture=capture,
             remove_env_keys=tuple(
                 key
-                for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
+                for key in (
+                    *c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                    m.Infra.BeadsWorkspaceEnvironmentSpec().identity_var,
+                )
                 if env is None or key not in env
             ),
         )

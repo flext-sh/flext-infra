@@ -560,6 +560,13 @@ class FlextInfraConfigModelsContexts:
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
+        flext_source: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Direct Git infrastructure requirement declared for scaffolding"
+            ),
+        ] = None
+
         dependency_revisions: Annotated[
             Mapping[t.NonEmptyStr, Annotated[str, m.Field(pattern=r"^[0-9a-f]{40}$")]],
             m.Field(

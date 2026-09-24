@@ -72,7 +72,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         declared: dict[str, str] = {}
         for requirement in requirements:
             name = FlextInfraUtilitiesDependencies.dep_name(requirement)
-            if name in revisions:
+            if name is not None and name in revisions:
                 declared[name] = requirement
         overrides: list[str] = []
         for name in sorted(revisions):
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         uv_workspace = uv.get("workspace")
         if not isinstance(uv_workspace, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.workspace]")
-        validated_members = u.validate_value(
+        validated_members: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER, uv_workspace.get("members"), strict=True
         )
         if validated_members.failure:

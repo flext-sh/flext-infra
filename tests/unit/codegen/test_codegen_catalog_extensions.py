@@ -17,6 +17,44 @@ pytestmark = pytest.mark.slow
 class TestsFlextInfraCodegenCatalogExtensions:
     """Prove generic extensions without a repository registry or second manifest."""
 
+    def test_scaffold_source_resolves_before_the_project_exists(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicit source supplies provenance without guessing from the consumer."""
+        root = tmp_path / "unborn"
+        line = tm.ok(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=root,
+                declared_source=u.Tests.flext_source(),
+            )
+        )
+        tm.that(line.base_url, eq=u.Tests.provider().base_url)
+        tm.that(line.branch, eq=u.Tests.provider_branch())
+        tm.that(root.exists(), eq=False)
+
+    def test_invalid_scaffold_source_fails_before_filesystem_effects(
+        self, tmp_path: Path
+    ) -> None:
+        """Source validation happens before creating a directory or Git metadata."""
+        root = tmp_path / "unborn"
+        project = u.Tests.project_spec("new-project").model_copy(
+            update={"flext_source": config.Infra.codegen.infra_repository.distribution}
+        )
+        workspace = u.Tests.workspace_spec(
+            u.Tests.repository_ref("new-project"), project=project
+        )
+        result = FlextInfraCodegenConform.execute_request(
+            u.Tests.conform_request(
+                root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+            initial_workspace=workspace,
+        )
+        tm.that(result.failure, eq=True)
+        tm.that(root.exists(), eq=False)
+
     def _repository(
         self, name: str, *, path: str, role: c.Infra.MakeProfile
     ) -> m.Infra.RepositoryRef:

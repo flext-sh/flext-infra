@@ -6,6 +6,6 @@
 # This control file uses ordinary text merging.
 /.gitattributes text merge
 # Full projections are regenerated, never combined with a textual merge.
-{% for path in generated_paths %}
-{{ path | tojson }} -merge linguist-generated
-{% endfor %}
+{% for path in generated_paths -%}
+{{ path }} -merge linguist-generated
+{% endfor -%}

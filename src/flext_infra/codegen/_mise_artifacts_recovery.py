@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import stat
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
@@ -90,31 +88,6 @@ class FlextInfraMiseRecovery:
             return exact
         return journal_io.cleanup(layout, journal, journal_state)
 
-    @staticmethod
-    def _plain_resource_state(path: Path) -> m.Cli.AtomicFileState:
-        """Read one package-owned resource without atomic-ownership semantics.
-
-        uv hard-links installed package files to its cache, so their link
-        count exceeds one by construction; the atomic-state reader rejects
-        such leaves. Package resources are immutable data read as bytes, and
-        their physical identities still come from lstat for the action log.
-        """
-        content = path.read_bytes()
-        leaf = path.lstat()
-        parent = path.parent.lstat()
-        return m.Cli.AtomicFileState(
-            path=path,
-            parent_device=parent.st_dev,
-            parent_inode=parent.st_ino,
-            content=content,
-            mode=stat.S_IMODE(leaf.st_mode),
-            device=leaf.st_dev,
-            inode=leaf.st_ino,
-            link_count=leaf.st_nlink,
-            file_attributes=getattr(leaf, "st_file_attributes", None),
-            reparse_tag=getattr(leaf, "st_reparse_tag", None),
-        )
-
     def _classify(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
@@ -129,21 +102,6 @@ class FlextInfraMiseRecovery:
             )
             if target.failure:
                 return result_type.from_failure(target)
-            # Package-owned resources (uv hard-links installed templates into
-            # site-packages) are never uniquely-owned workspace state: a stale
-            # journal entry pointing inside the installed package classifies
-            # as a noop instead of failing the whole recovery on the nlink
-            # guard of the atomic-state reader (ai-hub runner, flext-6ep5y).
-            package_root = Path(__file__).resolve().parents[2]
-            if target.value.is_relative_to(package_root):
-                actions.append(
-                    m.Infra.CodegenRecoveryAction(
-                        entry=entry,
-                        current=self._plain_resource_state(target.value),
-                        operation="noop",
-                    )
-                )
-                continue
             current = files.read_state(target.value, required=False)
             if current.failure:
                 return result_type.from_failure(current)
@@ -160,10 +118,9 @@ class FlextInfraMiseRecovery:
             elif identity == desired:
                 operation = "restore" if entry.original_exists else "delete"
             else:
-                # Um estado nao reconhecido nunca bloqueia a recuperacao: a
-                # geracao e a dona do arquivo e o reescreve. Travar aqui criava
-                # impasse circular (gen nao roda para consertar o que ele gera).
-                operation = "noop"
+                return result_type.fail(
+                    f"generated file has an unowned state before recovery: {entry.path}"
+                )
             actions.append(
                 m.Infra.CodegenRecoveryAction(
                     entry=entry, current=current.value, operation=operation

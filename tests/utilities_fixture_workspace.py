@@ -191,15 +191,14 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project_dir, name
         )
-        origin = tm.ok(
-            u.Infra.git_remote_url(
-                m.Infra.GitRemoteUrlRequest(
-                    repo_root=project_dir, remote=c.Infra.GIT_ORIGIN
-                )
-            )
+        origin = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.WorktreeFixture.governed_repository_url(
+            name
+        )
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            project_dir, origin_url=origin
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-            project_dir, name, url=origin.text.strip()
+            project_dir, name, url=origin
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_dir))
         return workspace.model_copy(
@@ -340,7 +339,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             observed = tm.ok(
                 FlextInfraWorkspaceDetector.load_workspace_spec(repository)
             )
-            declared = observed.repository.model_copy(update=dict(updates))
+            declared = m.Infra.RepositoryRef.model_validate({
+                **observed.repository.model_dump(mode="json"),
+                **updates,
+            })
             tm.ok(
                 u.Cli.yaml_dump(
                     repository / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
@@ -535,6 +537,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ) -> None:
             """Declare and commit ``member`` as a real gitlink submodule of ``parent``."""
             _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+            # Read the old identity before changing its observed topology.
+            cls.override_repository_manifest(
+                parent, {"role": c.Infra.MakeProfile.WORKSPACE.value}
+            )
             (parent / c.Infra.GITMODULES).write_text(
                 f'[submodule "{distribution}"]\n'
                 f"\tpath = {relative_path}\n"
@@ -542,11 +548,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 "\tbranch = "
                 f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n",
                 encoding="utf-8",
-            )
-            # A workspace parent declares its own role as workspace: the
-            # manifest must agree with the topology the detector observes.
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-                parent, parent.name, role=c.Infra.MakeProfile.WORKSPACE
             )
             member_head = TestsFlextInfraUtilitiesGitMixin.git_capture(
                 member, "rev-parse", c.Infra.GIT_HEAD
@@ -664,10 +665,32 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 ),
                 encoding="utf-8",
             )
-            # Declaring members makes this root a workspace: its own manifest
-            # must declare the same role or the detector rejects the drift.
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-                root, root.name, role=c.Infra.MakeProfile.WORKSPACE
+            # Only materialized members make this root a workspace. Preserve
+            # its declared identity while matching the fixture's topology.
+            manifests = tm.ok(FlextInfraWorkspaceDetector.load_workspace_manifest(root))
+            (manifest,) = manifests
+            workspace_manifest = manifest.model_copy(
+                update={
+                    "repository": manifest.repository.model_copy(
+                        update={
+                            "role": (
+                                c.Infra.MakeProfile.WORKSPACE
+                                if projects
+                                and any(
+                                    (root / project / ".git").exists()
+                                    for project in projects
+                                )
+                                else c.Infra.MakeProfile.STANDALONE
+                            )
+                        }
+                    )
+                }
+            )
+            tm.ok(
+                u.Cli.yaml_dump(
+                    u.Infra.workspace_manifest_path(root),
+                    workspace_manifest.model_dump(mode="json"),
+                )
             )
             return path
 

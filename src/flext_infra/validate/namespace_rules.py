@@ -27,6 +27,7 @@ class FlextInfraNamespaceRules(
         tree: object,
         filepath: Path,
         *,
+        repository_root: Path,
         class_stem: str,
         package_name: str,
         source: str,
@@ -37,6 +38,7 @@ class FlextInfraNamespaceRules(
             *cls.check_structure(
                 tree,
                 filepath,
+                repository_root=repository_root,
                 class_stem=class_stem,
                 package_name=package_name,
                 is_test_file=is_test_file,

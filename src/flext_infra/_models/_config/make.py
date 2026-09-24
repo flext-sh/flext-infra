@@ -372,7 +372,9 @@ class FlextInfraConfigModelsMake:
 
         git_attributes_template: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Template for merge policy derived from generation plans"),
+            m.Field(
+                description="Template for merge policy derived from generation plans"
+            ),
         ]
 
         ruff: Annotated[

@@ -62,36 +62,45 @@ class FlextInfraCodegenConformExecute(
         cls: type[Self],
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-        *,
-        initial_branch: str | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         root = request.root.expanduser().resolve()
+        if (
+            initial_workspace is not None
+            and initial_workspace.project is not None
+            and initial_workspace.project.flext_source is not None
+        ):
+            source = u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=root,
+                declared_source=initial_workspace.project.flext_source,
+            )
+            if source.failure:
+                return r[m.Infra.CodegenResult].from_failure(source)
         bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
         initialized_git = False
-        if initial_workspace is not None and not root.is_dir():
-            planned = u.Cli.atomic_plan_directory_chain(root)
-            if planned.failure:
-                return r[m.Infra.CodegenResult].from_failure(planned)
-            created = u.Cli.atomic_create_directory_chain_guarded(
-                planned.value, permission_mode=0o755
-            )
-            if created.failure:
-                return r[m.Infra.CodegenResult].from_failure(created)
-            bootstrap = tuple(created.value)
         if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            # Git owns no answer for an unborn repository: the caller declares
-            # the integration branch and a missing declaration fails loudly.
-            if not initial_branch or not initial_branch.strip():
+            # The typed workspace declaration owns the unborn repository's branch.
+            integration = initial_workspace.integration
+            if integration is None:
                 return r[m.Infra.CodegenResult].fail(
-                    "initial branch is required to initialize the repository "
-                    "Git: declare --repository-branch"
+                    "initial workspace must declare its integration branch before Git initialization"
                 )
+            if not root.is_dir():
+                planned = u.Cli.atomic_plan_directory_chain(root)
+                if planned.failure:
+                    return r[m.Infra.CodegenResult].from_failure(planned)
+                created = u.Cli.atomic_create_directory_chain_guarded(
+                    planned.value, permission_mode=0o755
+                )
+                if created.failure:
+                    return r[m.Infra.CodegenResult].from_failure(created)
+                bootstrap = tuple(created.value)
             initialized = u.Cli.run_checked([
                 c.Infra.GIT,
                 "init",
                 "--initial-branch",
-                initial_branch.strip(),
+                integration.branch,
                 str(root),
             ])
             if initialized.failure:
@@ -388,18 +397,6 @@ class FlextInfraCodegenConformExecute(
                 return r[m.Infra.CodegenResult].fail(
                     f"lazy-init drift detected: {paths}\n{report}"
                 )
-            attributes = self.git_attributes_plans(plan, lazy_analysis.value.files)
-            if attributes.failure:
-                return r[m.Infra.CodegenResult].from_failure(attributes)
-            attributes_changed = tuple(
-                file for file in attributes.value
-                if u.Infra.codegen_file_requires_effect(file)
-            )
-            if attributes_changed:
-                return r[m.Infra.CodegenResult].fail(
-                    "git attributes drift detected:\n"
-                    + u.Infra.codegen_file_drift_report(attributes_changed)
-                )
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
                 projects=tuple(repository.name for repository in plan.repositories),
@@ -421,6 +418,25 @@ class FlextInfraCodegenConformExecute(
                 report = u.Infra.codegen_file_drift_report(docs_changed)
                 return r[m.Infra.CodegenResult].fail(
                     f"docs drift detected: {paths}\n{report}"
+                )
+            attributes = self.git_attributes_plans(
+                plan,
+                (
+                    *lazy_analysis.value.files,
+                    *self.owned_docs_files(request, docs_plans.value),
+                ),
+            )
+            if attributes.failure:
+                return r[m.Infra.CodegenResult].from_failure(attributes)
+            attributes_changed = tuple(
+                file
+                for file in attributes.value
+                if u.Infra.codegen_file_requires_effect(file)
+            )
+            if attributes_changed:
+                return r[m.Infra.CodegenResult].fail(
+                    "git attributes drift detected:\n"
+                    + u.Infra.codegen_file_drift_report(attributes_changed)
                 )
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
@@ -503,7 +519,9 @@ class FlextInfraCodegenConformExecute(
         )
         if with_docs.failure:
             return r[m.Infra.CodegenResult].from_failure(with_docs)
-        attributes = self.git_attributes_plans(plan, owned_lazy_analysis.files)
+        attributes = self.git_attributes_plans(
+            plan, (*owned_lazy_analysis.files, *owned_docs_files)
+        )
         if attributes.failure:
             return r[m.Infra.CodegenResult].from_failure(attributes)
         with_attributes = transaction.append_phase_locked(
@@ -694,11 +712,18 @@ class FlextInfraCodegenConformExecute(
             return r[bool].fail(
                 f"codegen publication did not reach a fixed point: {paths}\n{drift}"
             )
-        attributes = self.git_attributes_plans(verified.value, lazy_analysis.files)
+        attributes = self.git_attributes_plans(
+            verified.value,
+            (
+                *lazy_analysis.files,
+                *self.owned_docs_files(request, docs_analysis.files),
+            ),
+        )
         if attributes.failure:
             return r[bool].from_failure(attributes)
         attributes_changed = tuple(
-            file for file in attributes.value
+            file
+            for file in attributes.value
             if u.Infra.codegen_file_requires_effect(file)
         )
         if attributes_changed:

@@ -161,14 +161,6 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 *runtime_alias_names,
             ))
         )
-        letter_module = {
-            letter: filename.removesuffix(".py")
-            for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
-            if letter in c.Infra.ALIAS_NAMES
-        }
-        for alias_name, local_stem in letter_module.items():
-            if (pkg_dir / f"{local_stem}.py").is_file():
-                lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
         for alias_name in alias_names:
             existing = lazy_map.get(alias_name)
             if existing is not None and existing[0] != current_pkg:

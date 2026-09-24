@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
-from flext_core import r
 from flext_infra import c, m, t
 
 from .aliases import FlextInfraUtilitiesSemanticCutoverAliases
@@ -50,9 +49,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             case c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT:
                 return cls._plan_private_imports(root, sources, selected)
             case _:
-                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
-                    f"unsupported semantic cutover phase: {phase}"
-                )
+                assert_never(phase)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverBase"]

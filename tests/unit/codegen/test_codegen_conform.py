@@ -148,11 +148,13 @@ class TestsFlextInfraCodegenConform:
             with pytest.raises(OSError, match="raised after begin") as raised:
                 execute(request)
             tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+        elif scenario == "docs-failure":
+            with pytest.raises(ValueError, match="Invalid JSON"):
+                execute(request)
         else:
             failed = execute(request)
             expected = {
-                "cas": "atomic source changed",
-                "docs-failure": "JSON",
+                "cas": "atomic destination content changed",
                 "lazy-failure": "refusing obsolete root-support symlink",
             }.get(scenario, "failed after begin")
             tm.fail(failed, has=expected)
@@ -431,6 +433,7 @@ class TestsFlextInfraCodegenConform:
         # rows prove the result does not depend on the distribution name.
         root = tmp_path / name
         service = FlextInfraCodegenProjectNew(
+            flext_source=u.Tests.flext_source(),
             name=name,
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
@@ -540,6 +543,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         existing_root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
+            flext_source=u.Tests.flext_source(),
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,

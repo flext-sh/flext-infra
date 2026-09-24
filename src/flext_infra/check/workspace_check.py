@@ -191,9 +191,7 @@ class FlextInfraWorkspaceChecker(
             effective_ctx,
             fail_fast=fail_fast,
         )
-        return self._write_reports_and_summary(
-            resolved_gates, report_base, outcome, repository_root=self._repository_root
-        )
+        return self._write_reports_and_summary(resolved_gates, report_base, outcome)
 
     def _project_targets(
         self, projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget]

@@ -237,12 +237,14 @@ class TestsFlextInfraCodegenBeadsProjection:
 
         if rendered_envrc is None:
             pytest.fail("city participation must produce the managed .envrc")
-        tm.that(rendered_envrc, has='source_env_if_exists "$HOME/.config/')
+        environment = m.Infra.BeadsWorkspaceEnvironmentSpec()
+        for source in environment.environment_sources:
+            rendered_source = source.replace("$HOME/", "${HOME}/")
+            tm.that(rendered_envrc, has=f'source_env_if_exists "{rendered_source}"')
+            tm.that(rendered_envrc, lacks=f'source_env "{rendered_source}"')
         tm.that(
-            rendered_envrc,
-            lacks='source_env "$HOME/.config/environment.d/projects/agent-tools.envrc"',
+            rendered_envrc, has=f"{environment.identity_var} must name the canonical"
         )
-        tm.that(rendered_envrc, has="AGENTS_GAS_CITY_ROOT must name the canonical")
         tm.that(rendered_envrc, lacks="unset BEADS_DIR")
 
     @pytest.mark.slow

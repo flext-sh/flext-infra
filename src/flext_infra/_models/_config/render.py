@@ -170,7 +170,9 @@ class FlextInfraConfigModelsRender:
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         generated_paths: Annotated[
             t.VariadicTuple[str],
-            m.Field(description="Exact fully generated paths from the publication plan"),
+            m.Field(
+                description="Exact fully generated paths from the publication plan"
+            ),
         ] = ()
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,

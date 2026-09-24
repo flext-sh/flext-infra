@@ -28,6 +28,13 @@ class FlextInfraConstantsCodegenProject:
 
     GITATTRIBUTES_FILENAME: ClassVar[str] = ".gitattributes"
     GITATTRIBUTES_PHASE: ClassVar[str] = "git-attributes"
+    CODEGEN_FILE_PHASES: ClassVar[frozenset[str]] = frozenset({
+        "conform",
+        "lazy-init",
+        "docs",
+        "mod-text",
+        GITATTRIBUTES_PHASE,
+    })
 
     # These enums define the
     # one public conform contract shared by new and existing repositories. The

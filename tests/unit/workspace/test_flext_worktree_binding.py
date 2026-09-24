@@ -115,6 +115,24 @@ class TestsFlextInfraWorktreeBinding:
         tm.that(planned.failure, eq=True)
         tm.that(planned.error or "", has="workspace")
 
+    def test_binding_includes_a_standalone_package_checkout(
+        self, tmp_path: Path
+    ) -> None:
+        """A dedicated package lane supplies its own declared distribution."""
+        consumer = self._consumer(tmp_path)
+        source = tmp_path / "flext-cli"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            source,
+            "flext-cli",
+            workspace="flext-cli",
+            database="flext-cli",
+            issue_prefix="flext-cli",
+        )
+        planned = FlextInfraFlextBindingService.plan_targets(
+            consumer_root=consumer, flext_root=source
+        )
+        tm.that(tm.ok(planned), eq=("flext-cli",))
+
     def test_a_consumer_without_flext_dependencies_binds_nothing(
         self, tmp_path: Path
     ) -> None:
@@ -132,6 +150,30 @@ class TestsFlextInfraWorktreeBinding:
         )
 
         tm.that(tm.ok(planned), eq=())
+
+    def test_binding_includes_declared_development_tooling(
+        self, tmp_path: Path
+    ) -> None:
+        """Development-only Infra dependencies use the candidate generator too."""
+        consumer = self._consumer(tmp_path)
+        manifest = consumer / "pyproject.toml"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8")
+            + '\n[dependency-groups]\ndev = ["flext-infra"]\n',
+            encoding="utf-8",
+        )
+        source = tmp_path / "flext-infra"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            source,
+            "flext-infra",
+            workspace="infra",
+            database="infra",
+            issue_prefix="infra",
+        )
+        planned = FlextInfraFlextBindingService.plan_targets(
+            consumer_root=consumer, flext_root=source
+        )
+        tm.that(tm.ok(planned), eq=("flext-infra",))
 
 
 __all__: list[str] = ["TestsFlextInfraWorktreeBinding"]

@@ -56,7 +56,10 @@ class FlextInfraMiseArtifactsState:
 
     @classmethod
     def plan_transaction_directories(
-        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        *,
+        destinations: t.VariadicTuple[Path] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
         """Prove every transaction path absent before journal publication."""
         roots: list[Path] = []
@@ -104,6 +107,17 @@ class FlextInfraMiseArtifactsState:
                 )
                 if artifact.parent != project.root
             )
+        )
+        project_roots = {item.root for item in files.transaction_participants(layout)}
+        parents = tuple(
+            dict.fromkeys((
+                *parents,
+                *(
+                    path.parent
+                    for path in destinations
+                    if path.parent not in project_roots
+                ),
+            ))
         )
         generated = cls.plan_directories(
             layout, phase="mise", requested=parents, disposition="generated"
@@ -495,7 +509,53 @@ class FlextInfraMiseArtifactsState:
         )
         if state_root is not None:
             candidates.append(state_root / c.Infra.LAZY_INIT_CLASS_RECEIPTS_RELPATH)
-        return any(path.is_relative_to(directory) for path in candidates)
+        return any(
+            (path.exists() or path.is_symlink()) and path.is_relative_to(directory)
+            for path in candidates
+        )
+
+    @classmethod
+    def _validate_temporary_parents(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[bool]:
+        """Reject foreign staging siblings before any recovery effect."""
+        created_paths = {
+            item.created.path
+            for item in journal.directories
+            if item.created is not None
+        }
+        for directory in journal.directories:
+            created = directory.created
+            if (
+                directory.disposition != "temporary"
+                or directory.manifest is not None
+                or created is None
+                or not created.path.exists()
+            ):
+                continue
+            observed = u.Cli.atomic_inventory_physical_tree(created.path)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if (observed.value.root.device, observed.value.root.inode) != (
+                created.device,
+                created.inode,
+            ):
+                return r[bool].fail(
+                    f"temporary parent identity changed: {created.path}"
+                )
+            for entry in observed.value.entries:
+                if entry.path.parent != created.path:
+                    continue
+                if entry.path in created_paths or cls._hosts_lease_lock(
+                    layout, entry.path
+                ):
+                    continue
+                return r[bool].fail(
+                    f"unregistered temporary-tree entry exists: {entry.path}"
+                )
+        return r[bool].ok(True)
 
     @classmethod
     def validate_transaction_roots(
@@ -504,6 +564,9 @@ class FlextInfraMiseArtifactsState:
         journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[bool]:
         """Authenticate the sole journal-derived staging root in every project."""
+        parents = cls._validate_temporary_parents(layout, journal)
+        if parents.failure:
+            return parents
         expected = {
             project.transaction_root
             for project in files.transaction_participants(layout)
