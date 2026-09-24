@@ -152,6 +152,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def branch(self) -> str | None:
+            """Member branch declared by its owning .gitmodules, when present."""
+            ...
+
+        @property
         def path(self) -> Path:
             """Repository path relative to its workspace root."""
             ...

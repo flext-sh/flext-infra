@@ -21,6 +21,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             name=distribution,
             distribution=distribution,
             url=f"{provider.base_url}/{distribution}.git",
+            branch=test_u.Tests.provider_branch(),
             path=Path(path),
             role=role,
             provider=provider.name,
@@ -235,31 +236,53 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq=original["optional-dependencies"],
         )
 
-    def test_repository_root_uses_workspace_provenance(self) -> None:
+    @pytest.mark.parametrize("distribution", ["flext-core", "cosmos-charts"])
+    @pytest.mark.parametrize("direct", [False, True])
+    def test_repository_root_uses_workspace_provenance(
+        self, distribution: str, *, direct: bool
+    ) -> None:
+        """Root requirements install without sources and retain the local overlay."""
         workspace = self._workspace()
-        result = u.Infra.pyproject_dependencies_conform(
-            """[project]
-name = "workspace"
-dependencies = ["flext-core"]
-
-[tool.uv.workspace]
-members = ["flext-core"]
-
-[tool.uv.sources.flext-core]
-workspace = true
-""",
-            workspace=workspace,
-            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
+        member = workspace.subprojects[0].model_copy(update={
+            "name": distribution,
+            "distribution": distribution,
+            "url": f"https://git.example.test/member-owner/{distribution}.git",
+            "branch": "member-integration",
+            "path": Path(distribution),
+        })
+        workspace = workspace.model_copy(update={"subprojects": (member,)})
+        member_requirement = f"{distribution} @ git+{member.url}@{member.branch}"
+        declared = f"{distribution} @ git+{member.url}@explicit-release" if direct else distribution
+        source = (
+            '[project]\nname = "workspace"\n'
+            f'dependencies = [{tm.ok(u.Cli.json_dumps(declared))}]\n'
+            f'[tool.uv.workspace]\nmembers = ["{distribution}"]\n'
+            f'[tool.uv.sources.{distribution}]\nworkspace = true\n'
         )
-        rendered = tm.ok(result)
+        rendered = tm.ok(u.Infra.pyproject_dependencies_conform(
+            source, workspace=workspace, workspace_mode=c.Infra.MakeProfile.WORKSPACE
+        ))
         tm.that(
             test_u.Tests.toml_strings_at(rendered, "project", "dependencies"),
-            eq=("flext-core",),
+            eq=(declared if direct else member_requirement,),
         )
         tm.that(
             test_u.Tests.toml_strings_at(rendered, "dependency-groups", "workspace"),
-            eq=("flext-core",),
+            eq=(member_requirement,),
         )
+        for document in (source, rendered):
+            first = tm.ok(u.Infra.pyproject_conform(
+                document, workspace=workspace, workspace_mode=c.Infra.MakeProfile.WORKSPACE,
+                toolchain=config.Infra.codegen.toolchain, required_dev_dependencies=(),
+            ))
+            second = tm.ok(u.Infra.pyproject_conform(
+                first, workspace=workspace, workspace_mode=c.Infra.MakeProfile.WORKSPACE,
+                toolchain=config.Infra.codegen.toolchain, required_dev_dependencies=(),
+            ))
+            tm.that(second, eq=first)
+            uv = test_u.Tests.toml_mapping(test_u.Tests.toml_payload(second)["tool"])["uv"]
+            sources = test_u.Tests.toml_mapping(test_u.Tests.toml_mapping(uv)["sources"])
+            tm.that(test_u.Tests.toml_mapping(sources[distribution])["workspace"], eq=True)
 
     def test_standalone_requires_declared_git_source(self) -> None:
         """A source-less internal dependency outside the workspace overlay fails."""
@@ -273,6 +296,19 @@ workspace = true
             result,
             has="declares no direct git source and is not a workspace dependency",
         )
+
+    def test_bare_workspace_requirement_requires_its_declared_branch(self) -> None:
+        workspace = self._workspace()
+        member = workspace.subprojects[0].model_copy(update={"branch": None})
+        workspace = workspace.model_copy(update={"subprojects": (member,)})
+        result = u.Infra.pyproject_conform(
+            '[project]\nname = "workspace"\ndependencies = ["flext-core"]\n',
+            workspace=workspace,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
+            toolchain=config.Infra.codegen.toolchain,
+            required_dev_dependencies=(),
+        )
+        tm.fail(result, has="workspace dependency has no declared Git branch")
 
     def test_standalone_canonicalizes_the_declared_git_source(self) -> None:
         """The declared requirement line is the only URL and branch authority."""
@@ -365,7 +401,7 @@ constraint-dependencies = ["uv>=0"]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 '[project]\nname = "workspace"\n'
-                f'dependencies = ["{member.distribution} @ git+{member.url}@'
+                f'dependencies = ["{member.distribution} @ git+{member.url.removesuffix(".git")}-foreign.git@'
                 f'{test_u.Tests.provider_branch()}"]\n'
                 "\n[tool.uv.workspace]\n"
                 'members = ["flext-core"]\n'

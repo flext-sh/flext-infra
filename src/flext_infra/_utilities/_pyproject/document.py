@@ -57,9 +57,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """
         provenance_result = cls._validate_dependency_provenance(
             document,
-            project_name=project_name,
             workspace=workspace,
-            workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
             return r[str].from_failure(provenance_result)
@@ -146,9 +144,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source, project_name = parsed.value
         provenance_result = cls._validate_dependency_provenance(
             source,
-            project_name=project_name,
             workspace=workspace,
-            workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
             return r[str].from_failure(provenance_result)
@@ -161,6 +157,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             sources_result = cls._validate_root_uv_sources(source, workspace=workspace)
             if sources_result.failure:
                 return r[str].from_failure(sources_result)
+        cls._sync_workspace_dependency_group(
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
@@ -170,12 +172,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
-        cls._sync_workspace_dependency_group(
-            source,
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-        )
         # On the dependency-only surface the declared document constraints are
         # the SSOT: they flow through the same uv-pin filter as the toolchain
         # path so a legacy `uv` cap is removed and every other constraint is

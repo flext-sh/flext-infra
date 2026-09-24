@@ -12,11 +12,14 @@ rebound is derived from the worktree's own manifest, never a hardcoded list.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_core import p as core_p
+from flext_infra import c, config
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from tests import t, u
 
@@ -115,10 +118,10 @@ class TestsFlextInfraWorktreeBinding:
         tm.that(planned.failure, eq=True)
         tm.that(planned.error or "", has="workspace")
 
-    def test_a_consumer_without_flext_dependencies_binds_nothing(
+    def test_a_consumer_without_flext_dependencies_rejects_requested_binding(
         self, tmp_path: Path
     ) -> None:
-        """No flext dependency means no rebind, not an error."""
+        """An explicit binding must never report success without a candidate."""
         consumer = tmp_path / "plain"
         consumer.mkdir()
         (consumer / "pyproject.toml").write_text(
@@ -131,7 +134,71 @@ class TestsFlextInfraWorktreeBinding:
             consumer_root=consumer, flext_root=self._flext_workspace(tmp_path)
         )
 
-        tm.that(tm.ok(planned), eq=())
+        tm.that(planned.failure, eq=True)
+        tm.that(planned.error or "", has="selects no declared dependency")
+
+    def test_standalone_supplier_satisfies_a_development_dependency(
+        self, tmp_path: Path
+    ) -> None:
+        """A root-only generator checkout supplies a consumer's declared dev group."""
+        supplier = tmp_path / "supplier"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            supplier, "flext-infra", workspace="flext-infra",
+            database="flext-infra", issue_prefix="flext-infra",
+        )
+        consumer = self._consumer(tmp_path)
+        declaration = consumer / c.Infra.PYPROJECT_FILENAME
+        with declaration.open("a", encoding="utf-8") as stream:
+            stream.write('[dependency-groups]\ndev = ["flext-infra"]\n')
+        before = declaration.read_bytes()
+
+        planned = FlextInfraFlextBindingService.plan_targets(
+            consumer_root=consumer, flext_root=supplier,
+        )
+
+        assert tm.ok(planned) == ("flext-infra",)
+        assert declaration.read_bytes() == before
+
+    @pytest.mark.parametrize("symlinked_environment", [False, True])
+    def test_binding_rejects_a_foreign_environment_before_installation(
+        self, tmp_path: Path, *, symlinked_environment: bool
+    ) -> None:
+        """A caller cannot point the installer at the runner's own environment."""
+        consumer = tmp_path / "consumer"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            consumer, "flext-consumer", workspace="flext-consumer",
+            database="flext-consumer", issue_prefix="flext-consumer",
+        )
+        if symlinked_environment:
+            (consumer / config.Infra.tooling.tools.pyright.path_rules.venv_name).symlink_to(
+                Path(sys.prefix), target_is_directory=True,
+            )
+        ci = config.Infra.codegen.make.ci
+        outcome = tm.ok(u.Cli.run_raw(
+            (
+                sys.executable, "-m", "flext_infra", "workspace", "flext-binding",
+                "--repository-root", str(consumer), "--flext-root", str(tmp_path / "supplier"),
+                "--python", sys.executable,
+            ),
+            env=u.Cli.process_env(overrides={ci.variable: ci.local_value}),
+        ))
+        assert outcome.outcome.raw_return_code != 0
+        expected = "physical consumer environment" if symlinked_environment else "interpreter must belong to the consumer"
+        assert expected in f"{outcome.stdout}{outcome.stderr}"
+
+    def test_binding_cli_rejects_ci_before_installation(self, tmp_path: Path) -> None:
+        """The public CLI rejects local editable candidates under the configured CI token."""
+        ci = config.Infra.codegen.make.ci
+        outcome = tm.ok(u.Cli.run_raw(
+            (
+                sys.executable, "-m", "flext_infra", "workspace", "flext-binding",
+                "--repository-root", str(tmp_path), "--flext-root", str(tmp_path),
+                "--python", sys.executable,
+            ),
+            env=u.Cli.process_env(overrides={ci.variable: ci.value}),
+        ))
+        assert outcome.outcome.raw_return_code != 0
+        assert f"prohibited with {ci.variable}={ci.value}" in f"{outcome.stdout}{outcome.stderr}"
 
 
 __all__: list[str] = ["TestsFlextInfraWorktreeBinding"]

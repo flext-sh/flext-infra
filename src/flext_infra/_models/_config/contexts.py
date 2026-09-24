@@ -722,6 +722,10 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr,
             m.Field(description="Canonical GitHub clone URL ending in .git"),
         ]
+        branch: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Member's declared Git branch from its owning .gitmodules"),
+        ] = None
         path: Annotated[
             Path, m.Field(description="POSIX path relative to its workspace root")
         ]

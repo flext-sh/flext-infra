@@ -21,18 +21,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import sysconfig
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra import c, config, t, u
 
 from .detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
-
-logger = u.fetch_logger(__name__)
 
 
 class FlextInfraFlextBindingService:
@@ -51,7 +51,7 @@ class FlextInfraFlextBindingService:
             payload_result.unwrap()
         )
         return r[t.VariadicTuple[str]].ok(
-            tuple(u.Infra.project_dependency_names_from_payload(payload))
+            tuple(u.Infra.declared_dependency_names_from_payload(payload))
         )
 
     @classmethod
@@ -63,48 +63,77 @@ class FlextInfraFlextBindingService:
         Fails closed when ``flext_root`` is not a flext workspace, so a mistyped
         path can never silently bind nothing and leave the consumer on its pins.
         """
+        paths = cls._binding_paths(consumer_root=consumer_root, flext_root=flext_root)
+        if paths.failure:
+            return r[t.VariadicTuple[str]].from_failure(paths)
+        return r[t.VariadicTuple[str]].ok(tuple(paths.value))
+
+    @classmethod
+    def _binding_paths(
+        cls, *, consumer_root: Path, flext_root: Path
+    ) -> p.Result[t.MappingKV[str, Path]]:
+        """Resolve declared dependencies from the supplier root and its members."""
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
         if workspace.failure:
-            return r[t.VariadicTuple[str]].fail(
+            return r[t.MappingKV[str, Path]].fail(
                 f"FLEXT is not a flext workspace: {flext_root}: "
                 f"{workspace.error or 'manifest unreadable'}"
             )
         available = {
-            declared_repository.distribution: declared_repository
-            for declared_repository in workspace.value.subprojects
+            declared_repository.distribution: (flext_root / declared_repository.path).resolve()
+            for declared_repository in (workspace.value.repository, *workspace.value.subprojects)
             if declared_repository.package
         }
         declared = cls._declared_distributions(consumer_root)
         if declared.failure:
-            return r[t.VariadicTuple[str]].from_failure(declared)
-        return r[t.VariadicTuple[str]].ok(
-            tuple(sorted(name for name in declared.value if name in available))
-        )
+            return r[t.MappingKV[str, Path]].from_failure(declared)
+        selected = {name: available[name] for name in sorted(declared.value) if name in available}
+        if not selected:
+            return r[t.MappingKV[str, Path]].fail(
+                f"requested flext binding selects no declared dependency: consumer={consumer_root}, supplier={flext_root}"
+            )
+        return r[t.MappingKV[str, Path]].ok(selected)
+
+    @staticmethod
+    def _validate_consumer_python(consumer_root: Path, python: Path) -> p.Result[bool]:
+        """Reject foreign or symlinked environments while allowing base Python links."""
+        identity = u.Infra.exact_worktree_root(consumer_root)
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        runtime_root = identity.value.superproject_root or identity.value.repo_root
+        environment = runtime_root / config.Infra.tooling.tools.pyright.path_rules.venv_name
+        scripts = Path(sysconfig.get_path("scripts", scheme="venv", vars={"base": str(environment), "platbase": str(environment)}))
+        expected = scripts / ("python.exe" if os.name == "nt" else c.Infra.PromotedSelector.VENV_PYTHON)
+        for path in (environment, scripts, consumer_root / environment.name):
+            if path.is_symlink():
+                return r[bool].fail(f"flext binding requires a physical consumer environment: {path}")
+        if python.absolute() != expected.absolute():
+            return r[bool].fail(f"flext binding interpreter must belong to the consumer: expected={expected}, actual={python}")
+        if not (environment / "pyvenv.cfg").is_file() or not os.access(expected, os.X_OK):
+            return r[bool].fail(f"flext binding requires the consumer's provisioned environment: {environment}; run make setup")
+        return r[bool].ok(True)
 
     @classmethod
     def apply(
         cls, *, consumer_root: Path, flext_root: Path, python: Path
     ) -> p.Result[int]:
-        """Rebind the consumer environment onto the worktree for this session."""
-        planned = cls.plan_targets(consumer_root=consumer_root, flext_root=flext_root)
+        """Install an explicit local candidate into the consumer's own environment.
+
+        The next setup without a binding restores the declared dependency sources.
+        CI installation always keeps its declared non-editable branch contract.
+        """
+        ci = config.Infra.codegen.make.ci
+        if u.Infra.env_value(ci.variable) == ci.value:
+            return r[int].fail(f"local editable flext binding is prohibited with {ci.variable}={ci.value}")
+        validated = cls._validate_consumer_python(consumer_root, python)
+        if validated.failure:
+            return r[int].from_failure(validated)
+        planned = cls._binding_paths(consumer_root=consumer_root, flext_root=flext_root)
         if planned.failure:
             return r[int].from_failure(planned)
-        targets = planned.value
-        if not targets:
-            u.Cli.info("flext binding: consumer declares no flext packages")
-            return r[int].ok(0)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
-        if workspace.failure:
-            return r[int].from_failure(workspace)
-        paths = {
-            declared_repository.distribution: (
-                flext_root / declared_repository.path
-            ).resolve()
-            for declared_repository in workspace.value.subprojects
-            if declared_repository.package
-        }
+        paths = planned.value
         editables: list[str] = []
-        for name in targets:
+        for name in paths:
             editables.extend(("--editable", str(paths[name])))
         installed = u.Cli.run_checked(
             (c.Infra.UV, "pip", "install", "--python", str(python), *editables),
@@ -113,8 +142,8 @@ class FlextInfraFlextBindingService:
         if installed.failure:
             return r[int].from_failure(installed)
         u.Cli.info(
-            f"flext binding: {len(targets)} package(s) bound to {flext_root} "
-            f"({', '.join(targets)})"
+            f"flext binding: {len(paths)} package(s) bound to {flext_root} "
+            f"({', '.join(paths)}); consumer_python={python}"
         )
         return r[int].ok(0)
 

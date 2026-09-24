@@ -26,6 +26,10 @@ class FlextInfraPytestEntry:
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
         if mode == "coverage":
             return runner.execute_coverage().unwrap()
+        if mode == "full":
+            return runner.execute_full().unwrap()
+        if mode:
+            raise ValueError(f"unknown pytest runner mode: {mode}")
         return runner.execute().unwrap()
 
 
