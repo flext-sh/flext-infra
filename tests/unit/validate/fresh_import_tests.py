@@ -269,6 +269,41 @@ class TestsFlextInfraFreshImport:
             tm.that(report.violations[0], has="consumer.py")
             tm.that(report.violations[0], has="Traceback")
 
+    def test_probe_larger_than_one_process_argument_still_runs(
+        self, tmp_path: Path
+    ) -> None:
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        exports = tuple(f"export_{index:05d}_published_name" for index in range(6000))
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            "".join(f"{name} = {index}\n" for index, name in enumerate(exports))
+            + f"__all__ = {exports!r}\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package,
+                init_path=initializer,
+                current_pkg=package.name,
+                surface=package.name,
+                importable=True,
+                generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=exports,
+        )
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+                publications=(publication,), repository_roots=(tmp_path,)
+            )
+        )
+        tm.that(report.passed, eq=True, msg=str(report.violations))
+
     def test_rejects_owned_module_imported_from_another_directory(
         self, tmp_path: Path
     ) -> None:
