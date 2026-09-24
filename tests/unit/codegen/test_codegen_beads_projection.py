@@ -89,8 +89,10 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_config, lacks="Gas City contract")
         if rendered_mise is None:
             pytest.fail("standalone identity must produce the managed Mise manifest")
-        tm.that(rendered_mise, lacks='[tools."github:steveyegge/gascity"]')
-        tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
+        # bd and gc are host binaries owned by the global mise config; a
+        # project manifest never declares either distribution.
+        tm.that(rendered_mise, lacks="beads")
+        tm.that(rendered_mise, lacks="gascity")
 
     def test_mise_manifest_provisions_managed_make(self, tmp_path: Path) -> None:
         """The generated ``.mise.toml`` must declare make as a managed tool.

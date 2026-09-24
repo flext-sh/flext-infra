@@ -237,10 +237,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             toolchain_data = {
                 field_name: value
                 for field_name, value in codegen.toolchain.model_dump().items()
-                if field_name in m.Infra.MiseTomlRenderSpec.model_fields
+                if field_name in m.Infra.ToolchainSpec.model_fields
             }
-            toolchain_data["gascity_enabled"] = target.gascity_enabled
-            return r[p.Model].ok(m.Infra.MiseTomlRenderSpec(**toolchain_data))
+            return r[p.Model].ok(m.Infra.ToolchainSpec(**toolchain_data))
 
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             project_types = target.beads.custom_issue_types
