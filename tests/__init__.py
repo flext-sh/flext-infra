@@ -9,34 +9,16 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_cli import cli
-    from flext_tests import (
-        active_rules,
-        api,
-        config,
-        discover_repository_root,
-        install_local_packages,
-        load_infra_report,
-        settings,
-        split_csv,
-        td,
-        tf,
-        tk,
-        tm,
-        tv,
-    )
-
-    from flext_core import core, d, e, h, lazy_attribute, r, x
-    from flext_infra import docs_main, infra, main
+    from flext_tests import api, d, e, h, r, td, tf, tk, tm, tv, x
 
     from . import integration, refactor, unit
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
-    from .constants import TestsFlextInfraConstants, c
+    from .constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
     from .constants_scan import TestsFlextInfraConstantsScanMixin
-    from .models import TestsFlextInfraModels, m
-    from .protocols import TestsFlextInfraProtocols, p
-    from .typings import TestsFlextInfraTypes, t
-    from .utilities import TestsFlextInfraUtilities, u
+    from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
+    from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
+    from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
+    from .utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
     from .utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
     from .utilities_deps import TestsFlextInfraUtilitiesDepsMixin
     from .utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
@@ -77,30 +59,17 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesToolingFixtureMixin",
     "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
     "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
-    "active_rules",
     "api",
     "c",
-    "cli",
-    "config",
-    "core",
     "d",
-    "discover_repository_root",
-    "docs_main",
     "e",
     "h",
-    "infra",
-    "install_local_packages",
     "integration",
-    "lazy_attribute",
-    "load_infra_report",
     "m",
-    "main",
     "p",
     "r",
     "refactor",
     "s",
-    "settings",
-    "split_csv",
     "t",
     "td",
     "tf",
@@ -147,23 +116,18 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".utilities_toml": ("TestsFlextInfraUtilitiesTomlMixin",),
             ".utilities_workspace_env": ("TestsFlextInfraUtilitiesWorkspaceEnvMixin",),
-            "flext_cli": ("cli",),
-            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
-            "flext_infra": ("docs_main", "infra", "main"),
             "flext_tests": (
-                "active_rules",
                 "api",
-                "config",
-                "discover_repository_root",
-                "install_local_packages",
-                "load_infra_report",
-                "settings",
-                "split_csv",
+                "d",
+                "e",
+                "h",
+                "r",
                 "td",
                 "tf",
                 "tk",
                 "tm",
                 "tv",
+                "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

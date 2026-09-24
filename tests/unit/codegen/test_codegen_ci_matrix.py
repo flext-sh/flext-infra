@@ -7,16 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, t
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from tests import u
 
 from ._support import CodegenTestSupport
+from .conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
 
@@ -154,6 +157,11 @@ class TestsFlextInfraCodegenCiMatrix:
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
+        # A verb whose workflow row omits the ci context never renders into CI
+        # (operator ruling 2026-09-23: make test runs locally and on pre-push).
+        for step in config.Infra.codegen.make.workflow:
+            if "ci" not in step.contexts:
+                tm.that(workflow, lacks=f"run: CI=Y make {step.verb}\n")
         tm.that(ci_step_runs, has="run: CI=Y make setup")
         # `conform` no longer exists as a Make verb (S1, operator law
         # 2026-09-14); the blocking generation gate is the "gen fixed point"
@@ -174,14 +182,8 @@ class TestsFlextInfraCodegenCiMatrix:
         gen_fixed_point_index = workflow.index("- name: gen fixed point (blocking)")
         audit_index = workflow.index("run: CI=Y make audit")
         check_index = workflow.index("run: CI=Y make check")
-        test_index = workflow.index("run: CI=Y make test")
         tm.that(
-            setup_index
-            < gen_fixed_point_index
-            < audit_index
-            < check_index
-            < test_index,
-            eq=True,
+            setup_index < gen_fixed_point_index < audit_index < check_index, eq=True
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
@@ -519,7 +521,7 @@ class TestsFlextInfraCodegenCiMatrix:
         ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
 
         tm.that(ci_job, has="github.event.pull_request.draft == false")
-        tm.that(ci_job, has="make test")
+        tm.that(ci_job, has="make check")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
         # The merge guard must inspect the PR head, not the refs/pull/N/merge
         # commit that actions/checkout selects by default on pull_request.
@@ -561,6 +563,28 @@ class TestsFlextInfraCodegenCiMatrix:
 
         for branch in config.Infra.codegen.branch_policy.ci_trigger_branches:
             tm.that(content, has=f"      - {branch}")
+
+    def test_docs_workflow_jobs_authenticate_toolchain_resolution(
+        self, tmp_path: Path
+    ) -> None:
+        """Every Docs job running make setup resolves the toolchain authenticated.
+
+        Shared-egress runners exhaust the anonymous REST budget before mise
+        resolves the moving @latest backends, so each job that provisions the
+        toolchain carries the job token exactly like blocking CI.
+        """
+        root = self._render_project(tmp_path / "external")
+        content = (root / ".github" / "workflows" / "docs.yml").read_text(
+            encoding="utf-8"
+        )
+        _, jobs = content.split("\njobs:\n", maxsplit=1)
+        setup_jobs = [
+            job for job in re.split(r"\n  (?=\S)", jobs) if "run: make setup" in job
+        ]
+        tm.that(setup_jobs, empty=False)
+        for job in setup_jobs:
+            tm.that(job, has="GITHUB_TOKEN: ${{ github.token }}")
+            tm.that(job, has="MISE_GITHUB_TOKEN: ${{ github.token }}")
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path
@@ -605,6 +629,95 @@ class TestsFlextInfraCodegenCiMatrix:
             content,
             has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';",
         )
+
+    @staticmethod
+    def _assert_sonarcloud_scope(rendered: str) -> None:
+        """Assert one rendered .sonarcloud.properties against the codegen SSOT."""
+        tests_dir = c.Infra.DIR_TESTS
+        codegen = config.Infra.codegen
+        entry = next(
+            item
+            for item in codegen.templates.entries
+            if item.destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME
+        )
+        template = u.Infra.codegen_templates_root(codegen) / entry.source
+        header = template.read_text(encoding="utf-8").split("\n\n", 1)[0]
+        tm.that(header, has="# @flext-regenerate: make gen")
+        tm.that(rendered.startswith(header), eq=True)
+        properties = {
+            key: value
+            for key, _, value in (
+                line.partition("=")
+                for line in rendered.splitlines()
+                if line and not line.startswith("#")
+            )
+        }
+        tm.that(properties["sonar.sources"], eq=".")
+        # Main and test sets must be disjoint: sonar.exclusions narrows only
+        # the main set, so the tests root that sonar.tests declares is excluded.
+        tm.that(
+            properties["sonar.exclusions"].split(","),
+            eq=[*codegen.sonarcloud.exclusions, f"{tests_dir}/**"],
+        )
+        tm.that(
+            properties["sonar.cpd.exclusions"].split(","),
+            eq=list(codegen.sonarcloud.cpd_exclusions),
+        )
+        tm.that(properties["sonar.tests"], eq=tests_dir)
+        tm.that(properties["sonar.test.inclusions"], has=tests_dir)
+        tm.that(
+            any(key.startswith("sonar.issue.ignore") for key in properties), eq=False
+        )
+        comments = "\n".join(
+            line for line in rendered.splitlines() if line.startswith("#")
+        )
+        for exclusion in codegen.sonarcloud.issue_exclusions:
+            tm.that(comments, has=exclusion.rule_key)
+            tm.that(comments, has=exclusion.resource_key)
+
+    def test_sonarcloud_properties_projects_ssot_scope(self, tmp_path: Path) -> None:
+        """A generated project carries the SSOT SonarCloud scope and its tests root."""
+        root = self._render_project(tmp_path / "external")
+        rendered = (root / c.Infra.SONARCLOUD_PROPERTIES_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that((root / c.Infra.DIR_TESTS).is_dir(), eq=True)
+        self._assert_sonarcloud_scope(rendered)
+
+    def test_sonarcloud_tests_root_is_always_materialized_by_conform(
+        self, infra_git_repo: Path
+    ) -> None:
+        """sonar.tests always names a real directory, even from a checkout without one.
+
+        Automatic analysis aborts when sonar.tests names an absent directory. The
+        file declares tests/ unconditionally because conform itself projects the
+        managed tests/ artifacts into every profile: starting from a
+        provider-governed clone with no tests/, the plan still materializes them.
+        """
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
+        # The seed ships a tests package; this case starts from a checkout without one.
+        shutil.rmtree(root / c.Infra.DIR_TESTS)
+        tm.that((root / c.Infra.DIR_TESTS).exists(), eq=False)
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        managed_tests_files = [
+            item.path.as_posix()
+            for item in config.Infra.codegen.managed_files
+            if item.path.parts[0] == c.Infra.DIR_TESTS
+        ]
+        tm.that(managed_tests_files, empty=False)
+        for relative in managed_tests_files:
+            tm.not_none(u.Tests.planned_text(plan, relative))
+        rendered = tm.not_none(
+            u.Tests.planned_text(plan, c.Infra.SONARCLOUD_PROPERTIES_FILENAME)
+        )
+        self._assert_sonarcloud_scope(rendered)
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""

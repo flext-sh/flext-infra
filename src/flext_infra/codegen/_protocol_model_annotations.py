@@ -156,7 +156,15 @@ class FlextInfraCodegenProtocolModelAnnotations:
         """Return the existing public facade path for an identical runtime type."""
         for prefix, probe in target.facade_probes:
             module_path, _, attribute = probe.rpartition(".")
-            facade = getattr(import_module(module_path), attribute)
+            try:
+                module = import_module(module_path)
+            except ImportError:
+                # A member without that facade surface cannot hold the value;
+                # probing continues with the next surface.
+                continue
+            facade = getattr(module, attribute, None)
+            if facade is None:
+                continue
             for name in dir(facade):
                 if getattr(facade, name, None) is value:
                     return f"{prefix}.{name}"

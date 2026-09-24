@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import ast
+from typing import TYPE_CHECKING
 
 from ._rope_analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeModulePatch:
@@ -31,6 +35,56 @@ class FlextInfraUtilitiesRopeModulePatch:
                 for target in (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
                 )
+            )
+        )
+
+    @classmethod
+    def facade_letter_names_source(cls, source: str) -> frozenset[str]:
+        """Return the exported lower-case names bound directly to a class.
+
+        A facade letter (ADR-015 R1a, ADR-018 p.1) is a published alias whose
+        single module binding names a class the module declares or imports,
+        e.g. ``c = FlextCliConstants`` or ``tm = FlextTestsMatchersUtilities.X``.
+        Singleton instances (``cli = FlextCli.fetch_global()``), functions
+        (``main``), and attributes of instances (``lazy.attribute``) stay in
+        the namespace root that declares them and are never inherited.
+        """
+        tree = ast.parse(source)
+        class_names = {
+            node.name for node in tree.body if isinstance(node, ast.ClassDef)
+        } | {
+            alias.asname or alias.name
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+        }
+        letters: set[str] = set()
+        for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+            source
+        ):
+            if not name.islower() or name.startswith("_"):
+                continue
+            bindings = cls.runtime_alias_bindings(source, alias=name)
+            if len(bindings) != 1 or bindings[0].value is None:
+                continue
+            root = bindings[0].value
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            if isinstance(root, ast.Name) and root.id in class_names:
+                letters.add(name)
+        return frozenset(letters)
+
+    @staticmethod
+    def absolute_import_sources_source(source: str, *, name: str) -> t.StrSequence:
+        """Return the top-level packages an absolute ``from X import`` binds name from."""
+        return tuple(
+            dict.fromkeys(
+                node.module.split(".", 1)[0]
+                for node in ast.walk(ast.parse(source))
+                if isinstance(node, ast.ImportFrom)
+                and node.level == 0
+                and node.module is not None
+                and any((alias.asname or alias.name) == name for alias in node.names)
             )
         )
 

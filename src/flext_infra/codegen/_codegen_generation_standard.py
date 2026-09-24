@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from sys import stdlib_module_names
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 
 from ._codegen_generation_renderers import FlextInfraCodegenGenerationRenderersMixin
 
@@ -158,6 +158,62 @@ class FlextInfraCodegenGenerationStandardMixin(
         wrapped = ",\n    ".join(f'"{name}"' for name in exports)
         return "(\n    " + wrapped + ",\n)"
 
+    @staticmethod
+    def _lazy_module_argument_inline(
+        groups: t.SequenceOf[t.StrSequencePair],
+    ) -> str | None:
+        """Render the module mapping as one indent-free call argument."""
+        if not groups:
+            return "MappingProxyType({})"
+        if len(groups) != 1:
+            return None
+        module, names = groups[0]
+        inner = ", ".join(f'"{name}"' for name in names)
+        if len(names) == 1:
+            inner = f"{inner},"
+        return f'MappingProxyType({{"{module}": ({inner})}})'
+
+    @staticmethod
+    def _lazy_alias_argument_inline(
+        groups: t.SequenceOf[t.StrPairSequencePair],
+    ) -> str | None:
+        """Render the alias mapping as one indent-free call argument."""
+        if not groups:
+            return "alias_groups=MappingProxyType({})"
+        if len(groups) != 1:
+            return None
+        module, pairs = groups[0]
+        values = tuple(
+            f'("{export_name}", "{attr_name}")' for export_name, attr_name in pairs
+        )
+        inner = ", ".join(values)
+        if len(values) == 1:
+            inner = f"{inner},"
+        return f'alias_groups=MappingProxyType({{"{module}": ({inner})}})'
+
+    @classmethod
+    def _format_lazy_call_arguments(
+        cls,
+        module_groups: t.SequenceOf[t.StrSequencePair],
+        alias_groups: t.SequenceOf[t.StrPairSequencePair],
+    ) -> str:
+        """Join the lazy-import call arguments on one line when they fit.
+
+        The project fixer flattens a call whose joined arguments fit on one
+        continuation line, so an always-exploded render oscillates between
+        ``make gen`` and ``make fix`` (the fleet-wide dirty ``__init__.py``
+        residue). Emitting the joined form keeps the projection a fixed
+        point of both tools; 8 is the argument continuation indent.
+        """
+        module_argument = cls._lazy_module_argument_inline(module_groups)
+        alias_argument = cls._lazy_alias_argument_inline(alias_groups)
+        if module_argument is None or alias_argument is None:
+            return ""
+        joined = f"{module_argument}, {alias_argument}, sort_keys=False"
+        if 8 + len(joined) > c.Infra.MAX_LINE_LENGTH:
+            return ""
+        return joined
+
     @classmethod
     def _format_lazy_module_mapping(
         cls, groups: t.SequenceOf[t.StrSequencePair]
@@ -166,13 +222,11 @@ class FlextInfraCodegenGenerationStandardMixin(
         if not groups:
             return "        MappingProxyType({}),"
         if len(groups) == 1:
-            module, names = groups[0]
-            inner = ", ".join(f'"{name}"' for name in names)
-            if len(names) == 1:
-                inner = f"{inner},"
-            compact = f'        MappingProxyType({{"{module}": ({inner})}}),'
-            if len(compact) <= c.Infra.MAX_LINE_LENGTH:
-                return compact
+            inline = cls._lazy_module_argument_inline(groups)
+            if inline is not None:
+                compact = f"        {inline},"
+                if len(compact) <= c.Infra.MAX_LINE_LENGTH:
+                    return compact
         lines: t.MutableSequenceOf[str] = ["        MappingProxyType({"]
         for module, names in groups:
             lines.extend(
@@ -193,18 +247,11 @@ class FlextInfraCodegenGenerationStandardMixin(
         if not groups:
             return "        alias_groups=MappingProxyType({}),"
         if len(groups) == 1:
-            module, pairs = groups[0]
-            values = tuple(
-                f'("{export_name}", "{attr_name}")' for export_name, attr_name in pairs
-            )
-            inner = ", ".join(values)
-            if len(values) == 1:
-                inner = f"{inner},"
-            compact = (
-                f'        alias_groups=MappingProxyType({{"{module}": ({inner})}}),'
-            )
-            if len(compact) <= c.Infra.MAX_LINE_LENGTH:
-                return compact
+            inline = cls._lazy_alias_argument_inline(groups)
+            if inline is not None:
+                compact = f"        {inline},"
+                if len(compact) <= c.Infra.MAX_LINE_LENGTH:
+                    return compact
         lines: t.MutableSequenceOf[str] = ["        alias_groups=MappingProxyType({"]
         for module, pairs in groups:
             lines.extend(
@@ -225,13 +272,25 @@ class FlextInfraCodegenGenerationStandardMixin(
         """Return the distribution package that owns ``pkg_dir``.
 
         The nearest ancestor carrying the project manifest is the project
-        root, and its directory name is the distribution package under the
-        convention every FLEXT repository follows. Return ``None`` when no
-        manifest is reachable so the caller keeps its prior behavior.
+        root, and the distribution package is its manifest-declared name
+        (``u.Infra.read_project_metadata_result``). The root directory
+        name was the historical proxy; it broke every checkout whose root
+        directory is not named after the package — a git worktree named
+        after its branch (``0.12.0-dev``) rendered wrapper roots
+        (``examples/``, ``scripts/``, ``tests/``) whose TYPE_CHECKING
+        block sorted the project package as third-party, diverging from
+        CI renders and failing ruff I001 at the generated fixed point.
+        Return ``None`` when no manifest is reachable and the directory
+        proxy when the manifest is unreadable, so the caller keeps its
+        prior behavior.
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
-            if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
-                return candidate.name.replace("-", "_")
+            if not (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                continue
+            metadata_result = u.Infra.read_project_metadata_result(candidate)
+            if metadata_result.success:
+                return metadata_result.value.package_name
+            return candidate.name.replace("-", "_")
         return None
 
     @classmethod
@@ -289,6 +348,9 @@ class FlextInfraCodegenGenerationStandardMixin(
             ),
             lazy_module_mapping=cls._format_lazy_module_mapping(lazy_module_groups),
             lazy_alias_mapping=cls._format_lazy_alias_mapping(lazy_alias_groups),
+            lazy_call_arguments=cls._format_lazy_call_arguments(
+                lazy_module_groups, lazy_alias_groups
+            ),
         )
 
     @classmethod

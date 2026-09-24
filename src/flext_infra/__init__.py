@@ -20,9 +20,7 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import cli
-
-    from flext_core import core, d, e, h, lazy_attribute, r, x
+    from flext_cli import d, e, h, r, x
 
     from . import (
         check,
@@ -80,7 +78,7 @@ if TYPE_CHECKING:
     from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .codemod.text_gates import FlextInfraModTextGateEngine
-    from .constants import FlextInfraConstants, c
+    from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
     from .deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
     from .deps.detector import FlextInfraRuntimeDevDependencyDetector
@@ -178,9 +176,14 @@ if TYPE_CHECKING:
     from .git import FlextInfraGitService
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
-    from .models import FlextInfraModels, m
+    from .maintenance.sonarcloud import FlextInfraSonarcloudSettingsSync
+    from .models import FlextInfraModels, FlextInfraModels as m
     from .promoted import FlextInfraPromoted
-    from .protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+    from .protocols import (
+        FlextInfraProtocols,
+        FlextInfraProtocols as p,
+        FlextInfraProtocolsBase,
+    )
     from .refactor.accessor_migration import FlextInfraAccessorMigrationOrchestrator
     from .refactor.census import FlextInfraRefactorCensus
     from .refactor.classvar_constant_autofix import (
@@ -206,6 +209,7 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate import ValidationRoutes
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
+    from .services.codegen import FlextInfraCodegen
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.dataclass_modelizer import FlextInfraRefactorDataclassModelizer
@@ -226,8 +230,8 @@ if TYPE_CHECKING:
     from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from .typings import FlextInfraTypes, t
-    from .utilities import FlextInfraUtilities, u
+    from .typings import FlextInfraTypes, FlextInfraTypes as t
+    from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .validate.cprofile_report import FlextInfraCProfileReport
     from .validate.fresh_import import FlextInfraValidateFreshImport
     from .validate.gate_contract import FlextInfraGateContractValidator
@@ -289,6 +293,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
+    "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConsolidator",
@@ -438,6 +443,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraSkillValidator",
     "FlextInfraSmellFixer",
     "FlextInfraSmellsGate",
+    "FlextInfraSonarcloudSettingsSync",
     "FlextInfraStubSupplyChain",
     "FlextInfraTestmonDbInspector",
     "FlextInfraTextPatternScanner",
@@ -477,12 +483,10 @@ __all__: tuple[str, ...] = (
     "__version_info__",
     "c",
     "check",
-    "cli",
     "codegen",
     "codemod",
     "collect_markdown_files",
     "config",
-    "core",
     "d",
     "deps",
     "detectors",
@@ -493,7 +497,6 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
-    "lazy_attribute",
     "m",
     "main",
     "maintenance",
@@ -673,6 +676,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
+            ".maintenance.sonarcloud": ("FlextInfraSonarcloudSettingsSync",),
             ".models": ("FlextInfraModels", "m"),
             ".promoted": ("FlextInfraPromoted",),
             ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
@@ -712,6 +716,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_validate": ("ValidationRoutes",),
             ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
+            ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
             ".transformers.class_reconstructor": (
                 "FlextInfraRefactorClassReconstructor",
@@ -793,8 +798,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("cli",),
-            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
+            "flext_cli": ("d", "e", "h", "r", "x"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

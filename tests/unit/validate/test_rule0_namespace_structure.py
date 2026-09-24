@@ -28,9 +28,10 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
         facade = layout.package_dir / c.Infra.FAMILY_FILES[family].lstrip("*")
         alias, suffix = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS[facade.name]
         class_name = f"{layout.class_stem}{suffix}"
-        if family != "m":
+        content = facade.read_text(encoding="utf-8")
+        if f"{alias} = {class_name}" not in content:
             facade.write_text(
-                facade.read_text(encoding="utf-8")
+                content
                 + f"\n{alias} = {class_name}\n"
                 + f"__all__ = [{class_name!r}, {alias!r}]\n",
                 encoding="utf-8",
@@ -84,8 +85,8 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             "m = FlextTestModels", ""
         )
         source = source.replace(
-            "class FlextTestModels(m):",
-            "m = FlextTestModels\n\nclass FlextTestModels(m):",
+            "class FlextTestModels(FlextTestModelsBase):",
+            "m = FlextTestModels\n\nclass FlextTestModels(FlextTestModelsBase):",
         )
         root = self._create_namespace_project(
             tmp_path, module_source=source, module_name="models.py"

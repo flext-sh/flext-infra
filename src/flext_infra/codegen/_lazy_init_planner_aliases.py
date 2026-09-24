@@ -68,6 +68,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             *self._parent_packages(pkg_dir),
             self._source_package_name(pkg_dir, surface),
         ))
+        # Discovery reads only the facade parents, never the dependency closure:
+        # a dev or codegen dependency is a consumer, never a facade ancestor.
+        # An indexed parent is read from its declared sources (its generated
+        # initializer is this run's output, never its input); an external
+        # parent is read from its published initializer.
         alias_names = tuple(
             dict.fromkeys(
                 name

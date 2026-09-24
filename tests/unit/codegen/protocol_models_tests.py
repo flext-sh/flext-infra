@@ -87,6 +87,19 @@ def ship(order: p.DemoMember.Order) -> p.DemoMember.Payload:
     raise NotImplementedError
 '''
 
+TYPINGS = '''\
+"""Demo member typings container."""
+
+
+from flext_core import t
+
+
+class DemoMemberTypes:
+    """Member typings container."""
+
+    VariadicTuple = t.VariadicTuple
+'''
+
 
 def _write_member(root: Path) -> None:
     """Materialize the demo member on disk."""
@@ -96,6 +109,7 @@ def _write_member(root: Path) -> None:
     (package / "__init__.py").write_text("", encoding="utf-8")
     (package / "models.py").write_text(MODELS, encoding="utf-8")
     (package / "protocols.py").write_text(PROTOCOLS, encoding="utf-8")
+    (package / "typings.py").write_text(TYPINGS, encoding="utf-8")
     (package / "consumer.py").write_text(CONSUMER, encoding="utf-8")
     (package / "_protocols" / "manual_ports.py").write_text(
         MANUAL_PORTS, encoding="utf-8"

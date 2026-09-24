@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import FlextTestsUtilities, tm
 
 from flext_core import r
-from flext_infra import u
+from flext_infra import FlextInfraUtilities
 from tests import c, m, p, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
@@ -27,7 +27,7 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 
 
-class TestsFlextInfraUtilities(FlextTestsUtilities, u):
+class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
@@ -184,16 +184,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         f"class {stem}{suffix}{class_suffix}:\n    pass\n",
                         encoding="utf-8",
                     )
+                # The facade class extends its own private bases and rebinds
+                # the letter locally — never the parent letter itself, whose
+                # import shadows the local alias binding and breaks the
+                # owner election.
                 (package_dir / f"{public_name}.py").write_text(
                     "from __future__ import annotations\n\n"
-                    f"from flext_core import {alias}\n\n"
                     f"from {package_dir.name}.{private_dir}.base import "
                     f"{stem}{suffix}Base\n"
                     f"from {package_dir.name}.{private_dir}.domain import "
                     f"{stem}{suffix}Domain\n\n\n"
-                    f"class {stem}{suffix}({alias}):\n"
+                    f"class {stem}{suffix}({stem}{suffix}Base, {stem}{suffix}Domain):\n"
                     f"    class {namespace}({stem}{suffix}Base, {stem}{suffix}Domain):\n"
-                    "        pass\n",
+                    "        pass\n\n\n"
+                    f"{alias} = {stem}{suffix}\n\n"
+                    f'__all__: list[str] = ["{stem}{suffix}", "{alias}"]\n',
                     encoding="utf-8",
                 )
             for simple_name, class_suffix in (

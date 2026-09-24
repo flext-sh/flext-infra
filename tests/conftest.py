@@ -19,6 +19,38 @@ from tests import c, t, u
 # the only fixture owner; conftest must not re-export or shadow its fixtures.
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
+_TRACKED_CODEGEN_CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent
+    / c.Infra.CODEGEN_CONFIG_DIR
+    / c.Infra.CODEGEN_CONFIG_FILENAME
+)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _guard_tracked_codegen_config_untouched() -> Iterator[None]:
+    """Fail loud if the suite writes to the real, tracked ``config/codegen.yaml``.
+
+    Root cause (flext-eles2): dependency-floor rewrite tests exercised the
+    public ``--rewrite-constraints`` entry point through workspaces that never
+    declared their own governed SSOT, so the floor writer fell back to the
+    packaged/installed ``flext_infra`` config directory — this very checkout
+    in an editable install — and silently flipped floors in the real tracked
+    file. The floor writer now resolves its target from the modernizer's own
+    ``repository_root`` and every workspace fixture declares its own isolated
+    ``config/codegen.yaml``; this session-wide guard proves the real file
+    stays untouched by the whole suite, current and future.
+    """
+    before = _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
+    yield
+    after = _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
+    if after != before:
+        pytest.fail(
+            "test suite modified the tracked repository file "
+            f"{_TRACKED_CODEGEN_CONFIG_PATH}; dependency-floor and codegen "
+            "writers must target an isolated workspace, never the real "
+            "checkout (flext-eles2)"
+        )
+
 
 @pytest.fixture
 def installed_dependency_path(tmp_path: Path) -> Iterator[Path]:
