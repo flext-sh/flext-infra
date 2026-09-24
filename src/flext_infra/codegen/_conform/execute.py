@@ -719,9 +719,8 @@ class FlextInfraCodegenConformExecute(
             repository_root=request.root
         ).build_report(
             publications=lazy_analysis.publications,
-            repository_roots=tuple(
-                request.root / repository.path
-                for repository in verified.value.repositories
+            repository_roots=self.fresh_import_repository_roots(
+                request.root, verified.value.repositories
             ),
         )
         if imported.failure:
@@ -731,6 +730,22 @@ class FlextInfraCodegenConformExecute(
                 "\n".join((imported.value.summary, *imported.value.violations))
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def fresh_import_repository_roots(
+        root: Path, repositories: t.VariadicTuple[m.Infra.RepositoryRef]
+    ) -> tuple[Path, ...]:
+        """Resolve the fresh-import probe scope from declared repositories.
+
+        Fresh-import probes validate Python publications, so only declared
+        Python packages enter the scope: a repository whose manifest carries
+        ``package: false`` (a workspace umbrella root, for example) owns no
+        importable layout, and requiring one there made ``make gen`` fail on
+        every such checkout regardless of what conform actually published.
+        """
+        return tuple(
+            root / repository.path for repository in repositories if repository.package
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformExecute"]
