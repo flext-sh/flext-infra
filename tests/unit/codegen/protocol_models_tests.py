@@ -25,13 +25,6 @@ MODELS = '''\
 from flext_core import m, t
 
 
-type Permuted[First, Second] = tuple[Second, First]
-type Repeated[Value] = tuple[Value, Value]
-type Unused[Value, Ignored] = tuple[Value, ...]
-type Identity[Value] = Value
-type Nested[Value] = Permuted[Value, list[Value]]
-
-
 class Order(m.FrozenModel):
     """A validated order."""
 
