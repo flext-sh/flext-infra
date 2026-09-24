@@ -267,8 +267,7 @@ class FlextInfraConfigModelsRender:
             ),
         ]
         api_timeout_seconds: Annotated[
-            t.PositiveInt,
-            m.Field(description="Per-request SonarCloud web API timeout"),
+            t.PositiveInt, m.Field(description="Per-request SonarCloud web API timeout")
         ]
         issue_exclusions: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsRender.SonarcloudIssueExclusionSpec],
