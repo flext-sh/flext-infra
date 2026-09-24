@@ -73,7 +73,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
             content,
-            contains='__all__: t.VariadicTuple[str] = ("Demo", "__version__", "r")',
+            contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")',
         )
         tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="    from .api import Demo")
@@ -169,7 +169,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from flext_core.lazy import")
-        tm.that(content, contains="__all__: t.VariadicTuple[str] = ()")
+        tm.that(content, contains="__all__: tuple[str, ...] = ()")
 
     def test_root_initializer_rejects_private_entries_outside_all(self) -> None:
         """Render no package attribute that is absent from the public contract."""
@@ -187,7 +187,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from ._utilities.conversion import DemoConversion")
         tm.that(content, lacks="DemoConversion")
-        tm.that(content, contains='__all__: t.VariadicTuple[str] = ("Demo",)')
+        tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
 
     def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
         """Emit relative declarations as explicit public re-exports."""
@@ -222,7 +222,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from flext_core.lazy import")
         tm.that(
-            init_content, contains='__all__: t.VariadicTuple[str] = ("Demo", "Nested")'
+            init_content, contains='__all__: tuple[str, ...] = ("Demo", "Nested")'
         )
         tm.that(init_content, contains="install_lazy_exports")
 
@@ -241,7 +241,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from .settings import DemoFixture")
         tm.that(
-            init_content, contains='__all__: t.VariadicTuple[str] = ("DemoFixture",)'
+            init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)'
         )
         tm.that(init_content, contains="install_lazy_exports")
 
@@ -258,7 +258,7 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="__all__: t.VariadicTuple[str] = ()")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="from flext_core.lazy import")
         tm.that(init_content, lacks="install_lazy_exports")
 
@@ -275,7 +275,7 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="__all__: t.VariadicTuple[str] = ()")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="from flext_core.lazy import")
         tm.that(init_content, lacks="install_lazy_exports")
 

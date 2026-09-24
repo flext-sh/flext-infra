@@ -9,14 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_cli import m as cli_m
-
-from flext_core import m
-
-if TYPE_CHECKING:
-    from flext_cli.models import FlextCliModels
+from flext_cli import m
 
 from ._models._config import FlextInfraConfigModels
 from ._models.base import FlextInfraModelsBase
@@ -47,13 +40,6 @@ from ._models.worktree import FlextInfraModelsWorktree
 
 class FlextInfraModels(m):
     """Merged model namespace for flext-infra domain objects."""
-
-    # NOTE (multi-agent): keep CLI route contracts available as FlextInfraModels.Cli
-    # for legacy facade usage from CLI service route declarations.
-    if TYPE_CHECKING:
-        Cli: type[FlextCliModels.Cli]
-    else:
-        Cli = cli_m.Cli
 
     class Infra(
         FlextInfraModelsCensus,

@@ -30,17 +30,14 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef],
         has_devcontainer: bool,
     ) -> m.Infra.GithubWorkflowRenderSpec:
-        spec = CodegenTestSupport.Ci.workflow_spec(
+        return CodegenTestSupport.Ci.workflow_spec(
             dist="demo",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="develop",
             ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
+            workspace_repositories=workspace_repositories,
+            has_devcontainer=has_devcontainer,
         )
-        return type(spec).model_validate({
-            **spec.model_dump(),
-            "workspace_repositories": workspace_repositories,
-            "has_devcontainer": has_devcontainer,
-        })
 
     def test_standalone_pyproject_template_does_not_declare_empty_workspace(
         self,
