@@ -5,35 +5,36 @@ from __future__ import annotations
 import hashlib
 import sys
 from functools import lru_cache
-from importlib.metadata import version
+from importlib.metadata import distributions
 from pathlib import Path
 from typing import Final
 
 from flext_infra import c, config, t
 
+from ..._pytest_collection import FlextInfraPytestCollection
+
 from .base import FlextInfraPytestRunnerBase
 
 _NO_COVERAGE: Final[t.VariadicTuple[str]] = ("--no-cov",)
-_TOOLCHAIN_PACKAGES: Final[t.StrTuple] = (
-    "flext-infra",
-    "flext-tests",
-    "pytest",
-    "pytest-testmon",
-)
 
 
 @lru_cache(maxsize=1)
 def _toolchain_testmon_environment() -> str:
     """Return the toolchain-fingerprinted testmon environment name.
 
-    The environment name digests the exact runner toolchain versions, so a
-    runner or plugin upgrade can never read a database written by an older
-    toolchain as a hot cache: the new environment starts cold and the first
-    run executes the whole suite for real (no false green).
+    Include the interpreter and installed distribution provenance. Git branch
+    dependencies can change commits while retaining the same package version;
+    their PEP 610 receipts must therefore participate in the cache identity.
+    Registry distributions legitimately have no direct-URL receipt.
     """
-    fingerprint = ";".join(
-        f"{package}={version(package)}" for package in _TOOLCHAIN_PACKAGES
-    )
+    fingerprint = "\n".join((
+        sys.version,
+        *sorted(
+            f"{distribution.name}={distribution.version}:"
+            f"{distribution.read_text('direct_url.json')!r}"
+            for distribution in distributions()
+        ),
+    ))
     digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
     return f"toolchain-{digest}"
 
@@ -117,9 +118,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Build the testmon suite argv (never the cov plugin)."""
         pytest = config.Infra.tooling.tools.pytest
         selection = selected_node_ids or None
-        # Nothing selected means nothing to distribute across workers; a cold
-        # cache serializes the seeding run so every worker would otherwise see
-        # a different testmon set.
+        # An empty selection needs no workers. Explicit serial execution remains
+        # available to callers; cold and warm cache runs share the same manifest.
         workers = (
             "0"
             if serialize or selected_node_ids == ()
@@ -130,6 +130,15 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             targets=(tuple(selection) if selection else (str(self.target),)),
             workers=workers,
             trailing=(
+                *(
+                    (
+                        "-p",
+                        FlextInfraPytestCollection.__module__,
+                        FlextInfraPytestCollection.OPTION,
+                    )
+                    if selection
+                    else ()
+                ),
                 "--testmon",
                 *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
                 "--testmon-env",

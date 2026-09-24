@@ -83,11 +83,10 @@ class FlextInfraPytestRunnerExecution(
             report_dir / f"{artifact}.log", outcome.stdout or ""
         ).unwrap()
         if not node_ids and not complete:
-            # The hot selection can be legitimately empty (all known tests
-            # clean); the complete inventory must then drive the suite, so its
-            # resolution is returned — discarding it ran the suite against the
-            # hot cache again and collected nothing.
-            return self._resolve_selection(report_dir, complete=True)
+            # The inventory proves every cache deselection; it is evidence,
+            # not a replacement for the empty incremental selection. Returning
+            # its IDs here silently turned a cache hit into a full execution.
+            self._resolve_selection(report_dir, complete=True)
         return node_ids
 
     def _run_suite(
@@ -181,7 +180,6 @@ class FlextInfraPytestRunnerExecution(
         report_dir = self._report_directory()
         u.Cli.ensure_dir(self.testmon_db.parent).unwrap()
         pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
-        cold_cache = pre_digest is None
         cache_restored = False
         if pre_digest is not None:
             pre_state = self._inspect_cache(digest=pre_digest).unwrap()
@@ -190,11 +188,10 @@ class FlextInfraPytestRunnerExecution(
                 msg = f"testmon preflight rejected cache: {pre_state.reason}"
                 raise RuntimeError(msg)
         selection = self._resolve_selection(report_dir)
-        # A cold cache seeds deterministically only when one process writes it:
-        # parallel workers each resolve testmon against an evolving database and
-        # xdist aborts with "Different tests were collected". Serialize the
-        # seeding run; parallel distribution is a warm-cache path.
-        command = self.build_command(report_dir, selection, serialize=cold_cache)
+        # Workers execute one centrally ordered selection. The collection plugin
+        # enforces that manifest for both cold and warm caches while testmon
+        # continues to collect dependencies through its xdist integration.
+        command = self.build_command(report_dir, selection)
         outcome = self._run_suite(command, report_dir)
         cache_hit = (
             outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED

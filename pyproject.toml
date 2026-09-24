@@ -62,6 +62,9 @@ Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
 Homepage = "https://github.com/flext-sh/flext-infra"
 Repository = "https://github.com/flext-sh/flext-infra"
 
+[project.entry-points.pytest11]
+"flext_infra._pytest_collection" = "flext_infra._pytest_collection:FlextInfraPytestCollection"
+
 [project.optional-dependencies]
 typings = ["types-Markdown"]
 
