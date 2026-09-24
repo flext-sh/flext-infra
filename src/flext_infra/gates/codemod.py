@@ -72,10 +72,15 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
-            if not u.Cli.process_succeeded(scan.outcome):
+            # ast-grep exits non-zero when it finds error-severity
+            # diagnostics, so an exit code alone never means a crash: the
+            # crash contract is a failed process with NO output at all.
+            crashed = (
+                not u.Cli.process_succeeded(scan.outcome) and not scan.stdout.strip()
+            )
+            if crashed:
                 # A crashed scanner is a machinery failure: it stays blocking
-                # (with whatever output the scan produced before dying) and
-                # is never observable debt.
+                # and is never observable debt.
                 failures.append(
                     m.Infra.Issue(
                         file=c.Infra.PYPROJECT_FILENAME,
@@ -84,7 +89,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         code=self.gate_id,
                         message=(
                             f"{ruleset.provider}: ast-grep execution failed — "
-                            f"{scan.stderr or scan.stdout or 'unknown error'}"
+                            f"{scan.stderr or 'unknown error'}"
                         ),
                         severity=str(c.Infra.GateSeverity.ERROR.value),
                     )
@@ -111,9 +116,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     def _observational_findings(
         scan: p.Cli.CommandOutput, provider: str
     ) -> t.SequenceOf[m.Infra.Issue]:
-        """Turn one successful scan's stdout into reported policy findings."""
-        if not u.Cli.process_succeeded(scan.outcome):
-            return ()
+        """Turn one scan's stdout into reported policy findings."""
         return tuple(
             m.Infra.Issue(
                 file=provider,
