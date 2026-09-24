@@ -91,31 +91,8 @@ class FlextInfraProtocolsBase(Protocol):
     # These declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
-    class MiseToolSpec(Protocol):
-        """One exact mise backend selector and immutable version."""
-
-        @property
-        def selector(self) -> str:
-            """Canonical mise backend selector."""
-            ...
-
-        @property
-        def version(self) -> str:
-            """Exact tool version installed by mise."""
-            ...
-
-    @runtime_checkable
-    class ProtectedMiseToolSpec(MiseToolSpec, Protocol):
-        """Fleet-owned mise distribution identity."""
-
-        @property
-        def selector_patterns(self) -> t.StrSequence:
-            """Glob patterns identifying equivalent distributions."""
-            ...
-
-    @runtime_checkable
-    class BeadsToolSpec(ProtectedMiseToolSpec, Protocol):
-        """Canonical Beads distribution and Gas City projection contract."""
+    class BeadsToolSpec(Protocol):
+        """Beads ledger and Gas City projection contract."""
 
         @property
         def endpoint_origin(self) -> str:

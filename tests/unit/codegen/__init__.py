@@ -108,9 +108,6 @@ if TYPE_CHECKING:
     from .test_workspace_root_setup_submodules import (
         TestsFlextInfraWorkspaceRootSetupSubmodules,
     )
-    from .toolchain_beads_distribution_tests import (
-        TestsFlextInfraToolchainBeadsDistribution,
-    )
     from .toolchain_go_backend_tests import TestsFlextInfraToolchainGoBackend
     from .toolchain_make_tests import TestsFlextInfraToolchainMake
     from .toolchain_requirement_tests import TestsFlextInfraToolchainRequirement
@@ -182,7 +179,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraSetupNeverDestroys",
     "TestsFlextInfraSubmoduleRecipeShell",
     "TestsFlextInfraTemplateFormatterFixedPoint",
-    "TestsFlextInfraToolchainBeadsDistribution",
     "TestsFlextInfraToolchainGoBackend",
     "TestsFlextInfraToolchainMake",
     "TestsFlextInfraToolchainRequirement",
@@ -321,9 +317,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_vscode_owner_merge": ("TestsFlextInfraVscodeOwnerMerge",),
             ".test_workspace_root_setup_submodules": (
                 "TestsFlextInfraWorkspaceRootSetupSubmodules",
-            ),
-            ".toolchain_beads_distribution_tests": (
-                "TestsFlextInfraToolchainBeadsDistribution",
             ),
             ".toolchain_go_backend_tests": ("TestsFlextInfraToolchainGoBackend",),
             ".toolchain_make_tests": ("TestsFlextInfraToolchainMake",),
