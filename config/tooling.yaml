@@ -1,12 +1,16 @@
 Infra:
-  # Operator law 2026-09-22: flext-infra's own census/namespace debt stays
-  # visible but never blocks CI; findings print as warnings and the reports
-  # still record them. Root-cause repair continues at the owning campaigns.
+  # Operator activation is global; consumers preserve the raw findings.
   check_policy:
-    # flext-1pquc: the model-facade composition debt (~99 no-any-return)
-    # is fleet-visible since the check-complement CI step; it warns while
-    # the debt is ground down at its owner.
-    warning_gates: [runtime-census, namespace, mypy]
+    enforcement_enabled: false
+    gates:
+      - markdown
+      - mypy
+      - namespace
+      - runtime-census
+      - silent-failure
+      - duplication
+      - tier-whitelist
+      - pyrefly
   tooling:
     # flext-j47u (codex): canonical validated tooling and suppression-policy SSOT.
     tools:

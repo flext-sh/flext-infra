@@ -629,15 +629,22 @@ class FlextInfraConfigModelsArtifact:
         ] = ()
 
     class CheckPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Quality-gate blocking policy: warning gates report without failing."""
+        """Producer-owned activation policy for enforcement findings."""
 
-        warning_gates: Annotated[
+        enforcement_enabled: Annotated[
+            bool,
+            m.Field(
+                strict=True,
+                description="Operator activation of blocking enforcement findings",
+            ),
+        ] = False
+        gates: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
-                    "Gate ids whose findings stay visible as warnings and never "
-                    "block the check verdict"
+                    "Gate ids controlled by global enforcement activation; "
+                    "tool and invocation failures always block"
                 ),
             ),
         ] = ()
