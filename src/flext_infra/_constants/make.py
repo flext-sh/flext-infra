@@ -34,6 +34,7 @@ class FlextInfraConstantsMake:
     VERB_PUBLISH: ClassVar[str] = "publish"
     VERB_RUN: ClassVar[str] = "run"
     VERB_CHECKS: ClassVar[str] = "checks"
+    VERB_SONARCLOUD_SYNC: ClassVar[str] = "sonarcloud-sync"
 
     CLI_GROUP_CHECK: ClassVar[str] = "check"
     CLI_GROUP_CODEGEN: ClassVar[str] = "codegen"
@@ -102,6 +103,7 @@ class FlextInfraConstantsMake:
         "fmt",
         "fix",
         "fix-enforcement",
+        "sonarcloud-sync",
         "test",
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[t.StrSequence] = (
