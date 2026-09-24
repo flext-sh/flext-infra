@@ -93,7 +93,11 @@ class TestsFlextInfraCodegenConform:
         tmp_path: Path, scenario: str
     ) -> tuple[Path, m.Infra.CodegenConformRequest, Path, bytes, Path]:
         """Create one conformed tree, then introduce one recoverable publication."""
-        root = u.Tests.git_repository(tmp_path, name=scenario)
+        root = tmp_path / scenario
+        root.mkdir(parents=True)
+        u.Tests.initialize_git_repo(
+            root, origin_url=u.Tests.repository_ref(config.Infra.name).url
+        )
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         request = u.Tests.conform_request(
