@@ -285,9 +285,23 @@ class TestsFlextInfraFreshImport:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package,
+                init_path=initializer,
+                current_pkg=package.name,
+                surface=package.name,
+                importable=True,
+                generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("value",),
+        )
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                packages=(package.name,)
+                packages=(package.name,),
+                publications=(publication,),
+                repository_roots=(tmp_path,),
             )
         )
         tm.that(report.passed, eq=False)
