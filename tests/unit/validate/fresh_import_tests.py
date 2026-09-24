@@ -258,6 +258,105 @@ class TestsFlextInfraFreshImport:
         tm.that(report.violations[0], has="is outside")
         tm.that(report.violations[0], has=str(foreign))
 
+    def test_foreign_origin_is_reported_before_phantom_export(
+        self, tmp_path: Path
+    ) -> None:
+        """A module loaded from outside this checkout names the origin first.
+
+        The origin gate runs between the import and the name resolution, so
+        stale-checkout contamination fails with the foreign path instead of a
+        phantom-attribute error raised while resolving an unserved name.
+        """
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        (foreign / "dependency.py").write_text(
+            "value = 17\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            f"__path__ = [{str(foreign)!r}]\n"
+            "from .dependency import value\n"
+            "__all__ = ('value', 'phantom_export')\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        publication = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=package,
+                init_path=initializer,
+                current_pkg=package.name,
+                surface=package.name,
+                importable=True,
+                generated_init=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("value",),
+        )
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+                packages=(package.name,),
+                publications=(publication,),
+                repository_roots=(tmp_path,),
+            )
+        )
+        tm.that(report.passed, eq=False)
+        tm.that(report.violations[0], has="is outside")
+        tm.that(report.violations[0], has=str(foreign))
+        tm.that(report.violations[0], lacks="has no attribute")
+
+    def test_origin_gate_keeps_the_probed_module_for_export_resolution(
+        self, tmp_path: Path
+    ) -> None:
+        """Exports resolve against the published package, not the last loaded module.
+
+        The subpackage plan runs first, so the root package is already cached
+        when its own plan imports it and ``sys.modules`` ends with the
+        subpackage. The origin gate walks every loaded module between import
+        and resolution; it must never rebind the probed package.
+        """
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        subpackage = package / "sub"
+        subpackage.mkdir(parents=True)
+        (package / c.Infra.INIT_PY).write_text(
+            "value = 17\n__all__ = ('value',)\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        (subpackage / c.Infra.INIT_PY).write_text(
+            "leaf = 1\n__all__ = ('leaf',)\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        publications = tuple(
+            m.Infra.LazyInitPlan(
+                context=m.Infra.LazyInitPackageContext(
+                    pkg_dir=pkg_dir,
+                    init_path=pkg_dir / c.Infra.INIT_PY,
+                    current_pkg=current_pkg,
+                    surface=package.name,
+                    importable=True,
+                    generated_init=True,
+                ),
+                action=c.Infra.LazyInitAction.WRITE,
+                exports=exports,
+            )
+            for pkg_dir, current_pkg, exports in (
+                (subpackage, f"{package.name}.sub", ("leaf",)),
+                (package, package.name, ("value",)),
+            )
+        )
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+                publications=publications, repository_roots=(tmp_path,)
+            )
+        )
+        tm.that(report.passed, eq=True, msg=str(report.violations))
+
     def test_flext_core_imports_cleanly(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",))

@@ -151,7 +151,10 @@ class TestsFlextInfraSonarcloudSettingsSync:
             update={"issue_exclusions": (*spec.issue_exclusions,) * 2}
         )
 
-        for invalid, reason in ((empty, "declares no exclusion"), (repeated, "repeats")):
+        for invalid, reason in (
+            (empty, "declares no exclusion"),
+            (repeated, "repeats"),
+        ):
             tm.fail(
                 FlextInfraSonarcloudSettingsSync.settings_plan(invalid, "org_repo"),
                 has=reason,

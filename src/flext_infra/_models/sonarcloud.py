@@ -60,9 +60,7 @@ class FlextInfraModelsSonarcloud:
     class SonarcloudSettingsValues(m.ContractModel):
         """The ``api/settings/values`` response body."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", frozen=True
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         settings: Annotated[
             t.VariadicTuple[FlextInfraModelsSonarcloud.SonarcloudSetting],
@@ -72,18 +70,14 @@ class FlextInfraModelsSonarcloud:
     class SonarcloudAuthentication(m.ContractModel):
         """The ``api/authentication/validate`` response body."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", frozen=True
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         valid: Annotated[bool, m.Field(description="Whether the token is valid")]
 
     class SonarcloudSettingsPlan(m.ContractModel):
         """The complete server-side state one project must carry, from the SSOT."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", frozen=True
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         api_url: Annotated[t.NonEmptyStr, m.Field(description="Web API origin")]
         timeout_seconds: Annotated[
