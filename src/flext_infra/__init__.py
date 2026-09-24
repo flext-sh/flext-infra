@@ -204,6 +204,7 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate import ValidationRoutes
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
+    from .services.codegen import FlextInfraCodegen
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.dataclass_modelizer import FlextInfraRefactorDataclassModelizer
@@ -287,6 +288,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
+    "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConsolidator",
@@ -707,6 +709,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_validate": ("ValidationRoutes",),
             ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
+            ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
             ".transformers.class_reconstructor": (
                 "FlextInfraRefactorClassReconstructor",
