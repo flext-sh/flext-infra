@@ -181,6 +181,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             config.Infra.name
         )
         branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()
+        tests_ref = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            "flext-tests"
+        )
         package_root = project_dir / "src" / name.replace("-", "_")
         package_root.mkdir(parents=True, exist_ok=True)
         (package_root / "__init__.py").write_text("", encoding="utf-8")
@@ -191,7 +194,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             "dependencies = []\n"
             "[dependency-groups]\n"
-            f'dev = ["{infra.distribution} @ git+{infra.url}@{branch}"]\n',
+            f'dev = ["{infra.distribution} @ git+{infra.url}@{branch}", '
+            f'"{tests_ref.distribution} @ git+{tests_ref.url}@{branch}"]\n',
             encoding="utf-8",
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(

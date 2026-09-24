@@ -23,6 +23,19 @@ class TestsFlextInfraBanditAndMarkdownGates:
     HEADING_SKIP = "# Test\n\n### Skip\n"
     LONG_LINE = "# Test\n\n" + " ".join(["word"] * 30) + "\n"
 
+    @staticmethod
+    def _markdown_verdict(*, findings_block: bool) -> bool:
+        """Expected check verdict from the warn-only SSOT (operator law 2026-09-22).
+
+        ``c.Infra.WARNING_GATE_IDS`` owns the classification: a warn-only gate
+        reports findings without failing the verdict, a blocking gate fails on
+        any finding. Reading the SSOT keeps the expectation following the law
+        instead of freezing one posture.
+        """
+        if FlextInfraMarkdownGate.gate_id in c.Infra.WARNING_GATE_IDS:
+            return True
+        return not findings_block
+
     def test_bandit_reports_real_finding(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "bandit-project")
         (project_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
@@ -64,13 +77,13 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.raw_output, lacks="Working...")
 
     @pytest.mark.parametrize(
-        ("markdown_text", "config_text", "passed", "codes"),
+        ("markdown_text", "config_text", "findings_block", "codes"),
         [
             # A project with no markdown has nothing to check, so the gate is
             # not applicable and skips neutrally (4dc7027ed).
-            ("", None, True, []),
-            (HEADING_SKIP, None, False, ["MD001"]),
-            ("# Test\n", '{"broken": [', False, ["TOOL_ERROR"]),
+            ("", None, False, []),
+            (HEADING_SKIP, None, True, ["MD001"]),
+            ("# Test\n", '{"broken": [', True, ["TOOL_ERROR"]),
         ],
     )
     def test_markdown_check(
@@ -79,7 +92,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tmp_path: Path,
         markdown_text: str,
         config_text: str | None,
-        passed: bool,
+        findings_block: bool,
         codes: t.StrSequence,
     ) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-project")
@@ -94,11 +107,16 @@ class TestsFlextInfraBanditAndMarkdownGates:
             FlextInfraMarkdownGate,
             tmp_path,
             project_dir,
-            passed=passed,
+            passed=self._markdown_verdict(findings_block=findings_block),
             issues_len=len(codes),
         )
 
         tm.that([issue.code for issue in result.issues], eq=list(codes))
+        if codes and FlextInfraMarkdownGate.gate_id in c.Infra.WARNING_GATE_IDS:
+            tm.that(
+                [issue.severity.lower() for issue in result.issues],
+                eq=[str(c.Infra.GateSeverity.WARNING.value)] * len(codes),
+            )
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:
         """A standalone project's gate never crosses its repository boundary."""
@@ -110,7 +128,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         inherited = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate, tmp_path, project_dir, passed=False, issues_len=1
+            FlextInfraMarkdownGate,
+            tmp_path,
+            project_dir,
+            passed=self._markdown_verdict(findings_block=True),
+            issues_len=1,
         )
         (project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
             disabled, encoding="utf-8"
@@ -154,7 +176,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_owned.write_text(self.HEADING_SKIP, encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate, tmp_path, project_dir, passed=False, issues_len=1
+            FlextInfraMarkdownGate,
+            tmp_path,
+            project_dir,
+            passed=self._markdown_verdict(findings_block=True),
+            issues_len=1,
         )
 
         tm.that(result.issues[0].file, eq=".github/prompts/project.md")
@@ -217,7 +243,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             project_dir, u.Tests.gate_context(tmp_path)
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.that(result.result.passed, eq=self._markdown_verdict(findings_block=True))
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].file, eq="invalid/README.md")
 
@@ -238,7 +264,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         second = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
         tm.that(first.result.passed, eq=True)
-        tm.that(second.result.passed, eq=False)
+        tm.that(second.result.passed, eq=self._markdown_verdict(findings_block=True))
         tm.that(second.issues[0].code, eq="MD057")
 
     def test_markdown_fix_applies_the_auto_fixable_rules(self, tmp_path: Path) -> None:

@@ -40,11 +40,10 @@ class TestsFlextInfraRuntimeAliasDeclarations:
     def test_repair_preserves_actual_mro_and_publishes_local_owner(
         self, tmp_path: Path
     ) -> None:
-        repository, _ = self._workspace(tmp_path)
-        tier = repository / "workflows"
-        tier.mkdir()
-        (tier / "__init__.py").write_text("", encoding=c.Cli.ENCODING_DEFAULT)
-        source = tier / "facets.py"
+        # Letters derive only on facade surfaces (ADR-018 tiering), so the
+        # drifted module lives in the package root, not an arbitrary tier.
+        repository, package = self._workspace(tmp_path)
+        source = package / "facets.py"
         source.write_text(
             "from flext_declarations.owner import Parent as Renamed\n\n"
             "class Local(Renamed):\n"
@@ -72,7 +71,7 @@ class TestsFlextInfraRuntimeAliasDeclarations:
         with tm.scope(
             python_paths=[str(repository), str(repository / c.Infra.DEFAULT_SRC_DIR)]
         ):
-            module = importlib.import_module("workflows.facets")
+            module = importlib.import_module("flext_declarations.facets")
             parent = importlib.import_module("flext_declarations.owner")
             tm.that(module.capability is module.Local, eq=True)
             tm.that(module.Local.__bases__, eq=(parent.Parent,))
@@ -119,9 +118,9 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             "another = Other\n__all__ = ['Other', 'another']\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        tier = repository / "workflows"
-        tier.mkdir()
-        source = tier / "facets.py"
+        # Ambiguity is only declared on a facade surface where the letter
+        # must publish (ADR-018 tiering); off-facade modules derive nothing.
+        source = package / "facets.py"
         source.write_text(
             "from flext_declarations.owner import Parent\n"
             "from flext_declarations.other import Other\n"
