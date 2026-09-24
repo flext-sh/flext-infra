@@ -435,11 +435,23 @@ class FlextInfraUtilitiesRopeStructure:
                 if ":" in head
                 else c.Infra.StatementCategory.ASSIGN
             )
+        if FlextInfraUtilitiesRopeStructure._string_literal_headed(stripped):
+            # Docstrings carry parentheses in their prose; they are inert
+            # string-literal expressions, never executable calls.
+            return c.Infra.StatementCategory.OTHER
         return (
             c.Infra.StatementCategory.CALL
             if "(" in stripped
             else c.Infra.StatementCategory.OTHER
         )
+
+    @staticmethod
+    def _string_literal_headed(stripped: str) -> bool:
+        """Return whether a statement starts with a string literal."""
+        index = 0
+        while index < len(stripped) and stripped[index].lower() in "rbfu":
+            index += 1
+        return index < len(stripped) and stripped[index] in "'\""
 
     @staticmethod
     def _assignment_head(stripped: str) -> str | None:

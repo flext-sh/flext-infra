@@ -68,14 +68,6 @@ class FlextInfraConstantsCodegen(
 
     TRANSACTION_ID_LENGTH: ClassVar[int] = 32
 
-    LAZY_INIT_CLASS_RECEIPTS_RELPATH: ClassVar[str] = (
-        "flext-infra/lazy-init-class-receipts.json"
-    )
-    """Regenerable class-receipt cache path under the ignored ``.state`` root."""
-
-    LAZY_INIT_CLASS_RECEIPTS_VERSION: ClassVar[int] = 1
-    """Receipt document schema version; a mismatch discards the cache."""
-
     SRC_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),
@@ -132,7 +124,7 @@ class FlextInfraConstantsCodegen(
     "Release checksum payload the unlocked launcher always verifies."
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: ClassVar[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
-    MISE_BOOTSTRAP_FIXED_ENVIRONMENT: ClassVar[t.StrPairSequence] = (
+    MISE_BOOTSTRAP_FIXED_ENVIRONMENT: ClassVar[t.VariadicTuple[t.Pair[str, str]]] = (
         ("GIT_CONFIG_NOSYSTEM", "1"),
         ("GIT_TERMINAL_PROMPT", "0"),
         ("LANG", "C"),
@@ -160,7 +152,9 @@ class FlextInfraConstantsCodegen(
         ("MISE_GITHUB_OAUTH_OPEN_BROWSER", "false"),
     )
     "Fixed fail-closed settings shared by every generated Mise invocation."
-    MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT: ClassVar[t.StrPairSequence] = (
+    MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT: ClassVar[
+        t.VariadicTuple[t.Pair[str, str]]
+    ] = (
         ("HOME", "home"),
         ("USERPROFILE", "home"),
         ("APPDATA", "appdata"),
@@ -186,7 +180,9 @@ class FlextInfraConstantsCodegen(
         ("TEMP", "tmp"),
     )
     "Environment paths rooted in one invocation-local private directory."
-    MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT: ClassVar[t.StrPairSequence] = (
+    MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT: ClassVar[
+        t.VariadicTuple[t.Pair[str, str]]
+    ] = (
         ("MISE_DATA_DIR", "."),
         ("MISE_CACHE_DIR", "cache"),
         ("MISE_STATE_DIR", "state"),
@@ -195,14 +191,14 @@ class FlextInfraConstantsCodegen(
         ("UV_CACHE_DIR", "uv-cache"),
     )
     "Tool and package caches rooted in the required persistent storage directory."
-    MISE_BOOTSTRAP_EMPTY_FILES: ClassVar[t.StrSequence] = (
+    MISE_BOOTSTRAP_EMPTY_FILES: ClassVar[t.VariadicTuple[str]] = (
         "global-config.toml",
         "system-config/config.toml",
         "gitconfig",
         "netrc",
     )
     "Private empty files that disable ambient configuration and netrc discovery."
-    MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT: ClassVar[t.StrSequence] = (
+    MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT: ClassVar[t.VariadicTuple[str]] = (
         "PATH",
         "COMSPEC",
         "PATHEXT",

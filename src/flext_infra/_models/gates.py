@@ -7,30 +7,35 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import u
+from flext_cli import t, u
 
 from flext_core import m
-from flext_infra import c, t
+from flext_infra import c
 
+# Gate models use base type primitives; importing the composing project facade
+# here creates unresolved aliases while Pydantic analyzes nested root models.
 from .duplication import FlextInfraModelsDuplication
-
-
-class SccFile(m.FlexibleModel):
-    """Required per-file SCC fields; unrelated scanner metrics are ignored."""
-
-    location: Annotated[
-        str,
-        m.Field(
-            alias="Location", min_length=1, strict=True, description="Scanned file path"
-        ),
-    ]
-    code: Annotated[
-        int, m.Field(alias="Code", ge=0, strict=True, description="Logical code lines")
-    ]
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
     """Quality gate execution domain models."""
+
+    class SccFile(m.FlexibleModel):
+        """Required per-file SCC fields; unrelated scanner metrics are ignored."""
+
+        location: Annotated[
+            str,
+            m.Field(
+                alias="Location",
+                min_length=1,
+                strict=True,
+                description="Scanned file path",
+            ),
+        ]
+        code: Annotated[
+            int,
+            m.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
+        ]
 
     class SccLanguage(m.FlexibleModel):
         """Required language group from SCC's JSON by-file output."""
@@ -45,7 +50,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         files: Annotated[
-            tuple[SccFile, ...],
+            tuple[FlextInfraModelsGates.SccFile, ...],
             m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 

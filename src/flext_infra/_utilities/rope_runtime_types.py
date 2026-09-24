@@ -50,6 +50,31 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             raise TypeError(msg)
         return walker
 
+    @staticmethod
+    def _is_signature_walker(
+        walker: type[p.AttributeProbe],
+    ) -> TypeGuard[type[p.Infra.PatchingASTWalker]]:
+        """Narrow rope's walker to the signature handler contract."""
+        return all(hasattr(walker, slot) for slot in ("_arguments", "_arg"))
+
+    @classmethod
+    def signature_ast_walker(cls) -> type[p.Infra.PatchingASTWalker]:
+        """Return rope's AST walker bound to the signature handler contract.
+
+        Same vendor-boundary reasoning as ``pep695_ast_walker``: the generic
+        probe cannot express the ``_arguments``/``_arg`` slots the signature
+        patch replaces, so the contract is checked here and a walker that
+        changed its internals fails loudly.
+        """
+        walker = cls.runtime_type("rope.refactor.patchedast", "_PatchingASTWalker")
+        if not cls._is_signature_walker(walker):
+            msg = (
+                "rope _PatchingASTWalker is missing the signature handler "
+                "slots: the installed rope version changed its internals"
+            )
+            raise TypeError(msg)
+        return walker
+
     @classmethod
     def is_resource(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopeResource]:
         return isinstance(value, cls.runtime_type("rope.base.resources", "File"))

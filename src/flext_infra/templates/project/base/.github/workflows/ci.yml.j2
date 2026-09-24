@@ -88,10 +88,18 @@ jobs:
       # fleet declares such runner packages per distribution (codegen
       # ci_system_packages) instead of skipping the tests that need them.
       - name: Install declared system packages
-        run: sudo apt-get install -y -qq --no-install-recommends {{ system_packages | join(" ") }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends {{ system_packages | join(" ") }}
 {%- endif %}
+{%- set ci_tests = namespace(selected=false) %}
+{%- for step in make.workflow if step.verb == "test" and "ci" in step.contexts %}
+{%- set ci_tests.selected = true %}
+{%- endfor %}
+{%- if ci_tests.selected %}
 
 {%- include "_fragments/testmon_cache.j2" %}
+{%- endif %}
 
 {%- for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
@@ -149,6 +157,7 @@ jobs:
         run: |
           git status --short
           test -z "$(git status --porcelain --untracked-files=all)"
+{%- if ci_tests.selected %}
 
       - name: Dump reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
@@ -185,6 +194,7 @@ jobs:
             apps/*/.reports/**/coverage.json
           if-no-files-found: ignore
           retention-days: 7
+{%- endif %}
   # End SECTION: ci job
 
   # === SECTION: release-plan job (managed) ===

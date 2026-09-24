@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .auditor_cli_tests import TestsFlextInfraAuditorCli
     from .auditor_codeblocks_tests import TestsFlextInfraAuditorCodeblocks
     from .auditor_command_contract_tests import TestsFlextInfraAuditorCommandContract
@@ -24,6 +22,7 @@ if TYPE_CHECKING:
     from .builder_tests import TestsFlextInfraBuilder
     from .fixer_internals_tests import TestsFlextInfraFixerInternals
     from .fixer_tests import TestsFlextInfraDocsFixer
+    from .formatter_tests import TestsFlextInfraDocsFormatter
     from .generator_bundle_tests import TestsFlextInfraDocsGeneratorBundle
     from .generator_guides_tests import TestsFlextInfraDocsGeneratorGuides
     from .generator_internals_tests import TestsFlextInfraDocsGeneratorInternals
@@ -32,6 +31,7 @@ if TYPE_CHECKING:
     from .main_commands_tests import TestsFlextInfraDocsMainCommands
     from .main_entry_tests import TestsFlextInfraDocsMainEntry
     from .main_tests import TestsFlextInfraDocsMain
+    from .make_docs_config_tests import TestsFlextInfraMakeDocsActionsConfig
     from .render_guides_index_tests import TestsFlextInfraDocsRenderGuidesIndex
     from .render_tests import TestsFlextInfraDocsRender
     from .server_tests import TestsFlextInfraDocServer
@@ -44,6 +44,8 @@ if TYPE_CHECKING:
     from .validator_internals_tests import TestsFlextInfraDocsValidatorInternals
     from .validator_tests import TestsFlextInfraDocsValidator
     from .workspace_manifest_tests import TestsFlextInfraWorkspaceManifest
+
+
 __all__: tuple[str, ...] = (
     "TestsFlextInfraAuditor",
     "TestsFlextInfraAuditorCli",
@@ -58,6 +60,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraBuilderScope",
     "TestsFlextInfraDocServer",
     "TestsFlextInfraDocsFixer",
+    "TestsFlextInfraDocsFormatter",
     "TestsFlextInfraDocsGenerator",
     "TestsFlextInfraDocsGeneratorBundle",
     "TestsFlextInfraDocsGeneratorGuides",
@@ -75,23 +78,8 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraDocsValidator",
     "TestsFlextInfraDocsValidatorInternals",
     "TestsFlextInfraFixerInternals",
+    "TestsFlextInfraMakeDocsActionsConfig",
     "TestsFlextInfraWorkspaceManifest",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -112,6 +100,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".builder_tests": ("TestsFlextInfraBuilder",),
             ".fixer_internals_tests": ("TestsFlextInfraFixerInternals",),
             ".fixer_tests": ("TestsFlextInfraDocsFixer",),
+            ".formatter_tests": ("TestsFlextInfraDocsFormatter",),
             ".generator_bundle_tests": ("TestsFlextInfraDocsGeneratorBundle",),
             ".generator_guides_tests": ("TestsFlextInfraDocsGeneratorGuides",),
             ".generator_internals_tests": ("TestsFlextInfraDocsGeneratorInternals",),
@@ -120,6 +109,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".main_commands_tests": ("TestsFlextInfraDocsMainCommands",),
             ".main_entry_tests": ("TestsFlextInfraDocsMainEntry",),
             ".main_tests": ("TestsFlextInfraDocsMain",),
+            ".make_docs_config_tests": ("TestsFlextInfraMakeDocsActionsConfig",),
             ".render_guides_index_tests": ("TestsFlextInfraDocsRenderGuidesIndex",),
             ".render_tests": ("TestsFlextInfraDocsRender",),
             ".server_tests": ("TestsFlextInfraDocServer",),
@@ -132,24 +122,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validator_internals_tests": ("TestsFlextInfraDocsValidatorInternals",),
             ".validator_tests": ("TestsFlextInfraDocsValidator",),
             ".workspace_manifest_tests": ("TestsFlextInfraWorkspaceManifest",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

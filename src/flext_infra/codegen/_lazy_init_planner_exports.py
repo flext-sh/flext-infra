@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
@@ -43,8 +44,20 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         # surface. When the rope index does not track the package, enumerate
         # direct children from the filesystem instead of rendering an empty
         # init; emptiness here is a defect, never canonical.
+        # The rope index exposes modules in its own scan order, which follows
+        # the filesystem's directory-entry order and therefore differs between
+        # machines. Sorting the entries makes the rendered lazy map — whose
+        # insertion order the generated ``__init__`` preserves — byte-identical
+        # for the same sources on every host, so a render on one machine can
+        # never drift against a render on another.
         module_entries: t.MutableSequenceOf[t.Pair[Path, str]] = (
-            [(entry.file_path, entry.module_name) for entry in package_entry.modules]
+            sorted(
+                (
+                    (entry.file_path, entry.module_name)
+                    for entry in package_entry.modules
+                ),
+                key=operator.itemgetter(0, 1),
+            )
             if package_entry is not None
             else []
         )
@@ -102,18 +115,24 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             is_child_package = child_entry is not None and child_entry.package_name
             if is_generated_or_test or is_child_package:
                 continue
-            convention = self.rope_workspace.convention(
-                py_file, rel_path=py_file.relative_to(context.pkg_dir)
+            policy = u.Infra.publication_policy(
+                py_file,
+                rel_path=py_file.relative_to(context.pkg_dir),
+                current_pkg=context.current_pkg,
+                rope_project=self.rope_workspace.rope_project,
             )
-            policy = convention.module_policy
-            module_path = convention.module_name
+            entry = self.rope_workspace.module(py_file)
+            if entry is None:
+                msg = f"unindexed publication source: {py_file}"
+                raise ValueError(msg)
+            module_path = entry.module_name
             root_private_contract = (
                 py_file.parent == context.pkg_dir
                 and py_file.stem in {"_config", "_settings"}
                 and bool(
                     self._module_exports(
                         py_file,
-                        convention.module_name,
+                        module_path,
                         export_options=m.Infra.ExportOptions(
                             allow_main=True,
                             allow_assignments=True,
@@ -148,15 +167,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     require_explicit_all=require_explicit_all,
                 ),
             )
-            if (
-                policy.expected_alias
-                and u.Infra.matches_project_namespace_package(context.current_pkg)
-                and u.Infra.matches_root_namespace_file(py_file.name)
-                and "." not in context.current_pkg
-            ):
-                targets.setdefault(
-                    policy.expected_alias, (module_path, policy.expected_alias)
-                )
             for name, target in targets.items():
                 self._add(index, name, target)
         return index

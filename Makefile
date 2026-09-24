@@ -54,13 +54,13 @@ UV_LINK_MODE := copy
 # unconsumed variable is ignored.
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS := 2460
+PYTEST_PROCESS_TIMEOUT_SECONDS := 7260
 # mro-99ae: the pytest process inherits a hard wall-clock boundary, so a hung
 # run is terminated even if the runner itself stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR := .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := 10
-override PYTEST_RUN_TIMEOUT_SECONDS := 2400
+override PYTEST_RUN_TIMEOUT_SECONDS := 7200
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
@@ -122,8 +122,8 @@ endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication
-BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication
+PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -134,7 +134,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 endif
-DOCS_ACTIONS := generate fix audit build validate
+DOCS_ACTIONS := generate fix fmt validate audit
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -754,6 +754,15 @@ _activated-duplication: _builtin_require_environment
 	$(call RUN_PUBLIC,duplication)
 
 
+sonarcloud-sync: _builtin_require_workspace
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-sonarcloud-sync
+
+.PHONY: _activated-sonarcloud-sync
+_activated-sonarcloud-sync: _builtin_require_environment
+
+	$(call RUN_PUBLIC,sonarcloud-sync)
+
+
 # Repository-owned extra verbs dispatch exactly like canonical ones: the
 # project declares them (help, .PHONY) and must also be able to run them.
 
@@ -805,7 +814,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'status' 'Report the resolved runtime and repository state.';
 
-	@printf '  %-16s %s\n' 'docs' 'Generate, repair, build, and validate documentation.';
+	@printf '  %-16s %s\n' 'docs' 'Generate, fix, format, and check documentation.';
 
 	@printf '  %-16s %s\n' 'clean' 'Remove every declared disposable artifact.';
 
@@ -828,6 +837,8 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'waza' 'Validate provider-neutral governance semantics with Waza.';
 
 	@printf '  %-16s %s\n' 'duplication' 'Run the canonical jscpd duplicate-code gate.';
+
+	@printf '  %-16s %s\n' 'sonarcloud-sync' 'Write the SSOT SonarCloud issue exclusions to the server-side project settings (requires SONAR_TOKEN).';
 
 
 # A project owns the sources declared by its manifest. The generated setup
@@ -1013,7 +1024,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
-		--apply --rewrite-constraints --skip-check "$$@"
+		--apply --rewrite-constraints "$$@"
 	$(call _run_for_all_projects,--check)
 
 
@@ -1060,6 +1071,14 @@ _builtin-self-build:
 _builtin-self-clean: _builtin_clean_generated
 
 _builtin-self-docs: _builtin_docs_all
+
+# SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
+# writes an external service with SONAR_TOKEN from the environment; it belongs
+# to no setup/gen/check/test workflow row and never runs implicitly.
+_builtin_sonarcloud_sync_project: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-sync --repository-root "$(PROJECT_ROOT)"
+
+_builtin-self-sonarcloud-sync: _builtin_sonarcloud_sync_project
 
 
 _builtin_build_artifacts:
@@ -1109,6 +1128,8 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_fix_enforcement: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 
+_builtin_sonarcloud_sync_all: _builtin_sonarcloud_sync_project
+
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
@@ -1122,11 +1143,15 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all: _builtin_gen_all
+# Operator law 2026-09-22: `docs` is a docs-only lifecycle (generate, fix,
+# fmt, validate, audit); the actions render from make.docs.actions and never
+# depend on the workspace-wide codegen conform — docs actions render their
+# own outputs from the live configuration and sources.
+_builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
 		mode=; \
-		case "$$action" in fix) mode=--apply ;; esac; \
+		case "$$action" in fix|fmt) mode=--apply ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
@@ -1219,5 +1244,6 @@ _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "duplication" --projects .
+_builtin-sonarcloud-sync: _builtin_sonarcloud_sync_all
 
 

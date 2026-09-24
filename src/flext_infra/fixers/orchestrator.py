@@ -102,10 +102,14 @@ class FlextInfraEnforcementFixerOrchestrator(
         fails here, before any project is touched, naming rule and action —
         never a per-project failed fix discovered mid-run.
         """
-        catalog = catalog or FlextInfraEnforcementEngine.canonical_catalog()
+        resolved: m.EnforcementCatalog = (
+            catalog
+            if catalog is not None
+            else FlextInfraEnforcementEngine.canonical_catalog()
+        )
         adapterless = tuple(
             f"{rule.id} {rule.fix_action.kind}:{rule.fix_action.target}"
-            for rule in catalog.enabled_rules()
+            for rule in resolved.enabled_rules()
             if rule.fix_action is not None and not self._has_adapter(rule)
         )
         if adapterless:

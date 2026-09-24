@@ -73,8 +73,11 @@ PATH_add "${{ '{' }}{{ name }}{{ '}' }}"
 # End SECTION: mise activation
 
 # === SECTION: configured paths (managed) ===
-# Source: template + config:environment_path_prepends
-PATH_add "${PROJECT_ROOT}/bin"
+# Source: config:environment_path_prepends
+# The tracked bin/mise launcher is reached by the Makefile through its own
+# path, never through PATH: a project bin on PATH made `mise reshim` inside a
+# direnv-loaded checkout bind every shim of the shared MISE_DATA_DIR to that
+# checkout's launcher.
 {%- for extra_path in environment_path_prepends %}
 if [[ -d "${PROJECT_ROOT}/{{ extra_path }}" ]]; then
   PATH_add "${PROJECT_ROOT}/{{ extra_path }}"

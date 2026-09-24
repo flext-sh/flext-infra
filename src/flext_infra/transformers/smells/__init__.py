@@ -11,6 +11,8 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from .base import FlextInfraSmellFixer
     from .boolean_logic import FlextInfraBooleanLogicFixer
+
+
 __all__: tuple[str, ...] = ("FlextInfraBooleanLogicFixer", "FlextInfraSmellFixer")
 
 _LAZY_IMPORTS = MappingProxyType(

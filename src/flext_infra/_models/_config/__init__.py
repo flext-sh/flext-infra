@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from .static import FlextInfraConfigModelsStatic
     from .templates import FlextInfraConfigModelsTemplates
     from .workspace import FlextInfraConfigModelsWorkspace
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraConfigModels",
     "FlextInfraConfigModelsArtifact",

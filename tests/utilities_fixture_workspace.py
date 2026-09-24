@@ -177,6 +177,13 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         """Materialize and load the canonical minimal standalone fixture."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+        infra = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            config.Infra.name
+        )
+        branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()
+        tests_ref = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            "flext-tests"
+        )
         package_root = project_dir / "src" / name.replace("-", "_")
         package_root.mkdir(parents=True, exist_ok=True)
         (package_root / "__init__.py").write_text("", encoding="utf-8")
@@ -184,8 +191,11 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             "[project]\n"
             f'name = "{name}"\n'
             'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
-            "dependencies = []\n",
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
+            "dependencies = []\n"
+            "[dependency-groups]\n"
+            f'dev = ["{infra.distribution} @ git+{infra.url}@{branch}", '
+            f'"{tests_ref.distribution} @ git+{tests_ref.url}@{branch}"]\n',
             encoding="utf-8",
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
@@ -483,7 +493,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             pyproject.write_text(
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} governed fixture"\n'
-                'requires-python = ">=3.13,<3.14"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
                 f'[project.urls]\nRepository = "{repository_url}"\n{tooling}',
@@ -681,9 +691,27 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 encoding="utf-8",
             )
             # Declaring members makes this root a workspace: its own manifest
-            # must declare the same role or the detector rejects the drift.
+            # must declare the same role or the detector rejects the drift. The
+            # rewrite keeps the distribution the root already declared (its Git
+            # origin was minted from it); the checkout directory name is
+            # arbitrary in tmp fixtures and must never become the identity. A
+            # .gitmodules without members declares no topology change, so the
+            # root stays standalone.
+            declared = root.name
+            existing = root / "config" / "workspace.yaml"
+            if existing.is_file():
+                loaded = u.Cli.config_load(existing, expand_env=False)
+                if loaded.success:
+                    loaded_name = loaded.value.data.get("name")
+                    if isinstance(loaded_name, str) and loaded_name:
+                        declared = loaded_name
+            role = (
+                c.Infra.MakeProfile.WORKSPACE
+                if projects
+                else c.Infra.MakeProfile.STANDALONE
+            )
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-                root, root.name, role=c.Infra.MakeProfile.WORKSPACE
+                root, declared, role=role
             )
             return path
 

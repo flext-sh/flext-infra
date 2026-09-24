@@ -169,7 +169,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 endif
-DOCS_ACTIONS := generate fix audit build validate
+DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -422,10 +422,8 @@ _setup_activated:
 
 _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
-{% for verb in make.verbs %}
-	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
-{% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
+{% for verb in (make.verbs | list) + (extra_verbs | list) %}
+	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}';
 {% endfor %}
 
 # A project owns the sources declared by its manifest. The generated setup
@@ -479,7 +477,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
-		--apply --rewrite-constraints --skip-check "$$@"
+		--apply --rewrite-constraints "$$@"
 	$(call _run_for_all_projects,--check)
 
 
@@ -512,6 +510,14 @@ _builtin-self-clean: _builtin_clean_generated
 
 _builtin-self-docs: _builtin_docs_all
 
+# SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
+# writes an external service with SONAR_TOKEN from the environment; it belongs
+# to no setup/gen/check/test workflow row and never runs implicitly.
+_builtin_sonarcloud_sync_project: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-sync --repository-root "$(PROJECT_ROOT)"
+
+_builtin-self-sonarcloud-sync: _builtin_sonarcloud_sync_project
+
 {% if make_profile == "workspace" %}
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS)
@@ -534,6 +540,9 @@ _builtin_fix_all: _builtin_require_environment
 
 _builtin_fix_enforcement: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fix-enforcement $(WORKSPACE_PROJECT_ARGS)
+
+_builtin_sonarcloud_sync_all: _builtin_require_environment
+	@$(WORKSPACE_ORCHESTRATE) --verb sonarcloud-sync $(WORKSPACE_PROJECT_ARGS)
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -567,6 +576,8 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_fix_enforcement: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 
+_builtin_sonarcloud_sync_all: _builtin_sonarcloud_sync_project
+
 {% endif %}
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
@@ -580,7 +591,11 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all: _builtin_gen_all
+# Operator law 2026-09-22: `docs` is a docs-only lifecycle (generate, fix,
+# fmt, validate, audit); the actions render from make.docs.actions and never
+# depend on the workspace-wide codegen conform — docs actions render their
+# own outputs from the live configuration and sources.
+_builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
 		mode=; \
@@ -677,6 +692,7 @@ _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
 	@{{ check_run("duplication") }}
+_builtin-sonarcloud-sync: _builtin_sonarcloud_sync_all
 
 {% if script_dispatch %}
 # Repository-owned script verbs route through the promoted command framework:

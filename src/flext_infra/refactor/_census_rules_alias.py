@@ -72,7 +72,9 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
                 runtime_target_name = expected_name
                 runtime_target_kind, runtime_target_line = expected_symbol
         fixable = runtime_target is not None or runtime_target_kind == "class"
-        for detector_violation in FlextInfraRuntimeAliasDetector.detect_file(ctx):
+        for detector_violation in FlextInfraRuntimeAliasDetector.detect_file(
+            ctx, policy=convention.module_policy
+        ):
             object_name = runtime_target_name if fixable else detector_violation.alias
             object_kind = runtime_target_kind if fixable else "assignment"
             if selected_kinds and object_kind not in selected_kinds:

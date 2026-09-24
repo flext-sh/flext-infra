@@ -9,6 +9,7 @@ from flext_core import r
 
 from ... import c, config, m, p, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
+from .._layout_plan import FlextInfraCodegenLayoutPlanMixin
 from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
 
 
@@ -294,7 +295,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         # the consumer's organization or branch: a repository in another org
         # otherwise renders a mixed family and uv rejects conflicting URLs.
         flext_line = u.Infra.flext_integration_line(
-            codegen=codegen, repository_root=repository_root
+            codegen=codegen,
+            repository_root=repository_root,
+            bootstrap_source=(
+                workspace.flext_source
+                if not (repository_root / c.Infra.PYPROJECT_FILENAME).exists()
+                else None
+            ),
         )
         if flext_line.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(flext_line)
@@ -360,7 +367,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 gitignore_sections=u.Infra.gitignore_sections(
                     codegen,
                     profile=profile,
-                    project_name=repository_root.name,
+                    project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
+                        repository_root
+                    ),
                     workspace=workspace,
                     project_patterns=project_patterns,
                 ),
@@ -383,13 +392,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
-                beads_tool_selector=codegen.toolchain.beads.selector,
-                beads_tool_version=codegen.toolchain.beads.version,
-                # prerelease is load-bearing: every fork release of bd carries a
-                # suffixed tag (-fdN) and mise refuses to resolve one unless
-                # told the release is a prerelease. Omitting it silently pinned
-                # every rig to upstream, which lacks the bd list cycle guard.
-                beads_tool_prerelease=codegen.toolchain.beads.prerelease,
                 beads=workspace.beads,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,
@@ -406,6 +408,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
+                # Scaffolded facades extend the class each upstream letter names
+                # in the __all__ that declares it, never the letter itself.
+                upstream_facades=u.Infra.facade_classes(project.upstream),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
                 root_modules=project.root_modules,
@@ -440,11 +445,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=integration_branch.value,
-                # Only the workspace-context root may render internal
-                # dependencies bare: pyproject_conform rejects direct `@`
-                # sources for workspace members at the root, where the
-                # [tool.uv.sources] workspace overlay owns the source.
-                workspace_context_root=profile is c.Infra.MakeProfile.WORKSPACE,
+                # A workspace root owns sources only for its actual members.
+                # External FLEXT dependencies still need their own Git source.
+                workspace_dependency_distributions=(
+                    tuple(member.distribution for member in workspace.subprojects)
+                    if profile is c.Infra.MakeProfile.WORKSPACE
+                    else ()
+                ),
                 year=project.year,
             )
         )

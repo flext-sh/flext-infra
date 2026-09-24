@@ -11,7 +11,7 @@ import pytest
 from flext_tests import tm
 
 import flext_core
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
@@ -26,6 +26,7 @@ class TestsFlextInfraCodegenGeneration:
         *,
         eager_dunders: t.MappingKV[str, t.StrPair] | None = None,
         child_packages: t.StrSequence = (),
+        type_checking_map: t.LazyAliasMap | None = None,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
         package_dir = Path.cwd() / current_pkg.replace(".", "/")
@@ -40,7 +41,9 @@ class TestsFlextInfraCodegenGeneration:
             action=c.Infra.LazyInitAction.WRITE,
             exports=exports,
             lazy_map=MappingProxyType(dict(lazy_map)),
-            type_checking_map=MappingProxyType(dict(lazy_map)),
+            type_checking_map=MappingProxyType(
+                dict(lazy_map if type_checking_map is None else type_checking_map)
+            ),
             eager_dunders=MappingProxyType(dict(eager_dunders or {})),
             child_packages_for_lazy=child_packages,
             excluded_lazy_names=("internal_only",),
@@ -79,6 +82,25 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="    from .api import Demo")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
+
+    def test_export_width_is_a_real_formatter_fixed_point(self, tmp_path: Path) -> None:
+        """The rendered tuple annotation owns the compact-line width budget."""
+        names = ("FlextInfraCleanService", "FlextInfraPythonVersionEnforcer")
+        plan = self._plan(
+            "demo_pkg", names, {name: ("demo_pkg.owner", name) for name in names}
+        )
+        rendered = FlextInfraCodegenGeneration.render_init(plan)
+        target = tmp_path / "__init__.py"
+        target.write_text(rendered, encoding="utf-8")
+        formatted = u.Cli.run([
+            "ruff",
+            "format",
+            "--config",
+            str(Path.cwd() / "pyproject.toml"),
+            str(target),
+        ])
+        assert formatted.success, formatted.error
+        assert target.read_text(encoding="utf-8") == rendered
 
     def test_sibling_private_exports_use_relative_owners(self) -> None:
         """Static and lazy imports resolve the same private sibling module."""
@@ -375,6 +397,10 @@ class TestsFlextInfraCodegenGeneration:
                 "FlextDemoProtocols": ("demo_pkg.protocols", "FlextDemoProtocols"),
                 "p": ("demo_pkg.protocols", "p"),
             }),
+            type_checking_map={
+                "FlextDemoProtocols": ("demo_pkg.protocols", "FlextDemoProtocols"),
+                "p": ("demo_pkg.protocols", "FlextDemoProtocols"),
+            },
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
@@ -395,6 +421,10 @@ class TestsFlextInfraCodegenGeneration:
                 "FlextDemoServiceBase": ("demo_pkg.base", "FlextDemoServiceBase"),
                 "s": ("demo_pkg.base", "s"),
             }),
+            type_checking_map={
+                "FlextDemoServiceBase": ("demo_pkg.base", "FlextDemoServiceBase"),
+                "s": ("demo_pkg.base", "FlextDemoServiceBase"),
+            },
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
@@ -479,6 +509,60 @@ class TestsFlextInfraCodegenGeneration:
                 "\n"
                 "    from flext_core import d as core_d\n"
                 "    from flext_infra import p as project_p\n"
+            ),
+        )
+
+    def test_project_package_name_reads_manifest_not_directory_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Worktree checkouts keep the manifest's package name.
+
+        A project root directory named after a git branch (``0.12.0-dev``)
+        must not leak into isort sectioning: the distribution package is
+        declared by the manifest, never proxied from the directory name,
+        so a wrapper root renders the project import in the first-party
+        section below the third-party block.
+        """
+        project_root = tmp_path / "0.12.0-dev"
+        wrapper_root = project_root / "examples"
+        wrapper_root.mkdir(parents=True)
+        (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "demo-worktree-pkg"\nversion = "1.0.0"\n',
+            encoding="utf-8",
+        )
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=wrapper_root,
+                init_path=wrapper_root / c.Infra.INIT_PY,
+                current_pkg="examples",
+                surface="examples",
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("cli_c", "project_p"),
+            lazy_map=MappingProxyType({
+                "cli_c": ("flext_cli", "c"),
+                "project_p": ("demo_worktree_pkg", "p"),
+            }),
+            type_checking_map=MappingProxyType({
+                "cli_c": ("flext_cli", "c"),
+                "project_p": ("demo_worktree_pkg", "p"),
+            }),
+            eager_dunders=MappingProxyType({}),
+            child_packages_for_lazy=(),
+            excluded_lazy_names=("internal_only",),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(
+            init_content,
+            contains=(
+                "if TYPE_CHECKING:\n"
+                "    from flext_cli import c as cli_c\n"
+                "\n"
+                "    from demo_worktree_pkg import p as project_p\n"
             ),
         )
 

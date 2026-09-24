@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from tests import c, t, u
@@ -107,7 +108,7 @@ class TestsFlextInfraLazyInitHelpers:
         """Keep module-local public helpers outside the package-root ABI."""
         repository_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: t.VariadicTuple[str] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
+            '__all__: tuple[str, ...] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -147,7 +148,9 @@ class TestsFlextInfraLazyInitHelpers:
     ) -> None:
         """Remove stale projected names that have no current source owner."""
         repository_root, package_root = self._workspace(tmp_path)
-        declared_contract = '__all__: t.VariadicTuple[str] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        declared_contract = (
+            '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
             declared_contract, encoding=c.Cli.ENCODING_DEFAULT
         )
@@ -181,7 +184,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         exports_content = self._generated_init(package_root)
         public_exports = exports_content.split(
-            "__all__: t.VariadicTuple[str] =", maxsplit=1
+            "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
 
         # Private child classes never become root ABI.
@@ -447,7 +450,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(init_content, lacks="_LAZY_MODULES")
         tm.that(exports_content, has='"flext_cli": (')
-        tm.that(init_content, has="__all__: t.VariadicTuple[str]")
+        tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
         tm.that(init_content, lacks="_root_typing_parts")
@@ -470,9 +473,9 @@ class TestsFlextInfraLazyInitHelpers:
         # to own it, and until then the generator propagates, never infers.
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
         )
-        tm.that(init_content, lacks="FlextMeltanoConstants as c")
+        tm.that(init_content, has="FlextMeltanoConstants as c")
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
@@ -588,7 +591,7 @@ class TestsFlextInfraLazyInitHelpers:
             tmp_path, project_name="ai-hub", package_name="ai_hub"
         )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: t.VariadicTuple[str] = ("AiHubModels", "m")\n',
+            '__all__: tuple[str, ...] = ("AiHubModels", "m")\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         u.Tests.write_lazy_init_namespace_module(
@@ -708,6 +711,44 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
+
+    def test_independent_packages_accept_same_export_name_without_warnings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A public name belongs to its package, not to a workspace-wide census."""
+        repository_root, package_root = self._workspace(tmp_path)
+        other_package = package_root.with_name("independent_package")
+        other_package.mkdir()
+        other_package.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        for package in (package_root, other_package):
+            package.joinpath("holder.py").write_text(
+                "class SharedPackageDeclaration:\n    pass\n\n"
+                '__all__ = ["SharedPackageDeclaration"]\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
+        captured = capsys.readouterr()
+        tm.that(captured.out + captured.err, lacks="WARN:")
+
+    def test_unpublished_module_homonyms_do_not_compete_for_exports(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Independent implementation declarations need no global renaming."""
+        repository_root, package_root = self._workspace(tmp_path)
+        for module in ("first", "second"):
+            package_root.joinpath(f"{module}.py").write_text(
+                "class ModuleLocalDeclaration:\n    pass\n\n__all__: list[str] = []\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
+        captured = capsys.readouterr()
+        tm.that(captured.out + captured.err, lacks="WARN:")
 
     def test_duplicate_public_export_fails_before_generation(
         self, tmp_path: Path

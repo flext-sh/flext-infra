@@ -101,6 +101,55 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(result.failure, eq=True)
         tm.that(result.error, has="conflicting flext-* line sources")
 
+    @pytest.mark.parametrize(
+        "section",
+        [
+            None,
+            *next(
+                item
+                for item in config.Infra.codegen.managed_files
+                if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+            ).conflict_sections,
+        ],
+    )
+    def test_infra_identity_respects_managed_conflict_ownership(
+        self, tmp_path: Path, section: str | None
+    ) -> None:
+        """Identity planning recovers managed bytes without touching the file."""
+        codegen = config.Infra.codegen
+        source = codegen.infra_repository
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        root = tmp_path / "consumer"
+        root.mkdir()
+        declaration = (
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            f'dependencies = ["{source.distribution} @ git+{provider.base_url}/'
+            f'{source.distribution}.git@{branch}"]\n'
+        )
+        conflict = (
+            "<<<<<<< HEAD\nprobe = 'current'\n"
+            "=======\nprobe = 'incoming'\n>>>>>>> incoming\n"
+        )
+        content = (
+            declaration + f"[{section}.identity_probe]\n" + conflict
+            if section is not None
+            else conflict + declaration
+        )
+        path = root / c.Infra.PYPROJECT_FILENAME
+        path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+
+        result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
+
+        if section is not None:
+            line = tm.ok(result)
+            tm.that(line.branch, eq=branch)
+            tm.that(line.base_url, eq=provider.base_url)
+        else:
+            tm.that(result.failure, eq=True)
+            tm.that(result.error, has="outside owner-declared TOML sections")
+        tm.that(path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+
     def test_infra_repository_identity_fails_loud_when_undeclared(
         self, tmp_path: Path
     ) -> None:
@@ -119,9 +168,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
 
         tm.that(result.failure, eq=True)
         tm.that(result.error, has="is undeclared by this checkout")
-
-    def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
-        tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
     def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
         template = (

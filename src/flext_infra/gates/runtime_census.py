@@ -33,15 +33,24 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraRuntimeCensusValidator(repository_root=project_dir)
-        result = validator.execute()
-        passed = result.success and result.value is True
-        errors: list[str] = []
-        if result.failure:
-            errors.append(result.error or "runtime census failed")
-        elif not passed:
-            errors.append(result.error or "runtime census found violations")
+        # ``build_report`` (not ``execute``) keeps violations structured so the
+        # gate can grade a broken invocation separately from found violations.
+        report_result = validator.build_report()
+        if report_result.failure:
+            return self._build_project_error_gate_result(
+                project_dir,
+                passed=False,
+                errors=[report_result.error or "runtime census failed"],
+                started=started,
+                ctx=ctx,
+            )
+        report = report_result.value
         return self._build_project_error_gate_result(
-            project_dir, passed=passed, errors=errors, started=started, ctx=ctx
+            project_dir,
+            passed=report.passed,
+            errors=list(report.violations),
+            started=started,
+            ctx=ctx,
         )
 
 

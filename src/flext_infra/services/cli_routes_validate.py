@@ -10,11 +10,13 @@ from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.collector import FlextInfraDocCollector
 from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra.docs.formatter import FlextInfraDocFormatter
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.clean import FlextInfraCleanService
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.maintenance.sonarcloud import FlextInfraSonarcloudSettingsSync
 
 from .cli_routes_validate_commands import ValidationCommandRoutes
 
@@ -68,6 +70,12 @@ class ValidationRoutes(ValidationCommandRoutes):
                         "Fix completed successfully",
                     ),
                     (
+                        "fmt",
+                        "Format documentation through the canonical markdown-format gate",
+                        FlextInfraDocFormatter,
+                        "Format completed successfully",
+                    ),
+                    (
                         "build",
                         "Build MkDocs sites",
                         FlextInfraDocBuilder,
@@ -102,6 +110,16 @@ class ValidationRoutes(ValidationCommandRoutes):
                 model_cls=FlextInfraCleanService,
                 handler=FlextInfraCleanService.execute_command,
                 success_message="Clean completed",
+            ),
+            m.Cli.ResultCommandRoute(
+                name=c.Infra.VERB_SONARCLOUD_SYNC,
+                help_text=(
+                    "Write the SSOT SonarCloud issue exclusions to the server-side "
+                    "project settings (requires SONAR_TOKEN)"
+                ),
+                model_cls=FlextInfraSonarcloudSettingsSync,
+                handler=FlextInfraSonarcloudSettingsSync.execute_command,
+                success_message="SonarCloud issue exclusions match the SSOT",
             ),
         ),
         c.Infra.CLI_GROUP_VALIDATE: ValidationCommandRoutes.validate_command_routes,

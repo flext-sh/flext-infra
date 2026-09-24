@@ -10,6 +10,7 @@ from flext_core import r
 from flext_infra import c, m, t
 
 from .edits import FlextInfraUtilitiesSemanticCutoverEdits
+from .family_flatten import FlextInfraUtilitiesSemanticFamilyFlatten
 from .nesting_cst import FlextInfraUtilitiesSemanticCutoverNestingCst
 
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesSemanticCutoverNesting(
+    FlextInfraUtilitiesSemanticFamilyFlatten,
     FlextInfraUtilitiesSemanticCutoverNestingCst,
     FlextInfraUtilitiesSemanticCutoverEdits,
 ):
@@ -95,6 +97,38 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
     @classmethod
     def _plan_class_nesting(
+        cls, rope_workspace: p.Infra.RopeWorkspaceDsl, sources: t.MappingKV[Path, str]
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Compose family flattening and orphan nesting in one immutable plan."""
+        planned = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        flattened = planned.create_from_callable(
+            lambda: cls._family_flatten_edits(rope_workspace, sources)
+        )
+        if flattened.failure:
+            return planned.from_failure(flattened)
+        proposed = dict(sources)
+        merged = {edit.file_path: edit for edit in flattened.value}
+        for edit in flattened.value:
+            proposed[edit.file_path] = edit.updated_source
+        nested = cls._plan_orphan_nesting(rope_workspace, proposed)
+        if nested.failure:
+            return planned.from_failure(nested)
+        for edit in nested.value:
+            previous = merged.get(edit.file_path)
+            merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
+                file_path=edit.file_path,
+                original_source=(
+                    previous.original_source if previous else edit.original_source
+                ),
+                updated_source=edit.updated_source,
+                changes=(*previous.changes, *edit.changes)
+                if previous
+                else edit.changes,
+            )
+        return planned.ok(tuple(merged[path] for path in sorted(merged)))
+
+    @classmethod
+    def _plan_orphan_nesting(
         cls, rope_workspace: p.Infra.RopeWorkspaceDsl, sources: t.MappingKV[Path, str]
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan all structural nesting and consumer rewrites without effects."""

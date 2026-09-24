@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from ._pyproject.uv_sources import FlextInfraUtilitiesPyprojectUvSources
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
+    from ._rope.signature_patch import FlextInfraUtilitiesRopeSignaturePatch
     from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
     from ._rope_analysis.base import FlextInfraUtilitiesRopeAnalysisBase
     from ._rope_analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
@@ -79,6 +80,21 @@ if TYPE_CHECKING:
     from ._semantic_cutover.aliases import FlextInfraUtilitiesSemanticCutoverAliases
     from ._semantic_cutover.base import FlextInfraUtilitiesSemanticCutoverBase
     from ._semantic_cutover.edits import FlextInfraUtilitiesSemanticCutoverEdits
+    from ._semantic_cutover.facade_base_cst import (
+        FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
+    )
+    from ._semantic_cutover.facade_bases import (
+        FlextInfraUtilitiesSemanticCutoverFacadeBases,
+    )
+    from ._semantic_cutover.facade_owners import (
+        FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+    )
+    from ._semantic_cutover.family_flatten import (
+        FlextInfraUtilitiesSemanticFamilyFlatten,
+    )
+    from ._semantic_cutover.family_references import (
+        FlextInfraUtilitiesSemanticFamilyReferences,
+    )
     from ._semantic_cutover.nesting import FlextInfraUtilitiesSemanticCutoverNesting
     from ._semantic_cutover.nesting_cst import (
         FlextInfraUtilitiesSemanticCutoverNestingCst,
@@ -190,6 +206,8 @@ if TYPE_CHECKING:
     from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
     "FlextInfraMypyDarwinSupervisor",
@@ -329,6 +347,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
+    "FlextInfraUtilitiesRopeSignaturePatch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
@@ -337,11 +356,16 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverAliases",
     "FlextInfraUtilitiesSemanticCutoverBase",
     "FlextInfraUtilitiesSemanticCutoverEdits",
+    "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",
+    "FlextInfraUtilitiesSemanticCutoverFacadeBases",
+    "FlextInfraUtilitiesSemanticCutoverFacadeOwners",
     "FlextInfraUtilitiesSemanticCutoverNesting",
     "FlextInfraUtilitiesSemanticCutoverNestingCst",
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
+    "FlextInfraUtilitiesSemanticFamilyFlatten",
+    "FlextInfraUtilitiesSemanticFamilyReferences",
     "FlextInfraUtilitiesSignatureRules",
     "FlextInfraUtilitiesSilentFailureAst",
     "FlextInfraUtilitiesSilentFailureAstBase",
@@ -432,6 +456,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope": ("_rope",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
+            "._rope.signature_patch": ("FlextInfraUtilitiesRopeSignaturePatch",),
             "._rope_analysis": ("_rope_analysis",),
             "._rope_analysis.asthelpers": (
                 "FlextInfraUtilitiesRopeAnalysisAstHelpers",
@@ -457,6 +482,21 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._semantic_cutover.base": ("FlextInfraUtilitiesSemanticCutoverBase",),
             "._semantic_cutover.edits": ("FlextInfraUtilitiesSemanticCutoverEdits",),
+            "._semantic_cutover.facade_base_cst": (
+                "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",
+            ),
+            "._semantic_cutover.facade_bases": (
+                "FlextInfraUtilitiesSemanticCutoverFacadeBases",
+            ),
+            "._semantic_cutover.facade_owners": (
+                "FlextInfraUtilitiesSemanticCutoverFacadeOwners",
+            ),
+            "._semantic_cutover.family_flatten": (
+                "FlextInfraUtilitiesSemanticFamilyFlatten",
+            ),
+            "._semantic_cutover.family_references": (
+                "FlextInfraUtilitiesSemanticFamilyReferences",
+            ),
             "._semantic_cutover.nesting": (
                 "FlextInfraUtilitiesSemanticCutoverNesting",
             ),

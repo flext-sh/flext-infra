@@ -60,6 +60,8 @@ class FlextInfraWorkspaceChecker(
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
         """Validate exact, unique requested gate names without normalization."""
+        if not gates:
+            return r[list[str]].fail("ERROR: at least one quality gate is required")
         resolved: list[str] = []
         for gate in gates:
             if not gate or gate != gate.strip():
@@ -104,12 +106,21 @@ class FlextInfraWorkspaceChecker(
         )
         if run_result.failure:
             return r[bool].from_failure(run_result)
+        if len(run_result.value) != len(project_targets):
+            return r[bool].fail(
+                "quality checks did not execute every requested project: "
+                f"{len(run_result.value)}/{len(project_targets)}"
+            )
         failed_projects = [
             project for project in run_result.value if not project.passed
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
-            total_findings = sum(project.total_errors for project in failed_projects)
+            total_findings = sum(
+                len(execution.issues)
+                for project in failed_projects
+                for execution in project.gates.values()
+            )
             return r[bool].fail(
                 f"quality checks failed for: {failed_names} "
                 f"({total_findings} findings; see the check summary and reports)"
@@ -191,9 +202,7 @@ class FlextInfraWorkspaceChecker(
             effective_ctx,
             fail_fast=fail_fast,
         )
-        return self._write_reports_and_summary(
-            resolved_gates, report_base, outcome, repository_root=self._repository_root
-        )
+        return self._write_reports_and_summary(resolved_gates, report_base, outcome)
 
     def _project_targets(
         self, projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget]

@@ -37,6 +37,28 @@ def _modernizer_workspace_pyproject(*members: str) -> str:
     return f"{base}\n[tool.uv.workspace]\nmembers = [{members_text}]\n"
 
 
+def _write_modernizer_codegen_config(workspace: Path) -> None:
+    """Give the workspace its own governed SSOT so ``--rewrite-constraints``.
+
+    stays inside the fixture (flext-eles2): the floor writer resolves its
+    target from the modernizer's own ``repository_root``, never the real
+    flext-infra checkout, so every isolated workspace needs a minimal
+    ``config/codegen.yaml`` of its own.
+    """
+    config_dir = workspace / c.Infra.CODEGEN_CONFIG_DIR
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / c.Infra.CODEGEN_CONFIG_FILENAME).write_text(
+        (
+            "Infra:\n"
+            "  codegen:\n"
+            "    scaffold:\n"
+            "      project:\n"
+            "        dependency_profiles: []\n"
+        ),
+        encoding="utf-8",
+    )
+
+
 @pytest.fixture
 def deptry_report_payload() -> t.JsonPayload:
     parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
@@ -60,6 +82,16 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         "yaml": "pyyaml",
     }
     dependencies = ", ".join(f'"{distributions[name]}"' for name in modules)
+    infrastructure = tm.ok(
+        u.Infra.configured_repository_ref(
+            codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
+        )
+    )
+    integration = tm.ok(
+        u.Infra.flext_integration_line(
+            codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
+        )
+    )
     root = u.Tests.mk_project(
         tmp_path,
         "detector-fixture",
@@ -71,7 +103,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
             '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
-            f'"flext-infra @ {_PROJECT_ROOT.as_uri()}"]\n'
+            f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration.branch}"]\n'
             "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),
@@ -174,7 +206,7 @@ def real_python_package(tmp_path: Path) -> Path:
     (src_dir / "identity.py").write_text(
         '"""Substantive unique source consumed by real scanner fixtures."""\n\n'
         "from __future__ import annotations\n\n"
-        "def normalize_identity(parts: t.VariadicTuple[str]) -> str:\n"
+        "def normalize_identity(parts: tuple[str, ...]) -> str:\n"
         '    """Normalize one ordered identity without duplicated code."""\n'
         "    normalized = tuple(part.strip() for part in parts if part.strip())\n"
         "    if not normalized:\n"
@@ -352,6 +384,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
     u.Tests.write_beads_project(
         workspace, workspace="workspace", database="workspace", issue_prefix="workspace"
     )
+    _write_modernizer_codegen_config(workspace)
     return workspace
 
 

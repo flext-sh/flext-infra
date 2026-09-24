@@ -47,6 +47,19 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         while index < len(text):
             container = self._match_container_prefix(text, index)
             if container is None:
+                # The Any/object exact-synonym rewrite must fire on leaf
+                # positions too, not only nested inside a matched built-in
+                # container — otherwise `t.VariadicTuple[Any]` keeps Any.
+                token_rewrite = self._match_simple_type_alias(text, index)
+                if token_rewrite is not None:
+                    original, replacement, end_index = token_rewrite
+                    result.append(replacement)
+                    if original != replacement:
+                        changes.append(
+                            f"Canonicalized built-in annotation {original} -> {replacement}"
+                        )
+                    index = end_index
+                    continue
                 result.append(text[index])
                 index += 1
                 continue

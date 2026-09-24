@@ -14,8 +14,9 @@ class TestsFlextInfraModRuleFixtureStaging:
     """Fixture staging follows sgconfig declarations, never the owning checkout."""
 
     @pytest.mark.parametrize("with_utils", [False, True])
+    @pytest.mark.parametrize("regenerate_snapshots", [False, True])
     def test_staging_copies_declared_trees_without_traversing_checkout(
-        self, tmp_path: Path, *, with_utils: bool
+        self, tmp_path: Path, *, with_utils: bool, regenerate_snapshots: bool
     ) -> None:
         owner = tmp_path / "owner"
         owner.mkdir()
@@ -45,14 +46,21 @@ class TestsFlextInfraModRuleFixtureStaging:
         staged = tmp_path / "staged"
 
         FlextInfraModGateEngine.stage_rule_fixture_root(
-            config_root=owner, temp_root=staged
+            config_root=owner,
+            temp_root=staged,
+            regenerate_snapshots=regenerate_snapshots,
         )
 
+        expected = dict(payloads)
+        snapshot = f"fixtures/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/rule-snapshot.yml"
+        if regenerate_snapshots:
+            del expected[snapshot]
+        assert (owner / snapshot).read_text(encoding="utf-8") == payloads[snapshot]
         assert {
             path.relative_to(staged).as_posix(): path.read_text(encoding="utf-8")
             for path in staged.rglob("*")
             if path.is_file()
-        } == payloads
+        } == expected
         assert not (staged / ".venv").exists()
         assert not (staged / ".agents").is_symlink()
         assert not (staged / ".git").exists()

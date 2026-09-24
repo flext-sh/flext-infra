@@ -909,6 +909,58 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(makefile, has="--upgrade --refresh")
         tm.that(makefile, lacks="--constraint-policy")
 
+    def test_workspace_without_local_members_retains_external_flext_sources(
+        self, tmp_path: Path
+    ) -> None:
+        """Workspace role alone cannot turn external dependencies into members."""
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE, bootstrap=True
+        )
+        rendered = (project_root / "pyproject.toml").read_text(encoding="utf-8")
+        requirements = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
+        external = tuple(
+            requirement
+            for requirement in requirements
+            if (name := u.Infra.dep_name(requirement)) and name.startswith("flext-")
+        )
+        assert external
+        for requirement in external:
+            url, ref = tm.ok(u.Infra.declared_git_source(requirement))
+            assert url.endswith(f"/{u.Infra.dep_name(requirement)}.git")
+            assert ref == u.Tests.provider_branch()
+
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_help_prints_description_as_literal_data(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Help preserves quotes and expansion syntax without executing them."""
+        description = (
+            'Print checkout\'s "$HOME", $(shell touch make-effect), '
+            "and `touch shell-effect`."
+        )
+        project_root, _repository_root = self._render_makefile(
+            tmp_path,
+            profile,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(name="literal-help", description=description),
+            ),
+        )
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "help"],
+                cwd=project_root,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(process.stdout, has=description)
+        tm.that((project_root / "make-effect").exists(), eq=False)
+        tm.that((project_root / "shell-effect").exists(), eq=False)
+
     def test_generated_make_ignores_forbidden_makeflags_overrides(
         self, tmp_path: Path
     ) -> None:
@@ -1022,6 +1074,18 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(makefile, has="_builtin-fix-enforcement: _builtin_fix_enforcement")
         tm.that(
             makefile, has="_builtin-self-fix-enforcement: _builtin_require_environment"
+        )
+        tm.that(makefile, has="_builtin-sonarcloud-sync: _builtin_sonarcloud_sync_all")
+        tm.that(
+            makefile,
+            has="_builtin_sonarcloud_sync_all: _builtin_sonarcloud_sync_project",
+        )
+        tm.that(
+            makefile,
+            has=(
+                "@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-sync "
+                '--repository-root "$(PROJECT_ROOT)"'
+            ),
         )
         tm.that(makefile, has="_builtin-gen: _builtin_gen_all")
         tm.that(makefile, has="_builtin-mod: _builtin_mod_apply")

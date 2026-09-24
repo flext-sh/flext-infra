@@ -367,16 +367,6 @@ class FlextInfraConfigModelsContexts:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
-        beads_tool_selector: Annotated[
-            t.NonEmptyStr, m.Field(description="Official Beads mise selector")
-        ]
-        beads_tool_version: Annotated[
-            Literal["latest"], m.Field(description="Moving Beads release selector")
-        ]
-        beads_tool_prerelease: Annotated[
-            bool,
-            m.Field(description="Whether mise may resolve prerelease Beads versions"),
-        ] = False
         beads: Annotated[
             FlextInfraConfigModelsBeads.BeadsProjectSpec,
             m.Field(description="Repository-local Beads identity"),
@@ -407,6 +397,15 @@ class FlextInfraConfigModelsContexts:
         ]
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
+        ]
+        upstream_facades: Annotated[
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Facade class the upstream declares for each letter in the "
+                    "__all__ that binds it; scaffolded facades extend that class"
+                )
+            ),
         ]
         inherited_facets: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -536,18 +535,16 @@ class FlextInfraConfigModelsContexts:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
-        workspace_context_root: Annotated[
-            bool,
+        workspace_dependency_distributions: Annotated[
+            t.VariadicTuple[str],
             m.Field(
                 description=(
-                    "Whether this render is the workspace-context root: true "
-                    "means internal dependencies render as bare names and the "
-                    "[tool.uv.sources] workspace overlay owns their source; "
-                    "false (standalone/publishable members) renders direct Git "
-                    "requirement sources."
+                    "Exact local distributions whose source is owned by this "
+                    "workspace root's uv overlay. Every external dependency and "
+                    "every standalone member retains its declared Git source."
                 )
             ),
-        ] = False
+        ] = ()
         year: Annotated[int, m.Field(description="Copyright year")]
 
         @m.field_validator("hatch_build_hook_path")

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, p, u
+from flext_infra import c, config, m, p, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import t, u as test_u
 
@@ -68,7 +68,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         member.mkdir()
         (member / "pyproject.toml").write_text(
             "[project]\nname = 'flext-core'\nversion = '0.1.0'\n"
-            'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\ndependencies = []\n',
             encoding="utf-8",
         )
         pkg = member / "src" / "flext_core"

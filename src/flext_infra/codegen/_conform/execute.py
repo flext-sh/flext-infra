@@ -9,6 +9,7 @@ from flext_core import r
 
 from ... import c, config, m, p, t, u
 from ...docs import FlextInfraDocGenerator
+from ...validate import FlextInfraValidateFreshImport
 from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
     FlextInfraCodegenLazyInit,
@@ -62,13 +63,33 @@ class FlextInfraCodegenConformExecute(
         cls: type[Self],
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-        *,
-        initial_branch: str | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         root = request.root.expanduser().resolve()
         bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
         initialized_git = False
+        if (
+            initial_workspace is not None
+            and not (root / c.Infra.PYPROJECT_FILENAME).exists()
+        ):
+            source = u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=root,
+                bootstrap_source=initial_workspace.flext_source,
+            )
+            if source.failure:
+                return r[m.Infra.CodegenResult].from_failure(source)
+        # The supplied WorkspaceSpec already owns the declared integration branch.
+        # Require it before materialization instead of a second divergent input.
+        if (
+            initial_workspace is not None
+            and not (root / c.Infra.GIT_DIR).exists()
+            and initial_workspace.integration is None
+        ):
+            return r[m.Infra.CodegenResult].fail(
+                "initial integration is required to initialize repository Git: "
+                "declare --repository-branch"
+            )
         if initial_workspace is not None and not root.is_dir():
             planned = u.Cli.atomic_plan_directory_chain(root)
             if planned.failure:
@@ -82,7 +103,7 @@ class FlextInfraCodegenConformExecute(
         if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
             # Git owns no answer for an unborn repository: the caller declares
             # the integration branch and a missing declaration fails loudly.
-            if not initial_branch or not initial_branch.strip():
+            if initial_workspace.integration is None:
                 return r[m.Infra.CodegenResult].fail(
                     "initial branch is required to initialize the repository "
                     "Git: declare --repository-branch"
@@ -91,7 +112,7 @@ class FlextInfraCodegenConformExecute(
                 c.Infra.GIT,
                 "init",
                 "--initial-branch",
-                initial_branch.strip(),
+                initial_workspace.integration.branch,
                 str(root),
             ])
             if initialized.failure:
@@ -454,6 +475,7 @@ class FlextInfraCodegenConformExecute(
                 if file.path not in conform_paths
             ),
             inputs=lazy_analysis.value.inputs,
+            publications=lazy_analysis.value.publications,
         )
         extended = transaction.append_phase_locked(
             session, owned_lazy_analysis.phase, owned_lazy_analysis.files
@@ -692,7 +714,38 @@ class FlextInfraCodegenConformExecute(
             validated = mise.validate_artifacts(project_layout.root)
             if validated.failure:
                 return r[bool].from_failure(validated)
+        u.Cli.info("stage=verify-fresh-imports")
+        imported = FlextInfraValidateFreshImport(
+            repository_root=request.root
+        ).build_report(
+            publications=lazy_analysis.publications,
+            repository_roots=self.fresh_import_repository_roots(
+                request.root, verified.value.repositories
+            ),
+        )
+        if imported.failure:
+            return r[bool].from_failure(imported)
+        if not imported.value.passed:
+            return r[bool].fail(
+                "\n".join((imported.value.summary, *imported.value.violations))
+            )
         return r[bool].ok(True)
+
+    @staticmethod
+    def fresh_import_repository_roots(
+        root: Path, repositories: t.VariadicTuple[m.Infra.RepositoryRef]
+    ) -> tuple[Path, ...]:
+        """Resolve the fresh-import probe scope from declared repositories.
+
+        Fresh-import probes validate Python publications, so only declared
+        Python packages enter the scope: a repository whose manifest carries
+        ``package: false`` (a workspace umbrella root, for example) owns no
+        importable layout, and requiring one there made ``make gen`` fail on
+        every such checkout regardless of what conform actually published.
+        """
+        return tuple(
+            root / repository.path for repository in repositories if repository.package
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformExecute"]

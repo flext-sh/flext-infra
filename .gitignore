@@ -29,9 +29,7 @@ uv.lock
 # Agent hooks and operator config (runtime state, never source)
 .github/hooks/
 */.hooks.json.agents-governance.json
-.claude/settings.json
 .claude/*.agents-governance.json
-.gemini/settings.json
 .gemini/*.agents-governance.json
 .claude/settings.local.json
 
@@ -374,6 +372,7 @@ CLAUDE.local.md
 !.github/workflows/release.yml
 !.qlty/
 !.qlty/qlty.toml
+!.sonarcloud.properties
 !.vscode/settings.json
 !config/
 !config/gitleaks-release.toml

@@ -11,7 +11,6 @@ from .collection_base import (
     FlextInfraEnforcementCollectionBase,
     FlextInfraEnforcementEvaluation,
 )
-from .collection_tests import FlextInfraEnforcementTestsCollector
 from .metadata import FlextInfraEnforcementMetadata
 from .selection import FlextInfraEnforcementSelection
 
@@ -22,7 +21,6 @@ if TYPE_CHECKING:
 class FlextInfraEnforcementSourceCollectors(
     FlextInfraEnforcementMetadata,
     FlextInfraEnforcementSelection,
-    FlextInfraEnforcementTestsCollector,
     FlextInfraEnforcementCollectionBase,
 ):
     """Collect enforcement probes for supported catalog source kinds."""
@@ -34,18 +32,22 @@ class FlextInfraEnforcementSourceCollectors(
     def collect_project(
         self, project_dir: Path, rules: t.SequenceOf[m.EnforcementRuleSpec]
     ) -> FlextInfraEnforcementEvaluation:
-        """Collect rule probes for one project using one shared dispatcher."""
+        """Collect rule probes for one project using one shared dispatcher.
+
+        Tests-tier source kinds (``flext_tests_validator``) never reach this
+        dispatcher: selection excludes them because their execution owner is
+        the flext-tests pytest dispatcher and flext-infra never imports
+        ``flext_tests`` at runtime.
+        """
         violations: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]] = []
         failures: list[m.Infra.FailedFix] = []
         declarative_rules: list[m.EnforcementRuleSpec] = []
         for rule in rules:
             source = rule.source
-            if source.kind == "flext_tests_validator":
-                collected, errors = self.collect_tests_validator(project_dir, rule)
-            elif self.supports_declarative(rule):
+            if self.supports_declarative(rule):
                 declarative_rules.append(rule)
                 continue
-            elif source.kind in {"flext_infra_detector", "beartype"}:
+            if source.kind in {"flext_infra_detector", "beartype"}:
                 collected, errors = self.collect_python_file_probes(project_dir, rule)
             elif source.kind in {"ruff", "code_smell"}:
                 violations.extend(self.collect_project_probe(project_dir, rule))
@@ -93,9 +95,20 @@ class FlextInfraEnforcementSourceCollectors(
         files, errors = self.collect_python_file_probes(project_dir, rules[0])
         if errors:
             return [], errors
-        file_paths = [
-            Path(str(getattr(probe, "file_path", ""))) for _rule, probe in files
-        ]
+        file_paths: list[Path] = []
+        for _rule, probe in files:
+            # Probe payloads are untrusted at this boundary (AttributeProbe is
+            # a deliberately empty structural marker): a probe without a
+            # usable file_path is a collection failure, never Path("")
+            # silently resolving to the project root.
+            path_value = getattr(probe, "file_path", None)
+            if not isinstance(path_value, str) or not path_value:
+                return [], [
+                    self.collection_failure(
+                        project_dir, rules[0], "probe payload missing file_path"
+                    )
+                ]
+            file_paths.append(Path(path_value))
         if any(self.rule_requires_stub_file(rule) for rule in rules):
             file_paths.extend(self.stub_file_paths(project_dir))
         probes: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]] = []

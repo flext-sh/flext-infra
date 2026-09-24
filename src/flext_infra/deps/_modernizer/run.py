@@ -208,6 +208,7 @@ class FlextInfraPyprojectModernizerRun:
             return 0
         profile_changes = (
             FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_resolution(
+                root=self.root,
                 resolved_versions=u.Infra.resolved_dependency_versions(),
                 internal_names=tuple(
                     sorted({

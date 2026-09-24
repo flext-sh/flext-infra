@@ -3,6 +3,14 @@ Infra:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
 
+    # Operator law 2026-09-22: the pyproject template declares `.cli:main`
+    # for every distribution while most member cli facades predate that
+    # contract. Until the fleet converges the facades (bead
+    # flext-1pquc, gen-fixed-point campaign), declared-script import
+    # failures warn instead of failing the conformance transaction.
+    # Package-export probes stay blocking either way.
+    fresh_import_entry_points_warn_only: true
+
     # Per-module scc code-LOC ceiling. Operator instruction 2026-09-07:
     # the former 1000-LOC allowance stands (supersedes the 200 constant).
     loc_cap:
@@ -90,44 +98,10 @@ Infra:
       # through the lifecycle; make is the one tool the Makefile cannot resolve
       # from itself, so mise must provision it.
       make_version: latest
-      protected_mise_tools:
-        - beads
-        - gascity
-      gascity:
-        # The fleet gc is the operator's fork carrying the native-store
-        # compatibility correction required by every governed rig.
-        # Projection: .mise.toml [tools."<selector>"]. Override here.
-        selector: github:marlon-costa-dc/gascity
-        # release = always version latest (prerelease tags included).
-        # branch = set track: branch and branch: <name> (required, no default main).
-        track: release
-        version: latest
-        # Suffixed release tag; mise only resolves it when told it is a prerelease.
-        prerelease: true
-        github_attestations: false
-        # Selector shapes that identify gc in a mise manifest, so a regenerated
-        # .mise.toml cannot silently swap the fleet build for another distribution.
-        selector_patterns:
-          - gc
-          - gascity
-          - "*:*/gascity"
       beads:
-        # Projection: .mise.toml [tools."<selector>"]. Override here.
-        selector: github:marlon-costa-dc/beads
-        track: release
-        version: latest
-        # The fleet bd is the operator's fork carrying the hierarchy-cycle
-        # guard required to prevent unbounded list traversal. Its releases use
-        # prerelease tags, so mise must be allowed to resolve them.
-        prerelease: true
-        github_attestations: false
-        # Selector shapes that identify this tool in a mise manifest, so a
-        # regenerated .mise.toml cannot silently replace the selected fork.
-        selector_patterns:
-          - bd
-          - beads
-          - "*:*/beads"
-          - "*:*/beads/cmd/bd"
+        # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
+        # The bd and gc binaries are host tools owned by ai-hub's global mise
+        # config; no project .mise.toml declares them.
         # The city owns the endpoint; a repository declares only that it
         # inherits one. Both values are rendered into .beads/config.yaml as
         # gc.endpoint_origin / gc.endpoint_status.
@@ -282,6 +256,41 @@ Infra:
         - develop
         - dev
         - main
+    # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
+    # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
+    # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
+    # else (python.version, coverage, sonar.issue.ignore.*) is silently
+    # ignored, so issue exclusions are server-side project settings. This
+    # block is the single fleet owner of both.
+    sonarcloud:
+      # Generated, cache, vendored and build output only; never governed source.
+      exclusions:
+        - "**/.venv/**"
+        - "**/__pycache__/**"
+        - "**/*.py[cod]"
+        - "**/build/**"
+        - "**/dist/**"
+        - "**/*.egg-info/**"
+        - "**/.pytest_cache/**"
+        - "**/.reports/**"
+        - "**/node_modules/**"
+        - "**/.scannerwork/**"
+      cpd_exclusions:
+        - "tests/**"
+      # Web API that `make sonarcloud-sync` writes the server-side issue
+      # exclusions through (bead flext-c8yle). The project key is derived from
+      # the checkout's origin identity as <organization>_<repository>.
+      api_url: "https://sonarcloud.io"
+      api_timeout_seconds: 30
+      # Applied through each project's SonarCloud settings by
+      # `make sonarcloud-sync` (the file cannot carry them); rendered into the
+      # generated file as documentation only.
+      issue_exclusions:
+        - rule_key: "text:S8565"
+          resource_key: "pyproject.toml"
+          reason: >-
+            fleet lockfile ban (operator order); dependency ranges live in
+            pyproject.toml; bead flext-c8yle
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
@@ -382,9 +391,11 @@ Infra:
         - {verb: fmt, contexts: [local, pre_commit]}
         - {verb: fix, contexts: [local, pre_commit]}
         - {verb: check, contexts: [local, ci, pre_push, pre_commit]}
-      # Review CI proves the complete native gate set. Draft PRs do not select
-      # the job, while attestation reuse is selected externally by AI Hub.
-        - {verb: test, contexts: [local, ci, pre_push]}
+      # Operator ruling 2026-09-23: CI runs setup, the gen fixed point, the
+      # deps audit and check only; make test runs locally and on pre-push,
+      # never in CI. The CI test-only steps (testmon cache, test reports)
+      # render only while a test row declares the ci context.
+        - {verb: test, contexts: [local, pre_push]}
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -425,6 +436,12 @@ Infra:
           - develop
           - 0.12.0-dev
       docs:
+        # Operator law 2026-09-22: `make docs` is a docs-only lifecycle
+        # (generate -> fix -> fmt -> check); it never runs the workspace-wide
+        # codegen conform as a prerequisite. `validate` is the structural
+        # check (blocking when the .md set is incomplete); `audit` findings
+        # are warnings owned by cleanup beads, never CI blockers.
+        actions: [generate, fix, fmt, validate, audit]
         api_modules:
           flext-infra:
             - api
@@ -438,7 +455,8 @@ Infra:
             - typings
             - utilities
             - worktree
-        mutable_actions: [fix]
+        mutable_actions: [fix, fmt]
+        warning_actions: [audit]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -480,7 +498,7 @@ Infra:
         - name: status
           description: Report the resolved runtime and repository state.
         - name: docs
-          description: Generate, repair, build, and validate documentation.
+          description: Generate, fix, format, and check documentation.
         - name: clean
           description: Remove every declared disposable artifact.
         - name: release-plan
@@ -503,6 +521,8 @@ Infra:
           description: Validate provider-neutral governance semantics with Waza.
         - name: duplication
           description: Run the canonical jscpd duplicate-code gate.
+        - name: sonarcloud-sync
+          description: Write the SSOT SonarCloud issue exclusions to the server-side project settings (requires SONAR_TOKEN).
       custom_handler_profile_overrides: {}
       custom_handler_policy:
         filename: custom.mk
@@ -993,6 +1013,11 @@ Infra:
       - path: .qlty/qlty.toml
         owner: codegen
         policy: full
+    # SonarCloud automatic analysis reads its scope from this file; generated
+    # fleet-wide from the sonarcloud block above.
+      - path: .sonarcloud.properties
+        owner: codegen
+        policy: full
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
@@ -1098,6 +1123,11 @@ Infra:
           - mkdocs-section-index>=0.3.12
           - mkdocstrings>=1.0.6
           - mkdocstrings-python>=2.0.8
+          # uv installs this as a side effect of the editable root install
+          # (hatchling editable-detection backend) but a later sync prunes it,
+          # breaking editable wheel builds (release/wheel tests) after any
+          # re-sync; declared here so every projected project keeps it.
+          - editables>=0.6
           - mypy>=2.3.1
           - pymdown-extensions
           - pyrefly>=1.2.0
@@ -1154,7 +1184,7 @@ Infra:
               - dependency-injector>=4.49.1
               - packaging>=26.3
               - pydantic>=2.13.5
-              - pydantic-settings>=2.15.0
+              - pydantic-settings>=2.14.2,<2.15
               - pyyaml>=6.0.3
               - structlog>=25.5.0,<27
               - typing-extensions>=4.16.0
@@ -1164,7 +1194,7 @@ Infra:
               - flext-cli
               - flext-core
               - pydantic>=2.13.5
-              - pydantic-settings>=2.15.0
+              - pydantic-settings>=2.14.2,<2.15
             codegen: [flext-infra]
         # Project-scoped requirements extend the shared profile without
         # leaking API/Web dependencies into core consumers. Unbounded entries
@@ -1292,6 +1322,7 @@ Infra:
             - "!docs/"
             - "!examples/"
             - "!.github/"
+            - "!codemod/"
             - "!src/"
             - "!tests/"
             - "!typings/"
@@ -1497,12 +1528,14 @@ Infra:
       # machine-written settings/hooks surface and its digest sidecar is
       # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
+          # settings.json stays out of this runtime-state block: the governed
+          # provider-projections section (and its tests) own it as a tracked
+          # governance artifact, and in gitignore the last matching rule wins,
+          # so a name block here silently re-ignored the whitelisted file.
           patterns:
             - ".github/hooks/"
             - "*/.hooks.json.agents-governance.json"
-            - ".claude/settings.json"
             - ".claude/*.agents-governance.json"
-            - ".gemini/settings.json"
             - ".gemini/*.agents-governance.json"
             - ".claude/settings.local.json"
         - name: "Operator-private local config overrides"
@@ -1909,6 +1942,11 @@ Infra:
           overwrite: false
         - source: base/qlty.toml.j2
           destination: .qlty/qlty.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/sonarcloud.properties.j2
+          destination: .sonarcloud.properties
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true

@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from .worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from .worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from .worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitRemote",

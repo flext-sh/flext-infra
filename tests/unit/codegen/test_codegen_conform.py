@@ -93,7 +93,11 @@ class TestsFlextInfraCodegenConform:
         tmp_path: Path, scenario: str
     ) -> tuple[Path, m.Infra.CodegenConformRequest, Path, bytes, Path]:
         """Create one conformed tree, then introduce one recoverable publication."""
-        root = u.Tests.git_repository(tmp_path, name=scenario)
+        root = tmp_path / scenario
+        root.mkdir(parents=True)
+        u.Tests.initialize_git_repo(
+            root, origin_url=u.Tests.repository_ref(config.Infra.name).url
+        )
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         request = u.Tests.conform_request(
@@ -344,7 +348,7 @@ class TestsFlextInfraCodegenConform:
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             'dependencies = ["flext-cli"]\n',
             encoding="utf-8",
@@ -387,7 +391,7 @@ class TestsFlextInfraCodegenConform:
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             'dependencies = ["flext-cli"]\n'
             "\n"
@@ -437,6 +441,8 @@ class TestsFlextInfraCodegenConform:
             provider="flext-sh",
             repository_url=f"https://github.com/flext-sh/{name}.git",
             repository_branch="0.12.0-dev",
+            flext_repository_url=u.Tests.repository_ref(config.Infra.name).url,
+            flext_repository_ref=u.Tests.provider_branch(),
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -545,6 +551,8 @@ class TestsFlextInfraCodegenConform:
             output_root=existing_root,
             repository_url="https://github.com/flext-sh/flext-demo.git",
             repository_branch="0.12.0-dev",
+            flext_repository_url=u.Tests.repository_ref(config.Infra.name).url,
+            flext_repository_ref=u.Tests.provider_branch(),
             provider="flext-sh",
             license="MIT",
             author_name="FLEXT Team",

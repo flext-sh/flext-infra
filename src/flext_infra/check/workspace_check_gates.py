@@ -314,11 +314,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
             if not execution.result.passed:
                 for finding in execution.result.errors:
                     u.Cli.info(finding)
-                if not execution.result.errors and execution.raw_output.strip():
-                    u.Cli.info(execution.raw_output.strip())
+                # Missing or malformed findings must retain the producer's failure.
+                if execution.raw_output.strip() and (
+                    not execution.result.errors
+                    or any(issue.code == "TOOL_ERROR" for issue in execution.issues)
+                ):
+                    u.Cli.info(execution.raw_output)
                 return r[m.Cli.PipelineStageResult].fail(
                     f"{gate_id} failed for {project_name} "
-                    f"with {execution.error_count} findings"
+                    f"with {len(execution.issues)} findings"
                 )
             return r[m.Cli.PipelineStageResult].ok(
                 cli.stage_result(

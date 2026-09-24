@@ -98,6 +98,12 @@ Infra:
           # External CRG tool output: pipe-separated rows (MD075) and long JSON
           # lines (MD013) originate from code-review-graph, not hand-authored docs.
           - docs/architecture/crg-reports/**
+          # Generated api-reference and project-catalog projections (make gen /
+          # docs generate): the renderer's output is canonical as emitted —
+          # operator law 2026-09-22 — so prettier never rewrites generated
+          # docs and the codegen fixed point stays stable.
+          - docs/api-reference/generated/**
+          - docs/projects/generated/**
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
@@ -291,18 +297,26 @@ Infra:
               - unused-import
 
       mypy:
+        # The returns plugin types p.Result: without it every Result.value /
+        # .map boundary resolves to Any and consumers flood with
+        # no-any-return (proven by assert_type on 2026-09-23); its removal
+        # alongside five disable rows and ignore_missing_imports was the
+        # root cause of that flood, restored here from the canonical
+        # pre-regression section (commit 7691100a4).
         plugins: [pydantic.mypy]
-        # flext-j47u: every retained global exclusion carries its tested rationale;
+        exclude: ^legado(?:/|$)
+        # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         boolean-settings:
+          # The canonical facade rebind (import the upstream single letter,
+          # then rebind it to the composed namespace class, mro-j47u) is a
+          # deliberate same-name redefinition; without this flag Mypy treats
+          # every facade root as an error-degraded Any (removed and restored
+          # 2026-09-22 — the removal flooded CI with no-any-return shadows).
+          allow_redefinition: true
           namespace_packages: true
           explicit_package_bases: true
-          # Analyze installed implementations without py.typed; do not ignore them.
-          # https://mypy.readthedocs.io/en/stable/config_file.html#confval-follow_untyped_imports
-          follow_untyped_imports: true
           check_untyped_defs: true
-          # disallow_untyped_defs, Noisier flags
-          # disallow_any_unimported, Noisier flags
           extra_checks: true
           local_partial_types: true
           no_implicit_reexport: true
@@ -314,28 +328,24 @@ Infra:
           warn_unreachable: true
           warn_unused_ignores: true
         disabled-error-codes:
+          arg-type: Public p.Result values widen only in Mypy; Pyright and Pyrefly retain T.
           assignment: Dependency-injector descriptors lose their FLEXT-bound type only in Mypy.
           attr-defined: PEP 562 facade members installed by FLEXT composition are invisible to Mypy.
           call-arg: Pydantic v2 init signatures behind facade FLEXT are incomplete in Mypy.
           misc: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
           name-defined: Generated PEP 562 exports are installed at runtime but absent to Mypy.
+          no-any-return: Facade returns widen to Any only in Mypy; Pyright and Pyrefly resolve them.
+          no-redef: Canonical c-t-p-m-u facades intentionally rebind their inherited short alias.
           prop-decorator: Mypy loses Pydantic computed-field descriptors across composed FLEXT.
+          type-var: Mypy 1.20 drops T from inherited p.ResultLike; the direct owner passes.
+          unreachable: Mypy over-narrows facade values and rejects live defensive guards.
           valid-type: Mypy rejects facade namespaces used as owners in valid PEP 695 aliases.
         string-settings:
           follow_imports: normal
-        overrides:
-          # Fail-loud exhaustive enum dispatch (ADR-001): Mypy over-narrows
-          # the enum through the branch chain and flags the live defensive
-          # guard as unreachable; the guard is the required runtime contract
-          # for future ChartPrimitive members.
-          - modules:
-              ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
-            disable-error-codes: [unreachable]
-            justification: >-
-              Mypy over-narrows exhaustive ChartPrimitive dispatch and
-              rejects the live fail-loud guard (ADR-001) as unreachable;
-              the guard is the required runtime contract for future enum
-              members (documented rationale in the consumer pyproject).
+        # No module overrides: this repository owns no foreign module. A
+        # stale override for a module absent from the fleet (dcdoc) shipped
+        # here and silently exempted nothing — removed 2026-09-22 (flext-t5uhw).
+        overrides: []
       pydantic-mypy:
         init_forbid_extra: true
         init_typed: true
@@ -612,12 +622,11 @@ Infra:
         # the declared exception, not a raised ceiling: unmarked cases keep 10s.
         slow-timeout-seconds: 60
         # Complete-suite wall clock. Individual cases remain bounded at 10s
-        # (60s only when explicitly slow). aihub-6k1.31 measured the 600s limit
-        # terminating cold serial selection at 35% and warm two-worker selection
-        # at 91%. The cold projection is 1715s; 2400s provides bounded headroom
-        # for all selected cases and coverage. The outer wall adds one minute
-        # for orderly worker/report shutdown; failures still collect fully.
-        run-timeout-seconds: 2400
+        # (60s only when explicitly slow). The 2026-09-24 cold baseline reached
+        # 69% of 2975 items at 2400s, projecting roughly 3500s for completion.
+        # 7200s provides bounded headroom for all selected cases and coverage.
+        # The outer wall adds one minute for orderly worker/report shutdown.
+        run-timeout-seconds: 7200
         termination-grace-seconds: 2
         # Operator decision 2026-09-14: collect every selected test's outcome.
         # Pytest zero disables early stopping; failures retain their nonzero exit.
@@ -699,7 +708,7 @@ Infra:
         # hook. A wide outer wall is itself an escape hatch — it would let an
         # overrun keep burning wall clock instead of aborting. Grace covers
         # interpreter start, collection and teardown only.
-        process-timeout-seconds: 2460
+        process-timeout-seconds: 7260
       tomlsort:
         all: true
         in_place: true

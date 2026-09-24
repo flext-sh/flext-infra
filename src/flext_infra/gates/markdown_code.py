@@ -79,12 +79,22 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Markdown Code"
     can_fix: ClassVar[bool] = True
 
-    def _format_command(self, sources_dir: Path, *, write: bool) -> t.StrSequence:
+    def _format_command(
+        self, project_dir: Path, sources_dir: Path, *, write: bool
+    ) -> t.StrSequence:
         """Build one ruff format invocation (verdict with ``--check``, write otherwise).
 
-        Concise output keeps the verdict line one-match-per-file for the parser.
+        The project's own ``pyproject.toml`` is the format contract owner: embedded
+        blocks must satisfy the exact same configuration (notably ``preview``) that
+        ``make fmt`` and ``refactor mod`` apply to authored source. ``--isolated``
+        ignored that contract and produced a second, divergent formatting, so a
+        documented block could never satisfy both surfaces at once.
         """
-        args = ["format", "--isolated", "--no-cache", "--output-format", "concise"]
+        args = ["format", "--no-cache", "--output-format", "concise"]
+        config_path = project_dir / c.Infra.PYPROJECT_FILENAME
+        args += (
+            ["--config", str(config_path)] if config_path.is_file() else ["--isolated"]
+        )
         return self._python_console_script_command(
             c.Infra.RUFF, *args, *(("--check",) if not write else ()), str(sources_dir)
         )
@@ -172,7 +182,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 return False, True, ()
             ran = True
             formatted = self._run(
-                self._format_command(sources_dir, write=fix), project_dir
+                self._format_command(project_dir, sources_dir, write=fix), project_dir
             )
             format_ok = u.Cli.process_succeeded(formatted.outcome)
             if fix:

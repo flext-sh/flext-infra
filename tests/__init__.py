@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
+    from flext_tests import api, d, e, h, r, td, tf, tk, tm, tv, x
 
     from . import integration, refactor, unit
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
@@ -35,8 +35,9 @@ if TYPE_CHECKING:
     from .utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequenceMixin
     from .utilities_toml import TestsFlextInfraUtilitiesTomlMixin
     from .utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+
+
 __all__: tuple[str, ...] = (
-    "FlextTestsConstants",
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsScanMixin",
     "TestsFlextInfraModels",
@@ -58,6 +59,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesToolingFixtureMixin",
     "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
     "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
+    "api",
     "c",
     "d",
     "e",
@@ -115,7 +117,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".utilities_toml": ("TestsFlextInfraUtilitiesTomlMixin",),
             ".utilities_workspace_env": ("TestsFlextInfraUtilitiesWorkspaceEnvMixin",),
             "flext_tests": (
-                "FlextTestsConstants",
+                "api",
                 "d",
                 "e",
                 "h",

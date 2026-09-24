@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from .engine import FlextInfraEnforcementEngine
     from .metadata import FlextInfraEnforcementMetadata
     from .selection import FlextInfraEnforcementSelection
+
+
 __all__: tuple[str, ...] = (
     "FlextInfraEnforcementCollectionBase",
     "FlextInfraEnforcementEngine",

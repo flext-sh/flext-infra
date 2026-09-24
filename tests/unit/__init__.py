@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from . import (
         _utilities,
         check,
@@ -92,9 +90,9 @@ if TYPE_CHECKING:
     from .test_pyproject_conform_topology_sources import (
         TestsFlextInfraPyprojectConformTopologySources,
     )
-    from .test_version_diag import TestsFlextInfraVersionDiag
-    from .test_version_diag2 import TestsFlextInfraVersionDiagExtra
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
+
+
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCheckReportContract",
     "TestsFlextInfraCliRepositoryRootContract",
@@ -119,36 +117,27 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraPyprojectConformPreservesLintScope",
     "TestsFlextInfraPyprojectConformTopologySources",
     "TestsFlextInfraServiceBaseAlias",
-    "TestsFlextInfraVersionDiag",
-    "TestsFlextInfraVersionDiagExtra",
     "TestsFlextInfraWorkspaceFactory",
     "_utilities",
-    "c",
     "cached_runner_project",
     "check",
     "codegen",
     "codemod",
     "container",
-    "d",
     "deps",
     "deptry_report_payload",
     "detectors",
     "discovery",
     "docs",
-    "e",
     "gates",
     "github",
-    "h",
     "io",
-    "m",
     "maintenance",
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
-    "p",
     "policy_violation_project",
     "promoted",
-    "r",
     "real_docs_project",
     "real_git_repo",
     "real_makefile_project",
@@ -158,20 +147,11 @@ __all__: tuple[str, ...] = (
     "refactor",
     "release",
     "rope_workspace",
-    "s",
     "services_resource",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
     "tool_config_document",
     "transformers",
-    "tv",
-    "u",
     "validate",
     "workspace",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -257,30 +237,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_pyproject_conform_topology_sources": (
                 "TestsFlextInfraPyprojectConformTopologySources",
             ),
-            ".test_version_diag": ("TestsFlextInfraVersionDiag",),
-            ".test_version_diag2": ("TestsFlextInfraVersionDiagExtra",),
             ".transformers": ("transformers",),
             ".validate": ("validate",),
             ".workspace": ("workspace",),
             ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

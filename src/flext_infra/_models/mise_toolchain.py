@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from fnmatch import fnmatchcase
 from typing import Annotated, Literal, Self
 
 from flext_core import m, t, u
@@ -18,114 +17,8 @@ class FlextInfraModelsMiseToolchain:
             strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
         )
 
-    class MiseToolSpec(_ConfigContract):
-        """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
-
-        Override the YAML fields. Never edit ``.mise.toml``. Never pin a SHA.
-        ``track: release`` always uses ``version: latest``. ``track: branch``
-        requires ``branch`` (no default ``main``) and interpolates that name.
-        """
-
-        selector: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Mise backend selector (github:/aqua:/npm:). Override "
-                    "toolchain.<tool>.selector; never the .mise.toml key."
-                )
-            ),
-        ]
-        track: Annotated[
-            Literal["release", "branch"],
-            m.Field(
-                description=(
-                    "release = newest GitHub/registry release. branch = named "
-                    "branch SHAs as they appear. Override toolchain.<tool>.track."
-                )
-            ),
-        ] = "release"
-        version: Annotated[
-            Literal["latest"],
-            m.Field(
-                description=(
-                    "Required when track=release; always latest, never a tag. "
-                    "Override toolchain.<tool>.version."
-                )
-            ),
-        ]
-        prerelease: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "github backend: include prerelease tags in latest. "
-                    "Override toolchain.<tool>.prerelease."
-                )
-            ),
-        ] = False
-        branch: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description=(
-                    "Required when track=branch (e.g. 0.12.0-dev). No default "
-                    "main. Override toolchain.<tool>.branch."
-                )
-            ),
-        ] = None
-        github_attestations: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "GitHub Artifact Attestations. Keep false so setup never "
-                    "silently requires a GitHub credential. Override "
-                    "toolchain.<tool>.github_attestations."
-                )
-            ),
-        ] = False
-
-        @u.model_validator(mode="after")
-        def _validate_track(self) -> Self:
-            """Fail closed: branch track names the branch; release forbids one."""
-            if self.track == "branch":
-                if self.branch is None:
-                    msg = (
-                        "track=branch requires branch in codegen.yaml (no default main)"
-                    )
-                    raise ValueError(msg)
-            elif self.branch is not None:
-                msg = "track=release forbids branch; use version: latest"
-                raise ValueError(msg)
-            return self
-
-    class ProtectedMiseToolSpec(MiseToolSpec):
-        """One fleet-owned mise distribution identity."""
-
-        selector_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Glob patterns identifying equivalent mise distributions",
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_distribution_patterns(self) -> Self:
-            """Require one unambiguous pattern set covering the canonical selector."""
-            if len(set(self.selector_patterns)) != len(self.selector_patterns):
-                msg = "protected mise selector_patterns must be unique"
-                raise ValueError(msg)
-            if not any(
-                fnmatchcase(self.selector, pattern)
-                for pattern in self.selector_patterns
-            ):
-                msg = (
-                    "canonical mise selector is not covered by selector_patterns: "
-                    f"{self.selector}"
-                )
-                raise ValueError(msg)
-            return self
-
-    class BeadsToolSpec(ProtectedMiseToolSpec):
-        """Canonical Beads distribution and Gas City projection contract."""
+    class BeadsToolSpec(_ConfigContract):
+        """Beads ledger and Gas City projection contract."""
 
         endpoint_origin: Annotated[
             Literal["inherited_city"],
@@ -418,34 +311,8 @@ class FlextInfraModelsMiseToolchain:
         ]
         beads: Annotated[
             FlextInfraModelsMiseToolchain.BeadsToolSpec,
-            m.Field(description="Official Beads CLI installed through mise"),
+            m.Field(description="Beads ledger projection (.beads config)"),
         ]
-        gascity: Annotated[
-            FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
-            m.Field(description="Gas City CLI (gc) installed through mise"),
-        ]
-        protected_mise_tools: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Toolchain field names protected from alternate distributions",
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_protected_mise_tools(self) -> Self:
-            """Resolve every protected owner to the generic identity contract."""
-            if len(set(self.protected_mise_tools)) != len(self.protected_mise_tools):
-                msg = "protected_mise_tools must be unique"
-                raise ValueError(msg)
-            for owner in self.protected_mise_tools:
-                if not isinstance(
-                    getattr(self, owner, None),
-                    FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
-                ):
-                    msg = f"protected_mise_tools references invalid owner: {owner}"
-                    raise TypeError(msg)
-            return self
 
         @m.computed_field
         @property
@@ -473,21 +340,6 @@ class FlextInfraModelsMiseToolchain:
                 description="Beads server TCP port declared by deployment",
             ),
         ]
-
-    class MiseTomlRenderSpec(ToolchainSpec):
-        """Toolchain render context for ``.mise.toml`` plus per-project gates.
-
-        The template consumes flat toolchain field names, so the context is the
-        fleet ToolchainSpec narrowed by the per-project Gas City participation
-        resolved from the workspace manifest overlay.
-        """
-
-        gascity_enabled: Annotated[
-            bool,
-            m.Field(
-                description=("Whether the gc tool block is projected into .mise.toml.")
-            ),
-        ] = True
 
     class MiseBootstrapEnvironmentSpec(_ConfigContract):
         """Validated environment contract rendered into generated Mise setup."""

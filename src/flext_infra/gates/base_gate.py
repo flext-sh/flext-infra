@@ -245,24 +245,12 @@ class FlextInfraGate:
         the residue a fixer could not repair and do not decide acceptance.
         """
         _ = ctx
+        verdict = passed and (accept_reported_issues or not issues)
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
                 project=project_dir.name,
-                # A warning is, by definition, not a failure. This harness used
-                # to reject any issue whose severity was error OR warning, while
-                # error_count sums only error severity -- so a gate that
-                # deliberately renders findings as warnings failed while
-                # reporting zero errors, naming nothing the reader could act on.
-                # Verdict and count now derive from the same classification, so
-                # a gate's declared severity means what it says.
-                passed=passed
-                and (
-                    accept_reported_issues
-                    or not any(
-                        issue.severity.lower() == c.Infra.ERROR for issue in issues
-                    )
-                ),
+                passed=verdict,
                 errors=(
                     list(errors)
                     if errors is not None
@@ -283,7 +271,7 @@ class FlextInfraGate:
         started: float,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Build a gate result from project-level error strings (no per-file issues)."""
+        """Preserve project-level failures as blocking structured diagnostics."""
         issues = [
             m.Infra.Issue(
                 file=str(project_dir),
@@ -291,7 +279,7 @@ class FlextInfraGate:
                 column=1,
                 code=self.gate_id,
                 message=error,
-                severity="ERROR",
+                severity=c.Infra.GateSeverity.ERROR.value,
             )
             for error in errors
         ]

@@ -21,6 +21,11 @@ class FlextInfraPyprojectModernizerBase(
 ):
     """Modernize workspace pyproject.toml files to the canonical format."""
 
+    @staticmethod
+    def _config_sort_first() -> t.StrSequence:
+        """Read the config-owned top-level TOML section order once."""
+        return config.Infra.tooling.tools.tomlsort.sort_first
+
     audit: Annotated[
         bool, m.Field(False, description="Audit pyproject changes without writing")
     ] = False
@@ -46,7 +51,7 @@ class FlextInfraPyprojectModernizerBase(
         ),
     ] = None
     tomlsort_sort_first: t.StrSequence = m.Field(
-        default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
+        default_factory=_config_sort_first,
         exclude=True,
         description="Config-owned top-level TOML section order",
     )

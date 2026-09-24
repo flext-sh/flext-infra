@@ -312,7 +312,7 @@ class FlextInfraUtilitiesRopeImports:
                 if referenced_result.failure:
                     msg = referenced_result.error or "alias reference scan failed"
                     raise ValueError(msg)
-                referenced_aliases = referenced_result.unwrap_or(frozenset())
+                referenced_aliases = referenced_result.unwrap()
                 alias_names = tuple(
                     name for name, _alias in plain_names if name in referenced_aliases
                 )
@@ -370,7 +370,7 @@ class FlextInfraUtilitiesRopeImports:
             )
             if referenced_aliases_result.failure:
                 return r[bool].from_failure(referenced_aliases_result)
-            referenced_aliases = referenced_aliases_result.unwrap_or(frozenset())
+            referenced_aliases = referenced_aliases_result.unwrap()
             current: MutableMapping[str, set[str]] = defaultdict(set)
             for import_stmt in cls.import_statements(module_imports):
                 import_info = import_stmt.import_info

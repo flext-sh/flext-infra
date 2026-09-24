@@ -81,10 +81,12 @@ class FlextInfraConstantsRefactor:
         CLASS_NESTING = "class-nesting"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
+        FACADE_BASE = "facade-base"
 
     SEMANTIC_CUTOVER_RULE_IDS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
         SemanticCutoverPhase.COMPAT_ALIAS: "ban-compat-alias",
         SemanticCutoverPhase.PRIVATE_IMPORT: "ban-private-import",
+        SemanticCutoverPhase.FACADE_BASE: "facade-base-by-class-name",
     })
     "ast-grep rule whose findings select each finding-driven semantic cutover."
 
@@ -480,24 +482,6 @@ class FlextInfraConstantsRefactor:
         r"^(\w)\b[^=]*=\s*(\w+)", re.MULTILINE
     )
     "Matches ``m = FlextFooModels`` alias assignments in facade files."
-
-    RUNTIME_ALIAS_SRC_DEPTH_MIN: ClassVar[int] = 2
-    "Minimum relative path depth for a root ``src/`` facade."
-    RUNTIME_ALIAS_SRC_DEPTH_EXACT: ClassVar[int] = 3
-    "Exact relative path depth for a root ``src/<pkg>/<facade>.py`` file."
-    RUNTIME_ALIAS_NON_ROOT_DIRS: ClassVar[frozenset[str]] = frozenset({
-        "tests",
-        "examples",
-        "scripts",
-    })
-    "Top-level directories that may contain facade-style alias files."
-    RUNTIME_ALIAS_NON_ROOT_DEPTH_EXACT: ClassVar[int] = 2
-    "Exact relative path depth for a top-level ``tests|examples|scripts/<file>.py``."
-    RUNTIME_ALIAS_PARTS_SKIP: ClassVar[frozenset[str]] = frozenset({
-        "_parts",
-        "_root_typing_parts",
-    })
-    "Path fragments that disqualify a file from root-facade alias detection."
 
     # --- Detector regex constants ---
     ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(

@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .extra_paths_support import ExtraPathsTestSupport
     from .test_detection_typings import TestsFlextInfraDepsDetectionTypings
     from .test_detector_init import TestsFlextInfraDepsDetectorInit
@@ -30,6 +28,8 @@ if TYPE_CHECKING:
     from .test_modernizer_workspace import TestsFlextInfraDepsModernizerWorkspace
     from .test_project_gitignore_patterns import TestsFlextInfraProjectGitignorePatterns
     from .test_project_mise_tools import TestsFlextInfraProjectMiseTools
+
+
 __all__: tuple[str, ...] = (
     "ExtraPathsTestSupport",
     "TestsFlextInfraDepsDetectionTypings",
@@ -50,22 +50,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraProjectGitignorePatterns",
     "TestsFlextInfraProjectMiseTools",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -94,24 +78,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraProjectGitignorePatterns",
             ),
             ".test_project_mise_tools": ("TestsFlextInfraProjectMiseTools",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

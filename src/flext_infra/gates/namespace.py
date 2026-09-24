@@ -28,13 +28,17 @@ class FlextInfraNamespaceGate(FlextInfraGate):
         validator = FlextInfraNamespaceValidator()
         report_result = validator.validate_project(project_dir)
         passed = report_result.success and report_result.value.passed
-        errors: list[str] = []
         if report_result.failure:
-            errors.append(report_result.error or "namespace validation failed")
-        elif not passed:
-            errors.extend(report_result.value.violations)
+            return self._build_project_error_gate_result(
+                project_dir,
+                passed=False,
+                errors=[report_result.error or "namespace validation failed"],
+                started=started,
+                ctx=ctx,
+            )
+        violations: list[str] = [] if passed else list(report_result.value.violations)
         return self._build_project_error_gate_result(
-            project_dir, passed=passed, errors=errors, started=started, ctx=ctx
+            project_dir, passed=passed, errors=violations, started=started, ctx=ctx
         )
 
 
