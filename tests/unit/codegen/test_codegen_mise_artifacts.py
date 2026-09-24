@@ -39,6 +39,49 @@ class TestsFlextInfraCodegenMiseArtifacts:
 
         tm.fail(FlextInfraCodegenMiseArtifacts.validate_launchers(tmp_path))
 
+    @pytest.mark.parametrize("shape", ["absolute", "tilde"])
+    def test_seed_launcher_resolves_the_data_dir_without_doubling_home(
+        self, tmp_path: Path, shape: str
+    ) -> None:
+        """The seed launcher runs the binary under the declared data dir, offline.
+
+        An unquoted ``~/*)`` case pattern is tilde-expanded by bash, so an
+        absolute ``MISE_DATA_DIR`` matched it and gained a second ``$HOME``
+        prefix; the launcher then missed the installed binary and tried to
+        download mise. A binary planted at the correct path proves resolution:
+        the launcher executes it and never reaches the installer.
+        """
+        home = tmp_path / "home"
+        data_dir = home / "mise-data"
+        version = "0.0.0"
+        planted = data_dir / "bootstrap" / f"mise-{version}"
+        planted.parent.mkdir(parents=True)
+        planted.write_text('#!/bin/sh\necho "planted-mise $*"\n', encoding="utf-8")
+        planted.chmod(0o755)
+        launcher = tmp_path / "mise"
+        launcher.write_bytes(
+            files("flext_infra")
+            .joinpath(c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY)
+            .joinpath("mise")
+            .read_bytes()
+        )
+        launcher.chmod(0o755)
+        declared = str(data_dir) if shape == "absolute" else "~/mise-data"
+
+        executed = tm.ok(
+            u.Cli.run(
+                [str(launcher), "version"],
+                env={
+                    "HOME": str(home),
+                    c.Infra.MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: declared,
+                    "MISE_VERSION": version,
+                },
+                timeout=10,
+            )
+        )
+
+        tm.that(executed.stdout.strip(), eq="planted-mise version")
+
     def test_resource_read_accepts_installer_hard_links(self, tmp_path: Path) -> None:
         """A hard-linked package file (uv cache + venv) is readable as a resource."""
         owner = tmp_path / "seed"
