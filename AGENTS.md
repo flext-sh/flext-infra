@@ -75,6 +75,11 @@ declares `script_dispatch`.
 - Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py`
   docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
 - Codemod governance (ast-grep + make mod): ADR-014.
+- Family-wrapper flattening preserves the domain prefix in every promoted name.
+  Rope identity owns rewrites in executable references and quoted type positions,
+  including generic bases and deferred annotations. Ordinary strings, `Literal`
+  values, and `Annotated` metadata retain their payloads. Using the wrapper itself
+  as an entity type preserves that wrapper instead of emitting a partial cutover.
 
 ## Recovering this work
 
