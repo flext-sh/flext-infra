@@ -37,6 +37,7 @@ class TestsFlextInfraCodegenProjectNewValidation:
             author_name="FLEXT Team",
             author_email="team@flext.dev",
             upstream="flext_cli",
+            flext_source=u.Tests.flext_source(),
             year=2026,
             apply_changes=True,
             repository_url=resolved["repository_url"],

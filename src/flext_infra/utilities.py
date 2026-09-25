@@ -11,6 +11,13 @@ from __future__ import annotations
 
 from flext_cli import FlextCliUtilities
 
+from flext_infra._utilities.private_import_ancestry import (
+    FlextInfraUtilitiesPrivateImportAncestry,
+)
+from flext_infra._utilities.private_import_facades import (
+    FlextInfraUtilitiesPrivateImportFacades,
+)
+
 from ._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from ._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from ._utilities._rope.signature_patch import FlextInfraUtilitiesRopeSignaturePatch
@@ -81,14 +88,6 @@ from ._utilities.workspace_fingerprint import FlextInfraUtilitiesWorkspaceFinger
 from ._utilities.workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 from ._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from ._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
-
-
-from flext_infra._utilities.private_import_ancestry import (
-    FlextInfraUtilitiesPrivateImportAncestry,
-)
-from flext_infra._utilities.private_import_facades import (
-    FlextInfraUtilitiesPrivateImportFacades,
-)
 
 
 class FlextInfraUtilities(FlextCliUtilities):

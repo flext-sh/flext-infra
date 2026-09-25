@@ -62,8 +62,8 @@ class FlextInfraUtilitiesRopePep695Patch:
         # resolved and only the ruff rule remains exempted for this directory
         # (operator authorization 2026-08-08).
         walker = FlextInfraUtilitiesRopeRuntime.pep695_ast_walker()
-        original_function_def: Callable[..., None] = walker._handle_function_def_node  # pyright: ignore[reportPrivateUsage]
-        original_class_def: Callable[..., None] = walker._ClassDef  # pyright: ignore[reportPrivateUsage]
+        original_function_def: Callable[..., None] = walker._handle_function_def_node
+        original_class_def: Callable[..., None] = walker._ClassDef
 
         def _source_offset(
             self: p.Infra.PatchingASTWalker, lineno: int, byte_offset: int
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             for child in ast.walk(node):
                 if not isinstance(child, p.Infra.PatchingASTWalker.SourceSpanningNode):
                     continue
-                patchable = cast(p.Infra.PatchingASTWalker.PatchableNode, child)
+                patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", child)
                 child_start = _source_offset(
                     self, patchable.lineno, patchable.col_offset
                 )
@@ -92,7 +92,7 @@ class FlextInfraUtilitiesRopePep695Patch:
                     patchable.sorted_children = [
                         self.source.source[child_start:child_end]
                     ]
-            patched_node = cast(p.Infra.PatchingASTWalker.PatchableNode, node)
+            patched_node = cast("p.Infra.PatchingASTWalker.PatchableNode", node)
             patched_node.region = (start, end)
             if self.children:
                 patched_node.sorted_children = [self.source.source[start:end]]
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             children.extend(["(", node.args, ")"])
             children.append(":")
             children.extend(node.body)
-            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, children)
 
         def _patched_class_def(
             self: p.Infra.PatchingASTWalker,
@@ -164,11 +164,11 @@ class FlextInfraUtilitiesRopePep695Patch:
             children.extend(_type_params_children(node))
             if node.bases:
                 children.append("(")
-                children.extend(self._child_nodes(node.bases, ","))  # pyright: ignore[reportPrivateUsage]
+                children.extend(self._child_nodes(node.bases, ","))
                 children.append(")")
             children.append(":")
             children.extend(node.body)
-            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, children)
 
         def _type_alias(
             self: p.Infra.PatchingASTWalker,
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             children: list[p.AttributeProbe] = ["type", node.name]
             children.extend(_type_params_children(node))
             children.extend(["=", node.value])
-            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, children)
 
         def _type_var(
             self: p.Infra.PatchingASTWalker,
@@ -188,57 +188,57 @@ class FlextInfraUtilitiesRopePep695Patch:
             children: list[p.AttributeProbe] = [node.name]
             if getattr(node, "bound", None) is not None:
                 children.extend([":", node.bound])
-            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, children)
 
         def _param_spec(
             self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.NamedNode
         ) -> None:
             """Param spec."""
-            self._handle(node, ["**", node.name])  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, ["**", node.name])
 
         def _type_var_tuple(
             self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.NamedNode
         ) -> None:
             """Type var tuple."""
-            self._handle(node, ["*", node.name])  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, ["*", node.name])
 
         def _match_sequence(
             self: p.Infra.PatchingASTWalker,
             node: p.Infra.PatchingASTWalker.MatchSequenceNode,
         ) -> None:
             """Match sequence."""
-            children = self._child_nodes(node.patterns, ",")  # pyright: ignore[reportPrivateUsage]
+            children = self._child_nodes(node.patterns, ",")
             opening = _pattern_opening_token(self, node)
             if opening == "[":
-                self._handle(node, ["[", *children, "]"])  # pyright: ignore[reportPrivateUsage]
+                self._handle(node, ["[", *children, "]"])
                 return
             if opening == "(" and not node.patterns:
-                self._handle(node, [self.empty_tuple])  # pyright: ignore[reportPrivateUsage]
+                self._handle(node, [self.empty_tuple])
                 return
-            self._handle(node, children, eat_parens=opening == "(")  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, children, eat_parens=opening == "(")
 
         def _match_singleton(
             self: p.Infra.PatchingASTWalker,
             node: p.Infra.PatchingASTWalker.MatchSingletonNode,
         ) -> None:
             """Match singleton."""
-            self._handle(node, [str(node.value)])  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, [str(node.value)])
 
         def _match_star(
             self: p.Infra.PatchingASTWalker,
             node: p.Infra.PatchingASTWalker.MatchStarNode,
         ) -> None:
             """Match star."""
-            self._handle(node, ["*", node.name or "_"])  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, ["*", node.name or "_"])
 
         def _match_or(
             self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.MatchOrNode
         ) -> None:
             """Match or."""
-            self._handle(node, self._child_nodes(node.patterns, "|"))  # pyright: ignore[reportPrivateUsage]
+            self._handle(node, self._child_nodes(node.patterns, "|"))
 
-        walker._handle_function_def_node = _patched_function_def  # pyright: ignore[reportPrivateUsage]
-        walker._ClassDef = _patched_class_def  # pyright: ignore[reportPrivateUsage]
+        walker._handle_function_def_node = _patched_function_def
+        walker._ClassDef = _patched_class_def
         walker._JoinedStr = _joined_str
         walker._TypeAlias = _type_alias
         walker._TypeVar = _type_var

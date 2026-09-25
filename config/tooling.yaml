@@ -452,11 +452,12 @@ Infra:
           # registration API. This existing-path-only environment is the tested
           # vendor boundary; broad src code keeps reportPrivateUsage=error.
           diagnostic-path-overrides:
-            - root: src/flext_infra/_utilities/_rope
+            # Operator authorization 2026-09-25: this single file only.
+            - root: src/flext_infra/_utilities/_rope/pep695_patch.py
               reportPrivateUsage: "none"
               rationale: >-
-                Rope 1.14 and upstream master require private walker handler
-                registration for Python 3.13 PEP 695 source regions.
+                Rope 1.14 (latest release) requires private walker handler
+                registration for Python 3.13 PEP 695 / PEP 701 source regions.
           source-report-private-usage: error
           test-like-report-private-usage: "none"
           other-report-private-usage: "none"

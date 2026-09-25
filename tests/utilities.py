@@ -10,7 +10,7 @@ from flext_core import r
 from flext_infra import FlextInfraUtilities, config
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, m, p, t, u
+from tests import c, m, p, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
 from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
@@ -480,4 +480,4 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
 u = TestsFlextInfraUtilities
 
-__all__: list[str] = ["TestsFlextInfraUtilities"]
+__all__: list[str] = ["TestsFlextInfraUtilities", "u"]

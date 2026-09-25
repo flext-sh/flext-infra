@@ -383,6 +383,22 @@ reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 
 [[tool.pyright.executionEnvironments]]
+root = "src/flext_infra/_utilities/_rope/pep695_patch.py"
+extraPaths = [".", "src"]
+reportAssignmentType = "none"
+reportAttributeAccessIssue = "none"
+reportGeneralTypeIssues = "none"
+reportInvalidTypeForm = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnusedImport = "none"
+
+[[tool.pyright.executionEnvironments]]
 root = "src"
 extraPaths = ["src"]
 reportAssignmentType = "none"
@@ -416,7 +432,6 @@ reportUnknownMemberType = "none"
 reportUnknownParameterType = "none"
 reportUnknownVariableType = "none"
 reportUnusedImport = "none"
-
 [tool.pytest.ini_options]
 addopts = [
   "--benchmark-disable",

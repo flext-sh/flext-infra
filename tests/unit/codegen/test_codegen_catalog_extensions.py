@@ -26,7 +26,10 @@ class TestsFlextInfraCodegenCatalogExtensions:
             u.Infra.flext_integration_line(
                 codegen=config.Infra.codegen,
                 repository_root=root,
-                declared_source=u.Tests.flext_source(),
+                bootstrap_source=m.Infra.CodegenBootstrapSource(
+                    url=u.Tests.repository_ref(config.Infra.name).url,
+                    ref=u.Tests.provider_branch(),
+                ),
             )
         )
         tm.that(line.base_url, eq=u.Tests.provider().base_url)

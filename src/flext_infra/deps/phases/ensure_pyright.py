@@ -103,7 +103,8 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         for override in rules.diagnostic_path_overrides:
-            if not (project_dir / override.root).is_dir():
+            # A declared override targets an existing directory or one file.
+            if not (project_dir / override.root).exists():
                 continue
             resolved_root = (
                 root_prefix / override.root if root_prefix else Path(override.root)
@@ -184,15 +185,25 @@ class FlextInfraEnsurePyrightConfigPhase:
         return expected_envs
 
     def environment_payloads_for_dirs(
-        self, env_dirs: t.StrSequence
+        self, env_dirs: t.StrSequence, *, project_dir: Path
     ) -> t.SequenceOf[t.JsonDict]:
-        """Render configured environments for Python roots declared before writes."""
+        """Render configured environments for Python roots declared before writes.
+
+        Declared diagnostic overrides precede the broad roots, exactly as the
+        deps phase orders them, so both writers project one environment list.
+        """
         rules = self._tool_config.tools.pyright.path_rules
-        environments = self._envs_for_dirs(
-            env_dirs=self._declared_environment_dirs(env_dirs),
-            source_path=self._project_source_path(),
-            project_root=rules.project_root,
-            rules=rules,
+        source_path = self._project_source_path()
+        environments = (
+            *self._diagnostic_override_envs(
+                project_dir=project_dir, root_prefix=None, source_path=source_path
+            ),
+            *self._envs_for_dirs(
+                env_dirs=self._declared_environment_dirs(env_dirs),
+                source_path=source_path,
+                project_root=rules.project_root,
+                rules=rules,
+            ),
         )
         return tuple(self._environment_payload(item) for item in environments)
 

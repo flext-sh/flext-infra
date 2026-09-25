@@ -156,7 +156,9 @@ class FlextInfraPyprojectModernizerTooling:
         raw_environments = (
             FlextInfraEnsurePyrightConfigPhase(
                 config.Infra.tooling
-            ).environment_payloads_for_dirs(declared_python_dirs)
+            ).environment_payloads_for_dirs(
+                declared_python_dirs, project_dir=project_dir
+            )
             if declared_python_dirs
             else u.Cli.json_as_sequence(tools.pyright.get("executionEnvironments"))
         )
