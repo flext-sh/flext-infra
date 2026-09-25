@@ -69,14 +69,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         )
 
     def build_selection_command(
-        self, *, complete: bool = False
+        self, *, report_log: Path, complete: bool = False
     ) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two
         workers reading the database while a third writes it collect different
         sets, which xdist aborts with "Different tests were collected". This
-        pass runs no test and writes nothing.
+        pass runs no test and records its collection and warning evidence.
         """
         return (
             sys.executable,
@@ -93,6 +93,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "--testmon-env",
             f"'{self._toolchain_testmon_environment()}'",
             "--collect-only",
+            f"--report-log={report_log}",
             "-q",
             *self._plugin_policy_args(),
             "-o",

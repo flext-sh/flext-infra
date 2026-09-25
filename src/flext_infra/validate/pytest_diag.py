@@ -10,12 +10,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, u
+from flext_infra import c, m, u
 
 from ..base import s
 from ._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
@@ -54,53 +53,48 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     ] = None
 
     @staticmethod
-    def _suspended_warning_categories() -> t.Set[str]:
-        """Resolve category-wide visible exceptions from the typed pytest policy."""
-        suspended: t.Set[str] = set()
-        for spec in config.Infra.tooling.tools.pytest.filter_warnings:
-            parts = spec.split(":")
-            action = parts[0]
-            if spec == "error":
-                suspended.clear()
-                continue
-            if len(parts) != 3 or parts[1] or not parts[2]:
-                msg = f"diagnostics requires a category-wide warning policy: {spec}"
-                raise ValueError(msg)
-            if action not in {"error", "always", "default", "module", "once"}:
-                msg = f"warning policy must retain visible evidence: {spec}"
-                raise ValueError(msg)
-            module_name, _, category_name = parts[2].rpartition(".")
-            category = getattr(import_module(module_name or "builtins"), category_name)
-            if not isinstance(category, type) or not issubclass(category, Warning):
-                msg = f"warning policy category is not a Warning: {spec}"
-                raise TypeError(msg)
-            pending = [category]
-            while pending:
-                current = pending.pop()
-                if action == "error":
-                    suspended.discard(current.__name__)
-                else:
-                    suspended.add(current.__name__)
-                pending.extend(current.__subclasses__())
-        return suspended
-
-    @classmethod
-    def _extract_warnings(cls, report_log: Path, diag: m.Infra.DiagResult) -> None:
-        """Count warning events independently of class names or terminal grouping."""
+    def _extract_report_events(report_log: Path, diag: m.Infra.DiagResult) -> None:
+        """Read real test attempts and every warning independently of terminal text."""
         lines = report_log.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
         if not lines:
             msg = f"pytest report log contains no events: {report_log}"
             raise ValueError(msg)
-        suspended = cls._suspended_warning_categories()
+        warnings = []
         for line in lines:
             event = m.Infra.PytestReportEvent.model_validate_json(line)
             if event.report_type == "WarningMessage":
-                warning = (
-                    f"{event.filename}:{event.lineno}: {event.category}: {event.message}"
-                )
-                diag.warning_lines.append(warning)
-                if event.category in suspended:
-                    diag.suspended_warning_lines.append(warning)
+                warnings.append(event)
+            elif event.report_type == "TestReport" and event.nodeid is not None:
+                diag.reported_node_ids.append(event.nodeid)
+            elif event.report_type == "CollectReport" and event.nodeid is not None:
+                if event.outcome == "failed":
+                    diag.collection_failed_cases.append(event.nodeid)
+                elif event.outcome == "skipped":
+                    diag.collection_skip_cases.append(event.nodeid)
+        identities = [
+            m.Infra.PytestWarningEvent.model_validate_json(line)
+            for line in report_log
+            .with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
+            .read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            .splitlines()
+        ]
+        for event, identity in zip(warnings, identities, strict=True):
+            if (event.category, event.filename, event.lineno, event.message) != (
+                identity.category,
+                identity.filename,
+                identity.lineno,
+                identity.message,
+            ):
+                msg = "WarningMessage differs from its recorded runtime identity"
+                raise ValueError(msg)
+            warning = (
+                f"{identity.filename}:{identity.lineno}: "
+                f"{identity.category_module}.{identity.category_qualname}: "
+                f"{identity.message}"
+            )
+            diag.warning_lines.append(warning)
+            if identity.suspended:
+                diag.suspended_warning_lines.append(warning)
 
     def extract(
         self, junit_path: Path, log_path: Path, *, report_log: Path
@@ -117,6 +111,13 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
 
         """
         return self._extract_diagnostics(junit_path, log_path, report_log=report_log)
+
+    @classmethod
+    def extract_report_log(cls, report_log: Path) -> p.Result[m.Infra.PytestDiagnostics]:
+        """Read collection-only evidence through the same runtime event boundary."""
+        diag = m.Infra.DiagResult()
+        cls._extract_report_events(report_log, diag)
+        return r.ok(cls._diagnostics_model(diag))
 
     @staticmethod
     def _read_log_text(log_path: Path) -> str:
@@ -135,6 +136,11 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             ),
             suspended_warning_count=len(diag.suspended_warning_lines),
             skipped_count=len(diag.skip_cases),
+            collection_failed_count=len(diag.collection_failed_cases),
+            collection_skipped_count=len(diag.collection_skip_cases),
+            collection_failed_cases=tuple(diag.collection_failed_cases),
+            collection_skip_cases=tuple(diag.collection_skip_cases),
+            reported_node_ids=tuple(sorted(set(diag.reported_node_ids))),
             failed_cases=diag.failed_cases,
             error_traces=diag.error_traces,
             warning_lines=diag.warning_lines,
@@ -150,7 +156,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         self._read_log_text(log_path)
         diag = m.Infra.DiagResult()
         self._parse_xml(junit_path, diag)
-        self._extract_warnings(report_log, diag)
+        self._extract_report_events(report_log, diag)
         return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @override

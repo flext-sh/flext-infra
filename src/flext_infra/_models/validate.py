@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, u
 
-from .. import c, t, u
+from .. import c, t
 from . import FlextInfraModelsMixins as mm
 from ._defaults import FlextInfraModelsDefaults
 
@@ -124,6 +124,34 @@ class FlextInfraModelsCore:
             t.NonNegativeInt, m.Field(description="Total missing imports")
         ]
 
+    class PytestCollectionManifest(m.Value):
+        """The selected node IDs after every collection hook has completed."""
+
+        node_ids: t.StrTuple = m.Field(description="Unique node IDs in execution order")
+
+        @u.model_validator(mode="after")
+        def require_unique_node_ids(self) -> Self:
+            """Reject incomplete identifiers and ambiguous worker manifests."""
+            if any(not node_id for node_id in self.node_ids) or len(
+                self.node_ids
+            ) != len(set(self.node_ids)):
+                msg = "collection manifest requires nonempty unique node IDs"
+                raise ValueError(msg)
+            return self
+
+    class PytestRunContext(m.Value):
+        """Immutable execution identity shared by a phase's native receipts."""
+
+        execution_mode: Literal["incremental", "full", "coverage"] = m.Field(
+            description="Canonical test operation for this report directory"
+        )
+        testmon_db: Path | None = m.Field(
+            description="Persistent external testmon database; absent for coverage"
+        )
+        deadline_monotonic: float = m.Field(
+            gt=0, description="Shared absolute deadline across all execution phases"
+        )
+
     class PytestReportEvent(m.Value):
         """Common report-log envelope and the complete warning payload."""
 
@@ -145,6 +173,11 @@ class FlextInfraModelsCore:
         message: Annotated[
             str | None, m.Field(description="Complete warning message")
         ] = None
+        nodeid: str | None = m.Field(default=None, description="TestReport node ID")
+        when: str | None = m.Field(default=None, description="Pytest lifecycle phase")
+        outcome: Literal["passed", "failed", "skipped"] | None = m.Field(
+            default=None, description="TestReport outcome"
+        )
 
         @u.model_validator(mode="after")
         def require_warning_payload(self) -> Self:
@@ -155,7 +188,33 @@ class FlextInfraModelsCore:
             ):
                 msg = "WarningMessage requires category, filename, lineno and message"
                 raise ValueError(msg)
+            if self.report_type == "TestReport" and (
+                not self.nodeid
+                or self.when not in {"setup", "call", "teardown"}
+                or self.outcome is None
+            ):
+                msg = "TestReport requires nodeid, a runtest phase and outcome"
+                raise ValueError(msg)
+            if self.report_type == "CollectReport" and (
+                self.nodeid is None or self.outcome is None
+            ):
+                msg = "CollectReport requires nodeid and outcome"
+                raise ValueError(msg)
             return self
+
+    class PytestWarningEvent(m.Value):
+        """Warning identity and enforcement decision captured before report-log."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=True)
+
+        category: str = m.Field(description="Runtime warning class name")
+        category_module: str = m.Field(description="Declaring warning module")
+        category_qualname: str = m.Field(description="Qualified runtime class name")
+        filename: str = m.Field(description="Warning source filename")
+        lineno: int = m.Field(ge=0, description="Warning source line")
+        message: str = m.Field(description="Complete warning message")
+        enforcement_strict: bool = m.Field(description="Resolved enforcement mode")
+        suspended: bool = m.Field(description="Runtime enforcement policy decision")
 
     class PytestDiagnostics(m.ArbitraryTypesModel):
         """Extracted diagnostics summary from JUnit XML and pytest report-log."""
@@ -178,6 +237,22 @@ class FlextInfraModelsCore:
         skipped_count: Annotated[
             t.NonNegativeInt, m.Field(description="Skipped test case count")
         ]
+        collection_failed_count: t.NonNegativeInt = m.Field(
+            description="Failed collection reports, separate from JUnit cases"
+        )
+        collection_skipped_count: t.NonNegativeInt = m.Field(
+            description="Skipped collection reports, separate from JUnit cases"
+        )
+        collection_failed_cases: t.StrTuple = m.Field(
+            default_factory=tuple, description="Node IDs with failed collection reports"
+        )
+        collection_skip_cases: t.StrTuple = m.Field(
+            default_factory=tuple, description="Node IDs with skipped collection reports"
+        )
+        reported_node_ids: t.StrTuple = m.Field(
+            default_factory=tuple,
+            description="Unique node IDs with real TestReport events",
+        )
         failed_cases: Annotated[
             t.StrSequence, m.Field(description="Failed test labels")
         ] = m.Field(default_factory=tuple)
@@ -203,6 +278,16 @@ class FlextInfraModelsCore:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
+
+        reported_node_ids: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list, description="Node IDs from each real TestReport"
+        )
+        collection_failed_cases: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list, description="Node IDs with failed collection reports"
+        )
+        collection_skip_cases: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list, description="Node IDs with skipped collection reports"
+        )
 
         failed_cases: Annotated[
             t.MutableSequenceOf[str],

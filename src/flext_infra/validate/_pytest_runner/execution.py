@@ -34,81 +34,100 @@ class FlextInfraPytestRunnerExecution(
             repository_root=self.root, db_path=self.testmon_db, pre_run_digest=digest
         ).execute()
 
-    def _selection_env(self) -> MutableMapping[str, str]:
+    def _selection_env(self, manifest: Path | None = None) -> MutableMapping[str, str]:
         """Return the child environment shared by every runner invocation."""
-        return u.Cli.process_env(
-            remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
-            overrides={
-                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                    self.root / c.Infra.DEFAULT_SRC_DIR
-                ),
-                c.Infra.PYTEST_ENV_TESTMON_DATAFILE: str(self.testmon_db),
-            },
+        overrides = {
+            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                self.root / c.Infra.DEFAULT_SRC_DIR
+            ),
+            c.Infra.PYTEST_ENV_TESTMON_DATAFILE: str(self.testmon_db),
+        }
+        if manifest is not None:
+            overrides[c.Infra.PYTEST_ENV_COLLECTION_MANIFEST] = str(manifest)
+        remove_keys = tuple(
+            key
+            for key in c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS
+            if manifest is None or key != c.Infra.PYTEST_ENV_COLLECTION_MANIFEST
         )
+        return u.Cli.process_env(remove_keys=remove_keys, overrides=overrides)
 
     def _resolve_selection(
         self, report_dir: Path, *, complete: bool = False
     ) -> t.StrSequence:
         """Return the node ids testmon selects, resolved in one process."""
-        pytest_settings = config.Infra.tooling.tools.pytest
-        command = self.build_selection_command(complete=complete)
-        outcome = u.Cli.run_raw(
+        artifact = "testmon-inventory" if complete else "testmon-selection"
+        selection_log = report_dir / f"{artifact}.log"
+        manifest_path = report_dir / f"{artifact}.json"
+        report_log = report_dir / f"{artifact}.events.jsonl"
+        command = self.build_selection_command(report_log=report_log, complete=complete)
+        outcome = u.Cli.run_to_file(
             command,
+            selection_log,
             cwd=self.root,
-            timeout=pytest_settings.run_timeout_seconds,
-            env=self._selection_env(),
+            env=self._selection_env(manifest_path),
+            deadline=self._process_deadline(),
         ).unwrap()
         self._record_process_outcome(
-            report_dir, "inventory" if complete else "selection", outcome.outcome
+            report_dir, "inventory" if complete else "selection", outcome
         )
+        log_text = selection_log.read_text(encoding="utf-8")
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         if (
-            outcome.outcome.raw_return_code not in {0, 5}
-            or outcome.outcome.timed_out
-            or outcome.outcome.forwarded_signal is not None
+            outcome.raw_return_code not in (
+                {pytest.ExitCode.OK}
+                if complete
+                else {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            )
+            or outcome.timed_out
+            or outcome.forwarded_signal is not None
         ):
-            detail = (outcome.stderr or outcome.stdout).strip()
-            msg = f"testmon selection failed ({outcome.outcome.raw_return_code}): {detail}"
+            detail = log_text.strip()
+            msg = f"testmon selection failed ({outcome.raw_return_code}): {detail}"
             raise RuntimeError(msg)
-        node_ids = tuple(
-            line.strip()
-            for line in (outcome.stdout or "").splitlines()
-            if "::" in line and not line.startswith(" ")
+        self._collection_diagnostics(report_log)
+        manifest = m.Infra.PytestCollectionManifest.model_validate_json(
+            manifest_path.read_text(encoding="utf-8")
         )
-        artifact = "testmon-inventory" if complete else "testmon-selection"
+        node_ids = manifest.node_ids
+        if outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED and node_ids:
+            msg = "pytest reported no collection with a nonempty manifest"
+            raise RuntimeError(msg)
+        if complete and not node_ids:
+            msg = "complete pytest inventory must contain at least one test"
+            raise RuntimeError(msg)
         u.Cli.atomic_write_text_file(
             report_dir / f"{artifact}.txt", "\n".join(node_ids) + "\n"
         ).unwrap()
-        u.Cli.atomic_write_text_file(
-            report_dir / f"{artifact}.log", outcome.stdout or ""
-        ).unwrap()
-        if not node_ids and not complete:
-            # The inventory proves every cache deselection; it is evidence,
-            # not a replacement for the empty incremental selection. Returning
-            # its IDs here silently turned a cache hit into a full execution.
-            self._resolve_selection(report_dir, complete=True)
+        if not complete:
+            inventory = self._resolve_selection(report_dir, complete=True)
+            if not set(node_ids).issubset(inventory):
+                msg = "testmon selected node IDs outside the complete collection inventory"
+                raise RuntimeError(msg)
         return node_ids
+
+    def _process_deadline(self) -> p.Cli.ProcessDeadline:
+        """Use the entrypoint clock for selection, execution, and cleanup."""
+        pytest_settings = config.Infra.tooling.tools.pytest
+        return m.Cli.ProcessDeadline(
+            expires_at_monotonic=self.started_at_monotonic
+            + pytest_settings.run_timeout_seconds,
+            termination_grace_seconds=pytest_settings.termination_grace_seconds,
+        )
 
     def _run_suite(
         self, command: t.VariadicTuple[str], report_dir: Path
     ) -> p.Cli.ProcessOutcome:
         """Execute one suite argv under the shared deadline and environment."""
-        pytest_settings = config.Infra.tooling.tools.pytest
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()
-        deadline = m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic
-            + pytest_settings.run_timeout_seconds,
-            termination_grace_seconds=pytest_settings.termination_grace_seconds,
-        )
         outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
             cwd=self.root,
             env=self._selection_env(),
             live=True,
-            deadline=deadline,
+            deadline=self._process_deadline(),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
         return outcome
@@ -139,35 +158,83 @@ class FlextInfraPytestRunnerExecution(
         *,
         cache_restored: bool = False,
         raw_return_code: int = 0,
+        cache_hit: bool = False,
     ) -> p.Result[int]:
         """Reject incomplete evidence and publish one bounded summary."""
+        diagnostics = self._diagnostics(report_dir).unwrap()
         accounting = self._accounting(
             report_dir / "junit.xml",
             report_dir / "pytest.log",
             cache_restored=cache_restored,
+            reported_count=len(diagnostics.reported_node_ids),
         ).unwrap()
-        diagnostics = self._diagnostics(report_dir).unwrap()
+        context = m.Infra.PytestRunContext.model_validate_json(
+            (report_dir / "run-context.json").read_text(encoding="utf-8")
+        )
+        if not accounting.executed_count and not (
+            cache_hit
+            and context.execution_mode == "incremental"
+            and raw_return_code
+            in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+        ):
+            msg = "zero execution is accepted only for a verified incremental cache hit"
+            raise RuntimeError(msg)
+        if cache_hit and accounting.executed_count:
+            msg = "a testmon cache hit cannot contain executed tests"
+            raise RuntimeError(msg)
         self._write_diagnostics(report_dir, diagnostics)
+        accounting_complete = (
+            accounting.executed_count == accounting.reported_count
+            and (
+                accounting.inventory_count is None
+                or accounting.executed_count + accounting.deselected_count
+                == accounting.inventory_count
+            )
+        )
         rejected = any((
             diagnostics.failed_count,
             diagnostics.error_count,
-            diagnostics.warning_count,
+            diagnostics.blocking_warning_count,
             diagnostics.skipped_count,
+            diagnostics.collection_failed_count,
+            diagnostics.collection_skipped_count,
+            not accounting_complete,
         ))
-        final_exit = raw_return_code or int(rejected)
+        accepted_cache_hit = cache_hit and not rejected
+        final_exit = 0 if accepted_cache_hit else raw_return_code or int(rejected)
+        result = (
+            "failed"
+            if final_exit
+            else "cache_hit"
+            if accepted_cache_hit
+            else "executed"
+        )
         external_gates = ",".join(
             config.Infra.tooling.tools.pytest.external_gate_markers
         )
         summary = (
+            f"outcome={result}\n"
             f"executed={accounting.executed_count}\n"
+            f"reported={accounting.reported_count}\n"
+            f"accounting_complete={accounting_complete}\n"
             f"deselected={accounting.deselected_count}\n"
+            f"inventory={accounting.inventory_count}\n"
             f"not_executed_external_gates={external_gates}\n"
             f"not_executed_ci_markers={','.join(self.ci_excluded_markers())}\n"
             f"cache_restored={cache_restored}\n"
             f"failed={diagnostics.failed_count}\nerrors={diagnostics.error_count}\n"
-            f"warnings={diagnostics.warning_count}\nskipped={diagnostics.skipped_count}\n"
+            f"warnings={diagnostics.warning_count}\n"
+            f"blocking_warnings={diagnostics.blocking_warning_count}\n"
+            f"suspended_warnings={diagnostics.suspended_warning_count}\n"
+            f"skipped={diagnostics.skipped_count}\n"
+            f"collection_errors={diagnostics.collection_failed_count}\n"
+            f"collection_skips={diagnostics.collection_skipped_count}\n"
             f"exit={final_exit}\n"
         )
+        u.Cli.atomic_write_text_file(
+            report_dir / "run-accounting.json",
+            accounting.model_dump_json(indent=2) + "\n",
+        ).unwrap()
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
         u.Cli.atomic_write_text_file(
             self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
@@ -177,8 +244,27 @@ class FlextInfraPytestRunnerExecution(
 
     @override
     def execute(self) -> p.Result[int]:
-        """Execute one whole-suite cached or full testmon invocation."""
+        """Execute the incremental testmon operation."""
+        return self._execute_testmon(complete=False)
+
+    def execute_full(self) -> p.Result[int]:
+        """Run incremental then full under one deadline and persistent database."""
+        incremental_exit = self.execute().unwrap()
+        if incremental_exit:
+            return r.ok(incremental_exit)
+        return self._execute_testmon(complete=True)
+
+    def _execute_testmon(self, *, complete: bool) -> p.Result[int]:
+        """Execute one selected testmon phase without resetting shared state."""
         report_dir = self._report_directory()
+        self._write_run_context(
+            report_dir,
+            m.Infra.PytestRunContext(
+                execution_mode="full" if complete else "incremental",
+                testmon_db=self.testmon_db,
+                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+            ),
+        )
         u.Cli.ensure_dir(self.testmon_db.parent).unwrap()
         pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
         cache_restored = False
@@ -188,14 +274,19 @@ class FlextInfraPytestRunnerExecution(
             if not cache_restored:
                 msg = f"testmon preflight rejected cache: {pre_state.reason}"
                 raise RuntimeError(msg)
-        selection = self._resolve_selection(report_dir)
+        selection = self._resolve_selection(report_dir, complete=complete)
+        if not selection and not cache_restored:
+            msg = "empty incremental selection requires an integrity-checked cache"
+            raise RuntimeError(msg)
         # Workers execute one centrally ordered selection. The collection plugin
         # enforces that manifest for both cold and warm caches while testmon
         # continues to collect dependencies through its xdist integration.
         command = self.build_command(report_dir, selection)
         outcome = self._run_suite(command, report_dir)
         cache_hit = (
-            outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            not complete
+            and outcome.raw_return_code
+            in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
             and not selection
@@ -219,7 +310,8 @@ class FlextInfraPytestRunnerExecution(
         return self._finalize(
             report_dir,
             cache_restored=cache_restored,
-            raw_return_code=outcome.raw_return_code if completed_failure else 0,
+            raw_return_code=outcome.raw_return_code,
+            cache_hit=cache_hit,
         )
 
     def execute_coverage(self) -> p.Result[int]:
@@ -230,6 +322,14 @@ class FlextInfraPytestRunnerExecution(
         The coverage artifact and any threshold failure are validated here.
         """
         report_dir = self._report_directory()
+        self._write_run_context(
+            report_dir,
+            m.Infra.PytestRunContext(
+                execution_mode="coverage",
+                testmon_db=None,
+                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+            ),
+        )
         command = self.build_coverage_command(report_dir)
         outcome = self._run_suite(command, report_dir)
         if not u.Cli.process_succeeded(outcome):

@@ -105,6 +105,7 @@ class FlextInfraConstantsMake:
         "fix-enforcement",
         "sonarcloud-sync",
         "test",
+        "test-full",
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[t.StrSequence] = (
         "GNUMAKEFLAGS",
@@ -138,15 +139,15 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_TARGET: ClassVar[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_CI: ClassVar[str] = "CI"
     PYTEST_ENV_TESTMON_DATAFILE: ClassVar[str] = "TESTMON_DATAFILE"
-    PYTEST_DESELECTED_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"(?P<count>[0-9]+)\s+deselected\b"
-    )
+    PYTEST_ENV_COLLECTION_MANIFEST: ClassVar[str] = "FLEXT_PYTEST_COLLECTION_MANIFEST"
+    PYTEST_WARNING_EVENTS_SUFFIX: ClassVar[str] = ".warnings.jsonl"
     PYTEST_COVERAGE_FAILURE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"(?:Coverage failure:|required test coverage .* not reached)", re.IGNORECASE
     )
     PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[t.StrSequence] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
+        PYTEST_ENV_COLLECTION_MANIFEST,
     )
 
 

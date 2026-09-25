@@ -21,13 +21,20 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     """Validate and persist pytest evidence."""
 
     @staticmethod
+    def _write_run_context(report_dir: Path, context: m.Infra.PytestRunContext) -> None:
+        """Name the mode and database before any subprocess can fail."""
+        u.Cli.atomic_write_text_file(
+            report_dir / "run-context.json", context.model_dump_json(indent=2) + "\n"
+        ).unwrap()
+
+    @staticmethod
     def _failure_detail(message: str, pytest_log: Path) -> str:
         """Attach the bounded log tail to an artifact failure."""
         tail = "\n".join(pytest_log.read_text(encoding="utf-8").splitlines()[-40:])
         return f"{message}\n--- pytest.log (tail) ---\n{tail}" if tail else message
 
     def _accounting(
-        self, junit: Path, log: Path, *, cache_restored: bool
+        self, junit: Path, log: Path, *, cache_restored: bool, reported_count: int
     ) -> p.Result[m.Infra.TestmonRunAccounting]:
         """Parse typed executed/deselected accounting from durable artifacts."""
         if not junit.exists():
@@ -43,31 +50,32 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             msg = self._failure_detail(f"JUnit has no document root: {junit}", log)
             raise ValueError(msg)
         executed = sum(1 for _ in root.iter("testcase"))
-        log_text = log.read_text(encoding="utf-8")
-        deselected = sum(
-            int(match.group("count"))
-            for match in c.Infra.PYTEST_DESELECTED_RE.finditer(log_text)
+        context = m.Infra.PytestRunContext.model_validate_json(
+            (log.parent / "run-context.json").read_text(encoding="utf-8")
         )
-        if not executed and cache_restored:
+        deselected = 0
+        inventory_count = None
+        if context.execution_mode != "coverage":
+            inventory = m.Infra.PytestCollectionManifest.model_validate_json(
+                (log.parent / "testmon-inventory.json").read_text(encoding="utf-8")
+            )
             selected = (
-                (log.parent / "testmon-selection.txt")
-                .read_text(encoding="utf-8")
-                .strip()
+                inventory
+                if context.execution_mode == "full"
+                else m.Infra.PytestCollectionManifest.model_validate_json(
+                    (log.parent / "testmon-selection.json").read_text(encoding="utf-8")
+                )
             )
-            if selected:
-                msg = "pytest executed no tests from a nonempty testmon selection"
+            if not set(selected.node_ids).issubset(inventory.node_ids):
+                msg = "testmon selected node IDs outside the complete collection inventory"
                 raise RuntimeError(msg)
-            inventory = (
-                (log.parent / "testmon-inventory.txt")
-                .read_text(encoding="utf-8")
-                .splitlines()
-            )
-            # Testmon skips stable files before pytest can count deselections.
-            # The independent collection-only inventory proves the omitted set.
-            deselected = len({node for node in inventory if node})
+            inventory_count = len(inventory.node_ids)
+            deselected = inventory_count - len(selected.node_ids)
         accounting = m.Infra.TestmonRunAccounting(
             executed_count=executed,
+            reported_count=reported_count,
             deselected_count=deselected,
+            inventory_count=inventory_count,
             cache_restored=cache_restored,
         )
         if executed:
@@ -83,8 +91,27 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             repository_root=self.root,
             junit=report_dir / "junit.xml",
             log_path=report_dir / "pytest.log",
+            report_log=report_dir / "events.jsonl",
         )
-        return extractor.extract(extractor.junit, extractor.log_path)
+        return extractor.extract(
+            extractor.junit, extractor.log_path, report_log=extractor.report_log
+        )
+
+    @staticmethod
+    def _collection_diagnostics(report_log: Path) -> None:
+        """Require complete collection evidence before accepting a selection."""
+        diagnostics = FlextInfraPytestDiagExtractor.extract_report_log(report_log).unwrap()
+        receipt = report_log.with_suffix(".diagnostics.json")
+        u.Cli.atomic_write_text_file(
+            receipt, diagnostics.model_dump_json(indent=2) + "\n"
+        ).unwrap()
+        if any((
+            diagnostics.collection_failed_count,
+            diagnostics.collection_skipped_count,
+            diagnostics.blocking_warning_count,
+        )):
+            msg = f"pytest collection contains blocking findings: {receipt}"
+            raise RuntimeError(msg)
 
     def _validate_coverage(self, report_dir: Path) -> p.Result[bool]:
         """Require a non-empty coverage artifact and no hidden threshold failure."""
@@ -113,6 +140,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             ("failed-tests.txt", diagnostics.failed_cases, "\n\n"),
             ("errors.txt", diagnostics.error_traces, "\n\n"),
             ("warnings.txt", diagnostics.warning_lines, "\n"),
+            ("suspended-warnings.txt", diagnostics.suspended_warning_lines, "\n"),
             ("skipped-tests.txt", diagnostics.skip_cases, "\n"),
             ("slowest-tests.txt", diagnostics.slow_entries, "\n"),
         )
