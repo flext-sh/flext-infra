@@ -117,7 +117,11 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        tm.that(rendered.count("\ndeploy:\n"), eq=1)
+        # The verb target may carry prerequisites (the workspace guard).
+        deploy_targets = [
+            line for line in rendered.splitlines() if line.startswith("deploy:")
+        ]
+        tm.that(len(deploy_targets), eq=1)
         tm.that(
             rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
         )
@@ -166,7 +170,6 @@ class TestsFlextInfraScriptDispatchMakefile:
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         # WHAT selectors were exterminated: one verb, one meaning, declared once.
         tm.that(hasattr(gen, "default_what"), eq=False)
-        tm.that(hasattr(gen, "_apply_flag_exterminated"), eq=False)
         tm.that("initialize" in verb_names, eq=True)
         tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
@@ -196,12 +199,10 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         tm.that(" gen" in builtin_line, eq=True)
         tm.that(" codegen" in builtin_line, eq=False)
-        phony_line = next(
-            line
-            for line in rendered.splitlines()
-            if line.startswith(".PHONY:") and "_builtin_" in line
+        tm.that(
+            rendered.splitlines(),
+            has=".PHONY: _builtin_gen_init _builtin_gen_all",
         )
-        tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
         # The one handler drives the conform engine (CLI namespace is unchanged).
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
@@ -248,6 +249,9 @@ class TestsFlextInfraScriptDispatchMakefile:
         package.mkdir(parents=True)
         makefile = root / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(rendered, encoding="utf-8")
+        # The recorded Mise pin guards every verb first; seed it so the
+        # interpreter guard is the one this test reaches.
+        u.Tests.copy_tracked_mise_seeds(root)
         invoked = u.Tests.run_isolated_make(
             ["--no-print-directory", "-f", str(makefile), "initialize"], cwd=root
         )

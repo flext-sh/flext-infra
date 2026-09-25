@@ -30,6 +30,9 @@ class TestsFlextInfraSemanticPhaseContract:
             "from __future__ import annotations\n", ""
         )
         path.write_text(source, encoding="utf-8")
+        # Semantic publication runs inside a codegen transaction, which only
+        # coordinates through a real repository rooted at the project.
+        u.Tests.initialize_git_repo(root)
         finding = m.Infra.ModScanFinding(
             rule_file="require-future-annotations.yml",
             rule_id="require-future-annotations",

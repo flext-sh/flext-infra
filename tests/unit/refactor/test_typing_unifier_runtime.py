@@ -41,19 +41,19 @@ def quoted(value: 'A[list[object], "] object, café ☃"]') -> typing_module.Any
         tm.that(bool(changes), eq=True)
         (tmp_path / "typing_consumer.py").write_text(updated, encoding="utf-8")
         probe = """from typing import Any, get_args, get_type_hints
-from flext_core import cli
+from flext_cli import cli
 from pydantic import TypeAdapter
 from typing_consumer import TEXT, consume, quoted
 hints = get_type_hints(consume, include_extras=True)
 quoted_hints = get_type_hints(quoted, include_extras=True)
 sentinel = object()
 values = TypeAdapter(get_args(hints["entrée"])[0]).validate_python([sentinel])
-cli.print(values[0] is sentinel)
-cli.print(get_args(hints["entrée"])[1])
-cli.print(get_args(hints["kind"])[0])
-cli.print(hints["payload"] is Any, hints["return"] is object, quoted_hints["return"] is Any)
-cli.print(get_args(quoted_hints["value"])[1])
-cli.print(TEXT)
+cli.print(f"{values[0] is sentinel}")
+cli.print(f"{get_args(hints['entrée'])[1]}")
+cli.print(f"{get_args(hints['kind'])[0]}")
+cli.print(f"{hints['payload'] is Any} {hints['return'] is object} {quoted_hints['return'] is Any}")
+cli.print(f"{get_args(quoted_hints['value'])[1]}")
+cli.print(f"{TEXT}")
 """
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(
@@ -89,10 +89,10 @@ def consume(value: list[object], payload: Any) -> object:
         tm.that(changes, eq=[])
         (tmp_path / "typing_homonym.py").write_text(updated, encoding="utf-8")
         probe = """from typing import Any, get_origin, get_type_hints
-from flext_core import cli
+from flext_cli import cli
 from typing_homonym import consume, list
 hints = get_type_hints(consume)
-cli.print(get_origin(hints["value"]) is list, hints["payload"] is Any, hints["return"] is object)
+cli.print(f"{get_origin(hints['value']) is list} {hints['payload'] is Any} {hints['return'] is object}")
 """
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(outcome.stdout.strip(), eq="True True True")
@@ -102,17 +102,17 @@ cli.print(get_origin(hints["value"]) is list, hints["payload"] is Any, hints["re
         [
             (
                 "type Number = int | float\n",
-                "from flext_core import cli\nfrom pydantic import TypeAdapter\nfrom deferred_consumer import Number\ncli.print(TypeAdapter(Number).validate_json('1.25'))\n",
+                "from flext_cli import cli\nfrom pydantic import TypeAdapter\nfrom deferred_consumer import Number\ncli.print(str(TypeAdapter(Number).validate_json('1.25')))\n",
                 "1.25",
             ),
             (
                 f"from {c.Infra.PKG_CORE_UNDERSCORE} import m\nclass Number(m.BaseModel):\n    value: int | float\n",
-                "from flext_core import cli\nfrom deferred_consumer import Number\ncli.print(Number.model_validate_json('{\"value\": 1.25}').value)\n",
+                "from flext_cli import cli\nfrom deferred_consumer import Number\ncli.print(str(Number.model_validate_json('{\"value\": 1.25}').value))\n",
                 "1.25",
             ),
             (
                 "def consume(value: int | float) -> None:\n    pass\n",
-                "from flext_core import cli\nfrom typing import get_type_hints\nfrom deferred_consumer import consume\ncli.print(get_type_hints(consume)['value'] == (int | float))\n",
+                "from flext_cli import cli\nfrom typing import get_type_hints\nfrom deferred_consumer import consume\ncli.print(str(get_type_hints(consume)['value'] == (int | float)))\n",
                 "True",
             ),
         ],
@@ -163,7 +163,7 @@ from {c.Infra.PKG_CORE_UNDERSCORE} import t
             with pytest.raises(ValueError, match="requires a runtime binding"):
                 transformer.transform(project, resource)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
-        probe = "from flext_core import cli\nfrom late_consumer import Number\ncli.print(Number.model_validate_json('{\"value\": 1.25}').value)\n"
+        probe = "from flext_cli import cli\nfrom late_consumer import Number\ncli.print(str(Number.model_validate_json('{\"value\": 1.25}').value))\n"
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(outcome.stdout.strip(), eq="1.25")
 
@@ -191,7 +191,7 @@ from {c.Infra.PKG_CORE_UNDERSCORE} import t
             with pytest.raises(ValueError, match="owning package facade"):
                 transformer.transform(project, resource)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
-        probe = "from flext_core import cli\nfrom typing import get_type_hints\nfrom initialization_demo import consume\ncli.print(consume(1.25), get_type_hints(consume)['value'] == (int | float))\n"
+        probe = "from flext_cli import cli\nfrom typing import get_type_hints\nfrom initialization_demo import consume\ncli.print(f'{consume(1.25)} {get_type_hints(consume)[\"value\"] == (int | float)}')\n"
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=package.parent))
         tm.that(outcome.stdout.strip(), eq="1.25 True")
 
@@ -206,11 +206,11 @@ from {c.Infra.PKG_CORE_UNDERSCORE} import t
         updated, _changes = transformer.apply_to_source(source)
         (tmp_path / "external_consumer.py").write_text(updated, encoding="utf-8")
         probe = (
-            "from flext_core import cli\n"
+            "from flext_cli import cli\n"
             "from typing import get_type_hints\n"
             "from pydantic import TypeAdapter\n"
             "from external_consumer import consume\n"
-            "cli.print(TypeAdapter(get_type_hints(consume)['value']).validate_json('1.25'))\n"
+            "cli.print(str(TypeAdapter(get_type_hints(consume)['value']).validate_json('1.25')))\n"
         )
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(outcome.stdout.strip(), eq="1.25")
