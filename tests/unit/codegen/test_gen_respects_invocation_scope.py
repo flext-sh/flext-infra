@@ -157,6 +157,3 @@ class TestsFlextInfraGenRespectsInvocationScope:
         assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
         assert "WORKSPACE_SUBPROJECTS :=" in text
         assert "MANAGED_GITLINKS :=" in text
-
-
-__all__: list[str] = ["TestsFlextInfraGenRespectsInvocationScope"]

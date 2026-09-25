@@ -245,6 +245,3 @@ class TestsFlextInfraCodegenHookConformance:
 
         retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
         tm.that(target in retired, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenHookConformance"]

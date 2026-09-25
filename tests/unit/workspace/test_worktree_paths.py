@@ -147,6 +147,3 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         tm.that(first.name, eq=second.name)
         tm.that(first_lane != second_lane, where=bool)
         tm.that(first_lane.parent.parent != second_lane.parent.parent, where=bool)
-
-
-__all__: t.VariadicTuple[str] = ()

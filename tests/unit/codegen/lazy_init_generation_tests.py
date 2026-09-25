@@ -560,6 +560,3 @@ class TestsFlextInfraCodegenGeneration:
                 "    from demo_worktree_pkg import p as project_p\n"
             ),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenGeneration"]

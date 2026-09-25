@@ -35,6 +35,3 @@ class TestsFlextInfraLockfilePolicyProjection:
             u.Tests.is_tracked_under(rendered, c.Infra.UV_LOCK_FILENAME),
             eq=u.Tests.is_tracked_under(declared, c.Infra.UV_LOCK_FILENAME),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraLockfilePolicyProjection"]

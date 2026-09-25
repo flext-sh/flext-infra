@@ -108,6 +108,3 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
             ),
             eq=str(expected_lane),
         )
-
-
-__all__: t.VariadicTuple[str] = ()

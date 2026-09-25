@@ -170,6 +170,3 @@ class TestsFlextInfraCodegenManifestlessExisting:
             if u.Infra.dep_name(dependency) != distribution
         )
         tm.that(owned_runtime[0] in rendered, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenManifestlessExisting"]

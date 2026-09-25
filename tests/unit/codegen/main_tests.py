@@ -361,6 +361,3 @@ class TestsFlextInfraCodegenMain:
                 result.value.stdout + result.value.stderr,
                 contains="No such command 'unknown-command'",
             )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenMain"]

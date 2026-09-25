@@ -244,6 +244,3 @@ class TestsFlextInfraCodegenLayout:
         tm.that(archived.is_file(), eq=True)
         tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
         tm.that((project / "index.md").exists(), eq=False)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenLayout"]

@@ -158,6 +158,3 @@ class TestsFlextInfraDepsModernizerPackaging:
         with pytest.raises(FileNotFoundError, match=f"root {missing_kind}"):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes(), eq=before)
-
-
-__all__: list[str] = ["TestsFlextInfraDepsModernizerPackaging"]

@@ -114,6 +114,3 @@ class TestsFlextInfraWorktreeAddContract(u.Tests.WorktreeFixture):
         ).execute()
 
         tm.fail(result, has="requires --base")
-
-
-__all__: t.VariadicTuple[str] = ()

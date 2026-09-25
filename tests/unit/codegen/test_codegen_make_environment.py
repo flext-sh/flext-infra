@@ -1098,6 +1098,3 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "_builtin-conform",
         ):
             tm.that(makefile, lacks=forbidden)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenMakeEnvironment"]

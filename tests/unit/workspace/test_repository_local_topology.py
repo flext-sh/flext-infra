@@ -709,6 +709,3 @@ class TestsFlextInfraRepositoryLocalTopology:
         tm.that(first, eq=second)
         tm.that(first.name, eq=u.Tests.provider().name)
         tm.that(first.organization, eq=u.Tests.provider().organization)
-
-
-__all__: list[str] = ["TestsFlextInfraRepositoryLocalTopology"]

@@ -160,6 +160,3 @@ class TestsFlextInfraDepsModernizerComments:
         second_result, second_changes = phase.apply(first_result)
         tm.that(second_result, eq=first_result)
         tm.that(second_changes, empty=True)
-
-
-__all__: list[str] = ["TestsFlextInfraDepsModernizerComments"]

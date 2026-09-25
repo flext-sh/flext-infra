@@ -149,6 +149,3 @@ class TestsFlextInfraCodegenPyTyped:
         tm.that(count, eq=3)
         for name in ("pkga", "pkgb", "pkgc"):
             tm.that((tmp_path / "src" / name / c.Infra.PY_TYPED).exists(), eq=True)
-
-
-__all__: t.StrSequence = []

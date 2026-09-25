@@ -201,6 +201,3 @@ class TestsFlextInfraCodegenArtifactSsot:
             settings["files.watcherExclude"],
             eq=dict(codegen.vscode_watcher_exclude_map),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenArtifactSsot"]

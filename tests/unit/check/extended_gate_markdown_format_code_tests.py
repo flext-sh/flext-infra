@@ -224,6 +224,3 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         )
 
         tm.that(result.result.passed, eq=True)
-
-
-__all__: t.StrSequence = ["TestsFlextInfraMarkdownFormatAndCodeGates"]

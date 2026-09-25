@@ -106,6 +106,3 @@ class TestsFlextInfraRuntimeModelAlias:
         tm.that(f"    {_MODULE_IMPORT}" in updated, eq=True)
         tm.that(f"\n{_MODULE_IMPORT}" in updated, eq=False)
         tm.that("from typing import TYPE_CHECKING" in updated, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraRuntimeModelAlias"]

@@ -85,6 +85,3 @@ class TestsFlextInfraWorktreeRemoval(u.Tests.WorktreeFixture):
 
         tm.fail(result, has=f"epic lane worktree does not exist: {missing}")
         tm.that(not missing.exists(), where=bool)
-
-
-__all__: t.VariadicTuple[str] = ()

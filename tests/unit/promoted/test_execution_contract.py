@@ -34,6 +34,3 @@ class TestsFlextInfraPromotedExecutionContract:
                 path=tmp_path / "scripts" / "probe" / "all.py", params=(param,)
             )
             u.Infra.promoted_validate_command_contract(command)
-
-
-__all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]

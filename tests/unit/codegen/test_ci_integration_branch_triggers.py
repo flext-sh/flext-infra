@@ -59,6 +59,3 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
         for branch in self.baseline_branches:
             tm.that(self._branch_count(triggers, branch), eq=2)
-
-
-__all__: list[str] = ["TestsFlextInfraCiIntegrationBranchTriggers"]

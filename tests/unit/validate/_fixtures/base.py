@@ -102,6 +102,3 @@ class TestsFlextInfraValidateNamespaceBase:
             eq=True,
             msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
         )
-
-
-__all__: list[str] = ["TestsFlextInfraValidateNamespaceBase"]

@@ -179,6 +179,3 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             u.Infra.overlay_preserved(rendered, live),
             has="validate runtime dependencies",
         )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenRuntimeProfiles"]

@@ -62,6 +62,3 @@ class TestsFlextInfraRootMakefileSingleOwner:
             config.Infra.codegen.make.clean.root_files,
             has="flext-infra-codegen-transaction-journal.json.lock",
         )
-
-
-__all__: t.VariadicTuple[str] = ()

@@ -741,6 +741,3 @@ class TestsFlextInfraCodegenCiMatrix:
             "!tests/fixtures/ci/docker/",
         ):
             tm.that(content, has=marker)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenCiMatrix"]

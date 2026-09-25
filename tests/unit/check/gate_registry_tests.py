@@ -237,6 +237,3 @@ class TestsFlextInfraGateRegistry:
         # check vocabulary AND from the fix vocabulary.
         tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)
         tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_GATE_IDS, eq=True)
-
-
-__all__: t.StrSequence = ["TestsFlextInfraGateRegistry"]

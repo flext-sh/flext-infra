@@ -109,6 +109,3 @@ class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
 
         tm.ok(result)
         self._assert_no_violation_contains(root, "reverse runtime import")
-
-
-__all__: list[str] = ["TestsFlextInfraRule3ImportRules"]

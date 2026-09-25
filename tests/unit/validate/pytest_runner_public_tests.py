@@ -354,8 +354,8 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """An external-token gate is deselected, never a KeyError, and reported.
 
-        gate-budget/engineering-core: offline verification never runs a gate
-        whose environment only a direct invocation provides. The marker set is
+        gate-budget/engineering-core: incremental verification records external
+        gates as not executed; the full verb owns their execution. The marker set is
         the SSOT ``external-gate-markers``; every expectation derives from it.
         """
         pytest_policy = config.Infra.tooling.tools.pytest
@@ -399,6 +399,66 @@ class TestsFlextInfraPytestRunner:
             u.Cli.files_read_text(reports_root / latest_name / "command.txt")
         )
         tm.that(command, has=pytest_policy.external_gate_deselection)
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("ci_context", [False, True])
+    def test_full_includes_external_and_ci_markers_after_incremental_scope(
+        self, cached_runner_project: Path, *, ci_context: bool
+    ) -> None:
+        """The real full phase executes harmless consumers of every excluded marker."""
+        policy = config.Infra.tooling.tools.pytest
+        markers = tuple(
+            sorted(set((*policy.external_gate_markers, *policy.ci_excluded_markers)))
+        )
+        marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
+        (cached_runner_project / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\n"
+            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
+            f"markers = [\n{marker_lines}]\n",
+            encoding="utf-8",
+        )
+        runner = self._runner_for(cached_runner_project, ci_context=ci_context)
+        source = "import pytest\nfrom runner_sample import answer\n\n"
+        for index, marker in enumerate(markers):
+            source += (
+                f"@pytest.mark.{marker}\n"
+                f"def test_marked_{index}():\n    assert answer() == 42\n\n"
+            )
+        (cached_runner_project / runner.target / "test_marked.py").write_text(
+            source, encoding="utf-8"
+        )
+
+        tm.that(tm.ok(runner.execute_full()), eq=0)
+
+        reports_root = cached_runner_project / runner.reports
+        contexts = sorted(reports_root.glob("*/run-context.json"))
+        tm.that(len(contexts), eq=2)
+        incremental, full = (path.parent for path in contexts)
+        excluded = set(policy.external_gate_markers)
+        if ci_context:
+            excluded.update(policy.ci_excluded_markers)
+        for report_dir, expected in (
+            (incremental, 1 + len(set(markers) - excluded)),
+            (full, 1 + len(markers)),
+        ):
+            accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+                (report_dir / "run-accounting.json").read_text()
+            )
+            tm.that(accounting.executed_count, eq=expected)
+            tm.that(accounting.inventory_count, eq=expected)
+            tm.that(accounting.deselected_count, eq=0)
+        full_summary = (full / "summary.txt").read_text().splitlines()
+        tm.that("not_executed_external_gates=" in full_summary, eq=True)
+        tm.that("not_executed_ci_markers=" in full_summary, eq=True)
+        for command in (
+            runner.build_selection_command(
+                report_log=full / "testmon-inventory.events.jsonl",
+                complete=True,
+                execution_mode=c.Infra.PytestExecutionMode.FULL,
+            ),
+            runner.build_command(full, execution_mode=c.Infra.PytestExecutionMode.FULL),
+        ):
+            tm.that("-m" in command[3:], eq=False)
 
     @pytest.mark.slow
     def test_coverage_verb_publishes_artifact_without_testmon(
@@ -807,6 +867,3 @@ class TestsFlextInfraPytestRunner:
         exit_code = tm.ok(runner.execute_coverage())
 
         tm.that(exit_code, ne=0)
-
-
-__all__: list[str] = []

@@ -283,6 +283,3 @@ class TestsFlextInfraBanditAndMarkdownGates:
         _ = u.Tests.check_gate_asserting(
             FlextInfraMarkdownGate, tmp_path, project_dir, passed=True, issues_len=0
         )
-
-
-__all__: t.StrSequence = ["TestsFlextInfraBanditAndMarkdownGates"]

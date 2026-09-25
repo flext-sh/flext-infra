@@ -150,6 +150,3 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         tm.that(workspace.failure, eq=True)
         tm.that(str(workspace.error), has="member Beads routing identity differs")
         tm.that(str(workspace.error), has="rogue-workspace")
-
-
-__all__: t.VariadicTuple[str] = ()

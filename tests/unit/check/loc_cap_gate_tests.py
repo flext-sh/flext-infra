@@ -141,6 +141,3 @@ class TestsFlextInfraLocCapGate:
 
         with pytest.raises(UnicodeDecodeError):
             gate.check_files((module,), project, u.Tests.gate_context(tmp_path))
-
-
-__all__: t.StrSequence = ["TestsFlextInfraLocCapGate"]

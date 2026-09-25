@@ -190,6 +190,3 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             ),
             eq=False,
         )
-
-
-__all__: list[str] = ["TestsFlextInfraRule0NamespaceStructure"]

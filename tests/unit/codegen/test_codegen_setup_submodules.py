@@ -532,6 +532,3 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
         tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenSetupSubmodules"]

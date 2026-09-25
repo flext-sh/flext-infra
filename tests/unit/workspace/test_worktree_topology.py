@@ -92,6 +92,3 @@ class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
             ).text,
             has=f"worktree {child_path}",
         )
-
-
-__all__: t.VariadicTuple[str] = ()

@@ -99,6 +99,3 @@ class TestsFlextInfraAbstractionBoundaryGate:
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
         tm.that(len(result.result.errors), eq=0)
-
-
-__all__: t.StrSequence = ["TestsFlextInfraAbstractionBoundaryGate"]

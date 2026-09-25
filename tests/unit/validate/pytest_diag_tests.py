@@ -397,6 +397,3 @@ class TestsFlextInfraPytestDiag:
         )
         with pytest.raises(ValueError, match="zip"):
             extractor.extract(junit, log, report_log=extractor.report_log)
-
-
-__all__: list[str] = ["TestsFlextInfraPytestDiag"]

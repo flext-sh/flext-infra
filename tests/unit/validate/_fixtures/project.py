@@ -107,6 +107,3 @@ class TestsFlextInfraNamespaceProjectFixture:
         return u.Tests.namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
-
-
-__all__: list[str] = ["TestsFlextInfraNamespaceProjectFixture"]

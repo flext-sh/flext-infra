@@ -84,6 +84,3 @@ class TestsFlextInfraSilentFailureGate:
 
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
-
-
-__all__: t.StrSequence = ["TestsFlextInfraSilentFailureGate"]
