@@ -103,11 +103,11 @@ class TestsFlextInfraCodemodGate:
     def test_missing_requested_file_cannot_be_deselected(self, tmp_path: Path) -> None:
         project = self._project(tmp_path)
         missing = project / "src" / "missing.py"
+        gate = FlextInfraCodemodGate(tmp_path)
+        context = u.Tests.gate_context(tmp_path)
 
         with pytest.raises(FileNotFoundError):
-            FlextInfraCodemodGate(tmp_path).check_files(
-                (missing,), project, u.Tests.gate_context(tmp_path)
-            )
+            gate.check_files((missing,), project, context)
 
     def test_workspace_pipeline_reports_observations_without_functional_errors(
         self, tmp_path: Path

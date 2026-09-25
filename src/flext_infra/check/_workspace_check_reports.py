@@ -62,9 +62,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
             lines.append("")
         return "\n".join(lines)
 
-    @staticmethod
+    @classmethod
     def _generate_sarif(
-        results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
+        cls, results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
         rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
@@ -89,29 +89,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                         ),
                     )
                     sarif_results.append(
-                        m.Infra.SarifResult(
-                            ruleId=rule_id,
-                            level=(
-                                "note"
-                                if observational
-                                else "warning"
-                                if issue.severity.lower()
-                                == c.Infra.SeverityLevel.WARNING
-                                else "error"
-                            ),
-                            message=(
-                                f"Observational [{issue.severity}]: {issue.message}"
-                                if observational
-                                else issue.message
-                            ),
-                            locations=[
-                                m.Infra.SarifLocation(
-                                    uri=issue.file,
-                                    start_line=issue.line,
-                                    start_column=issue.column,
-                                )
-                            ],
-                        )
+                        cls._sarif_issue(issue, rule_id, observational=observational)
                     )
         return m.Infra.SarifReport(
             runs=(
@@ -122,6 +100,32 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     results=tuple(sarif_results),
                 ),
             )
+        )
+
+    @staticmethod
+    def _sarif_issue(
+        issue: m.Infra.Issue, rule_id: str, *, observational: bool
+    ) -> m.Infra.SarifResult:
+        """Render one occurrence while retaining its native diagnostic severity."""
+        if observational:
+            level = "note"
+            message = f"Observational [{issue.severity}]: {issue.message}"
+        else:
+            level = (
+                "warning"
+                if issue.severity.lower() == c.Infra.SeverityLevel.WARNING
+                else "error"
+            )
+            message = issue.message
+        return m.Infra.SarifResult(
+            ruleId=rule_id,
+            level=level,
+            message=message,
+            locations=[
+                m.Infra.SarifLocation(
+                    uri=issue.file, start_line=issue.line, start_column=issue.column
+                )
+            ],
         )
 
     @classmethod
