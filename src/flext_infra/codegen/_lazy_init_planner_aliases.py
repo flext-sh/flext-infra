@@ -36,6 +36,8 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str
         ) -> str: ...
 
+        def _letter_import_parent_packages(self, pkg_dir: Path) -> t.StrSequence: ...
+
     def _resolve_aliases(
         self,
         lazy_map: t.MutableLazyAliasMap,
@@ -66,9 +68,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         }
         inherited_packages = self._resolve_transitive_parent_packages((
             *self._parent_packages(pkg_dir),
+            *self._letter_import_parent_packages(pkg_dir),
             self._source_package_name(pkg_dir, surface),
         ))
-        # Discovery reads only the facade parents, never the dependency closure:
+        # Discovery reads the declared facade parents plus the packages whose
+        # governed letters the facade imports, never the dependency closure:
         # a dev or codegen dependency is a consumer, never a facade ancestor.
         # An indexed parent is read from its declared sources (its generated
         # initializer is this run's output, never its input); an external
