@@ -769,7 +769,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
             # is executed through `mise exec`, so nothing needs an ambient mise
             # and nothing hand-assembles a managed PATH any more.
             'mise_exec project "$$latest_mise" -C "$$project_root" install --yes',
-            "upgrade --no-prune python",
             '"$$latest_mise" -C "$$project_root" exec -- env',
             "SETUP_DIRENV=$$direnv_executable",
             'desired_python=$$("$(SETUP_MISE)" -C "$(PROJECT_ROOT)" which python)',
