@@ -148,18 +148,10 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
     # over every pin) that no detector case needs, and that re-resolution is
     # what pushed each case past its runtime wall.
     isolated = c.Tests.MAKE_ISOLATION_ENV_KEYS
+    tm.ok(u.Cli.run_checked(["uv", "lock"], cwd=root, remove_env_keys=isolated))
     tm.ok(
         u.Cli.run_checked(
-            ["uv", "lock"],
-            cwd=root,
-            remove_env_keys=isolated,
-        )
-    )
-    tm.ok(
-        u.Cli.run_checked(
-            ["uv", "sync", "--all-groups"],
-            cwd=root,
-            remove_env_keys=isolated,
+            ["uv", "sync", "--all-groups"], cwd=root, remove_env_keys=isolated
         )
     )
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)

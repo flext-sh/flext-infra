@@ -183,9 +183,7 @@ class TestsFlextInfraLazyInitRuntime:
         # no runtime-alias repair may invent a local binding for one.
         tm.that(facet.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=facet_source)
         exports = u.Infra.public_export_names_source(
-            examples.joinpath("__init__.py").read_text(
-                encoding=c.Cli.ENCODING_DEFAULT
-            )
+            examples.joinpath("__init__.py").read_text(encoding=c.Cli.ENCODING_DEFAULT)
         )
         tm.that("c" in exports, eq=True)
         probe_env = dict(os.environ)
@@ -208,6 +206,5 @@ class TestsFlextInfraLazyInitRuntime:
             u.Cli.run([sys.executable, "-c", probe], env=probe_env, cwd=repository)
         )
         tm.that(
-            result.stdout.splitlines(),
-            eq=["True", "True", "True", "False", "True"],
+            result.stdout.splitlines(), eq=["True", "True", "True", "False", "True"]
         )

@@ -606,10 +606,14 @@ class FlextInfraMiseArtifactsState:
         recorded_trees = {
             item.path: item
             for item in journal.directories
-            if item.disposition == "temporary" and item.created is not None
+            if item.disposition == "temporary"
         }
         for path in sorted(recorded_trees):
             entry = recorded_trees[path]
+            created = entry.created
+            if created is None:
+                # Not a created-temporary record: nothing to authenticate.
+                continue
             target = files.resolve_transaction(
                 layout, path, purpose="journaled recovery tree"
             )
@@ -621,12 +625,10 @@ class FlextInfraMiseArtifactsState:
             if not stat.S_ISDIR(physical.st_mode) or cls._is_reparse(physical):
                 return r[bool].fail(f"journaled recovery tree is not physical: {path}")
             if (physical.st_dev, physical.st_ino) != (
-                entry.created.device,
-                entry.created.inode,
+                created.device,
+                created.inode,
             ):
-                return r[bool].fail(
-                    f"journaled recovery tree identity changed: {path}"
-                )
+                return r[bool].fail(f"journaled recovery tree identity changed: {path}")
             try:
                 residents = tuple(target.value.iterdir())
             except OSError as exc:

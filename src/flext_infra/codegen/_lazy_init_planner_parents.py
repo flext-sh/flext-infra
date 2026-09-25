@@ -19,6 +19,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         _source_exports_cache: MutableMapping[str, frozenset[str]]
+        _parent_package_cache: MutableMapping[str, t.StrSequence]
 
         def _module_file(self, module_path: str) -> Path | None: ...
 
@@ -241,14 +242,13 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         declared: set[str] = set()
         if package_dir is not None:
             for module_path in sorted(package_dir.glob("*.py")):
-                if module_path.name == c.Infra.INIT_PY:
-                    # The generated initializer of this run is an output,
-                    # never a declaration owner. An external package's
-                    # published initializer IS its own root namespace: the
-                    # letters it binds directly to a class are that package's
-                    # declared letters, read by path, never imported.
-                    if indexed_dir is not None:
-                        continue
+                # The generated initializer of this run is an output, never a
+                # declaration owner. An external package's published
+                # initializer IS its own root namespace: the letters it binds
+                # directly to a class are that package's declared letters,
+                # read by path, never imported.
+                if module_path.name == c.Infra.INIT_PY and indexed_dir is not None:
+                    continue
                 declared.update(
                     u.Infra.facade_letter_names_source(
                         module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)

@@ -107,14 +107,13 @@ class TestsFlextInfraUtilitiesResourceLimits:
         state = remaining.value.stdout.strip()
         if sys.platform == "darwin":
             tm.that(not state or state.startswith("Z"), eq=True)
+        # GNU timeout reaps the resistant group when it stops the leader at
+        # the deadline; on a clean leader exit the group outlives the
+        # wrapper, so the probe reaps its own descendant instead.
+        elif expected == 124:
+            tm.that(not state, eq=True)
         else:
-            # GNU timeout reaps the resistant group when it stops the leader at
-            # the deadline; on a clean leader exit the group outlives the
-            # wrapper, so the probe reaps its own descendant instead.
-            if expected == 124:
-                tm.that(not state, eq=True)
-            else:
-                u.Cli.run_raw(("/bin/kill", "-9", str(pid)), timeout=2)
+            u.Cli.run_raw(("/bin/kill", "-9", str(pid)), timeout=2)
 
     def test_resource_limit_stops_workload_on_termination(self) -> None:
         """Preserve external termination and reap the running workload."""
