@@ -157,7 +157,10 @@ class TestsFlextInfraCodemodGate:
 
         tm.that(execution.result.passed, eq=False)
         tm.that(any(issue.code == "TOOL_ERROR" for issue in execution.issues), eq=True)
-        tm.that(execution.raw_output, has="invalid-language")
+        # The native ast-grep diagnostic names the rule file it cannot parse;
+        # its wording for the bad field is the tool's, not this contract's.
+        tm.that(execution.raw_output, has="Cannot parse rule")
+        tm.that(execution.raw_output, has="second.yml")
 
     def test_native_traversal_error_cannot_be_hidden_by_a_policy_finding(
         self, tmp_path: Path

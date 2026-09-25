@@ -265,7 +265,7 @@ export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 # selects its lifecycle and resolution through target-specific variables.
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 TOOL_BOOTSTRAP_RESOLVE :=
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", mise_bootstrap, make) }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", mise_bootstrap, make, mise_lockfile_platforms, qlty_selector, jscpd_selector, prettier_selector, scc_selector, waza_selector) }}
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -476,7 +476,7 @@ _builtin-help:
 {{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
 
 .PHONY: _builtin_require_github_auth
-_bootstrap_setup_tools: _builtin_require_github_auth $(if $(filter upg,$(MAKECMDGOALS)),,_builtin_require_mise_pin)
+_bootstrap_setup_tools: _builtin_require_github_auth $(if $(filter upg,$(MAKECMDGOALS)),,.WAIT _builtin_require_mise_pin)
 _builtin_require_github_auth:
 	@if [ "$(GITHUB_CREDENTIAL_READ_STATUS)" != "0" ]; then \
 		printf 'ERROR: gh credential source failed with exit %s\n' "$(GITHUB_CREDENTIAL_READ_STATUS)" >&2; \
