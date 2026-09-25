@@ -22,6 +22,26 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsMake:
     """Make workflow, verb, CI, and cache specification models."""
 
+    class MakeGateSuspensionSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """An explicitly authorized policy gate excluded from default execution."""
+
+        gate: Annotated[t.NonEmptyStr, m.Field(description="Suspended gate id")]
+        authority: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Bead and operator decision authorizing suspension"),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr, m.Field(description="Reason recorded in gate receipts")
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_evidence(self) -> Self:
+            """Whitespace cannot stand in for an authority or a rationale."""
+            if not self.authority.strip() or not self.reason.strip():
+                msg = "make gate suspension requires authority and reason"
+                raise ValueError(msg)
+            return self
+
     class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
@@ -31,9 +51,9 @@ class FlextInfraConfigModelsMake:
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Local form of the CI ternary. A hook declares this value "
-                    "explicitly so an inherited CI token from the caller can "
-                    "never revoke pytest or the type-checker gates."
+                    "Local form of the CI ternary. Check runs the active local "
+                    "partition; other pre-push verbs declare this value to "
+                    "preserve their local behavior. Pre-push check unsets CI."
                 )
             ),
         ] = "N"
@@ -44,7 +64,7 @@ class FlextInfraConfigModelsMake:
                     "Gate ids run by make check under the local CI token: the "
                     "slow whole-program type checkers. This is the ONLY "
                     "declared set; the CI token runs its strict complement and "
-                    "an unset token runs every allowed gate."
+                    "an unset token runs every active default gate."
                 )
             ),
         ]
@@ -61,30 +81,6 @@ class FlextInfraConfigModelsMake:
                 )
                 raise ValueError(msg)
             return self
-
-        @m.computed_field
-        @property
-        def check_gates(self) -> t.VariadicTuple[str]:
-            """Gates run under the CI token, as the strict complement.
-
-            CI=Y is the inverse of CI=N by construction, never a second list: a
-            gate that moves into or out of ``local_check_gates`` moves out of or
-            into this set in the same edit, so the two can never overlap nor
-            leave a gate unowned.
-
-            The complement is taken over the DEFAULT vocabulary, not ALLOWED.
-            ``format`` is allowed as an explicit ``CHECK_GATES=format`` request
-            but is absent from the default set because it MUTATES files, so
-            deriving over ALLOWED silently scheduled a formatter inside CI's
-            read-only check — the one thing the comment on ``local_check_gates``
-            says must never happen.
-            """
-            local = frozenset(self.local_check_gates)
-            return tuple(
-                gate
-                for gate in FlextInfraConstantsMake.CANONICAL_DEFAULT_GATE_IDS
-                if gate not in local
-            )
 
     class MakeVerbSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One selector-free public Make operation."""
@@ -512,6 +508,25 @@ class FlextInfraConfigModelsMake:
                 ),
             ),
         ] = ()
+        check_gate_suspensions: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeGateSuspensionSpec],
+            m.Field(
+                description="Explicitly authorized suspensions shared by local, CI, and hooks"
+            ),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_check_gate_suspensions(self) -> Self:
+            """Suspensions name unique gates in this project's complete vocabulary."""
+            gates = tuple(item.gate for item in self.check_gate_suspensions)
+            if len(gates) != len(set(gates)):
+                msg = "make check_gate_suspensions must name unique gates"
+                raise ValueError(msg)
+            unknown = sorted(set(gates) - set(self.check_gates_allowed))
+            if unknown:
+                msg = f"make check_gate_suspensions contains unknown gates: {', '.join(unknown)}"
+                raise ValueError(msg)
+            return self
 
         @u.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
@@ -610,15 +625,27 @@ class FlextInfraConfigModelsMake:
         @m.computed_field
         @property
         def check_gates_default(self) -> t.VariadicTuple[str]:
-            """Canonical generated Make default check gates.
-
-            A declared project gate runs by default, exactly like a built-in:
-            a gate that must be asked for by name is a gate nobody runs.
-            """
-            return (
+            """Active default gates, shared by local, CI, hooks, and project gates."""
+            suspended = frozenset(item.gate for item in self.check_gate_suspensions)
+            declared = (
                 *FlextInfraConstantsMake.CANONICAL_DEFAULT_GATE_IDS,
                 *self.project_check_gates,
             )
+            return tuple(gate for gate in declared if gate not in suspended)
+
+        @m.computed_field
+        @property
+        def check_gates_local(self) -> t.VariadicTuple[str]:
+            """Intersect the local partition with the same active default universe."""
+            local = frozenset(self.ci.local_check_gates)
+            return tuple(gate for gate in self.check_gates_default if gate in local)
+
+        @m.computed_field
+        @property
+        def check_gates_ci(self) -> t.VariadicTuple[str]:
+            """Preserve the CI partition within the same active default universe."""
+            local = frozenset(self.check_gates_local)
+            return tuple(gate for gate in self.check_gates_default if gate not in local)
 
         @m.computed_field
         @property

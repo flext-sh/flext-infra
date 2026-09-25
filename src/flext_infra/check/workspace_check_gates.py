@@ -328,7 +328,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 cli.stage_result(
                     gate_id,
                     status=c.Cli.PipelineStageStatus.OK,
-                    output={"errors": execution.error_count},
+                    output={
+                        "errors": execution.error_count,
+                        "observations": execution.observational_count,
+                    },
                 )
             )
 

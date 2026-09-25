@@ -74,7 +74,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def snapshot_lint_gates() -> t.StrSequence:
         """Return the lint gates a protected edit validates its snapshots with.
 
-        One owner: ``make.ci.check_gates`` (config) — the budgeted gate set
+        One owner: ``make.check_gates_ci`` (config) — the active budgeted gate set
         whose strict complement is the slow whole-program checkers owned by
         ``make check CI=N``. A per-file snapshot validator never runs those.
         """
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         }
         return tuple(
             gate
-            for gate in FlextInfraConfig.fetch_global().Infra.codegen.make.ci.check_gates
+            for gate in FlextInfraConfig.fetch_global().Infra.codegen.make.check_gates_ci
             if gate in lint_tool_gates
         )
 

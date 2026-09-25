@@ -214,6 +214,7 @@ disable_error_code = [
   {{ item | tojson }},
 {% endfor %}
 ]
+follow_untyped_imports = {{ override.follow_untyped_imports | lower }}
 {% endfor %}
 
 [tool.pydantic-mypy]

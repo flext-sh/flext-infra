@@ -179,6 +179,7 @@ class FlextInfraConstantsCodegenProject:
     WORKSPACE_MANIFEST_FILENAME: ClassVar[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
     UV_LOCK_FILENAME: ClassVar[str] = "uv.lock"
+    MISE_LOCK_FILENAME: ClassVar[str] = "mise.lock"
     GIT_URL_SUFFIX: ClassVar[str] = ".git"
     "Canonical clone-URL suffix every governed RepositoryRef URL carries."
     CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"

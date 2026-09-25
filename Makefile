@@ -34,6 +34,23 @@ export GEN_INIT_ONLY
 endif
 endif
 
+# GitHub CLI's documented source precedence also applies before gh is installed:
+# GH_TOKEN, GITHUB_TOKEN, then its stored credential for network bootstrap.
+# Local provisioned operations need no authentication preflight or network call.
+# Keep the selected value in the environment, never in a rendered recipe.
+override GITHUB_CREDENTIAL_READ_STATUS := 0
+ifneq ($(strip $(GH_TOKEN)),)
+override GITHUB_TOKEN := $(GH_TOKEN)
+else ifeq ($(strip $(GITHUB_TOKEN)),)
+ifneq ($(strip $(filter setup upg,$(MAKECMDGOALS))),)
+override GITHUB_TOKEN := $(shell if command -v gh >/dev/null 2>&1; then gh auth token --hostname "$${GH_HOST:-github.com}"; else printf 'ERROR: GitHub credential source unavailable: set GH_TOKEN/GITHUB_TOKEN or provision gh\n' >&2; exit 127; fi)
+override GITHUB_CREDENTIAL_READ_STATUS := $(.SHELLSTATUS)
+endif
+endif
+export GITHUB_TOKEN
+override export GH_TOKEN := $(GITHUB_TOKEN)
+override export MISE_GITHUB_TOKEN := $(GITHUB_TOKEN)
+
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
@@ -94,6 +111,13 @@ else
 override TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
 override SETUP_MISE := $(TRACKED_MISE)
+# The Mise release is frozen like every tool: `upg` records the release it
+# resolved in the committed pin file; every other verb exports it so no
+# launcher call resolves `latest` (operator law 2026-09-24).
+override MISE_VERSION_PIN := $(PROJECT_ROOT)/mise.version
+ifneq ($(wildcard $(MISE_VERSION_PIN)),)
+export MISE_VERSION := $(strip $(file < $(MISE_VERSION_PIN)))
+endif
 override export FLEXT_PYTEST_TARGET_RAW := tests
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../.flext-runtime/$(notdir $(PROJECT_ROOT)))
 # Scratch never lives inside a versioned tree: the home scratch root mirrors
@@ -122,8 +146,8 @@ endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
-BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+PUBLIC_VERBS := help setup upg build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+BUILTIN_VERBS := help setup upg build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -154,6 +178,8 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Attached members share their Git superproject runtime; standalone owns itself.
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
+override export GIT_CEILING_DIRECTORIES := $(abspath $(RUNTIME_ROOT)/..)
+override export MISE_CEILING_PATHS := $(abspath $(RUNTIME_ROOT)/..)
 # End SECTION: profile routing
 
 override RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
@@ -192,6 +218,10 @@ override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 unexport UV
 export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
+# One bootstrap serves `setup` (frozen) and `upg` (resolving); the public verb
+# selects its lifecycle and resolution through target-specific variables.
+TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
+TOOL_BOOTSTRAP_RESOLVE :=
 .PHONY: _bootstrap_setup_tools
 
 _bootstrap_setup_tools:
@@ -211,17 +241,32 @@ _bootstrap_setup_tools:
 		caller_xdg_data_home="$$caller_home/.local/share"; \
 	fi; \
 	caller_path="$$PATH"; \
-caller_comspec="$(COMSPEC)"; \
-caller_pathext="$(PATHEXT)"; \
-caller_systemroot="$(SYSTEMROOT)"; \
-caller_windir="$(WINDIR)"; \
-caller_github_token="$(GITHUB_TOKEN)"; \
-caller_gh_token="$(GH_TOKEN)"; \
-caller_mise_github_token="$(MISE_GITHUB_TOKEN)"; \
-caller_mise_github_credential_command="$(MISE_GITHUB_CREDENTIAL_COMMAND)"; \
-caller_mise_http_timeout="$(MISE_HTTP_TIMEOUT)"; \
-caller_mise_version="$(MISE_VERSION)"; \
-if [ -z "$$mise_storage_root" ]; then \
+caller_comspec="$${COMSPEC:-}"; \
+caller_pathext="$${PATHEXT:-}"; \
+caller_systemroot="$${SYSTEMROOT:-}"; \
+caller_windir="$${WINDIR:-}"; \
+caller_github_token="$${GITHUB_TOKEN:-}"; \
+caller_gh_token="$${GH_TOKEN:-}"; \
+caller_mise_github_token="$${MISE_GITHUB_TOKEN:-}"; \
+caller_mise_github_credential_command="$${MISE_GITHUB_CREDENTIAL_COMMAND:-}"; \
+caller_mise_http_timeout="$${MISE_HTTP_TIMEOUT:-}"; \
+caller_mise_version="$${MISE_VERSION:-}"; \
+# Only ``upg`` resolves the Mise release; every other lifecycle launches \
+	# exactly the release ``upg`` recorded in the committed pin file. \
+	mise_pin_file="$$project_root/mise.version"; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" != "1" ]; then \
+		if [ ! -f "$$mise_pin_file" ]; then \
+			printf 'ERROR: missing %s; make upg resolves and records the Mise release\n' "$$mise_pin_file" >&2; \
+			exit 2; \
+		fi; \
+		mise_pin=$$(cat "$$mise_pin_file"); \
+		if [ -n "$$caller_mise_version" ] && [ "$${caller_mise_version#v}" != "$$mise_pin" ]; then \
+			printf 'ERROR: MISE_VERSION=%s conflicts with %s=%s\n' "$$caller_mise_version" "$$mise_pin_file" "$$mise_pin" >&2; \
+			exit 2; \
+		fi; \
+		caller_mise_version="$$mise_pin"; \
+	fi; \
+	if [ -z "$$mise_storage_root" ]; then \
 		if [ -n "$$caller_xdg_data_home" ]; then \
 			mise_storage_root="$$caller_xdg_data_home/mise"; \
 		elif [ -n "$$caller_home" ]; then \
@@ -320,6 +365,9 @@ mise_exec() { \
 'MISE_GITHUB_OAUTH_CLIENT_ID=' \
 'MISE_GITHUB_OAUTH_EXPORT_ENV=' \
 'MISE_GITHUB_OAUTH_OPEN_BROWSER=false' \
+'MISE_LOCKFILE=true' \
+'MISE_LOCKED=true' \
+'MISE_LOCKFILE_PLATFORMS=linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64' \
 "HOME=$$scratch/home" \
 "USERPROFILE=$$scratch/home" \
 "APPDATA=$$scratch/appdata" \
@@ -400,18 +448,21 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 	if [ "$$#" -ne 3 ]; then \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		printf '%s\n' "$$runtime_release" > "$$mise_pin_file"; \
+	elif [ "$$runtime_release" != "$$mise_pin" ]; then \
+		printf 'ERROR: launched Mise %s differs from the pinned %s\n' "$$runtime_release" "$$mise_pin" >&2; \
+		exit 2; \
+	fi; \
+	caller_mise_version="$$runtime_release"; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"; \
-	for stale_mise_lock in "$$project_root/mise.lock" "$$project_root/.mise.lock"; do \
-		if [ -f "$$stale_mise_lock" ]; then \
-			printf 'WARN: removing stale Mise lock %s (fleet policy is unlocked; a committed lock only blocks provenance re-resolution)\n' "$$stale_mise_lock" >&2; \
-			rm -f "$$stale_mise_lock"; \
-		fi; \
-	done; \
+	# Only ``upg`` resolves: it re-resolves every ``latest`` selector and the \
+	# Python minor line into mise.lock, with download URLs and checksums. \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		mise_checked "$$scratch/lock.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump; \
+	fi; \
+	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
-	# ``mise install`` may reuse an installed fuzzy match. Upgrade Python inside \
-	# the configured minor line so ``python = \"3.13\"`` always resolves the \
-	# newest available 3.13 patch without rewriting the project selector. \
-	mise_checked "$$scratch/python-upgrade.log" mise_exec project "$$latest_mise" -C "$$project_root" upgrade --no-prune python; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \
@@ -446,10 +497,11 @@ fi; \
 "GIT_CEILING_DIRECTORIES=$$project_parent" \
 		"MISE_CEILING_PATHS=$$project_parent" \
 		"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
+		"MISE_VERSION=$$runtime_release" \
 		"$$latest_mise" -C "$$project_root" exec -- env \
 		"SETUP_DIRENV=$$direnv_executable" \
 		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \
-		"CI=$(CI)" $(SELF_MAKE) _setup_lifecycle
+		"CI=$(CI)" $(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -527,11 +579,11 @@ PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
-# No lock is committed, so there is nothing for `--locked` to honour: the fleet
-# resolves dependency floors from pyproject on every setup, in CI exactly as
-# locally. `--upgrade` advances existing local resolutions; `--refresh` re-reads
-# branch metadata instead of retaining a cached tip (operator 2026-09-14).
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages --reinstall-package flext-infra ,)--all-extras --all-groups --upgrade --refresh
+# Setup installs frozen from the committed uv.lock and never re-resolves: it is
+# the CI path and must be stable. A missing or stale lock fails through uv's own
+# error; `make upg` is the only verb that resolves and rewrites it
+# (operator 2026-09-24).
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages --reinstall-package flext-infra ,)--all-extras --all-groups --locked
 
 ifeq ($(GEN_INIT_ONLY),)
 -include custom.mk
@@ -557,21 +609,13 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_init _builtin_gen_all
+$(filter-out help clean upg,$(PUBLIC_VERBS)): _builtin_require_mise_pin
 
 
 
 help:
 
 	$(call RUN_PUBLIC,help)
-
-
-deps: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-deps
-
-.PHONY: _activated-deps
-_activated-deps: _builtin_require_environment
-
-	$(call RUN_PUBLIC,deps)
 
 
 build: _builtin_require_workspace
@@ -655,11 +699,7 @@ _activated-docs: _builtin_require_environment
 	$(call RUN_PUBLIC,docs)
 
 
-clean: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-clean
-
-.PHONY: _activated-clean
-_activated-clean: _builtin_require_environment
+clean:
 
 	$(call RUN_PUBLIC,clean)
 
@@ -772,6 +812,13 @@ _activated-sonarcloud-sync: _builtin_require_environment
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
 
+# `upg` builds the environment from the locks it writes, so like `setup` it
+# must not require an existing environment.
+upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
+upg: TOOL_BOOTSTRAP_RESOLVE := 1
+upg: export MISE_VERSION :=
+upg: _bootstrap_setup_tools
+
 .PHONY: _setup_lifecycle
 _setup_lifecycle:
 	@set -eu; \
@@ -796,7 +843,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'setup' 'Provision the declared environment and hooks.';
 
-	@printf '  %-16s %s\n' 'deps' 'Upgrade, lock, and conform every declared dependency.';
+	@printf '  %-16s %s\n' 'upg' 'Resolve the newest declared releases and write the uv and mise locks.';
 
 	@printf '  %-16s %s\n' 'build' 'Build the project distribution artifacts.';
 
@@ -979,7 +1026,35 @@ _builtin_setup_submodules:
 		validate_submodule "$$root" "$$child_path"; \
 	done
 
-_builtin_require_environment: _builtin_require_workspace
+.PHONY: _builtin_require_github_auth
+_bootstrap_setup_tools: _builtin_require_github_auth $(if $(filter upg,$(MAKECMDGOALS)),,_builtin_require_mise_pin)
+_builtin_require_github_auth:
+	@if [ "$(GITHUB_CREDENTIAL_READ_STATUS)" != "0" ]; then \
+		printf 'ERROR: gh credential source failed with exit %s\n' "$(GITHUB_CREDENTIAL_READ_STATUS)" >&2; \
+		exit "$(GITHUB_CREDENTIAL_READ_STATUS)"; \
+	fi
+	@if [ -z "$${GITHUB_TOKEN:-}" ]; then \
+		printf 'ERROR: GitHub credential is absent for network bootstrap\n' >&2; \
+		exit 1; \
+	fi
+
+.PHONY: _builtin_require_mise_pin
+_builtin_require_mise_pin:
+	@set -eu; \
+	if [ ! -s "$(MISE_VERSION_PIN)" ]; then \
+		printf 'ERROR: missing or empty %s; make upg records the Mise release\n' "$(MISE_VERSION_PIN)" >&2; \
+		exit 2; \
+	fi; \
+	case "$(MISE_VERSION)" in ''|latest) \
+		printf 'ERROR: %s must contain a resolved Mise release\n' "$(MISE_VERSION_PIN)" >&2; \
+		exit 2 ;; \
+	esac; \
+	if [ "$(MISE_VERSION)" != "$$(cat "$(MISE_VERSION_PIN)")" ]; then \
+		printf 'ERROR: MISE_VERSION conflicts with %s\n' "$(MISE_VERSION_PIN)" >&2; \
+		exit 2; \
+	fi
+
+_builtin_require_environment: _builtin_require_workspace _builtin_require_mise_pin
 # Documenting the interface (`make help`) must not require the interpreter it
 # tells the operator how to provision. Only `make help` with no other goal
 # skips the check; any combined goal still demands the environment.
@@ -1008,16 +1083,17 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 # End SECTION: setup environment
 
-_builtin_deps_lock:
-	$(call _run_for_all_projects,)
-
-_builtin_deps_upgrade: _builtin_require_environment
-	# Branch-tracked git dependencies are moving sources by declaration
-	# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
-	# stale cached requires-dist can never block or skew the resolution
-	# (flext-62fbu). The refresh re-reads metadata so version movement is
-	# always resolved from live upstream state.
+# `upg` is the only recipe that resolves: the bootstrap above bumps mise.lock
+# before installing, and this lifecycle upgrades every uv.lock, provisions the
+# environment frozen from the new locks, and conforms dependency floors.
+# Branch-tracked git dependencies are moving sources by declaration
+# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
+# stale cached requires-dist can never block or skew the resolution
+# (flext-62fbu).
+.PHONY: _upg_lifecycle
+_upg_lifecycle: _builtin_setup_submodules
 	$(call _run_for_all_projects,--upgrade --refresh)
+	@$(SELF_MAKE) _builtin_setup_environment
 	@set -eu; \
 	selected="$(strip $(SELECTED_PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
@@ -1044,13 +1120,23 @@ _builtin-self-test: _builtin_require_environment
 
 _builtin-self-check: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+printf '%s\n' 'INFO: SUSPENDED check gate duplication; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate codemod; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate boundary; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate namespace; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate runtime-census; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
+		elif [ "$(strip $(CI))" = "N" ]; then \
+			gates="pyrefly,mypy"; \
+			printf 'INFO: CI=N runs check gates: pyrefly mypy\n'; \
+		else \
+			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
 		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
@@ -1086,17 +1172,28 @@ _builtin_build_artifacts:
 
 # Check is read-only: it runs the gates without --apply, so the tree is left
 # unchanged; fix applies the declared repairs of the fixable gates.
-# CI=Y keeps make.ci.check_gates, the strict complement of
-# make.ci.local_check_gates.
+# CI=Y keeps make.check_gates_ci, the strict complement of
+# make.check_gates_local; CI=N runs that local partition.
+# An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+printf '%s\n' 'INFO: SUSPENDED check gate duplication; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate codemod; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate boundary; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate namespace; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate runtime-census; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
+		elif [ "$(strip $(CI))" = "N" ]; then \
+			gates="pyrefly,mypy"; \
+			printf 'INFO: CI=N runs check gates: pyrefly mypy\n'; \
+		else \
+			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
 		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
@@ -1203,8 +1300,8 @@ _builtin_release_publish: _builtin_require_environment
 
 # Generation has one transaction owner. Conform preserves the caller's scope and
 # journals ordinary, Mise, lazy-init, and documentation phases through one fixed
-# point. Dependency upgrades remain a separate explicit verb because they rewrite
-# lock floors; gen never runs another writer before or after conform's journal.
+# point. Only `upg` resolves and rewrites the locks; gen installs nothing and
+# never runs another writer before or after conform's journal.
 _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
@@ -1219,7 +1316,6 @@ _builtin_mod_apply: _builtin_require_environment
 
 # Selector-free public verbs map one-to-one to their canonical implementation;
 # each implementation owns one fixed operation.
-_builtin-deps: _builtin_deps_upgrade
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all

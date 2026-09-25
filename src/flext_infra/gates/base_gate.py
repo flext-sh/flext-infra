@@ -235,6 +235,7 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
         accept_reported_issues: bool = False,
+        observational_issues: t.SequenceOf[m.Infra.Issue] = (),
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
@@ -243,6 +244,8 @@ class FlextInfraGate:
         lines (fix paths report applied changes there).
         ``accept_reported_issues`` is the fix contract: reported issues are
         the residue a fixer could not repair and do not decide acceptance.
+        Explicit observational findings remain visible in the report but do
+        not change the verdict of blocking ``issues`` or native execution.
         """
         _ = ctx
         verdict = passed and (accept_reported_issues or not issues)
@@ -259,6 +262,7 @@ class FlextInfraGate:
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=tuple(issues),
+            observational_issues=tuple(observational_issues),
             raw_output=raw_output,
         )
 

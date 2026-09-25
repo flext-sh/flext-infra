@@ -10,6 +10,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .abstraction_boundary_gate_tests import TestsFlextInfraAbstractionBoundaryGate
+    from .codemod_gate_tests import TestsFlextInfraCodemodGate
     from .direnv_gate_tests import TestsFlextInfraDirenvGate
     from .duplication_gate_tests import TestsFlextInfraDuplicationGate
     from .enforcement_fixer_orchestrator_tests import (
@@ -54,6 +55,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraBanditAndMarkdownGates",
     "TestsFlextInfraCheck",
     "TestsFlextInfraCheckMain",
+    "TestsFlextInfraCodemodGate",
     "TestsFlextInfraConfigFixer",
     "TestsFlextInfraDirenvGate",
     "TestsFlextInfraDuplicationGate",
@@ -86,6 +88,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".abstraction_boundary_gate_tests": (
                 "TestsFlextInfraAbstractionBoundaryGate",
             ),
+            ".codemod_gate_tests": ("TestsFlextInfraCodemodGate",),
             ".direnv_gate_tests": ("TestsFlextInfraDirenvGate",),
             ".duplication_gate_tests": ("TestsFlextInfraDuplicationGate",),
             ".enforcement_fixer_orchestrator_tests": (

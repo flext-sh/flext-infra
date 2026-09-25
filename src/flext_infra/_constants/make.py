@@ -27,7 +27,6 @@ class FlextInfraConstantsMake:
     "Make variable the workspace orchestrator passes to attached members."
 
     VERB_CHECK: ClassVar[str] = "check"
-    VERB_DEPS: ClassVar[str] = "deps"
     VERB_TEST: ClassVar[str] = "test"
     VERB_CLEAN: ClassVar[str] = "clean"
     VERB_VALIDATE: ClassVar[str] = "validate"
