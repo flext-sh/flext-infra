@@ -595,10 +595,14 @@ ifeq ($(GEN_INIT_ONLY),)
 endif
 SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
+define RUN_PUBLIC_POST
+	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+endef
+
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
-	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+	$(if $(2),+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1),$(call RUN_PUBLIC_POST,$(1)))
 endef
 
 
@@ -618,9 +622,12 @@ $(filter-out help clean upg,$(PUBLIC_VERBS)): _builtin_require_mise_pin
 
 
 
+
 help:
 
 	$(call RUN_PUBLIC,help)
+
+
 
 
 build: _builtin_require_workspace
@@ -632,6 +639,8 @@ _activated-build: _builtin_require_environment
 	$(call RUN_PUBLIC,build)
 
 
+
+
 check: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-check
 
@@ -639,6 +648,8 @@ check: _builtin_require_workspace
 _activated-check: _builtin_require_environment
 
 	$(call RUN_PUBLIC,check)
+
+
 
 
 test: _builtin_require_workspace
@@ -650,6 +661,8 @@ _activated-test: _builtin_require_environment
 	$(call RUN_PUBLIC,test)
 
 
+
+
 fmt: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fmt
 
@@ -657,6 +670,8 @@ fmt: _builtin_require_workspace
 _activated-fmt: _builtin_require_environment
 
 	$(call RUN_PUBLIC,fmt)
+
+
 
 
 fix: _builtin_require_workspace
@@ -668,6 +683,8 @@ _activated-fix: _builtin_require_environment
 	$(call RUN_PUBLIC,fix)
 
 
+
+
 fix-enforcement: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fix-enforcement
 
@@ -675,6 +692,8 @@ fix-enforcement: _builtin_require_workspace
 _activated-fix-enforcement: _builtin_require_environment
 
 	$(call RUN_PUBLIC,fix-enforcement)
+
+
 
 
 audit: _builtin_require_workspace
@@ -686,6 +705,8 @@ _activated-audit: _builtin_require_environment
 	$(call RUN_PUBLIC,audit)
 
 
+
+
 status: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-status
 
@@ -693,6 +714,8 @@ status: _builtin_require_workspace
 _activated-status: _builtin_require_environment
 
 	$(call RUN_PUBLIC,status)
+
+
 
 
 docs: _builtin_require_workspace
@@ -704,9 +727,13 @@ _activated-docs: _builtin_require_environment
 	$(call RUN_PUBLIC,docs)
 
 
+
+
 clean:
 
 	$(call RUN_PUBLIC,clean)
+
+
 
 
 release-plan: _builtin_require_workspace
@@ -718,6 +745,8 @@ _activated-release-plan: _builtin_require_environment
 	$(call RUN_PUBLIC,release-plan)
 
 
+
+
 release-version: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-version
 
@@ -725,6 +754,8 @@ release-version: _builtin_require_workspace
 _activated-release-version: _builtin_require_environment
 
 	$(call RUN_PUBLIC,release-version)
+
+
 
 
 release-tag: _builtin_require_workspace
@@ -736,6 +767,8 @@ _activated-release-tag: _builtin_require_environment
 	$(call RUN_PUBLIC,release-tag)
 
 
+
+
 release-build: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-build
 
@@ -743,6 +776,8 @@ release-build: _builtin_require_workspace
 _activated-release-build: _builtin_require_environment
 
 	$(call RUN_PUBLIC,release-build)
+
+
 
 
 publication: _builtin_require_workspace
@@ -754,13 +789,17 @@ _activated-publication: _builtin_require_environment
 	$(call RUN_PUBLIC,publication)
 
 
-gen: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-gen
+
+# The pre hook and selected producer run once before activation. The producer
+# owns the complete generation transaction; activation adds no second writer.
+gen: _builtin_require_workspace _builtin_require_environment
+	$(call RUN_PUBLIC,gen,1)
 
 .PHONY: _activated-gen
 _activated-gen: _builtin_require_environment
+	$(call RUN_PUBLIC_POST,gen)
 
-	$(call RUN_PUBLIC,gen)
+
 
 
 initialize: _builtin_require_workspace
@@ -772,6 +811,8 @@ _activated-initialize: _builtin_require_environment
 	$(call RUN_PUBLIC,initialize)
 
 
+
+
 mod: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-mod
 
@@ -779,6 +820,8 @@ mod: _builtin_require_workspace
 _activated-mod: _builtin_require_environment
 
 	$(call RUN_PUBLIC,mod)
+
+
 
 
 waza: _builtin_require_workspace
@@ -790,6 +833,8 @@ _activated-waza: _builtin_require_environment
 	$(call RUN_PUBLIC,waza)
 
 
+
+
 duplication: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-duplication
 
@@ -797,6 +842,8 @@ duplication: _builtin_require_workspace
 _activated-duplication: _builtin_require_environment
 
 	$(call RUN_PUBLIC,duplication)
+
+
 
 
 sonarcloud-sync: _builtin_require_workspace
@@ -807,9 +854,6 @@ _activated-sonarcloud-sync: _builtin_require_environment
 
 	$(call RUN_PUBLIC,sonarcloud-sync)
 
-
-# Repository-owned extra verbs dispatch exactly like canonical ones: the
-# project declares them (help, .PHONY) and must also be able to run them.
 
 
 # `setup` keeps its own recipe (it must not require the environment it is about
