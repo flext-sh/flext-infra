@@ -51,8 +51,8 @@ operacionais do Make ativam esse ambiente antes dos handlers e hooks, exceto o p
 de ativação declarado em `make.verbs`. Para `gen`, o pin e o ambiente físico já
 provisionado são exigidos antes de `pre-gen` e do handler selecionado. O handler padrão
 executa uma única transação conform, que inclui a geração do `.envrc`; um `_custom-gen`
-declarado continua substituindo esse handler. Só então o Make ativa o ambiente gerado
-e executa `post-gen`. Uma falha do produtor ou da ativação impede o hook posterior e
+declarado continua substituindo esse handler. Só então o Make ativa o ambiente gerado e
+executa `post-gen`. Uma falha do produtor ou da ativação impede o hook posterior e
 mantém o comando vermelho. Assim, `make gen` pode reparar uma ativação gerada quebrada
 sem outro escritor fora do journal. A provisão inicial continua sendo responsabilidade
 de `make setup`. Confirme o funcionamento pelos comandos reais, sem exigir que o
@@ -60,11 +60,11 @@ operador envolva cada chamada em `direnv exec`. Os testes verificam esse runtime
 definem nem substituem seu comportamento correto.
 
 A ativação consulta `bin-paths` no Mise pinado já instalado e antepõe os diretórios
-reais das ferramentas aos shims compartilhados do host. Essa consulta é isolada,
-offline e congelada: não instala ferramentas nem altera os locks. O `.envrc`
-acompanha também `mise.version` e `mise.lock`, para recarregar os caminhos após
-`make upg`. Pin ausente exige `make upg`; runtime ainda não instalado exige
-`make setup`, cuja provisão ocorre antes de ativar o ambiente.
+reais das ferramentas aos shims compartilhados do host. Essa consulta é isolada, offline
+e congelada: não instala ferramentas nem altera os locks. O `.envrc` acompanha também
+`mise.version` e `mise.lock`, para recarregar os caminhos após `make upg`. Pin ausente
+exige `make upg`; runtime ainda não instalado exige `make setup`, cuja provisão ocorre
+antes de ativar o ambiente.
 
 Na execução de 14/09/2026, o operador selecionou o tracker do checkout `flext`
 explicitamente. O comando Beads precisa do diretório de trabalho dessa raiz, além do
