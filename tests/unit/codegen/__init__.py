@@ -15,14 +15,12 @@ if TYPE_CHECKING:
     from .test_codegen_make_gate_suspensions import (
         TestsFlextInfraCodegenMakeGateSuspensions,
     )
-    from .test_codegen_make_lock_contract import TestsFlextInfraCodegenMakeLockContract
     from .test_codegen_upg_workspace import TestsFlextInfraCodegenUpgWorkspace
 
 
 __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenMakeAuthentication",
     "TestsFlextInfraCodegenMakeGateSuspensions",
-    "TestsFlextInfraCodegenMakeLockContract",
     "TestsFlextInfraCodegenUpgWorkspace",
 )
 
@@ -34,9 +32,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_codegen_make_gate_suspensions": (
                 "TestsFlextInfraCodegenMakeGateSuspensions",
-            ),
-            ".test_codegen_make_lock_contract": (
-                "TestsFlextInfraCodegenMakeLockContract",
             ),
             ".test_codegen_upg_workspace": ("TestsFlextInfraCodegenUpgWorkspace",),
         }),

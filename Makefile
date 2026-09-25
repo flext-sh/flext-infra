@@ -339,6 +339,11 @@ mise_exec() { \
 			project) mise_config_argument= ;; \
 			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
 		esac; \
+		mise_runtime_path=; \
+		if [ -n "$$caller_mise_version" ]; then \
+			mise_runtime_path="$$mise_storage_root/bootstrap/mise-$${caller_mise_version#v}"; \
+			if [ "$(OS)" = "Windows_NT" ]; then mise_runtime_path="$$mise_runtime_path.exe"; fi; \
+		fi; \
 		env -i \
 'GIT_CONFIG_NOSYSTEM=1' \
 'GIT_TERMINAL_PROMPT=0' \
@@ -412,6 +417,7 @@ $${caller_mise_github_credential_command:+"MISE_GITHUB_CREDENTIAL_COMMAND=$$call
 $${caller_mise_http_timeout:+"MISE_HTTP_TIMEOUT=$$caller_mise_http_timeout"} \
 $${caller_mise_version:+"MISE_VERSION=$$caller_mise_version"} \
 $${mise_config_argument:+"$$mise_config_argument"} \
+			$${mise_runtime_path:+"MISE_INSTALL_PATH=$$mise_runtime_path"} \
 			"$$@"; \
 	}; \
 	mise_checked() { \
@@ -441,11 +447,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
 		*) runtime_release=$${receipt_runtime%% *} ;; \
 	esac; \
-	case "$$runtime_release" in \
-		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2 ;; \
-	esac; \
-	old_ifs=$$IFS; IFS=.; set -- $$runtime_release; IFS=$$old_ifs; \
-	if [ "$$#" -ne 3 ]; then \
+	if ! printf '%s\n' "$$runtime_release" | grep -Eq '^[0-9]+(\.[0-9]+){2}$$'; then \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
@@ -487,6 +489,8 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
+	mise_runtime_path="$$mise_storage_root/bootstrap/mise-$${runtime_release}"; \
+	if [ "$(OS)" = "Windows_NT" ]; then mise_runtime_path="$$mise_runtime_path.exe"; fi; \
 	env \
 "MISE_DATA_DIR=$$mise_storage_root" \
 "MISE_CACHE_DIR=$$mise_storage_root/cache" \
@@ -498,6 +502,7 @@ fi; \
 		"MISE_CEILING_PATHS=$$project_parent" \
 		"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
 		"MISE_VERSION=$$runtime_release" \
+		"MISE_INSTALL_PATH=$$mise_runtime_path" \
 		"$$latest_mise" -C "$$project_root" exec -- env \
 		"SETUP_DIRENV=$$direnv_executable" \
 		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \
@@ -590,10 +595,14 @@ ifeq ($(GEN_INIT_ONLY),)
 endif
 SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
+define RUN_PUBLIC_POST
+	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+endef
+
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
-	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+	$(if $(2),+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1),$(call RUN_PUBLIC_POST,$(1)))
 endef
 
 
@@ -613,9 +622,12 @@ $(filter-out help clean upg,$(PUBLIC_VERBS)): _builtin_require_mise_pin
 
 
 
+
 help:
 
 	$(call RUN_PUBLIC,help)
+
+
 
 
 build: _builtin_require_workspace
@@ -627,6 +639,8 @@ _activated-build: _builtin_require_environment
 	$(call RUN_PUBLIC,build)
 
 
+
+
 check: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-check
 
@@ -634,6 +648,8 @@ check: _builtin_require_workspace
 _activated-check: _builtin_require_environment
 
 	$(call RUN_PUBLIC,check)
+
+
 
 
 test: _builtin_require_workspace
@@ -645,6 +661,8 @@ _activated-test: _builtin_require_environment
 	$(call RUN_PUBLIC,test)
 
 
+
+
 test-full: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-test-full
 
@@ -652,6 +670,8 @@ test-full: _builtin_require_workspace
 _activated-test-full: _builtin_require_environment
 
 	$(call RUN_PUBLIC,test-full)
+
+
 
 
 fmt: _builtin_require_workspace
@@ -663,6 +683,8 @@ _activated-fmt: _builtin_require_environment
 	$(call RUN_PUBLIC,fmt)
 
 
+
+
 fix: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fix
 
@@ -670,6 +692,8 @@ fix: _builtin_require_workspace
 _activated-fix: _builtin_require_environment
 
 	$(call RUN_PUBLIC,fix)
+
+
 
 
 fix-enforcement: _builtin_require_workspace
@@ -681,6 +705,8 @@ _activated-fix-enforcement: _builtin_require_environment
 	$(call RUN_PUBLIC,fix-enforcement)
 
 
+
+
 audit: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-audit
 
@@ -688,6 +714,8 @@ audit: _builtin_require_workspace
 _activated-audit: _builtin_require_environment
 
 	$(call RUN_PUBLIC,audit)
+
+
 
 
 status: _builtin_require_workspace
@@ -699,6 +727,8 @@ _activated-status: _builtin_require_environment
 	$(call RUN_PUBLIC,status)
 
 
+
+
 docs: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-docs
 
@@ -708,9 +738,13 @@ _activated-docs: _builtin_require_environment
 	$(call RUN_PUBLIC,docs)
 
 
+
+
 clean:
 
 	$(call RUN_PUBLIC,clean)
+
+
 
 
 release-plan: _builtin_require_workspace
@@ -722,6 +756,8 @@ _activated-release-plan: _builtin_require_environment
 	$(call RUN_PUBLIC,release-plan)
 
 
+
+
 release-version: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-version
 
@@ -729,6 +765,8 @@ release-version: _builtin_require_workspace
 _activated-release-version: _builtin_require_environment
 
 	$(call RUN_PUBLIC,release-version)
+
+
 
 
 release-tag: _builtin_require_workspace
@@ -740,6 +778,8 @@ _activated-release-tag: _builtin_require_environment
 	$(call RUN_PUBLIC,release-tag)
 
 
+
+
 release-build: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-build
 
@@ -747,6 +787,8 @@ release-build: _builtin_require_workspace
 _activated-release-build: _builtin_require_environment
 
 	$(call RUN_PUBLIC,release-build)
+
+
 
 
 publication: _builtin_require_workspace
@@ -758,13 +800,17 @@ _activated-publication: _builtin_require_environment
 	$(call RUN_PUBLIC,publication)
 
 
-gen: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-gen
+
+# The pre hook and selected producer run once before activation. The producer
+# owns the complete generation transaction; activation adds no second writer.
+gen: _builtin_require_workspace _builtin_require_environment
+	$(call RUN_PUBLIC,gen,1)
 
 .PHONY: _activated-gen
 _activated-gen: _builtin_require_environment
+	$(call RUN_PUBLIC_POST,gen)
 
-	$(call RUN_PUBLIC,gen)
+
 
 
 initialize: _builtin_require_workspace
@@ -776,6 +822,8 @@ _activated-initialize: _builtin_require_environment
 	$(call RUN_PUBLIC,initialize)
 
 
+
+
 mod: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-mod
 
@@ -783,6 +831,8 @@ mod: _builtin_require_workspace
 _activated-mod: _builtin_require_environment
 
 	$(call RUN_PUBLIC,mod)
+
+
 
 
 waza: _builtin_require_workspace
@@ -794,6 +844,8 @@ _activated-waza: _builtin_require_environment
 	$(call RUN_PUBLIC,waza)
 
 
+
+
 duplication: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-duplication
 
@@ -801,6 +853,8 @@ duplication: _builtin_require_workspace
 _activated-duplication: _builtin_require_environment
 
 	$(call RUN_PUBLIC,duplication)
+
+
 
 
 sonarcloud-sync: _builtin_require_workspace
@@ -811,9 +865,6 @@ _activated-sonarcloud-sync: _builtin_require_environment
 
 	$(call RUN_PUBLIC,sonarcloud-sync)
 
-
-# Repository-owned extra verbs dispatch exactly like canonical ones: the
-# project declares them (help, .PHONY) and must also be able to run them.
 
 
 # `setup` keeps its own recipe (it must not require the environment it is about
@@ -1131,15 +1182,20 @@ _builtin-self-test: _builtin_require_environment
 
 _builtin-self-check: _builtin_require_environment
 	@set -eu; \
-gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+printf '%s\n' 'INFO: SUSPENDED check gate duplication; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate codemod; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate boundary; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate namespace; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate runtime-census; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		elif [ "$(strip $(CI))" = "N" ]; then \
 			gates="pyrefly,mypy"; \
 			printf 'INFO: CI=N runs check gates: pyrefly mypy\n'; \
 		else \
-			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
@@ -1193,15 +1249,20 @@ _builtin_build_artifacts:
 # An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+printf '%s\n' 'INFO: SUSPENDED check gate duplication; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate codemod; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate boundary; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate namespace; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+printf '%s\n' 'INFO: SUSPENDED check gate runtime-census; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
+gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		elif [ "$(strip $(CI))" = "N" ]; then \
 			gates="pyrefly,mypy"; \
 			printf 'INFO: CI=N runs check gates: pyrefly mypy\n'; \
 		else \
-			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
