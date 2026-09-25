@@ -575,9 +575,7 @@ class TestsFlextInfraCodegenGeneration:
         wrapper = tmp_path / "examples"
         wrapper.mkdir()
         table = (
-            "[tool.ruff.lint.isort]\nknown-first-party = []\n"
-            if declared_empty
-            else ""
+            "[tool.ruff.lint.isort]\nknown-first-party = []\n" if declared_empty else ""
         )
         (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "configured-workspace"\nversion = "1.0.0"\n{table}',

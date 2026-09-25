@@ -123,9 +123,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     )
                 )
                 break
-            # DiagnosticError (exit 1) is emitted after a complete scan and
-            # normally includes stderr. Only its validated RuleMatch array
-            # distinguishes policy findings from a failed native invocation.
+            # DiagnosticError (exit 1) requires a valid RuleMatch array,
+            # matching error count and the exact terminal diagnostic below.
+            # Additional native diagnostics make that scan incomplete.
             report = m.Infra.AstGrepReport.model_validate_json(scan.stdout)
             error_count = sum(finding.severity == "error" for finding in report.root)
             if (outcome.raw_return_code == 1) != bool(error_count):

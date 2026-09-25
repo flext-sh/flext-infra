@@ -57,10 +57,7 @@ class TestsFlextInfraTypeGates:
 
         result = FlextInfraMypyGate(project).check(project, checker_context)
 
-        tm.that(
-            result.result.passed,
-            eq=False,
-        )
+        tm.that(result.result.passed, eq=False)
         messages = "\n".join(issue.message for issue in result.issues)
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
 
@@ -88,10 +85,7 @@ class TestsFlextInfraTypeGates:
 
         result = FlextInfraMypyGate(project).check(project, checker_context)
 
-        tm.that(
-            result.result.passed,
-            eq=False,
-        )
+        tm.that(result.result.passed, eq=False)
         tm.that(tuple(issue.code for issue in result.issues), has="TOOL_ERROR")
         tm.that(
             "\n".join(issue.message for issue in result.issues),

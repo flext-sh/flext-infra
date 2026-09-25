@@ -176,8 +176,10 @@ error-severity findings (exit 0). Exit 1 must carry only ast-grep's complete ter
 diagnostic, whose count equals the validated error-severity findings. Additional
 traversal diagnostics remain blocking: ast-grep can continue after an unreadable path
 and still return exit 1 because another file contains a finding. The scanner boundary
-checks the [native terminal diagnostic](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/error_context.rs#L200)
-and rejects extra output from the [native path worker](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/worker.rs#L92).
+checks the
+[native terminal diagnostic](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/error_context.rs#L200)
+and rejects extra output from the
+[native path worker](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/worker.rs#L92).
 Timeouts, forwarded signals, other exit codes, malformed JSON, and disagreement between
 exit code and diagnostic severities remain failures, even when stdout exists. Both
 whole-project checks and `check_files` scan every elected provider rule.
@@ -191,8 +193,8 @@ passing gate therefore proves the scanner contract, not zero migration findings.
 The same repair validates projected Ruff first-party namespaces strictly: a malformed
 value cannot be replaced with discovered namespaces. A declared empty list remains
 empty; namespace discovery applies only when the list is absent. A bare Python
-annotation does not
-replace an existing facade binding. Mypy's module-specific `follow_untyped_imports`
-policy analyzes Rope's installed source without suppressing `import-untyped`; the typed
-tooling policy owns both template and dependency-modernizer projections. See the
+annotation does not replace an existing facade binding. Mypy's module-specific
+`follow_untyped_imports` policy analyzes Rope's installed source without suppressing
+`import-untyped`; the typed tooling policy owns both template and dependency-modernizer
+projections. See the
 [Mypy option contract](https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports).

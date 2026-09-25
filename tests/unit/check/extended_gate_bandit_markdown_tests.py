@@ -110,11 +110,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         inherited = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
-            tmp_path,
-            project_dir,
-            passed=False,
-            issues_len=1,
+            FlextInfraMarkdownGate, tmp_path, project_dir, passed=False, issues_len=1
         )
         (project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
             disabled, encoding="utf-8"
@@ -158,11 +154,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_owned.write_text(self.HEADING_SKIP, encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
-            tmp_path,
-            project_dir,
-            passed=False,
-            issues_len=1,
+            FlextInfraMarkdownGate, tmp_path, project_dir, passed=False, issues_len=1
         )
 
         tm.that(result.issues[0].file, eq=".github/prompts/project.md")
