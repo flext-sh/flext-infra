@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from .._constants.check import FlextInfraConstantsCheck
@@ -13,6 +14,13 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsMake:
     """One canonical vocabulary shared by generated Make and its services."""
+
+    class PytestExecutionMode(StrEnum):
+        """Public operations whose test scope and accounting are distinct."""
+
+        INCREMENTAL = "incremental"
+        FULL = "full"
+        COVERAGE = "coverage"
 
     MAKE_ASSIGNMENT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?="

@@ -142,7 +142,7 @@ class FlextInfraModelsCore:
     class PytestRunContext(m.Value):
         """Immutable execution identity shared by a phase's native receipts."""
 
-        execution_mode: Literal["incremental", "full", "coverage"] = m.Field(
+        execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory"
         )
         testmon_db: Path | None = m.Field(

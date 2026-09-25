@@ -45,18 +45,29 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
         return f"toolchain-{digest}"
 
-    def ci_excluded_markers(self) -> t.StrTuple:
+    def ci_excluded_markers(
+        self,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = c.Infra.PytestExecutionMode.INCREMENTAL,
+    ) -> t.StrTuple:
         """Use the same CI token as generated workflows and pre-commit hooks."""
-        if self.ci_context:
+        if self.ci_context and execution_mode != c.Infra.PytestExecutionMode.FULL:
             return config.Infra.tooling.tools.pytest.ci_excluded_markers
         return ()
 
-    def _plugin_policy_args(self) -> t.VariadicTuple[str]:
+    def _plugin_policy_args(
+        self, *, execution_mode: c.Infra.PytestExecutionMode
+    ) -> t.VariadicTuple[str]:
         """Apply the same configured plugin contract to collection and execution."""
         pytest = config.Infra.tooling.tools.pytest
-        # External-token gates (SSOT external-gate-markers) are deselected in
-        # both the selection pass and the suite so xdist workers collect the
-        # same set; direct invocation selects them outside this runner.
+        excluded = (
+            (
+                *pytest.external_gate_markers,
+                *self.ci_excluded_markers(execution_mode=execution_mode),
+            )
+            if execution_mode != c.Infra.PytestExecutionMode.FULL
+            else ()
+        )
         return (
             "-p",
             pytest.enforcement_plugin,
@@ -64,12 +75,15 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "no:metadata",
             "-o",
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
-            "-m",
-            f"not ({' or '.join((*pytest.external_gate_markers, *self.ci_excluded_markers()))})",
+            *(("-m", f"not ({' or '.join(excluded)})") if excluded else ()),
         )
 
     def build_selection_command(
-        self, *, report_log: Path, complete: bool = False
+        self,
+        *,
+        report_log: Path,
+        complete: bool = False,
+        execution_mode: c.Infra.PytestExecutionMode = c.Infra.PytestExecutionMode.INCREMENTAL,
     ) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
@@ -95,7 +109,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "--collect-only",
             f"--report-log={report_log}",
             "-q",
-            *self._plugin_policy_args(),
+            *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
             f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
@@ -114,6 +128,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         selected_node_ids: t.StrSequence | None = None,
         *,
         serialize: bool = False,
+        execution_mode: c.Infra.PytestExecutionMode = c.Infra.PytestExecutionMode.INCREMENTAL,
     ) -> t.VariadicTuple[str]:
         """Build the testmon suite argv (never the cov plugin)."""
         pytest = config.Infra.tooling.tools.pytest
@@ -130,6 +145,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             targets=(tuple(selection) if selection else (str(self.target),)),
             workers=workers,
             trailing=(
+                *self._plugin_policy_args(execution_mode=execution_mode),
                 *(
                     (
                         "-p",
@@ -163,6 +179,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             targets=(str(self.target),),
             workers=workers,
             trailing=(
+                *self._plugin_policy_args(execution_mode=c.Infra.PytestExecutionMode.COVERAGE),
                 f"--cov={self.root / c.Infra.DEFAULT_SRC_DIR}",
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
                 "--no-cov-on-fail",
@@ -186,7 +203,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *targets,
             *pytest.progress_args,
             *pytest.report_args,
-            *self._plugin_policy_args(),
             f"--timeout={pytest.case_timeout_seconds}",
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",

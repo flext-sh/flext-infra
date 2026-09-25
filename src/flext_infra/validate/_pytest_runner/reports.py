@@ -58,13 +58,13 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         )
         deselected = 0
         inventory_count = None
-        if context.execution_mode != "coverage":
+        if context.execution_mode != c.Infra.PytestExecutionMode.COVERAGE:
             inventory = m.Infra.PytestCollectionManifest.model_validate_json(
                 (log.parent / "testmon-inventory.json").read_text(encoding="utf-8")
             )
             selected = (
                 inventory
-                if context.execution_mode == "full"
+                if context.execution_mode == c.Infra.PytestExecutionMode.FULL
                 else m.Infra.PytestCollectionManifest.model_validate_json(
                     (log.parent / "testmon-selection.json").read_text(encoding="utf-8")
                 )
@@ -118,6 +118,31 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             msg = f"pytest collection contains blocking findings: {receipt}"
             raise RuntimeError(msg)
 
+    @staticmethod
+    def _phase_diagnostics(
+        report_dir: Path,
+        *,
+        context: m.Infra.PytestRunContext,
+        suite: m.Infra.PytestDiagnostics,
+    ) -> t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]]:
+        """Read each subprocess receipt once in execution order."""
+        phases: t.MutableSequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]] = []
+        if context.execution_mode != c.Infra.PytestExecutionMode.COVERAGE:
+            names = (
+                ("selection", "inventory")
+                if context.execution_mode == c.Infra.PytestExecutionMode.INCREMENTAL
+                else ("inventory",)
+            )
+            for phase in names:
+                receipt = report_dir / f"testmon-{phase}.events.diagnostics.json"
+                phases.append((
+                    phase,
+                    m.Infra.PytestDiagnostics.model_validate_json(
+                        receipt.read_text(encoding="utf-8")
+                    ),
+                ))
+        return (*phases, ("suite", suite))
+
     def _validate_coverage(self, report_dir: Path) -> p.Result[bool]:
         """Require a non-empty coverage artifact and no hidden threshold failure."""
         coverage = report_dir / "coverage.xml"
@@ -138,14 +163,33 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
     @staticmethod
     def _write_diagnostics(
-        report_dir: Path, diagnostics: m.Infra.PytestDiagnostics
+        report_dir: Path,
+        diagnostics: m.Infra.PytestDiagnostics,
+        *,
+        phases: t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]],
     ) -> None:
         """Persist each typed diagnostics channel."""
         outputs: t.VariadicTuple[t.Triple[str, t.StrSequence, str]] = (
             ("failed-tests.txt", diagnostics.failed_cases, "\n\n"),
             ("errors.txt", diagnostics.error_traces, "\n\n"),
-            ("warnings.txt", diagnostics.warning_lines, "\n"),
-            ("suspended-warnings.txt", diagnostics.suspended_warning_lines, "\n"),
+            (
+                "warnings.txt",
+                tuple(
+                    f"{phase}: {line}"
+                    for phase, item in phases
+                    for line in item.warning_lines
+                ),
+                "\n",
+            ),
+            (
+                "suspended-warnings.txt",
+                tuple(
+                    f"{phase}: {line}"
+                    for phase, item in phases
+                    for line in item.suspended_warning_lines
+                ),
+                "\n",
+            ),
             ("skipped-tests.txt", diagnostics.skip_cases, "\n"),
             ("slowest-tests.txt", diagnostics.slow_entries, "\n"),
         )

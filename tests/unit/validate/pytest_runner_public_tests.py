@@ -653,6 +653,18 @@ class TestsFlextInfraPytestRunner:
         )
         tm.that(identity.enforcement_strict, eq=strict)
         tm.that(identity.category_module, eq="runner_sample.notices")
+        if not blocking:
+            summary = self._summary(cached_runner_project / runner.reports).splitlines()
+            for count in (
+                "warnings=2",
+                "suspended_warnings=2",
+                "selection_warnings=1",
+                "inventory_warnings=1",
+                "suite_warnings=0",
+            ):
+                tm.that(count in summary, eq=True)
+            evidence = (receipt.parent / "warnings.txt").read_text()
+            tm.that(evidence.count("serial policy evidence"), eq=2)
 
     @pytest.mark.slow
     def test_warm_inventory_captures_warnings_from_stable_modules(

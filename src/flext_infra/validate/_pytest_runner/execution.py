@@ -52,14 +52,20 @@ class FlextInfraPytestRunnerExecution(
         return u.Cli.process_env(remove_keys=remove_keys, overrides=overrides)
 
     def _resolve_selection(
-        self, report_dir: Path, *, complete: bool = False
+        self,
+        report_dir: Path,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode,
+        complete: bool = False,
     ) -> t.StrSequence:
         """Return the node ids testmon selects, resolved in one process."""
         artifact = "testmon-inventory" if complete else "testmon-selection"
         selection_log = report_dir / f"{artifact}.log"
         manifest_path = report_dir / f"{artifact}.json"
         report_log = report_dir / f"{artifact}.events.jsonl"
-        command = self.build_selection_command(report_log=report_log, complete=complete)
+        command = self.build_selection_command(
+            report_log=report_log, complete=complete, execution_mode=execution_mode
+        )
         outcome = u.Cli.run_to_file(
             command,
             selection_log,
@@ -100,7 +106,9 @@ class FlextInfraPytestRunnerExecution(
             report_dir / f"{artifact}.txt", "\n".join(node_ids) + "\n"
         ).unwrap()
         if not complete:
-            inventory = self._resolve_selection(report_dir, complete=True)
+            inventory = self._resolve_selection(
+                report_dir, complete=True, execution_mode=execution_mode
+            )
             if not set(node_ids).issubset(inventory):
                 msg = "testmon selected node IDs outside the complete collection inventory"
                 raise RuntimeError(msg)
@@ -174,7 +182,7 @@ class FlextInfraPytestRunnerExecution(
         )
         if not accounting.executed_count and not (
             cache_hit
-            and context.execution_mode == "incremental"
+            and context.execution_mode == c.Infra.PytestExecutionMode.INCREMENTAL
             and raw_return_code
             in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
         ):
@@ -183,7 +191,11 @@ class FlextInfraPytestRunnerExecution(
         if cache_hit and accounting.executed_count:
             msg = "a testmon cache hit cannot contain executed tests"
             raise RuntimeError(msg)
-        self._write_diagnostics(report_dir, diagnostics)
+        phases = self._phase_diagnostics(report_dir, context=context, suite=diagnostics)
+        self._write_diagnostics(report_dir, diagnostics, phases=phases)
+        warnings = sum(item.warning_count for _, item in phases)
+        blocking_warnings = sum(item.blocking_warning_count for _, item in phases)
+        suspended_warnings = sum(item.suspended_warning_count for _, item in phases)
         accounting_complete = (
             accounting.executed_count == accounting.reported_count
             and (
@@ -195,7 +207,7 @@ class FlextInfraPytestRunnerExecution(
         rejected = any((
             diagnostics.failed_count,
             diagnostics.error_count,
-            diagnostics.blocking_warning_count,
+            blocking_warnings,
             diagnostics.skipped_count,
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
@@ -210,8 +222,17 @@ class FlextInfraPytestRunnerExecution(
             if accepted_cache_hit
             else "executed"
         )
-        external_gates = ",".join(
-            config.Infra.tooling.tools.pytest.external_gate_markers
+        external_gates = (
+            ""
+            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
+            else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
+        )
+        ci_excluded = self.ci_excluded_markers(execution_mode=context.execution_mode)
+        phase_counts = "".join(
+            f"{phase}_warnings={item.warning_count}\n"
+            f"{phase}_blocking_warnings={item.blocking_warning_count}\n"
+            f"{phase}_suspended_warnings={item.suspended_warning_count}\n"
+            for phase, item in phases
         )
         summary = (
             f"outcome={result}\n"
@@ -221,12 +242,13 @@ class FlextInfraPytestRunnerExecution(
             f"deselected={accounting.deselected_count}\n"
             f"inventory={accounting.inventory_count}\n"
             f"not_executed_external_gates={external_gates}\n"
-            f"not_executed_ci_markers={','.join(self.ci_excluded_markers())}\n"
+            f"not_executed_ci_markers={','.join(ci_excluded)}\n"
             f"cache_restored={cache_restored}\n"
             f"failed={diagnostics.failed_count}\nerrors={diagnostics.error_count}\n"
-            f"warnings={diagnostics.warning_count}\n"
-            f"blocking_warnings={diagnostics.blocking_warning_count}\n"
-            f"suspended_warnings={diagnostics.suspended_warning_count}\n"
+            f"warnings={warnings}\n"
+            f"blocking_warnings={blocking_warnings}\n"
+            f"suspended_warnings={suspended_warnings}\n"
+            f"{phase_counts}"
             f"skipped={diagnostics.skipped_count}\n"
             f"collection_errors={diagnostics.collection_failed_count}\n"
             f"collection_skips={diagnostics.collection_skipped_count}\n"
@@ -255,10 +277,15 @@ class FlextInfraPytestRunnerExecution(
     def _execute_testmon(self, *, complete: bool) -> p.Result[int]:
         """Execute one selected testmon phase without resetting shared state."""
         report_dir = self._report_directory()
+        execution_mode = (
+            c.Infra.PytestExecutionMode.FULL
+            if complete
+            else c.Infra.PytestExecutionMode.INCREMENTAL
+        )
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
-                execution_mode="full" if complete else "incremental",
+                execution_mode=execution_mode,
                 testmon_db=self.testmon_db,
                 deadline_monotonic=self._process_deadline().expires_at_monotonic,
             ),
@@ -272,14 +299,16 @@ class FlextInfraPytestRunnerExecution(
             if not cache_restored:
                 msg = f"testmon preflight rejected cache: {pre_state.reason}"
                 raise RuntimeError(msg)
-        selection = self._resolve_selection(report_dir, complete=complete)
+        selection = self._resolve_selection(
+            report_dir, complete=complete, execution_mode=execution_mode
+        )
         if not selection and not cache_restored:
             msg = "empty incremental selection requires an integrity-checked cache"
             raise RuntimeError(msg)
         # Workers execute one centrally ordered selection. The collection plugin
         # enforces that manifest for both cold and warm caches while testmon
         # continues to collect dependencies through its xdist integration.
-        command = self.build_command(report_dir, selection)
+        command = self.build_command(report_dir, selection, execution_mode=execution_mode)
         outcome = self._run_suite(command, report_dir)
         cache_hit = (
             not complete
@@ -323,7 +352,7 @@ class FlextInfraPytestRunnerExecution(
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
-                execution_mode="coverage",
+                execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
                 deadline_monotonic=self._process_deadline().expires_at_monotonic,
             ),
