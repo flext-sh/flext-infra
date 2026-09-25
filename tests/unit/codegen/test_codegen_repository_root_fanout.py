@@ -118,6 +118,3 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         return repository_root
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenRepositoryRootFanout"]

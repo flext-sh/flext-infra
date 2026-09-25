@@ -133,6 +133,3 @@ class TestsFlextInfraWorkspaceMain:
 
     def test_workspace_main_without_command_returns_failure(self) -> None:
         tm.that(self._workspace_main([]), eq=1)
-
-
-__all__: list[str] = ["TestsFlextInfraWorkspaceMain"]

@@ -305,6 +305,3 @@ class TestsFlextInfraDepsModernizerToolTables:
             ],
             eq=thresholds.app,
         )
-
-
-__all__: list[str] = ["TestsFlextInfraDepsModernizerToolTables"]

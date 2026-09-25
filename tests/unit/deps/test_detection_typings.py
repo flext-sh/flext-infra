@@ -81,6 +81,3 @@ class TestsFlextInfraDepsDetectionTypings:
             tm.ok(service.run_mypy_stub_hints(tmp_path)),
             eq=(["types-pyyaml"], ["requests"]),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraDepsDetectionTypings"]

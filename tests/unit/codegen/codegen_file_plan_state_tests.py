@@ -148,6 +148,3 @@ class TestsFlextInfraCodegenFilePlanState:
             FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report(
                 (), limit=limit
             )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenFilePlanState"]

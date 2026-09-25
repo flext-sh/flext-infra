@@ -114,6 +114,10 @@ class FlextInfraConstantsCodegen(
     "Regex to parse violation strings: [NS-RULE-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: ClassVar[int] = 3
     "Number of numeric components in a generated Mise release version."
+    MISE_RELEASE_PATTERN: ClassVar[str] = (
+        rf"[0-9]+(\.[0-9]+){{{MISE_RELEASE_COMPONENT_COUNT - 1}}}"
+    )
+    "Resolved-release grammar consumed by Python and generated shell boundaries."
     MISE_LAUNCHER_DIRECTORY: ClassVar[str] = "bin"
     "Directory that owns generated runtime Mise launchers."
     MISE_UNIX_LAUNCHER_FILENAME: ClassVar[str] = "mise"
@@ -235,6 +239,8 @@ class FlextInfraConstantsCodegen(
     "Only host environment keys eligible for explicit reinjection."
     MISE_VERSION_PIN_FILENAME: ClassVar[str] = "mise.version"
     "Committed Mise release `make upg` resolved; setup passes it as MISE_VERSION."
+    MISE_RUNTIME_INSTALL_RELATIVE_TEMPLATE: ClassVar[str] = "bootstrap/mise-{release}"
+    "Persistent runtime address shared by provisioning and direnv activation."
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

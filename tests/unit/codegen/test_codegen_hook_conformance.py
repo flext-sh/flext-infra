@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u as test_u
+from tests import c as test_c, u as test_u
 
 pytestmark = pytest.mark.slow
 
@@ -132,6 +133,76 @@ class TestsFlextInfraCodegenHookConformance:
         tm.that(rendered.count("bash -eu -o pipefail -c"), eq=expected)
         tm.that(rendered, lacks=".local")
 
+    @pytest.mark.parametrize("inherited", ["ci", "local"])
+    def test_pre_push_check_unsets_inherited_ci_before_the_real_make_runtime(
+        self, tmp_path: Path, inherited: str
+    ) -> None:
+        """Execute the generated hook entry without replacing any runtime owner."""
+        root, _ = test_u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        tm.ok(test_u.Tests.create_python_environment(root))
+        policy = config.Infra.codegen.make
+        make = m.Infra.MakeSpec.model_validate({
+            **policy.model_dump(exclude_computed_fields=True),
+            "pre_commit": False,
+            "pre_push": True,
+            "workflow": (
+                m.Infra.MakeWorkflowStepSpec(
+                    verb="check", contexts=("local", "pre_push")
+                ),
+            ),
+        })
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(dist="fixture-project", make=make),
+            )
+        )
+        hook_config = root / c.Infra.PRE_COMMIT_CONFIG_FILENAME
+        tm.ok(u.Cli.atomic_write_text_file(hook_config, rendered))
+        document = u.Cli.yaml_load_mapping(hook_config)
+        repositories = document["repos"]
+        assert isinstance(repositories, list)
+        repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(repositories[0])
+        hooks = repository["hooks"]
+        assert isinstance(hooks, list)
+        tm.that(len(hooks), eq=1)
+        hook = t.Cli.JSON_MAPPING_ADAPTER.validate_python(hooks[0])
+        entry = hook["entry"]
+        assert isinstance(entry, str)
+        process = tm.ok(
+            u.Cli.run_raw(
+                shlex.split(entry),
+                cwd=root,
+                env={
+                    policy.ci.variable: (
+                        policy.ci.value if inherited == "ci" else policy.ci.local_value
+                    )
+                },
+                remove_env_keys=test_c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+
+        tm.that(process.outcome.raw_return_code, ne=0)
+        tm.that(
+            process.stdout,
+            has=(
+                "INFO: default context runs check gates: "
+                f"{' '.join(policy.check_gates_default)}\n"
+            ),
+        )
+        tm.that(
+            process.stderr,
+            has=(
+                "No module named flext_infra"
+                if policy.check_gates_default
+                else "no active check gates remain in the selected context"
+            ),
+        )
+        for suspension in policy.check_gate_suspensions:
+            tm.that(process.stdout, has=f"SUSPENDED check gate {suspension.gate};")
+
     def test_check_and_apply_never_overwrite_foreign_hook_shims(
         self, infra_git_repo: Path
     ) -> None:
@@ -245,6 +316,3 @@ class TestsFlextInfraCodegenHookConformance:
 
         retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
         tm.that(target in retired, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenHookConformance"]

@@ -284,6 +284,3 @@ class TestsFlextInfraCodegenLazyInit:
             tm.that(u.Tests.run_lazy_init(tmp_path / "b"), eq=0)
             content_b = (src_dir_b / "__init__.py").read_text(encoding="utf-8")
             tm.that(content_a, eq=content_b)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenLazyInit"]

@@ -56,6 +56,3 @@ class TestsFlextInfraProjectMiseTools:
 
         with pytest.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)
-
-
-__all__: list[str] = ["TestsFlextInfraProjectMiseTools"]

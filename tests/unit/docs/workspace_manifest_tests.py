@@ -112,6 +112,3 @@ class TestsFlextInfraWorkspaceManifest:
 
         with pytest.raises(c.ValidationError):
             u.Infra.load_refactor_config(tmp_path)
-
-
-__all__: list[str] = ["TestsFlextInfraWorkspaceManifest"]

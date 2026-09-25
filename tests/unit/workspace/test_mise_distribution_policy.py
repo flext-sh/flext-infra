@@ -53,6 +53,3 @@ class TestsFlextInfraMiseDistributionPolicy:
         tm.ok(result)
         tm.that(result.value, has=f'"{selector}" = "{version}"')
         tm.that(result.value, lacks="divergent")
-
-
-__all__: list[str] = ["TestsFlextInfraMiseDistributionPolicy"]

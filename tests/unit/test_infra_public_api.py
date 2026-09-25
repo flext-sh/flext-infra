@@ -102,6 +102,3 @@ class TestsFlextInfraPublicApi:
             roundtrip.model_dump(mode="python"), eq=resolved.model_dump(mode="python")
         )
         tm.that(roundtrip.Tests, eq=resolved.Tests)
-
-
-__all__: list[str] = ["TestsFlextInfraPublicApi"]

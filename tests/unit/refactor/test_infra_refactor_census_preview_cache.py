@@ -160,6 +160,3 @@ class TestsFlextInfraRefactorCensusPreview:
 
         tm.ok(preview)
         tm.that(module_path.read_text(encoding="utf-8"), eq=original_source)
-
-
-__all__: list[str] = ["TestsFlextInfraRefactorCensusPreview"]

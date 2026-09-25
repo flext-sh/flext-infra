@@ -408,6 +408,24 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ]
+        lock_file: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9._-]+$",
+                description="Committed native graph watched by runtime activation",
+            ),
+        ]
+        runtime_install_relative_template: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+\{release\}$",
+                description="Storage-relative address of an installed Mise release",
+            ),
+        ]
+        resolved_release_pattern: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Shared Python and shell resolved-release grammar"),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_environment_contract(self) -> Self:

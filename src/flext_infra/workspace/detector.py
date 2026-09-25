@@ -317,8 +317,10 @@ class FlextInfraWorkspaceDetector(
             ),
             None,
         )
+        # The manifest owns identity; Git owns editability (a composed checkout
+        # is editable), exactly as the subproject load documents.
         return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
-            declared,
+            declared.model_copy(update={"editable": observed.editable}),
             True if overlay is None else overlay.gascity_enabled,
             manifest.project,
         ))
@@ -585,7 +587,14 @@ class FlextInfraWorkspaceDetector(
                 return r[m.Infra.WorkspaceSpec].fail(
                     f"Git submodule escapes its superproject: {member_root}"
                 )
-            baseline = u.Infra.repository_baseline_branch(superproject_root)
+            # Same owner as the parent load: the declared preference resolves a
+            # versioned integration line the provider fallback names miss.
+            baseline = u.Infra.repository_baseline_branch(
+                superproject_root,
+                preference=(
+                    config.Infra.codegen.branch_policy.integration_branch_preference
+                ),
+            )
             loaded_member = cls._load_subproject(
                 superproject_root,
                 member_path,

@@ -175,6 +175,3 @@ class TestsFlextInfraApplyRenames:
         rewritten = sample.read_text(encoding="utf-8")
         tm.that(rewritten, has='"campaign_renamed_token"')
         tm.that(rewritten, lacks="campaign_token")
-
-
-__all__: list[str] = ["TestsFlextInfraApplyRenames"]

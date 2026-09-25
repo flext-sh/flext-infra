@@ -28,6 +28,3 @@ class TestsFlextInfraDepsInit:
         """Test dir() returns all exported symbols."""
         exports = dir(deps_mod)
         tm.that(len(exports) > 0, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraDepsInit"]

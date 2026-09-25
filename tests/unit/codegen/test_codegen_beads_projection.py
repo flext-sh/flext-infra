@@ -392,6 +392,3 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that("endpoint" in tool_fields, eq=False)
         tm.that("endpoint_origin" in tool_fields, eq=True)
         tm.that("endpoint_status" in tool_fields, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenBeadsProjection"]

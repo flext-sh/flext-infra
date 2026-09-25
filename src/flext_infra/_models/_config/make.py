@@ -51,9 +51,9 @@ class FlextInfraConfigModelsMake:
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Local form of the CI ternary. A hook declares this value "
-                    "explicitly so an inherited CI token from the caller can "
-                    "never revoke pytest or the type-checker gates."
+                    "Local form of the CI ternary. Check runs the active local "
+                    "partition; other pre-push verbs declare this value to "
+                    "preserve their local behavior. Pre-push check unsets CI."
                 )
             ),
         ] = "N"
@@ -64,7 +64,7 @@ class FlextInfraConfigModelsMake:
                     "Gate ids run by make check under the local CI token: the "
                     "slow whole-program type checkers. This is the ONLY "
                     "declared set; the CI token runs its strict complement and "
-                    "an unset token runs every allowed gate."
+                    "an unset token runs every active default gate."
                 )
             ),
         ]
@@ -89,6 +89,15 @@ class FlextInfraConfigModelsMake:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
+        produces_activation: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Run the producer in the provisioned physical environment, "
+                    "then activate its generated environment before post hooks"
+                )
+            ),
+        ] = False
 
     class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One canonical workflow step."""
@@ -635,9 +644,16 @@ class FlextInfraConfigModelsMake:
 
         @m.computed_field
         @property
+        def check_gates_local(self) -> t.VariadicTuple[str]:
+            """Intersect the local partition with the same active default universe."""
+            local = frozenset(self.ci.local_check_gates)
+            return tuple(gate for gate in self.check_gates_default if gate in local)
+
+        @m.computed_field
+        @property
         def check_gates_ci(self) -> t.VariadicTuple[str]:
             """Preserve the CI partition within the same active default universe."""
-            local = frozenset(self.ci.local_check_gates)
+            local = frozenset(self.check_gates_local)
             return tuple(gate for gate in self.check_gates_default if gate not in local)
 
         @m.computed_field

@@ -219,6 +219,3 @@ class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBas
             sum("legacy Pydantic member" in item for item in report.violations),
             eq=int(legacy),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraPydanticLegacyDetection"]

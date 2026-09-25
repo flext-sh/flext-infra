@@ -18,9 +18,14 @@
 		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 			gates="{{ gates_csv(make.check_gates_ci) }}"; \
 			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates: {{ gates_banner(make.check_gates_ci) }}\n'; \
+		elif [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.local_value }}" ]; then \
+			gates="{{ gates_csv(make.check_gates_local) }}"; \
+			printf 'INFO: {{ make.ci.variable }}={{ make.ci.local_value }} runs check gates: {{ gates_banner(make.check_gates_local) }}\n'; \
+		else \
+			printf 'INFO: default context runs check gates: {{ gates_banner(make.check_gates_default) }}\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
 		{{ check_run("$$gates") }}
@@ -349,10 +354,14 @@ ifeq ($(GEN_INIT_ONLY),)
 endif
 SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
+define RUN_PUBLIC_POST
+	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+endef
+
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
-	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+	$(if $(2),+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1),$(call RUN_PUBLIC_POST,$(1)))
 endef
 
 {% if script_dispatch %}
@@ -398,17 +407,20 @@ endef
 .PHONY: _builtin_gen_init _builtin_gen_all
 $(filter-out help clean upg,$(PUBLIC_VERBS)): _builtin_require_mise_pin
 
-{# The exclusion is a statement about ENVIRONMENT DEPENDENCY, never about a
-   name. `setup` is filtered above because it builds the environment it would
-   otherwise require, and `help` prints the verb table without touching it.
-   Every other public verb dispatches through `RUN_PUBLIC` into a recipe that
-   invokes `$(PROJECT_FLEXT_INFRA)` -- the managed interpreter -- so it must
-   require the environment. `initialize` was excluded here without that
-   property: `_builtin-initialize` -> `_builtin_gen_init` runs
-   `$(PROJECT_FLEXT_INFRA) codegen init`, which cannot run before the
-   environment exists, and the omission made the generated Makefile contradict
-   the contract its own consumers assert. -#}
-{% for verb in make.verbs if verb.name not in ("setup", "upg") %}
+{# Provisioning creates the physical environment. Activation producers use that
+   existing environment to regenerate activation inputs before consuming them.
+   All other operational verbs activate before their handlers and hooks. -#}
+{% for verb in (make.verbs | list) + (extra_verbs | list) if verb.name not in ("setup", "upg") %}
+{% if verb.produces_activation %}
+# The pre hook and selected producer run once before activation. The producer
+# owns the complete generation transaction; activation adds no second writer.
+{{ verb.name }}: _builtin_require_workspace _builtin_require_environment
+	$(call RUN_PUBLIC,{{ verb.name }},1)
+
+.PHONY: _activated-{{ verb.name }}
+_activated-{{ verb.name }}: _builtin_require_environment
+	$(call RUN_PUBLIC_POST,{{ verb.name }})
+{% else %}
 {% if verb.name not in ("help", "clean") %}
 {{ verb.name }}: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }}
@@ -419,17 +431,7 @@ _activated-{{ verb.name }}: _builtin_require_environment
 {{ verb.name }}:
 {% endif %}
 	$(call RUN_PUBLIC,{{ verb.name }})
-{% endfor %}
-
-# Repository-owned extra verbs dispatch exactly like canonical ones: the
-# project declares them (help, .PHONY) and must also be able to run them.
-{% for verb in extra_verbs %}
-{{ verb.name }}: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }}
-
-.PHONY: _activated-{{ verb.name }}
-_activated-{{ verb.name }}: _builtin_require_environment
-	$(call RUN_PUBLIC,{{ verb.name }})
+{% endif %}
 {% endfor %}
 
 # `setup` keeps its own recipe (it must not require the environment it is about
@@ -594,8 +596,8 @@ _builtin_build_artifacts:
 
 # Check is read-only: it validates and reports, never rewrites the tree (fix
 # and fmt own mutation). The workspace delegates the same operation to each
-# member; CI={{ make.ci.value }} keeps make.check_gates_ci in each generated
-# member handler.
+# member; each generated member selects the same active local partition,
+# its CI complement, or all active gates when the CI token is absent.
 _builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)
 
@@ -620,7 +622,8 @@ _builtin_build_artifacts:
 # Check is read-only: it runs the gates without --apply, so the tree is left
 # unchanged; fix applies the declared repairs of the fixable gates.
 # CI={{ make.ci.value }} keeps make.check_gates_ci, the strict complement of
-# make.ci.local_check_gates.
+# make.check_gates_local; CI={{ make.ci.local_value }} runs that local partition.
+# An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 {{ local_check_body() }}
 

@@ -149,6 +149,3 @@ class TestsFlextInfraCodegenVscode:
 
         tm.fail(result)
         tm.that(result.error, none=False)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenVscode"]

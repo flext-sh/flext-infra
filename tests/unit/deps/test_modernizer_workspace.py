@@ -380,6 +380,3 @@ class TestsFlextInfraDepsModernizerWorkspace:
         TestsFlextInfraDepsModernizerWorkspace._reject_external_selector(
             modernizer_workspace, selector, external_pyproject, original
         )
-
-
-__all__: list[str] = ["TestsFlextInfraDepsModernizerWorkspace"]

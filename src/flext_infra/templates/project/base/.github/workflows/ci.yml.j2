@@ -127,15 +127,10 @@ jobs:
 {%- endif %}
 {%- if step.verb == "check" %}
 
-      # Why (aihub-v01jg): {{ make.ci.variable }}={{ make.ci.value }} runs ONE HALF of the gate set
-      # ({{ make.check_gates_ci | join(" ") }}); the complement
-      # ({{ make.ci.local_check_gates | join(" ") }}) is owned by
-      # {{ make.ci.variable }}={{ make.ci.local_value }} and, without this step, ran on developer
-      # machines only. That split let real defects reach main twice: five
-      # missing-attribute errors and an inconsistent-inheritance error, each
-      # green in CI and red locally. The two contexts are strict complements by
-      # construction, so running both here costs one extra pass and closes the
-      # hole rather than trusting everyone to run the other half by hand.
+      # Both blocking steps derive from the same active default universe.
+      # {{ make.ci.variable }}={{ make.ci.value }} runs {{ make.check_gates_ci | join(" ") }}.
+      # {{ make.ci.variable }}={{ make.ci.local_value }} runs {{ make.check_gates_local | join(" ") }}.
+      # The partitions are disjoint and together execute every active gate.
       - name: {{ step.verb }} complement (blocking)
         run: {{ make.ci.variable }}={{ make.ci.local_value }} make {{ step.verb }}
 {%- endif %}

@@ -257,6 +257,3 @@ class TestsFlextInfraRuntimeAliasDeclarations:
             u.Infra.ensure_runtime_alias(
                 source, alias="capability", target_name="Local"
             )
-
-
-__all__: list[str] = ["TestsFlextInfraRuntimeAliasDeclarations"]

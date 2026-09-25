@@ -282,6 +282,3 @@ class TestsFlextInfraTypeGates:
     def test_mypy_requires_native_source_evidence(self, payload: str) -> None:
         with pytest.raises(c.ValidationError):
             m.Infra.MypyCoverageReport.model_validate_json(payload, strict=True)
-
-
-__all__: list[str] = ["TestsFlextInfraTypeGates"]

@@ -69,6 +69,3 @@ class TestsFlextInfraSetupNeverDestroys:
         assert 'submodule update --init -- "$$child_path"' in content
         assert "branch --show-current" in content
         assert 'merge-base --is-ancestor "$$gitlink" HEAD' in content
-
-
-__all__: list[str] = ["TestsFlextInfraSetupNeverDestroys"]

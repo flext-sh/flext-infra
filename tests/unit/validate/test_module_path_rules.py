@@ -233,6 +233,3 @@ class TestsFlextInfraModulePathRules(TestsFlextInfraValidateNamespaceBase):
         tm.that(
             any(violation_substr in v for v in report.violations), eq=expect_violation
         )
-
-
-__all__: list[str] = ["TestsFlextInfraModulePathRules"]

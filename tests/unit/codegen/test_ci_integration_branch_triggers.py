@@ -72,6 +72,3 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         assert isinstance(activities, list)
 
         tm.that(activities, has="edited")
-
-
-__all__: list[str] = ["TestsFlextInfraCiIntegrationBranchTriggers"]

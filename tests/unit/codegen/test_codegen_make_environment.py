@@ -281,7 +281,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
     )
     # Why: `make setup` provisions a real environment from the remote
     # index and GitHub sources (an external gate); it never runs inside
-    # the offline unit gate and is selected only by direct invocation.
+    # the offline unit gate; make test-full includes this remote boundary.
     @pytest.mark.remote
     def test_setup_provisions_environment_before_project_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
@@ -1012,6 +1012,3 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "_builtin-conform",
         ):
             tm.that(makefile, lacks=forbidden)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenMakeEnvironment"]
