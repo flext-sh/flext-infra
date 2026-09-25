@@ -50,7 +50,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         u.PrivateAttr(default_factory=dict)
     )
     _module_object_cache: MutableMapping[
-        tuple[str, bool, bool], tuple[m.Infra.Census.Object, ...]
+        tuple[str, bool, bool], tuple[m.Infra.Object, ...]
     ] = u.PrivateAttr(default_factory=dict)
     _resource_cache: MutableMapping[str, t.Infra.RopeResource | None] = u.PrivateAttr(
         default_factory=dict
@@ -300,7 +300,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         *,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> t.SequenceOf[m.Infra.Census.Object]:
+    ) -> t.SequenceOf[m.Infra.Object]:
         """Return Rope-only discovered objects for one module path."""
         resolved_file = file_path.resolve()
         cache_key = (str(resolved_file), include_local_scopes, include_references)

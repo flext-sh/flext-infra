@@ -57,7 +57,7 @@ declares `script_dispatch`.
   `verb/what`, and `promoted_validate_command_contract`. Dynamic command parameters are
   read through `u.Infra.env_value`.
 - Vocabulary is `c.Infra.Promoted*` (`_constants/promoted*.py`); the registry contract
-  is `p.Infra.Promoted.Registry`.
+  is `p.Infra.PromotedRegistry`.
 - An empty, `help` or undeclared `all` WHAT renders the verb help; a verb that declares
   an `all` command still runs it.
 

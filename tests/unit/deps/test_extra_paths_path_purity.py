@@ -19,8 +19,6 @@ from tests.unit.deps.extra_paths_support import ExtraPathsTestSupport
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraExtraPathsArePure:
     """No emitted entry may address another project on the filesystem."""

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
 from tests import TestsFlextInfraUtilities as u

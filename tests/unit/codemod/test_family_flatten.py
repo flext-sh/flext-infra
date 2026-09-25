@@ -68,14 +68,14 @@ class TestsFlextInfraFamilyFlatten:
             proposed.update({
                 edit.file_path: edit.updated_source for edit in planned.value
             })
-            expected_member = "GroupingEntity" if collision else "Entity"
+            expected_member = "GroupingEntity"
             tm.that(proposed[path], has=f"    class {expected_member}(Enum):")
             tm.that(
                 proposed[path],
                 has="'''first\n        literal indentation\n        last'''",
             )
             tm.that(proposed[consumer], has=f"VALUE = Public.{expected_member}.VALUE")
-            tm.that(proposed[consumer], has="TEXT = Part.TEXT")
+            tm.that(proposed[consumer], has="TEXT = Part.GroupingTEXT")
             tm.that(proposed[homonym], eq=unrelated)
             remaining = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,

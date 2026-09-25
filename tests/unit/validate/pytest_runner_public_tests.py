@@ -408,7 +408,7 @@ class TestsFlextInfraPytestRunner:
         """The real full phase executes harmless consumers of every excluded marker."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
-            sorted(set((*policy.external_gate_markers, *policy.ci_excluded_markers)))
+            sorted({*policy.external_gate_markers, *policy.ci_excluded_markers})
         )
         marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
         (cached_runner_project / "pyproject.toml").write_text(

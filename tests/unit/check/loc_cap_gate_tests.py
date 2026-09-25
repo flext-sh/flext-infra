@@ -20,8 +20,6 @@ from tests import c, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraLocCapGate:
     @staticmethod

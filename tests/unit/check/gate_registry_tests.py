@@ -13,7 +13,7 @@ from flext_tests import tm
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
-from tests import c, m, t
+from tests import c, m
 
 if TYPE_CHECKING:
     from pathlib import Path

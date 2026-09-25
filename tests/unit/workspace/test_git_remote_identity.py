@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests import t, u
+from tests import u
 
 
 class TestsFlextInfraGitRemoteIdentity:

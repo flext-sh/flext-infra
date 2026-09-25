@@ -119,7 +119,7 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             include_local_scopes: bool = True,
             include_references: bool = True,
-        ) -> t.SequenceOf[m.Infra.Census.Object]: ...
+        ) -> t.SequenceOf[m.Infra.Object]: ...
 
         def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
 
@@ -339,12 +339,12 @@ class FlextInfraProtocolsRope(Protocol):
             file_path: Path,
             *,
             project_name: str,
-            objects: t.VariadicTuple[m.Infra.Census.Object] | None,
+            objects: t.VariadicTuple[m.Infra.Object] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsRope"]

@@ -308,7 +308,9 @@ class FlextInfraPytestRunnerExecution(
         # Workers execute one centrally ordered selection. The collection plugin
         # enforces that manifest for both cold and warm caches while testmon
         # continues to collect dependencies through its xdist integration.
-        command = self.build_command(report_dir, selection, execution_mode=execution_mode)
+        command = self.build_command(
+            report_dir, selection, execution_mode=execution_mode
+        )
         outcome = self._run_suite(command, report_dir)
         cache_hit = (
             not complete

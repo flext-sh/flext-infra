@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -69,6 +70,50 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         resolver = cls._runtime_callable("rope.base.evaluate", "eval_location")
         result = resolver(pymodule, offset)
         return result if isinstance(result, p.Infra.RopeImportedName) else None
+
+    @classmethod
+    def scope_at(
+        cls, pymodule: p.Infra.RopePyModule, offset: int
+    ) -> p.Infra.RopeScope:
+        """Return Rope's lexical scope for a source position."""
+        scope = pymodule.get_scope()
+        lookup = getattr(scope, "get_inner_scope_for_offset", None)
+        if not callable(lookup):
+            msg = "Rope module scope has no lexical offset lookup"
+            raise TypeError(msg)
+        result = lookup(offset)
+        if not isinstance(result, p.Infra.RopeScope):
+            msg = "Rope lexical lookup returned an invalid scope"
+            raise TypeError(msg)
+        return result
+
+    @classmethod
+    def resolve_symbol(
+        cls, scope: p.Infra.RopeScope, expression: ast.expr
+    ) -> p.Infra.RopePyName | None:
+        """Resolve an identifier chain without evaluating Python expressions."""
+        if not isinstance(expression, ast.Name | ast.Attribute):
+            return None
+        result = cls._runtime_callable("rope.base.evaluate", "eval_node")(
+            scope, expression
+        )
+        if result is not None and not isinstance(result, p.Infra.RopePyName):
+            msg = "Rope identifier resolution returned an invalid name"
+            raise TypeError(msg)
+        return result
+
+    @classmethod
+    def same_name(
+        cls, expected: p.Infra.RopePyName, actual: p.Infra.RopePyName | None
+    ) -> bool:
+        """Use Rope's imported-name identity contract for semantic comparisons."""
+        result = cls._runtime_callable("rope.refactor.occurrences", "same_pyname")(
+            expected, actual
+        )
+        if not isinstance(result, bool):
+            msg = "Rope name comparison returned a non-boolean result"
+            raise TypeError(msg)
+        return result
 
     @staticmethod
     def imported_module_path(

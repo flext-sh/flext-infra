@@ -15,8 +15,6 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraRealGateRunners:
     """Exercise real gate behavior through public gate APIs."""

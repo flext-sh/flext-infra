@@ -28,7 +28,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         stale_error_keys: t.StrSequence,
         declared_python_dirs: t.StrSequence,
         declared_python_dirs_are_complete: bool,
-    ) -> m.Infra.Deps.Toml.PhaseConfig:
+    ) -> m.Infra.DepsToml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         path_rules = pyrefly_rules.path_rules
@@ -71,7 +71,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
         phase_builder = (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Infra.DepsToml.PhaseConfig
             .Builder("pyrefly")
             .table(c.Infra.PYREFLY)
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)

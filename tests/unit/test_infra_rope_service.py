@@ -72,7 +72,7 @@ class TestsFlextInfraInfraRopeService:
 
     def _module_objects_by_name(
         self, repository_root: Path, module_path: Path
-    ) -> t.MutableMappingKV[str, m.Infra.Census.Object]:
+    ) -> t.MutableMappingKV[str, m.Infra.Object]:
         """Index one module's non-local objects by their declared name."""
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             return {

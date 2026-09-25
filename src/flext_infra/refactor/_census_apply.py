@@ -66,7 +66,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         ) -> str: ...
 
     def _apply_supported_fixes(
-        self, rope: p.Infra.RopeWorkspaceDsl, report: m.Infra.Census.WorkspaceReport
+        self, rope: p.Infra.RopeWorkspaceDsl, report: m.Infra.WorkspaceReport
     ) -> frozenset[str]:
         """Apply supported fixes."""
         applied: set[str] = set()

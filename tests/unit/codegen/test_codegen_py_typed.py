@@ -17,8 +17,6 @@ from tests import c
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraCodegenPyTyped:
     def test_creates_marker_in_dir_with_py_files(self, tmp_path: Path) -> None:

@@ -17,8 +17,6 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraSilentFailureGate:
     _DIRTY_UTILITIES = (

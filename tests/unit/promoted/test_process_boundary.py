@@ -43,7 +43,7 @@ from flext_infra import m, u
 
 raise SystemExit(
     u.Infra.promoted_run(
-        m.Infra.Promoted.Command(
+        m.Infra.PromotedCommand(
             verb="probe",
             what="probe",
             domain="probe",

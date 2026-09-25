@@ -17,7 +17,6 @@ from flext_tests import tm
 
 import flext_infra
 from flext_infra import c, config
-from tests import t
 
 
 class TestsFlextInfraRootMakefileSingleOwner:

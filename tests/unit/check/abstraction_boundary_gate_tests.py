@@ -17,8 +17,6 @@ from tests import c, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraAbstractionBoundaryGate:
     def _project(self, tmp_path: Path, *, name: str, filename: str, src: str) -> Path:

@@ -179,7 +179,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             targets=(str(self.target),),
             workers=workers,
             trailing=(
-                *self._plugin_policy_args(execution_mode=c.Infra.PytestExecutionMode.COVERAGE),
+                *self._plugin_policy_args(
+                    execution_mode=c.Infra.PytestExecutionMode.COVERAGE
+                ),
                 f"--cov={self.root / c.Infra.DEFAULT_SRC_DIR}",
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
                 "--no-cov-on-fail",

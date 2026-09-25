@@ -813,7 +813,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'test' 'Run incremental tests through the persistent testmon cache.';
 
-	@printf '  %-16s %s\n' 'test-full' 'Run incremental then complete tests through the same persistent testmon cache.';
+	@printf '  %-16s %s\n' 'test-full' 'Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.';
 
 	@printf '  %-16s %s\n' 'fmt' 'Apply ruff format --preview and ruff check --fix --unsafe-fixes --preview. Ruff is the rule; change code, never ruff.';
 

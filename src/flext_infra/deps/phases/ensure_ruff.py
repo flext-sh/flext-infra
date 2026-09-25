@@ -109,7 +109,7 @@ class FlextInfraEnsureRuffConfigPhase:
         stale_patterns: t.StrSequence,
         per_file_ignores: t.MappingKV[str, t.StrSequence],
         analysis_exclusions: t.StrSequence | None,
-    ) -> m.Infra.Deps.Toml.PhaseConfig:
+    ) -> m.Infra.DepsToml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         workspace_exclusions = (
@@ -138,7 +138,7 @@ class FlextInfraEnsureRuffConfigPhase:
                 u.normalize_to_json_value(detected_packages),
             ))
         return (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Infra.DepsToml.PhaseConfig
             .Builder("ruff")
             .table(c.Infra.RUFF)
             .deprecated(c.Infra.EXTEND)

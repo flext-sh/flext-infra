@@ -15,7 +15,7 @@ from flext_infra import (
     config,
 )
 from tests import t, u
-from tests.unit.deps import ExtraPathsTestSupport
+from tests.unit.deps.extra_paths_support import ExtraPathsTestSupport
 
 if TYPE_CHECKING:
     from pathlib import Path
