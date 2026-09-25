@@ -624,10 +624,7 @@ class FlextInfraMiseArtifactsState:
             physical = target.value.lstat()
             if not stat.S_ISDIR(physical.st_mode) or cls._is_reparse(physical):
                 return r[bool].fail(f"journaled recovery tree is not physical: {path}")
-            if (physical.st_dev, physical.st_ino) != (
-                created.device,
-                created.inode,
-            ):
+            if (physical.st_dev, physical.st_ino) != (created.device, created.inode):
                 return r[bool].fail(f"journaled recovery tree identity changed: {path}")
             try:
                 residents = tuple(target.value.iterdir())
