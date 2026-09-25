@@ -114,12 +114,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         as-is rather than the declared ``__all__`` superset, because a module
         may re-export a name its package root never publishes.
         """
-        package_dir = (
-            self.rope_workspace.workspace_index.package_dir_by_name.get(
-                package_name
-            )
-            or u.Infra.declared_package_dir(package_name)
-        )
+        package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+            package_name
+        ) or u.Infra.declared_package_dir(package_name)
         if package_dir is None:
             return frozenset()
         init_path = package_dir / c.Infra.INIT_PY
@@ -147,11 +144,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             return tuple(
                 dependency
                 for raw_requirement in requires(name) or ()
-                if (
-                    dependency := u.Infra.dep_name(
-                        raw_requirement, active_only=True
-                    )
-                )
+                if (dependency := u.Infra.dep_name(raw_requirement, active_only=True))
                 is not None
             )
 
