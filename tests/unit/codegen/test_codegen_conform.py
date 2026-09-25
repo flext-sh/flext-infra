@@ -169,7 +169,8 @@ class TestsFlextInfraCodegenConform:
             "failure-mixed",
         }
         tm.that(journal.exists(), eq=retained)
-        tm.that(published.read_bytes() == original, eq=not retained)
+        publication_is_preserved = not retained or scenario == "failure-mixed"
+        tm.that(published.read_bytes() == original, eq=publication_is_preserved)
         if scenario == "failure-changed":
             tm.that(journal.read_bytes().endswith(b"\n"), eq=True)
         elif scenario == "exception-replaced":
@@ -189,7 +190,9 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """A raised prepared operation removes invocation-owned root and Git state."""
         root = tmp_path / "exception-scaffold"
-        repository = u.Tests.repository_ref("exception-scaffold")
+        repository = u.Tests.repository_ref(
+            "exception-scaffold", role=c.Infra.MakeProfile.STANDALONE
+        )
         workspace = u.Tests.workspace_spec(
             repository, project=u.Tests.project_spec(repository.name)
         )

@@ -75,9 +75,11 @@ class TestsFlextInfraCodegenMiseArtifacts:
                     "HOME": str(home),
                     c.Infra.MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: declared,
                     "MISE_VERSION": version,
+                    "MISE_INSTALL_PATH": "",
                 },
-                # The make runtime exports its own install path, which the
-                # launcher honours before resolving the data directory.
+                # An explicit MISE_INSTALL_PATH outranks the data dir by the
+                # launcher's contract; the generated Make harness exports one
+                # into every child, so this probe must not inherit it.
                 remove_env_keys=("MISE_INSTALL_PATH",),
                 timeout=10,
             )
@@ -275,9 +277,18 @@ class TestsFlextInfraCodegenMiseArtifacts:
         )
         tools = test_u.Tests.toml_mapping(plan["tools"])
 
-        # The jscpd route is a table: its version plus per-platform assets.
-        route = test_u.Tests.toml_mapping(tools[toolchain.jscpd_selector])
-        tm.that(route.get("version"), eq=toolchain.jscpd_version)
+        # jscpd release assets carry libc/ABI suffixes, so the route is a
+        # table: the declared version plus one asset pattern per platform.
+        tm.that(
+            tools.get(toolchain.jscpd_selector),
+            eq={
+                "version": toolchain.jscpd_version,
+                "platforms": {
+                    platform: {"asset_pattern": pattern}
+                    for platform, pattern in toolchain.jscpd_asset_patterns.items()
+                },
+            },
+        )
         tm.that("npm:jscpd" in tools, eq=False)
 
     def test_unix_launcher_requires_executable_mode(self, tmp_path: Path) -> None:

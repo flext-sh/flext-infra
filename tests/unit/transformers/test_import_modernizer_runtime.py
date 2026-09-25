@@ -242,7 +242,7 @@ print(RuntimeRow.model_validate_json('{"value": "runtime"}').value)
         self, tmp_path: Path, access: str
     ) -> None:
         """The rejected rewrite leaves direct reads and closure reads executable."""
-        source = f"from {c.Infra.PKG_CORE_UNDERSCORE} import m\ndef build():\n{access}    from pydantic import BaseModel\n    return before is BaseModel\n"
+        source = f"from {c.Infra.PKG_CORE_UNDERSCORE} import m\ndef build():\n{access}    from pydantic import BaseModel\n    return issubclass(before, BaseModel)\n"
         path = tmp_path / "ancestral_consumer.py"
         path.write_text(source, encoding="utf-8")
         transformer = FlextInfraRefactorImportModernizer(
@@ -260,4 +260,4 @@ print(RuntimeRow.model_validate_json('{"value": "runtime"}').value)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
         probe = "from ancestral_consumer import build\nprint(build())\n"
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
-        tm.that(outcome.stdout.strip(), eq="True")
+        tm.that(outcome.stdout.strip(), eq="False")

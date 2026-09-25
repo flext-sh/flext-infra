@@ -96,6 +96,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         root = Path(project.root.real_path)
         bindings = tuple(
             (
+                path.relative_to(root).with_suffix("").as_posix().replace("/", "."),
                 name,
                 owner,
                 project.get_pymodule(
@@ -108,10 +109,17 @@ class FlextInfraUtilitiesSemanticNestingTypes(
 
         def replacement(scope: p.Infra.RopeScope, node: ast.expr) -> str | None:
             actual = runtime.resolve_symbol(scope, node)
-            for name, owner, expected in bindings:
+            for module_name, name, owner, expected in bindings:
                 if not runtime.same_name(expected, actual):
                     continue
-                expression = cls._nested_type_expression(node, actual, name, owner)
+                if isinstance(actual, p.Infra.RopeImportedName):
+                    module = scope.pyobject.get_module()
+                    _, destination = runtime.import_binding(
+                        project, module, module_name, owner
+                    )
+                    expression = f"{destination}.{name}"
+                else:
+                    expression = cls._nested_type_expression(node, actual, name, owner)
                 if expression is not None:
                     return cls._checked_type_reference(scope, expression)
             return None
@@ -126,6 +134,48 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             for path, source in sources.items()
         }
 
+    @classmethod
+    def _captured_names(cls, module: p.Infra.RopePyModule) -> frozenset[str]:
+        """Collect identifiers any nested scope binds over the module level."""
+        captured: set[str] = set()
+
+        class Visitor(ast.NodeVisitor):
+            depth = 0
+
+            def bind(self, name: str) -> None:
+                if self.depth:
+                    captured.add(name)
+
+            def visit_Name(self, node: ast.Name) -> None:
+                if isinstance(node.ctx, (ast.Store, ast.Del)):
+                    self.bind(node.id)
+
+            def _visit_scoped(self, node: ast.stmt | ast.expr) -> None:
+                self.bind(getattr(node, "name", ""))
+                self.depth += 1
+                for stmt in getattr(node, "body", []):
+                    self.visit(stmt)
+                self.depth -= 1
+
+            visit_FunctionDef = _visit_scoped
+            visit_AsyncFunctionDef = _visit_scoped
+            visit_ClassDef = _visit_scoped
+
+            def visit_Lambda(self, node: ast.Lambda) -> None:
+                self.depth += 1
+                self.visit(node.body)
+                self.depth -= 1
+
+        Visitor().visit(ast.parse(cls._module_source(module)))
+        return frozenset(captured)
+
+    @staticmethod
+    def _module_source(module: p.Infra.RopePyModule) -> str:
+        resource = getattr(module, "resource", None)
+        if resource is not None:
+            return Path(resource.real_path).read_text(encoding="utf-8")
+        return module.source_code
+
     @staticmethod
     def _nested_type_expression(
         node: ast.expr, actual: p.Infra.RopePyName | None, name: str, owner: str
@@ -139,8 +189,10 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             return f"{parent}.{name}"
         return f"{owner}.{name}" if node.id == name else None
 
-    @staticmethod
-    def _checked_type_reference(scope: p.Infra.RopeScope, expression: str) -> str:
+    @classmethod
+    def _checked_type_reference(
+        cls, scope: p.Infra.RopeScope, expression: str
+    ) -> str:
         """Reject a destination import captured by an existing lexical binding."""
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         node = ast.parse(expression, mode="eval").body
@@ -153,6 +205,10 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         module_scope = module.get_scope() if module is not None else None
         if module_scope is None:
             msg = "quoted type scope has no declaring module"
+            raise ValueError(msg)
+        cap = cls._captured_names(module)
+        if node.id in cap:
+            msg = f"shadowed quoted type destination: {expression}"
             raise ValueError(msg)
         local = runtime.resolve_symbol(scope, node)
         global_binding = runtime.resolve_symbol(module_scope, node)

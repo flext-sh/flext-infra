@@ -21,6 +21,9 @@ class TestsFlextInfraSharedHelperPromotion:
     @staticmethod
     def _workspace(tmp_path: Path, *, reexport: bool) -> t.Triple[Path, Path, str]:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        # Promotion publishes through the codegen transaction, which coordinates
+        # only inside an exact Git worktree root, exactly as in production.
+        u.Tests.initialize_git_repo(root)
         tier = root / c.Infra.DIR_TESTS
         suite = tier / "unit"
         fixtures = suite / "_fixtures"
@@ -83,9 +86,6 @@ class TestsFlextInfraSharedHelperPromotion:
             encoding="utf-8",
         )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        # Semantic publication runs inside a codegen transaction, which only
-        # coordinates through a real repository rooted at the project.
-        u.Tests.initialize_git_repo(root)
         return root, source, helper
 
     @staticmethod
@@ -165,8 +165,6 @@ class TestsFlextInfraSharedHelperPromotion:
         }
         with infra.rope_workspace(root) as rope:
             if lexical_collision:
-                # A collision is a planning defect: it escapes loud, before any
-                # effect, instead of being folded into a failed result.
                 with pytest.raises(
                     ValueError, match="shadowed quoted type destination"
                 ):

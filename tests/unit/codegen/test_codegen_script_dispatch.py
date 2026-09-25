@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -117,11 +118,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        # The verb target may carry prerequisites (the workspace guard).
-        deploy_targets = [
-            line for line in rendered.splitlines() if line.startswith("deploy:")
-        ]
-        tm.that(len(deploy_targets), eq=1)
+        tm.that(len(re.findall(r"^deploy:", rendered, re.MULTILINE)), eq=1)
         tm.that(
             rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
         )
@@ -170,6 +167,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         # WHAT selectors were exterminated: one verb, one meaning, declared once.
         tm.that(hasattr(gen, "default_what"), eq=False)
+        tm.that(hasattr(gen, "_apply_flag_exterminated"), eq=False)
         tm.that("initialize" in verb_names, eq=True)
         tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
@@ -199,10 +197,12 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         tm.that(" gen" in builtin_line, eq=True)
         tm.that(" codegen" in builtin_line, eq=False)
-        tm.that(
-            rendered.splitlines(),
-            has=".PHONY: _builtin_gen_init _builtin_gen_all",
+        phony_line = next(
+            line
+            for line in rendered.splitlines()
+            if line.startswith(".PHONY:") and "_builtin_gen_" in line
         )
+        tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
         # The one handler drives the conform engine (CLI namespace is unchanged).
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
@@ -240,7 +240,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def test_make_initialize_requires_its_provisioned_interpreter(
         self, tmp_path: Path
     ) -> None:
-        """The public initializer fails before effects when its runtime is absent."""
+        """The public initializer validates the pinned toolchain before effects."""
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -249,8 +249,8 @@ class TestsFlextInfraScriptDispatchMakefile:
         package.mkdir(parents=True)
         makefile = root / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(rendered, encoding="utf-8")
-        # The recorded Mise pin guards every verb first; seed it so the
-        # interpreter guard is the one this test reaches.
+        # Every public verb except help/clean/upg requires the Mise pin
+        # (db516968e); seed it so the run reaches the interpreter check.
         u.Tests.copy_tracked_mise_seeds(root)
         invoked = u.Tests.run_isolated_make(
             ["--no-print-directory", "-f", str(makefile), "initialize"], cwd=root
@@ -258,7 +258,8 @@ class TestsFlextInfraScriptDispatchMakefile:
 
         tm.ok(invoked)
         tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=False)
-        tm.that(invoked.value.stderr, has="missing environment interpreter")
+        tm.that(invoked.value.stderr, has="missing or empty")
+        tm.that(invoked.value.stderr, has="mise.version")
         tm.that((package / c.Infra.INIT_PY).exists(), eq=False)
 
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:

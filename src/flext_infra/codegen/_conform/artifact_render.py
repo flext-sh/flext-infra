@@ -391,6 +391,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=self.link_mode(repository, codegen.toolchain),
                     uv_version=codegen.toolchain.uv_version,
+                    mise_lockfile_platforms=codegen.toolchain.mise_lockfile_platforms,
+                    qlty_selector=codegen.toolchain.qlty_selector,
+                    jscpd_selector=codegen.toolchain.jscpd_selector,
+                    prettier_selector=codegen.toolchain.prettier_selector,
+                    scc_selector=codegen.toolchain.scc_selector,
+                    waza_selector=codegen.toolchain.waza_selector,
                     make=codegen.make,
                     extra_verbs=(
                         self._merge_extra_verbs(
