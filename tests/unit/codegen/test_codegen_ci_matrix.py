@@ -422,7 +422,7 @@ class TestsFlextInfraCodegenCiMatrix:
             tm.that(content, lacks="ENV MISE_GITHUB_TOKEN=")
             tm.that(
                 content,
-                has="--mount=type=secret,id=github_token,env=MISE_GITHUB_TOKEN,required=true",
+                has="--mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=true",
             )
             tm.that(content, lacks='GITHUB_TOKEN="')
 
@@ -485,6 +485,37 @@ class TestsFlextInfraCodegenCiMatrix:
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
         tm.that(windows.count("shell: bash"), eq=3)
+
+    def test_runtime_jobs_supply_the_native_github_credential(
+        self, tmp_path: Path
+    ) -> None:
+        """Each Make job inherits a token; pure Git jobs require no extra input."""
+        root = self._render_project(tmp_path / "external")
+        for filename in ("ci.yml", "ci-matrix.yml"):
+            workflow = u.Cli.yaml_load_mapping(
+                root / ".github" / "workflows" / filename
+            )
+            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+            for value in jobs.values():
+                job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+                steps = t.Cli.JSON_LIST_ADAPTER.validate_python(job["steps"])
+                commands = tuple(
+                    step["run"]
+                    for raw in steps
+                    if (step := t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw)).get(
+                        "run"
+                    )
+                )
+                invokes_make = any(
+                    isinstance(command, str) and re.search(r"\bmake\s", command)
+                    for command in commands
+                )
+                if invokes_make:
+                    environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
+                    tm.that(environment["GITHUB_TOKEN"], eq="${{ github.token }}")
+                elif "env" in job:
+                    environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
+                    tm.that(environment, lacks="GITHUB_TOKEN")
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
         self, tmp_path: Path
@@ -599,6 +630,8 @@ class TestsFlextInfraCodegenCiMatrix:
             "# End SECTION: distro-matrix", maxsplit=1
         )[0]
         tm.that(smoke, has=f"-e {ci.variable}={ci.value}")
+        tm.that(smoke, has="-e GITHUB_TOKEN")
+        tm.that(smoke, lacks="-e GITHUB_TOKEN=")
         tm.that(smoke, has="make help")
         tm.that(smoke, has="make check")
         tm.that(smoke, lacks="} make test")
