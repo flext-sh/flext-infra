@@ -158,6 +158,7 @@ if TYPE_CHECKING:
     from .gates.markdown import FlextInfraMarkdownGate
     from .gates.markdown_code import FlextInfraMarkdownCodeGate
     from .gates.markdown_code_sources import (
+        is_syntax_broken,
         source_name,
         write_docstring_sources,
         write_fenced_block_sources,
@@ -504,6 +505,7 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
+    "is_syntax_broken",
     "m",
     "main",
     "maintenance",
@@ -665,6 +667,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.markdown": ("FlextInfraMarkdownGate",),
             ".gates.markdown_code": ("FlextInfraMarkdownCodeGate",),
             ".gates.markdown_code_sources": (
+                "is_syntax_broken",
                 "source_name",
                 "write_docstring_sources",
                 "write_fenced_block_sources",
