@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from flext_infra import u
-from tests import c, m, p, t
+from tests import c, p, t
 
 
 class TestsFlextInfraUtilitiesToolingFixtureMixin:
@@ -73,13 +73,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         capture: bool = True,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest."""
-        # The host's Gas City identity selects the generated .envrc beads
-        # branch; a fixture project declares no city, so the owner-declared
-        # identity variable never crosses into the isolated run.
-        isolated_keys = (
-            *c.Tests.MAKE_ISOLATION_ENV_KEYS,
-            m.Infra.BeadsWorkspaceEnvironmentSpec().identity_var,
-        )
+        isolated_keys = c.Tests.MAKE_ISOLATION_ENV_KEYS
         return u.Cli.run_raw(
             [c.Infra.MAKE, *args],
             cwd=cwd,
