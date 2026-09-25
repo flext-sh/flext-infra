@@ -90,6 +90,7 @@ from flext_infra._utilities.private_import_facades import (
     FlextInfraUtilitiesPrivateImportFacades,
 )
 
+
 class FlextInfraUtilities(FlextCliUtilities):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
