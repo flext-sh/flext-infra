@@ -52,7 +52,7 @@ class FlextInfraRefactorImportFacades:
         accepted = cls._accepted.get((qualified, alias))
         if accepted is None:
             accepted = cls.accepts(qualified, alias)
-            cls._accepted[(qualified, alias)] = accepted
+            cls._accepted[qualified, alias] = accepted
         return accepted
 
     @classmethod
