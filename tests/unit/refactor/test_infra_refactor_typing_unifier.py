@@ -490,7 +490,8 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
     ) -> None:
         """Verify rewrites builtin containers to canonical t aliases."""
         source = (
-            "from __future__ import annotations\n\n"
+            "from __future__ import annotations\n"
+            "from flext_core import t\n\n"
             "def build(data: dict[str, list[object]]) -> tuple[str, int]:\n"
             "    return ('ok', len(data))\n"
         )
@@ -502,7 +503,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         file_path.parent.mkdir(parents=True)
         file_path.write_text(source, encoding="utf-8")
         updated, changes = rule.apply(source, _file_path=file_path)
-        tm.that(updated, has="from flext_demo import t")
+        tm.that(updated, has="from flext_core import t")
         tm.that(updated, has="data: t.MappingKV[str, t.SequenceOf[object]]")
         tm.that(updated, has="-> t.Pair[str, int]")
         tm.that(
@@ -514,6 +515,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         """Tuple shape does not prove a narrower contract for its elements."""
         source = (
             "from __future__ import annotations\n"
+            "from flext_core import t\n"
             "from typing import Any\n\nvalue: tuple[Any, ...]\n"
         )
         rule = FlextInfraRefactorTypingUnificationRule({
@@ -524,7 +526,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         file_path.parent.mkdir(parents=True)
         file_path.write_text(source, encoding="utf-8")
         updated, _changes = rule.apply(source, _file_path=file_path)
-        tm.that(updated, has="from tests import t")
+        tm.that(updated, has="from flext_core import t")
         tm.that(updated, has="value: t.VariadicTuple[Any]")
 
     def test_rewrites_fixed_arity_four_tuple_to_quad(self, tmp_path: Path) -> None:
@@ -543,13 +545,11 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         tm.that(updated, has="from flext_core import t")
         tm.that(updated, has="value: t.Quad[str, int, float, bool]")
 
-    def test_inserts_t_import_after_parenthesized_import_block(
-        self, tmp_path: Path
-    ) -> None:
+    def test_inserts_t_import_after_parenthesized_import_block(self) -> None:
         """Verify inserts t import after parenthesized import block."""
         source = (
             "from __future__ import annotations\n"
-            "from flext_demo import (\n"
+            "from flext_core import (\n"
             "    c,\n"
             "    m,\n"
             ")\n\n"
@@ -559,13 +559,10 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "id": "unify-typings",
             "fix_action": "unify_typings",
         })
-        file_path = tmp_path / "demo/src/flext_demo/sample.py"
-        file_path.parent.mkdir(parents=True)
-        file_path.write_text(source, encoding="utf-8")
-        updated, _changes = rule.apply(source, _file_path=file_path)
-        tm.that(updated, has="from flext_demo import (\n    c,\n    m,\n)")
-        tm.that(updated, has="from flext_demo import t")
-        tm.that(updated.index("from flext_demo import t"), gt=updated.index("    m,"))
+        updated, _changes = rule.apply(source)
+        tm.that(updated, has="from flext_core import (\n    c,\n    m,\n)")
+        tm.that(updated, has="from flext_core import t")
+        tm.that(updated.index("from flext_core import t"), gt=updated.index("    m,"))
         tm.that(updated, has="value: t.SequenceOf[object]")
 
     def test_skips_duplicate_t_import_in_parenthesized_import_block(
