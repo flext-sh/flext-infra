@@ -241,7 +241,6 @@ _bootstrap_setup_tools:
 		caller_xdg_data_home="$$caller_home/.local/share"; \
 	fi; \
 	caller_path="$$PATH"; \
-mise_lockfile_platforms="linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64"; \
 caller_comspec="$${COMSPEC:-}"; \
 caller_pathext="$${PATHEXT:-}"; \
 caller_systemroot="$${SYSTEMROOT:-}"; \
@@ -371,9 +370,9 @@ mise_exec() { \
 'MISE_GITHUB_OAUTH_CLIENT_ID=' \
 'MISE_GITHUB_OAUTH_EXPORT_ENV=' \
 'MISE_GITHUB_OAUTH_OPEN_BROWSER=false' \
-'MISE_LOCKFILE=false' \
-'MISE_LOCKED=false' \
-"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms" \
+'MISE_LOCKFILE=true' \
+'MISE_LOCKED=true' \
+'MISE_LOCKFILE_PLATFORMS=linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64' \
 "HOME=$$scratch/home" \
 "USERPROFILE=$$scratch/home" \
 "APPDATA=$$scratch/appdata" \
@@ -459,13 +458,10 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 	fi; \
 	caller_mise_version="$$runtime_release"; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"; \
-	# Only ``upg`` resolves. Artifact tools own a five-platform URL/checksum \
-	# matrix; npm owns one platform-independent Aube dependency graph. \
+	# Only ``upg`` resolves: it re-resolves every ``latest`` selector and the \
+	# Python minor line into mise.lock, with download URLs and checksums. \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
-		mise_checked "$$scratch/lock-artifacts.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump python uv kubectl helm kind direnv taplo ast-grep gitleaks "aqua:boyter/scc" kubeconform node go make "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"; \
-		mise_lockfile_platforms=; \
-		mise_checked "$$scratch/lock-npm-prettier.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump "npm:prettier"; \
-		mise_lockfile_platforms="linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64"; \
+		mise_checked "$$scratch/lock.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump; \
 	fi; \
 	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
@@ -1093,7 +1089,7 @@ _builtin_setup_submodules:
 	done
 
 .PHONY: _builtin_require_github_auth
-_bootstrap_setup_tools: _builtin_require_github_auth $(if $(filter upg,$(MAKECMDGOALS)),,.WAIT _builtin_require_mise_pin)
+_bootstrap_setup_tools: _builtin_require_github_auth $(if $(filter upg,$(MAKECMDGOALS)),,_builtin_require_mise_pin)
 _builtin_require_github_auth:
 	@if [ "$(GITHUB_CREDENTIAL_READ_STATUS)" != "0" ]; then \
 		printf 'ERROR: gh credential source failed with exit %s\n' "$(GITHUB_CREDENTIAL_READ_STATUS)" >&2; \

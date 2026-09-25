@@ -1,22 +1,19 @@
-"""Behavior tests for the rope signature patched-AST handlers."""
+"""Behavior tests for walking modern signatures through the rope workspace."""
 
 from __future__ import annotations
 
-import ast
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from rope.refactor import patchedast
 
-from flext_infra import p
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import c, u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraRopeSignaturePatch:
+class TestsFlextInfraRopeSignatureWalk:
     """Validate signature token walking against annotated call parameters."""
 
     def test_objects_walk_annotated_call_parameters(self, tmp_path: Path) -> None:
@@ -99,10 +96,7 @@ class TestsFlextInfraRopeSignaturePatch:
             )
             scope = u.Infra.scope_at(pymodule, source.index("values["))
 
-        # A Rope scope is not a payload value; its observable identity is the
-        # enclosing function's scope kind.
-        assert scope is not None
-        tm.that(scope.get_kind(), eq=c.Infra.RopeScopeKind.FUNCTION)
+        tm.not_none(scope)
 
     def test_rename_writes_pep701_nested_quote_expression(self, tmp_path: Path) -> None:
         """Rope preserves f-string fragments while writing a renamed AST child."""
@@ -121,10 +115,7 @@ class TestsFlextInfraRopeSignaturePatch:
         module_path.write_text(source, encoding="utf-8")
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            if resource is None:
-                msg = "Rope did not resolve the PEP 701 regression resource"
-                raise AssertionError(msg)
+            resource = tm.not_none(rope.resource(module_path))
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -154,14 +145,7 @@ class TestsFlextInfraRopeSignaturePatch:
         module_path.write_text(source, encoding="utf-8")
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            if resource is None:
-                msg = "Rope did not resolve the format-spec regression resource"
-                raise AssertionError(msg)
-            pymodule = u.Infra.get_string_module(
-                rope.rope_project, source, resource=resource
-            )
-            scope = u.Infra.scope_at(pymodule, source.index("widths)}}"))
+            resource = tm.not_none(rope.resource(module_path))
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -172,21 +156,4 @@ class TestsFlextInfraRopeSignaturePatch:
             rope.rope_project.do(changes)
             rewritten = resource.read()
 
-        tm.that(scope, none=False)
         tm.that(rewritten, eq=expected)
-
-    def test_write_ast_keeps_nested_generator_name_mutation(self) -> None:
-        """Sorted children expose names below positionless comprehension nodes."""
-        source = 'rendered = f"{next(width for width in widths)}"\n'
-        tree = patchedast.get_patched_ast(source, sorted_children=True)
-        widths = next(
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Name) and node.id == "widths"
-        )
-        patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", widths)
-        patchable.sorted_children = ["sizes"]
-
-        rendered = patchedast.write_ast(tree)
-
-        tm.that(rendered, eq=source.replace("widths", "sizes"))

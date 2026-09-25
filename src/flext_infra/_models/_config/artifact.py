@@ -94,6 +94,15 @@ class FlextInfraConfigModelsArtifact:
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        retired_projections: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                description=(
+                    "Repository-relative generated projections that no template "
+                    "renders any more; generation removes them from consumers"
+                )
+            ),
+        ] = ()
         fresh_import_entry_points_warn_only: Annotated[
             bool,
             m.Field(

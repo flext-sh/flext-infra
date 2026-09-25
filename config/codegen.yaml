@@ -2,6 +2,10 @@ Infra:
   codegen:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
+    # Projections no template renders any more; generation removes the
+    # generated copy from every consumer (renamed: install-git-hooks.sh ->
+    # validate-git-hook.sh).
+    retired_projections: [.github/scripts/install-git-hooks.sh]
 
     # Operator law 2026-09-22: the pyproject template declares `.cli:main`
     # for every distribution while most member cli facades predate that
@@ -980,10 +984,6 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
-      - path: .github/scripts/validate-git-hook.sh
-        owner: codegen
-        policy: full
-        mode: 493 # 0o755
       - path: .github/scripts/flext-law-loop.sh
         owner: codegen
         policy: full
@@ -1255,7 +1255,7 @@ Infra:
             runtime: ["click>=8.3.3,<8.4", typer>=0.27.2, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2]
           - upstream: flext_cli
             project: flext-infra
-            runtime: [flext-cli, defusedxml>=0.7.1, GitPython>=3.1.62, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11, rope>=1.14.0, pytest>=9.1.1, mkdocs>=1.6.1]
+            runtime: [flext-cli, defusedxml>=0.7.1, GitPython>=3.1.62, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11, "rope @ git+https://github.com/marlon-costa-dc/rope.git@1.14.0+dc.2", pytest>=9.1.1, mkdocs>=1.6.1]
           - upstream: flext_cli
             project: flext-tests
             runtime: [flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0]
@@ -1389,7 +1389,6 @@ Infra:
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-            - "!.claude/settings.local.json"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace]
           patterns:
@@ -1519,7 +1518,8 @@ Infra:
       # the live workspace topology and can never diverge from each other.
       # `.claude/*` re-blocked the whole directory AFTER the whitelist above
       # had unblocked it, and in gitignore the last matching rule wins — so
-      # every governed provider artifact (the skill surfaces) became untrackable. Local session data is named explicitly
+      # every governed provider artifact (the skill surfaces) became
+      # untrackable. Local session data is named explicitly
       # instead of re-blocking the directory that the whitelist just opened.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
@@ -1571,17 +1571,17 @@ Infra:
       # machine-written settings/hooks surface and its digest sidecar is
       # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
-          # settings.json projections are portable governance and stay
-          # trackable; settings.local.json and the digest sidecars wire
-          # machine-absolute paths, so they are named here. This block follows
-          # the provider-tree whitelists and the last matching gitignore rule
-          # wins.
+          # Provider settings files are generated per machine (hook commands
+          # and paths of the operator who ran the catalog generator); tracked,
+          # they hand every other clone hooks that do not exist there.
           patterns:
             - ".github/hooks/"
             - "*/.hooks.json.agents-governance.json"
             - ".claude/*.agents-governance.json"
             - ".gemini/*.agents-governance.json"
+            - ".claude/settings.json"
             - ".claude/settings.local.json"
+            - ".gemini/settings.json"
         - name: "Operator-private local config overrides"
           patterns:
             - "/config/codegen-overrides.local.yaml"
@@ -1925,11 +1925,6 @@ Infra:
         - source: base/.github/scripts/check-cqrs-compliance.sh.j2
           destination: .github/scripts/check-cqrs-compliance.sh
           profiles: [workspace]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/validate-git-hook.sh.j2
-          destination: .github/scripts/validate-git-hook.sh
-          profiles: [workspace, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/flext-law-loop.sh.j2
