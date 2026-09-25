@@ -158,7 +158,6 @@ if TYPE_CHECKING:
     from .gates.markdown import FlextInfraMarkdownGate
     from .gates.markdown_code import FlextInfraMarkdownCodeGate
     from .gates.markdown_code_sources import (
-        TEST_SKIP_MARKER,
         source_name,
         write_docstring_sources,
         write_fenced_block_sources,
@@ -283,7 +282,6 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "TEST_SKIP_MARKER",
     "CliDispatchService",
     "CliRouteBase",
     "CliRouteService",
@@ -667,7 +665,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.markdown": ("FlextInfraMarkdownGate",),
             ".gates.markdown_code": ("FlextInfraMarkdownCodeGate",),
             ".gates.markdown_code_sources": (
-                "TEST_SKIP_MARKER",
                 "source_name",
                 "write_docstring_sources",
                 "write_fenced_block_sources",

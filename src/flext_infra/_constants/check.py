@@ -118,6 +118,8 @@ class FlextInfraConstantsCheck:
     "Canonical fenced-Python-block extractor; the flext-tests markdown validator consumes the same pattern."
     MARKDOWN_CODE_SOURCE_FORMAT: ClassVar[str] = "{}_b{}.py"
     "Temp-file name for one extracted block: sanitized doc path plus block index."
+    MARKDOWN_CODE_SKIP_MARKER: ClassVar[str] = "notest"
+    "Existing fence marker (pytest-markdown-docs) opting a block out of code validation."
     MARKDOWN_CODE_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?P<file>\S+):\d+:\d+:\s+unformatted:\s+"
     )
