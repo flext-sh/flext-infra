@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import ast
+from typing import TYPE_CHECKING, cast
 
 from flext_tests import tm
+from rope.refactor import patchedast
 
+from flext_infra import p
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import u
 
@@ -77,3 +80,107 @@ class TestsFlextInfraRopeSignaturePatch:
             objects = rope.objects(module_path)
 
         tm.that([item.name for item in objects], has="shapes")
+
+    def test_scope_at_walks_pep701_nested_quotes(self, tmp_path: Path) -> None:
+        """Rope resolves scope when an f-string expression reuses quote style."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / "quoted.py"
+        source = (
+            "def render(values: dict[str, str]) -> str:\n"
+            '    return f"value={values["name"]}"\n'
+        )
+        module_path.write_text(source, encoding="utf-8")
+
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+            pymodule = u.Infra.get_string_module(
+                rope.rope_project, source, resource=rope.resource(module_path)
+            )
+            scope = u.Infra.scope_at(pymodule, source.index("values["))
+
+        tm.that(scope, none=False)
+
+    def test_rename_writes_pep701_nested_quote_expression(self, tmp_path: Path) -> None:
+        """Rope preserves f-string fragments while writing a renamed AST child."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / "quoted_rename.py"
+        source = (
+            "def render(values: dict[str, str]) -> str:\n"
+            '    return f"value={values["name"].upper()}"\n'
+        )
+        expected = (
+            "def render(items: dict[str, str]) -> str:\n"
+            '    return f"value={items["name"].upper()}"\n'
+        )
+        module_path.write_text(source, encoding="utf-8")
+
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+            resource = rope.resource(module_path)
+            tm.that(resource, none=False)
+            if resource is None:
+                msg = "Rope did not resolve the PEP 701 regression resource"
+                raise AssertionError(msg)
+            changes = u.Infra.rename_changes(
+                rope.rope_project,
+                resource,
+                source.index("values["),
+                "items",
+                resources=(resource,),
+            )
+            rope.rope_project.do(changes)
+            rewritten = resource.read()
+
+        tm.that(rewritten, eq=expected)
+
+    def test_rename_writes_generator_inside_format_spec(self, tmp_path: Path) -> None:
+        """Rope patches generator scopes nested in an f-string format spec."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / "format_spec.py"
+        source = (
+            "def render(value: int, widths: list[int]) -> str:\n"
+            '    return f"{value:{next(width for width in widths)}}"\n'
+        )
+        expected = (
+            "def render(value: int, sizes: list[int]) -> str:\n"
+            '    return f"{value:{next(width for width in sizes)}}"\n'
+        )
+        module_path.write_text(source, encoding="utf-8")
+
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+            resource = rope.resource(module_path)
+            tm.that(resource, none=False)
+            if resource is None:
+                msg = "Rope did not resolve the format-spec regression resource"
+                raise AssertionError(msg)
+            changes = u.Infra.rename_changes(
+                rope.rope_project,
+                resource,
+                source.index("widths:"),
+                "sizes",
+                resources=(resource,),
+            )
+            rope.rope_project.do(changes)
+            rewritten = resource.read()
+
+        tm.that(rewritten, eq=expected)
+
+    def test_write_ast_keeps_nested_generator_name_mutation(self) -> None:
+        """Sorted children expose names below positionless comprehension nodes."""
+        source = 'rendered = f"{next(width for width in widths)}"\n'
+        tree = patchedast.get_patched_ast(source, sorted_children=True)
+        widths = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and node.id == "widths"
+        )
+        patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", widths)
+        patchable.sorted_children = ["sizes"]
+
+        rendered = patchedast.write_ast(tree)
+
+        tm.that(rendered, eq=source.replace("widths", "sizes"))

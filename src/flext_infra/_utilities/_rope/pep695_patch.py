@@ -30,13 +30,14 @@ FLEXT typing law forbids the getattr-dispatch/Any workaround.
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable
-from typing import TYPE_CHECKING, ClassVar
+from operator import itemgetter
+from typing import ClassVar, cast
+
+from flext_infra import p
 
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesRopePep695Patch:
@@ -64,6 +65,101 @@ class FlextInfraUtilitiesRopePep695Patch:
         walker = FlextInfraUtilitiesRopeRuntime.pep695_ast_walker()
         original_function_def: Callable[..., None] = walker._handle_function_def_node  # pyright: ignore[reportPrivateUsage]
         original_class_def: Callable[..., None] = walker._ClassDef  # pyright: ignore[reportPrivateUsage]
+
+        def _source_offset(
+            self: p.Infra.PatchingASTWalker, lineno: int, byte_offset: int
+        ) -> int:
+            """Translate the parser's UTF-8 column into Rope's character offset."""
+            line_start = self.lines.get_line_start(lineno)
+            line = self.source.source[line_start:].partition("\n")[0]
+            column = len(line.encode("utf-8")[:byte_offset].decode("utf-8"))
+            return line_start + column
+
+        def _joined_str(self: p.Infra.PatchingASTWalker, node: ast.JoinedStr) -> None:
+            """Patch PEP 701 f-strings from parser coordinates, not token guesses."""
+            start, end = self.source.consume_string()
+
+            def joined_expressions(parent: ast.JoinedStr) -> list[ast.AST]:
+                expressions: list[ast.AST] = []
+                for value in parent.values:
+                    if not isinstance(value, ast.FormattedValue):
+                        continue
+                    expressions.append(value.value)
+                    if isinstance(value.format_spec, ast.JoinedStr):
+                        expressions.extend(joined_expressions(value.format_spec))
+                return expressions
+
+            def positioned_children(parent: ast.AST) -> list[ast.AST]:
+                if isinstance(parent, ast.JoinedStr):
+                    return joined_expressions(parent)
+                children: list[ast.AST] = []
+                for child in ast.iter_child_nodes(parent):
+                    if isinstance(child, p.Infra.PatchingASTWalker.SourceSpanningNode):
+                        children.append(child)
+                    else:
+                        children.extend(positioned_children(child))
+                return children
+
+            def patch_node(
+                current: ast.AST, current_start: int, current_end: int
+            ) -> None:
+                patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", current)
+                patchable.region = (current_start, current_end)
+                if not self.children:
+                    return
+                children: list[tuple[int, int, ast.AST]] = []
+                for child in positioned_children(current):
+                    if not isinstance(
+                        child, p.Infra.PatchingASTWalker.SourceSpanningNode
+                    ):
+                        continue
+                    descendant = cast("p.Infra.PatchingASTWalker.PatchableNode", child)
+                    child_start = _source_offset(
+                        self, descendant.lineno, descendant.col_offset
+                    )
+                    child_end = _source_offset(
+                        self, descendant.end_lineno, descendant.end_col_offset
+                    )
+                    if not current_start <= child_start <= child_end <= current_end:
+                        msg = "PEP 701 AST descendant escapes its source span"
+                        raise ValueError(msg)
+                    children.append((child_start, child_end, child))
+                children.sort(key=itemgetter(0, 1))
+                cursor = current_start
+                interleaved: list[p.AttributeProbe] = []
+                for child_start, child_end, descendant in children:
+                    if child_start < cursor:
+                        msg = "PEP 701 AST descendant spans overlap"
+                        raise ValueError(msg)
+                    interleaved.append(self.source.source[cursor:child_start])
+                    patch_node(descendant, child_start, child_end)
+                    interleaved.append(descendant)
+                    cursor = child_end
+                interleaved.append(self.source.source[cursor:current_end])
+                patchable.sorted_children = interleaved
+
+            for descendant in ast.walk(node):
+                if not isinstance(
+                    descendant, p.Infra.PatchingASTWalker.SourceSpanningNode
+                ):
+                    continue
+                patchable_descendant = cast(
+                    "p.Infra.PatchingASTWalker.PatchableNode", descendant
+                )
+                descendant_start = _source_offset(
+                    self, patchable_descendant.lineno, patchable_descendant.col_offset
+                )
+                descendant_end = _source_offset(
+                    self,
+                    patchable_descendant.end_lineno,
+                    patchable_descendant.end_col_offset,
+                )
+                if not start <= descendant_start <= descendant_end <= end:
+                    msg = "PEP 701 AST descendant escapes its joined-string span"
+                    raise ValueError(msg)
+                patchable_descendant.region = (descendant_start, descendant_end)
+            patch_node(node, start, end)
+            self.source.offset = end
 
         def _type_params_children(
             node: p.Infra.PatchingASTWalker.TypeParameterOwner,
@@ -206,6 +302,7 @@ class FlextInfraUtilitiesRopePep695Patch:
 
         walker._handle_function_def_node = _patched_function_def  # pyright: ignore[reportPrivateUsage]
         walker._ClassDef = _patched_class_def  # pyright: ignore[reportPrivateUsage]
+        walker._JoinedStr = _joined_str  # pyright: ignore[reportPrivateUsage]
         walker._TypeAlias = _type_alias
         walker._TypeVar = _type_var
         walker._ParamSpec = _param_spec

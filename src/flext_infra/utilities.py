@@ -44,6 +44,8 @@ from ._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCom
 from ._utilities.namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
 from ._utilities.namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
 from ._utilities.network import FlextInfraUtilitiesNetwork
+from ._utilities.private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
+from ._utilities.private_import_facades import FlextInfraUtilitiesPrivateImportFacades
 from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -160,6 +162,8 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesWorkspaceFingerprint,
         FlextInfraUtilitiesCodemodRules,
         FlextInfraUtilitiesSignatureRules,
+        FlextInfraUtilitiesPrivateImportAncestry,
+        FlextInfraUtilitiesPrivateImportFacades,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

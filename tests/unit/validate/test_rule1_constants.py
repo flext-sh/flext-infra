@@ -6,10 +6,8 @@ from pathlib import Path
 
 from tests import u
 
-from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
-
-class TestsFlextInfraRule1ConstantsFacade(TestsFlextInfraValidateNamespaceBase):
+class TestsFlextInfraRule1ConstantsFacade:
     """Test suite for namespace validator Rule 1 (constants facade)."""
 
     def test_rule1_valid_constants_passes(self, tmp_path: Path) -> None:
@@ -18,4 +16,4 @@ class TestsFlextInfraRule1ConstantsFacade(TestsFlextInfraValidateNamespaceBase):
             module_source=u.Tests.namespace_fixture("rule1_valid_constants.pysrc"),
             module_name="constants.py",
         )
-        self._assert_valid(root)
+        u.Tests.assert_namespace_valid(root)

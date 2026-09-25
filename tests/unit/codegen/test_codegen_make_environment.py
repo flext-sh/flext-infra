@@ -628,11 +628,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
         # override rides the environment rather than the command line because
         # UV is not a declared Make variable.
         process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "check"],
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "check"],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -749,10 +748,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
 
         process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
-                cwd=project_root,
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "test"], cwd=project_root
             )
         )
 
@@ -781,6 +778,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             # is executed through `mise exec`, so nothing needs an ambient mise
             # and nothing hand-assembles a managed PATH any more.
             'mise_exec project "$$latest_mise" -C "$$project_root" install --yes',
+            "upgrade --no-prune python",
             '"$$latest_mise" -C "$$project_root" exec -- env',
             "SETUP_DIRENV=$$direnv_executable",
             'desired_python=$$("$(SETUP_MISE)" -C "$(PROJECT_ROOT)" which python)',

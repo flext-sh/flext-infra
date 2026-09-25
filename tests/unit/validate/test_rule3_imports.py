@@ -9,10 +9,8 @@ from flext_tests import tm
 
 from tests import u
 
-from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
-
-class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
+class TestsFlextInfraRule3ImportRules:
     """Test suite for namespace validator Rule 3 (import rules)."""
 
     @pytest.mark.parametrize(
@@ -47,10 +45,12 @@ class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
         module_name: str,
         expected_violation_substr: str,
     ) -> None:
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name=module_name
         )
-        self._assert_invalid(root, expected_violation_substr=expected_violation_substr)
+        u.Tests.assert_namespace_invalid(
+            root, expected_violation_substr=expected_violation_substr
+        )
 
     def test_rule3_utilities_facade_import_remains_allowed(
         self, tmp_path: Path
@@ -62,7 +62,7 @@ class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
             ),
             module_name="utilities.py",
         )
-        self._assert_valid(root)
+        u.Tests.assert_namespace_valid(root)
 
     def test_rule3_models_facade_import_remains_allowed(self, tmp_path: Path) -> None:
         root = u.Tests.namespace_project(
@@ -70,7 +70,7 @@ class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
             module_source=u.Tests.namespace_fixture("rule0_valid.pysrc"),
             module_name="models.py",
         )
-        self._assert_valid(root)
+        u.Tests.assert_namespace_valid(root)
 
     def test_rule3_settings_owner_declaration_facade_runtime_imports_allowed(
         self, tmp_path: Path
@@ -89,7 +89,7 @@ class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
             ),
             module_name="_settings.py",
         )
-        self._assert_valid(root)
+        u.Tests.assert_namespace_valid(root)
 
     def test_rule3_settings_owner_c_import_allowed(self, tmp_path: Path) -> None:
         """Operator ruling 2026-09-19: settings defaults read declared constants.
@@ -106,7 +106,7 @@ class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
             module_name="_settings.py",
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
-        self._assert_no_violation_contains(root, "reverse runtime import")
+        u.Tests.assert_namespace_no_violation_contains(root, "reverse runtime import")

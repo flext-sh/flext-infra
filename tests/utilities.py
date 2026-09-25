@@ -9,6 +9,7 @@ from flext_tests import FlextTestsUtilities, tm
 from flext_core import r
 from flext_infra import FlextInfraUtilities, config
 from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, m, p, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
@@ -314,6 +315,86 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             _ = target.write_text(module_source, encoding="utf-8")
             TestsFlextInfraUtilities.Tests.initialize_git_repo(project_root)
             return project_root, target
+
+        @staticmethod
+        def namespace_validator() -> FlextInfraNamespaceValidator:
+            """Return a fresh namespace validator for an observable test run."""
+            return FlextInfraNamespaceValidator()
+
+        @staticmethod
+        def validate_namespace_project(root: Path) -> m.Infra.ValidationReport:
+            """Validate one project and require the public result to succeed."""
+            result = (
+                TestsFlextInfraUtilities.Tests.namespace_validator().validate_project(
+                    root
+                )
+            )
+            tm.ok(result)
+            return result.value
+
+        @staticmethod
+        def assert_namespace_valid(root: Path) -> None:
+            """Require a namespace project to have no violations."""
+            report = TestsFlextInfraUtilities.Tests.validate_namespace_project(root)
+            tm.that(report.passed, eq=True, msg=str(report.violations))
+            tm.that(report.violations, empty=True)
+
+        @staticmethod
+        def assert_namespace_invalid(
+            root: Path,
+            *,
+            expected_violation_substr: str | None = None,
+            expected_violation_count: int | None = None,
+        ) -> None:
+            """Require a namespace project to expose its expected violations."""
+            report = TestsFlextInfraUtilities.Tests.validate_namespace_project(root)
+            tm.that(report.passed, eq=False, msg=str(report.violations))
+            if expected_violation_substr is not None:
+                tm.that(
+                    any(
+                        expected_violation_substr in item for item in report.violations
+                    ),
+                    eq=True,
+                    msg=(
+                        "expected violation containing "
+                        f"{expected_violation_substr!r}; found {report.violations}"
+                    ),
+                )
+            if expected_violation_count is not None:
+                tm.that(len(report.violations), eq=expected_violation_count)
+
+        @staticmethod
+        def assert_namespace_violation_contains(root: Path, substring: str) -> None:
+            """Require at least one namespace violation to contain text."""
+            report = TestsFlextInfraUtilities.Tests.validate_namespace_project(root)
+            tm.that(
+                any(substring in item for item in report.violations),
+                eq=True,
+                msg=f"expected violation containing {substring!r}; found {report.violations}",
+            )
+
+        @staticmethod
+        def assert_namespace_no_violation_contains(root: Path, substring: str) -> None:
+            """Require every namespace violation to omit text."""
+            report = TestsFlextInfraUtilities.Tests.validate_namespace_project(root)
+            tm.that(
+                any(substring in item for item in report.violations),
+                eq=False,
+                msg=f"unexpected violation containing {substring!r}: {report.violations}",
+            )
+
+        @staticmethod
+        def assert_namespace_file_in_inventory(root: Path, target: Path) -> None:
+            """Require a namespace fixture to occur in the source inventory."""
+            files = u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(root,))
+            )
+            tm.ok(files)
+            tm.that(
+                target in files.value,
+                eq=True,
+                msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
+            )
 
         @staticmethod
         def write_canonical_package_layout(package_dir: Path) -> None:
