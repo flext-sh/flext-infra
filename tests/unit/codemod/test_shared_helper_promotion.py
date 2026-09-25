@@ -55,14 +55,30 @@ class TestsFlextInfraSharedHelperPromotion:
             f"from {module} import {helper} as Shared\n\n"
             "class Consumer(Shared):\n"
             "    def read(self) -> str:\n"
-            "        return self.value()\n",
+            "        return self.value()\n\n"
+            "    def echo(self, value: 'Shared') -> 'Shared':\n"
+            "        Shared = type(None)\n"
+            "        assert not isinstance(value, Shared)\n"
+            "        return value\n",
+            encoding="utf-8",
+        )
+        (suite / "quoted.py").write_text(
+            "from typing import Annotated, Literal\n"
+            f"from {module} import {helper} as Shared\n\n"
+            "ORDINARY = 'Shared'\n\n"
+            "def echo(value: 'Shared') -> 'Shared':\n"
+            "    return value\n\n"
+            "def annotated(value: \"Annotated[Shared, 'Shared']\") -> \"Literal['Shared']\":\n"
+            "    return 'Shared'\n",
             encoding="utf-8",
         )
         (suite / "unrelated.py").write_text(
             f"class {helper}:\n"
             "    def value(self) -> str:\n"
             "        return 'homonym'\n\n"
-            f"VALUE = {helper}().value()\n",
+            f"VALUE = {helper}().value()\n\n"
+            f"def echo(value: '{helper}') -> '{helper}':\n"
+            "    return value\n",
             encoding="utf-8",
         )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -76,16 +92,36 @@ class TestsFlextInfraSharedHelperPromotion:
         return outcome.stdout.strip()
 
     @pytest.mark.parametrize("reexport", [False, True])
+    @pytest.mark.parametrize("quoted_only", [False, True])
     def test_original_identity_moves_without_effects_until_publication(
-        self, tmp_path: Path, *, reexport: bool
+        self, tmp_path: Path, *, reexport: bool, quoted_only: bool
     ) -> None:
         root, source, helper = self._workspace(tmp_path, reexport=reexport)
+        if quoted_only:
+            (root / c.Infra.DIR_TESTS / "unit" / "consumer.py").unlink()
         probe = (
-            "from tests.unit.consumer import Consumer\n"
-            "from tests.unit.unrelated import VALUE\n"
-            "print(Consumer().read(), VALUE)\n"
-            "print(repr(Consumer().payload()), repr(Consumer.__bases__[0].__doc__))\n"
+            "from typing import get_args, get_type_hints\n"
+            "from tests.unit.quoted import ORDINARY, annotated, echo\n"
+            "from tests.unit import unrelated\n"
+            "Helper = get_type_hints(echo)['value']\n"
+            "assert get_type_hints(echo)['return'] is Helper\n"
+            "assert echo(Helper()).value() == 'shared behavior'\n"
+            "hints = get_type_hints(annotated, include_extras=True)\n"
+            "assert get_args(hints['value']) == (Helper, 'Shared')\n"
+            "assert get_args(hints['return']) == ('Shared',)\n"
+            "assert ORDINARY == 'Shared'\n"
+            f"assert get_type_hints(unrelated.echo)['value'] is unrelated.{helper}\n"
+            "print(Helper().value(), unrelated.VALUE)\n"
+            "print(repr(Helper().payload()), repr(Helper.__doc__))\n"
         )
+        if not quoted_only:
+            probe += (
+                "from tests.unit.consumer import Consumer\n"
+                "assert Consumer.__bases__[0] is Helper\n"
+                "assert get_type_hints(Consumer.echo)['value'] is Helper\n"
+                "assert get_type_hints(Consumer.echo)['return'] is Helper\n"
+                "assert Consumer().echo(Helper()).value() == Consumer().read()\n"
+            )
         before = self._run(root, probe)
         sources = {
             path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
@@ -134,12 +170,13 @@ class TestsFlextInfraSharedHelperPromotion:
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         tm.that(self._run(root, probe), eq=before)
         identity = (
+            "from typing import get_type_hints\n"
             "from tests import u\n"
-            "from tests.unit.consumer import Consumer\n"
+            "from tests.unit.quoted import echo\n"
             "from tests.unit._fixtures import behavior\n"
-            f"assert Consumer.__bases__[0] is u.{helper}\n"
+            f"assert get_type_hints(echo)['value'] is u.{helper}\n"
             f"assert not hasattr(behavior, '{helper}')\n"
-            "print(Consumer().read())\n"
+            f"print(u.{helper}().value())\n"
         )
         tm.that(self._run(root, identity), eq="shared behavior")
         tm.that(source.exists(), eq=True)
@@ -160,6 +197,7 @@ class TestsFlextInfraSharedHelperPromotion:
             )
         else:
             (root / c.Infra.DIR_TESTS / "unit" / "consumer.py").unlink()
+            (root / c.Infra.DIR_TESTS / "unit" / "quoted.py").unlink()
         sources = {
             path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
         }

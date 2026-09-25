@@ -23,3 +23,9 @@ occupied destinations, and stages only content changes in the governed source in
 Existing nesting and publication complete the cutover; `make gen` updates the package
 exports. When an existing export needs regeneration, run `make gen` before `make mod` so
 the move observes the current public binding.
+
+Quoted annotations are resolved before relocation loses the original binding, including
+aliases imported through generated reexports. Rope elects the destination import; the
+nesting step keeps `get_type_hints` bound to the moved class. Consumers used only in
+type positions participate in the same plan. Ordinary literals, `Literal` values,
+`Annotated` metadata, and unrelated homonyms retain their values.

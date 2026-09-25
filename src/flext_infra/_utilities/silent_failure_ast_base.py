@@ -6,7 +6,7 @@ import ast
 from collections.abc import MutableMapping
 from typing import ClassVar, NamedTuple
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):

@@ -10,7 +10,6 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import t, u as test_u
 
 # Why (suite budget): every scenario provisions a real scaffolded project
@@ -39,16 +38,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         workspace = test_u.Tests.workspace_spec(
             repository, project=test_u.Tests.project_spec(repository.name)
         )
-        request = test_u.Tests.conform_request(
-            root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        plan = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root, request=request, initial_workspace=workspace
-            ).plan(request)
-        )
+        plan = test_u.Tests.conform_plan(root, workspace)
         # Setup consumes generated environment declarations and tracked Mise
         # seeds; documentation publication belongs to the conform tests.
         for filename in (

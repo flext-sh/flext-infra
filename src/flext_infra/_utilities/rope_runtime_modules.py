@@ -205,6 +205,32 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         return result
 
     @classmethod
+    def import_binding(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        module_name: str,
+        name: str,
+    ) -> t.Pair[str, str]:
+        """Plan an import and use the expression elected by Rope's import owner."""
+        result = cls._runtime_callable("rope.refactor.importutils", "add_import")(
+            project, module, module_name, name
+        )
+        if not isinstance(result, tuple):
+            msg = "Rope add_import returned an invalid source and binding pair"
+            raise TypeError(msg)
+        match result:
+            case (source, binding):
+                pass
+            case _:
+                msg = "Rope add_import returned an invalid source and binding pair"
+                raise TypeError(msg)
+        if not isinstance(source, str) or not isinstance(binding, str):
+            msg = "Rope add_import returned non-text source or binding"
+            raise TypeError(msg)
+        return (source, binding)
+
+    @classmethod
     def get_string_module(
         cls,
         rope_project: t.Infra.RopeProject,

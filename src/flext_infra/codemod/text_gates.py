@@ -68,7 +68,9 @@ class FlextInfraModTextGateEngine:
         return r[t.VariadicTuple[m.Infra.ModTextRule]].ok(tuple(rules))
 
     @staticmethod
-    def _build_rule(raw: p.AttributeProbe, source: Path) -> p.Result[m.Infra.ModTextRule]:
+    def _build_rule(
+        raw: p.AttributeProbe, source: Path
+    ) -> p.Result[m.Infra.ModTextRule]:
         """Validate one raw list entry into a frozen text rule."""
         if not isinstance(raw, dict):
             return r[m.Infra.ModTextRule].fail(

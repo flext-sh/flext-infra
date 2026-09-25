@@ -10,12 +10,14 @@ import libcst as cst
 from flext_infra import c, m, p, t
 
 from .._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
-from ..rope_class_move import FlextInfraUtilitiesRopeClassMove
-from ..rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
 from ..qualified_names import FlextInfraUtilitiesQualifiedNames
+from ..rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
+from .helper_references import FlextInfraUtilitiesSemanticHelperReferences
 
 
-class FlextInfraUtilitiesSemanticTestHelpers:
+class FlextInfraUtilitiesSemanticTestHelpers(
+    FlextInfraUtilitiesSemanticHelperReferences
+):
     """Discover live fixture helpers and move them to their tier utilities owner."""
 
     class _MovedExports(cst.CSTTransformer):
@@ -70,7 +72,7 @@ class FlextInfraUtilitiesSemanticTestHelpers:
                     )
                     if move is None:
                         break
-                    planned = FlextInfraUtilitiesRopeClassMove.plan_class_move(
+                    planned = cls._helper_move_plan(
                         move, sources={path: working[path] for path in editable}
                     )
                     if not any(edit.file_path == path for edit in planned):

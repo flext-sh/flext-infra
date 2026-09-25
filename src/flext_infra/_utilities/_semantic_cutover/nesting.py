@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c, m, t
 
+from ..rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
 from .edits import FlextInfraUtilitiesSemanticCutoverEdits
 from .family_flatten import FlextInfraUtilitiesSemanticFamilyFlatten
 from .nesting_cst import FlextInfraUtilitiesSemanticCutoverNestingCst
@@ -172,12 +173,23 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         nested_names = frozenset(
             name for bindings in bindings_by_module.values() for name in bindings
         )
+        if not nested_names:
+            return planned_edits.ok(())
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            rope_workspace.rope_project, sources
+        )
+        try:
+            quoted = cls._nesting_quoted_sources(
+                project, dict(editable), definitions_by_file
+            )
+        finally:
+            project.close()
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             module = modules.get(path)
             definitions = definitions_by_file.get(path, {})
             updated = cls._rewrite_class_nesting_source(
-                source,
+                quoted[path],
                 module_name=module.module_name if module is not None else "",
                 is_package_init=module.is_package_init if module is not None else False,
                 bindings_by_module=bindings_by_module,
@@ -195,6 +207,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 (path, source)
                 for path, source in editable
                 if path in definitions_by_file
+                or quoted[path] != source
                 or any(name in source for name in nested_names)
             ),
             rewrite,

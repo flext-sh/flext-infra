@@ -148,8 +148,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 # The generated lazy publication IS a binding statement: every
                 # name it lists resolves through its submodule entry, exactly
                 # as install_lazy_exports resolves it at runtime.
-                if node.value is None:
-                    continue
                 for dict_node in (
                     d for d in ast.walk(node.value) if isinstance(d, ast.Dict)
                 ):
