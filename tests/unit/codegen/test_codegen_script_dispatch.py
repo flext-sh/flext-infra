@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -118,7 +117,11 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        tm.that(len(re.findall(r"^deploy:", rendered, re.MULTILINE)), eq=1)
+        # The verb target may carry prerequisites (the workspace guard).
+        deploy_targets = [
+            line for line in rendered.splitlines() if line.startswith("deploy:")
+        ]
+        tm.that(len(deploy_targets), eq=1)
         tm.that(
             rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
         )

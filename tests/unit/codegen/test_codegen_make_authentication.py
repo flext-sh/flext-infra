@@ -141,6 +141,11 @@ class TestsFlextInfraCodegenMakeAuthentication:
                     "GH_HOST": "github.com",
                     "MISE_GITHUB_TOKEN": "must-not-be-a-fallback",
                     "PATH": os.pathsep.join((str(gh_bin), os.environ["PATH"])),
+                    # gh reads a stored credential from the session keyring
+                    # over D-Bus even with an empty GH_CONFIG_DIR, and finds
+                    # the session bus on its own when the variable is unset;
+                    # a bus address inside the sandbox leaves it none.
+                    "DBUS_SESSION_BUS_ADDRESS": f"unix:path={tmp_path / 'no-bus'}",
                 },
             )
         )
