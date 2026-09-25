@@ -63,12 +63,12 @@ Infra:
       gitleaks_version: latest
       kubeconform_version: latest
       # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
-      # true: the committed lock written by `make upg` pins every tool, and
-      # setup installs frozen from it. The isolated safe bootstrap derives
-      # MISE_LOCKFILE and MISE_LOCKED from these same values: project settings
-      # alone do not enable Mise's global lock-write guard in safe mode.
-      mise_lockfile: true
-      mise_locked: true
+      # false: the fleet runs unlocked and current — tools resolve at setup
+      # time against the newest published release; no committed mise.lock.
+      # (The integration lane pinned-lock state diverged from the newer-mise
+      # aube lock graph; unlocked mode is the adopted fleet contract here.)
+      mise_lockfile: false
+      mise_locked: false
       # Projection: .mise.toml [settings] lockfile_platforms. The platforms the
       # CI matrix runs on (ubuntu, macos, windows runners, x64 and arm64);
       # `make upg` resolves these plus the current host, which mise always adds.
