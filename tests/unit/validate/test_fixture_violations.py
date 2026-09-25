@@ -7,12 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import u, utilities
+from tests import u
 
 
-class TestsFlextInfraFixtureViolations(
-    utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
-):
+class TestsFlextInfraFixtureViolations:
     """Each namespace-rule fixture fails the project with its own message."""
 
     @pytest.mark.parametrize(
@@ -92,12 +90,12 @@ class TestsFlextInfraFixtureViolations(
         expected_violation_substr: str,
     ) -> None:
         """Each namespace-rule fixture fails the project with its own message."""
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path,
             module_source=u.Tests.namespace_fixture(fixture_name),
             module_name=module_name,
         )
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
-        self._assert_violation_contains(root, expected_violation_substr)
+        u.Tests.assert_namespace_violation_contains(root, expected_violation_substr)

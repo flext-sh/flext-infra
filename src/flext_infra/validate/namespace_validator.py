@@ -76,7 +76,6 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                     self.check_module(
                         tree,
                         rel,
-                        repository_root=project_root,
                         class_stem=prefix,
                         package_name=package_name,
                         source=filepath.read_text(encoding=c.Cli.ENCODING_DEFAULT),

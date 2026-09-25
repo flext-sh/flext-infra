@@ -207,7 +207,7 @@ class FlextInfraProtocolsRope(Protocol):
             """Dynamic source metadata attached by Rope's patched AST walker."""
 
             region: t.Pair[int, int]
-            sorted_children: list[str]
+            sorted_children: list[p.AttributeProbe]
 
         @runtime_checkable
         class TypeParameterOwner(Protocol):
