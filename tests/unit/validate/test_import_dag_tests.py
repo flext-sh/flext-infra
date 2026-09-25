@@ -78,4 +78,4 @@ class TestsFlextInfraImportDag:
         tm.that(report.passed, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraImportDag"]
+

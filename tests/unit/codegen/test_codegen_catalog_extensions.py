@@ -402,4 +402,4 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenCatalogExtensions"]
+

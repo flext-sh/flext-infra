@@ -138,4 +138,4 @@ class TestsFlextInfraCodegenWorkflowRetirement:
                 tm.that(path.exists(), eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenWorkflowRetirement"]
+

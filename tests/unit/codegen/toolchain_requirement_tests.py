@@ -26,4 +26,4 @@ class TestsFlextInfraToolchainRequirement:
         tm.that(toolchain.python_required_version, has=f",<{major}.{int(minor) + 1}")
 
 
-__all__: list[str] = ["TestsFlextInfraToolchainRequirement"]
+

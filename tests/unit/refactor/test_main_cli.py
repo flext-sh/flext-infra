@@ -928,4 +928,4 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(len(self._impact_map_entries(impact_map_path)), eq=1)
 
 
-__all__: list[str] = ["TestsFlextInfraRefactorMainCli"]
+

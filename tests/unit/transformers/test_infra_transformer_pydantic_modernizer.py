@@ -97,4 +97,4 @@ class TestsFlextInfraTransformersPydanticModernizer:
         tm.that(code, lacks="ConfigDict")
 
 
-__all__: list[str] = ["TestsFlextInfraTransformersPydanticModernizer"]
+

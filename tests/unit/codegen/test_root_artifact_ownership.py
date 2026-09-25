@@ -223,4 +223,4 @@ class TestsFlextInfraRootArtifactOwnership:
             )
 
 
-__all__: list[str] = ["TestsFlextInfraRootArtifactOwnership"]
+

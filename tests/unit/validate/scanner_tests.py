@@ -132,4 +132,4 @@ class TestsFlextInfraScanner:
             f.chmod(0o644)
 
 
-__all__: list[str] = ["TestsFlextInfraScanner"]
+

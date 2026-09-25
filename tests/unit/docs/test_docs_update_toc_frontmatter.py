@@ -62,4 +62,4 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         tm.that("<!-- TOC START -->" in updated, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsUpdateTocFrontmatter"]
+

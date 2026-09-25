@@ -141,4 +141,4 @@ class TestsFlextInfraFamilyFlatten:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
 
-__all__: list[str] = ["TestsFlextInfraFamilyFlatten"]
+

@@ -244,4 +244,4 @@ class TestsFlextInfraPytestDiag:
         tm.that((tmp_path / "skips.txt").read_text(), contains="TC::test_skip")
 
 
-__all__: list[str] = ["TestsFlextInfraPytestDiag"]
+

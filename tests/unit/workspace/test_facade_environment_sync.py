@@ -164,4 +164,4 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.that((workspace / ".envrc").exists(), eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraFacadeEnvironmentSync"]
+

@@ -151,4 +151,4 @@ class TestsFlextInfraCodegenPyTyped:
             tm.that((tmp_path / "src" / name / c.Infra.PY_TYPED).exists(), eq=True)
 
 
-__all__: t.StrSequence = []
+

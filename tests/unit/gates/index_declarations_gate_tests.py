@@ -109,4 +109,4 @@ class TestsFlextInfraIndexDeclarationsGate:
         tm.that(len(result.errors), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraIndexDeclarationsGate"]
+

@@ -394,4 +394,4 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that("endpoint_status" in tool_fields, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenBeadsProjection"]
+

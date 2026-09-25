@@ -344,4 +344,4 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             tm.that(len(issues), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesDocsGithubLinks"]
+

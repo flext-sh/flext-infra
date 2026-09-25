@@ -62,4 +62,4 @@ class TestsFlextInfraMakeDocsActionsConfig:
             )
 
 
-__all__: list[str] = ["TestsFlextInfraMakeDocsActionsConfig"]
+

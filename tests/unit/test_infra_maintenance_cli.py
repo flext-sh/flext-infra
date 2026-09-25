@@ -25,4 +25,4 @@ class TestsFlextInfraInfraMaintenanceCli:
         tm.that(self._run_maintenance(["--apply"]), eq=2)
 
 
-__all__: list[str] = ["TestsFlextInfraInfraMaintenanceCli"]
+

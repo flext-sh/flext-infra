@@ -51,4 +51,4 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         tm.that(u.Tests.required_beads(spec).workspace, eq="totally-unknown-workspace")
 
 
-__all__: list[str] = ["TestsFlextInfraDetectorOwnsNoProjectRegistry"]
+

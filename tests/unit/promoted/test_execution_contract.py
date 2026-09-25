@@ -36,4 +36,4 @@ class TestsFlextInfraPromotedExecutionContract:
             u.Infra.promoted_validate_command_contract(command)
 
 
-__all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]
+

@@ -187,4 +187,4 @@ class TestsFlextInfraDocsGeneratorBundle:
         tm.that(readme.desired_content or b"", has=b"Fresh metadata")
 
 
-__all__: list[str] = ["TestsFlextInfraDocsGeneratorBundle"]
+

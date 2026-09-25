@@ -141,4 +141,4 @@ class TestsFlextInfraAuditor:
         tm.that(is_external("path/to/file.md"), eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraAuditor"]
+

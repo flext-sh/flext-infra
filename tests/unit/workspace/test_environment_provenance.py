@@ -151,4 +151,4 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tm.that(error, has="distribution=sample-member")
 
 
-__all__: list[str] = ["TestsFlextInfraWorkspaceEnvironmentProvenance"]
+

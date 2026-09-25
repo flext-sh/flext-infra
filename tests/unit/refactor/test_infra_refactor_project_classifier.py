@@ -67,4 +67,4 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
         tm.that(classification.project_kind, eq="app")
 
 
-__all__: list[str] = ["TestsFlextInfraRefactorInfraRefactorProjectClassifier"]
+

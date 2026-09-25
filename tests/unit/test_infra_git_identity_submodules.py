@@ -241,4 +241,4 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.that(identity.requested_path, eq=(nested / "module.py").resolve())
 
 
-__all__: list[str] = ["TestsFlextInfraGitIdentitySubmodules"]
+

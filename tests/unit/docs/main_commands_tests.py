@@ -145,4 +145,4 @@ class TestsFlextInfraDocsMainCommands:
         tm.that(second_cycle, eq=first_cycle)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsMainCommands"]
+

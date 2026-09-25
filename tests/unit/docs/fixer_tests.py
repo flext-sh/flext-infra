@@ -142,4 +142,4 @@ class TestsFlextInfraDocsFixer:
         tm.that("```python notest" in content, eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsFixer"]
+

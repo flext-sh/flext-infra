@@ -93,4 +93,4 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(capture_result.value, eq="infra-ok")
 
 
-__all__: list[str] = ["TestsFlextInfraIntegrationInfraIntegration"]
+

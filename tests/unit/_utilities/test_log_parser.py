@@ -125,4 +125,4 @@ class TestsFlextInfraUtilitiesLogParser:
         tm.that(c.Tests.LOG_ERROR_PREFIX_RE.match(line) is not None, eq=True)
 
 
-__all__: t.StrSequence = []
+

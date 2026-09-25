@@ -41,4 +41,4 @@ class TestsFlextInfraCodegenDocsWorkflowProfile:
         tm.that("standalone" in docs.profiles, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenDocsWorkflowProfile"]
+

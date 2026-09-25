@@ -56,4 +56,4 @@ class TestsFlextInfraApiAliasCutover:
         tm.that(by_path[consumer], lacks="import sample")
 
 
-__all__: list[str] = ["TestsFlextInfraApiAliasCutover"]
+

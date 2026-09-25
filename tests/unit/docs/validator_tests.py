@@ -79,4 +79,4 @@ class TestsFlextInfraDocsValidator:
         tm.that((workspace / "flext-a/TODOS.md").exists(), eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsValidator"]
+

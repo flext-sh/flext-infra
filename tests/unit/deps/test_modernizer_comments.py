@@ -162,4 +162,4 @@ class TestsFlextInfraDepsModernizerComments:
         tm.that(second_changes, empty=True)
 
 
-__all__: list[str] = ["TestsFlextInfraDepsModernizerComments"]
+

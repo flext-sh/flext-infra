@@ -58,4 +58,4 @@ class TestsFlextInfraSmellsGate:
         tm.that(len(execution.issues), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraSmellsGate"]
+

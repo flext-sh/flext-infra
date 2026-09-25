@@ -255,4 +255,4 @@ class TestsFlextInfraSilentFailure:
         tm.that(infra_main(["validate", "silent-failure", "--help"]), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraSilentFailure"]
+

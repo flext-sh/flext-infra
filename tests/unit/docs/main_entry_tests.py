@@ -130,4 +130,4 @@ class TestsFlextInfraDocsMainEntry:
         tm.that((build_workspace / ".reports/docs/build-report.md").exists(), eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsMainEntry"]
+

@@ -114,4 +114,4 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         tm.that(init_content, contains="FlextModelsPart")
 
 
-__all__: list[str] = ["TestsFlextInfraLazyInitBootstrapPackage"]
+

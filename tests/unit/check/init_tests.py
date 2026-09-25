@@ -31,4 +31,4 @@ class TestsFlextInfraCheck:
         tm.that(exports, empty=False)
 
 
-__all__: list[str] = ["TestsFlextInfraCheck"]
+

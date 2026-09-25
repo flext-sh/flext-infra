@@ -266,4 +266,4 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that((member / "pyproject.toml").read_bytes(), eq=member_before)
 
 
-__all__: list[str] = ["TestsFlextInfraDepsDetectorMain"]
+

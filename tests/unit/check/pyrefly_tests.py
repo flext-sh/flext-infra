@@ -101,4 +101,4 @@ class TestsFlextInfraConfigFixer:
         tm.that(pyproject.read_text(), eq=original_content)
 
 
-__all__: list[str] = ["TestsFlextInfraConfigFixer"]
+

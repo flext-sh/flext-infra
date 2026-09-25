@@ -136,4 +136,4 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(init_path.read_bytes(), eq=before)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenLazyInitFilePlans"]
+

@@ -23,4 +23,4 @@ class TestsFlextInfraRule1ConstantsFacade(TestsFlextInfraValidateNamespaceBase):
         self._assert_valid(root)
 
 
-__all__: list[str] = ["TestsFlextInfraRule1ConstantsFacade"]
+

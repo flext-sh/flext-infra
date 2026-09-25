@@ -20,4 +20,4 @@ class TestsFlextInfraCheckMain:
         tm.that(captured.out.lower(), has="usage:")
 
 
-__all__: list[str] = ["TestsFlextInfraCheckMain"]
+

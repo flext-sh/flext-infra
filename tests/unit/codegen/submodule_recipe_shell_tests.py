@@ -49,4 +49,4 @@ class TestsFlextInfraSubmoduleRecipeShell:
         tm.that(offenders, eq=[])
 
 
-__all__: list[str] = ["TestsFlextInfraSubmoduleRecipeShell"]
+

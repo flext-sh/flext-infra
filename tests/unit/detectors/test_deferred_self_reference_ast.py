@@ -285,4 +285,4 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
             u.Infra.normalize_deferred_self_references(source)
 
 
-__all__: list[str] = ["TestsFlextInfraDeferredSelfReferenceDetector"]
+

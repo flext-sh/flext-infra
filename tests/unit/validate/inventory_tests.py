@@ -145,4 +145,4 @@ class TestsFlextInfraInventory:
             output_dir.chmod(0o755)
 
 
-__all__: list[str] = ["TestsFlextInfraInventory"]
+

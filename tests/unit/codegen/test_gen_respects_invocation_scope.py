@@ -159,4 +159,4 @@ class TestsFlextInfraGenRespectsInvocationScope:
         assert "MANAGED_GITLINKS :=" in text
 
 
-__all__: list[str] = ["TestsFlextInfraGenRespectsInvocationScope"]
+

@@ -19,4 +19,4 @@ class TestsFlextInfraServiceBaseAlias:
         tm.that(not cli_report.violations, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraServiceBaseAlias"]
+

@@ -324,4 +324,4 @@ class TestsFlextInfraGitFacet:
         assert lane.is_dir()
 
 
-__all__: list[str] = ["TestsFlextInfraGitFacet"]
+

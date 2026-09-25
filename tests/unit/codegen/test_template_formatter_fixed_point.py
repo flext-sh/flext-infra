@@ -139,4 +139,4 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         tm.that(rendered, lacks="sort_keys=False\n")
 
 
-__all__: list[str] = ["TestsFlextInfraTemplateFormatterFixedPoint"]
+

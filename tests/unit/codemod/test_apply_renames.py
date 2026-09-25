@@ -177,4 +177,4 @@ class TestsFlextInfraApplyRenames:
         tm.that(rewritten, lacks="campaign_token")
 
 
-__all__: list[str] = ["TestsFlextInfraApplyRenames"]
+

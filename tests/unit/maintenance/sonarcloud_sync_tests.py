@@ -183,4 +183,4 @@ class TestsFlextInfraSonarcloudSettingsSync:
         tm.that(output, has="SONAR_TOKEN is required")
 
 
-__all__: list[str] = ["TestsFlextInfraSonarcloudSettingsSync"]
+

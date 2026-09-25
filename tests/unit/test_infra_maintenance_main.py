@@ -156,4 +156,4 @@ class TestsFlextInfraInfraMaintenanceMain:
         tm.that(type(enforcer).__name__, eq="FlextInfraPythonVersionEnforcer")
 
 
-__all__: list[str] = ["TestsFlextInfraInfraMaintenanceMain"]
+

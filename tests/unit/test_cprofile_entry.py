@@ -35,4 +35,4 @@ class TestsFlextInfraCprofileEntry:
         tm.that(len(report.splitlines()) <= policy.profile_limit + 10, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraCprofileEntry"]
+

@@ -160,4 +160,4 @@ class TestsFlextInfraDepsModernizerPackaging:
         tm.that((infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
 
-__all__: list[str] = ["TestsFlextInfraDepsModernizerPackaging"]
+

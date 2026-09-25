@@ -17,4 +17,4 @@ class TestsFlextInfraToolchainGoBackend:
         tm.that(toolchain.go_version, eq="latest")
 
 
-__all__: list[str] = ["TestsFlextInfraToolchainGoBackend"]
+

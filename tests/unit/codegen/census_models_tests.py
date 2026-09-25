@@ -69,4 +69,4 @@ class TestsFlextInfraCodegenCensusModels:
         tm.that(report.fixable, eq=2)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenCensusModels"]
+

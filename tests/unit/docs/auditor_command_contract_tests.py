@@ -358,4 +358,4 @@ result = patch("package.owner")
         tm.that(issues[0].message, has="test-double code")
 
 
-__all__: list[str] = ["TestsFlextInfraAuditorCommandContract"]
+

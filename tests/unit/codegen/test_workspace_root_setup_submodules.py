@@ -239,4 +239,4 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.that(process.stderr, has="Error 42")
 
 
-__all__: list[str] = ["TestsFlextInfraWorkspaceRootSetupSubmodules"]
+

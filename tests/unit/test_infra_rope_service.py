@@ -866,4 +866,4 @@ class TestsFlextInfraInfraRopeService:
         tm.that([site.line for site in candidate.runtime_reference_sites], eq=[6])
 
 
-__all__: list[str] = ["TestsFlextInfraInfraRopeService"]
+

@@ -235,4 +235,4 @@ class TestsFlextInfraModulePathRules(TestsFlextInfraValidateNamespaceBase):
         )
 
 
-__all__: list[str] = ["TestsFlextInfraModulePathRules"]
+

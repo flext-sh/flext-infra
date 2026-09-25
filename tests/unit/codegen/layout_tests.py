@@ -198,4 +198,4 @@ class TestsFlextInfraCodegenLayout:
         tm.that((project / "index.md").exists(), eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenLayout"]
+

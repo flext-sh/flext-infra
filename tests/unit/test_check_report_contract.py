@@ -129,4 +129,4 @@ class TestsFlextInfraCheckReportContract:
         tm.that(self._sources(project), ne=before)
 
 
-__all__: list[str] = ["TestsFlextInfraCheckReportContract"]
+

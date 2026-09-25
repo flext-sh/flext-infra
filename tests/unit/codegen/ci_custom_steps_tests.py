@@ -56,4 +56,4 @@ class TestsFlextInfraCodegenCiCustomSteps:
         tm.that(location.suffix, eq=".yml")
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenCiCustomSteps"]
+

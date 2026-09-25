@@ -208,4 +208,4 @@ class TestsFlextInfraCodegenConsolidator:
         tm.that(payload.files, eq=[])
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenConsolidator"]
+

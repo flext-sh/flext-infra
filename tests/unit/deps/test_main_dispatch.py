@@ -18,4 +18,4 @@ class TestsFlextInfraDepsMainDispatch:
             tm.that(infra_main(["deps", subcommand, "--help"]), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraDepsMainDispatch"]
+

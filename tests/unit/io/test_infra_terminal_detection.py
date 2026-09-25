@@ -54,4 +54,4 @@ class TestsFlextInfraIoInfraTerminalDetection:
         os.environ.pop("FLEXT_KEEP", None)
 
 
-__all__: list[str] = ["TestsFlextInfraIoInfraTerminalDetection"]
+

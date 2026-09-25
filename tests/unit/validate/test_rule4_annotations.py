@@ -133,4 +133,4 @@ class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
         self._assert_violation_contains(root, "import-time wiring")
 
 
-__all__: list[str] = ["TestsFlextInfraRule4Annotations"]
+

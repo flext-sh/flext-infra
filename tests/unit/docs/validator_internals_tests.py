@@ -55,4 +55,4 @@ class TestsFlextInfraDocsValidatorInternals:
         tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsValidatorInternals"]
+

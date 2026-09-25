@@ -223,4 +223,4 @@ class TestsFlextInfraSkillValidator:
         tm.that(report.passed, eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraSkillValidator"]
+

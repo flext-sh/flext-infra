@@ -226,4 +226,4 @@ class TestsFlextInfraTransactionLease:
         tm.ok(transaction.run_locked(prepare=False, operation=self._ok_path))
 
 
-__all__: list[str] = ["TestsFlextInfraTransactionLease"]
+

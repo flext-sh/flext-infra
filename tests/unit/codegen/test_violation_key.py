@@ -108,4 +108,4 @@ class TestsFlextInfraCodegenViolationKey:
         tm.that(fixed_key.rule, eq="NS-002")
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenViolationKey"]
+

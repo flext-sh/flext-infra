@@ -221,4 +221,4 @@ class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBas
         )
 
 
-__all__: list[str] = ["TestsFlextInfraPydanticLegacyDetection"]
+

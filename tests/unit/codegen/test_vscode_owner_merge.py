@@ -107,4 +107,4 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraVscodeOwnerMerge"]
+

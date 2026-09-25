@@ -49,4 +49,4 @@ class ExtraPathsTestSupport:
         return root, dep_root
 
 
-__all__: list[str] = ["ExtraPathsTestSupport"]
+

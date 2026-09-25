@@ -112,4 +112,4 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that("--preview" in make.ruff.lint_check, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]
+

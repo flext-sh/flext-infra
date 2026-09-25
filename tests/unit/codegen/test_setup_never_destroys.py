@@ -71,4 +71,4 @@ class TestsFlextInfraSetupNeverDestroys:
         assert 'merge-base --is-ancestor "$$gitlink" HEAD' in content
 
 
-__all__: list[str] = ["TestsFlextInfraSetupNeverDestroys"]
+

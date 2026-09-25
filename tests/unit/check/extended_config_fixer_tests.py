@@ -255,4 +255,4 @@ class TestsFlextInfraExtendedConfigFixer:
             tm.that(list(arr), has="a")
 
 
-__all__: t.StrSequence = ["TestsFlextInfraExtendedConfigFixer"]
+

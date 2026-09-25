@@ -1100,4 +1100,4 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tm.that(makefile, lacks=forbidden)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenMakeEnvironment"]
+

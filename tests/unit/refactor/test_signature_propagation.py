@@ -98,4 +98,4 @@ class TestsFlextInfraRefactorSignaturePropagation:
         tm.that(exit_code, ne=0)
 
 
-__all__: list[str] = ["TestsFlextInfraRefactorSignaturePropagation"]
+

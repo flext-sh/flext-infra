@@ -318,4 +318,4 @@ class TestsFlextInfraAuditorStaleSymbols:
         tm.that(issues, eq=[])
 
 
-__all__: list[str] = ["TestsFlextInfraAuditorStaleSymbols"]
+

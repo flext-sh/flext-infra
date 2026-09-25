@@ -16,4 +16,4 @@ class TestsFlextInfraWorkspaceCheckModule:
         tm.that(exit_code, eq=1)
 
 
-__all__: list[str] = ["TestsFlextInfraWorkspaceCheckModule"]
+

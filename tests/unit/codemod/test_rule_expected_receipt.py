@@ -80,4 +80,4 @@ class TestsFlextInfraModRuleExpectedReceipt:
         tm.that(capture.out + capture.err, lacks="receipt-probe declares")
 
 
-__all__: list[str] = ["TestsFlextInfraModRuleExpectedReceipt"]
+

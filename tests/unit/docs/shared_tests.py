@@ -203,4 +203,4 @@ class TestsFlextInfraDocsShared:
         tm.that(result.value[1].package_name, eq="demo_pkg")
 
 
-__all__: list[str] = ["TestsFlextInfraDocsShared"]
+

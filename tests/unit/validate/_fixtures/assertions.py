@@ -116,4 +116,4 @@ class TestsFlextInfraValidateAssertions:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraValidateAssertions"]
+

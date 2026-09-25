@@ -101,4 +101,4 @@ class TestsFlextInfraReleasePolicyOwner:
         tm.that(entry.overwrite, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraReleasePolicyOwner"]
+

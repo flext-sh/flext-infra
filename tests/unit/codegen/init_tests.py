@@ -107,4 +107,4 @@ class TestsFlextInfraCodegenInit:
         tm.that(type(FlextInfraCodegenLazyInit).__name__, eq="ModelMetaclass")
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenInit"]
+

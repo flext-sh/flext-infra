@@ -39,4 +39,4 @@ class TestsFlextInfraRule2TypingsFacade(TestsFlextInfraValidateNamespaceBase):
         )
 
 
-__all__: list[str] = ["TestsFlextInfraRule2TypingsFacade"]
+

@@ -115,4 +115,4 @@ class TestsFlextInfraCodegenRenderPurityGolden:
         tm.that(spec.year, eq=year)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenRenderPurityGolden"]
+

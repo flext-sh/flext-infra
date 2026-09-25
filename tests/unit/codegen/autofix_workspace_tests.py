@@ -96,4 +96,4 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.that(any(path.name == "__init__.py" for path in modified_paths), eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenAutofixWorkspace"]
+

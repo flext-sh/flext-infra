@@ -269,4 +269,4 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.ok(owner.run_files_locked(roots, fail_session))
 
 
-__all__ = ["TestsFlextInfraFileParticipantRecovery"]
+

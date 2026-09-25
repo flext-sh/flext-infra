@@ -140,4 +140,4 @@ class TestsFlextInfraCoreValidationBehavior(TestsFlextInfraValidateNamespaceBase
         tm.that(first, has="] src/flext_test/models.py:1 — ")
 
 
-__all__: list[str] = ["TestsFlextInfraCoreValidationBehavior"]
+

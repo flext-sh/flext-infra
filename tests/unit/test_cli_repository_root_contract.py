@@ -76,4 +76,4 @@ class TestsFlextInfraCliRepositoryRootContract:
         tm.that(main([group, route.name, "--help"]), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraCliRepositoryRootContract"]
+

@@ -37,4 +37,4 @@ class TestsFlextInfraLockfilePolicyProjection:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraLockfilePolicyProjection"]
+

@@ -30,4 +30,4 @@ class TestsFlextInfraDepsInit:
         tm.that(len(exports) > 0, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraDepsInit"]
+

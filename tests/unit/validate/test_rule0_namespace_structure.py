@@ -192,4 +192,4 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
         )
 
 
-__all__: list[str] = ["TestsFlextInfraRule0NamespaceStructure"]
+

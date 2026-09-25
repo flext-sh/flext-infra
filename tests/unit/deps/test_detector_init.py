@@ -72,4 +72,4 @@ class TestsFlextInfraDepsDetectorInit:
         tm.that(params.project_names, eq=None)
 
 
-__all__: list[str] = ["TestsFlextInfraDepsDetectorInit"]
+

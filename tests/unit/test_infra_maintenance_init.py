@@ -30,4 +30,4 @@ class TestsFlextInfraInfraMaintenanceInit:
         tm.that(FlextInfraPythonVersionEnforcer, none=False)
 
 
-__all__: list[str] = ["TestsFlextInfraInfraMaintenanceInit"]
+

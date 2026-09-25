@@ -207,4 +207,4 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.that(source_text, has="from flext_core import r")
 
 
-__all__: list[str] = ["TestsFlextInfraRefactorInfraRefactorNamespaceMoves"]
+

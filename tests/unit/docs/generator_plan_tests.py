@@ -223,4 +223,4 @@ class TestsFlextInfraDocsGeneratorPlan:
         tm.that(prepared.error or "", has="invalid Git submodule path")
 
 
-__all__: list[str] = ["TestsFlextInfraDocsGeneratorPlan"]
+

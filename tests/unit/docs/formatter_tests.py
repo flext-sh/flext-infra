@@ -89,4 +89,4 @@ class TestsFlextInfraDocsFormatter:
         tm.that(result.value[0].result, eq=c.Infra.ResultStatus.FAIL)
 
 
-__all__: list[str] = ["TestsFlextInfraDocsFormatter"]
+

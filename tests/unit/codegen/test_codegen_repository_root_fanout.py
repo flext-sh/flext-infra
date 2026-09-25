@@ -116,4 +116,4 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         return repository_root
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenRepositoryRootFanout"]
+

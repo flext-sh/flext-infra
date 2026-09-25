@@ -50,4 +50,4 @@ class TestsFlextInfraCiSystemPackages:
         tm.that(rendered, lacks=self.step_name)
 
 
-__all__: list[str] = ["TestsFlextInfraCiSystemPackages"]
+

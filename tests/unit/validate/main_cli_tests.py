@@ -34,4 +34,4 @@ class TestsFlextInfraValidateCli:
         tm.that(infra_main(["validate", "stub-validate", "--help"]), eq=0)
 
 
-__all__: list[str] = ["TestsFlextInfraValidateCli"]
+

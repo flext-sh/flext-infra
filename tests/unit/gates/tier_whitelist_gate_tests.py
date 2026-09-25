@@ -87,4 +87,4 @@ class TestsFlextInfraTierWhitelistGateReporting:
         tm.that(" | ".join(result.errors), lacks="violation(s)")
 
 
-__all__: list[str] = ["TestsFlextInfraTierWhitelistGateReporting"]
+

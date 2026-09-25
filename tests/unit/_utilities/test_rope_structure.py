@@ -118,4 +118,4 @@ class TestsFlextInfraRopeStructure:
         tm.that(statements[0].category, eq=c.Infra.StatementCategory.FROM_IMPORT)
 
 
-__all__: list[str] = ["TestsFlextInfraRopeStructure"]
+

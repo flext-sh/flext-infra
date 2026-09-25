@@ -74,4 +74,4 @@ class TestsFlextInfraExtendedConfigFixerErrors:
         tm.that(pyproject.read_text(encoding="utf-8"), eq=original)
 
 
-__all__: list[str] = ["TestsFlextInfraExtendedConfigFixerErrors"]
+

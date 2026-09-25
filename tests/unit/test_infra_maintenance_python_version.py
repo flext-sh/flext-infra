@@ -150,4 +150,4 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         tm.that(result.value, empty=True)
 
 
-__all__: list[str] = ["TestsFlextInfraInfraMaintenancePythonVersion"]
+

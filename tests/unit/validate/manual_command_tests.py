@@ -80,4 +80,4 @@ class TestsFlextInfraManualCommand:
         tm.that("audit_banned_cli_libs.py" not in rendered, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraManualCommand"]
+

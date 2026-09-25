@@ -60,4 +60,4 @@ class TestsFlextInfraDocsMain:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraDocsMain"]
+

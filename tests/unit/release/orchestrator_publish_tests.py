@@ -69,4 +69,4 @@ class TestsFlextInfraReleasePublish:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraReleasePublish"]
+

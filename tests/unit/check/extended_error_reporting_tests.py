@@ -157,4 +157,4 @@ class TestsFlextInfraGateErrorReporting:
         tm.that(report.runs[0].information_uri, eq=FlextInfraVersion.__url__)
 
 
-__all__: t.StrSequence = ["TestsFlextInfraGateErrorReporting"]
+

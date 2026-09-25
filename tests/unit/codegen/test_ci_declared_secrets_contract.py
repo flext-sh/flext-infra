@@ -95,4 +95,4 @@ class TestsFlextInfraCiDeclaredSecretsContract:
             tm.that(specification["required"], eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraCiDeclaredSecretsContract"]
+

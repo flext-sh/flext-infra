@@ -54,4 +54,4 @@ class TestsFlextInfraDocsRenderGuidesIndex:
         tm.that(rendered, has="(../api-reference/README.md)")
 
 
-__all__: list[str] = ["TestsFlextInfraDocsRenderGuidesIndex"]
+

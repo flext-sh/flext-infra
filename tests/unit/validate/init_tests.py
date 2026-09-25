@@ -41,4 +41,4 @@ class TestsFlextInfraValidateInit:
         tm.that(FlextInfraInventoryService, none=False)
 
 
-__all__: list[str] = ["TestsFlextInfraValidateInit"]
+

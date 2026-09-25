@@ -52,4 +52,4 @@ class TestsFlextInfraInfraVersionExtra:
         tm.that(infra_pkg.__version_info__, is_=tuple)
 
 
-__all__: list[str] = ["TestsFlextInfraInfraVersionExtra"]
+

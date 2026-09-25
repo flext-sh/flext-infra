@@ -135,4 +135,4 @@ class TestsFlextInfraWorkspaceMain:
         tm.that(self._workspace_main([]), eq=1)
 
 
-__all__: list[str] = ["TestsFlextInfraWorkspaceMain"]
+

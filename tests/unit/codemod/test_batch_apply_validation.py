@@ -59,4 +59,4 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             FlextInfraCodemodBatchApply.validate_fix_match(before, after)
 
 
-__all__: list[str] = ["TestsFlextInfraCodemodBatchApplyValidation"]
+

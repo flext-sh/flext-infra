@@ -294,4 +294,4 @@ class TestsFlextInfraCodegenMiseArtifacts:
         tm.that(field.exclude, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenMiseArtifacts"]
+

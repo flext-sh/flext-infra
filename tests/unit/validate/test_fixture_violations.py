@@ -103,4 +103,4 @@ class TestsFlextInfraFixtureViolations(TestsFlextInfraValidateNamespaceBase):
         self._assert_violation_contains(root, expected_violation_substr)
 
 
-__all__: list[str] = ["TestsFlextInfraFixtureViolations"]
+

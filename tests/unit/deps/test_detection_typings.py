@@ -83,4 +83,4 @@ class TestsFlextInfraDepsDetectionTypings:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraDepsDetectionTypings"]
+

@@ -155,4 +155,4 @@ class TestsFlextInfraDocsGeneratorInternals:
         tm.that([report.scope for report in result.value], eq=["root", "flext-a"])
 
 
-__all__: list[str] = ["TestsFlextInfraDocsGeneratorInternals"]
+

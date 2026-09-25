@@ -92,4 +92,4 @@ class TestsFlextInfraDocServer:
         tm.that(report.passed, eq=False)
 
 
-__all__: list[str] = ["TestsFlextInfraDocServer"]
+

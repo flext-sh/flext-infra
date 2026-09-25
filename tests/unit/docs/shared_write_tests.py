@@ -60,4 +60,4 @@ class TestsFlextInfraDocsSharedWrite:
         tm.that((result.error or ""), has="markdown write error")
 
 
-__all__: list[str] = ["TestsFlextInfraDocsSharedWrite"]
+

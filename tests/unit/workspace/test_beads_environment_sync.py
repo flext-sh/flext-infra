@@ -170,4 +170,4 @@ class TestsFlextInfraBeadsEnvironmentSync:
         tm.that("direnv allow failed" in (result.error or ""), eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraBeadsEnvironmentSync"]
+

@@ -188,4 +188,4 @@ class TestsFlextInfraCodegenScaffolderNaming:
             tm.that(result.project, eq="empty-project")
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenScaffolderNaming"]
+

@@ -528,4 +528,4 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(u.Tests.run_release_main(workspace, "--phase", "tag", "--apply"), ne=0)
 
 
-__all__: list[str] = ["TestsFlextInfraReleaseProtocol"]
+

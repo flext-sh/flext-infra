@@ -106,4 +106,4 @@ class TestsFlextInfraCodegenPipelinePerformance:
         tm.that(result_2.success, eq=True, msg=f"Second run had errors: {result_2}")
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenPipelinePerformance"]
+

@@ -117,4 +117,4 @@ class TestsFlextInfraLazyInitCleanup:
         tm.that(unexpected.is_file(), eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraLazyInitCleanup"]
+

@@ -76,4 +76,4 @@ class TestsFlextInfraTransformersMroRemover:
         tm.that(code, has="    class Real(Base):\n        VALUE = 2\n")
 
 
-__all__: list[str] = ["TestsFlextInfraTransformersMroRemover"]
+

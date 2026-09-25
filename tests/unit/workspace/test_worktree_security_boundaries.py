@@ -122,4 +122,4 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
         tm.fail(result, has="already registered")
 
 
-__all__: list[str] = ["TestsFlextInfraWorktreeSecurityBoundaries"]
+

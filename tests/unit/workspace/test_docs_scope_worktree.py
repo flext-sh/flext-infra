@@ -37,4 +37,4 @@ class TestsFlextInfraDocsScopeWorktree:
         tm.that(result.value[0].path, eq=lane.resolve())
 
 
-__all__: list[str] = ["TestsFlextInfraDocsScopeWorktree"]
+

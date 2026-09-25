@@ -98,4 +98,4 @@ def attr(y: typing.Dict[str, int]) -> None:
             tm.that(result.skipped[0].reason, has="deactivated")
 
 
-__all__: list[str] = ["TestsFlextInfraTypingDictDeactivated"]
+

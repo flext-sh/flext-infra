@@ -167,4 +167,4 @@ class TestsSemanticPublication:
         tm.that(first.path.read_text(), eq=published)
 
 
-__all__: list[str] = ["TestsSemanticPublication"]
+
