@@ -393,7 +393,7 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _declared_expected(
-        document: t.MappingKV[str, object],
+        document: t.MappingKV[str, t.JsonValue],
     ) -> p.Result[t.VariadicTuple[int]]:
         """Read one rule's declared finding-count receipt from its metadata.
 

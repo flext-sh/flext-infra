@@ -32,10 +32,10 @@ class FlextInfraApplyRenames:
     """Execute prefix-safe, idempotent renames from one CSV source of truth."""
 
     @staticmethod
-    def _pairs(csv_path: Path) -> p.Result[t.SequenceOf[tuple[str, str]]]:
+    def _pairs(csv_path: Path) -> p.Result[t.SequenceOf[t.Pair[str, str]]]:
         """Load validated rename pairs longest source name first."""
 
-        def source_name_length(pair: tuple[str, str]) -> int:
+        def source_name_length(pair: t.Pair[str, str]) -> int:
             return len(pair[0])
 
         read_result = u.Cli.files_read_text(csv_path)
@@ -94,7 +94,7 @@ class FlextInfraApplyRenames:
     @staticmethod
     def _scan(
         files: t.SequenceOf[Path], pairs: t.SequenceOf[tuple[str, str]]
-    ) -> p.Result[tuple[int, int, t.StrSequence]]:
+    ) -> p.Result[t.Triple[int, int, t.StrSequence]]:
         """Collect pending occurrences, affected files, and report lines."""
         occurrences = 0
         affected_files = 0

@@ -6,7 +6,7 @@ import ast
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar, TypeGuard
 
-from flext_infra import t
+from flext_infra import p, t
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -27,12 +27,12 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     _IMPORT_ALIAS_AS_PARTS: ClassVar[int] = 3
 
     @staticmethod
-    def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+    def _is_ast_node(obj: p.AttributeProbe) -> TypeGuard[t.Infra.RopeAstNode]:
         """Type guard to narrow to RopeAstNode via structural `_fields` check."""
         return hasattr(obj, "_fields")
 
     @staticmethod
-    def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+    def _ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisSourceScan._is_ast_node(obj):
             msg = f"Expected AST node with _fields, got {type(obj).__name__}"

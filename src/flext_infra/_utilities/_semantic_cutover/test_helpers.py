@@ -80,7 +80,8 @@ class FlextInfraUtilitiesSemanticTestHelpers:
                         working[edit.file_path] = edit.updated_source
                         changes.setdefault(edit.file_path, []).extend(edit.changes)
                     working[path] = (
-                        cst.parse_module(working[path])
+                        cst
+                        .parse_module(working[path])
                         .visit(cls._MovedExports(move.class_name))
                         .code
                     )

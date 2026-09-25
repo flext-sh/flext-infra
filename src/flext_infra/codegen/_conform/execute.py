@@ -42,7 +42,7 @@ class _ConformExecuteRoles:
         def owned_docs_files(
             request: m.Infra.CodegenConformRequest,
             files: t.SequenceOf[m.Infra.CodegenFilePlan],
-        ) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
 
         @classmethod
         def _owned_docs_directories(
@@ -734,7 +734,7 @@ class FlextInfraCodegenConformExecute(
     @staticmethod
     def fresh_import_repository_roots(
         root: Path, repositories: t.VariadicTuple[m.Infra.RepositoryRef]
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Resolve the fresh-import probe scope from declared repositories.
 
         Fresh-import probes validate Python publications, so only declared

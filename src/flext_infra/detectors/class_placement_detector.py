@@ -211,7 +211,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def _class_body_nodes(
-        tree: object, *, class_name: str
+        tree: t.JsonValue, *, class_name: str
     ) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return direct body nodes for the top-level class named ``class_name``."""
         module_body = getattr(tree, "body", None) or ()
@@ -289,7 +289,7 @@ class FlextInfraClassPlacementDetector:
         )
 
     @staticmethod
-    def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
+    def _annassign_constant(node: t.JsonValue) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
         target_name = FlextInfraClassPlacementDetector._namespace_constant_name(
             getattr(node, "target", None)
@@ -309,7 +309,7 @@ class FlextInfraClassPlacementDetector:
         return FlextInfraClassPlacementDetector._constant_info(node, target_name)
 
     @staticmethod
-    def _assign_constant(node: object) -> m.Infra.ConstantInfo | None:
+    def _assign_constant(node: t.JsonValue) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an implicit Assign node, or None if not a violation."""
         targets = getattr(node, "targets", None)
         if not isinstance(targets, (list, tuple)) or len(targets) != 1:
@@ -357,7 +357,7 @@ class FlextInfraClassPlacementDetector:
         return tuple(aliases)
 
     @staticmethod
-    def _annotation_contains(annotation: object | None, name: str) -> bool:
+    def _annotation_contains(annotation: t.JsonValue | None, name: str) -> bool:
         """Return True when ``name`` appears in any sub-node identifier."""
         if annotation is None:
             return False
@@ -367,7 +367,7 @@ class FlextInfraClassPlacementDetector:
         return False
 
     @staticmethod
-    def _classvar_value_permitted(value: object | None) -> bool:
+    def _classvar_value_permitted(value: t.JsonValue | None) -> bool:
         """Return True when a ClassVar default is a literal/canonical constant."""
         if value is None:
             return True

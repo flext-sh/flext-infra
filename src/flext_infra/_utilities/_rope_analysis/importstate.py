@@ -397,7 +397,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             for name in exports
             if name.islower() and not name.startswith("_") and name not in attributes
         )
-        owners: set[tuple[str, str]] = set()
+        owners: set[t.Pair[str, str]] = set()
         scope = module.get_scope()
         if scope is None:
             msg = f"module has no declaration scope: {resource.path}"

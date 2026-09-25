@@ -45,6 +45,13 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         changes: list[str] = []
         index = 0
         while index < len(text):
+            protected = self._rewrite_protected_generic(text, index)
+            if protected is not None:
+                replacement, protected_changes, end_index = protected
+                result.append(replacement)
+                changes.extend(protected_changes)
+                index = end_index
+                continue
             container = self._match_container_prefix(text, index)
             if container is None:
                 # The Any/object exact-synonym rewrite must fire on leaf
@@ -90,6 +97,13 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         changes: list[str] = []
         index = 0
         while index < len(text):
+            protected = self._rewrite_protected_generic(text, index)
+            if protected is not None:
+                replacement, protected_changes, end_index = protected
+                result.append(replacement)
+                changes.extend(protected_changes)
+                index = end_index
+                continue
             container = self._match_container_prefix(text, index)
             if container is not None:
                 prefix, alias_name = container
@@ -128,6 +142,44 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
             index += 1
         return "".join(result), changes
 
+    def _rewrite_protected_generic(
+        self, text: str, index: int
+    ) -> tuple[str, list[str], int] | None:
+        """Rewrite only the type slot of Annotated and preserve Literal payloads."""
+        for prefix in ("Annotated[", "typing.Annotated["):
+            if not self._matches_type_token(text, index, prefix):
+                continue
+            content, end_index = self._extract_square_bracket_content(
+                text, index + len(prefix) - 1
+            )
+            separator = self._first_top_level_comma(content)
+            type_text = content if separator is None else content[:separator]
+            metadata = "" if separator is None else content[separator:]
+            rewritten, changes = self._rewrite_type_expression(type_text)
+            return f"{prefix}{rewritten}{metadata}]", changes, end_index
+        for prefix in ("Literal[", "typing.Literal["):
+            if not self._matches_type_token(text, index, prefix):
+                continue
+            _content, end_index = self._extract_square_bracket_content(
+                text, index + len(prefix) - 1
+            )
+            return text[index:end_index], [], end_index
+        return None
+
+    @staticmethod
+    def _first_top_level_comma(text: str) -> int | None:
+        """Return the first comma outside nested delimiters."""
+        depth = 0
+        for index, char in enumerate(text):
+            if char in "([{":
+                depth += 1
+            elif char in ")]}":
+                if depth > 0:
+                    depth -= 1
+            elif char == "," and depth == 0:
+                return index
+        return None
+
     @staticmethod
     def _match_container_prefix(text: str, index: int) -> t.StrPair | None:
         """Return the matching built-in container prefix at ``index``, if any."""
@@ -154,7 +206,12 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         text: str, index: int
     ) -> t.Triple[str, str, int] | None:
         """Return a leaf-type rewrite for ``Any``/``typing.Any``/``object``."""
-        for token in ("typing.Any", "Any", "object"):
+        replacements = (
+            ("typing.Any", "t.JsonValue"),
+            ("Any", "t.JsonValue"),
+            ("object", "p.AttributeProbe"),
+        )
+        for token, replacement in replacements:
             if not text.startswith(token, index):
                 continue
             before = text[index - 1] if index > 0 else ""
@@ -166,7 +223,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
             )
             if before_is_identifier or after_is_identifier:
                 continue
-            return token, "t.JsonValue", after_index
+            return token, replacement, after_index
         return None
 
     @staticmethod

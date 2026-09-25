@@ -18,18 +18,18 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra import c, u
+from flext_infra.utilities import u
 
 _MODULE_IMPORT = f"from {c.Infra.PKG_CORE_UNDERSCORE} import t\n"
 
 _MODEL_USES_ALIAS = """\
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
 
 
-class _Row(BaseModel):
+class _Row(m.BaseModel):
     skills: t.VariadicTuple[str]
-    rows: t.VariadicTuple[str] = Field(alias="rows")
+    rows: t.VariadicTuple[str] = u.Field(alias="rows")
 """
 
 _TYPE_CHECKING_USES_ALIAS = """\

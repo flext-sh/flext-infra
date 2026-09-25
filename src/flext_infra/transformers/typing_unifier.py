@@ -93,6 +93,19 @@ class FlextInfraRefactorTypingUnifier(
                 f"{FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(self._file_path)}"
             )
         source = added
+        added, did_add = self._ensure_alias_import(
+            source=source,
+            module_name=FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(
+                self._file_path
+            ),
+            alias="p",
+        )
+        if did_add:
+            self._record_change(
+                "Added canonical p import from "
+                f"{FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(self._file_path)}"
+            )
+        source = added
         return source, list(self.changes)
 
     def _canonicalize_annotation_builtins(self, source: str) -> str:

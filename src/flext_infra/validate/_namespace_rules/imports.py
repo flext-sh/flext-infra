@@ -19,7 +19,7 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
 
     @classmethod
     def check_imports(
-        cls, tree: object, filepath: Path, *, package_name: str
+        cls, tree: t.JsonValue, filepath: Path, *, package_name: str
     ) -> t.StrSequence:
         """Return import-boundary violations for one module."""
         owner = cls.layer_of_path(filepath)
@@ -50,7 +50,7 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
     @classmethod
     def _check_plain_import(
         cls,
-        node: object,
+        node: t.JsonValue,
         filepath: Path,
         *,
         package_name: str,
@@ -81,7 +81,7 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
     @classmethod
     def _check_from_import(
         cls,
-        node: object,
+        node: t.JsonValue,
         filepath: Path,
         *,
         package_name: str,

@@ -36,7 +36,7 @@ class TestsFlextInfraFamilyTypeReferences:
             f"class {owner}:\n"
             "    class Domain:\n"
             "        class Item:\n            pass\n"
-            f"        class Builder(Container[\"{owner}.Domain.Item\"]):\n"
+            f'        class Builder(Container["{owner}.Domain.Item"]):\n'
             "            pass\n"
             f"\n__all__ = ['{owner}']\n"
         )
@@ -48,17 +48,17 @@ class TestsFlextInfraFamilyTypeReferences:
             f"from {package.name}.{directory}.payload import {owner} as Part\n"
             f"from {package.name}.entities import Container, Other\n\n"
             "class Public(Part):\n    pass\n\n"
-            "class Specialized(Container[\"Part.Domain.Item\"]):\n    pass\n\n"
+            'class Specialized(Container["Part.Domain.Item"]):\n    pass\n\n'
             "LABEL = 'é'; item: \"Public.Domain.Item\"\n"
-            "items: list[\"Part.Domain.Item\"]\n"
-            "meta: Meta[\"Part.Domain.Item\", \"Part.Domain.Item\"]\n"
-            "choice: Choice[\"Part.Domain.Item\"]\n"
-            "unrelated: \"Other.Domain.Item\"\n"
-            "type Items = list[\"Part.Domain.Item\"]\n"
-            "TEXT = \"Part.Domain.Item\"\n\n"
-            "def convert(value: \"Part.Domain.Item\") -> \"Part.Domain.Item\":\n"
+            'items: list["Part.Domain.Item"]\n'
+            'meta: Meta["Part.Domain.Item", "Part.Domain.Item"]\n'
+            'choice: Choice["Part.Domain.Item"]\n'
+            'unrelated: "Other.Domain.Item"\n'
+            'type Items = list["Part.Domain.Item"]\n'
+            'TEXT = "Part.Domain.Item"\n\n'
+            'def convert(value: "Part.Domain.Item") -> "Part.Domain.Item":\n'
             "    Part = Other\n"
-            "    local: \"Part.Domain.Item\"\n"
+            '    local: "Part.Domain.Item"\n'
             "    return Part.Domain.Item()\n"
         )
         consumer.write_text(references, encoding="utf-8")
@@ -85,7 +85,7 @@ class TestsFlextInfraFamilyTypeReferences:
                 "Container['Part.DomainItem']",
                 "LABEL = 'é'; item: 'Public.DomainItem'",
                 "items: list['Part.DomainItem']",
-                'meta: Meta[\'Part.DomainItem\', "Part.Domain.Item"]',
+                "meta: Meta['Part.DomainItem', \"Part.Domain.Item\"]",
                 "type Items = list['Part.DomainItem']",
                 "def convert(value: 'Part.DomainItem') -> 'Part.DomainItem':",
             ):

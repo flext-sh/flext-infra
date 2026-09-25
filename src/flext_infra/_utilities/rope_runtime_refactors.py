@@ -7,6 +7,7 @@ from typing import ClassVar
 from flext_infra import m, p, t
 
 from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from rope.base import codeanalyze, simplify
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -24,7 +25,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         indentation: int,
     ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
         """Remove one Rope-resolved header without changing literal payloads."""
-        from rope.base import codeanalyze, simplify
 
         lines = codeanalyze.SourceLinesAdapter(source)
         regions = tuple(simplify.ignored_regions(source))

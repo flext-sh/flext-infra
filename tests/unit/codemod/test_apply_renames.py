@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraConfig, m, main as infra_main, p, u
+
+if TYPE_CHECKING:
+    from tests import t
 from flext_infra.codemod import FlextInfraApplyRenames
 
 
@@ -16,7 +20,7 @@ class TestsFlextInfraApplyRenames:
     """Exercise the rename engine and its configured campaign wiring."""
 
     @staticmethod
-    def _campaign(tmp_path: Path) -> tuple[Path, Path, Path]:
+    def _campaign(tmp_path: Path) -> t.Triple[Path, Path, Path]:
         """One workspace file, its driver CSV, and the scan root."""
         root = tmp_path / "campaign_ws"
         tm.ok(u.Cli.ensure_dir(root))
@@ -105,7 +109,7 @@ class TestsFlextInfraApplyRenames:
         )
 
     @staticmethod
-    def _campaign_workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _campaign_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
         """Seed the mod workspace with one pending campaign rename."""
         sample = tmp_path / "sample.py"
         tm.ok(

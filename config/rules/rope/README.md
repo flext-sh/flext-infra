@@ -14,3 +14,12 @@ classes remain nested. A wrapper used as a value, an unresolved member, unresolv
 inheritance, or a second prefix collision fails the complete plan. Receipts report the
 exact wrapper and source-edit counts. Publication remains owned by the semantic
 transaction, and generated facades remain owned by `make gen`.
+
+The same class-nesting phase promotes shared behavior from private test fixtures to the
+unique declared utilities facade of its tier. Rope resolves the original class and its
+external consumers before planning a move; classes with pytest cases and unused helpers
+keep their owners. The planner preserves declaration names, rejects ambiguous facades or
+occupied destinations, and stages only content changes in the governed source inventory.
+Existing nesting and publication complete the cutover; `make gen` updates the package
+exports. When an existing export needs regeneration, run `make gen` before `make mod` so
+the move observes the current public binding.

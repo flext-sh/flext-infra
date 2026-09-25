@@ -24,7 +24,7 @@ class FlextInfraNamespaceRules(
     @classmethod
     def check_module(
         cls,
-        tree: object,
+        tree: t.JsonValue,
         filepath: Path,
         *,
         class_stem: str,

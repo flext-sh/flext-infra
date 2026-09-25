@@ -370,6 +370,25 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         tm.that(updated, eq=source)
         tm.that(changes, eq=[])
 
+    def test_rewrites_only_annotated_type_and_preserves_metadata(self) -> None:
+        """Treat metadata and Literal values as payloads rather than type syntax."""
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import Annotated, Literal\n\n"
+            "value: Annotated[list[object], m.Field(description='object list')]\n"
+            "kind: Literal['object']\n"
+        )
+        rule = FlextInfraRefactorTypingUnificationRule({
+            "id": "unify-typings",
+            "fix_action": "unify_typings",
+        })
+        updated, _changes = rule.apply(source)
+        tm.that(
+            updated,
+            has="Annotated[t.SequenceOf[p.AttributeProbe], m.Field(description='object list')]",
+        )
+        tm.that(updated, has="Literal['object']")
+
     def test_preserves_override_in_method(self) -> None:
         """Verify preserves override in method."""
         source = (
@@ -483,7 +502,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         file_path.write_text(source, encoding="utf-8")
         updated, changes = rule.apply(source, _file_path=file_path)
         tm.that(updated, has="from flext_demo import t")
-        tm.that(updated, has="data: t.MappingKV[str, t.SequenceOf[t.JsonValue]]")
+        tm.that(updated, has="data: t.MappingKV[str, t.SequenceOf[p.AttributeProbe]]")
         tm.that(updated, has="-> t.Pair[str, int]")
         tm.that(
             "\n".join(changes),
@@ -502,7 +521,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         file_path.write_text(source, encoding="utf-8")
         updated, _changes = rule.apply(source, _file_path=file_path)
         tm.that(updated, has="from tests import t")
-        tm.that(updated, has="value: t.VariadicTuple[t.JsonValue]")
+        tm.that(updated, has="value: t.VariadicTuple[p.AttributeProbe]")
 
     def test_rewrites_fixed_arity_four_tuple_to_quad(self, tmp_path: Path) -> None:
         """Verify rewrites fixed arity four tuple to quad."""
@@ -543,7 +562,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         tm.that(updated, has="from flext_demo import (\n    c,\n    m,\n)")
         tm.that(updated, has="from flext_demo import t")
         tm.that(updated.index("from flext_demo import t"), gt=updated.index("    m,"))
-        tm.that(updated, has="value: t.SequenceOf[t.JsonValue]")
+        tm.that(updated, has="value: t.SequenceOf[p.AttributeProbe]")
 
     def test_skips_duplicate_t_import_in_parenthesized_import_block(
         self, tmp_path: Path
@@ -567,4 +586,4 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         )
         tm.that(updated, has="from flext_demo import (\n    c,\n    m,\n    t,\n)")
         tm.that(updated.count("from flext_demo import t"), eq=0)
-        tm.that(updated, has="value: t.SequenceOf[t.JsonValue]")
+        tm.that(updated, has="value: t.SequenceOf[p.AttributeProbe]")

@@ -41,7 +41,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         )
 
     @staticmethod
-    def _server_payload(pairs: tuple[tuple[str, str], ...]) -> str:
+    def _server_payload(pairs: t.VariadicTuple[t.Pair[str, str]]) -> str:
         """Render an ``api/settings/values`` body in the measured shape."""
         settings: list[t.JsonValue] = []
         if pairs:
@@ -56,7 +56,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         return tm.ok(u.Cli.json_dumps({"settings": settings}))
 
     @staticmethod
-    def _ssot_pairs() -> tuple[tuple[str, str], ...]:
+    def _ssot_pairs() -> t.VariadicTuple[t.Pair[str, str]]:
         """Return the SSOT exclusions as ``(rule_key, resource_key)`` pairs."""
         return tuple(
             (exclusion.rule_key, exclusion.resource_key)
@@ -65,7 +65,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
     def _cli(
         self, repository_root: Path, env: t.StrMapping | None = None
-    ) -> tuple[int, str]:
+    ) -> t.Pair[int, str]:
         """Run the public CLI route in a child process without SONAR_TOKEN."""
         result = tm.ok(
             u.Cli.run_raw(

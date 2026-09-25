@@ -17,7 +17,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     """Enforce one-class modules and explicit facade composition."""
 
     @classmethod
-    def _is_functional_module(cls, tree: object) -> bool:
+    def _is_functional_module(cls, tree: t.JsonValue) -> bool:
         """Return whether a module only re-exports symbols or runs an entry.
 
         Why (cosmos-3flk9): the operational ``r/e/x/h/d/s`` re-export modules
@@ -82,7 +82,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     @classmethod
     def check_structure(
         cls,
-        tree: object,
+        tree: t.JsonValue,
         filepath: Path,
         *,
         class_stem: str,
@@ -179,7 +179,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
 
     @classmethod
     def _facade_shape(
-        cls, tree: object, filepath: Path, *, policy: m.Infra.NamespaceModulePolicy
+        cls, tree: t.JsonValue, filepath: Path, *, policy: m.Infra.NamespaceModulePolicy
     ) -> t.StrSequence:
         """Validate declared facade composition using real inherited namespaces."""
         if policy.expected_alias is None:
@@ -221,8 +221,8 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     @classmethod
     def _canonical_facade_alias(
         cls,
-        node: object,
-        tree: object,
+        node: t.JsonValue,
+        tree: t.JsonValue,
         *,
         policy: m.Infra.NamespaceModulePolicy,
         exports: t.StrSequence,
@@ -274,7 +274,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         )
 
     @classmethod
-    def _dunder_assignment(cls, node: object) -> bool:
+    def _dunder_assignment(cls, node: t.JsonValue) -> bool:
         """Allow only the export manifest at module level."""
         targets = (
             getattr(node, "targets", ())

@@ -42,8 +42,11 @@ class TestsFlextInfraSharedHelperPromotion:
         source.write_text(
             "from tests import u\n\n"
             f"class {helper}:\n"
+            '    """Shared documentation.\n\n    Original indentation.\n    """\n'
             "    def value(self) -> str:\n"
             "        return u.Tests.label()\n\n"
+            "    def payload(self) -> str:\n"
+            "        return '''first\n    literal indentation\nlast'''\n\n"
             f"__all__ = ['{helper}']\n",
             encoding="utf-8",
         )
@@ -81,6 +84,7 @@ class TestsFlextInfraSharedHelperPromotion:
             "from tests.unit.consumer import Consumer\n"
             "from tests.unit.unrelated import VALUE\n"
             "print(Consumer().read(), VALUE)\n"
+            "print(repr(Consumer().payload()), repr(Consumer.__bases__[0].__doc__))\n"
         )
         before = self._run(root, probe)
         sources = {
@@ -139,6 +143,39 @@ class TestsFlextInfraSharedHelperPromotion:
         )
         tm.that(self._run(root, identity), eq="shared behavior")
         tm.that(source.exists(), eq=True)
+
+    @pytest.mark.parametrize("test_case", [False, True])
+    def test_unused_helpers_and_real_test_cases_keep_their_declared_owner(
+        self, tmp_path: Path, *, test_case: bool
+    ) -> None:
+        root, source, helper = self._workspace(tmp_path, reexport=True)
+        if test_case:
+            source.write_text(
+                f"class {helper}:\n"
+                "    def test_behavior(self) -> None:\n"
+                "        assert self.value() == 'shared behavior'\n\n"
+                "    def value(self) -> str:\n"
+                "        return 'shared behavior'\n",
+                encoding="utf-8",
+            )
+        else:
+            (root / c.Infra.DIR_TESTS / "unit" / "consumer.py").unlink()
+        sources = {
+            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
+        }
+        with infra.rope_workspace(root) as rope:
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+                ),
+                empty=True,
+            )
+        for path, original in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=original)
 
     def test_two_declared_utilities_owners_fail_without_changing_consumers(
         self, tmp_path: Path
