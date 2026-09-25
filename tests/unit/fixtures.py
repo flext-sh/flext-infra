@@ -322,7 +322,7 @@ def mod_workspace(tmp_path: Path) -> Path:
                 "\n"
                 "    @staticmethod\n"
                 "    def serialization_lock_execute(\n"
-                "        paths: t.VariadicTuple[str], timeout: float\n"
+                "        paths: tuple[str, ...], timeout: float\n"
                 "    ) -> None:\n"
                 '        """Accept the governed call shape without any effect."""\n'
                 "\n"
@@ -334,7 +334,7 @@ def mod_workspace(tmp_path: Path) -> Path:
                 "\n"
                 "\n"
                 "u = _FixtureFacade()\n"
-                "paths: t.VariadicTuple[str] = ()\n"
+                "paths: tuple[str, ...] = ()\n"
                 "timeout: float = 1.0\n"
                 "\n"
                 "u.Infra.serialization_lock_execute(paths, timeout)\n"
