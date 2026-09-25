@@ -44,7 +44,7 @@ class TestsFlextInfraFixtureViolations:
             pytest.param(
                 "rule1_method_in_constants.py",
                 "constants.py",
-                "facade must inherit canonical 'c'",
+                "facade must declare or inherit a nested namespace through its actual MRO",
                 id="rule1-method-in-constants",
             ),
             pytest.param(
@@ -57,7 +57,7 @@ class TestsFlextInfraFixtureViolations:
             pytest.param(
                 "rule2_typevar_in_class.py",
                 "typings.py",
-                "facade must inherit canonical 't'",
+                "facade must extend its declared owner",
                 id="rule2-typevar-in-class",
             ),
             pytest.param(
@@ -77,7 +77,7 @@ class TestsFlextInfraFixtureViolations:
             pytest.param(
                 "rule2_protocol_in_types.py",
                 "typings.py",
-                "facade must declare one nested Test MRO",
+                "local namespace must compose its declared family bases",
                 id="rule2-protocol-in-types",
             ),
         ],
