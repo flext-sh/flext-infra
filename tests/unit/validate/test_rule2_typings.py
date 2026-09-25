@@ -6,12 +6,10 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import u, utilities
+from tests import u
 
 
-class TestsFlextInfraRule2TypingsFacade(
-    utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
-):
+class TestsFlextInfraRule2TypingsFacade:
     """Test suite for namespace validator Rule 2 (typings facade)."""
 
     def test_rule2_valid_types_passes(self, tmp_path: Path) -> None:
@@ -20,18 +18,18 @@ class TestsFlextInfraRule2TypingsFacade(
             module_source=u.Tests.namespace_fixture("rule2_valid_types.pysrc"),
             module_name="typings.py",
         )
-        self._assert_valid(root)
+        u.Tests.assert_namespace_valid(root)
 
     def test_rule2_typevar_runtime_module_detected(self, tmp_path: Path) -> None:
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path,
             module_source='from typing import TypeVar\n\nT = TypeVar("T")\n',
             module_name="base.py",
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
-        self._assert_violation_contains(
+        u.Tests.assert_namespace_violation_contains(
             root, "module alias/data declaration is forbidden"
         )

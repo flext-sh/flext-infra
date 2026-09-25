@@ -7,12 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-import tests.utilities
+from tests import u
 
 
-class TestsFlextInfraPydanticLegacyDetection(
-    tests.utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
-):
+class TestsFlextInfraPydanticLegacyDetection:
     """Test suite for Pydantic legacy decorator/method detection."""
 
     @pytest.mark.parametrize(
@@ -173,7 +171,7 @@ class TestsFlextInfraPydanticLegacyDetection(
     def test_pydantic_decorator_binding_provenance(
         self, tmp_path: Path, imports: str, body: str, *, legacy: bool
     ) -> None:
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n"
@@ -184,7 +182,7 @@ class TestsFlextInfraPydanticLegacyDetection(
             module_name="validation.py",
         )
 
-        report = self._validate_project(root)
+        report = u.Tests.validate_namespace_project(root)
 
         tm.that(report.passed, eq=not legacy, msg=str(report.violations))
         tm.that(
@@ -204,7 +202,7 @@ class TestsFlextInfraPydanticLegacyDetection(
     def test_pydantic_method_detection_requires_unambiguous_member(
         self, tmp_path: Path, call: str, *, legacy: bool
     ) -> None:
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n\n"
@@ -215,7 +213,7 @@ class TestsFlextInfraPydanticLegacyDetection(
             module_name="client.py",
         )
 
-        report = self._validate_project(root)
+        report = u.Tests.validate_namespace_project(root)
 
         tm.that(
             sum("legacy Pydantic member" in item for item in report.violations),
