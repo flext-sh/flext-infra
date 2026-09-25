@@ -21,6 +21,9 @@ class TestsFlextInfraSharedHelperPromotion:
     @staticmethod
     def _workspace(tmp_path: Path, *, reexport: bool) -> t.Triple[Path, Path, str]:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        # Promotion publishes through the codegen transaction, which coordinates
+        # only inside an exact Git worktree root, exactly as in production.
+        u.Tests.initialize_git_repo(root)
         tier = root / c.Infra.DIR_TESTS
         suite = tier / "unit"
         fixtures = suite / "_fixtures"
