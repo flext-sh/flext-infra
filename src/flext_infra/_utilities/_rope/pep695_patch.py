@@ -20,6 +20,9 @@ knew about these nodes:
     ``bound``.
 - Pattern-matching nodes mirror the source token stream closely enough for
     Rope's patched AST region walker to keep working without upstream support.
+- Occurrence search (``_TextualFinder._re_search``) walks tokenizer NAME
+    tokens: rope's f-string regex stops at a PEP 701 reused quote and hands
+    its parser a truncated expression.
 
 NOTE (multi-agent, flext-f8vk / kimi): this module lives in the ``_rope``
 subpackage so the root ``pyproject.toml`` can scope
@@ -31,7 +34,9 @@ FLEXT typing law forbids the getattr-dispatch/Any workaround.
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+import io
+import tokenize
+from collections.abc import Callable, Iterator
 from operator import itemgetter
 from typing import ClassVar, cast
 
@@ -77,7 +82,16 @@ class FlextInfraUtilitiesRopePep695Patch:
 
         def _joined_str(self: p.Infra.PatchingASTWalker, node: ast.JoinedStr) -> None:
             """Patch PEP 701 f-strings from parser coordinates, not token guesses."""
-            start, end = self.source.consume_string()
+            # Rope's consume_string tokenizes quotes: a PEP 701 expression that
+            # reuses the outer quote (f"{d["k"]}") ends its span at the inner
+            # quote. The parser's own node span is the literal's real extent.
+            start = _source_offset(self, node.lineno, node.col_offset)
+            end_lineno = node.end_lineno
+            end_col_offset = node.end_col_offset
+            if end_lineno is None or end_col_offset is None:
+                msg = "PEP 701 joined string carries no parser end position"
+                raise ValueError(msg)
+            end = _source_offset(self, end_lineno, end_col_offset)
 
             def joined_expressions(parent: ast.JoinedStr) -> list[ast.AST]:
                 expressions: list[ast.AST] = []
@@ -138,26 +152,32 @@ class FlextInfraUtilitiesRopePep695Patch:
                 interleaved.append(self.source.source[cursor:current_end])
                 patchable.sorted_children = interleaved
 
-            for descendant in ast.walk(node):
-                if not isinstance(
-                    descendant, p.Infra.PatchingASTWalker.SourceSpanningNode
-                ):
-                    continue
-                patchable_descendant = cast(
-                    "p.Infra.PatchingASTWalker.PatchableNode", descendant
-                )
-                descendant_start = _source_offset(
-                    self, patchable_descendant.lineno, patchable_descendant.col_offset
-                )
-                descendant_end = _source_offset(
-                    self,
-                    patchable_descendant.end_lineno,
-                    patchable_descendant.end_col_offset,
-                )
-                if not start <= descendant_start <= descendant_end <= end:
-                    msg = "PEP 701 AST descendant escapes its joined-string span"
-                    raise ValueError(msg)
-                patchable_descendant.region = (descendant_start, descendant_end)
+            def assign_regions(parent: ast.AST) -> None:
+                """Give Rope every positioned scope node its parser region."""
+                for descendant_node in ast.walk(parent):
+                    if descendant_node is parent or not isinstance(
+                        descendant_node, p.Infra.PatchingASTWalker.SourceSpanningNode
+                    ):
+                        continue
+                    descendant = cast(
+                        "p.Infra.PatchingASTWalker.PatchableNode", descendant_node
+                    )
+                    descendant.region = (
+                        _source_offset(self, descendant.lineno, descendant.col_offset),
+                        _source_offset(
+                            self, descendant.end_lineno, descendant.end_col_offset
+                        ),
+                    )
+
+            # ``FormattedValue`` and nested ``JoinedStr`` nodes use the outer
+            # literal's parser span on Python 3.13.  They are structural
+            # containers, not independently writable source slices.  Walking
+            # every AST descendant as a writable child therefore invents
+            # overlaps and rejects valid PEP 701 strings. Rope still requires
+            # ``region`` on structural scope nodes such as ``GeneratorExp``.
+            # Assign those semantic regions first, then let ``patch_node``
+            # construct writable children only from the real expressions.
+            assign_regions(node)
             patch_node(node, start, end)
             self.source.offset = end
 
@@ -311,6 +331,25 @@ class FlextInfraUtilitiesRopePep695Patch:
         walker._MatchSingleton = _match_singleton
         walker._MatchStar = _match_star
         walker._MatchOr = _match_or
+
+        def _token_search(
+            self: p.Infra.RopeTextualFinder, source: str
+        ) -> Iterator[int]:
+            """Yield identifier offsets from the tokenizer, f-strings included.
+
+            Python 3.12+ tokenizes f-string replacement fields as ordinary
+            tokens, so every NAME outside strings and comments, PEP 701 nested
+            quotes included, is found without re-parsing a truncated capture.
+            """
+            line_starts = [0]
+            for line in source.splitlines(keepends=True):
+                line_starts.append(line_starts[-1] + len(line))
+            for token in tokenize.generate_tokens(io.StringIO(source).readline):
+                if token.type == tokenize.NAME and token.string == self.name:
+                    row, column = token.start
+                    yield line_starts[row - 1] + column
+
+        FlextInfraUtilitiesRopeRuntime.textual_finder()._re_search = _token_search  # pyright: ignore[reportPrivateUsage]
         cls._applied = True
 
 

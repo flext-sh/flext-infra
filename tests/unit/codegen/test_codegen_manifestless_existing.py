@@ -34,9 +34,17 @@ class TestsFlextInfraCodegenManifestlessExisting:
         seeded = {**preserved, "README.md": "# Existing repository\n"}
         pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
-        package_init = root / "src" / "flext_infra" / "__init__.py"
-        package_init.parent.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        # Fresh-import validation loads every declared entry point from the
+        # built candidate.  Seed the real package boundary so this repository
+        # fixture proves the installed pytest plugin instead of publishing a
+        # distribution that declares a module it deliberately omitted.
+        package_name = u.Infra.project_package_name(Path.cwd())
+        tm.ok(
+            u.Cli.files_copy_directory(
+                Path.cwd() / c.Infra.DEFAULT_SRC_DIR / package_name,
+                root / c.Infra.DEFAULT_SRC_DIR / package_name,
+            )
+        )
         vscode_settings = root / ".vscode" / "settings.json"
         vscode_settings.parent.mkdir()
         tm.ok(
@@ -137,8 +145,22 @@ class TestsFlextInfraCodegenManifestlessExisting:
             )
         )
         distribution = profile.upstream.replace("_", "-")
-        infra = u.Tests.repository_ref(
-            config.Infra.codegen.infra_repository.distribution
+        # Every internal development dependency the SSOT requires carries its
+        # own direct Git source, exactly as a real standalone member declares.
+        internal_dev = tuple(
+            u.Tests.repository_ref(name)
+            for name in dict.fromkeys(
+                u.Infra.dep_name(requirement)
+                for requirement in (
+                    config.Infra.codegen.infra_repository.distribution,
+                    *config.Infra.codegen.scaffold.project.dev,
+                )
+            )
+            if name is not None and name.startswith("flext-")
+        )
+        dev_group = ", ".join(
+            f'"{ref.distribution} @ git+{ref.url}@{u.Tests.provider_branch()}"'
+            for ref in internal_dev
         )
         root = tmp_path / distribution
         package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
@@ -153,8 +175,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 "dependencies = []\n"
                 "\n[dependency-groups]\n"
-                f'dev = ["{infra.distribution} @ git+{infra.url}'
-                f'@{u.Tests.provider_branch()}"]\n',
+                f"dev = [{dev_group}]\n",
             )
         )
         u.Tests.write_project_beads_config(root, distribution)

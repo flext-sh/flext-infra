@@ -21,6 +21,9 @@ class TestsFlextInfraSharedHelperPromotion:
     @staticmethod
     def _workspace(tmp_path: Path, *, reexport: bool) -> t.Triple[Path, Path, str]:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        # Promotion publishes through the codegen transaction, which coordinates
+        # only inside an exact Git worktree root, exactly as in production.
+        u.Tests.initialize_git_repo(root)
         tier = root / c.Infra.DIR_TESTS
         suite = tier / "unit"
         fixtures = suite / "_fixtures"
@@ -161,17 +164,24 @@ class TestsFlextInfraSharedHelperPromotion:
             path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
         }
         with infra.rope_workspace(root) as rope:
+            if lexical_collision:
+                with pytest.raises(
+                    ValueError, match="shadowed quoted type destination"
+                ):
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+                for path, original in sources.items():
+                    tm.that(path.read_text(encoding="utf-8"), eq=original)
+                tm.that(self._run(root, probe), eq=before)
+                return
             result = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
                 rope_workspace=rope,
                 sources=sources,
             )
-            if lexical_collision:
-                tm.fail(result, has="shadowed quoted type destination")
-                for path, original in sources.items():
-                    tm.that(path.read_text(encoding="utf-8"), eq=original)
-                tm.that(self._run(root, probe), eq=before)
-                return
             edits = tm.ok(result)
             tm.that(edits, empty=False)
             proposed = dict(sources)
@@ -265,14 +275,14 @@ class TestsFlextInfraSharedHelperPromotion:
         sources = {
             path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
         }
-        with infra.rope_workspace(root) as rope:
-            tm.fail(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-                has="requires one utilities facade",
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match="requires one utilities facade"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources=sources,
             )
         for path, original in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=original)

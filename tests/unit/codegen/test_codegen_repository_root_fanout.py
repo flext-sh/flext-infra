@@ -51,7 +51,7 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
                 test_u.Cli.run_raw(
-                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}", ""],
+                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
                 )
@@ -90,10 +90,10 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         workspace = u.Tests.workspace_spec(
             repository, project=u.Tests.project_spec(repository.name)
         )
-        repository_root = tmp_path / "workspace"
-        # The bootstrap projection refreshes the dispatcher of an existing checkout:
-        # the root is present, even when it carries no metadata or topology yet.
-        repository_root.mkdir()
+        # The bootstrap projection refreshes the dispatcher of an existing
+        # checkout: the root is a Git repository (the workspace profile resolves
+        # itself through Git), even when it carries no topology yet.
+        repository_root = u.Tests.git_repository(tmp_path, "workspace")
         request = u.Tests.conform_request(
             repository_root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,

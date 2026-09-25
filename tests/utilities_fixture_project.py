@@ -37,10 +37,15 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         return FIXTURE_PROVIDER_BRANCH
 
     @staticmethod
-    def flext_source() -> str:
-        """Declare the fixture's infrastructure provenance before scaffolding."""
+    def flext_source(distribution: str | None = None) -> str:
+        """Declare one internal distribution's direct Git source for a fixture.
+
+        Defaults to the infrastructure distribution; every internal flext
+        requirement a governed checkout declares carries its own source.
+        """
         fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
-        distribution = config.Infra.codegen.infra_repository.distribution
+        if distribution is None:
+            distribution = config.Infra.codegen.infra_repository.distribution
         return (
             f"{distribution} @ git+{fixture.provider().base_url.rstrip('/')}/"
             f"{distribution}.git@{fixture.provider_branch()}"

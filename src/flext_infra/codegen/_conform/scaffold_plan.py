@@ -135,16 +135,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 continue
             if not contract.delegates and destination != c.Infra.PYPROJECT_FILENAME:
                 continue
-            if (
-                destination == c.Infra.BEADS_METADATA_RELPATH
-                and not (root / destination).is_file()
-            ):
-                # Why (flext-l2296 family): the ledger metadata is minted by
-                # Beads at first use, so a fresh clone legitimately lacks it.
-                # Planning the absent runtime artifact failed the gen check
-                # gate on every clean checkout. When present, the render below
-                # stays identity-preserving.
-                continue
             rendered = self._rendered_artifact_source(
                 templates_root=templates_root,
                 template_relpath=entry.source,
