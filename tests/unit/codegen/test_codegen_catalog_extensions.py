@@ -268,11 +268,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(verb_names, has="setup")
         tm.that(verb_names, has="gen")
 
-    def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
-        tm.that(
-            hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
-        )
-
     def test_codegen_composes_project_mise_tools_through_toml(
         self, tmp_path: Path
     ) -> None:

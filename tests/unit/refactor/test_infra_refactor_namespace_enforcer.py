@@ -673,12 +673,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_detects_missing_runtime_alias_outside_src(
         self, tmp_path: Path
     ) -> None:
-        """Detect a missing runtime alias outside the src tree."""
+        """Detect a declared but unbound runtime alias outside the src tree."""
         workspace, project, _pkg = u.Tests.namespace_workspace(tmp_path)
         scripts_dir = project / "scripts"
         scripts_dir.mkdir(parents=True)
+        # The module declares its letter; publication never infers one from
+        # the filename, so only a declared, unbound letter is missing.
         _ = (scripts_dir / "constants.py").write_text(
-            "from __future__ import annotations\n\nclass DemoConstants:\n    pass\n",
+            "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["DemoConstants", "c"]\n\n'
+            "class DemoConstants:\n    pass\n",
             encoding="utf-8",
         )
 

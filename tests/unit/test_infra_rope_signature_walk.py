@@ -96,7 +96,7 @@ class TestsFlextInfraRopeSignatureWalk:
             )
             scope = u.Infra.scope_at(pymodule, source.index("values["))
 
-        tm.that(scope, none=False)
+        tm.not_none(scope)
 
     def test_rename_writes_pep701_nested_quote_expression(self, tmp_path: Path) -> None:
         """Rope preserves f-string fragments while writing a renamed AST child."""
@@ -115,11 +115,7 @@ class TestsFlextInfraRopeSignatureWalk:
         module_path.write_text(source, encoding="utf-8")
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            tm.that(resource, none=False)
-            if resource is None:
-                msg = "Rope did not resolve the PEP 701 regression resource"
-                raise AssertionError(msg)
+            resource = tm.not_none(rope.resource(module_path))
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -149,11 +145,7 @@ class TestsFlextInfraRopeSignatureWalk:
         module_path.write_text(source, encoding="utf-8")
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            tm.that(resource, none=False)
-            if resource is None:
-                msg = "Rope did not resolve the format-spec regression resource"
-                raise AssertionError(msg)
+            resource = tm.not_none(rope.resource(module_path))
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
