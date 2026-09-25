@@ -181,8 +181,9 @@ class TestsFlextInfraFacadeBaseCutover:
         tm.that(updated, has=f"from parent_pkg import {self.PARENT_CLASS}\n")
         tm.that(updated, has="from second_pkg import SecondDeclaredProtocols\n")
 
+    @pytest.mark.parametrize("annotation", ["", "_LAZY_IMPORTS: Mapping\n"])
     def test_lazy_published_letter_resolves_the_declared_class(
-        self, tmp_path: Path
+        self, tmp_path: Path, annotation: str
     ) -> None:
         """A letter published only through the lazy map still resolves."""
         parent = tmp_path / "parent/src/parent_pkg"
@@ -191,6 +192,7 @@ class TestsFlextInfraFacadeBaseCutover:
             parent / "__init__.py": (
                 "from types import MappingProxyType\n"
                 f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
+                f"{annotation}"
                 "_LAZY_IMPORTS = MappingProxyType(\n"
                 "    build_lazy_import_map(\n"
                 "        MappingProxyType({\n"
@@ -200,6 +202,7 @@ class TestsFlextInfraFacadeBaseCutover:
                 "        sort_keys=False,\n"
                 "    )\n"
                 ")\n"
+                f"{annotation}"
             ),
             parent / "models.py": (
                 "from base_pkg import m\n"
@@ -213,6 +216,22 @@ class TestsFlextInfraFacadeBaseCutover:
                 "m = ChildModels\n"
             ),
         }
+
+        updated = self._edits(tmp_path, sources, child)[0].updated_source
+
+        tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
+
+    def test_annotation_without_value_preserves_the_bound_facade(
+        self, tmp_path: Path
+    ) -> None:
+        """A later annotation leaves an existing Python name binding intact."""
+        child, sources = self._workspace(
+            tmp_path,
+            "from parent_pkg import m\n\nclass ChildModels(m):\n    pass\n"
+            "m = ChildModels\n",
+        )
+        parent = tmp_path / "parent/src/parent_pkg/models.py"
+        sources[parent] += f"m: type[{self.PARENT_CLASS}]\n"
 
         updated = self._edits(tmp_path, sources, child)[0].updated_source
 

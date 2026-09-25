@@ -66,6 +66,7 @@ class FlextInfraToolTablesPhase:
                 {
                     "module": list(entry.modules),
                     "disable_error_code": list(entry.disable_error_codes),
+                    "follow_untyped_imports": entry.follow_untyped_imports,
                 }
                 for entry in mypy.overrides
             ]),

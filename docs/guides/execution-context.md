@@ -6,6 +6,7 @@
 - [Registrar antes de ampliar o trabalho](#registrar-antes-de-ampliar-o-trabalho)
 - [Reconciliar decisões com seus responsáveis](#reconciliar-decisoes-com-seus-responsaveis)
 - [Diferenciar checkpoint de conclusão](#diferenciar-checkpoint-de-conclusao)
+- [Codemod scanner contract](#codemod-scanner-contract)
 
 <!-- TOC END -->
 
@@ -120,3 +121,39 @@ canônicos sem warnings ou findings residuais.
 O handoff final relaciona PRs, commits de merge e prova após integração aos Beads. Se
 algo permanece pendente, o texto deve nomeá-lo e oferecer a próxima ação executável, sem
 declarar fechamento funcional.
+
+## Codemod scanner contract
+
+The operator's 2026-09-24 decision, retained by `flext-1pquc`, makes codemod policy
+findings observational. This exception applies to those findings only. It does not
+accept failed rule discovery, failed scanner execution, incomplete output, or invalid
+diagnostic payloads, and it does not close the associated migration work.
+
+The gate consumes the complete native `ast-grep scan --json=compact` array. The
+[documented scan contract](https://ast-grep.github.io/reference/cli/scan.html) and
+[native diagnostic schema](https://ast-grep.github.io/guide/tools/json) distinguish a
+completed scan with error-severity findings (exit 1) from a completed scan without
+error-severity findings (exit 0). Exit 1 must carry only ast-grep's complete terminal
+diagnostic, whose count equals the validated error-severity findings. Additional
+traversal diagnostics remain blocking: ast-grep can continue after an unreadable path
+and still return exit 1 because another file contains a finding. The scanner boundary
+checks the [native terminal diagnostic](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/error_context.rs#L200)
+and rejects extra output from the [native path worker](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/worker.rs#L92).
+Timeouts, forwarded signals, other exit codes, malformed JSON, and disagreement between
+exit code and diagnostic severities remain failures, even when stdout exists. Both
+whole-project checks and `check_files` scan every elected provider rule.
+
+`GateExecution.observational_issues` retains original file, position, rule, message, and
+severity separately from blocking issues and error counts. Workspace reports display
+observation counts separately. SARIF uses explicit observational notes and retains the
+native severity in each note; raw scanner output remains available on the execution. A
+passing gate therefore proves the scanner contract, not zero migration findings.
+
+The same repair validates projected Ruff first-party namespaces strictly: a malformed
+value cannot be replaced with discovered namespaces. A declared empty list remains
+empty; namespace discovery applies only when the list is absent. A bare Python
+annotation does not
+replace an existing facade binding. Mypy's module-specific `follow_untyped_imports`
+policy analyzes Rope's installed source without suppressing `import-untyped`; the typed
+tooling policy owns both template and dependency-modernizer projections. See the
+[Mypy option contract](https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports).
