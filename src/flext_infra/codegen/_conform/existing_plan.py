@@ -74,7 +74,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 target.project.root_packages if target.project is not None else ()
             ),
             declared_python_dirs=self._scaffold_python_dirs(
-                codegen.templates.entries, target.make_profile
+                codegen.templates.entries,
+                target.make_profile,
+                package=repository.package,
             ),
             analysis_exclusions=tuple(
                 path.as_posix() for path in target.external_dependency_paths
