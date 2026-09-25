@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import api, d, e, h, r, td, tf, tk, tm, tv, x
+    from flext_tests import api, d, e, h, r, td, tf, tk, tm, tv, u, x
 
     from . import integration, refactor, unit
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
     from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
     from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
-    from .utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
+    from .utilities import TestsFlextInfraUtilities
     from .utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
     from .utilities_deps import TestsFlextInfraUtilitiesDepsMixin
     from .utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
@@ -93,7 +93,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".typings": ("TestsFlextInfraTypes", "t"),
             ".unit": ("unit",),
-            ".utilities": ("TestsFlextInfraUtilities", "u"),
+            ".utilities": ("TestsFlextInfraUtilities",),
             ".utilities_codegen": ("TestsFlextInfraUtilitiesCodegenMixin",),
             ".utilities_deps": ("TestsFlextInfraUtilitiesDepsMixin",),
             ".utilities_fixture_docs": ("TestsFlextInfraUtilitiesDocsFixtureMixin",),
@@ -127,6 +127,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tk",
                 "tm",
                 "tv",
+                "u",
                 "x",
             ),
         }),

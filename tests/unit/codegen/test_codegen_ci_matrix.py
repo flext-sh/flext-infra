@@ -31,6 +31,7 @@ class TestsFlextInfraCodegenCiMatrix:
     def _render_project(root: Path) -> Path:
         """Render one fresh internal_flext project into root and return it."""
         service = FlextInfraCodegenProjectNew(
+            flext_source=u.Tests.flext_source(),
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
@@ -169,7 +170,8 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(workflow, has="- name: gen fixed point (blocking)")
         tm.that(workflow, has="CI=Y make gen")
         tm.that(
-            workflow, has='test -z "$(git status --porcelain --untracked-files=all)"'
+            workflow,
+            has='test -z "$(git status --porcelain --untracked-files=all --ignore-submodules=none)"',
         )
         tm.that(workflow, lacks="run: CI=Y make conform")
         tm.that(workflow, has="run: CI=Y make audit")
@@ -239,23 +241,20 @@ class TestsFlextInfraCodegenCiMatrix:
         ci = config.Infra.codegen.make.ci
 
         for hook_id, context in (
-            ("flext-pre-commit", "pre_commit"),
-            ("flext-pre-push", "pre_push"),
+            ("flext-pre-commit-candidate", "pre_commit"),
+            ("flext-pre-push-candidate", "pre_push"),
         ):
             enabled = bool(getattr(config.Infra.codegen.make, context))
-            commands = " && ".join(
-                (
-                    f"{ci.variable}={ci.value} make {step.verb}"
-                    if step.verb == "check"
-                    else f"make {step.verb}"
-                )
-                + ("")
-                for step in workflow
-                if context in step.contexts
+            commands = "; ".join(
+                f"make {step.verb}" for step in workflow if context in step.contexts
             )
             if enabled:
                 tm.that(hooks, has=f"id: {hook_id}")
-                tm.that(hooks, has=f"'{commands}'")
+                stage = hooks.split(f"id: {hook_id}", maxsplit=1)[1].split(
+                    "pass_filenames:", maxsplit=1
+                )[0]
+                tm.that(stage, has=f"{commands};")
+                tm.that(stage, has=f"unset MAKEFLAGS {ci.variable};")
             else:
                 tm.that(hooks, lacks=f"id: {hook_id}")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")

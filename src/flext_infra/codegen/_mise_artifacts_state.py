@@ -56,7 +56,10 @@ class FlextInfraMiseArtifactsState:
 
     @classmethod
     def plan_transaction_directories(
-        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        *,
+        destinations: t.VariadicTuple[Path] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
         """Prove every transaction path absent before journal publication."""
         roots: list[Path] = []
@@ -104,6 +107,17 @@ class FlextInfraMiseArtifactsState:
                 )
                 if artifact.parent != project.root
             )
+        )
+        project_roots = {item.root for item in files.transaction_participants(layout)}
+        parents = tuple(
+            dict.fromkeys((
+                *parents,
+                *(
+                    path.parent
+                    for path in destinations
+                    if path.parent not in project_roots
+                ),
+            ))
         )
         generated = cls.plan_directories(
             layout, phase="mise", requested=parents, disposition="generated"

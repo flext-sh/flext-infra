@@ -27,6 +27,7 @@ class FlextInfraNamespaceRules(
         tree: p.AttributeProbe,
         filepath: Path,
         *,
+        repository_root: Path,
         class_stem: str,
         package_name: str,
         source: str,
@@ -38,6 +39,7 @@ class FlextInfraNamespaceRules(
             *cls.check_structure(
                 tree,
                 filepath,
+                repository_root=repository_root,
                 class_stem=class_stem,
                 is_test_file=is_test_file,
                 policy=policy,

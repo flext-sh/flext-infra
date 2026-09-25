@@ -30,11 +30,11 @@ class FlextInfraUtilitiesRopeImports:
     def import_statement_module_name(
         import_statement: t.Infra.RopeImportStatement,
     ) -> str | None:
-        """Return the absolute module name represented by one Rope import statement."""
+        """Return the declared module name, preserving relative import depth."""
         import_info = import_statement.import_info
         if not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info):
             return None
-        module_name = import_info.module_name
+        module_name = f"{'.' * import_info.level}{import_info.module_name}"
         return module_name or None
 
     @staticmethod
