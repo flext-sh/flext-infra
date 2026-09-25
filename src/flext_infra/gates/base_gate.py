@@ -64,8 +64,20 @@ class FlextInfraGate:
         started = time.monotonic()
         check_dirs = self._get_check_dirs(project_dir, ctx)
         if not check_dirs:
-            return self._skip_result(project_dir, started)
+            return self._empty_targets_result(project_dir, started)
         return self._execute_check_command(project_dir, ctx, check_dirs, started)
+
+    def _empty_targets_result(
+        self, project_dir: Path, started: float
+    ) -> m.Infra.GateExecution:
+        """Outcome when a gate collects no check targets.
+
+        Failing loud is the default: a selected gate with no inputs did not
+        establish acceptance. A gate whose targets are conditional on the
+        project topology (absent by declared design, not by accident)
+        overrides this with a neutral skip naming the condition.
+        """
+        return self._skip_result(project_dir, started)
 
     def check_files(
         self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext

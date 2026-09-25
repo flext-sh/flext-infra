@@ -16,7 +16,10 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
     @staticmethod
     def _scaffold_python_dirs(
-        entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
+        entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+        profile: c.Infra.MakeProfile,
+        *,
+        package: bool = True,
     ) -> t.StrSequence:
         """Return Python roots the selected scaffold manifest actually creates."""
         # Derive future roots from both
@@ -28,10 +31,15 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             and entry.delegate == "render"
             and Path(entry.destination).parts
         }
+        # A package:false repository (a solo workspace root) never
+        # materializes the package source dir: its manifest declares no
+        # importable package, so analyzers must not include it — pyright
+        # fails hard on an include entry whose directory does not exist.
+        source_dir = config.Infra.tooling.tools.pyright.path_rules.source_dir
         return tuple(
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
-            if directory in generated_roots
+            if directory in generated_roots and (package or directory != source_dir)
         )
 
     @classmethod
