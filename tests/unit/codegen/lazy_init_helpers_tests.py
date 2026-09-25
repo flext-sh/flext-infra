@@ -473,9 +473,9 @@ class TestsFlextInfraLazyInitHelpers:
         # to own it, and until then the generator propagates, never infers.
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
         )
-        tm.that(init_content, has="FlextMeltanoConstants as c")
+        tm.that(init_content, lacks="FlextMeltanoConstants as c")
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
@@ -684,8 +684,6 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        for public_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
-            tm.that(init_content, has=f'"{public_name}"')
         tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 

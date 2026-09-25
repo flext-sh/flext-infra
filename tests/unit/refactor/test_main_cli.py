@@ -26,7 +26,7 @@ class TestsFlextInfraRefactorMainCli:
 
     _MISSING_RUNTIME_ALIAS_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels"]\n\n'
+        '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
         "class FlextDemoModels:\n"
         "    pass\n"
     )
