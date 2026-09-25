@@ -9,14 +9,21 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from .pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from .project import FlextInfraRopeProject
 
 
-__all__: tuple[str, ...] = ("FlextInfraRopeProject",)
+__all__: tuple[str, ...] = (
+    "FlextInfraRopeProject",
+    "FlextInfraUtilitiesRopePep695Patch",
+)
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
-        MappingProxyType({".project": ("FlextInfraRopeProject",)}),
+        MappingProxyType({
+            ".pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
+            ".project": ("FlextInfraRopeProject",),
+        }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
     )

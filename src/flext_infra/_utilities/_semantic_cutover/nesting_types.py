@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Callable
 from pathlib import Path
+from typing import override
 
 from flext_infra import m, p, t
 
@@ -114,6 +115,9 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                     continue
                 if isinstance(actual, p.Infra.RopeImportedName):
                     module = scope.pyobject.get_module()
+                    if module is None:
+                        msg = "quoted type scope has no declaring module"
+                        raise ValueError(msg)
                     _, destination = runtime.import_binding(
                         project, module, module_name, owner
                     )
@@ -146,21 +150,33 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 if self.depth:
                     captured.add(name)
 
+            @override
             def visit_Name(self, node: ast.Name) -> None:
                 if isinstance(node.ctx, (ast.Store, ast.Del)):
                     self.bind(node.id)
 
-            def _visit_scoped(self, node: ast.stmt | ast.expr) -> None:
+            def _visit_scoped(
+                self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+            ) -> None:
                 self.bind(getattr(node, "name", ""))
                 self.depth += 1
-                for stmt in getattr(node, "body", []):
+                for stmt in node.body:
                     self.visit(stmt)
                 self.depth -= 1
 
-            visit_FunctionDef = _visit_scoped
-            visit_AsyncFunctionDef = _visit_scoped
-            visit_ClassDef = _visit_scoped
+            @override
+            def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+                self._visit_scoped(node)
 
+            @override
+            def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+                self._visit_scoped(node)
+
+            @override
+            def visit_ClassDef(self, node: ast.ClassDef) -> None:
+                self._visit_scoped(node)
+
+            @override
             def visit_Lambda(self, node: ast.Lambda) -> None:
                 self.depth += 1
                 self.visit(node.body)
@@ -202,7 +218,10 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             msg = f"quoted type destination is not an identifier chain: {expression}"
             raise TypeError(msg)
         module = scope.pyobject.get_module()
-        module_scope = module.get_scope() if module is not None else None
+        if module is None:
+            msg = "quoted type scope has no declaring module"
+            raise ValueError(msg)
+        module_scope = module.get_scope()
         if module_scope is None:
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
