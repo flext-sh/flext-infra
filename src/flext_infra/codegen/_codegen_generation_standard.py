@@ -336,13 +336,15 @@ class FlextInfraCodegenGenerationStandardMixin(
             project_payload = u.Infra.pyproject_payload(
                 (project_root / c.Infra.PYPROJECT_FILENAME).resolve()
             )
+            projected: t.JsonValue | None = project_payload.get("tool", {})
+            for section in ("ruff", "lint", "isort"):
+                projected = (
+                    projected.get(section, {}) if isinstance(projected, dict) else {}
+                )
             projected = (
-                project_payload
-                .get("tool", {})
-                .get("ruff", {})
-                .get("lint", {})
-                .get("isort", {})
-                .get("known-first-party")
+                projected.get("known-first-party")
+                if isinstance(projected, dict)
+                else None
             )
             if projected:
                 first_party_names.update(projected)
