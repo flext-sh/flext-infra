@@ -296,7 +296,6 @@ mise_exec() { \
 		case "$$mise_config_mode" in \
 			no-config) mise_config_argument='MISE_NO_CONFIG=1' ;; \
 			project) mise_config_argument= ;; \
-			project-resolving) mise_config_argument='MISE_LOCKED=0' ;; \
 			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
 		esac; \
 		env -i \
@@ -407,11 +406,9 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 	fi; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"; \
 	# Only ``upg`` resolves: it re-resolves every ``latest`` selector and the \
-	# Python minor line into mise.lock, then installs unlocked so the lock \
-	# records the resolved download URLs and checksums of this platform. \
+	# Python minor line into mise.lock, with download URLs and checksums. \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
 		mise_checked "$$scratch/lock.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump; \
-		mise_checked "$$scratch/resolve-install.log" mise_exec project-resolving "$$latest_mise" -C "$$project_root" install --yes; \
 	fi; \
 	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \

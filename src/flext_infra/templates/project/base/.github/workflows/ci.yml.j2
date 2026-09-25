@@ -80,8 +80,10 @@ jobs:
 {{ custom_steps }}
 {%- endif %}
       # make setup is the only toolchain installer. It bootstraps the newest
-      # released Mise, installs the committed fleet toolchain, publishes that
-      # environment through GITHUB_PATH, and prepares the project runtime.
+      # released Mise, installs the fleet toolchain frozen from the committed
+      # mise.lock and the dependencies frozen from the committed uv.lock,
+      # publishes that environment through GITHUB_PATH, and prepares the
+      # project runtime. CI never runs `make upg`: it never re-resolves.
 {%- if system_packages %}
 
       # Why: this repository's tests exercise a real external engine, and the
@@ -106,9 +108,9 @@ jobs:
 {%- if step.verb == "setup" %}
         # Why (resumption-f1 2026-09-11): GitHub-hosted runners share egress
         # IPs, so the unauthenticated 60 req/h REST budget is exhausted before
-        # mise finishes resolving the moving @latest backends (observed 403 on
-        # beads/waza: setup died before any gate). The job token authenticates
-        # resolution without changing the moving-release toolchain contract.
+        # mise finishes downloading the GitHub-hosted tools the lock pins
+        # (observed 403 on beads/waza: setup died before any gate). The job
+        # token authenticates those downloads without changing the lock.
         env:
           GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
           MISE_GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
@@ -130,9 +132,8 @@ jobs:
           git status --short
           test -z "$(git status --porcelain --untracked-files=all)"
 
-      # Setup syncs against the committed lock and refreshes it in place (`uv
-      # sync`); the fleet runs unlocked, so the deps audit proves the resolved
-      # graph instead of preserving a frozen snapshot.
+      # Setup installs frozen from the committed uv.lock (`uv sync --locked`)
+      # and never rewrites it; the deps audit proves that locked graph.
       - name: deps check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make audit
 {%- endif %}

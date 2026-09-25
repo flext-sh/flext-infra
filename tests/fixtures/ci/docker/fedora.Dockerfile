@@ -18,7 +18,8 @@ RUN dnf install -y \
 # === SECTION: managed tool bootstrap (managed) ===
 # Source: generated bin/mise + .mise.toml
 # The canonical make setup verb below owns the official newest-Mise bootstrap
-# and every latest tool installation as the same unprivileged runtime user.
+# and the frozen installation of every tool the committed mise.lock pins, as
+# the same unprivileged runtime user.
 # The setup RUN receives Mise's credential only through a BuildKit secret.
 # Never persist build credentials in ARG, ENV, layers, or image configuration.
 ARG RUNNER_USER=runner

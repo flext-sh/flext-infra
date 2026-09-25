@@ -75,12 +75,13 @@ executada na cidade, recuperou a vinculação; a prova foi uma leitura real com
 `direnv exec <rig> bd show <id> --json`. Não recrie metadata ou bancos manualmente para
 contornar essa validação.
 
-As correções mais recentes do operador exigem provisionamento e atualização
-exclusivamente por `make setup`, dependências Git nos tips das branches de integração
-declaradas e remoção de `APPLY`, `uv.lock` e `mise.lock` em todos os produtores e
-consumidores. Corrija o responsável do setup e regenere pelo `make gen`; instalações
-manuais não substituem o ciclo. Ignorar um lock no Git não remove o contrato se setup,
-deps, build ou release ainda o recriam ou leem.
+As correções mais recentes do operador (2026-09-24) declaram `latest` na configuração
+e fazem de `make upg` o único verbo que resolve versões novas e grava os `uv.lock` e
+`mise.lock` versionados. `make setup`, `make gen` e `make fmt` nunca atualizam: instalam
+congelados a partir desses locks, que é o caminho do CI. Dependências Git seguem os
+tips das branches de integração declaradas e `APPLY` continua removido. Corrija o
+responsável do setup ou do `upg` e regenere pelo `make gen`; instalações manuais não
+substituem o ciclo.
 
 ## Registrar antes de ampliar o trabalho
 

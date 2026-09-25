@@ -54,8 +54,10 @@ listadas permanecem abertas e não devem ser silenciosamente escolhidas:
   histórica e determina ADR-005 §§1–2 como padrão. A propagação restante é de
   `flext-la3z5`.
 
-A correção mais recente do operador sobrepõe esses textos: `APPLY`, `uv.lock` e
-`mise.lock` estão exterminados em todos os produtores e consumidores, e os Beads são
+A correção mais recente do operador sobrepõe esses textos: `APPLY` está exterminado
+em todos os produtores e consumidores; a configuração declara `latest` e somente
+`make upg` resolve e grava os `uv.lock` e `mise.lock` versionados, enquanto `setup`,
+`gen` e `fmt` instalam congelados a partir deles (operador 2026-09-24); e os Beads são
 exclusivamente do Gas City. Qualquer nova leitura desses ADRs deve aplicar essa
 precedência e reportar o conflito no Bead owner, não resolver em silêncio.
 

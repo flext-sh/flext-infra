@@ -375,8 +375,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
         if conformed.failure:
             return r[bool].from_failure(conformed)
-        # Why: the lock records the project's own version, so the stamp
-        # refreshes it the way `make deps` does; it runs after conform so the
+        # Why: the committed lock records the project's own version, so the
+        # stamp re-locks it without upgrading anything (only `make upg`
+        # resolves newer releases); it runs after conform so the
         # lock matches the dependencies conform just settled, never a
         # pre-conform snapshot that goes stale the moment conform runs.
         locked = u.Cli.run_checked(
