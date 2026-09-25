@@ -318,6 +318,11 @@ Infra:
           explicit_package_bases: true
           check_untyped_defs: true
           extra_checks: true
+          # Analyze source distributions that have real annotations but omit
+          # the PEP 561 marker. Rope 1.14 is one such runtime owner; skipping
+          # it converts every public boundary into Any and makes its imports
+          # fail before our typed protocols can validate them.
+          follow_untyped_imports: true
           local_partial_types: true
           no_implicit_reexport: true
           show_traceback: true

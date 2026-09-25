@@ -1,10 +1,8 @@
 """Codemod enforcement quality gate.
 
 Runs ``ast-grep scan`` with the codemod rules discovered via
-``importlib.resources`` cascade (ADR-014). Policy findings are observational:
-they are reported for migration tracking and never block the build (operator
-order 2026-09-24). Machinery failures — a broken rule plan or an ast-grep
-crash — remain blocking, because silent scrutiny loss is never acceptable.
+``importlib.resources`` cascade (ADR-014). Policy findings and machinery
+failures both block the build so the gate verdict always reflects its report.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -26,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodemodGate(FlextInfraGate):
-    """Report codemod rule findings observationally across every project."""
+    """Enforce codemod rules across every project."""
 
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
@@ -94,15 +92,11 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         severity=str(c.Infra.GateSeverity.ERROR.value),
                     )
                 )
-            findings.extend(self._observational_findings(scan, ruleset.provider))
+            findings.extend(self._issues_from_scan(scan, ruleset.provider))
 
         return self._build_check_gate_execution(
             project_dir,
-            # Operator order (2026-09-24): codemod policy findings are
-            # observational — they are reported for migration tracking and
-            # never block the build. Machinery failures (a broken rule plan
-            # or an ast-grep crash) remain blocking above.
-            passed=not failures,
+            passed=not failures and not findings,
             issues=[*failures, *findings],
             raw_output=(
                 f"{len(planned.value.rules)} rules from "
@@ -113,7 +107,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _observational_findings(
+    def _issues_from_scan(
         scan: p.Cli.CommandOutput, provider: str
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Turn one scan's stdout into reported policy findings."""

@@ -25,15 +25,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
     @staticmethod
     def _markdown_verdict(*, findings_block: bool) -> bool:
-        """Expected check verdict from the warn-only SSOT (operator law 2026-09-22).
-
-        ``c.Infra.WARNING_GATE_IDS`` owns the classification: a warn-only gate
-        reports findings without failing the verdict, a blocking gate fails on
-        any finding. Reading the SSOT keeps the expectation following the law
-        instead of freezing one posture.
-        """
-        if FlextInfraMarkdownGate.gate_id in c.Infra.WARNING_GATE_IDS:
-            return True
+        """Require every reported Markdown finding to fail the gate."""
         return not findings_block
 
     def test_bandit_reports_real_finding(self, tmp_path: Path) -> None:
@@ -112,10 +104,10 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         tm.that([issue.code for issue in result.issues], eq=list(codes))
-        if codes and FlextInfraMarkdownGate.gate_id in c.Infra.WARNING_GATE_IDS:
+        if codes:
             tm.that(
                 [issue.severity.lower() for issue in result.issues],
-                eq=[str(c.Infra.GateSeverity.WARNING.value)] * len(codes),
+                eq=[str(c.Infra.GateSeverity.ERROR.value)] * len(codes),
             )
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:

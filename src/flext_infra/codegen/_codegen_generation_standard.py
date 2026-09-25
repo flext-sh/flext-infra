@@ -346,8 +346,14 @@ class FlextInfraCodegenGenerationStandardMixin(
                 if isinstance(projected, dict)
                 else None
             )
-            if projected:
-                first_party_names.update(projected)
+            projected_items: list[t.JsonValue] = (
+                projected if isinstance(projected, list) else []
+            )
+            projected_names = tuple(
+                name for name in projected_items if isinstance(name, str)
+            )
+            if projected_names and len(projected_names) == len(projected_items):
+                first_party_names.update(projected_names)
             else:
                 first_party_names.update(
                     u.Infra.discover_first_party_namespaces(project_root)

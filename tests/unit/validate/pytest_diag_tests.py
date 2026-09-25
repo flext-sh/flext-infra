@@ -370,7 +370,7 @@ class TestsFlextInfraPytestDiag:
         log = tmp_path / "pytest.log"
         log.write_text("consumer output")
         extractor = self._extractor(junit, log, events=events)
-        with pytest.raises(ValueError, match="contains no events|validation error"):
+        with pytest.raises(ValueError, match=r"contains no events|validation error"):
             extractor.extract(junit, log, report_log=extractor.report_log)
 
     def test_missing_report_log_preserves_file_error(self, tmp_path: Path) -> None:

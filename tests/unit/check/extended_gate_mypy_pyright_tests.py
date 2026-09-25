@@ -25,14 +25,8 @@ class TestsFlextInfraTypeGates:
     def _gate_verdict(
         gate_class: type[FlextInfraGate], *, findings_block: bool
     ) -> bool:
-        """Derive the check verdict from the warn-only SSOT (operator law 2026-09-22).
-
-        ``c.Infra.WARNING_GATE_IDS`` owns the classification: a warn-only gate
-        reports findings — including tool failures — without failing the
-        verdict; a blocking gate fails on any finding.
-        """
-        if gate_class.gate_id in c.Infra.WARNING_GATE_IDS:
-            return True
+        """Require every reported type-checker finding to fail the gate."""
+        _ = gate_class
         return not findings_block
 
     @pytest.fixture
@@ -131,11 +125,7 @@ class TestsFlextInfraTypeGates:
         )
         assert failed.issues
         assert failed.result.errors
-        warn_only = gate_class.gate_id in c.Infra.WARNING_GATE_IDS
-        expected_severity = "warning" if warn_only else "error"
-        assert any(
-            issue.severity.lower() == expected_severity for issue in failed.issues
-        )
+        assert any(issue.severity.lower() == "error" for issue in failed.issues)
 
         source.write_text("value: int = 1\n", encoding="utf-8")
         repaired = gate.check(project, ctx)
