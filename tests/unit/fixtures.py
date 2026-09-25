@@ -87,11 +87,11 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
         )
     )
-    integration = tm.ok(
+    integration_branch = tm.ok(
         u.Infra.flext_integration_line(
             codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
         )
-    )
+    ).branch
     root = u.Tests.mk_project(
         tmp_path,
         "detector-fixture",
@@ -103,7 +103,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
             '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
-            f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration.branch}"]\n'
+            f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration_branch}"]\n'
             "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),
@@ -140,12 +140,28 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
-    # A newly scaffolded consumer has no committed locks yet. The public upgrade
-    # lifecycle is their sole writer; frozen setup starts only after that first
-    # resolved environment has been reviewed and committed by the consumer.
-    upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
-    u.Tests.record_dependency_command_output(upgrade)
-    tm.that(u.Cli.process_succeeded(upgrade.outcome), eq=True, msg=upgrade.stderr)
+    # A newly scaffolded consumer has no committed locks yet. The fixture
+    # provisions exactly what the upgrade lifecycle would leave behind — one
+    # resolved lock plus one synced environment — through direct lock and sync
+    # calls in an isolated environment: `make upg` wraps the same resolution
+    # in a forced `--upgrade --refresh` re-resolution (a full network pass
+    # over every pin) that no detector case needs, and that re-resolution is
+    # what pushed each case past its runtime wall.
+    isolated = c.Tests.MAKE_ISOLATION_ENV_KEYS
+    tm.ok(
+        u.Cli.run_checked(
+            ["uv", "lock"],
+            cwd=root,
+            remove_env_keys=isolated,
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            ["uv", "sync", "--all-groups"],
+            cwd=root,
+            remove_env_keys=isolated,
+        )
+    )
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(
         "[typing_libraries]\nexclude = []\n", encoding="utf-8"
