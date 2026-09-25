@@ -14,7 +14,6 @@ sourced from code and docstrings.
 - [Configuration](configuration.md)
 - [Development](development.md)
 - [Execution context](execution-context.md)
-- [Generated merge policy](generated-merge-policy.md)
 - [Getting started](getting-started.md)
 - [Local config overrides](local-config-overrides.md)
 - [Make commands](make-commands.md)
