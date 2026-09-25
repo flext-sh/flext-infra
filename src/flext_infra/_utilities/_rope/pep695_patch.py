@@ -80,7 +80,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             for child in ast.walk(node):
                 if not isinstance(child, p.Infra.PatchingASTWalker.SourceSpanningNode):
                     continue
-                patchable = cast(p.Infra.PatchingASTWalker.PatchableNode, child)
+                patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", child)
                 child_start = _source_offset(
                     self, patchable.lineno, patchable.col_offset
                 )
@@ -92,7 +92,7 @@ class FlextInfraUtilitiesRopePep695Patch:
                     patchable.sorted_children = [
                         self.source.source[child_start:child_end]
                     ]
-            patched_node = cast(p.Infra.PatchingASTWalker.PatchableNode, node)
+            patched_node = cast("p.Infra.PatchingASTWalker.PatchableNode", node)
             patched_node.region = (start, end)
             if self.children:
                 patched_node.sorted_children = [self.source.source[start:end]]
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesRopePep695Patch:
 
         walker._handle_function_def_node = _patched_function_def  # pyright: ignore[reportPrivateUsage]
         walker._ClassDef = _patched_class_def  # pyright: ignore[reportPrivateUsage]
-        walker._JoinedStr = _joined_str
+        walker._JoinedStr = _joined_str  # pyright: ignore[reportPrivateUsage]
         walker._TypeAlias = _type_alias
         walker._TypeVar = _type_var
         walker._ParamSpec = _param_spec
