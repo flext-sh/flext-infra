@@ -71,6 +71,10 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 f'version = "{version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 'dependencies = ["flext-core"]\n'
+                # The FLEXT line is detected from the declared infrastructure
+                # source, never cataloged: a governed checkout declares it.
+                "\n[dependency-groups]\n"
+                f'dev = ["{TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source()}"]\n'
             ),
             encoding="utf-8",
         )
