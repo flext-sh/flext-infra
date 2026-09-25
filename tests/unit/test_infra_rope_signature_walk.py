@@ -8,12 +8,22 @@ from typing import TYPE_CHECKING, cast
 from flext_tests import tm
 from rope.refactor import patchedast
 
-from flext_infra import p
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+class _PatchableNode(ast.Name):
+    """AST node carrying the fields the patched-AST writer attaches at runtime.
+
+    The fork's ``patch_ast`` sets ``sorted_children`` as a dynamic field, so
+    the test declares that contract locally instead of reviving the deleted
+    monkeypatch protocols.
+    """
+
+    sorted_children: list[ast.expr | str]
 
 
 class TestsFlextInfraRopeSignaturePatch:
@@ -179,7 +189,10 @@ class TestsFlextInfraRopeSignaturePatch:
             for node in ast.walk(tree)
             if isinstance(node, ast.Name) and node.id == "widths"
         )
-        patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", widths)
+        # The patched AST carries `sorted_children` as a dynamically attached
+        # field: the fork's patch_ast sets it at runtime, so the test writes
+        # it the same way instead of through a typing-only wrapper.
+        patchable = cast("_PatchableNode", widths)
         patchable.sorted_children = ["sizes"]
 
         rendered = patchedast.write_ast(tree)
