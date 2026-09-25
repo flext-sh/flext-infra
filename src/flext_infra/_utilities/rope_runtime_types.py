@@ -50,6 +50,29 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             raise TypeError(msg)
         return walker
 
+    @classmethod
+    def textual_finder(cls) -> type[p.Infra.RopeTextualFinder]:
+        """Return rope's occurrence textual finder bound to its search slot.
+
+        The PEP 701 patch replaces ``_re_search``; a rope release that drops
+        the slot fails loudly here instead of silently skipping the patch.
+        """
+        finder = cls.runtime_type("rope.refactor.occurrences", "_TextualFinder")
+        if not cls._is_textual_finder(finder):
+            msg = (
+                "rope _TextualFinder is missing the _re_search slot: "
+                "the installed rope version changed its internals"
+            )
+            raise TypeError(msg)
+        return finder
+
+    @staticmethod
+    def _is_textual_finder(
+        finder: type[p.AttributeProbe],
+    ) -> TypeGuard[type[p.Infra.RopeTextualFinder]]:
+        """Narrow rope's textual finder to the PEP 701 search contract."""
+        return hasattr(finder, "_re_search")
+
     @staticmethod
     def _is_signature_walker(
         walker: type[p.AttributeProbe],

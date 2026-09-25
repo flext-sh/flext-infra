@@ -20,6 +20,9 @@ knew about these nodes:
     ``bound``.
 - Pattern-matching nodes mirror the source token stream closely enough for
     Rope's patched AST region walker to keep working without upstream support.
+- Occurrence search (``_TextualFinder._re_search``) walks tokenizer NAME
+    tokens: rope's f-string regex stops at a PEP 701 reused quote and hands
+    its parser a truncated expression.
 
 NOTE (multi-agent, flext-f8vk / kimi): this module lives in the ``_rope``
 subpackage so the root ``pyproject.toml`` can scope
@@ -31,7 +34,9 @@ FLEXT typing law forbids the getattr-dispatch/Any workaround.
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+import io
+import tokenize
+from collections.abc import Callable, Iterator
 from operator import itemgetter
 from typing import ClassVar, cast
 
@@ -320,6 +325,25 @@ class FlextInfraUtilitiesRopePep695Patch:
         walker._MatchSingleton = _match_singleton
         walker._MatchStar = _match_star
         walker._MatchOr = _match_or
+
+        def _token_search(
+            self: p.Infra.RopeTextualFinder, source: str
+        ) -> Iterator[int]:
+            """Yield identifier offsets from the tokenizer, f-strings included.
+
+            Python 3.12+ tokenizes f-string replacement fields as ordinary
+            tokens, so every NAME outside strings and comments, PEP 701 nested
+            quotes included, is found without re-parsing a truncated capture.
+            """
+            line_starts = [0]
+            for line in source.splitlines(keepends=True):
+                line_starts.append(line_starts[-1] + len(line))
+            for token in tokenize.generate_tokens(io.StringIO(source).readline):
+                if token.type == tokenize.NAME and token.string == self.name:
+                    row, column = token.start
+                    yield line_starts[row - 1] + column
+
+        FlextInfraUtilitiesRopeRuntime.textual_finder()._re_search = _token_search  # pyright: ignore[reportPrivateUsage]
         cls._applied = True
 
 

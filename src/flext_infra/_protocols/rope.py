@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from pathlib import Path
     from types import TracebackType
 
@@ -149,6 +149,18 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             export_options: m.Infra.ExportOptions | None = None,
         ) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class RopeTextualFinder(Protocol):
+        """Structural contract for rope's internal occurrence ``_TextualFinder``.
+
+        Rope captures f-strings with a regular expression that ends at the
+        first reused quote, so PEP 701 expressions reach its parser truncated.
+        The PEP 701 patch replaces the search slot with a tokenizer walk.
+        """
+
+        name: str
+        _re_search: Callable[..., Iterator[int]]
 
     @runtime_checkable
     class PatchingASTWalker(Protocol):

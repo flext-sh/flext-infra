@@ -10,7 +10,7 @@ from rope.refactor import patchedast
 
 from flext_infra import p
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -99,7 +99,10 @@ class TestsFlextInfraRopeSignaturePatch:
             )
             scope = u.Infra.scope_at(pymodule, source.index("values["))
 
-        tm.that(scope, none=False)
+        # A Rope scope is not a payload value; its observable identity is the
+        # enclosing function's scope kind.
+        assert scope is not None
+        tm.that(scope.get_kind(), eq=c.Infra.RopeScopeKind.FUNCTION)
 
     def test_rename_writes_pep701_nested_quote_expression(self, tmp_path: Path) -> None:
         """Rope preserves f-string fragments while writing a renamed AST child."""
