@@ -103,7 +103,13 @@ class FlextInfraUtilitiesDocsValidate:
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:
         """Return required docs paths that are still missing from one scope."""
-        if scope.name == c.Infra.RK_ROOT:
+        # A workspace root that carries its own manifest is the workspace
+        # scope regardless of the scope label: the workspace generator
+        # publishes the root contract (overview/catalog), never the
+        # standalone project pages, so demanding them here failed every
+        # solo workspace on files its topology cannot produce.
+        is_workspace_root = (scope.path / "config/workspace.yaml").is_file()
+        if scope.name == c.Infra.RK_ROOT or is_workspace_root:
             required = [
                 "README.md",
                 "docs/index.md",
