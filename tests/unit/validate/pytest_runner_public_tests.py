@@ -170,6 +170,16 @@ class TestsFlextInfraPytestRunner:
             has=["executed=0", "deselected=1", "cache_restored=True", "exit=0"],
         )
 
+        (cached_runner_project / "tests" / "test_added.py").write_text(
+            "def test_added_after_cache_seed():\n    assert True\n", encoding="utf-8"
+        )
+        added_exit = tm.ok(self._runner_for(cached_runner_project).execute())
+        tm.that(added_exit, eq=0)
+        tm.that(
+            self._summary(reports_root),
+            has=["executed=1", "failed=0", "errors=0", "exit=0"],
+        )
+
     @pytest.mark.slow
     @pytest.mark.parametrize("omit_case", [False, True], ids=["order", "membership"])
     def test_warm_workers_follow_the_central_selection_order(
