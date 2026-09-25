@@ -97,4 +97,6 @@ message: >-
 note: >-
   Run `make mod`: the facade-base semantic phase derives the parent class name
   from the parent module's `__all__` and rewrites the import, the base, and an
-  annotated rebind atomically.
+  annotated rebind atomically. Only FLEXT family facades (`Flext*`,
+  `TestsFlext*`) are selected; a consumer facade keeps its letter base
+  (flext-core ENFORCE-046).
