@@ -189,7 +189,7 @@ class FlextInfraModelsBase:
             m.Field(
                 description=(
                     "Comma-separated gate names for post-validation; empty selects"
-                    " the SSOT snapshot gates (make.ci.check_gates)."
+                    " the SSOT snapshot gates (make.check_gates_ci)."
                 )
             ),
         ] = ""

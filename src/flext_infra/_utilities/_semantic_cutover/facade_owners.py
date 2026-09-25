@@ -107,6 +107,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         for node in cls._facade_ordered_statements(
             ast.parse(source, filename=module).body
         ):
+            if isinstance(node, ast.AnnAssign) and node.value is None:
+                # An annotation without a value does not rebind an existing name.
+                continue
             if isinstance(node, ast.ClassDef) and node.name == name:
                 target, declared = None, True
             elif isinstance(node, ast.Assign | ast.AnnAssign) and any(
@@ -132,10 +135,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                             else node.module or ""
                         )
                         target, declared = (source_module, imported.name), False
-            elif isinstance(node, ast.Assign | ast.AnnAssign) and any(
-                isinstance(bound, ast.Name) and bound.id == _LAZY_IMPORTS_TARGET
-                for bound in (
-                    node.targets if isinstance(node, ast.Assign) else (node.target,)
+            elif (
+                isinstance(node, ast.Assign | ast.AnnAssign)
+                and node.value is not None
+                and any(
+                    isinstance(bound, ast.Name) and bound.id == _LAZY_IMPORTS_TARGET
+                    for bound in (
+                        node.targets if isinstance(node, ast.Assign) else (node.target,)
+                    )
                 )
             ):
                 # The generated lazy publication IS a binding statement: every

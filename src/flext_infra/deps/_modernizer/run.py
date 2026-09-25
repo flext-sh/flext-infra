@@ -142,7 +142,7 @@ class FlextInfraPyprojectModernizerRun:
         drift_reported = False
         ordered = sorted(files)
         for index, file_path in enumerate(ordered, start=1):
-            u.Cli.progress(index, len(ordered), str(file_path), c.Infra.VERB_DEPS)
+            u.Cli.progress(index, len(ordered), str(file_path), c.Infra.CLI_GROUP_DEPS)
             state = (
                 root_state
                 if file_path.resolve() == root_pyproject.resolve()

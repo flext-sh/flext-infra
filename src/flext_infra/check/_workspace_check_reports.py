@@ -33,12 +33,15 @@ class FlextInfraWorkspaceCheckReportsMixin:
             "",
             "## Summary",
             "",
-            "| Project | Status | Errors |",
-            "|---|---:|---:|",
+            "| Project | Status | Errors | Observations |",
+            "|---|---:|---:|---:|",
         ]
         for project in results:
             status = "PASS" if project.passed else "FAIL"
-            lines.append(f"| {project.project} | {status} | {project.total_errors} |")
+            lines.append(
+                f"| {project.project} | {status} | {project.total_errors} | "
+                f"{project.total_observations} |"
+            )
         lines.extend(["", "## Details", ""])
         for project in results:
             lines.append(f"### {project.project}")
@@ -48,9 +51,14 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     continue
                 gate_status = "PASS" if execution.result.passed else "FAIL"
                 lines.append(
-                    f"- {gate}: {gate_status} ({len(execution.issues)} issues)"
+                    f"- {gate}: {gate_status} ({len(execution.issues)} issues, "
+                    f"{execution.observational_count} observations)"
                 )
                 lines.extend(f"  - {issue.formatted}" for issue in execution.issues)
+                lines.extend(
+                    f"  - Observational [{issue.severity}]: {issue.formatted}"
+                    for issue in execution.observational_issues
+                )
             lines.append("")
         return "\n".join(lines)
 
@@ -67,7 +75,10 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 if execution is None:
                     continue
                 tool_name, tool_url = c.Infra.SARIF_TOOL_INFO[gate]
-                for issue in execution.issues:
+                for issue, observational in (
+                    *((issue, False) for issue in execution.issues),
+                    *((issue, True) for issue in execution.observational_issues),
+                ):
                     rule_id = issue.code or gate
                     rules_by_id.setdefault(
                         rule_id,
@@ -80,10 +91,19 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     sarif_results.append(
                         m.Infra.SarifResult(
                             ruleId=rule_id,
-                            level="warning"
-                            if issue.severity.lower() == c.Infra.SeverityLevel.WARNING
-                            else "error",
-                            message=issue.message,
+                            level=(
+                                "note"
+                                if observational
+                                else "warning"
+                                if issue.severity.lower()
+                                == c.Infra.SeverityLevel.WARNING
+                                else "error"
+                            ),
+                            message=(
+                                f"Observational [{issue.severity}]: {issue.message}"
+                                if observational
+                                else issue.message
+                            ),
                             locations=[
                                 m.Infra.SarifLocation(
                                     uri=issue.file,
@@ -160,6 +180,11 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 u.Cli.info(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})"
                 )
+        if any(project.total_observations for project in results):
+            u.Cli.info("Observational findings by project (not gate failures):")
+            for project in results:
+                if project.total_observations:
+                    u.Cli.info(f"{project.project:30s} {project.total_observations:6d}")
         return r[t.SequenceOf[m.Infra.ProjectResult]].ok(results)
 
 

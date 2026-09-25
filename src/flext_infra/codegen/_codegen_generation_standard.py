@@ -6,14 +6,12 @@ from collections.abc import MutableMapping
 from sys import stdlib_module_names
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
 
 from ._codegen_generation_renderers import FlextInfraCodegenGenerationRenderersMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import t
 
 
 # flext-wkii.17.26 (codex): Keep lazy loading only at the public package root and
@@ -336,30 +334,24 @@ class FlextInfraCodegenGenerationStandardMixin(
             project_payload = u.Infra.pyproject_payload(
                 (project_root / c.Infra.PYPROJECT_FILENAME).resolve()
             )
-            projected: t.JsonValue | None = project_payload.get("tool", {})
-            for section in ("ruff", "lint", "isort"):
-                projected = (
-                    projected.get(section, {}) if isinstance(projected, dict) else {}
-                )
-            projected = (
-                projected.get("known-first-party")
-                if isinstance(projected, dict)
-                else None
-            )
-            projected_items: list[t.JsonValue] = (
-                projected if isinstance(projected, list) else []
-            )
-            projected_names = tuple(
-                name for name in projected_items if isinstance(name, str)
-            )
-            if projected_names and len(projected_names) == len(projected_items):
-                first_party_names.update(projected_names)
-            else:
+            projected: t.JsonValue | None = project_payload.get("tool")
+            for section in ("ruff", "lint", "isort", "known-first-party"):
+                if projected is None:
+                    break
+                if not isinstance(projected, dict):
+                    msg = f"Ruff configuration before {section!r} must be a table"
+                    raise TypeError(msg)
+                projected = projected.get(section)
+            if projected is None:
                 first_party_names.update(
                     u.Infra.discover_first_party_namespaces(project_root)
                 )
                 first_party_names.update(
                     u.Infra.flext_dependency_namespaces_from_payload(project_payload)
+                )
+            else:
+                first_party_names.update(
+                    t.str_sequence_adapter().validate_python(projected, strict=True)
                 )
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(

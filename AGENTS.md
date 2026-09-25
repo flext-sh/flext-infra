@@ -98,10 +98,11 @@ consumer paths first, then make tests verify that contract. Never alter the envi
 to preserve an obsolete fixture or treat a passing test as proof of integrated runtime
 behavior.
 
-Provisioning and dependency updates run exclusively through `make setup`. Fix its
+Configuration declares `latest`; only `make upg` resolves newer releases and writes
+the committed `uv.lock` and `mise.lock`. `make setup`, `make gen` and `make fmt` never
+upgrade: they install frozen from those locks (the CI path). Fix the
 configuration/templates when the lifecycle is wrong; do not install, resolve or
-synchronize dependencies manually. The current operator contract removes `APPLY`,
-`uv.lock` and `mise.lock` throughout producers and consumers. Git dependencies follow
+synchronize dependencies manually. `APPLY` stays removed. Git dependencies follow
 each repository's declared integration branch tip unless `project.dependency_revisions`
 in `config/workspace.yaml` declares a full commit SHA for that external provider
 dependency. Codegen renders these pins into every dependency group and the matching uv

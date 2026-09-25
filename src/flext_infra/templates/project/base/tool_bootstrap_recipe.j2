@@ -9,8 +9,23 @@
 	fi; \
 	caller_path="$$PATH"; \
 {% for name in bootstrap.passthrough_environment if name != "PATH" -%}
-	caller_{{ name | lower }}="$({{ name }})"; \
+	caller_{{ name | lower }}="{{ '$${' ~ name ~ ':-}' }}"; \
 {% endfor -%}
+	# Only ``upg`` resolves the Mise release; every other lifecycle launches \
+	# exactly the release ``upg`` recorded in the committed pin file. \
+	mise_pin_file="$$project_root/{{ bootstrap.version_pin_file }}"; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" != "1" ]; then \
+		if [ ! -f "$$mise_pin_file" ]; then \
+			printf 'ERROR: missing %s; make upg resolves and records the Mise release\n' "$$mise_pin_file" >&2; \
+			exit 2; \
+		fi; \
+		mise_pin=$$(cat "$$mise_pin_file"); \
+		if [ -n "$$caller_mise_version" ] && [ "$${caller_mise_version#v}" != "$$mise_pin" ]; then \
+			printf 'ERROR: MISE_VERSION=%s conflicts with %s=%s\n' "$$caller_mise_version" "$$mise_pin_file" "$$mise_pin" >&2; \
+			exit 2; \
+		fi; \
+		caller_mise_version="$$mise_pin"; \
+	fi; \
 	if [ -z "$$mise_storage_root" ]; then \
 		if [ -n "$$caller_xdg_data_home" ]; then \
 			mise_storage_root="$$caller_xdg_data_home/mise"; \
@@ -136,6 +151,13 @@
 	if [ "$$#" -ne 3 ]; then \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		printf '%s\n' "$$runtime_release" > "$$mise_pin_file"; \
+	elif [ "$$runtime_release" != "$$mise_pin" ]; then \
+		printf 'ERROR: launched Mise %s differs from the pinned %s\n' "$$runtime_release" "$$mise_pin" >&2; \
+		exit 2; \
+	fi; \
+	caller_mise_version="$$runtime_release"; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"
 {%- endmacro %}
 
@@ -151,17 +173,13 @@
 		exit 2; \
 	fi; \
 	{{ mise_runtime_bootstrap(project_root, mise, bootstrap) }}; \
-	for stale_mise_lock in "$$project_root/mise.lock" "$$project_root/.mise.lock"; do \
-		if [ -f "$$stale_mise_lock" ]; then \
-			printf 'WARN: removing stale Mise lock %s (fleet policy is unlocked; a committed lock only blocks provenance re-resolution)\n' "$$stale_mise_lock" >&2; \
-			rm -f "$$stale_mise_lock"; \
-		fi; \
-	done; \
+	# Only ``upg`` resolves: it re-resolves every ``latest`` selector and the \
+	# Python minor line into mise.lock, with download URLs and checksums. \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		mise_checked "$$scratch/lock.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump; \
+	fi; \
+	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
-	# ``mise install`` may reuse an installed fuzzy match. Upgrade Python inside \
-	# the configured minor line so ``python = \"3.13\"`` always resolves the \
-	# newest available 3.13 patch without rewriting the project selector. \
-	mise_checked "$$scratch/python-upgrade.log" mise_exec project "$$latest_mise" -C "$$project_root" upgrade --no-prune python; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \
@@ -195,6 +213,7 @@
 		"GIT_CEILING_DIRECTORIES=$$project_parent" \
 		"MISE_CEILING_PATHS=$$project_parent" \
 		"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
+		"MISE_VERSION=$$runtime_release" \
 		"$$latest_mise" -C "$$project_root" exec -- env \
 		"SETUP_DIRENV=$$direnv_executable" \
 		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \
