@@ -7,36 +7,12 @@ import sys
 from functools import lru_cache
 from importlib.metadata import distributions
 from pathlib import Path
-from typing import Final
+from typing import ClassVar
 
 from flext_infra import c, config, t
 
 from ..._pytest_collection import FlextInfraPytestCollection
-
 from .base import FlextInfraPytestRunnerBase
-
-_NO_COVERAGE: Final[t.VariadicTuple[str]] = ("--no-cov",)
-
-
-@lru_cache(maxsize=1)
-def _toolchain_testmon_environment() -> str:
-    """Return the toolchain-fingerprinted testmon environment name.
-
-    Include the interpreter and installed distribution provenance. Git branch
-    dependencies can change commits while retaining the same package version;
-    their PEP 610 receipts must therefore participate in the cache identity.
-    Registry distributions legitimately have no direct-URL receipt.
-    """
-    fingerprint = "\n".join((
-        sys.version,
-        *sorted(
-            f"{distribution.name}={distribution.version}:"
-            f"{distribution.read_text('direct_url.json')!r}"
-            for distribution in distributions()
-        ),
-    ))
-    digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
-    return f"toolchain-{digest}"
 
 
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
@@ -46,6 +22,28 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     selections over it (testmon 2.x refuses branch coverage through the cov
     plugin, so the two never share a process).
     """
+
+    _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _toolchain_testmon_environment() -> str:
+        """Fingerprint the interpreter and installed distribution provenance.
+
+        Git branch dependencies can change commits while retaining the same
+        package version, so their PEP 610 receipts participate in cache identity.
+        Registry distributions legitimately have no direct-URL receipt.
+        """
+        fingerprint = "\n".join((
+            sys.version,
+            *sorted(
+                f"{distribution.name}={distribution.version}:"
+                f"{distribution.read_text('direct_url.json')!r}"
+                for distribution in distributions()
+            ),
+        ))
+        digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+        return f"toolchain-{digest}"
 
     def ci_excluded_markers(self) -> t.StrTuple:
         """Use the same CI token as generated workflows and pre-commit hooks."""
@@ -93,7 +91,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             # exactly that case (never combined with ``--testmon-noselect``).
             *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
             "--testmon-env",
-            f"'{_toolchain_testmon_environment()}'",
+            f"'{self._toolchain_testmon_environment()}'",
             "--collect-only",
             "-q",
             *self._plugin_policy_args(),
@@ -142,8 +140,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 "--testmon",
                 *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
                 "--testmon-env",
-                f"'{_toolchain_testmon_environment()}'",
-                *_NO_COVERAGE,
+                f"'{self._toolchain_testmon_environment()}'",
+                *self._NO_COVERAGE,
             ),
         )
 

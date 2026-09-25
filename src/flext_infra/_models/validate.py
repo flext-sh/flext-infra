@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
+from pydantic import model_validator
 
 from .. import c, t
 from . import FlextInfraModelsMixins as mm
@@ -124,8 +125,40 @@ class FlextInfraModelsCore:
             t.NonNegativeInt, m.Field(description="Total missing imports")
         ]
 
+    class PytestReportEvent(m.Value):
+        """Common report-log envelope and the complete warning payload."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+
+        report_type: Annotated[
+            str, m.Field(alias="$report_type", description="Pytest event kind")
+        ]
+        category: Annotated[
+            str | None, m.Field(description="Warning category name")
+        ] = None
+        filename: Annotated[
+            str | None, m.Field(description="Warning source filename")
+        ] = None
+        lineno: Annotated[
+            int | None, m.Field(ge=0, description="Warning source line")
+        ] = None
+        message: Annotated[
+            str | None, m.Field(description="Complete warning message")
+        ] = None
+
+        @model_validator(mode="after")
+        def require_warning_payload(self) -> Self:
+            """Reject incomplete warnings instead of reporting zero findings."""
+            if self.report_type == "WarningMessage" and any(
+                value is None
+                for value in (self.category, self.filename, self.lineno, self.message)
+            ):
+                msg = "WarningMessage requires category, filename, lineno and message"
+                raise ValueError(msg)
+            return self
+
     class PytestDiagnostics(m.ArbitraryTypesModel):
-        """Extracted diagnostics summary from junit XML and pytest logs."""
+        """Extracted diagnostics summary from JUnit XML and pytest report-log."""
 
         failed_count: Annotated[
             t.NonNegativeInt, m.Field(description="Failed test case count")
@@ -134,7 +167,7 @@ class FlextInfraModelsCore:
             t.NonNegativeInt, m.Field(description="Errored test case count")
         ]
         warning_count: Annotated[
-            t.NonNegativeInt, m.Field(description="Warning line count")
+            t.NonNegativeInt, m.Field(description="Recorded warning event count")
         ]
         skipped_count: Annotated[
             t.NonNegativeInt, m.Field(description="Skipped test case count")

@@ -1,6 +1,6 @@
 """Pytest diagnostics extraction service.
 
-Extracts strict pytest diagnostics from JUnit XML and log outputs,
+Extracts strict pytest diagnostics from JUnit XML and structured report-log outputs,
 producing structured failure/error/warning/skip/slow-test reports.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -24,10 +24,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
-    """Extracts pytest diagnostics from JUnit XML and log files.
+    """Extracts pytest diagnostics from the runner's required report artifacts.
 
     Parses required JUnit XML for structured failure/error/skip/timing data
-    and the required pytest log for warning data.
+    and the sibling ``events.jsonl`` report-log for every warning occurrence.
+    The human-readable pytest log remains required diagnostic evidence.
     """
 
     junit: Annotated[Path, m.Field(description="JUnit XML path")]
@@ -51,16 +52,23 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     ] = None
 
     @staticmethod
-    def _extract_warnings(lines: t.StrSequence, diag: m.Infra.DiagResult) -> None:
-        """Extract every warning line from the canonical pytest log."""
-        diag.warning_lines = [
-            line for line in lines if c.Infra.PYTEST_WARNING_LINE_RE.search(line)
-        ]
+    def _extract_warnings(report_log: Path, diag: m.Infra.DiagResult) -> None:
+        """Count warning events independently of class names or terminal grouping."""
+        lines = report_log.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
+        if not lines:
+            msg = f"pytest report log contains no events: {report_log}"
+            raise ValueError(msg)
+        for line in lines:
+            event = m.Infra.PytestReportEvent.model_validate_json(line)
+            if event.report_type == "WarningMessage":
+                diag.warning_lines.append(
+                    f"{event.filename}:{event.lineno}: {event.category}: {event.message}"
+                )
 
     def extract(
         self, junit_path: Path, log_path: Path
     ) -> p.Result[m.Infra.PytestDiagnostics]:
-        """Extract diagnostics from JUnit XML and pytest log.
+        """Extract diagnostics from JUnit XML, pytest log and sibling events.jsonl.
 
         Args:
             junit_path: Path to JUnit XML result file.
@@ -96,10 +104,10 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         self, junit_path: Path, log_path: Path
     ) -> p.Result[m.Infra.PytestDiagnostics]:
         """Extract pytest diagnostics after input normalization."""
-        lines = self._read_log_text(log_path).splitlines()
+        self._read_log_text(log_path)
         diag = m.Infra.DiagResult()
         self._parse_xml(junit_path, diag)
-        self._extract_warnings(lines, diag)
+        self._extract_warnings(log_path.with_name("events.jsonl"), diag)
         return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @override

@@ -152,6 +152,7 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             diagnostics.warning_count,
+            diagnostics.skipped_count,
         ))
         final_exit = raw_return_code or int(rejected)
         external_gates = ",".join(
