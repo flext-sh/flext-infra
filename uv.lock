@@ -394,7 +394,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#c913c0aafda556b95c4c4b45c824c723b98cd2bd" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#13b9b144487e210732ff306a94f4d36f686e2678" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -547,7 +547,7 @@ requires-dist = [
     { name = "pymdown-extensions", specifier = ">=11.0.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=1.14.0%2Bdc.2" },
+    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=1.14.0%2Bdc.3" },
     { name = "structlog", specifier = ">=25.5.0,<27" },
     { name = "types-markdown", marker = "extra == 'typings'" },
     { name = "typing-extensions", specifier = ">=4.16.0" },
@@ -1722,8 +1722,8 @@ wheels = [
 
 [[package]]
 name = "rope"
-version = "1.14.0+dc.2"
-source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=1.14.0%2Bdc.2#d2571e8cfabe2e00de7783e153403ac0cf4828d4" }
+version = "1.14.0+dc.3"
+source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=1.14.0%2Bdc.3#64134bf54db1c02ca19602f320d26e1a570e7786" }
 dependencies = [
     { name = "pytoolconfig", extra = ["global"] },
 ]
