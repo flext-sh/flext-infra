@@ -302,7 +302,7 @@ class FlextInfraUtilitiesRopePep695Patch:
 
         walker._handle_function_def_node = _patched_function_def  # pyright: ignore[reportPrivateUsage]
         walker._ClassDef = _patched_class_def  # pyright: ignore[reportPrivateUsage]
-        walker._JoinedStr = _joined_str
+        walker._JoinedStr = _joined_str  # pyright: ignore[reportPrivateUsage]
         walker._TypeAlias = _type_alias
         walker._TypeVar = _type_var
         walker._ParamSpec = _param_spec
