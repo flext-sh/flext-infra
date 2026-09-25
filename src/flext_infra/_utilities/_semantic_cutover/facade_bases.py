@@ -48,60 +48,62 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             item for item in cls._editable_sources(sources) if item[0] in selected
         )
         shapes = {
-            path: shape
+            path: found
             for path, source in items
-            if (shape := cls._facade_shape(path, ast.parse(source, filename=str(path))))
-            is not None
+            if (found := cls._facade_shapes(path, ast.parse(source, filename=str(path))))
         }
         if not shapes:
             return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
             sources,
-            tuple(f"from {shape[0]} import {shape[1]}" for shape in shapes.values()),
+            tuple(
+                f"from {shape[0]} import {shape[1]}"
+                for found in shapes.values()
+                for shape in found
+            ),
         )
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-            # A composite facade binds several parent letters (meltano + ldap,
-            # infra + web, ...). Each letter is one independent cutover, so the
-            # rewrite iterates the file's shapes instead of rejecting them:
-            # every pass moves one letter base to the parent's declared class
-            # until the file holds no rebound letter base.
+            # A facade may compose several parents by their letters (``class
+            # X(c, api_c)``); each base is rewired in turn against the source
+            # the previous one produced, so every import, base and eager read
+            # lands in one edit.
+            rewritten = source
             changes: list[str] = []
-            while (
-                shape := cls._facade_shape(path, ast.parse(source, filename=str(path)))
-            ) is not None:
+            for shape in shapes[path]:
+                tree = ast.parse(rewritten, filename=str(path))
                 owner = cls._facade_declared_owner(modules, shape[0], shape[1])
-                bound = cls._facade_bound_imports(tree := ast.parse(source), shape[0])
+                bound = cls._facade_bound_imports(tree, shape[0])
                 if owner in cls._facade_module_bindings(tree) - bound:
                     msg = f"{owner} is already bound locally in {path}"
                     raise ValueError(msg)
                 explicit = (
-                    cls._explicit_parent_reads(source, tree, shape[1], owner)
+                    cls._explicit_parent_reads(rewritten, tree, shape[1], owner)
                     if shape[1] == shape[2]
-                    else source
+                    else rewritten
                 )
                 rewritten = cls._rewrite_facade_base_source(
                     explicit, shape=shape, owner=owner, owner_bound=owner in bound
                 )
-                if rewritten == source:
-                    msg = f"facade base cutover made no progress in {path}"
-                    raise ValueError(msg)
-                source = rewritten
                 changes.append(f"extended {shape[0]}.{owner} in {shape[3]}")
-            if not changes:
-                msg = f"facade base cutover produced no rewrite in {path}"
+            if cls._facade_shapes(path, ast.parse(rewritten)):
+                msg = f"facade base cutover left residue in {path}"
                 raise ValueError(msg)
-            return source, tuple(changes)
+            return rewritten, tuple(changes)
 
         return cls._semantic_edits(
             tuple(item for item in items if item[0] in shapes), rewrite
         )
 
     @staticmethod
-    def _facade_shape(
+    def _facade_shapes(
         path: Path, tree: ast.Module
-    ) -> t.Quad[str, str, str, str] | None:
-        """Return ``(module, letter, local, facade)`` of a rebound letter base."""
+    ) -> t.VariadicTuple[t.Quad[str, str, str, str]]:
+        """Return every ``(module, letter, local, facade)`` rebound letter base.
+
+        One facade may extend several parents by their letters; the shapes
+        are ordered by parent module so the rewrite is deterministic.
+        """
         imports: MutableMapping[str, t.Triple[str, str, int]] = {}
         rebinds: MutableMapping[str, str] = {}
         for node in tree.body:
@@ -134,15 +136,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for module, imported, level in (imports[base.id],)
             if rebinds.get(imported) == node.name
         }
-        if not shapes:
-            return None
-        # A composite facade carries one shape per parent letter; the caller
-        # iterates them (one cutover per pass), so return them deterministically.
-        module, imported, local, facade, level = min(shapes)
-        if level:
+        if any(level for *_rest, level in shapes):
             msg = f"relative facade base import is not a declared owner in {path}"
             raise ValueError(msg)
-        return module, imported, local, facade
+        return tuple(
+            (module, imported, local, facade)
+            for module, imported, local, facade, _level in sorted(shapes)
+        )
 
     @staticmethod
     def _explicit_parent_reads(

@@ -67,6 +67,9 @@ declares `script_dispatch`.
   not a detector class.
 - Codegen owns facets / `py.typed` / `[MANAGED]` sections — change SSOT/templates, run
   the generator; never hand-edit output.
+- Lazy exports reject competing owners of one published name in a package. Identical
+  class names in independent modules or packages are valid; declarations that are not
+  published do not compete for export ownership.
 - Enforcement target is rope-semantic (ADR-005); some detectors still use AST — verify
   before claiming AST is banned.
 - Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py`

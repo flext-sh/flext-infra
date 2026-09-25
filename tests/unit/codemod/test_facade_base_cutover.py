@@ -17,6 +17,7 @@ class TestsFlextInfraFacadeBaseCutover:
     """Exercise the facade-base phase only through ``u.Infra``."""
 
     PARENT_CLASS = "ParentDeclaredModelFacade"
+    OTHER_CLASS = "OtherDeclaredModelFacade"
 
     @pytest.mark.parametrize(
         ("statement", "base", "rebind"),
@@ -58,6 +59,53 @@ class TestsFlextInfraFacadeBaseCutover:
         updated = self._edits(tmp_path, sources, child)[0].updated_source
         tm.that(updated, has=f"    base = {self.PARENT_CLASS}.BaseModel\n")
         tm.that(updated, has="        return m.BaseModel\n")
+
+    def test_every_letter_base_of_a_composed_facade_extends_its_own_parent(
+        self, tmp_path: Path
+    ) -> None:
+        """A facade composing two parents by letter rewires each to its class."""
+        child, sources = self._workspace(
+            tmp_path,
+            "from other_pkg import m as other_m\nfrom parent_pkg import m\n\n\n"
+            "class ChildModels(m, other_m):\n    base = m.BaseModel\n"
+            "    other = other_m.BaseModel\n\n\nm = ChildModels\n",
+        )
+        other = tmp_path / "other/src/other_pkg"
+        sources[other / "__init__.py"] = (
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            f"    from .models import {self.OTHER_CLASS}, m\n"
+            f"__all__ = [{self.OTHER_CLASS!r}, 'm']\n"
+        )
+        sources[other / "models.py"] = (
+            "from base_pkg import m\n"
+            f"class {self.OTHER_CLASS}(m):\n    pass\n"
+            f"m = {self.OTHER_CLASS}\n"
+            f"__all__ = [{self.OTHER_CLASS!r}, 'm']\n"
+        )
+        edits = self._edits(tmp_path, sources, child)
+        tm.that(tuple(edit.file_path for edit in edits), eq=(child.resolve(),))
+        updated = edits[0].updated_source
+        tm.that(updated, has=f"from other_pkg import {self.OTHER_CLASS}\n")
+        tm.that(updated, has=f"from parent_pkg import {self.PARENT_CLASS}\n")
+        tm.that(
+            updated,
+            has=f"class ChildModels({self.PARENT_CLASS}, {self.OTHER_CLASS}):",
+        )
+        tm.that(updated, has=f"    base = {self.PARENT_CLASS}.BaseModel\n")
+        tm.that(updated, has=f"    other = {self.OTHER_CLASS}.BaseModel\n")
+        tm.that(updated, has="\nm = ChildModels\n")
+        tm.that(updated, lacks="other_m")
+        tm.that(updated, lacks="import m\n")
+        tm.that(
+            edits[0].changes,
+            eq=(
+                f"extended other_pkg.{self.OTHER_CLASS} in ChildModels",
+                f"extended parent_pkg.{self.PARENT_CLASS} in ChildModels",
+            ),
+        )
+        replanned = self._edits(tmp_path, {**sources, child: updated}, child)
+        tm.that(replanned, empty=True)
 
     def test_letter_base_without_rebind_is_untouched(self, tmp_path: Path) -> None:
         child, sources = self._workspace(
