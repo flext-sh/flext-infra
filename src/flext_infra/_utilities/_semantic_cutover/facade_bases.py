@@ -61,25 +61,37 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-            shape = shapes[path]
-            tree = ast.parse(source, filename=str(path))
-            owner = cls._facade_declared_owner(modules, shape[0], shape[1])
-            bound = cls._facade_bound_imports(tree, shape[0])
-            if owner in cls._facade_module_bindings(tree) - bound:
-                msg = f"{owner} is already bound locally in {path}"
+            # A composite facade binds several parent letters (meltano + ldap,
+            # infra + web, ...). Each letter is one independent cutover, so the
+            # rewrite iterates the file's shapes instead of rejecting them:
+            # every pass moves one letter base to the parent's declared class
+            # until the file holds no rebound letter base.
+            changes: list[str] = []
+            while (
+                shape := cls._facade_shape(path, ast.parse(source, filename=str(path)))
+            ) is not None:
+                owner = cls._facade_declared_owner(modules, shape[0], shape[1])
+                bound = cls._facade_bound_imports(tree := ast.parse(source), shape[0])
+                if owner in cls._facade_module_bindings(tree) - bound:
+                    msg = f"{owner} is already bound locally in {path}"
+                    raise ValueError(msg)
+                explicit = (
+                    cls._explicit_parent_reads(source, tree, shape[1], owner)
+                    if shape[1] == shape[2]
+                    else source
+                )
+                rewritten = cls._rewrite_facade_base_source(
+                    explicit, shape=shape, owner=owner, owner_bound=owner in bound
+                )
+                if rewritten == source:
+                    msg = f"facade base cutover made no progress in {path}"
+                    raise ValueError(msg)
+                source = rewritten
+                changes.append(f"extended {shape[0]}.{owner} in {shape[3]}")
+            if not changes:
+                msg = f"facade base cutover produced no rewrite in {path}"
                 raise ValueError(msg)
-            explicit = (
-                cls._explicit_parent_reads(source, tree, shape[1], owner)
-                if shape[1] == shape[2]
-                else source
-            )
-            rewritten = cls._rewrite_facade_base_source(
-                explicit, shape=shape, owner=owner, owner_bound=owner in bound
-            )
-            if cls._facade_shape(path, ast.parse(rewritten)) is not None:
-                msg = f"facade base cutover left residue in {path}"
-                raise ValueError(msg)
-            return rewritten, (f"extended {shape[0]}.{owner} in {shape[3]}",)
+            return source, tuple(changes)
 
         return cls._semantic_edits(
             tuple(item for item in items if item[0] in shapes), rewrite
@@ -124,10 +136,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         }
         if not shapes:
             return None
-        if len(shapes) > 1:
-            msg = f"ambiguous facade letter bases in {path}: {sorted(shapes)}"
-            raise ValueError(msg)
-        module, imported, local, facade, level = shapes.pop()
+        # A composite facade carries one shape per parent letter; the caller
+        # iterates them (one cutover per pass), so return them deterministically.
+        module, imported, local, facade, level = min(shapes)
         if level:
             msg = f"relative facade base import is not a declared owner in {path}"
             raise ValueError(msg)
