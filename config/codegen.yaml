@@ -790,6 +790,7 @@ Infra:
         - CONTRIBUTING.md
         - AGENTS.md
         - CLAUDE.md
+        - GEMINI.md
         - conftest.py
         - mkdocs.yml
         - sgconfig.yml
