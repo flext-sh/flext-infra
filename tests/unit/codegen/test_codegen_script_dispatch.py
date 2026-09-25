@@ -117,7 +117,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        tm.that(rendered.count("\ndeploy:\n"), eq=1)
+        tm.that(rendered.count("\ndeploy: _builtin_require_workspace\n"), eq=1)
         tm.that(
             rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
         )
@@ -196,12 +196,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         tm.that(" gen" in builtin_line, eq=True)
         tm.that(" codegen" in builtin_line, eq=False)
-        phony_line = next(
-            line
-            for line in rendered.splitlines()
-            if line.startswith(".PHONY:") and "_builtin_" in line
-        )
-        tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
+        tm.that(rendered.splitlines(), has=".PHONY: _builtin_gen_init _builtin_gen_all")
         # The one handler drives the conform engine (CLI namespace is unchanged).
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
@@ -239,7 +234,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def test_make_initialize_requires_its_provisioned_interpreter(
         self, tmp_path: Path
     ) -> None:
-        """The public initializer fails before effects when its runtime is absent."""
+        """The public initializer validates the pinned toolchain before effects."""
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -254,7 +249,8 @@ class TestsFlextInfraScriptDispatchMakefile:
 
         tm.ok(invoked)
         tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=False)
-        tm.that(invoked.value.stderr, has="missing environment interpreter")
+        tm.that(invoked.value.stderr, has="missing or empty")
+        tm.that(invoked.value.stderr, has="mise.version")
         tm.that((package / c.Infra.INIT_PY).exists(), eq=False)
 
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:

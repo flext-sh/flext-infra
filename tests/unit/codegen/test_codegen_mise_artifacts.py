@@ -75,6 +75,7 @@ class TestsFlextInfraCodegenMiseArtifacts:
                     "HOME": str(home),
                     c.Infra.MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: declared,
                     "MISE_VERSION": version,
+                    "MISE_INSTALL_PATH": "",
                 },
                 timeout=10,
             )
@@ -272,7 +273,16 @@ class TestsFlextInfraCodegenMiseArtifacts:
         )
         tools = test_u.Tests.toml_mapping(plan["tools"])
 
-        tm.that(tools.get(toolchain.jscpd_selector), eq=toolchain.jscpd_version)
+        route = test_u.Tests.toml_mapping(tools[toolchain.jscpd_selector])
+        tm.that(route["version"], eq=toolchain.jscpd_version)
+        platforms = test_u.Tests.toml_mapping(route["platforms"])
+        tm.that(
+            {
+                name: test_u.Tests.toml_mapping(payload)["asset_pattern"]
+                for name, payload in platforms.items()
+            },
+            eq=dict(toolchain.jscpd_asset_patterns),
+        )
         tm.that("npm:jscpd" in tools, eq=False)
 
     def test_unix_launcher_requires_executable_mode(self, tmp_path: Path) -> None:

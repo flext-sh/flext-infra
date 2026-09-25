@@ -119,7 +119,6 @@ class TestsFlextInfraRopeSignaturePatch:
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
-            tm.that(resource, none=False)
             if resource is None:
                 msg = "Rope did not resolve the PEP 701 regression resource"
                 raise AssertionError(msg)
@@ -153,10 +152,13 @@ class TestsFlextInfraRopeSignaturePatch:
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
-            tm.that(resource, none=False)
             if resource is None:
                 msg = "Rope did not resolve the format-spec regression resource"
                 raise AssertionError(msg)
+            pymodule = u.Infra.get_string_module(
+                rope.rope_project, source, resource=resource
+            )
+            scope = u.Infra.scope_at(pymodule, source.index("widths)}}"))
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -167,6 +169,7 @@ class TestsFlextInfraRopeSignaturePatch:
             rope.rope_project.do(changes)
             rewritten = resource.read()
 
+        tm.that(scope, none=False)
         tm.that(rewritten, eq=expected)
 
     def test_write_ast_keeps_nested_generator_name_mutation(self) -> None:

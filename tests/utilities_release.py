@@ -70,7 +70,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 'description = "Release workflow fixture"\n'
                 f'version = "{version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-                'dependencies = ["flext-core"]\n'
+                f'dependencies = ["flext-core", "{TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source()}"]\n'
             ),
             encoding="utf-8",
         )

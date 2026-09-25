@@ -135,6 +135,8 @@ class TestsFlextInfraCodegenMakeAuthentication:
         if verb in {"setup", "upg"}:
             tm.that(process.outcome.raw_return_code, ne=0)
             tm.that(process.stderr, has="gh credential source failed")
+            tm.that(process.stderr, lacks="missing or empty")
+            tm.that(process.stderr, lacks="mise.version")
         else:
             tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that((project_root / ".venv").exists(), eq=verb == "status")

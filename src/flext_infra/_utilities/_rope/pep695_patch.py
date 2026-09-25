@@ -138,26 +138,32 @@ class FlextInfraUtilitiesRopePep695Patch:
                 interleaved.append(self.source.source[cursor:current_end])
                 patchable.sorted_children = interleaved
 
-            for descendant in ast.walk(node):
-                if not isinstance(
-                    descendant, p.Infra.PatchingASTWalker.SourceSpanningNode
-                ):
-                    continue
-                patchable_descendant = cast(
-                    "p.Infra.PatchingASTWalker.PatchableNode", descendant
-                )
-                descendant_start = _source_offset(
-                    self, patchable_descendant.lineno, patchable_descendant.col_offset
-                )
-                descendant_end = _source_offset(
-                    self,
-                    patchable_descendant.end_lineno,
-                    patchable_descendant.end_col_offset,
-                )
-                if not start <= descendant_start <= descendant_end <= end:
-                    msg = "PEP 701 AST descendant escapes its joined-string span"
-                    raise ValueError(msg)
-                patchable_descendant.region = (descendant_start, descendant_end)
+            def assign_regions(parent: ast.AST) -> None:
+                """Give Rope every positioned scope node its parser region."""
+                for descendant_node in ast.walk(parent):
+                    if descendant_node is parent or not isinstance(
+                        descendant_node, p.Infra.PatchingASTWalker.SourceSpanningNode
+                    ):
+                        continue
+                    descendant = cast(
+                        "p.Infra.PatchingASTWalker.PatchableNode", descendant_node
+                    )
+                    descendant.region = (
+                        _source_offset(self, descendant.lineno, descendant.col_offset),
+                        _source_offset(
+                            self, descendant.end_lineno, descendant.end_col_offset
+                        ),
+                    )
+
+            # ``FormattedValue`` and nested ``JoinedStr`` nodes use the outer
+            # literal's parser span on Python 3.13.  They are structural
+            # containers, not independently writable source slices.  Walking
+            # every AST descendant as a writable child therefore invents
+            # overlaps and rejects valid PEP 701 strings. Rope still requires
+            # ``region`` on structural scope nodes such as ``GeneratorExp``.
+            # Assign those semantic regions first, then let ``patch_node``
+            # construct writable children only from the real expressions.
+            assign_regions(node)
             patch_node(node, start, end)
             self.source.offset = end
 
