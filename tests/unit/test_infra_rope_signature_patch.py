@@ -119,7 +119,6 @@ class TestsFlextInfraRopeSignaturePatch:
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
-            tm.that(resource, none=False)
             if resource is None:
                 msg = "Rope did not resolve the PEP 701 regression resource"
                 raise AssertionError(msg)
@@ -153,7 +152,6 @@ class TestsFlextInfraRopeSignaturePatch:
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
-            tm.that(resource, none=False)
             if resource is None:
                 msg = "Rope did not resolve the format-spec regression resource"
                 raise AssertionError(msg)
