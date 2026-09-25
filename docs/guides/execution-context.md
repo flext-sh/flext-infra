@@ -93,8 +93,12 @@ Caches, instalações e grafos de locks locais continuam fora do Git. Não forma
 edite o payload nativo: uma alteração dos bytes exige nova resolução pelo `make upg`. As
 plataformas declaradas por `toolchain.mise_lockfile_platforms` compõem o lock junto com
 a plataforma da máquina que executa a atualização, sempre incluída pelo Mise. Como
-`MISE_SAFE` ignora os settings locais, o bootstrap também encaminha essa política por
-`MISE_LOCKFILE_PLATFORMS`, derivada do mesmo responsável tipado.
+`MISE_SAFE` ignora os settings locais, o bootstrap encaminha `MISE_LOCKFILE`,
+`MISE_LOCKED` e `MISE_LOCKFILE_PLATFORMS`, derivados do mesmo responsável tipado.
+`MISE_LOCKED` ativa também a proteção global contra regravação durante a instalação:
+`tool_config.locked` sozinho não protege essa fronteira. A prova de setup usa storage
+Mise vazio e verifica os bytes dos locks, do pin e de todo o grafo nativo depois da
+instalação.
 
 Depois de resolver o release do Mise, o bootstrap mantém essa versão em todas as
 chamadas da mesma operação e no lifecycle recursivo. O `upg` inicializa os gitlinks

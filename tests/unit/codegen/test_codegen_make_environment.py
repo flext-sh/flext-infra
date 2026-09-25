@@ -166,8 +166,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
     )
     @pytest.mark.parametrize("provisioned", [False, True])
     # Why: `make setup` provisions a real environment from the remote
-    # index and GitHub sources (an external gate); it never runs inside
-    # the offline unit gate and is selected only by direct invocation.
+    # index and GitHub sources (an external gate); `make test-full` selects
+    # it after the incremental test phase.
     @pytest.mark.remote
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, provisioned: bool
@@ -335,7 +335,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that((hostile_venv / "pyvenv.cfg").exists(), eq=False)
         tm.that((hostile_venv.parent / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
 
-        # CI setup installs frozen from the committed locks and never rewrites them.
+        # A cold CI storage must install every tool without auto-locking. A warm
+        # storage would skip installation and conceal an absent locked-mode guard.
         make = config.Infra.codegen.make
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -347,16 +348,20 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
             )
         )
-        ci_env = {**active_env, make.ci.variable: make.ci.value}
+        cold_storage = tmp_path / "cold-mise-storage"
+        tm.that(cold_storage.exists(), eq=False)
+        bootstrap = u.Infra.mise_bootstrap_environment()
+        ci_env = {
+            **active_env,
+            make.ci.variable: make.ci.value,
+            bootstrap.storage_root_variable: str(cold_storage),
+        }
+        sidecar_root = project_root / ".mise" / "locks"
         locked_paths = (
             lock_path,
             project_root / c.Infra.MISE_LOCK_FILENAME,
             project_root / c.Infra.MISE_VERSION_PIN_FILENAME,
-            *(
-                path
-                for path in (project_root / ".mise" / "locks").rglob("*")
-                if path.is_file()
-            ),
+            *(path for path in sidecar_root.rglob("*") if path.is_file()),
         )
         locked_before = {path: path.read_bytes() for path in locked_paths}
         locked = tm.ok(
@@ -370,7 +375,18 @@ class TestsFlextInfraCodegenMakeEnvironment:
             msg=locked.stdout + locked.stderr,
         )
         tm.that(locked.stdout, has="ci-runtime-provisioned")
+        tm.that(locked.stdout, has=f"storage={cold_storage}")
+        install_root = cold_storage / next(
+            relative
+            for name, relative in bootstrap.persistent_environment
+            if name == "MISE_INSTALLS_DIR"
+        )
+        tm.that(any(install_root.iterdir()), eq=True)
         tm.that({path: path.read_bytes() for path in locked_paths}, eq=locked_before)
+        tm.that(
+            {path for path in sidecar_root.rglob("*") if path.is_file()},
+            eq={path for path in locked_paths if path.is_relative_to(sidecar_root)},
+        )
 
         # A new dependency declaration makes the committed lock stale: setup
         # fails instead of re-resolving, and the lock stays untouched.

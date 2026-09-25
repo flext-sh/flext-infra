@@ -188,7 +188,8 @@ class FlextInfraModelsMiseToolchain:
             bool,
             m.Field(
                 description=(
-                    "Rendered as [settings] lockfile in .mise.toml. Keep true: "
+                    "Rendered as [settings] lockfile and bootstrap MISE_LOCKFILE. "
+                    "Keep true: "
                     "make upg writes the committed mise.lock. "
                     "Override toolchain.mise_lockfile; never edit the projection."
                 )
@@ -198,7 +199,8 @@ class FlextInfraModelsMiseToolchain:
             bool,
             m.Field(
                 description=(
-                    "Rendered as [settings] locked and [tool_config] locked. "
+                    "Rendered as [settings] locked, [tool_config] locked, "
+                    "and bootstrap MISE_LOCKED. "
                     "Keep true so setup installs only what mise.lock pins. "
                     "Override toolchain.mise_locked."
                 )

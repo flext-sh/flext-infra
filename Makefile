@@ -365,6 +365,8 @@ mise_exec() { \
 'MISE_GITHUB_OAUTH_CLIENT_ID=' \
 'MISE_GITHUB_OAUTH_EXPORT_ENV=' \
 'MISE_GITHUB_OAUTH_OPEN_BROWSER=false' \
+'MISE_LOCKFILE=true' \
+'MISE_LOCKED=true' \
 'MISE_LOCKFILE_PLATFORMS=linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64' \
 "HOME=$$scratch/home" \
 "USERPROFILE=$$scratch/home" \

@@ -64,7 +64,9 @@ Infra:
       kubeconform_version: latest
       # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
       # true: the committed lock written by `make upg` pins every tool, and
-      # setup installs frozen from it.
+      # setup installs frozen from it. The isolated safe bootstrap derives
+      # MISE_LOCKFILE and MISE_LOCKED from these same values: project settings
+      # alone do not enable Mise's global lock-write guard in safe mode.
       mise_lockfile: true
       mise_locked: true
       # Projection: .mise.toml [settings] lockfile_platforms. The platforms the
