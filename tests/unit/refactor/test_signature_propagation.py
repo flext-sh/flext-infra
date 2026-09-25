@@ -96,6 +96,3 @@ class TestsFlextInfraRefactorSignaturePropagation:
         ])
 
         tm.that(exit_code, ne=0)
-
-
-

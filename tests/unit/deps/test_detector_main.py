@@ -264,6 +264,3 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that((member / ".venv").exists(), eq=False)
         tm.that((root / "pyproject.toml").read_bytes(), eq=parent_before)
         tm.that((member / "pyproject.toml").read_bytes(), eq=member_before)
-
-
-

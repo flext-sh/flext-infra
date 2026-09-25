@@ -110,6 +110,3 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(template, lacks="lint_apply")
         tm.that("--preview" in make.ruff.format_check, eq=True)
         tm.that("--preview" in make.ruff.lint_check, eq=True)
-
-
-

@@ -58,6 +58,3 @@ class TestsFlextInfraDocsSharedWrite:
 
         tm.fail(result)
         tm.that((result.error or ""), has="markdown write error")
-
-
-

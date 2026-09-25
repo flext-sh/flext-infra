@@ -301,6 +301,3 @@ class TestsFlextInfraPytestRunner:
         exit_code = tm.ok(runner.execute_coverage())
 
         tm.that(exit_code, ne=0)
-
-
-

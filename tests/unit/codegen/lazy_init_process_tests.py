@@ -160,6 +160,3 @@ class TestsFlextInfraLazyInitProcessing:
 
         tm.that(result, eq=0)
         tm.that(unit_path.exists(), eq=False)
-
-
-

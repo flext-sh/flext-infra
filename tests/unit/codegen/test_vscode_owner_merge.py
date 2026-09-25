@@ -105,6 +105,3 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
-
-
-

@@ -37,6 +37,3 @@ class TestsFlextInfraGitFixtureIsolation:
             )
         )
         tm.that(Path(resolved).resolve(), eq=target.resolve())
-
-
-

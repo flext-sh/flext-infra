@@ -137,6 +137,3 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
 
         tm.that(rendered, has="        sort_keys=False,\n    )")
         tm.that(rendered, lacks="sort_keys=False\n")
-
-
-

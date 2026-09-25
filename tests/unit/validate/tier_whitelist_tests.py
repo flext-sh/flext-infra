@@ -117,6 +117,3 @@ class TestsFlextInfraTierWhitelist:
         u.Tests.write_package_init(tmp_path / "src" / "pkg", "")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="boundary")
-
-
-

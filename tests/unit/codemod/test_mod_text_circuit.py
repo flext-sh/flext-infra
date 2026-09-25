@@ -325,6 +325,3 @@ class TestsFlextInfraModTextGateEngine:
             )
         )
         tm.that(excluded.findings, eq=0)
-
-
-

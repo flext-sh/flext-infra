@@ -29,6 +29,3 @@ class TestsFlextInfraCheck:
         exports = dir(check_module)
         tm.that(exports, is_=list)
         tm.that(exports, empty=False)
-
-
-

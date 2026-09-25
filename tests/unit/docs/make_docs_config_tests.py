@@ -60,6 +60,3 @@ class TestsFlextInfraMakeDocsActionsConfig:
             m.Infra.MakeDocsSpec.model_validate(
                 _spec_payload(warning_actions=["audit"])
             )
-
-
-

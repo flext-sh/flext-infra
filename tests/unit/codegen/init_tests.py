@@ -105,6 +105,3 @@ class TestsFlextInfraCodegenInit:
     def test_codegen_lazy_imports_work(self) -> None:
         """Test that lazy imports work correctly."""
         tm.that(type(FlextInfraCodegenLazyInit).__name__, eq="ModelMetaclass")
-
-
-

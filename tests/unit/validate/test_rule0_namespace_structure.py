@@ -190,6 +190,3 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             ),
             eq=False,
         )
-
-
-

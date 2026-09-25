@@ -162,6 +162,3 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
         tm.ok(result)
         tm.that((workspace / ".envrc").exists(), eq=False)
-
-
-

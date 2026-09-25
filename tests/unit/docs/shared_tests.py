@@ -201,6 +201,3 @@ class TestsFlextInfraDocsShared:
             [scope.name for scope in result.value], eq=[c.Infra.RK_ROOT, "flext-demo"]
         )
         tm.that(result.value[1].package_name, eq="demo_pkg")
-
-
-

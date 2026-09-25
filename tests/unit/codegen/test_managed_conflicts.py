@@ -134,6 +134,3 @@ class TestsFlextInfraManagedConflictRecovery:
         )
 
         tm.that(recovered, eq=content)
-
-
-

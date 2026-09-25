@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
-from flext_infra import m
+from flext_infra import FlextInfraConfig, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from tests import u
 from tests.unit.codegen.layout_fixture import (
@@ -18,6 +20,83 @@ from tests.unit.codegen.layout_fixture import (
 
 class TestsFlextInfraCodegenLayout:
     """Test suite for the declarative project-layout engine."""
+
+    @staticmethod
+    def _fresh_layout_report(project: Path) -> m.Infra.LayoutProjectReport:
+        """Load consumer-owned configuration in a new public-service process."""
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from pathlib import Path\n"
+                        "from flext_infra import FlextInfraCodegenLayout\n"
+                        "root = Path.cwd()\n"
+                        "report = FlextInfraCodegenLayout(repository_root=root)"
+                        ".check_project(root)\n"
+                        "print(report.model_dump_json(exclude_computed_fields=True))\n"
+                    ),
+                ],
+                cwd=project,
+                remove_env_keys=("FLEXT_INFRA_CONFIG_DIR",),
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        return m.Infra.LayoutProjectReport.model_validate_json(process.stdout)
+
+    @classmethod
+    def _assert_keep_override(
+        cls, tmp_path: Path, *, distribution: str, checkout_name: str, keep_count: int
+    ) -> None:
+        """Prove declared files change classification without changing defaults."""
+        project = build_loose_project(tmp_path, name=distribution)
+        if project.name != checkout_name:
+            project = project.rename(tmp_path / checkout_name)
+        candidates = tuple(f"consumer-note-{index}.fixture" for index in range(3))
+        for filename in candidates:
+            (project / filename).write_text(f"{filename}\n", encoding="utf-8")
+        baseline = cls._fresh_layout_report(project)
+        baseline_paths = {finding.path for finding in baseline.findings}
+        tm.that(set(candidates) <= baseline_paths, eq=True)
+        override = m.Infra.LayoutProjectOverrideSpec(
+            keep_root_files=candidates[:keep_count]
+        )
+        declaration = m.Infra.CodegenOverridesSpec.model_validate({
+            "Infra": {
+                "codegen": {
+                    "layout": {
+                        "project_overrides": {
+                            distribution: override.model_dump(mode="json")
+                        }
+                    }
+                }
+            }
+        })
+        config_dir = project / FlextInfraConfig.CONFIG_DIR
+        config_dir.mkdir(exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                config_dir / FlextInfraConfig.ORG_OVERRIDES_FILENAME,
+                declaration.model_dump(mode="json", exclude_none=True),
+            )
+        )
+
+        report = cls._fresh_layout_report(project)
+
+        tm.that(report.project, eq=distribution)
+        paths = {finding.path for finding in report.findings}
+        tm.that(
+            paths & set(candidates), eq=set(candidates) - set(override.keep_root_files)
+        )
+        for filename in candidates:
+            tm.that(
+                (project / filename).read_text(encoding="utf-8"), eq=f"{filename}\n"
+            )
 
     def test_check_reports_move_archive_review_and_gitignore(
         self, tmp_path: Path
@@ -140,6 +219,28 @@ class TestsFlextInfraCodegenLayout:
         tm.that(bool(execution.issues), eq=True)
         tm.that(all(issue.severity == "WARNING" for issue in execution.issues), eq=True)
 
+    @pytest.mark.parametrize("keep_count", [0, 1, 3])
+    def test_keep_root_files_override(self, tmp_path: Path, keep_count: int) -> None:
+        """Arbitrary consumer keep-lists preserve only their declared root files."""
+        self._assert_keep_override(
+            tmp_path,
+            distribution="fixture-layout-consumer",
+            checkout_name="fixture-layout-consumer",
+            keep_count=keep_count,
+        )
+
+    @pytest.mark.parametrize("keep_count", [0, 1, 3])
+    def test_override_resolves_by_declared_name_not_checkout_directory(
+        self, tmp_path: Path, keep_count: int
+    ) -> None:
+        """Renamed checkouts still consume the PEP 621 distribution's keep-list."""
+        self._assert_keep_override(
+            tmp_path,
+            distribution="fixture-declared-layout",
+            checkout_name="independent-checkout-name",
+            keep_count=keep_count,
+        )
+
     def test_special_and_reference_root_dirs_skipped(self, tmp_path: Path) -> None:
         """data/ is skipped; external-docs/ is allowed as reference corpus."""
         project = build_loose_project(tmp_path)
@@ -196,6 +297,3 @@ class TestsFlextInfraCodegenLayout:
         tm.that(archived.is_file(), eq=True)
         tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
         tm.that((project / "index.md").exists(), eq=False)
-
-
-

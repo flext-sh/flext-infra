@@ -731,6 +731,3 @@ class TestsFlextInfraTransactionDirectoryJournal:
 
         tm.fail(cleaned, has="not journaled")
         tm.that(marker.read_bytes(), eq=b"preserve")
-
-
-

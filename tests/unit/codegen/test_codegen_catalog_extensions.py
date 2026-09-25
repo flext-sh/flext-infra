@@ -400,6 +400,3 @@ class TestsFlextInfraCodegenCatalogExtensions:
         # leaves the declared topology bytes untouched.
         tm.that(tuple(file.path for file in plan.files), lacks=gitmodules.resolve())
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
-
-
-

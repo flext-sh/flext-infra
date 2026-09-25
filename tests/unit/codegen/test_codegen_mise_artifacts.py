@@ -292,6 +292,3 @@ class TestsFlextInfraCodegenMiseArtifacts:
 
         tm.that(field.alias, none=True)
         tm.that(field.exclude, eq=True)
-
-
-

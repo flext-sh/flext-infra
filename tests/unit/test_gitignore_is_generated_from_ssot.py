@@ -111,6 +111,3 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         )
 
         tm.that(blocked, eq=())
-
-
-

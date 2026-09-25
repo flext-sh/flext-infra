@@ -138,6 +138,3 @@ class TestsFlextInfraCoreValidationBehavior(TestsFlextInfraValidateNamespaceBase
         first = result.value.violations[0]
         tm.that(first, has="[NS-STRUCT-")
         tm.that(first, has="] src/flext_test/models.py:1 — ")
-
-
-

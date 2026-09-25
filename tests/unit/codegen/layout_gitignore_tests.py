@@ -156,6 +156,3 @@ class TestsFlextInfraCodegenLayoutGitignore:
         paths = {finding.path for finding in report.findings}
         tm.that(local.name in paths, eq=False)
         tm.that(tracked.name in paths, eq=True)
-
-
-

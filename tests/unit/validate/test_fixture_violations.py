@@ -101,6 +101,3 @@ class TestsFlextInfraFixtureViolations(TestsFlextInfraValidateNamespaceBase):
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         self._assert_violation_contains(root, expected_violation_substr)
-
-
-

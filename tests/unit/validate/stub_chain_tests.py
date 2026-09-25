@@ -174,6 +174,3 @@ class TestsFlextInfraStubChain:
 
         tm.ok(result)
         tm.that(result.value, eq=True)
-
-
-

@@ -61,6 +61,3 @@ class TestsFlextInfraDepsDetectionPipCheck:
         lines, exit_code = pip_check_result
         tm.that(lines, eq=expected_lines)
         tm.that(exit_code, eq=expected_exit_code)
-
-
-

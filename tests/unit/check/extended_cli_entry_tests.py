@@ -132,6 +132,3 @@ class TestsFlextInfraExtendedCliEntry:
             eq=True,
         )
         tm.that((caller / relative_reports).exists(), eq=False)
-
-
-

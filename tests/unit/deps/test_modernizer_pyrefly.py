@@ -317,6 +317,3 @@ class TestsFlextInfraModernizerPyrefly:
             list(u.Tests.strings(pyrefly["search-path"])),
             eq=[rules.source_dir, rules.project_root],
         )
-
-
-

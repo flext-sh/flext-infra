@@ -493,6 +493,3 @@ def services_resource(
     )
     validated: t.Infra.RopeResource = tm.not_none(resource)
     return validated
-
-
-

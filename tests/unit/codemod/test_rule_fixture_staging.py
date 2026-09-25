@@ -110,6 +110,3 @@ class TestsFlextInfraModRuleFixtureStaging:
             )
 
         assert not staged.exists()
-
-
-

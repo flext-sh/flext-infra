@@ -220,6 +220,3 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
         tm.that(code, ne=0)
         tm.that(output, has="SONAR_TOKEN is required")
-
-
-

@@ -37,6 +37,3 @@ class TestsFlextInfraRule2TypingsFacade(TestsFlextInfraValidateNamespaceBase):
         self._assert_violation_contains(
             root, "module alias/data declaration is forbidden"
         )
-
-
-

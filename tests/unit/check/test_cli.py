@@ -251,6 +251,3 @@ class TestsFlextInfraWorkspaceCheckCli:
         ])
 
         tm.that(exit_code, eq=0)
-
-
-

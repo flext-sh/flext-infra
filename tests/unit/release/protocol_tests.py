@@ -527,6 +527,3 @@ class TestsFlextInfraReleaseProtocol:
         u.Tests.merge_pull_request(workspace, "feat: not a release commit")
 
         tm.that(u.Tests.run_release_main(workspace, "--phase", "tag", "--apply"), ne=0)
-
-
-

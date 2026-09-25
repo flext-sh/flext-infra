@@ -52,6 +52,3 @@ class TestsFlextInfraDocsRenderGuidesIndex:
 
         tm.that("(topology-conform.md)" in rendered, eq=False)
         tm.that(rendered, has="(../api-reference/README.md)")
-
-
-

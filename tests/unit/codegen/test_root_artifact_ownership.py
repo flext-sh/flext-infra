@@ -221,6 +221,3 @@ class TestsFlextInfraRootArtifactOwnership:
                     request
                 )
             )
-
-
-

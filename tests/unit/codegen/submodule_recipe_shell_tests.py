@@ -47,6 +47,3 @@ class TestsFlextInfraSubmoduleRecipeShell:
         ]
 
         tm.that(offenders, eq=[])
-
-
-

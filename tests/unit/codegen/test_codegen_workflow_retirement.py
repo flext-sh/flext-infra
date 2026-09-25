@@ -136,6 +136,3 @@ class TestsFlextInfraCodegenWorkflowRetirement:
                 tm.that(path.read_bytes(), eq=scaffold_content[path])
             else:
                 tm.that(path.exists(), eq=False)
-
-
-

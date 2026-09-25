@@ -864,6 +864,3 @@ class TestsFlextInfraInfraRopeService:
             eq={str(module_path)},
         )
         tm.that([site.line for site in candidate.runtime_reference_sites], eq=[6])
-
-
-

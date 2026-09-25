@@ -131,6 +131,3 @@ class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
 
         tm.ok(result)
         self._assert_violation_contains(root, "import-time wiring")
-
-
-

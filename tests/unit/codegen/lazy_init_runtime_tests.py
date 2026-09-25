@@ -210,6 +210,3 @@ class TestsFlextInfraLazyInitRuntime:
             u.Cli.run([sys.executable, "-c", probe], env=probe_env, cwd=repository)
         )
         tm.that(result.stdout.splitlines(), eq=["True", "True", "True", "True"])
-
-
-

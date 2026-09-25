@@ -144,7 +144,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         expected = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 '[project]\nname = "sample-member"\ndependencies = '
-                + tm.ok(u.Cli.json_dumps(sorted(owned)))
+                + u.Cli.toml_array(sorted(owned)).as_string()
                 + "\n",
                 workspace=tm.ok(
                     FlextInfraWorkspaceDetector.load_workspace_spec(member)
@@ -153,8 +153,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             )
         )
         tm.that(
-            set(u.Tests.toml_strings_at(expected, "project", "dependencies")),
-            eq=owned,
+            set(u.Tests.toml_strings_at(expected, "project", "dependencies")), eq=owned
         )
         tm.that(first.workspace.repository, eq=before.repository)
         tm.that(first.workspace.subprojects, eq=before.subprojects)
@@ -191,6 +190,3 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             u.Infra.overlay_preserved(rendered, live),
             has="validate runtime dependencies",
         )
-
-
-

@@ -249,6 +249,3 @@ class TestsFlextInfraDepsModernizerHelpers:
             ),
             eq=f"httpx[socks]>={locked_version}; python_version < '3.14'",
         )
-
-
-

@@ -664,6 +664,3 @@ skips = ["B101"]
         tm.that(ruff["line-length"], eq=rendered_ruff["line-length"])
         live_bandit = u.Cli.toml_mapping_child(live_tool, "bandit")
         tm.that(bandit["skips"], eq=(live_bandit or {}).get("skips"))
-
-
-

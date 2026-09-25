@@ -457,6 +457,3 @@ class TestsFlextInfraFreshImport:
             v.build_report(packages=("flext_infra",))
         )
         tm.that(report.passed, eq=True, msg=report.summary)
-
-
-

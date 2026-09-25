@@ -137,7 +137,9 @@ class TestsFlextInfraCodegenManifestlessExisting:
             )
         )
         distribution = profile.upstream.replace("_", "-")
-        infra = u.Tests.repository_ref(config.Infra.codegen.infra_repository.distribution)
+        infra = u.Tests.repository_ref(
+            config.Infra.codegen.infra_repository.distribution
+        )
         root = tmp_path / distribution
         package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
         package.mkdir(parents=True)
@@ -179,6 +181,3 @@ class TestsFlextInfraCodegenManifestlessExisting:
             if u.Infra.dep_name(dependency) != distribution
         )
         tm.that(owned_runtime[0] in rendered, eq=True)
-
-
-

@@ -52,6 +52,3 @@ class TestsFlextInfraIoInfraTerminalDetection:
             tm.that(os.environ, lacks="FLEXT_KEEP")
         tm.that(os.environ.get("FLEXT_KEEP"), eq="yes")
         os.environ.pop("FLEXT_KEEP", None)
-
-
-

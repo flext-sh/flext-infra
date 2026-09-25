@@ -121,6 +121,3 @@ class TestsFlextInfraReleaseArchiveBoundary:
 
         tm.fail(result)
         tm.that(stage_path.exists(), eq=False)
-
-
-

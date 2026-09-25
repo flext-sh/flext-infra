@@ -74,6 +74,3 @@ class TestsFlextInfraCliRepositoryRootContract:
         # The route model field IS the CLI option (typed contract above); help must
         # render, and its styled text is presentation, never the contract.
         tm.that(main([group, route.name, "--help"]), eq=0)
-
-
-

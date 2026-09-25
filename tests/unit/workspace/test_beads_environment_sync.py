@@ -168,6 +168,3 @@ class TestsFlextInfraBeadsEnvironmentSync:
         )
         tm.fail(result)
         tm.that("direnv allow failed" in (result.error or ""), eq=True)
-
-
-

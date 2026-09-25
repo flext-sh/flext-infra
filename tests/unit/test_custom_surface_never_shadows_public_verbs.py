@@ -73,6 +73,3 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         }
 
         tm.that(offenders, eq={})
-
-
-

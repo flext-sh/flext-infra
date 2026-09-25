@@ -242,6 +242,3 @@ class TestsFlextInfraPytestDiag:
         tm.that((tmp_path / "warnings.txt").read_text(), contains="DeprecationWarning")
         tm.that((tmp_path / "slow.txt").read_text(), contains="TC::test_fail")
         tm.that((tmp_path / "skips.txt").read_text(), contains="TC::test_skip")
-
-
-

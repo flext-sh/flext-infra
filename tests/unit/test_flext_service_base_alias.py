@@ -17,6 +17,3 @@ class TestsFlextInfraServiceBaseAlias:
 
         tm.that(not infra_report.violations, eq=True)
         tm.that(not cli_report.violations, eq=True)
-
-
-

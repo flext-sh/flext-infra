@@ -21,6 +21,3 @@ class TestsFlextInfraRule1ConstantsFacade(TestsFlextInfraValidateNamespaceBase):
             module_name="constants.py",
         )
         self._assert_valid(root)
-
-
-

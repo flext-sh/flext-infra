@@ -139,6 +139,3 @@ class TestsFlextInfraFamilyFlatten:
         tm.ok(planned)
         tm.that(planned.value, empty=True)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
-
-
-

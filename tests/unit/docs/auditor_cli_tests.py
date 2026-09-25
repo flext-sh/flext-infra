@@ -109,6 +109,3 @@ class TestsFlextInfraAuditorCli:
         )
         tm.that(markdown, has="forbidden_term")
         tm.that(markdown, has="medium")
-
-
-

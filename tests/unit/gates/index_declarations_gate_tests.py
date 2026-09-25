@@ -107,6 +107,3 @@ class TestsFlextInfraIndexDeclarationsGate:
         result = gate_result(orphan_gitlink=True, declare_gitlink=True)
         tm.that(result.passed, eq=True)
         tm.that(len(result.errors), eq=0)
-
-
-

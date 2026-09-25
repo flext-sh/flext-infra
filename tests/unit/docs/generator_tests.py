@@ -547,6 +547,3 @@ class TestsFlextInfraDocsGenerator:
 
         with pytest.raises(ValueError, match="use HTTPS"):
             u.Infra.docs_url_scheme(target)
-
-
-

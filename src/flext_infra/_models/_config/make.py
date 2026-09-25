@@ -89,6 +89,15 @@ class FlextInfraConfigModelsMake:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
+        produces_activation: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Run the producer in the provisioned physical environment, "
+                    "then activate its generated environment before post hooks"
+                )
+            ),
+        ] = False
 
     class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One canonical workflow step."""

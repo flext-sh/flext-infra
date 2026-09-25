@@ -61,6 +61,3 @@ class TestsFlextInfraLockfilePolicyProjection:
         )
 
         tm.that(u.Tests.is_tracked_under(rendered, relative_path), eq=False)
-
-
-

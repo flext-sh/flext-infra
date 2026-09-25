@@ -73,6 +73,3 @@ class TestsFlextInfraProviderResolutionAcceptsSshRemotes:
         )
 
         tm.fail(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-
-
-

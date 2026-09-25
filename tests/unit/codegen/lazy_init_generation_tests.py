@@ -631,6 +631,3 @@ class TestsFlextInfraCodegenGeneration:
 
         with pytest.raises(m.ValidationError):
             FlextInfraCodegenGeneration.render_init(plan)
-
-
-

@@ -55,6 +55,3 @@ class TestsFlextInfraToolchainMake:
 
         tm.that(content, lacks="conda")
         tm.that(content, lacks="stale")
-
-
-

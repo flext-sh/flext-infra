@@ -49,6 +49,3 @@ class TestsFlextInfraDocsContractTocPlacement:
             eq=True,
         )
         tm.that(changed, eq=1)
-
-
-

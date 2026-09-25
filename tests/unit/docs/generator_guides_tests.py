@@ -285,6 +285,3 @@ class TestsFlextInfraDocsGeneratorGuides:
             ),
             eq=False,
         )
-
-
-

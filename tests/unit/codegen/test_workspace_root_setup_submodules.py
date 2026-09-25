@@ -239,6 +239,3 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.that(process.outcome.raw_return_code, eq=2)
         tm.that(process.stderr, has="injected git failure")
         tm.that(process.stderr, has="Error 42")
-
-
-

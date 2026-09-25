@@ -253,6 +253,3 @@ class TestsFlextInfraSilentFailure:
 
     def test_validate_cli_route_help_returns_zero(self) -> None:
         tm.that(infra_main(["validate", "silent-failure", "--help"]), eq=0)
-
-
-

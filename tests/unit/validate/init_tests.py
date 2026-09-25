@@ -39,6 +39,3 @@ class TestsFlextInfraValidateInit:
     def test_core_lazy_imports_work(self) -> None:
         """Test that lazy imports resolve to real classes."""
         tm.that(FlextInfraInventoryService, none=False)
-
-
-

@@ -122,6 +122,3 @@ class TestsFlextInfraScannerHelpers:
         scope.mkdir()
 
         tm.that(infra_u.Infra.git_tracked_scope_paths(scope), eq=[])
-
-
-

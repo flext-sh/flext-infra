@@ -70,6 +70,3 @@ class TestsFlextInfraDepsDetectorInit:
         """Verify detect command without project filter."""
         params = m.Infra.DetectCommand(repository_root=tmp_path)
         tm.that(params.project_names, eq=None)
-
-
-

@@ -121,6 +121,3 @@ class TestsFlextInfraRunProjects:
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
-
-
-

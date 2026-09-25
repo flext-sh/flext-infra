@@ -926,6 +926,3 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(report.removal_candidate_count, eq=0)
 
         tm.that(len(self._impact_map_entries(impact_map_path)), eq=1)
-
-
-

@@ -106,6 +106,3 @@ class TestsFlextInfraCodegenViolationKey:
         fixed_key = next(iter(fixed))
         tm.that(fixed_key.module, eq="b.py")
         tm.that(fixed_key.rule, eq="NS-002")
-
-
-

@@ -73,6 +73,3 @@ def layout_engine(
 def archive_root() -> str:
     """Archive root from the same typed SSOT the engine consumes."""
     return config.Infra.codegen.layout.archive_root
-
-
-
