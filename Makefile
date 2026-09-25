@@ -1129,9 +1129,14 @@ gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security
 		if [ "$(strip $(CI))" = "Y" ]; then \
 			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
 			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
+		elif [ "$(strip $(CI))" = "N" ]; then \
+			gates="pyrefly,mypy"; \
+			printf 'INFO: CI=N runs check gates: pyrefly mypy\n'; \
+		else \
+			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
 		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
@@ -1168,7 +1173,8 @@ _builtin_build_artifacts:
 # Check is read-only: it runs the gates without --apply, so the tree is left
 # unchanged; fix applies the declared repairs of the fixable gates.
 # CI=Y keeps make.check_gates_ci, the strict complement of
-# make.ci.local_check_gates.
+# make.check_gates_local; CI=N runs that local partition.
+# An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 printf '%s\n' 'INFO: SUSPENDED check gate duplication; authority=flext-itpd1.3 / operator 2026-09-24 / flext-xp6ec; reason=Custom policy check suspended during the approved recovery.'; \
@@ -1180,9 +1186,14 @@ gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security
 		if [ "$(strip $(CI))" = "Y" ]; then \
 			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,tier-whitelist,index-declarations,smells,layout,canonical-alias,direnv"; \
 			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
+		elif [ "$(strip $(CI))" = "N" ]; then \
+			gates="pyrefly,mypy"; \
+			printf 'INFO: CI=N runs check gates: pyrefly mypy\n'; \
+		else \
+			printf 'INFO: default context runs check gates: lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap tier-whitelist index-declarations smells layout canonical-alias direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
 		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .

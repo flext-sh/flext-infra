@@ -9,7 +9,7 @@ from flext_tests import tm
 from pydantic import ValidationError
 
 from flext_infra import config
-from tests import c, m, u
+from tests import c, m, t, u
 
 
 class TestsFlextInfraCodegenMakeGateSuspensions:
@@ -29,10 +29,7 @@ class TestsFlextInfraCodegenMakeGateSuspensions:
             if gate not in declared.project_check_gates
         )
         local_gates = builtin_defaults[:local_count]
-        payload["ci"] = {
-            **declared.ci.model_dump(),
-            "local_check_gates": local_gates,
-        }
+        payload["ci"] = {**declared.ci.model_dump(), "local_check_gates": local_gates}
         suspended_gates = (*builtin_defaults[:1], "fixture-suspended")
         payload["check_gate_suspensions"] = tuple(
             {
@@ -69,9 +66,7 @@ class TestsFlextInfraCodegenMakeGateSuspensions:
                 if gate not in active.ci.local_check_gates
             ),
         )
-        tm.that(
-            set(active.check_gates_local) & set(active.check_gates_ci), eq=set()
-        )
+        tm.that(set(active.check_gates_local) & set(active.check_gates_ci), eq=set())
         tm.that(
             set(active.check_gates_local) | set(active.check_gates_ci),
             eq=set(active.check_gates_default),
@@ -111,6 +106,7 @@ class TestsFlextInfraCodegenMakeGateSuspensions:
         )
         tm.ok(u.Tests.create_python_environment(root))
         policy = config.Infra.codegen.make
+        environment: t.StrMapping
         if context == "ci":
             environment = {policy.ci.variable: policy.ci.value}
             gates = policy.check_gates_ci
