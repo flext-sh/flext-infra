@@ -41,6 +41,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             raise ValueError(msg)
         prepared = dict(sources)
         quoted_imports: dict[Path, str] = {}
+        aliased_imports: dict[Path, frozenset[t.Pair[str, str | None]]] = {}
         for path, source in sources.items():
             resource = project.get_resource(path.relative_to(root).as_posix())
             module = project.get_pymodule(resource)
@@ -63,7 +64,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                     msg = f"quoted helper import changed its elected binding: {path}"
                     raise ValueError(msg)
                 quoted_imports[path] = expression
-            prepared[path] = cls._original_helper_imports(
+            prepared[path], aliased = cls._original_helper_imports(
                 project,
                 resource,
                 updated,
@@ -72,7 +73,16 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 origin.get_name(),
                 request.class_name,
             )
-        cls._move_prepared_helper(request, prepared, quoted_imports, target.get_name())
+            if aliased:
+                aliased_imports[path] = frozenset(aliased)
+        cls._move_prepared_helper(
+            request,
+            prepared,
+            quoted_imports,
+            aliased_imports,
+            origin.get_name(),
+            target.get_name(),
+        )
         return tuple(
             m.Infra.SemanticMigrationEdit(
                 file_path=path,
@@ -89,6 +99,8 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         request: m.Infra.ClassMoveRequest,
         prepared: t.MutableMappingKV[Path, str],
         quoted_imports: t.MappingKV[Path, str],
+        aliased_imports: t.MappingKV[Path, frozenset[t.Pair[str, str | None]]],
+        origin: str,
         target: str,
     ) -> None:
         """Move the declaration in a closed snapshot and retain quoted imports."""
@@ -133,6 +145,13 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 if binding != expression:
                     msg = f"moved helper import changed its quoted binding: {path}"
                     raise ValueError(msg)
+            for path, pairs in aliased_imports.items():
+                resource = snapshot.get_resource(path.relative_to(root).as_posix())
+                prepared[path] = (
+                    FlextInfraUtilitiesSemanticHelperReferences._promoted_helper_imports(
+                        snapshot, resource, prepared[path], origin, target, pairs
+                    )
+                )
         finally:
             snapshot.close()
 
@@ -229,8 +248,14 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         expected: p.Infra.RopePyName,
         origin: str,
         name: str,
-    ) -> str:
-        """Resolve reexports to the original declaration before MoveGlobal cuts it."""
+    ) -> t.Pair[str, t.SequenceOf[t.Pair[str, str | None]]]:
+        """Resolve reexports to the original declaration before MoveGlobal cuts it.
+
+        Returns the rewritten source and the helper bindings the consumers carry
+        through an ``as`` alias: Rope's move finder is textual, so those aliases
+        are invisible to it and must be rehomed to the promoted owner after the
+        move (``_promoted_helper_imports``).
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = runtime.get_string_module(project, source, resource=resource)
         imports = runtime.module_imports_for_pymodule(project, module)
@@ -240,22 +265,73 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             raise ValueError(msg)
         names = scope.get_names()
         moved: list[t.Pair[str, str | None]] = []
+        aliased: list[t.Pair[str, str | None]] = []
         for statement in tuple(imports.imports):
             info = statement.import_info
-            if not isinstance(info, p.Infra.RopeFromImport) or (
-                info.module_name == origin and info.level == 0
-            ):
+            if not isinstance(info, p.Infra.RopeFromImport):
+                continue
+            if info.module_name == origin and info.level == 0:
+                # The declaration module's own statement: its bare names are
+                # rewritten by Rope's move, and its aliased pairs are recorded
+                # for the post-move rehome instead of being touched here.
+                _kept, matched = cls._partition_helper_import(
+                    info, names, expected, name
+                )
+                aliased.extend(pair for pair in matched if pair[1] is not None)
                 continue
             kept, matched = cls._partition_helper_import(info, names, expected, name)
             moved.extend(matched)
+            aliased.extend(pair for pair in matched if pair[1] is not None)
             if len(kept) != len(info.names_and_aliases):
                 statement.import_info = runtime.from_import(
                     info.module_name, info.level, kept
                 )
         if not moved:
-            return source
+            return source, aliased
         imports.add_import(runtime.from_import(origin, 0, moved))
-        return imports.get_changed_source()
+        return imports.get_changed_source(), aliased
+
+    @staticmethod
+    def _promoted_helper_imports(
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+        origin: str,
+        target: str,
+        pairs: frozenset[t.Pair[str, str | None]],
+    ) -> str:
+        """Rehome the aliased helper import statements to the promoted owner.
+
+        Rope's move rewrites bare-name references, but its occurrence finder
+        locates the moved name textually, so a binding carried by ``as`` never
+        matches and the statement keeps importing from the declaration module
+        the move just emptied. The very same aliased bindings now live in the
+        target module, so their statements are pointed there unchanged.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        module = runtime.get_string_module(project, source, resource=resource)
+        imports = runtime.module_imports_for_pymodule(project, module)
+        changed = False
+        for statement in tuple(imports.imports):
+            info = statement.import_info
+            if (
+                not isinstance(info, p.Infra.RopeFromImport)
+                or info.level != 0
+                or info.module_name != origin
+                or not info.names_and_aliases
+            ):
+                continue
+            rehome = tuple(pair for pair in info.names_and_aliases if pair in pairs)
+            if not rehome:
+                continue
+            kept = tuple(pair for pair in info.names_and_aliases if pair not in pairs)
+            if kept:
+                statement.import_info = runtime.from_import(origin, 0, kept)
+                imports.add_import(runtime.from_import(target, 0, rehome))
+            else:
+                statement.import_info = runtime.from_import(target, 0, rehome)
+            changed = True
+        return imports.get_changed_source() if changed else source
 
     @staticmethod
     def _partition_helper_import(
