@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
 
+    PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
+
     @unique
     class SarifSchema(StrEnum):
         """Supported SARIF schema identities."""

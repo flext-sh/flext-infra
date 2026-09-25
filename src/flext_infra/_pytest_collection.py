@@ -11,22 +11,21 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
-from typing import ClassVar
 from warnings import WarningMessage
 
 import pytest
+
+from ._constants.check import FlextInfraConstantsCheck
 
 
 class FlextInfraPytestCollection:
     """Pytest entry-point plugin for the runner's explicit selection contract."""
 
-    OPTION: ClassVar[str] = "--flext-selected-collection"
-
     @staticmethod
     def pytest_addoption(parser: pytest.Parser) -> None:
         """Require explicit activation by the canonical runner."""
         parser.addoption(
-            FlextInfraPytestCollection.OPTION,
+            FlextInfraConstantsCheck.PYTEST_SELECTED_COLLECTION_OPTION,
             action="store_true",
             help="Enforce the runner's ordered node-ID selection in every worker.",
         )
@@ -47,7 +46,9 @@ class FlextInfraPytestCollection:
     @pytest.hookimpl(wrapper=True, tryfirst=True)
     def pytest_collection_finish(session: pytest.Session) -> Generator[None]:
         """Validate before xdist publishes worker IDs, preserving raw failures."""
-        if session.config.getoption(FlextInfraPytestCollection.OPTION):
+        if session.config.getoption(
+            FlextInfraConstantsCheck.PYTEST_SELECTED_COLLECTION_OPTION
+        ):
             order = {
                 node_id: index for index, node_id in enumerate(session.config.args)
             }

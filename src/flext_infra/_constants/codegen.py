@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum, unique
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from .._constants.codegen_detection import FlextInfraConstantsCodegenDetection
@@ -28,6 +29,8 @@ class FlextInfraConstantsCodegen(
     FlextInfraConstantsCodegenRenderNames,
 ):
     """Namespace for all codegen-related constants."""
+
+    MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
 
     ARTIFACT_SPECS: ClassVar[t.VariadicTuple[t.Pair[str, int]]] = (
         ("bin/mise", 0o755),

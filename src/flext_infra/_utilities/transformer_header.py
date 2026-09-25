@@ -101,7 +101,9 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     def has_runtime_alias_import(source: str, alias: str) -> bool:
         """Prove availability from the unconditional import header only."""
         module = ast.parse(source)
-        header = module.body[1:] if ast.get_docstring(module) is not None else module.body
+        header = (
+            module.body[1:] if ast.get_docstring(module) is not None else module.body
+        )
         for node in header:
             if not isinstance(node, ast.ImportFrom | ast.Import):
                 return False
@@ -199,7 +201,8 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         Every binding counts, including one inside ``if TYPE_CHECKING:``. The
         header scan stops at the first non-header statement, so an alias
         imported in that block read as absent and a duplicate was injected
-        next to it.
+        next to it. This proves a lexical declaration only; callers requiring
+        runtime availability use ``has_runtime_alias_import``.
         """
         try:
             module = ast.parse(source)

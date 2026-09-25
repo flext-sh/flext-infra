@@ -35,7 +35,7 @@ class TestsImportModernizerRuntime:
         self, tmp_path: Path, declaration: str, base: str, field: str
     ) -> None:
         """Alias changes preserve schema metadata, homonyms and multiline data."""
-        payload = 'from pydantic import BaseModel, Field\nclass Row(BaseModel):\n    value = Field(description="BaseModel ] café, ☃")\n'
+        payload = 'from pydantic import BaseModel, Field\nclass Row(BaseModel):\n    value = Field(description="BaseModel ] café, ☃")\nprint("BaseModel ] café, ☃")\n'
         source = f'''from typing import Annotated as A, Literal as L
 {declaration}
 from pydantic import RootModel
@@ -63,23 +63,26 @@ class Rows(RootModel[list["{base}"]]):
             runtime_aliases={"m"},
             blocked_aliases=set(),
         )
-        updated, changes = transformer.apply_to_source(source)
+        path = tmp_path / "import_consumer.py"
+        path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(tmp_path) as rope:
+            resource = rope.resource(path)
+            assert resource is not None
+            _updated, changes = transformer.transform(rope.rope_project, resource)
         tm.that(bool(changes), eq=True)
-        (tmp_path / "import_consumer.py").write_text(updated, encoding="utf-8")
         probe = f"""from typing import get_args, get_type_hints
-from flext_core import cli
 from pydantic import TypeAdapter
 from {c.Infra.PKG_CORE_UNDERSCORE} import m
 from import_consumer import PAYLOAD, Row, RowBase, Rows, describe, local
 row = Row.model_validate_json('{{"value": "live"}}')
 hints = get_type_hints(describe, include_extras=True)
-cli.print(row.value, local("kept"))
-cli.print(Row.model_fields["value"].description)
-cli.print(hints["value"] is m.BaseModel, get_args(hints["return"])[0] is m.BaseModel)
-cli.print(get_args(hints["return"])[1])
-cli.print(PAYLOAD == {payload!r})
-cli.print(TypeAdapter(RowBase).validate_python(row) is row)
-cli.print(Rows.model_validate([row]).root[0] is row)
+print(row.value, local("kept"))
+print(Row.model_fields["value"].description)
+print(hints["value"] is m.BaseModel, get_args(hints["return"])[0] is m.BaseModel)
+print(get_args(hints["return"])[1])
+print(PAYLOAD == {payload!r})
+print(TypeAdapter(RowBase).validate_python(row) is row)
+print(Rows.model_validate([row]).root[0] is row)
 """
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(
@@ -150,10 +153,9 @@ class Row(BaseModel):
         )
         updated, _changes = transformer.apply_to_source(source)
         (tmp_path / "derived_consumer.py").write_text(updated, encoding="utf-8")
-        probe = """from flext_core import cli
-from flext_infra import m
+        probe = """from flext_infra import m
 from derived_consumer import Row, m as owner
-cli.print(owner is m, Row.model_validate_json('{"value": "live"}').value)
+print(owner is m, Row.model_validate_json('{"value": "live"}').value)
 """
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(outcome.stdout.strip(), eq="True live")
@@ -200,10 +202,9 @@ class RuntimeRow(BaseModel):
         )
         updated, _changes = transformer.apply_to_source(source)
         (tmp_path / "conditional_consumer.py").write_text(updated, encoding="utf-8")
-        probe = """from flext_core import cli
-from conditional_consumer import build, RuntimeRow
-cli.print(build(True), build(False))
-cli.print(RuntimeRow.model_validate_json('{"value": "runtime"}').value)
+        probe = """from conditional_consumer import build, RuntimeRow
+print(build(True), build(False))
+print(RuntimeRow.model_validate_json('{"value": "runtime"}').value)
 """
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
         tm.that(outcome.stdout.splitlines(), eq=["branch other branch", "runtime"])

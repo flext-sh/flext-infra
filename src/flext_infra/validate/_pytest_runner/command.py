@@ -150,7 +150,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     (
                         "-p",
                         FlextInfraPytestCollection.__module__,
-                        FlextInfraPytestCollection.OPTION,
+                        c.Infra.PYTEST_SELECTED_COLLECTION_OPTION,
                     )
                     if selection
                     else ()

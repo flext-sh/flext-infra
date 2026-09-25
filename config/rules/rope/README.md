@@ -46,9 +46,9 @@ is removed. Imports from another branch or a `TYPE_CHECKING` suite do not establ
 runtime availability: each migrated declaration retains its original execution condition
 unless a preceding import in the same suite proves availability.
 
-Introducing a local facade import also requires that it cannot capture existing reads
-of an ancestral binding, including reads in closures. Otherwise the source transaction
-is rejected. Typing unification explicitly requires runtime availability, including for
+Introducing a local facade import also requires that it cannot capture existing reads of
+an ancestral binding, including reads in closures. Otherwise the source transaction is
+rejected. Typing unification explicitly requires runtime availability, including for
 `get_type_hints`, PEP 695 aliases, and Pydantic fields. Deferred, conditional, or late
 imports do not prove it. A new import of the source file's owning package is also
 rejected without an existing runtime binding, preserving package initialization order.

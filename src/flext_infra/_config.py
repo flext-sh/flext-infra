@@ -11,6 +11,7 @@ from typing import ClassVar, override
 
 from flext_cli.config import FlextCliConfig
 
+from ._constants.codegen_project import FlextInfraConstantsCodegenProject
 from ._models._config.base import FlextInfraConfigModels
 
 
@@ -19,11 +20,6 @@ class FlextInfraConfig(FlextCliConfig):
 
     # NOTE (multi-agent, flext-wkii.9 + flext-wkii.17 / agent: codex): direct
     # config.Infra is the only codegen information surface; no accessor method.
-    # NOTE (flext-sltx): CONFIG_DIR stays the relative default so
-    # flext-core FlextConfig._config_dir() resolves the packaged flext_infra/config
-    # in a wheel install AND the repo-root config/ in an editable source checkout.
-    # An absolute parents[2] value broke every git-dep/wheel consumer (config poison).
-    CONFIG_DIR: ClassVar[str] = "config"
     Infra: FlextInfraConfigModels.Infra
 
     @classmethod
@@ -79,7 +75,11 @@ class FlextInfraConfig(FlextCliConfig):
         local = cls._config_dir() / cls.LOCAL_OVERRIDES_FILENAME
         if local.is_file():
             files.append(local)
-        org = Path.cwd() / cls.CONFIG_DIR / cls.ORG_OVERRIDES_FILENAME
+        org = (
+            Path.cwd()
+            / FlextInfraConstantsCodegenProject.CODEGEN_CONFIG_DIR
+            / cls.ORG_OVERRIDES_FILENAME
+        )
         if org.is_file():
             files.append(org)
         return files

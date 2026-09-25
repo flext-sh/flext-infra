@@ -97,6 +97,14 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
             self, original_node: cst.CSTNodeT, updated_node: cst.CSTNodeT
         ) -> cst.CSTNodeT | cst.RemovalSentinel | cst.FlattenSentinel[cst.CSTNodeT]:
             updated = super().on_leave(original_node, updated_node)
+            if isinstance(original_node, cst.Import | cst.ImportFrom) and isinstance(
+                updated, cst.Import | cst.ImportFrom
+            ):
+                self.imports.append((
+                    original_node,
+                    updated,
+                    self._scope(original_node),
+                ))
             if not isinstance(original_node, cst.BaseExpression):
                 return updated
             location = self.get_metadata(PositionProvider, original_node, None)
@@ -168,17 +176,6 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
             return False
 
         @override
-        def leave_Import(
-            self, original_node: cst.Import, updated_node: cst.Import
-        ) -> cst.Import:
-            self.imports.append((
-                original_node,
-                updated_node,
-                self._scope(original_node),
-            ))
-            return updated_node
-
-        @override
         def leave_Name(
             self, original_node: cst.Name, updated_node: cst.Name
         ) -> cst.BaseExpression:
@@ -210,16 +207,20 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
             self.changes.extend(rewriter.changes)
             return annotation
 
-        @override
-        def leave_ImportFrom(
-            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
-        ) -> cst.ImportFrom:
-            self.imports.append((
-                original_node,
-                updated_node,
-                self._scope(original_node),
-            ))
-            return updated_node
+        def _replacement_alias(
+            self, imported: cst.ImportAlias, replacement: str
+        ) -> str:
+            """Require the removed binding's public consumers to have migrated."""
+            bound = u.Infra.dotted_name(
+                imported.asname.name if imported.asname else imported.name
+            )
+            if bound is None:
+                msg = "import migration requires a static bound import name"
+                raise TypeError(msg)
+            if bound in self.exports:
+                msg = f"import migration requires re-export consumers for {bound}"
+                raise ValueError(msg)
+            return replacement.split(".", maxsplit=1)[0]
 
         def _from_import(
             self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
@@ -239,20 +240,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
                 if replacement is None:
                     retained.append(imported)
                 else:
-                    bound = (
-                        u.Infra.dotted_name(imported.asname.name)
-                        if imported.asname
-                        else name
-                    )
-                    if bound is None:
-                        msg = "import migration requires a static bound import name"
-                        raise TypeError(msg)
-                    if bound in self.exports:
-                        msg = (
-                            f"import migration requires re-export consumers for {bound}"
-                        )
-                        raise ValueError(msg)
-                    aliases.add(replacement.split(".", maxsplit=1)[0])
+                    aliases.add(self._replacement_alias(imported, replacement))
             if not aliases:
                 return [updated_node], set()
             statements: list[cst.BaseSmallStatement] = []

@@ -184,11 +184,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 for base in node.bases:
                     yield (base, node.lineno)
             elif isinstance(node, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple):
-                if isinstance(node, ast.TypeVar) and node.bound is not None:
-                    yield (node.bound, None)
-                default_value = node.default_value
-                if default_value is not None:
-                    yield (default_value, None)
+                yield from cls._type_parameter_annotations(node)
+
+    @staticmethod
+    def _type_parameter_annotations(
+        node: ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple,
+    ) -> Iterator[t.Pair[ast.expr, int | None]]:
+        """Yield a type parameter's bound before its optional default."""
+        if isinstance(node, ast.TypeVar) and node.bound is not None:
+            yield (node.bound, None)
+        if node.default_value is not None:
+            yield (node.default_value, None)
 
     @staticmethod
     def _function_annotations(
