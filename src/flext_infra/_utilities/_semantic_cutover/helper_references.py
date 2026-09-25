@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 from flext_infra import m, p, t
@@ -133,8 +134,59 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 if binding != expression:
                     msg = f"moved helper import changed its quoted binding: {path}"
                     raise ValueError(msg)
+            FlextInfraUtilitiesSemanticHelperReferences._rebind_origin_imports(
+                request, snapshot, prepared, quoted_imports, target
+            )
         finally:
             snapshot.close()
+
+    @staticmethod
+    def _rebind_origin_imports(
+        request: m.Infra.ClassMoveRequest,
+        snapshot: p.Infra.RopeProject,
+        prepared: t.MutableMappingKV[Path, str],
+        quoted_imports: t.MappingKV[Path, str],
+        target: str,
+    ) -> None:
+        """Point surviving origin imports at the moved declaration.
+
+        Rope's move rewrites the references it can see, but a consumer binding
+        of the form ``from origin import name as alias`` survives the nested
+        move and dies the moment the origin module publishes without the
+        declaration. Every surviving binding is re-bound to the elected
+        destination expression; a consumer without a quoted reference takes the
+        lazy ``from target import name`` form the materialized alias serves.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        root = Path(snapshot.root.real_path)
+        origin = (
+            request.source_file.relative_to(root)
+            .with_suffix("")
+            .as_posix()
+            .replace("/", ".")
+        )
+        pattern = re.compile(
+            rf"^from {re.escape(origin)} import {request.class_name}(?: as (\w+))?$",
+            re.MULTILINE,
+        )
+        for path, source in prepared.items():
+            if not pattern.search(source):
+                continue
+            expression = quoted_imports.get(path)
+            if expression is None:
+                resource = snapshot.get_resource(path.relative_to(root).as_posix())
+                module = runtime.get_string_module(snapshot, source, resource=resource)
+                _, expression = runtime.import_binding(
+                    snapshot, module, target, request.class_name
+                )
+
+            def _rebind(match: re.Match[str], expression: str = expression) -> str:
+                alias = match.group(1)
+                if alias is not None:
+                    return f"{alias} = {expression}"
+                return f"from {target} import {request.class_name}"
+
+            prepared[path] = pattern.sub(_rebind, source)
 
     @staticmethod
     def _without_self_bindings(
