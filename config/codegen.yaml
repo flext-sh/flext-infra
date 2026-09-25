@@ -978,7 +978,7 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
-      - path: .github/scripts/install-git-hooks.sh
+      - path: .github/scripts/validate-git-hook.sh
         owner: codegen
         policy: full
         mode: 493 # 0o755
@@ -1926,9 +1926,9 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
-          profiles: [workspace]
+        - source: base/.github/scripts/validate-git-hook.sh.j2
+          destination: .github/scripts/validate-git-hook.sh
+          profiles: [workspace, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/flext-law-loop.sh.j2
