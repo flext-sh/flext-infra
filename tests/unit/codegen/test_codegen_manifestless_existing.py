@@ -137,8 +137,22 @@ class TestsFlextInfraCodegenManifestlessExisting:
             )
         )
         distribution = profile.upstream.replace("_", "-")
-        infra = u.Tests.repository_ref(
-            config.Infra.codegen.infra_repository.distribution
+        # Every internal development dependency the SSOT requires carries its
+        # own direct Git source, exactly as a real standalone member declares.
+        internal_dev = tuple(
+            u.Tests.repository_ref(name)
+            for name in dict.fromkeys(
+                u.Infra.dep_name(requirement)
+                for requirement in (
+                    config.Infra.codegen.infra_repository.distribution,
+                    *config.Infra.codegen.scaffold.project.dev,
+                )
+            )
+            if name is not None and name.startswith("flext-")
+        )
+        dev_group = ", ".join(
+            f'"{ref.distribution} @ git+{ref.url}@{u.Tests.provider_branch()}"'
+            for ref in internal_dev
         )
         root = tmp_path / distribution
         package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
@@ -153,8 +167,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 "dependencies = []\n"
                 "\n[dependency-groups]\n"
-                f'dev = ["{infra.distribution} @ git+{infra.url}'
-                f'@{u.Tests.provider_branch()}"]\n',
+                f"dev = [{dev_group}]\n",
             )
         )
         u.Tests.write_project_beads_config(root, distribution)
