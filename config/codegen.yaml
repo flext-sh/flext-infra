@@ -978,10 +978,6 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
-      - path: .github/scripts/install-git-hooks.sh
-        owner: codegen
-        policy: full
-        mode: 493 # 0o755
       - path: .github/scripts/flext-law-loop.sh
         owner: codegen
         policy: full
@@ -1923,11 +1919,6 @@ Infra:
           overwrite: false
         - source: base/.github/scripts/check-cqrs-compliance.sh.j2
           destination: .github/scripts/check-cqrs-compliance.sh
-          profiles: [workspace]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
           profiles: [workspace]
           delegate: render
           overwrite: false
