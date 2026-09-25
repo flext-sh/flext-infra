@@ -63,6 +63,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             workspace, "workspace"
         )
+        source = TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source
         (workspace / "pyproject.toml").write_text(
             (
                 "[project]\n"
@@ -70,11 +71,13 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 'description = "Release workflow fixture"\n'
                 f'version = "{version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-                'dependencies = ["flext-core"]\n'
+                f'dependencies = ["{source("flext-core")}"]\n'
                 # The FLEXT line is detected from the declared infrastructure
-                # source, never cataloged: a governed checkout declares it.
+                # source, never cataloged: a governed checkout declares every
+                # internal requirement (the scaffold dev SSOT includes
+                # flext-tests) with its own direct Git source.
                 "\n[dependency-groups]\n"
-                f'dev = ["{TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source()}"]\n'
+                f'dev = ["{source()}", "{source("flext-tests")}"]\n'
             ),
             encoding="utf-8",
         )
