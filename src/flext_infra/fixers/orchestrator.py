@@ -228,8 +228,8 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     def _collect_violations(
         self, project_dir: Path, rules: t.SequenceOf[m.EnforcementRuleSpec]
-    ) -> tuple[
-        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+    ) -> t.Pair[
+        list[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Collect violations for ``rules`` inside ``project_dir``."""
         evaluation = self._engine().collect_project(project_dir, rules)

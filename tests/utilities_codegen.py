@@ -71,6 +71,18 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
 
     @staticmethod
+    def conform_plan(
+        root: Path, workspace: m.Infra.WorkspaceSpec
+    ) -> m.Infra.CodegenPlan:
+        """Plan one fixture workspace through the public conform boundary."""
+        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
+        return tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root, request=request, initial_workspace=workspace
+            ).plan(request)
+        )
+
+    @staticmethod
     def governed_project_plan(root: Path) -> m.Infra.CodegenPlan:
         """Plan every declared artifact of one governed fixture project read-only."""
         for entry in config.Infra.codegen.templates.entries:

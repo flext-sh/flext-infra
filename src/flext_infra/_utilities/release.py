@@ -41,7 +41,7 @@ class FlextInfraUtilitiesRelease:
             members = tuple(archive.getmembers())
         except tarfile.TarError as exc:
             return r[bool].fail_op("read release archive members", exc)
-        validated_members: list[tuple[tarfile.TarInfo, Path]] = []
+        validated_members: list[t.Pair[tarfile.TarInfo, Path]] = []
         for member in members:
             path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
             if path_result.failure:
@@ -86,7 +86,7 @@ class FlextInfraUtilitiesRelease:
     def _write_validated_tar_tree(
         archive: tarfile.TarFile,
         staging: Path,
-        validated_members: Sequence[tuple[tarfile.TarInfo, Path]],
+        validated_members: Sequence[t.Pair[tarfile.TarInfo, Path]],
     ) -> p.Result[bool]:
         """Write prevalidated tar members into a staging directory."""
         for member, relative_path in validated_members:

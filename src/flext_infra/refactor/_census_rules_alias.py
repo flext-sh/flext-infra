@@ -30,8 +30,8 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         @staticmethod
         def _runtime_alias_target(
             convention: m.Infra.RopeModuleConvention,
-            objects: t.VariadicTuple[m.Infra.Census.Object] | None,
-        ) -> m.Infra.Census.Object | None: ...
+            objects: t.VariadicTuple[m.Infra.Object] | None,
+        ) -> m.Infra.Object | None: ...
         @staticmethod
         def _runtime_alias_target_name(
             convention: m.Infra.RopeModuleConvention,
@@ -43,16 +43,16 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         file_path: Path,
         *,
         project_name: str,
-        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
+        objects: t.VariadicTuple[m.Infra.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for runtime-alias re-export violations."""
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[m.Infra.Violation] = []
+        fixes: list[m.Infra.Fix] = []
         runtime_target = (
             self._runtime_alias_target(convention, objects)
             if objects is not None
@@ -96,7 +96,7 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
             )
             if fixable:
                 fixes.append(
-                    m.Infra.Census.Fix(
+                    m.Infra.Fix(
                         object_name=object_name,
                         action=action,
                         source_file=str(file_path),
@@ -113,15 +113,15 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         file_path: Path,
         *,
         project_name: str,
-        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
+        objects: t.VariadicTuple[m.Infra.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for manual typing-alias violations."""
         manual_ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[m.Infra.Violation] = []
+        fixes: list[m.Infra.Fix] = []
         for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
             manual_ctx
         ):
@@ -153,7 +153,7 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
             )
             if action:
                 fixes.append(
-                    m.Infra.Census.Fix(
+                    m.Infra.Fix(
                         object_name=detector_violation.name,
                         action=action,
                         source_file=str(file_path),

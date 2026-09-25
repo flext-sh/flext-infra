@@ -372,7 +372,7 @@ class FlextInfraMiseArtifactsState:
         """Return every transaction-prefixed child or unsafe state-root alias."""
         residue: list[Path] = []
         for project in files.transaction_participants(layout):
-            state_root = project.root / files.STATE_DIRECTORY
+            state_root = project.root / c.Infra.MISE_ARTIFACTS_STATE_DIRECTORY
             if not state_root.exists() and not state_root.is_symlink():
                 continue
             if state_root.is_symlink():

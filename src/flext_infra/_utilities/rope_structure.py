@@ -364,7 +364,7 @@ class FlextInfraUtilitiesRopeStructure:
 
     @staticmethod
     def _pop_exited_enclosers(
-        enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]],
+        enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]],
         indent: int,
     ) -> None:
         """Drop enclosers whose body the current indentation has left."""
@@ -374,7 +374,7 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _push_encloser(
         *,
-        enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]],
+        enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]],
         category: c.Infra.StatementCategory,
         indent: int,
         text: str,

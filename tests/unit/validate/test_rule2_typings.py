@@ -6,20 +6,18 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from ._fixtures import (
-    TestsFlextInfraNamespaceProjectFixture,
-    TestsFlextInfraValidateNamespaceBase,
-)
+from tests import u
+
+from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraRule2TypingsFacade(TestsFlextInfraValidateNamespaceBase):
     """Test suite for namespace validator Rule 2 (typings facade)."""
 
     def test_rule2_valid_types_passes(self, tmp_path: Path) -> None:
-        fixture = TestsFlextInfraNamespaceProjectFixture()
-        root = fixture.create_project(
+        root = u.Tests.namespace_project(
             tmp_path,
-            module_source=fixture.valid_typings_module(),
+            module_source=u.Tests.namespace_fixture("rule2_valid_types.pysrc"),
             module_name="typings.py",
         )
         self._assert_valid(root)

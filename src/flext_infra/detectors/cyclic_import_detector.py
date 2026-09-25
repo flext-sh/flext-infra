@@ -38,7 +38,7 @@ class FlextInfraCyclicImportDetector:
         if not scan_dirs:
             return []
 
-        module_resources: list[tuple[str, str, t.Infra.RopeResource]] = []
+        module_resources: list[t.Triple[str, str, t.Infra.RopeResource]] = []
         for resource in rope_project.get_python_files():
             real_path = Path(resource.real_path).resolve()
             if not any(real_path.is_relative_to(scan_dir) for scan_dir in scan_dirs):

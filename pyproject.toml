@@ -62,6 +62,9 @@ Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
 Homepage = "https://github.com/flext-sh/flext-infra"
 Repository = "https://github.com/flext-sh/flext-infra"
 
+[project.entry-points.pytest11]
+"flext_infra._pytest_collection" = "flext_infra._pytest_collection:FlextInfraPytestCollection"
+
 [project.optional-dependencies]
 typings = ["types-Markdown"]
 
@@ -195,6 +198,7 @@ allow_redefinition = true
 check_untyped_defs = true
 explicit_package_bases = true
 extra_checks = true
+follow_untyped_imports = true
 local_partial_types = true
 namespace_packages = true
 no_implicit_reexport = true
