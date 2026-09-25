@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraConfig, m, main as infra_main, p, u
+from flext_infra import FlextInfraConfig, c, m, main as infra_main, p, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -100,7 +100,7 @@ class TestsFlextInfraApplyRenames:
         """Copy the tracked configs and overlay one repository-root campaign."""
         for tracked in FlextInfraConfig.ssot_config_dir().glob("*.yaml"):
             shutil.copy(tracked, config_dir / tracked.name)
-        (config_dir / "codegen-overrides.local.yaml").write_text(
+        (config_dir / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
             "Infra:\n"
             "  refactor_csv_campaigns:\n"
             "    campaigns:\n"
