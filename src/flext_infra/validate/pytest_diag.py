@@ -113,7 +113,9 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         return self._extract_diagnostics(junit_path, log_path, report_log=report_log)
 
     @classmethod
-    def extract_report_log(cls, report_log: Path) -> p.Result[m.Infra.PytestDiagnostics]:
+    def extract_report_log(
+        cls, report_log: Path
+    ) -> p.Result[m.Infra.PytestDiagnostics]:
         """Read collection-only evidence through the same runtime event boundary."""
         diag = m.Infra.DiagResult()
         cls._extract_report_events(report_log, diag)

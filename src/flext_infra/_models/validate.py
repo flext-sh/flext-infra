@@ -180,8 +180,8 @@ class FlextInfraModelsCore:
         )
 
         @u.model_validator(mode="after")
-        def require_warning_payload(self) -> Self:
-            """Reject incomplete warnings instead of reporting zero findings."""
+        def require_event_payload(self) -> Self:
+            """Reject incomplete runtime events instead of reporting zero findings."""
             if self.report_type == "WarningMessage" and any(
                 value is None
                 for value in (self.category, self.filename, self.lineno, self.message)
@@ -247,7 +247,8 @@ class FlextInfraModelsCore:
             default_factory=tuple, description="Node IDs with failed collection reports"
         )
         collection_skip_cases: t.StrTuple = m.Field(
-            default_factory=tuple, description="Node IDs with skipped collection reports"
+            default_factory=tuple,
+            description="Node IDs with skipped collection reports",
         )
         reported_node_ids: t.StrTuple = m.Field(
             default_factory=tuple,

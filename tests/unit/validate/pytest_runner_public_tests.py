@@ -35,7 +35,9 @@ class TestsFlextInfraPytestRunner:
         expressions = []
         for command in (
             runner.build_selection_command(report_log=report / "selection.jsonl"),
-            runner.build_selection_command(report_log=report / "inventory.jsonl", complete=True),
+            runner.build_selection_command(
+                report_log=report / "inventory.jsonl", complete=True
+            ),
             runner.build_command(report),
             runner.build_coverage_command(report),
         ):
@@ -60,7 +62,9 @@ class TestsFlextInfraPytestRunner:
         names = []
         for command in (
             runner.build_selection_command(report_log=report / "selection.jsonl"),
-            runner.build_selection_command(report_log=report / "inventory.jsonl", complete=True),
+            runner.build_selection_command(
+                report_log=report / "inventory.jsonl", complete=True
+            ),
             suite_command,
         ):
             env_index = command.index("--testmon-env")
@@ -183,10 +187,10 @@ class TestsFlextInfraPytestRunner:
         )
         assert tm.ok(self._runner_for(cached_runner_project).execute()) == 0
         worker_action = (
-            "    if get_xdist_worker_id(session) == 'gw1':\n        items.pop()\n"
+            "    if get_xdist_worker_id(session) == 'gw0':\n        items.pop()\n"
             if omit_case
             else "    items.sort(key=lambda item: item.nodeid,\n"
-            "               reverse=get_xdist_worker_id(session) == 'gw1')\n"
+            "               reverse=get_xdist_worker_id(session) == 'gw0')\n"
         )
         (cached_runner_project / "conftest.py").write_text(
             "import pytest\nfrom xdist import get_xdist_worker_id\n\n"
@@ -595,7 +599,9 @@ class TestsFlextInfraPytestRunner:
         tm.that(outcome.raw_return_code != 0, eq=finding == "module-error")
 
     @pytest.mark.slow
-    @pytest.mark.parametrize(("strict", "homonym"), [(False, False), (True, False), (False, True)])
+    @pytest.mark.parametrize(
+        ("strict", "homonym"), [(False, False), (True, False), (False, True)]
+    )
     def test_serial_collection_warning_policy_preserves_identity_and_strict(
         self, cached_runner_project: Path, *, strict: bool, homonym: bool
     ) -> None:
@@ -627,7 +633,9 @@ class TestsFlextInfraPytestRunner:
         blocking = strict or homonym
 
         if blocking:
-            with pytest.raises(RuntimeError, match="collection contains blocking findings"):
+            with pytest.raises(
+                RuntimeError, match="collection contains blocking findings"
+            ):
                 runner.execute()
         else:
             tm.that(tm.ok(runner.execute()), eq=0)
@@ -742,6 +750,19 @@ class TestsFlextInfraPytestRunner:
         tm.that(len(contexts), eq=2)
         context = m.Infra.PytestRunContext.model_validate_json(contexts[-1].read_text())
         tm.that(context.execution_mode, eq="full")
+        tm.that((contexts[0].parent / "summary.txt").read_text(), has="exit=0")
+        incremental_outcome = m.Cli.ProcessOutcome.model_validate_json(
+            (contexts[0].parent / "suite-outcome.json").read_text()
+        )
+        tm.that(incremental_outcome.raw_return_code, eq=0)
+        full_outcome = m.Cli.ProcessOutcome.model_validate_json(
+            (contexts[-1].parent / "inventory-outcome.json").read_text()
+        )
+        tm.that(full_outcome.raw_return_code, ne=0)
+        tm.that(
+            (cached_runner_project / runner.reports / "latest.txt").read_text().strip(),
+            eq=contexts[-1].parent.name,
+        )
         tm.that((contexts[-1].parent / "suite-outcome.json").exists(), eq=False)
         inventory = m.Infra.PytestCollectionManifest.model_validate_json(
             (contexts[-1].parent / "testmon-inventory.json").read_text()

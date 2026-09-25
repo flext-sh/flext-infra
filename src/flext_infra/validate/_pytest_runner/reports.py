@@ -26,6 +26,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         u.Cli.atomic_write_text_file(
             report_dir / "run-context.json", context.model_dump_json(indent=2) + "\n"
         ).unwrap()
+        u.Cli.atomic_write_text_file(
+            report_dir.parent / "latest.txt", f"{report_dir.name}\n"
+        ).unwrap()
 
     @staticmethod
     def _failure_detail(message: str, pytest_log: Path) -> str:
@@ -100,7 +103,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     @staticmethod
     def _collection_diagnostics(report_log: Path) -> None:
         """Require complete collection evidence before accepting a selection."""
-        diagnostics = FlextInfraPytestDiagExtractor.extract_report_log(report_log).unwrap()
+        diagnostics = FlextInfraPytestDiagExtractor.extract_report_log(
+            report_log
+        ).unwrap()
         receipt = report_log.with_suffix(".diagnostics.json")
         u.Cli.atomic_write_text_file(
             receipt, diagnostics.model_dump_json(indent=2) + "\n"

@@ -73,7 +73,8 @@ class FlextInfraPytestRunnerExecution(
         log_text = selection_log.read_text(encoding="utf-8")
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         if (
-            outcome.raw_return_code not in (
+            outcome.raw_return_code
+            not in (
                 {pytest.ExitCode.OK}
                 if complete
                 else {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
@@ -236,9 +237,6 @@ class FlextInfraPytestRunnerExecution(
             accounting.model_dump_json(indent=2) + "\n",
         ).unwrap()
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
-        u.Cli.atomic_write_text_file(
-            self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
-        ).unwrap()
         sys.stderr.write(f"Reports: {report_dir}\n")
         return r.ok(final_exit)
 
