@@ -6,13 +6,13 @@ lockfile_version = 2
 url = "https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-20_gnu.conda"
 checksum = "sha256:a2527b1d81792a0ccd2c05850960df119c2b6d8f5fdec97f2db7d25dc23b1068"
 
-[conda-packages.linux-arm64."libgcc-16.2.0-h205dda4_6"]
-url = "https://conda.anaconda.org/conda-forge/linux-aarch64/libgcc-16.2.0-h205dda4_6.conda"
-checksum = "sha256:235bf2b97bbe627f2cd5b2da34e51e77c5ab0c726a7ec8e6d5ea89db555b5260"
+[conda-packages.linux-arm64."libgcc-16.2.0-h205dda4_7"]
+url = "https://conda.anaconda.org/conda-forge/linux-aarch64/libgcc-16.2.0-h205dda4_7.conda"
+checksum = "sha256:eae7a3449d5a3b5351c5427137c076cc3fc826645c7bfc42dc10772b783826f1"
 
-[conda-packages.linux-arm64."libgomp-16.2.0-h8acb6b2_6"]
-url = "https://conda.anaconda.org/conda-forge/linux-aarch64/libgomp-16.2.0-h8acb6b2_6.conda"
-checksum = "sha256:417013b01e6c640bea30eb86326628c7dbbdeca4aa287c69aaf4262ea5a7b2c1"
+[conda-packages.linux-arm64."libgomp-16.2.0-h8acb6b2_7"]
+url = "https://conda.anaconda.org/conda-forge/linux-aarch64/libgomp-16.2.0-h8acb6b2_7.conda"
+checksum = "sha256:4406fd67c5beeb99b9372f9bf07aa3e40ca141e337eceebac3ff64aa72799494"
 
 [conda-packages.linux-arm64-musl."_openmp_mutex-4.5-20_gnu"]
 url = "https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-20_gnu.conda"
@@ -30,13 +30,13 @@ checksum = "sha256:417013b01e6c640bea30eb86326628c7dbbdeca4aa287c69aaf4262ea5a7b
 url = "https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda"
 checksum = "sha256:1dd3fffd892081df9726d7eb7e0dea6198962ba775bd88842135a4ddb4deb3c9"
 
-[conda-packages.linux-x64."libgcc-16.2.0-ha9f2e26_6"]
-url = "https://conda.anaconda.org/conda-forge/linux-64/libgcc-16.2.0-ha9f2e26_6.conda"
-checksum = "sha256:76ab0367ab900e169cd5a981c51ad35c97800795fb9fb89d370d05159c21bd49"
+[conda-packages.linux-x64."libgcc-16.2.0-ha9f2e26_7"]
+url = "https://conda.anaconda.org/conda-forge/linux-64/libgcc-16.2.0-ha9f2e26_7.conda"
+checksum = "sha256:e031634c3a928f9594eba868bc46ef5230d6571a364a0c63215b06c4563bfcea"
 
-[conda-packages.linux-x64."libgomp-16.2.0-he0feb66_6"]
-url = "https://conda.anaconda.org/conda-forge/linux-64/libgomp-16.2.0-he0feb66_6.conda"
-checksum = "sha256:16bad99a5bbd87176ca243938bbf0078bab52a583e18a070d244484422137d01"
+[conda-packages.linux-x64."libgomp-16.2.0-he0feb66_7"]
+url = "https://conda.anaconda.org/conda-forge/linux-64/libgomp-16.2.0-he0feb66_7.conda"
+checksum = "sha256:92a0bb350c7be6a4eedcb4e111c60aefd176018e6b1c009a6e025dbe9bbcd758"
 
 [conda-packages.linux-x64-musl."_openmp_mutex-4.5-20_gnu"]
 url = "https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda"
@@ -54,13 +54,13 @@ checksum = "sha256:16bad99a5bbd87176ca243938bbf0078bab52a583e18a070d244484422137
 url = "https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-20_gnu.conda"
 checksum = "sha256:8a1cee28bd0ee7451ada1cd50b64720e57e17ff994fc62dd8329bef570d382e4"
 
-[conda-packages.windows-x64."libgcc-16.2.0-h110b43a_6"]
-url = "https://conda.anaconda.org/conda-forge/win-64/libgcc-16.2.0-h110b43a_6.conda"
-checksum = "sha256:8d9cc59d02371ba40b9e3de4e97662a56162cfb472d496f28aeadf5a00044e6d"
+[conda-packages.windows-x64."libgcc-16.2.0-h110b43a_7"]
+url = "https://conda.anaconda.org/conda-forge/win-64/libgcc-16.2.0-h110b43a_7.conda"
+checksum = "sha256:59feb6d16cba13a70f22dae70a44670eb2cc45e652e9a34a014814c2ca871132"
 
-[conda-packages.windows-x64."libgomp-16.2.0-h8ee18e1_6"]
-url = "https://conda.anaconda.org/conda-forge/win-64/libgomp-16.2.0-h8ee18e1_6.conda"
-checksum = "sha256:27f0f253085b778cfe47c9e3e8d1a5d766f8a323075b199089b36713f0fe903b"
+[conda-packages.windows-x64."libgomp-16.2.0-h8ee18e1_7"]
+url = "https://conda.anaconda.org/conda-forge/win-64/libgomp-16.2.0-h8ee18e1_7.conda"
+checksum = "sha256:4b8a747f047d069ccd2a6cf2f4fdbc6b0c0e4dcd840998d1fe607b8c234e707b"
 
 [conda-packages.windows-x64."libwinpthread-12.0.0.r4.gg4f2fc60ca-h57928b3_10"]
 url = "https://conda.anaconda.org/conda-forge/win-64/libwinpthread-12.0.0.r4.gg4f2fc60ca-h57928b3_10.conda"
@@ -203,6 +203,7 @@ provenance = "github-attestations"
 [[tools."github:kucherenko/jscpd"]]
 version = "5.3.2"
 backend = "github:kucherenko/jscpd"
+specifiers = ["latest"]
 
 [tools."github:kucherenko/jscpd".options]
 asset_pattern = "jscpd-darwin-arm64.tar.gz"
@@ -216,6 +217,7 @@ provenance = "github-attestations"
 [[tools."github:kucherenko/jscpd"]]
 version = "5.3.2"
 backend = "github:kucherenko/jscpd"
+specifiers = ["latest"]
 
 [tools."github:kucherenko/jscpd".options]
 asset_pattern = "jscpd-windows-x64-msvc.tar.gz"
@@ -229,6 +231,7 @@ provenance = "github-attestations"
 [[tools."github:kucherenko/jscpd"]]
 version = "5.3.2"
 backend = "github:kucherenko/jscpd"
+specifiers = ["latest"]
 
 [tools."github:kucherenko/jscpd".options]
 asset_pattern = "jscpd-linux-arm64-gnu.tar.gz"
@@ -242,6 +245,7 @@ provenance = "github-attestations"
 [[tools."github:kucherenko/jscpd"]]
 version = "5.3.2"
 backend = "github:kucherenko/jscpd"
+specifiers = ["latest"]
 
 [tools."github:kucherenko/jscpd".options]
 asset_pattern = "jscpd-darwin-x64.tar.gz"
@@ -566,9 +570,9 @@ channel = "conda-forge"
 checksum = "sha256:b008fb8ba5c93478dacf36d60eed1b2de341d69773c3f73621d2a9e56f834d9d"
 url = "https://conda.anaconda.org/conda-forge/linux-aarch64/make-4.4.1-he30d5cf_3.conda"
 conda_deps = [
-    "libgcc-16.2.0-h205dda4_6",
+    "libgcc-16.2.0-h205dda4_7",
     "_openmp_mutex-4.5-20_gnu",
-    "libgomp-16.2.0-h8acb6b2_6",
+    "libgomp-16.2.0-h8acb6b2_7",
 ]
 
 [tools.make."platforms.linux-arm64-musl"]
@@ -584,9 +588,9 @@ conda_deps = [
 checksum = "sha256:4c65d2769847778a6d84db6984ac81bcec6f8958d349f1fe57ae040ccc56a801"
 url = "https://conda.anaconda.org/conda-forge/linux-64/make-4.4.1-hb03c661_3.conda"
 conda_deps = [
-    "libgcc-16.2.0-ha9f2e26_6",
+    "libgcc-16.2.0-ha9f2e26_7",
     "_openmp_mutex-4.5-20_gnu",
-    "libgomp-16.2.0-he0feb66_6",
+    "libgomp-16.2.0-he0feb66_7",
 ]
 
 [tools.make."platforms.linux-x64-musl"]
@@ -612,11 +616,11 @@ conda_deps = []
 checksum = "sha256:8b1a30f3e6442ed4c161e7aabab396ce35c61a3c235ece53edf2a78c95d18fed"
 url = "https://conda.anaconda.org/conda-forge/win-64/make-4.4.1-hba3369d_3.conda"
 conda_deps = [
-    "libgcc-16.2.0-h110b43a_6",
+    "libgcc-16.2.0-h110b43a_7",
     "libwinpthread-12.0.0.r4.gg4f2fc60ca-h57928b3_10",
     "ucrt-10.0.26100.0-h57928b3_0",
     "_openmp_mutex-4.5-20_gnu",
-    "libgomp-16.2.0-h8ee18e1_6",
+    "libgomp-16.2.0-h8ee18e1_7",
 ]
 
 [[tools.node]]

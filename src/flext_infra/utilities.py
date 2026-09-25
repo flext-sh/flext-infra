@@ -85,6 +85,14 @@ from ._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from ._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 
 
+from flext_infra._utilities.private_import_ancestry import (
+    FlextInfraUtilitiesPrivateImportAncestry,
+)
+from flext_infra._utilities.private_import_facades import (
+    FlextInfraUtilitiesPrivateImportFacades,
+)
+
+
 class FlextInfraUtilities(FlextCliUtilities):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
@@ -164,6 +172,8 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesWorkspaceFingerprint,
         FlextInfraUtilitiesCodemodRules,
         FlextInfraUtilitiesSignatureRules,
+        FlextInfraUtilitiesPrivateImportAncestry,
+        FlextInfraUtilitiesPrivateImportFacades,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 
