@@ -73,7 +73,7 @@ class TestsFlextInfraRopeAnalysis:
         parents = u.Infra.ast_parent_map(tree)
         child = u.Infra.ensure_ast_node(source_tree.body[0])
         tm.that(u.Infra.is_module_level_node(child, parents), eq=True)
-        with pytest.raises(TypeError, match="Expected AST node"):
+        with pytest.raises(TypeError, match="Expected an AST node, got object"):
             u.Infra.ensure_ast_node(object())
 
     def test_facade_scanner_reads_facade_with_imported_superclass(
