@@ -100,6 +100,17 @@ a plataforma da máquina que executa a atualização, sempre incluída pelo Mise
 Mise vazio e verifica os bytes dos locks, do pin e de todo o grafo nativo depois da
 instalação.
 
+O contrato de locks versionados também remove a antiga exclusão de lock ausente do
+SonarCloud. `codegen.sonarcloud.issue_exclusions` continua sendo a fonte única da
+configuração do servidor. Com `SONAR_TOKEN` no ambiente, `make sonarcloud-sync` envia
+uma lista não vazia pela API `settings/set`; uma lista vazia usa
+[`settings/reset`](https://sonarcloud.io/web_api/api/settings/reset), com `component` e
+`keys`. O comando relê `settings/values` e exige o valor efetivo exato, incluindo
+exclusões herdadas. Se o reset revelar uma exclusão do nível superior, a divergência
+permanece uma falha. Um falso positivo sobre o formato nativo `aube-lock.yaml` exige
+adjudicação individual com prova de instalação congelada; não autoriza exclusões amplas
+nem alteração do payload nativo.
+
 Depois de resolver o release do Mise, o bootstrap mantém essa versão em todas as
 chamadas da mesma operação e no lifecycle recursivo. O `upg` inicializa os gitlinks
 declarados antes de resolver os locks Python. Os demais verbos que dependem do runtime

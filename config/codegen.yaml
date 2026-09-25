@@ -306,12 +306,9 @@ Infra:
       # Applied through each project's SonarCloud settings by
       # `make sonarcloud-sync` (the file cannot carry them); rendered into the
       # generated file as documentation only.
-      issue_exclusions:
-        - rule_key: "text:S8565"
-          resource_key: "pyproject.toml"
-          reason: >-
-            fleet lockfile ban (operator order); dependency ranges live in
-            pyproject.toml; bead flext-c8yle
+      # The committed lock contract supersedes the former lockfile-ban exclusion.
+      # An empty list resets the setting and requires an empty effective readback.
+      issue_exclusions: []
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
