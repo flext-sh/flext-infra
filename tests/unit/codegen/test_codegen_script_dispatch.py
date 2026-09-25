@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -117,7 +118,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        tm.that(rendered.count("\ndeploy:\n"), eq=1)
+        tm.that(len(re.findall(r"^deploy:", rendered, re.MULTILINE)), eq=1)
         tm.that(
             rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
         )
@@ -199,7 +200,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         phony_line = next(
             line
             for line in rendered.splitlines()
-            if line.startswith(".PHONY:") and "_builtin_" in line
+            if line.startswith(".PHONY:") and "_builtin_gen_" in line
         )
         tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
         # The one handler drives the conform engine (CLI namespace is unchanged).
