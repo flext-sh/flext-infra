@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from libcst.metadata import QualifiedNameSource, Scope
 
@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 class FlextInfraRefactorImportFacades:
     """Reuse static facade discovery without importing dependency business code."""
+
+    _accepted: ClassVar[t.MutableMappingKV[tuple[str, str], bool]] = {}
 
     def __init__(self) -> None:
         self.identities: t.MutableMappingKV[tuple[str, str], bool] = {}
@@ -30,13 +32,28 @@ class FlextInfraRefactorImportFacades:
         for name in names:
             identity = (name.name, alias)
             if identity not in self.identities:
-                self.identities[identity] = self.accepts(*identity)
+                self.identities[identity] = self._accepted_identity(*identity)
             if not self.identities[identity]:
                 msg = (
                     f"import migration requires the declared facade, found {name.name}"
                 )
                 raise ValueError(msg)
         return bool(names)
+
+    @classmethod
+    def _accepted_identity(cls, qualified: str, alias: str) -> bool:
+        """Answer one identity once per process, sharing it across instances.
+
+        The answer is a pure function of the checkout's declared facade
+        sources, and a real migration resolves the same identity for every
+        file it touches, so each instance shares one memo instead of
+        re-deriving the full ancestry walk per rewritten file.
+        """
+        accepted = cls._accepted.get((qualified, alias))
+        if accepted is None:
+            accepted = cls.accepts(qualified, alias)
+            cls._accepted[(qualified, alias)] = accepted
+        return accepted
 
     @classmethod
     def accepts(cls, qualified: str, alias: str) -> bool:
@@ -88,6 +105,12 @@ class FlextInfraRefactorImportFacades:
             for facade_owners in owners.values():
                 for tree, _alias, _root, _file in facade_owners:
                     dependencies.update(cls._imported_packages(tree))
+            dependencies = {
+                dependency
+                for dependency in dependencies
+                if dependency == c.Infra.PKG_CORE_UNDERSCORE
+                or dependency.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+            }
             dependencies.difference_update(inspected)
             if not dependencies:
                 return modules
