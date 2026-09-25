@@ -114,6 +114,14 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             )
             for edit in moved:
                 prepared[edit.file_path] = edit.updated_source
+            target_resource = snapshot.get_resource(
+                request.target_file.relative_to(root).as_posix()
+            )
+            prepared[request.target_file] = (
+                FlextInfraUtilitiesSemanticHelperReferences._without_self_bindings(
+                    snapshot, target_resource, prepared[request.target_file]
+                )
+            )
             for path, expression in quoted_imports.items():
                 resource = snapshot.get_resource(path.relative_to(root).as_posix())
                 module = runtime.get_string_module(
@@ -127,6 +135,55 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                     raise ValueError(msg)
         finally:
             snapshot.close()
+
+    @staticmethod
+    def _without_self_bindings(
+        project: p.Infra.RopeProject, resource: p.Infra.RopeResource, source: str
+    ) -> str:
+        """Drop imports a destination owner already declares for itself.
+
+        MoveGlobal carries the helper's own imports into the destination. When
+        the destination is the owner of an imported name (the tier utilities
+        module binding ``u``), that import re-enters the module being defined
+        and cycles at runtime; the destination's own declaration is the binding
+        its moved code resolves.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        body = ast.parse(source).body
+        declared = {
+            target.id
+            for node in body
+            for target in (
+                node.targets
+                if isinstance(node, ast.Assign)
+                else (node.target,)
+                if isinstance(node, ast.AnnAssign)
+                else ()
+            )
+            if isinstance(target, ast.Name)
+        } | {
+            node.name
+            for node in body
+            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+        }
+        module = runtime.get_string_module(project, source, resource=resource)
+        imports = runtime.module_imports_for_pymodule(project, module)
+        changed = False
+        for statement in tuple(imports.imports):
+            info = statement.import_info
+            if not isinstance(info, p.Infra.RopeFromImport):
+                continue
+            kept = [
+                (imported, alias)
+                for imported, alias in info.names_and_aliases
+                if (alias or imported) not in declared
+            ]
+            if len(kept) != len(info.names_and_aliases):
+                statement.import_info = runtime.from_import(
+                    info.module_name, info.level, kept
+                )
+                changed = True
+        return imports.get_changed_source() if changed else source
 
     @classmethod
     def _moved_quoted_source(
