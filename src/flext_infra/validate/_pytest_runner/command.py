@@ -133,13 +133,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Build the testmon suite argv (never the cov plugin)."""
         pytest = config.Infra.tooling.tools.pytest
         selection = selected_node_ids or None
-        # An empty selection needs no workers. Explicit serial execution remains
-        # available to callers; cold and warm cache runs share the same manifest.
-        workers = (
-            "0"
-            if serialize or selected_node_ids == ()
-            else str(self.parallel_worker_budget(pytest))
-        )
+        # An empty selection needs no workers, and a selection smaller than the
+        # worker budget never needs more workers than items: every extra worker
+        # only pays startup cost for an empty queue. Explicit serial execution
+        # remains available to callers; cold and warm cache runs share the same
+        # manifest.
+        budget = self.parallel_worker_budget(pytest)
+        if serialize or selected_node_ids == ():
+            workers = "0"
+        elif selection:
+            workers = str(min(budget, len(selection)))
+        else:
+            workers = str(budget)
         return self._suite_argv(
             report_dir,
             targets=(tuple(selection) if selection else (str(self.target),)),
