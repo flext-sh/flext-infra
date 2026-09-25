@@ -169,10 +169,11 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         # WHAT selectors were exterminated: one verb, one meaning, declared once.
-        tm.that(hasattr(gen, "default_what"), eq=False)
-        tm.that(hasattr(gen, "_apply_flag_exterminated"), eq=False)
+        gen_fields = type(gen).model_fields
+        tm.that("default_what" in gen_fields, eq=False)
+        tm.that("_apply_flag_exterminated" in gen_fields, eq=False)
         tm.that("initialize" in verb_names, eq=True)
-        tm.that(hasattr(make_config, "serialization"), eq=False)
+        tm.that("serialization" in type(make_config).model_fields, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
