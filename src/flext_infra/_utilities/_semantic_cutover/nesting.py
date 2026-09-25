@@ -104,14 +104,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose helper promotion, family flattening, and orphan nesting."""
         planned = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
-        # The planner contract keeps every failure in the Result (see
-        # plan_semantic_cutover); helper promotion raises per rejected move.
-        promotion = planned.create_from_callable(
-            lambda: cls._test_helper_edits(rope_workspace, sources)
-        )
-        if promotion.failure:
-            return promotion
-        promoted = promotion.value
+        # A rejected promotion move (a shadowed quoted type destination, two
+        # declared utilities facades) is a planning defect: it escapes loud,
+        # before any effect, instead of being folded into a failed result.
+        # Per-module owner failures below still stay in the Result.
+        promoted = cls._test_helper_edits(rope_workspace, sources)
         proposed = dict(sources)
         merged = {edit.file_path: edit for edit in promoted}
         for edit in promoted:
