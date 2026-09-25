@@ -84,9 +84,20 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             ";; esac\n"
             'case "$*" in *" which direnv"*) '
             "printf '%s\\n' \"${0%/*}/direnv\"; exit ;; esac\n"
+            # Any other managed tool resolves as the fixture environment does.
+            'MISE_STUB_ARGS="$*"\n'
+            'case "$MISE_STUB_ARGS" in *" which "*) '
+            'command -v "${MISE_STUB_ARGS##* which }"; exit ;; esac\n'
             'if [ "$1" = "trust" ]; then exit; fi\n'
-            'case "$*" in *" install "*) exit ;; esac\n'
-            'while [ "$1" != "--" ]; do shift; done\n'
+            'case "$*" in *" install "*|*" upgrade "*) exit ;; esac\n'
+            # Only `exec -- <command>` delegates; any other call the stub
+            # does not model fails loud instead of looping on an empty shift.
+            'MISE_STUB_CALL="$*"\n'
+            'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
+            'if [ "$#" -eq 0 ]; then\n'
+            '  printf "mise stub: unmodeled call: %s\\n" "$MISE_STUB_CALL" >&2\n'
+            "  exit 2\n"
+            "fi\n"
             "shift\n"
             'exec "$@"\n',
         )
