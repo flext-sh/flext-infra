@@ -249,6 +249,9 @@ class TestsFlextInfraScriptDispatchMakefile:
         package.mkdir(parents=True)
         makefile = root / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(rendered, encoding="utf-8")
+        # Every public verb except help/clean/upg requires the Mise pin
+        # (db516968e); seed it so the run reaches the interpreter check.
+        u.Tests.copy_tracked_mise_seeds(root)
         invoked = u.Tests.run_isolated_make(
             ["--no-print-directory", "-f", str(makefile), "initialize"], cwd=root
         )
