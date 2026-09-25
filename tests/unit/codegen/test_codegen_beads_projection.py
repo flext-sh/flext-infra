@@ -10,7 +10,7 @@ import pytest
 from flext_tests import tm
 
 import flext_infra
-from flext_infra import c, infra, m
+from flext_infra import c, config, infra, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
 
@@ -29,7 +29,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
         return root
 
-    def test_local_identity_renders_only_declarative_beads_files(
+    def test_local_identity_renders_declarative_beads_routing(
         self, tmp_path: Path
     ) -> None:
         root = self._project(
@@ -56,10 +56,19 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_config, has="gc.endpoint_status:")
         tm.that(rendered_config, has="types.custom:")
         tm.that(rendered_config, has="dolt.auto-start:")
-        # Beads owns and mints the ledger marker at first use (flext-l2296):
-        # a fresh checkout legitimately lacks it and conform must not plan
-        # the absent runtime artifact.
-        tm.that(rendered_metadata, none=True)
+        if rendered_metadata is None:
+            pytest.fail("local identity must produce the declarative Beads marker")
+        metadata = u.Tests.json_payload(rendered_metadata)
+        tm.that(metadata["backend"], eq="dolt")
+        tm.that(metadata["database"], eq="dolt")
+        tm.that(metadata["dolt_database"], eq="project_database")
+        tm.that(
+            metadata["dolt_mode"], eq=config.Infra.codegen.toolchain.beads.dolt_mode
+        )
+        # A fresh checkout has no checkout-owned identity.toml. Conform owns
+        # the portable routing marker but never mints the ledger identity.
+        tm.that("project_id" in metadata, eq=False)
+        tm.that(set(metadata), eq={"backend", "database", "dolt_mode", "dolt_database"})
         tm.that(hasattr(plan, "beads"), eq=False)
 
     def test_gascity_disabled_renders_standalone_beads_config(

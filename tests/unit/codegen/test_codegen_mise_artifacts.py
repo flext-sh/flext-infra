@@ -75,6 +75,7 @@ class TestsFlextInfraCodegenMiseArtifacts:
                     "HOME": str(home),
                     c.Infra.MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: declared,
                     "MISE_VERSION": version,
+                    "MISE_INSTALL_PATH": "",
                 },
                 # An explicit MISE_INSTALL_PATH outranks the data dir by the
                 # launcher's contract; the generated Make harness exports one

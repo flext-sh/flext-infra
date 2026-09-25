@@ -39,7 +39,7 @@ class TestsFlextInfraCodegenLayout:
                     ),
                 ],
                 cwd=project,
-                remove_env_keys=("FLEXT_INFRA_CONFIG_DIR",),
+                env={"FLEXT_INFRA_CONFIG_DIR": str(FlextInfraConfig.ssot_config_dir())},
             )
         )
         tm.that(

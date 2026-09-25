@@ -51,7 +51,7 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
                 test_u.Cli.run_raw(
-                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}", ""],
+                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
                 )
