@@ -121,6 +121,3 @@ class TestsFlextInfraRunProjects:
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
-
-
-__all__: list[str] = ["TestsFlextInfraRunProjects"]

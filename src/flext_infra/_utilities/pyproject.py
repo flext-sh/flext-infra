@@ -92,7 +92,7 @@ class FlextInfraUtilitiesPyproject:
         return r[p.ProjectMetadata].ok(metadata)
 
     @staticmethod
-    def validate_infra_payload(payload: object) -> t.JsonMapping:
+    def validate_infra_payload(payload: p.AttributeProbe) -> t.JsonMapping:
         """Validate one plain mapping through the infra adapter.
 
         Centralizes the adapter choice so every caller validates through the

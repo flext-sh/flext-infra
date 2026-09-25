@@ -28,6 +28,3 @@ class TestsFlextInfraInfraMaintenanceInit:
     def test_lazy_import_python_version_enforcer(self) -> None:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""
         tm.that(FlextInfraPythonVersionEnforcer, none=False)
-
-
-__all__: list[str] = ["TestsFlextInfraInfraMaintenanceInit"]

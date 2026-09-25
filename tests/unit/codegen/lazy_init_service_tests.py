@@ -621,6 +621,3 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((nested_io_root / c.Infra.INIT_PY).exists(), eq=True)
         tm.that(check_result.success, eq=True)
         tm.that(check_service.modified_files, eq=())
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]

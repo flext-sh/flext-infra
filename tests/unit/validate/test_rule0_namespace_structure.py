@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, u
-
-from ._fixtures import TestsFlextInfraValidateNamespaceBase
+from tests import c, u, utilities
 
 
-class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBase):
+class TestsFlextInfraRule0NamespaceStructure(
+    utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
+):
     """Test suite for namespace validator Rule 0."""
 
     @pytest.mark.parametrize("family", tuple(c.Infra.FAMILY_SUFFIXES))
@@ -190,6 +190,3 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             ),
             eq=False,
         )
-
-
-__all__: list[str] = ["TestsFlextInfraRule0NamespaceStructure"]

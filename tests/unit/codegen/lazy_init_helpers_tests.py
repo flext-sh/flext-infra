@@ -557,11 +557,15 @@ class TestsFlextInfraLazyInitHelpers:
             nearest.mkdir(parents=True)
             owner.mkdir(parents=True)
             nearest.joinpath(c.Infra.INIT_PY).write_text(
-                '__all__ = ("c",)\nc = object()\nraise RuntimeError("must not import")\n',
+                "class NearestParentConstants:\n    pass\n\n"
+                "c = NearestParentConstants\n"
+                '__all__ = ("c",)\nraise RuntimeError("must not import")\n',
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
             owner.joinpath(c.Infra.INIT_PY).write_text(
-                '__all__ = ("r",)\nr = object()\nraise RuntimeError("must not import")\n',
+                "class OwnerParentResult:\n    pass\n\n"
+                "r = OwnerParentResult\n"
+                '__all__ = ("r",)\nraise RuntimeError("must not import")\n',
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
             package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(

@@ -18,12 +18,12 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
 
     @staticmethod
-    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+    def is_ast_node(obj: p.AttributeProbe) -> TypeGuard[t.Infra.RopeAstNode]:
         """Type guard to narrow to RopeAstNode via structural `_fields` check."""
         return hasattr(obj, "_fields")
 
     @staticmethod
-    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+    def ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(obj):
             msg = f"Expected AST node with _fields, got {type(obj).__name__}"

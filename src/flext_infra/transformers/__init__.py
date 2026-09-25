@@ -11,6 +11,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from . import smells
     from ._canonical_t_import import FlextInfraEnsureCanonicalTImportMixin
+    from ._import_facades import FlextInfraRefactorImportFacades
     from ._semantic_publication import (
         publish_semantic_file_plan,
         publish_semantic_file_plans,
@@ -46,6 +47,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",
     "FlextInfraRefactorImportBypassRemover",
+    "FlextInfraRefactorImportFacades",
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorLazyImportFixer",
     "FlextInfraRefactorMroRemover",
@@ -66,6 +68,7 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._canonical_t_import": ("FlextInfraEnsureCanonicalTImportMixin",),
+            "._import_facades": ("FlextInfraRefactorImportFacades",),
             "._semantic_publication": (
                 "publish_semantic_file_plan",
                 "publish_semantic_file_plans",

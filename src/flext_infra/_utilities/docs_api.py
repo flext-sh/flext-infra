@@ -502,7 +502,7 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _classify_exports(
         all_exports: t.StrSequence, target_map: t.StrMapping
-    ) -> tuple[list[str], list[str], list[str]]:
+    ) -> t.Triple[list[str], list[str], list[str]]:
         """Split ``__all__`` entries into ``(aliases, module_exports, symbol_exports)``."""
         aliases = [
             name

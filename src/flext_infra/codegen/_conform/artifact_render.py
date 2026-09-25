@@ -7,7 +7,6 @@ from pathlib import Path
 from flext_core import r
 
 from ... import c, config, m, p, t, u
-from .._layout_plan import FlextInfraCodegenLayoutPlanMixin
 from .context_render import FlextInfraCodegenConformContextRender
 
 
@@ -181,9 +180,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     gitignore_sections=u.Infra.gitignore_sections(
                         codegen,
                         profile=target.make_profile,
-                        project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
-                            repository_root
-                        ),
+                        # The declared distribution is the project identity; a
+                        # scaffold renders before its pyproject exists.
+                        project_name=repository.distribution,
                         workspace=workspace,
                         project_patterns=project_patterns,
                     )
@@ -219,6 +218,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # bd base otherwise.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    repository_root_rel=self._repository_root_rel(workspace),
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
                     scratch_home_relative=(codegen.toolchain.scratch_home_relative),

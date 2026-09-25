@@ -7,10 +7,12 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from ._fixtures import TestsFlextInfraValidateNamespaceBase
+import tests.utilities
 
 
-class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBase):
+class TestsFlextInfraPydanticLegacyDetection(
+    tests.utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
+):
     """Test suite for Pydantic legacy decorator/method detection."""
 
     @pytest.mark.parametrize(
@@ -219,6 +221,3 @@ class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBas
             sum("legacy Pydantic member" in item for item in report.violations),
             eq=int(legacy),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraPydanticLegacyDetection"]

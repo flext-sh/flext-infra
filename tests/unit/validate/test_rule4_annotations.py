@@ -6,10 +6,12 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from ._fixtures import TestsFlextInfraValidateNamespaceBase
+import tests.utilities
 
 
-class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
+class TestsFlextInfraRule4Annotations(
+    tests.utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
+):
     """Test suite for namespace validator Rule 4 (annotations)."""
 
     def test_rule4_annotated_field_factory_not_flagged_as_banned(
@@ -131,6 +133,3 @@ class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
 
         tm.ok(result)
         self._assert_violation_contains(root, "import-time wiring")
-
-
-__all__: list[str] = ["TestsFlextInfraRule4Annotations"]

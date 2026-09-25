@@ -30,11 +30,11 @@ class FlextInfraUtilitiesRopeImports:
     def import_statement_module_name(
         import_statement: t.Infra.RopeImportStatement,
     ) -> str | None:
-        """Return the absolute module name represented by one Rope import statement."""
+        """Return the declared module name, preserving relative import depth."""
         import_info = import_statement.import_info
         if not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info):
             return None
-        module_name = import_info.module_name
+        module_name = f"{'.' * import_info.level}{import_info.module_name}"
         return module_name or None
 
     @staticmethod
@@ -235,7 +235,7 @@ class FlextInfraUtilitiesRopeImports:
         if not existing_paths:
             return r[bool].ok(False)
         canonical_imports: MutableMapping[
-            Path, list[tuple[str, t.VariadicTuple[str]]]
+            Path, list[t.Pair[str, t.VariadicTuple[str]]]
         ] = {}
         if preserve_canonical_aliases:
             try:
@@ -270,14 +270,14 @@ class FlextInfraUtilitiesRopeImports:
     @classmethod
     def _collect_canonical_alias_imports(
         cls, rope_project: t.Infra.RopeProject, file_paths: t.SequenceOf[Path]
-    ) -> MutableMapping[Path, list[tuple[str, t.VariadicTuple[str]]]]:
+    ) -> MutableMapping[Path, list[t.Pair[str, t.VariadicTuple[str]]]]:
         """Collect canonical runtime-alias imports eligible for semantic restore."""
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         canonical_modules = frozenset({
             c.Infra.PKG_CORE_UNDERSCORE,
             c.Infra.PKG_INFRA_UNDERSCORE,
         })
-        collected: MutableMapping[Path, list[tuple[str, t.VariadicTuple[str]]]] = {}
+        collected: MutableMapping[Path, list[t.Pair[str, t.VariadicTuple[str]]]] = {}
         for file_path in file_paths:
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                 rope_project, file_path
@@ -287,7 +287,7 @@ class FlextInfraUtilitiesRopeImports:
             module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
                 rope_project, resource
             )
-            entries: list[tuple[str, t.VariadicTuple[str]]] = []
+            entries: list[t.Pair[str, t.VariadicTuple[str]]] = []
             for import_stmt in cls.import_statements(module_imports):
                 import_info = import_stmt.import_info
                 if (
@@ -351,7 +351,7 @@ class FlextInfraUtilitiesRopeImports:
     def _ensure_canonical_alias_imports(
         cls,
         rope_project: t.Infra.RopeProject,
-        collected: MutableMapping[Path, list[tuple[str, t.VariadicTuple[str]]]],
+        collected: MutableMapping[Path, list[t.Pair[str, t.VariadicTuple[str]]]],
     ) -> p.Result[bool]:
         """Re-add canonical runtime-alias imports removed by Ruff F401 cleanup."""
         changed_any = False
@@ -531,7 +531,7 @@ class FlextInfraUtilitiesRopeImports:
                 target_import_stmt = import_stmt
             if import_info.module_name != source_module:
                 continue
-            kept_pairs: list[tuple[str, str | None]] = []
+            kept_pairs: list[t.Pair[str, str | None]] = []
             for name, alias in import_info.names_and_aliases:
                 if alias is None and name in aliases_to_move:
                     moved_aliases.add(name)
@@ -649,7 +649,7 @@ class FlextInfraUtilitiesRopeImports:
                     package_prefix
                 ):
                     continue
-                kept_pairs: list[tuple[str, str | None]] = []
+                kept_pairs: list[t.Pair[str, str | None]] = []
                 for name, alias in from_import.names_and_aliases:
                     if alias is None and name in requested_aliases:
                         moved_aliases.add(name)

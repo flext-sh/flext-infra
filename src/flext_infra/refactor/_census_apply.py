@@ -66,13 +66,13 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         ) -> str: ...
 
     def _apply_supported_fixes(
-        self, rope: p.Infra.RopeWorkspaceDsl, report: m.Infra.Census.WorkspaceReport
+        self, rope: p.Infra.RopeWorkspaceDsl, report: m.Infra.WorkspaceReport
     ) -> frozenset[str]:
         """Apply supported fixes."""
         applied: set[str] = set()
         touched_paths: set[Path] = set()
         applied_actions: set[str] = set()
-        requested_fixes: MutableMapping[tuple[Path, str], set[str]] = defaultdict(set)
+        requested_fixes: MutableMapping[t.Pair[Path, str], set[str]] = defaultdict(set)
         for project in report.projects:
             for fix in project.fixes:
                 requested_fixes[Path(fix.source_file), fix.action].add(fix.object_name)
@@ -296,8 +296,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             return False
         source = rope.source(file_path)
         lines = source.splitlines(keepends=True)
-        line_ranges_to_remove: list[tuple[int, int]] = []
-        imports_to_add: list[tuple[str, t.VariadicTuple[str]]] = []
+        line_ranges_to_remove: list[t.Pair[int, int]] = []
+        imports_to_add: list[t.Pair[str, t.VariadicTuple[str]]] = []
         for violation in violations:
             target = self._find_inline_import_node(tree, violation.line)
             if target is None:

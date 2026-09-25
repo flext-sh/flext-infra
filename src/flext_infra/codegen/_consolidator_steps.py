@@ -121,7 +121,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         workspace: Path,
         pkg_name: str,
         backup: str,
-        matches: t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
+        matches: t.SequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]],
     ) -> t.Infra.EditResultWithDescs:
         """Apply and validate."""
         src_lines = backup.splitlines(keepends=True)

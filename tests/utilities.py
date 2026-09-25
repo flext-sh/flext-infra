@@ -7,8 +7,10 @@ from pathlib import Path
 from flext_tests import FlextTestsUtilities, tm
 
 from flext_core import r
-from flext_infra import FlextInfraUtilities
-from tests import c, m, p, t
+from flext_infra import FlextInfraUtilities, config
+from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+from tests import c, m, p, t, u
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
 from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
@@ -29,6 +31,95 @@ from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMi
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
+
+    class TestsFlextInfraValidateNamespaceBase:
+        """Base test class for namespace validator rule tests.
+
+        Each rule-specific test class should inherit from this base to share
+        common validator setup and project creation patterns.
+        """
+
+        @property
+        def validator(self) -> FlextInfraNamespaceValidator:
+            """Fresh validator instance per test for isolation."""
+            return FlextInfraNamespaceValidator()
+
+        def _create_namespace_project(
+            self, tmp_path: Path, *, module_source: str, module_name: str
+        ) -> Path:
+            """Create a namespace test project with the given module source."""
+            return u.Tests.namespace_project(
+                tmp_path, module_source=module_source, module_name=module_name
+            )
+
+        def _create_namespace_project_path(
+            self, tmp_path: Path, *, module_source: str, module_path: str
+        ) -> t.Pair[Path, Path]:
+            """Create a namespace test project at a specific module path."""
+            return u.Tests.namespace_project_path(
+                tmp_path, module_source=module_source, module_path=module_path
+            )
+
+        def _validate_project(self, root: Path) -> m.Infra.ValidationReport:
+            """Run validator on project and return successful result."""
+            result = self.validator.validate_project(root)
+            tm.ok(result)
+            return result.value
+
+        def _assert_valid(self, root: Path) -> None:
+            """Assert that the project passes validation with no violations."""
+            report = self._validate_project(root)
+            tm.that(report.passed, eq=True, msg=str(report.violations))
+            tm.that(report.violations, empty=True)
+
+        def _assert_invalid(
+            self,
+            root: Path,
+            *,
+            expected_violation_substr: str | None = None,
+            expected_violation_count: int | None = None,
+        ) -> None:
+            """Assert that the project fails validation with expected violations."""
+            report = self._validate_project(root)
+            tm.that(report.passed, eq=False, msg=str(report.violations))
+            if expected_violation_substr is not None:
+                tm.that(
+                    any(expected_violation_substr in v for v in report.violations),
+                    eq=True,
+                    msg=f"Expected violation containing '{expected_violation_substr}' not found in: {report.violations}",
+                )
+            if expected_violation_count is not None:
+                tm.that(len(report.violations), eq=expected_violation_count)
+
+        def _assert_violation_contains(self, root: Path, substring: str) -> None:
+            """Assert that at least one violation contains the given substring."""
+            report = self._validate_project(root)
+            tm.that(
+                any(substring in v for v in report.violations),
+                eq=True,
+                msg=f"Expected violation containing '{substring}' not found in: {report.violations}",
+            )
+
+        def _assert_no_violation_contains(self, root: Path, substring: str) -> None:
+            """Assert that no violation contains the given substring."""
+            report = self._validate_project(root)
+            tm.that(
+                any(substring in v for v in report.violations),
+                eq=False,
+                msg=f"Unexpected violation containing '{substring}' found in: {report.violations}",
+            )
+
+        def _assert_file_in_inventory(self, root: Path, target: Path) -> None:
+            """Assert that a target file is in the source inventory."""
+            files = u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(root,))
+            )
+            tm.ok(files)
+            tm.that(
+                target in files.value,
+                eq=True,
+                msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
+            )
 
     class Tests(
         TestsFlextInfraUtilitiesTomlMixin,
@@ -87,6 +178,167 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 msg = "TOML payload is not parseable"
                 raise ValueError(msg)
             return parsed
+
+        @staticmethod
+        def render_make_environment(
+            tmp_path: Path,
+            profile: c.Infra.MakeProfile,
+            *,
+            local_infra: bool = False,
+            bootstrap: bool = False,
+            extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
+            script_dispatch: m.Infra.ScriptDispatchSpec | None = None,
+        ) -> t.Pair[Path, Path]:
+            """Build the generated Make and activation fixture consumed by real verbs."""
+            role = c.Infra.MakeProfile(profile.value)
+            repository = u.Tests.repository_ref(
+                "fixture-project", role=role
+            ).model_copy(
+                update={
+                    "editable": True,
+                    "extra_verbs": extra_verbs,
+                    "script_dispatch": script_dispatch,
+                }
+            )
+            project_root = tmp_path / profile.value / "fixture-project"
+            u.Tests.WorktreeFixture.write_python_project(
+                project_root, repository.distribution
+            )
+            # The generated Makefile consumes the tracked Mise launcher for every
+            # orchestrated verb (setup/check/fix/...), not only at bootstrap: the
+            # fixture must carry the governed toolchain seeds exactly as a managed
+            # repository does, or the very first mise exec dies with exit 127.
+            u.Tests.copy_tracked_mise_seeds(project_root)
+            if bootstrap:
+                tm.ok(
+                    u.Cli.atomic_write_text_file(
+                        project_root / config.Infra.codegen.scaffold.project.readme,
+                        "# Bootstrap environment contract\n",
+                    )
+                )
+            beads = u.Tests.beads_project(repository.distribution)
+            u.Tests.write_beads_project(
+                project_root,
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            )
+            u.Tests.initialize_git_repo(project_root, origin_url=repository.url)
+            u.Tests.provider(repository.provider)
+            baseline = tm.ok(
+                u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=project_root)
+            )
+            tm.ok(
+                u.Cli.run_checked(
+                    ["git", "config", "remote.origin.skipDefaultUpdate", "true"],
+                    cwd=project_root,
+                )
+            )
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        "git",
+                        "update-ref",
+                        f"refs/remotes/origin/{u.Tests.provider_branch()}",
+                        baseline,
+                    ],
+                    cwd=project_root,
+                )
+            )
+            repository_root = project_root
+            infra_repositories = (u.Tests.repository_ref(config.Infra.name),)
+            local_subprojects = (
+                (
+                    infra_repositories[0].model_copy(
+                        update={"path": Path("infra-engine")}
+                    ),
+                )
+                if local_infra
+                else ()
+            )
+            workspace = u.Tests.workspace_spec(
+                repository,
+                project=u.Tests.project_spec("fixture-project"),
+                subprojects=local_subprojects,
+            )
+            request = u.Tests.conform_request(
+                project_root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+            plan = tm.ok(
+                FlextInfraCodegenConform(
+                    repository_root=repository_root,
+                    request=request,
+                    initial_workspace=workspace,
+                ).plan(request)
+            )
+            # Materialize the complete activation contract through its guarded
+            # publisher, including Beads metadata consumed by the generated .envrc.
+            paths = {project_root / c.Infra.MAKEFILE_FILENAME, project_root / ".envrc"}
+            if bootstrap:
+                paths.update(
+                    project_root / name
+                    for name in (c.Infra.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
+                )
+            artifacts = tuple(
+                file
+                for file in plan.files
+                if file.path in paths
+                or (
+                    c.Infra.BEADS_DIRNAME in file.path.parts
+                    and project_root in file.path.parents
+                    and file.desired_content is not None
+                )
+            )
+            tm.that(paths <= {file.path for file in artifacts}, eq=True)
+            tm.ok(
+                u.Tests.materialize_codegen_plans(
+                    r[tuple[m.Infra.CodegenFilePlan, ...]].ok(artifacts)
+                )
+            )
+            if bootstrap:
+                # Exercise the documented custom-handler/hook boundary with real
+                # Python and installed metadata, never a substitute tool executable.
+                tm.ok(
+                    u.Cli.atomic_write_text_file(
+                        project_root / "custom.mk",
+                        ".PHONY: pre-setup post-setup _custom-status\n"
+                        "pre-setup:\n"
+                        '\t@test ! -L "$(RUNTIME_VENV)"\n'
+                        "post-setup:\n"
+                        '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
+                        '\t@test -x "$(MAKE_COMMAND)"\n'
+                        '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
+                        "\t@$(UV_RUN) python -c 'import importlib.metadata, sys; "
+                        "from pathlib import Path; import tomllib; "
+                        'project = tomllib.loads(Path("pyproject.toml").read_text())'
+                        '["project"]; '
+                        'assert Path(sys.prefix) == Path("$(RUNTIME_VENV)"); '
+                        'assert importlib.metadata.version(project["name"]) == '
+                        'project["version"]; print("installed-runtime-verified")'
+                        "'\n"
+                        "_custom-status:\n"
+                        "\t@printf '%s\\n' "
+                        "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
+                        "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
+                        "'VIRTUAL_ENV=$(VIRTUAL_ENV)' 'PATH=$(PATH)'\n"
+                        "\t@command -v python\n"
+                        "\t@$(UV_RUN) python -c 'import os, sys; "
+                        'print(sys.prefix); print(os.environ["UV_PROJECT_ENVIRONMENT"])'
+                        "'\n",
+                    )
+                )
+                (project_root / ".envrc.local").write_text(
+                    'export MAKE_ACTIVATION_PROOF="$PROJECT_ROOT"\n', encoding="utf-8"
+                )
+            else:
+                tm.ok(
+                    u.Cli.run_checked(
+                        ["direnv", "allow", str(project_root)], cwd=project_root
+                    )
+                )
+            return project_root, repository_root
 
         @staticmethod
         def materialize_docs_bundle(
@@ -228,4 +480,4 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
 u = TestsFlextInfraUtilities
 
-__all__: list[str] = ["TestsFlextInfraUtilities", "u"]
+__all__: list[str] = ["TestsFlextInfraUtilities"]

@@ -35,7 +35,7 @@ class FlextInfraEnsurePackagingPhase:
         data_dirs: t.StrSequence,
         root_modules: t.StrSequence,
         root_packages: t.StrSequence,
-    ) -> m.Infra.Deps.Toml.PhaseConfig:
+    ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name."""
         package_path = f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
         package_paths = (
@@ -46,8 +46,8 @@ class FlextInfraEnsurePackagingPhase:
             f"{c.Infra.DEFAULT_SRC_DIR}/{module}.py" for module in root_modules
         )
         builder = (
-            m.Infra.Deps.Toml.PhaseConfig
-            .Builder("packaging")
+            m.Infra.DepsToml
+            .PhaseConfigBuilder("packaging")
             .table("hatch", "build", "targets")
             .nested("wheel", lists=(("packages", package_paths),))
             .nested(

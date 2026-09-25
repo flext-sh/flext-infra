@@ -11,7 +11,7 @@ from ._namespace_rules.structure import FlextInfraNamespaceRulesStructure
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, t
+    from flext_infra import m, p, t
 
 
 class FlextInfraNamespaceRules(
@@ -24,9 +24,10 @@ class FlextInfraNamespaceRules(
     @classmethod
     def check_module(
         cls,
-        tree: object,
+        tree: p.AttributeProbe,
         filepath: Path,
         *,
+        repository_root: Path,
         class_stem: str,
         package_name: str,
         source: str,
@@ -38,6 +39,7 @@ class FlextInfraNamespaceRules(
             *cls.check_structure(
                 tree,
                 filepath,
+                repository_root=repository_root,
                 class_stem=class_stem,
                 is_test_file=is_test_file,
                 policy=policy,

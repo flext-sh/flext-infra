@@ -16,10 +16,9 @@ import flext_infra
 class TestsFlextInfraRootExportContract:
     """Root package exports only the external API surface."""
 
-    def test_root_all_is_sorted_and_unique(self) -> None:
-        """Generated __all__ is deterministic: sorted and duplicate-free."""
+    def test_root_all_is_unique(self) -> None:
+        """Public exports are unique; the native Ruff gate owns RUF022 ordering."""
         exports = tuple(flext_infra.__all__)
-        tm.that(exports, eq=tuple(sorted(exports)))
         tm.that(len(exports), eq=len(set(exports)))
 
     def test_root_all_contains_required_public_families(self) -> None:

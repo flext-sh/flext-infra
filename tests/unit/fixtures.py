@@ -74,7 +74,7 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
 
 @pytest.fixture(params=[("requests",)])
 def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
-    """Provision a real isolated detector consumer through generated Make setup."""
+    """Provision a real isolated detector consumer through generated Make upgrade."""
     modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
     distributions = {
         "requests": "requests",
@@ -140,10 +140,12 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
-    # Let pytest retain setup output even when its timeout interrupts the call.
-    setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=root, capture=False))
-    u.Tests.record_dependency_command_output(setup)
-    tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
+    # A newly scaffolded consumer has no committed locks yet. The public upgrade
+    # lifecycle is their sole writer; frozen setup starts only after that first
+    # resolved environment has been reviewed and committed by the consumer.
+    upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
+    u.Tests.record_dependency_command_output(upgrade)
+    tm.that(u.Cli.process_succeeded(upgrade.outcome), eq=True, msg=upgrade.stderr)
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(
         "[typing_libraries]\nexclude = []\n", encoding="utf-8"
@@ -493,21 +495,3 @@ def services_resource(
     )
     validated: t.Infra.RopeResource = tm.not_none(resource)
     return validated
-
-
-__all__: list[str] = [
-    "cached_runner_project",
-    "deptry_report_payload",
-    "models_resource",
-    "modernizer_workspace",
-    "modernizer_workspace_with_projects",
-    "policy_violation_project",
-    "real_docs_project",
-    "real_makefile_project",
-    "real_python_package",
-    "real_toml_project",
-    "real_workspace",
-    "rope_workspace",
-    "services_resource",
-    "tool_config_document",
-]

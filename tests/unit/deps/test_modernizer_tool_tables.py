@@ -8,12 +8,10 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraPyprojectModernizer, FlextInfraToolTablesPhase, config
-from tests import t, u
+from tests import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import m
 
 
 class TestsFlextInfraDepsModernizerToolTables:
@@ -76,6 +74,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                 {
                     "module": list(entry.modules),
                     "disable_error_code": list(entry.disable_error_codes),
+                    "follow_untyped_imports": entry.follow_untyped_imports,
                 }
                 for entry in mypy_policy.overrides
             ],
@@ -112,6 +111,46 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(
             set(u.Tests.strings(ini["markers"])),
             eq={"custom: custom marker", *policy.standard_markers},
+        )
+
+    @pytest.mark.parametrize("follow_untyped", [False, True])
+    def test_mypy_source_analysis_override_round_trips_policy(
+        self, tmp_path: Path, *, follow_untyped: bool
+    ) -> None:
+        """Project the configured import analysis flag without disabling errors."""
+        tooling = config.Infra.tooling
+        entry = m.Infra.MypyOverrideConfig.model_validate({
+            "modules": ("arbitrary_dependency.*",),
+            "disable-error-codes": (),
+            "follow-untyped-imports": follow_untyped,
+            "justification": (
+                "https://mypy.readthedocs.io/en/stable/"
+                "config_file.html#follow-untyped-imports"
+            ),
+        })
+        configured = tooling.model_copy(
+            update={
+                "tools": tooling.tools.model_copy(
+                    update={
+                        "mypy": tooling.tools.mypy.model_copy(
+                            update={"overrides": (entry,)}
+                        )
+                    }
+                )
+            }
+        )
+
+        payload, _ = self._applied(tmp_path, tool_config=configured)
+
+        tm.that(
+            list(u.Tests.toml_list(self._table(payload, "mypy")["overrides"])),
+            eq=[
+                {
+                    "module": list(entry.modules),
+                    "disable_error_code": list(entry.disable_error_codes),
+                    "follow_untyped_imports": follow_untyped,
+                }
+            ],
         )
 
     def test_formatting_tables_mirror_policy(self, tmp_path: Path) -> None:
@@ -266,6 +305,3 @@ class TestsFlextInfraDepsModernizerToolTables:
             ],
             eq=thresholds.app,
         )
-
-
-__all__: list[str] = ["TestsFlextInfraDepsModernizerToolTables"]

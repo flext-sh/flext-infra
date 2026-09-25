@@ -95,7 +95,7 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_gitignore_tracks_governed_provider_projections(
         self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
     ) -> None:
-        """Version authorization and provider surfaces for every repository role."""
+        """Track portable governance and exclude machine-owned provider settings."""
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 codegen, profile=profile, project_name="fixture-project"
@@ -105,11 +105,9 @@ class TestsFlextInfraCodegenArtifactSsot:
             ".agents/projection.json",
             ".agents/aihub-hooks/antigravity-preinvocation.py",
             ".agents/skills/flext-development/SKILL.md",
-            ".claude/settings.json",
             ".claude/skills/flext-development/SKILL.md",
             ".codex/hooks.json",
             ".cursor/hooks.json",
-            ".gemini/settings.json",
             ".github/skills/flext-development/SKILL.md",
             ".opencode/skills/flext-development/SKILL.md",
         )
@@ -118,6 +116,16 @@ class TestsFlextInfraCodegenArtifactSsot:
                 u.Tests.is_tracked_under(rendered, relative_path),
                 eq=True,
                 msg=f"{profile.value}: {relative_path} must be trackable",
+            )
+        for relative_path in (
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".gemini/settings.json",
+        ):
+            tm.that(
+                u.Tests.is_tracked_under(rendered, relative_path),
+                eq=False,
+                msg=f"{profile.value}: {relative_path} is machine-owned runtime state",
             )
         tm.that(
             u.Tests.is_tracked_under(
@@ -201,6 +209,3 @@ class TestsFlextInfraCodegenArtifactSsot:
             settings["files.watcherExclude"],
             eq=dict(codegen.vscode_watcher_exclude_map),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenArtifactSsot"]

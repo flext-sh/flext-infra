@@ -22,13 +22,13 @@ from typing import (
     get_origin,
 )
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 
 
 class FlextInfraCodegenProtocolModelAnnotations:
     """Map validated runtime model types to public protocol-facade types."""
 
-    _ORIGINS: ClassVar[t.MappingKV[object, str]] = {
+    _ORIGINS: ClassVar[t.MappingKV[p.AttributeProbe, str]] = {
         list: "list",
         tuple: "tuple",
         dict: "dict",
@@ -162,7 +162,9 @@ class FlextInfraCodegenProtocolModelAnnotations:
         raise TypeError(msg)
 
     @classmethod
-    def _facade_name(cls, value: object, target: ProtocolModelTarget) -> str | None:
+    def _facade_name(
+        cls, value: p.AttributeProbe, target: ProtocolModelTarget
+    ) -> str | None:
         """Return the existing public facade path for an identical runtime type."""
         for prefix, probe in target.facade_probes:
             module_path, _, attribute = probe.rpartition(".")

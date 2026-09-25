@@ -35,9 +35,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 *ruff_cfg.lint.ignored_rule_rationales,
             })
         )
-        rows = "\n".join(
-            f'"{pattern}" = [{", ".join(f'"{rule}"' for rule in rules)}]'
+        quoted_rules = {
+            pattern: ", ".join(f'"{rule}"' for rule in rules)
             for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
+        }
+        rows = "\n".join(
+            f'"{pattern}" = [{names}]' for pattern, names in quoted_rules.items()
         )
         isort = ruff_cfg.lint.isort
         # Why: without the fleet's isort settings (combine-as-imports in
@@ -65,6 +68,18 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Build one codegen conform request; every default is the model's own."""
         return m.Infra.CodegenConformRequest(
             root=root, what=what, scope=scope, mode=mode
+        )
+
+    @staticmethod
+    def conform_plan(
+        root: Path, workspace: m.Infra.WorkspaceSpec
+    ) -> m.Infra.CodegenPlan:
+        """Plan one fixture workspace through the public conform boundary."""
+        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
+        return tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root, request=request, initial_workspace=workspace
+            ).plan(request)
         )
 
     @staticmethod

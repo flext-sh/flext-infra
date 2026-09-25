@@ -7,12 +7,12 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import config
-from tests import m, u
-
-from ._fixtures import TestsFlextInfraValidateNamespaceBase
+from tests import m, u, utilities
 
 
-class TestsFlextInfraCoreValidationBehavior(TestsFlextInfraValidateNamespaceBase):
+class TestsFlextInfraCoreValidationBehavior(
+    utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
+):
     """Test suite for core validation behavior."""
 
     def test_public_project_layout_uses_flext_for_core_exception(
@@ -138,6 +138,3 @@ class TestsFlextInfraCoreValidationBehavior(TestsFlextInfraValidateNamespaceBase
         first = result.value.violations[0]
         tm.that(first, has="[NS-STRUCT-")
         tm.that(first, has="] src/flext_test/models.py:1 — ")
-
-
-__all__: list[str] = ["TestsFlextInfraCoreValidationBehavior"]

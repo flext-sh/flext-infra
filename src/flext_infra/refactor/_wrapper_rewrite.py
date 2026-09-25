@@ -98,9 +98,9 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         *,
         line_offsets: list[int],
         runtime_aliases: frozenset[str],
-    ) -> list[tuple[int, int, str]]:
+    ) -> list[t.Triple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``."""
-        rewrites: list[tuple[int, int, str]] = []
+        rewrites: list[t.Triple[int, int, str]] = []
         for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(module_ast)):
             if (
                 u.Infra.node_kind(node) != "Attribute"
@@ -161,7 +161,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
     @staticmethod
     def _apply_byte_rewrites(
-        source: str, rewrites: t.SequenceOf[tuple[int, int, str]]
+        source: str, rewrites: t.SequenceOf[t.Triple[int, int, str]]
     ) -> str:
         """Apply ``(start, end, replacement)`` triples to ``source`` (right-to-left)."""
         updated = source

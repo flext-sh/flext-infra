@@ -30,7 +30,7 @@ class FlextInfraUtilitiesDiscovery(
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[
-        MutableMapping[tuple[str, bool], t.StrSequence]
+        MutableMapping[t.Pair[str, bool], t.StrSequence]
     ] = {}
 
     @staticmethod

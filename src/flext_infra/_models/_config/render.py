@@ -202,6 +202,10 @@ class FlextInfraConfigModelsRender:
     class EnvrcRenderSpec(FlextInfraConfigModelsContexts.ScratchRootContext):
         """Typed input consumed only by the generated project ``.envrc``."""
 
+        repository_root_rel: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project-relative owner of the runtime environment"),
+        ] = "."
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External bytecode cache namespace")
         ]

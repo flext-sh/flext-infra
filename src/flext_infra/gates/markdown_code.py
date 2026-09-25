@@ -24,7 +24,6 @@ from flext_infra import c, m, u
 
 from .base_gate import FlextInfraGate
 from .markdown_code_sources import (
-    TEST_SKIP_MARKER,
     source_name,
     write_docstring_sources,
     write_fenced_block_sources,
@@ -101,7 +100,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
     def _origin_issue(
         self,
-        origin: dict[str, tuple[str, int]],
+        origin: dict[str, t.Pair[str, int]],
         source: str,
         *,
         code: str,
@@ -123,7 +122,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         self,
         project_dir: Path,
         result: p.Cli.CommandOutput,
-        origin: dict[str, tuple[str, int]],
+        origin: dict[str, t.Pair[str, int]],
         *,
         default_code: str,
         default_message: str,
@@ -160,7 +159,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
     def _run_extracted(
         self, project_dir: Path, markdown_files: t.SequenceOf[Path], *, fix: bool
-    ) -> tuple[bool, bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Triple[bool, bool, t.SequenceOf[m.Infra.Issue]]:
         """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
@@ -241,7 +240,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             for index, match in enumerate(
                 match
                 for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
-                if TEST_SKIP_MARKER not in match.group("info")
+                if c.Infra.MARKDOWN_CODE_SKIP_MARKER not in match.group("info")
             ):
                 code = match.group("code")
                 if _is_syntax_broken(code, md_path):
@@ -274,9 +273,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 replacements: Iterator[str] = blocks_iter,
             ) -> str:
                 """Splice one formatted block; fragments and markers stay verbatim."""
-                keep = TEST_SKIP_MARKER in match.group("info") or _is_syntax_broken(
-                    match.group("code"), origin_path
-                )
+                keep = c.Infra.MARKDOWN_CODE_SKIP_MARKER in match.group(
+                    "info"
+                ) or _is_syntax_broken(match.group("code"), origin_path)
                 if keep:
                     return match.group(0)
                 return match.group(0).replace(match.group("code"), next(replacements))

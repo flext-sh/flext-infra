@@ -120,7 +120,6 @@ class TestsFlextInfraCodegenMain:
             result = infra_main([
                 "codegen",
                 "init",
-                "--apply",
                 "--repository-root",
                 str(TestsFlextInfraCodegenMain._with_pep621_identity(real_git_repo)),
             ])
@@ -148,7 +147,6 @@ class TestsFlextInfraCodegenMain:
             result = infra_main([
                 "codegen",
                 "init",
-                "--apply",
                 "--repository-root",
                 str(TestsFlextInfraCodegenMain._with_pep621_identity(real_git_repo)),
             ])
@@ -162,7 +160,6 @@ class TestsFlextInfraCodegenMain:
             result = infra_main([
                 "codegen",
                 "init",
-                "--apply",
                 "--repository-root",
                 str(TestsFlextInfraCodegenMain._with_pep621_identity(real_git_repo)),
             ])
@@ -187,7 +184,6 @@ class TestsFlextInfraCodegenMain:
             result = infra_main([
                 "codegen",
                 "init",
-                "--apply",
                 "--repository-root",
                 str(TestsFlextInfraCodegenMain._with_pep621_identity(custom_root)),
             ])
@@ -205,7 +201,6 @@ class TestsFlextInfraCodegenMain:
             result = infra_main([
                 "codegen",
                 "init",
-                "--apply",
                 "--repository-root",
                 str(TestsFlextInfraCodegenMain._with_pep621_identity(real_git_repo)),
             ])
@@ -361,6 +356,3 @@ class TestsFlextInfraCodegenMain:
                 result.value.stdout + result.value.stderr,
                 contains="No such command 'unknown-command'",
             )
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenMain"]

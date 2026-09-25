@@ -24,7 +24,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
     @classmethod
     def _lightweight_symbol_index(
         cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
-    ) -> MutableMapping[str, tuple[str, int]]:
+    ) -> MutableMapping[str, t.Pair[str, int]]:
         """Top-level symbol index for detector-only rule sets."""
         resource = rope.resource(file_path)
         if resource is None:
@@ -44,9 +44,9 @@ class FlextInfraRefactorCensusSymbolsMixin:
                 f"{file_path}: {type(exc).__name__}: {exc!s}"
             )
             raise RuntimeError(msg) from exc
-        symbols: MutableMapping[str, tuple[str, int]] = {}
+        symbols: MutableMapping[str, t.Pair[str, int]] = {}
         object_kinds: MutableMapping[int, str] = {}
-        candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
+        candidates: list[t.Triple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in attributes.items():
             if u.Infra.is_imported_name(pyname):
                 continue

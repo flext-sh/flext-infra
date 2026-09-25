@@ -99,6 +99,3 @@ class TestsFlextInfraReleasePolicyOwner:
         entry = entries[c.Infra.RELEASE_GITLEAKS_CONFIG_PATH]
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
         tm.that(entry.overwrite, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraReleasePolicyOwner"]
