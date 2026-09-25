@@ -404,14 +404,11 @@ class TestsFlextInfraCodegenSetupSubmodules:
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.outcome.raw_return_code, eq=2)
-        # Root cause: the checkout's own lane branch name is explicitly not a
-        # safety boundary (submodule_setup_recipe.j2 header comment) — only
-        # exact gitlink containment is. The failure names the *declared*
-        # branch from .gitmodules ("declared-dev"), not whatever local lane
-        # the submodule happens to be checked out on ("feature/lane").
-        tm.that(
-            result.stderr, has="branch declared-dev does not contain recorded gitlink"
-        )
+        # The lane branch name is not a safety boundary (submodule_setup_recipe.j2
+        # header): exact gitlink containment is. Since 3492c8f1c the guard names
+        # the branch it actually checked, so the failure points at the lane.
+        tm.that(result.stderr, has="checked-out branch feature/lane at")
+        tm.that(result.stderr, has="does not contain recorded gitlink")
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that((project / "uv.log").exists(), eq=False)
@@ -534,4 +531,4 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenSetupSubmodules"]
+

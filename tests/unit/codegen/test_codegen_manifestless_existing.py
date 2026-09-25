@@ -119,7 +119,12 @@ class TestsFlextInfraCodegenManifestlessExisting:
     def test_root_distribution_owns_its_dependency_profile(
         self, tmp_path: Path
     ) -> None:
-        """The tree's root declares no flext dependency and still conforms."""
+        """The tree's root declares no flext runtime dependency and still conforms.
+
+        Since 208716f4f the checkout must declare the infrastructure line it
+        consumes; a manifestless root declares it the way a real member does,
+        through its development group's direct Git source.
+        """
         profile = next(
             item
             for item in config.Infra.codegen.scaffold.project.dependency_profiles
@@ -132,6 +137,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
             )
         )
         distribution = profile.upstream.replace("_", "-")
+        infra = u.Tests.repository_ref(config.Infra.codegen.infra_repository.distribution)
         root = tmp_path / distribution
         package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
         package.mkdir(parents=True)
@@ -143,7 +149,10 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 f'description = "{distribution} root fixture"\n'
                 f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-                "dependencies = []\n",
+                "dependencies = []\n"
+                "\n[dependency-groups]\n"
+                f'dev = ["{infra.distribution} @ git+{infra.url}'
+                f'@{u.Tests.provider_branch()}"]\n',
             )
         )
         u.Tests.write_project_beads_config(root, distribution)
@@ -172,4 +181,4 @@ class TestsFlextInfraCodegenManifestlessExisting:
         tm.that(owned_runtime[0] in rendered, eq=True)
 
 
-__all__: list[str] = ["TestsFlextInfraCodegenManifestlessExisting"]
+
