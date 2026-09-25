@@ -44,6 +44,8 @@ from ._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCom
 from ._utilities.namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
 from ._utilities.namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
 from ._utilities.network import FlextInfraUtilitiesNetwork
+from ._utilities.private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
+from ._utilities.private_import_facades import FlextInfraUtilitiesPrivateImportFacades
 from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -81,14 +83,6 @@ from ._utilities.workspace_fingerprint import FlextInfraUtilitiesWorkspaceFinger
 from ._utilities.workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 from ._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from ._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
-
-
-from flext_infra._utilities.private_import_ancestry import (
-    FlextInfraUtilitiesPrivateImportAncestry,
-)
-from flext_infra._utilities.private_import_facades import (
-    FlextInfraUtilitiesPrivateImportFacades,
-)
 
 
 class FlextInfraUtilities(FlextCliUtilities):
