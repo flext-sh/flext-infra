@@ -20,7 +20,7 @@ from .base_gate import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraCodemodGate(FlextInfraGate):
@@ -124,23 +124,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             # DiagnosticError (exit 1) requires a valid RuleMatch array,
             # matching error count and the exact terminal diagnostic below.
             # Additional native diagnostics make that scan incomplete.
-            report = m.Infra.AstGrepReport.model_validate_json(scan.stdout)
-            error_count = sum(finding.severity == "error" for finding in report.root)
-            if (outcome.raw_return_code == 1) != bool(error_count):
-                msg = (
-                    f"{ruleset.provider}: ast-grep exit {outcome.raw_return_code} "
-                    "disagrees with the native diagnostic severities"
-                )
-                raise ValueError(msg)
-            if any(finding.rule_id not in ruleset.rule_ids for finding in report.root):
-                msg = f"{ruleset.provider}: ast-grep reported an unelected rule"
-                raise ValueError(msg)
-            expected_stderr = (
-                f"Error: {error_count} error(s) found in code.\n"
-                "Help: Scan succeeded and found error level diagnostics in the codebase.\n\n"
-                if error_count
-                else ""
-            )
+            report, expected_stderr = self._validated_scan_report(scan, ruleset)
             if scan.stderr != expected_stderr:
                 # ast-grep can continue after a traversal error and still return
                 # DiagnosticError because another file has an error match.
@@ -183,6 +167,30 @@ class FlextInfraCodemodGate(FlextInfraGate):
             )),
             started=started,
         )
+
+    @staticmethod
+    def _validated_scan_report(
+        scan: p.Cli.CommandOutput, ruleset: m.Infra.CodemodRuleset
+    ) -> t.Pair[m.Infra.AstGrepReport, str]:
+        """Validate findings and derive their exact native terminal diagnostic."""
+        report = m.Infra.AstGrepReport.model_validate_json(scan.stdout)
+        error_count = sum(finding.severity == "error" for finding in report.root)
+        if (scan.outcome.raw_return_code == 1) != bool(error_count):
+            msg = (
+                f"{ruleset.provider}: ast-grep exit {scan.outcome.raw_return_code} "
+                "disagrees with the native diagnostic severities"
+            )
+            raise ValueError(msg)
+        if any(finding.rule_id not in ruleset.rule_ids for finding in report.root):
+            msg = f"{ruleset.provider}: ast-grep reported an unelected rule"
+            raise ValueError(msg)
+        expected_stderr = (
+            f"Error: {error_count} error(s) found in code.\n"
+            "Help: Scan succeeded and found error level diagnostics in the codebase.\n\n"
+            if error_count
+            else ""
+        )
+        return report, expected_stderr
 
     @staticmethod
     def _scan_command(

@@ -291,6 +291,27 @@ class FlextInfraCodegenGenerationStandardMixin(
             return candidate.name.replace("-", "_")
         return None
 
+    @staticmethod
+    def _project_first_party_names(project_root: Path) -> t.StrSequence:
+        """Read strict Ruff policy, deriving namespaces only when it is absent."""
+        project_payload = u.Infra.pyproject_payload(
+            (project_root / c.Infra.PYPROJECT_FILENAME).resolve()
+        )
+        projected: t.JsonValue | None = project_payload.get("tool")
+        for section in ("ruff", "lint", "isort", "known-first-party"):
+            if projected is None:
+                break
+            if not isinstance(projected, dict):
+                msg = f"Ruff configuration before {section!r} must be a table"
+                raise TypeError(msg)
+            projected = projected.get(section)
+        if projected is not None:
+            return t.str_sequence_adapter().validate_python(projected, strict=True)
+        return (
+            *u.Infra.discover_first_party_namespaces(project_root),
+            *u.Infra.flext_dependency_namespaces_from_payload(project_payload),
+        )
+
     @classmethod
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
         """Build one lazy context for a public package root."""
@@ -331,28 +352,7 @@ class FlextInfraCodegenGenerationStandardMixin(
             None,
         )
         if project_root is not None:
-            project_payload = u.Infra.pyproject_payload(
-                (project_root / c.Infra.PYPROJECT_FILENAME).resolve()
-            )
-            projected: t.JsonValue | None = project_payload.get("tool")
-            for section in ("ruff", "lint", "isort", "known-first-party"):
-                if projected is None:
-                    break
-                if not isinstance(projected, dict):
-                    msg = f"Ruff configuration before {section!r} must be a table"
-                    raise TypeError(msg)
-                projected = projected.get(section)
-            if projected is None:
-                first_party_names.update(
-                    u.Infra.discover_first_party_namespaces(project_root)
-                )
-                first_party_names.update(
-                    u.Infra.flext_dependency_namespaces_from_payload(project_payload)
-                )
-            else:
-                first_party_names.update(
-                    t.str_sequence_adapter().validate_python(projected, strict=True)
-                )
+            first_party_names.update(cls._project_first_party_names(project_root))
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
             cls.generate_type_checking(
