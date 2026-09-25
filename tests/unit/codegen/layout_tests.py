@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraConfig, c, m
+from flext_infra import c, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from tests import u
 from tests.unit.codegen.layout_fixture import (
@@ -77,7 +77,10 @@ class TestsFlextInfraCodegenLayout:
                 }
             }
         })
-        config_dir = project / FlextInfraConfig.CONFIG_DIR
+        # The consumer org overlay lives in the checkout's own config directory
+        # (the loader reads it from the process working directory), never in
+        # the installed package's built-in config dir.
+        config_dir = project / c.Infra.CODEGEN_CONFIG_DIR
         config_dir.mkdir(exist_ok=True)
         tm.ok(
             u.Cli.yaml_dump(
