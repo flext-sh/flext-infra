@@ -164,7 +164,11 @@ transferem para uma revisão ou Bead posterior. A autorização de 24/09/2026 em
 `make.check_gate_suspensions` registra gate, autoridade e motivo. O Make emite um recibo
 explícito de cada suspensão, sem contabilizá-la como aprovação. Local, CI e hooks
 derivam seus gates do mesmo conjunto ativo, preservando a partição de tipagem já
-declarada. Os validadores conservam sua severidade e os gates funcionais ativos
+declarada: `CI=N make check` executa a interseção com `make.ci.local_check_gates`,
+`CI=Y make check` executa o complemento e `make check` sem `CI` executa a união.
+O pre-push de `check` remove o `CI` herdado para executar todos os gates ativos;
+os demais verbos do hook mantêm o token local. O workflow de CI executa as duas
+partições, sem sobreposição. Os validadores conservam sua severidade e os gates funcionais ativos
 continuam exigindo execução sem warnings ou findings residuais.
 
 O handoff final relaciona PRs, commits de merge e prova após integração aos Beads. Se

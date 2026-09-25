@@ -18,9 +18,14 @@
 		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 			gates="{{ gates_csv(make.check_gates_ci) }}"; \
 			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates: {{ gates_banner(make.check_gates_ci) }}\n'; \
+		elif [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.local_value }}" ]; then \
+			gates="{{ gates_csv(make.check_gates_local) }}"; \
+			printf 'INFO: {{ make.ci.variable }}={{ make.ci.local_value }} runs check gates: {{ gates_banner(make.check_gates_local) }}\n'; \
+		else \
+			printf 'INFO: default context runs check gates: {{ gates_banner(make.check_gates_default) }}\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
 		{{ check_run("$$gates") }}
@@ -594,8 +599,8 @@ _builtin_build_artifacts:
 
 # Check is read-only: it validates and reports, never rewrites the tree (fix
 # and fmt own mutation). The workspace delegates the same operation to each
-# member; CI={{ make.ci.value }} keeps make.check_gates_ci in each generated
-# member handler.
+# member; each generated member selects the same active local partition,
+# its CI complement, or all active gates when the CI token is absent.
 _builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)
 
@@ -620,7 +625,8 @@ _builtin_build_artifacts:
 # Check is read-only: it runs the gates without --apply, so the tree is left
 # unchanged; fix applies the declared repairs of the fixable gates.
 # CI={{ make.ci.value }} keeps make.check_gates_ci, the strict complement of
-# make.ci.local_check_gates.
+# make.check_gates_local; CI={{ make.ci.local_value }} runs that local partition.
+# An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 {{ local_check_body() }}
 
