@@ -92,7 +92,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraRopeTransformer):
             if u.Infra.node_kind(node) != "Call":
                 continue
             func = getattr(node, "func", None)
-            if not hasattr(func, "_fields"):
+            if not u.Infra.is_ast_node(func):
                 continue
             if u.Infra.name_of(func) != simple_name:
                 continue
