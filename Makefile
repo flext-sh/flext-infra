@@ -465,6 +465,10 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 	fi; \
 	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
+	# ``mise install`` may reuse an installed fuzzy match. Upgrade Python inside \
+	# the configured minor line so ``python = \"3.13\"`` always resolves the \
+	# newest available 3.13 patch without rewriting the project selector. \
+	mise_checked "$$scratch/python-upgrade.log" mise_exec project "$$latest_mise" -C "$$project_root" upgrade --no-prune python; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \
@@ -659,6 +663,17 @@ test: _builtin_require_workspace
 _activated-test: _builtin_require_environment
 
 	$(call RUN_PUBLIC,test)
+
+
+
+
+test-full: _builtin_require_workspace
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-test-full
+
+.PHONY: _activated-test-full
+_activated-test-full: _builtin_require_environment
+
+	$(call RUN_PUBLIC,test-full)
 
 
 
