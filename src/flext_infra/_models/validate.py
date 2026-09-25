@@ -6,9 +6,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
-from pydantic import model_validator
 
-from .. import c, t
+from .. import c, t, u
 from . import FlextInfraModelsMixins as mm
 from ._defaults import FlextInfraModelsDefaults
 
@@ -128,7 +127,8 @@ class FlextInfraModelsCore:
     class PytestReportEvent(m.Value):
         """Common report-log envelope and the complete warning payload."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+        # Report-log event kinds carry different plugin-owned payload fields.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", strict=True)
 
         report_type: Annotated[
             str, m.Field(alias="$report_type", description="Pytest event kind")
@@ -146,7 +146,7 @@ class FlextInfraModelsCore:
             str | None, m.Field(description="Complete warning message")
         ] = None
 
-        @model_validator(mode="after")
+        @u.model_validator(mode="after")
         def require_warning_payload(self) -> Self:
             """Reject incomplete warnings instead of reporting zero findings."""
             if self.report_type == "WarningMessage" and any(
@@ -169,6 +169,12 @@ class FlextInfraModelsCore:
         warning_count: Annotated[
             t.NonNegativeInt, m.Field(description="Recorded warning event count")
         ]
+        blocking_warning_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Warnings outside suspended policy")
+        ]
+        suspended_warning_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Warnings retained under suspension")
+        ]
         skipped_count: Annotated[
             t.NonNegativeInt, m.Field(description="Skipped test case count")
         ]
@@ -180,6 +186,9 @@ class FlextInfraModelsCore:
         ] = m.Field(default_factory=tuple)
         warning_lines: Annotated[
             t.StrSequence, m.Field(description="Captured warning lines")
+        ] = m.Field(default_factory=tuple)
+        suspended_warning_lines: Annotated[
+            t.StrSequence, m.Field(description="Visible suspended warning occurrences")
         ] = m.Field(default_factory=tuple)
         skip_cases: Annotated[
             t.StrSequence, m.Field(description="Skipped test labels")
@@ -213,6 +222,10 @@ class FlextInfraModelsCore:
         ] = m.Field(default_factory=list)
         warning_lines: Annotated[
             t.MutableSequenceOf[str], m.Field(description="Collected warning lines")
+        ] = m.Field(default_factory=list)
+        suspended_warning_lines: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Collected suspended warning occurrences"),
         ] = m.Field(default_factory=list)
         slow_entries: Annotated[
             t.MutableSequenceOf[str], m.Field(description="Collected slow-test entries")
