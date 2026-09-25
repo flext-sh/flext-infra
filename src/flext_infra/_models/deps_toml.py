@@ -96,7 +96,7 @@ class FlextInfraModelsDepsToml:
                 ] = ()
 
                 class Builder(
-                    m.Builder.Identity["FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"]
+                    m.Identity["FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"]
                 ):
                     """Fluent builder for ``m.Infra.Deps.Toml.PhaseConfig``."""
 

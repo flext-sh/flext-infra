@@ -317,6 +317,44 @@ class FlextInfraCodegenGenerationStandardMixin(
         project_pkg = cls._project_package_name(plan.context.pkg_dir)
         if project_pkg is not None:
             first_party_names.add(project_pkg)
+        # I001 parity is judged by THIS project's ruff table, so the render
+        # reads the same projected ``known-first-party`` list the linter reads
+        # (flext-3t4z2 S1). Deriving the set from declared dependencies races
+        # the deps projection: a pyproject whose tool tables predate a
+        # dependency wave renders one order while ruff enforces another, and
+        # the generated block fails I001 on every cycle. The derived set stays
+        # only as the fallback for projects without a projected table.
+        project_root = next(
+            (
+                candidate
+                for candidate in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
+                if (candidate / c.Infra.PYPROJECT_FILENAME).is_file()
+            ),
+            None,
+        )
+        if project_root is not None:
+            project_payload = u.Infra.pyproject_payload(
+                (project_root / c.Infra.PYPROJECT_FILENAME).resolve()
+            )
+            projected: t.JsonValue | None = project_payload.get("tool", {})
+            for section in ("ruff", "lint", "isort"):
+                projected = (
+                    projected.get(section, {}) if isinstance(projected, dict) else {}
+                )
+            projected = (
+                projected.get("known-first-party")
+                if isinstance(projected, dict)
+                else None
+            )
+            if projected:
+                first_party_names.update(projected)
+            else:
+                first_party_names.update(
+                    u.Infra.discover_first_party_namespaces(project_root)
+                )
+                first_party_names.update(
+                    u.Infra.flext_dependency_namespaces_from_payload(project_payload)
+                )
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
             cls.generate_type_checking(

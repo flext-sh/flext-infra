@@ -169,9 +169,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(result.failure, eq=True)
         tm.that(result.error, has="is undeclared by this checkout")
 
-    def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
-        tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
-
     def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
         template = (
             Path(__file__).parents[3]

@@ -21,12 +21,9 @@ class FlextInfraConfigModelsContract:
         )
 
     immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
-    MiseToolSpec = FlextInfraModelsMiseToolchain.MiseToolSpec
-    ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec
     BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec
     BeadsToolSpec = FlextInfraModelsMiseToolchain.BeadsToolSpec
     MiseBootstrapEnvironmentSpec = (
         FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
     )
     ToolchainSpec = FlextInfraModelsMiseToolchain.ToolchainSpec
-    MiseTomlRenderSpec = FlextInfraModelsMiseToolchain.MiseTomlRenderSpec
