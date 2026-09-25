@@ -51,7 +51,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
     @staticmethod
     def _server_payload(
-        pairs: tuple[tuple[str, str], ...],
+        pairs: t.VariadicTuple[t.Pair[str, str]],
         *,
         inherited: bool = False,
         include_setting: bool = True,
@@ -70,7 +70,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         return tm.ok(u.Cli.json_dumps({"settings": settings}))
 
     @staticmethod
-    def _pairs(spec: m.Infra.SonarcloudSpec) -> tuple[tuple[str, str], ...]:
+    def _pairs(spec: m.Infra.SonarcloudSpec) -> t.VariadicTuple[t.Pair[str, str]]:
         """Read expectations from the exact typed config the service receives."""
         return tuple(
             (exclusion.rule_key, exclusion.resource_key)
@@ -79,7 +79,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
     def _cli(
         self, repository_root: Path, env: t.StrMapping | None = None
-    ) -> tuple[int, str]:
+    ) -> t.Pair[int, str]:
         """Run the public CLI route in a child process without SONAR_TOKEN."""
         result = tm.ok(
             u.Cli.run_raw(

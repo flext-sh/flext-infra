@@ -175,14 +175,6 @@ class FlextInfraConstantsRefactor:
             frozenset({"str", "int", "float", "bool"}): "t.Primitives",
             frozenset({"int", "float"}): "t.Numeric",
             frozenset({"str", "int", "float", "bool", "datetime"}): "t.Scalar",
-            frozenset({
-                "str",
-                "int",
-                "float",
-                "bool",
-                "datetime",
-                "Path",
-            }): "t.JsonValue",
         })
     )
 

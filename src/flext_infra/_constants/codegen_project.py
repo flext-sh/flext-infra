@@ -26,6 +26,11 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = (
+        "codegen-overrides.local.yaml"
+    )
+    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
+
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the

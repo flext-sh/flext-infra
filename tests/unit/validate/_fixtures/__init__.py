@@ -4,14 +4,21 @@
 from __future__ import annotations
 
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-__all__: tuple[str, ...] = ()
+if TYPE_CHECKING:
+    from .base import TestsFlextInfraValidateNamespaceBase
+
+
+__all__: tuple[str, ...] = ("TestsFlextInfraValidateNamespaceBase",)
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
-        MappingProxyType({}), alias_groups=MappingProxyType({}), sort_keys=False
+        MappingProxyType({".base": ("TestsFlextInfraValidateNamespaceBase",)}),
+        alias_groups=MappingProxyType({}),
+        sort_keys=False,
     )
 )
 

@@ -23,6 +23,8 @@ class TestsFlextInfraCodegenSetupSubmodules:
         self, tmp_path_factory: pytest.TempPathFactory
     ) -> Path:
         """Resolve source inputs once without lending the seed environment."""
+        # This public fixture publishes only setup inputs and the activation
+        # contract. Documentation publication remains in the conform scenarios.
         root, _ = test_u.Tests.render_make_environment(
             tmp_path_factory.mktemp("setup-submodules"),
             c.Infra.MakeProfile.STANDALONE,

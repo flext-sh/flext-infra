@@ -6,7 +6,7 @@ import ast
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar, TypeGuard
 
-from flext_infra import t
+from flext_infra import p, t
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -27,12 +27,12 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     _IMPORT_ALIAS_AS_PARTS: ClassVar[int] = 3
 
     @staticmethod
-    def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+    def _is_ast_node(obj: p.AttributeProbe) -> TypeGuard[t.Infra.RopeAstNode]:
         """Type guard to narrow to RopeAstNode via structural `_fields` check."""
         return hasattr(obj, "_fields")
 
     @staticmethod
-    def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+    def _ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisSourceScan._is_ast_node(obj):
             msg = f"Expected AST node with _fields, got {type(obj).__name__}"
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 )
         if function_name != "merge_lazy_imports":
             return ((), ())
-        entries: list[tuple[str, t.StrSequence]] = []
+        entries: list[t.Pair[str, t.StrSequence]] = []
         refs: list[str] = []
         for argument in args:
             if not hasattr(argument, "_fields"):
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()
         values = getattr(node, "values", ()) or ()
-        entries: list[tuple[str, t.StrSequence]] = []
+        entries: list[t.Pair[str, t.StrSequence]] = []
         refs: list[str] = []
         for key_node, value_node in zip(keys, values, strict=False):
             if key_node is None:
@@ -596,7 +596,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 else ((), ())
             )
         if call_name == "merge_lazy_imports":
-            entries: list[tuple[str, t.StrSequence]] = []
+            entries: list[t.Pair[str, t.StrSequence]] = []
             refs: list[str] = []
             for arg in FlextInfraUtilitiesRopeAnalysisSourceScan._call_args_source(
                 text, call_name
@@ -674,7 +674,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     ) -> t.VariadicTuple[t.Quad[str, int, str, str]]:
         """Return ``(module, level, original, bound)`` for ``from`` imports."""
         lines = source.splitlines()
-        bindings: list[tuple[str, int, str, str]] = []
+        bindings: list[t.Quad[str, int, str, str]] = []
         for index, line in enumerate(lines):
             stripped = line.strip()
             if not stripped.startswith("from ") or " import " not in stripped:

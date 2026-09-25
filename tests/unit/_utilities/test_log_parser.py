@@ -16,6 +16,7 @@ from tests import c, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+
 class TestsFlextInfraUtilitiesLogParser:
     def test_missing_file_returns_zero_empty(self, tmp_path: Path) -> None:
         result = u.Infra.extract_errors(tmp_path / "nonexistent.log")

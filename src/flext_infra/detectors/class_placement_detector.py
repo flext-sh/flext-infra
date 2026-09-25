@@ -118,7 +118,7 @@ class FlextInfraClassPlacementDetector:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.VariadicTuple[t.Pair[m.Infra.ClassInfo, str]]:
         """Return public governed classes with their family letters."""
-        results: list[tuple[m.Infra.ClassInfo, str]] = []
+        results: list[t.Pair[m.Infra.ClassInfo, str]] = []
         for ci in u.Infra.get_class_info(rope_project, resource):
             if ci.name.startswith("_"):
                 continue
@@ -211,7 +211,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def _class_body_nodes(
-        tree: object, *, class_name: str
+        tree: t.Infra.RopeAstNode, *, class_name: str
     ) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return direct body nodes for the top-level class named ``class_name``."""
         module_body = getattr(tree, "body", None) or ()
@@ -289,7 +289,7 @@ class FlextInfraClassPlacementDetector:
         )
 
     @staticmethod
-    def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
+    def _annassign_constant(node: t.Infra.RopeAstNode) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
         target_name = FlextInfraClassPlacementDetector._namespace_constant_name(
             getattr(node, "target", None)
@@ -309,7 +309,7 @@ class FlextInfraClassPlacementDetector:
         return FlextInfraClassPlacementDetector._constant_info(node, target_name)
 
     @staticmethod
-    def _assign_constant(node: object) -> m.Infra.ConstantInfo | None:
+    def _assign_constant(node: t.Infra.RopeAstNode) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an implicit Assign node, or None if not a violation."""
         targets = getattr(node, "targets", None)
         if not isinstance(targets, (list, tuple)) or len(targets) != 1:
@@ -331,7 +331,7 @@ class FlextInfraClassPlacementDetector:
         """Return module-level type aliases as (name, line) pairs."""
         pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
-        aliases: list[tuple[str, int]] = []
+        aliases: list[t.Pair[str, int]] = []
         for node in getattr(tree, "body", []) or []:
             kind = u.Infra.node_kind(u.Infra.ensure_ast_node(node))
             if kind == "TypeAlias":
@@ -357,7 +357,7 @@ class FlextInfraClassPlacementDetector:
         return tuple(aliases)
 
     @staticmethod
-    def _annotation_contains(annotation: object | None, name: str) -> bool:
+    def _annotation_contains(annotation: t.Infra.RopeAstNode | None, name: str) -> bool:
         """Return True when ``name`` appears in any sub-node identifier."""
         if annotation is None:
             return False
@@ -367,7 +367,7 @@ class FlextInfraClassPlacementDetector:
         return False
 
     @staticmethod
-    def _classvar_value_permitted(value: object | None) -> bool:
+    def _classvar_value_permitted(value: t.Infra.RopeAstNode | None) -> bool:
         """Return True when a ClassVar default is a literal/canonical constant."""
         if value is None:
             return True

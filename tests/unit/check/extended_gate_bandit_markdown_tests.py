@@ -99,6 +99,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         tm.that([issue.code for issue in result.issues], eq=list(codes))
+        if codes:
+            tm.that(
+                [issue.severity.lower() for issue in result.issues],
+                eq=[str(c.Infra.GateSeverity.ERROR.value)] * len(codes),
+            )
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:
         """A standalone project's gate never crosses its repository boundary."""

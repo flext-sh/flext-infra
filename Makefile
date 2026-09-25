@@ -146,8 +146,8 @@ endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup upg build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
-BUILTIN_VERBS := help setup upg build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+PUBLIC_VERBS := help setup upg build check test test-full fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+BUILTIN_VERBS := help setup upg build check test test-full fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -595,10 +595,14 @@ ifeq ($(GEN_INIT_ONLY),)
 endif
 SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
+define RUN_PUBLIC_POST
+	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+endef
+
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
-	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
+	$(if $(2),+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1),$(call RUN_PUBLIC_POST,$(1)))
 endef
 
 
@@ -618,9 +622,12 @@ $(filter-out help clean upg,$(PUBLIC_VERBS)): _builtin_require_mise_pin
 
 
 
+
 help:
 
 	$(call RUN_PUBLIC,help)
+
+
 
 
 build: _builtin_require_workspace
@@ -632,6 +639,8 @@ _activated-build: _builtin_require_environment
 	$(call RUN_PUBLIC,build)
 
 
+
+
 check: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-check
 
@@ -639,6 +648,8 @@ check: _builtin_require_workspace
 _activated-check: _builtin_require_environment
 
 	$(call RUN_PUBLIC,check)
+
+
 
 
 test: _builtin_require_workspace
@@ -650,6 +661,19 @@ _activated-test: _builtin_require_environment
 	$(call RUN_PUBLIC,test)
 
 
+
+
+test-full: _builtin_require_workspace
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-test-full
+
+.PHONY: _activated-test-full
+_activated-test-full: _builtin_require_environment
+
+	$(call RUN_PUBLIC,test-full)
+
+
+
+
 fmt: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fmt
 
@@ -657,6 +681,8 @@ fmt: _builtin_require_workspace
 _activated-fmt: _builtin_require_environment
 
 	$(call RUN_PUBLIC,fmt)
+
+
 
 
 fix: _builtin_require_workspace
@@ -668,6 +694,8 @@ _activated-fix: _builtin_require_environment
 	$(call RUN_PUBLIC,fix)
 
 
+
+
 fix-enforcement: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fix-enforcement
 
@@ -675,6 +703,8 @@ fix-enforcement: _builtin_require_workspace
 _activated-fix-enforcement: _builtin_require_environment
 
 	$(call RUN_PUBLIC,fix-enforcement)
+
+
 
 
 audit: _builtin_require_workspace
@@ -686,6 +716,8 @@ _activated-audit: _builtin_require_environment
 	$(call RUN_PUBLIC,audit)
 
 
+
+
 status: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-status
 
@@ -693,6 +725,8 @@ status: _builtin_require_workspace
 _activated-status: _builtin_require_environment
 
 	$(call RUN_PUBLIC,status)
+
+
 
 
 docs: _builtin_require_workspace
@@ -704,9 +738,13 @@ _activated-docs: _builtin_require_environment
 	$(call RUN_PUBLIC,docs)
 
 
+
+
 clean:
 
 	$(call RUN_PUBLIC,clean)
+
+
 
 
 release-plan: _builtin_require_workspace
@@ -718,6 +756,8 @@ _activated-release-plan: _builtin_require_environment
 	$(call RUN_PUBLIC,release-plan)
 
 
+
+
 release-version: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-version
 
@@ -725,6 +765,8 @@ release-version: _builtin_require_workspace
 _activated-release-version: _builtin_require_environment
 
 	$(call RUN_PUBLIC,release-version)
+
+
 
 
 release-tag: _builtin_require_workspace
@@ -736,6 +778,8 @@ _activated-release-tag: _builtin_require_environment
 	$(call RUN_PUBLIC,release-tag)
 
 
+
+
 release-build: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-build
 
@@ -743,6 +787,8 @@ release-build: _builtin_require_workspace
 _activated-release-build: _builtin_require_environment
 
 	$(call RUN_PUBLIC,release-build)
+
+
 
 
 publication: _builtin_require_workspace
@@ -754,13 +800,17 @@ _activated-publication: _builtin_require_environment
 	$(call RUN_PUBLIC,publication)
 
 
-gen: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-gen
+
+# The pre hook and selected producer run once before activation. The producer
+# owns the complete generation transaction; activation adds no second writer.
+gen: _builtin_require_workspace _builtin_require_environment
+	$(call RUN_PUBLIC,gen,1)
 
 .PHONY: _activated-gen
 _activated-gen: _builtin_require_environment
+	$(call RUN_PUBLIC_POST,gen)
 
-	$(call RUN_PUBLIC,gen)
+
 
 
 initialize: _builtin_require_workspace
@@ -772,6 +822,8 @@ _activated-initialize: _builtin_require_environment
 	$(call RUN_PUBLIC,initialize)
 
 
+
+
 mod: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-mod
 
@@ -779,6 +831,8 @@ mod: _builtin_require_workspace
 _activated-mod: _builtin_require_environment
 
 	$(call RUN_PUBLIC,mod)
+
+
 
 
 waza: _builtin_require_workspace
@@ -790,6 +844,8 @@ _activated-waza: _builtin_require_environment
 	$(call RUN_PUBLIC,waza)
 
 
+
+
 duplication: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-duplication
 
@@ -797,6 +853,8 @@ duplication: _builtin_require_workspace
 _activated-duplication: _builtin_require_environment
 
 	$(call RUN_PUBLIC,duplication)
+
+
 
 
 sonarcloud-sync: _builtin_require_workspace
@@ -807,9 +865,6 @@ _activated-sonarcloud-sync: _builtin_require_environment
 
 	$(call RUN_PUBLIC,sonarcloud-sync)
 
-
-# Repository-owned extra verbs dispatch exactly like canonical ones: the
-# project declares them (help, .PHONY) and must also be able to run them.
 
 
 # `setup` keeps its own recipe (it must not require the environment it is about
@@ -854,7 +909,9 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'check' 'Run every configured non-test gate.';
 
-	@printf '  %-16s %s\n' 'test' 'Run the complete suite through the persistent testmon cache.';
+	@printf '  %-16s %s\n' 'test' 'Run incremental tests through the persistent testmon cache.';
+
+	@printf '  %-16s %s\n' 'test-full' 'Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.';
 
 	@printf '  %-16s %s\n' 'fmt' 'Apply ruff format --preview and ruff check --fix --unsafe-fixes --preview. Ruff is the rule; change code, never ruff.';
 
@@ -1146,6 +1203,16 @@ gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security
 		fi; \
 		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
+_builtin-self-test-full: _builtin_require_environment
+
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_SCRATCH_ROOT)/pytest"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full
+
 _builtin-self-fmt: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "markdown-format" --projects . --apply
@@ -1212,6 +1279,16 @@ _builtin_test_all: _builtin_require_environment
 		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+
+_builtin_test_full_all: _builtin_require_environment
+
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_SCRATCH_ROOT)/pytest"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
@@ -1324,6 +1401,7 @@ _builtin_mod_apply: _builtin_require_environment
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
+_builtin-test-full: _builtin_test_full_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-fix-enforcement: _builtin_fix_enforcement

@@ -7,11 +7,15 @@ to eliminate duplication across rule-specific test files.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import m, u
+
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestsFlextInfraValidateNamespaceBase:
@@ -36,7 +40,7 @@ class TestsFlextInfraValidateNamespaceBase:
 
     def _create_namespace_project_path(
         self, tmp_path: Path, *, module_source: str, module_path: str
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Create a namespace test project at a specific module path."""
         return u.Tests.namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
@@ -102,3 +106,6 @@ class TestsFlextInfraValidateNamespaceBase:
             eq=True,
             msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
         )
+
+
+__all__: list[str] = ["TestsFlextInfraValidateNamespaceBase"]

@@ -288,7 +288,7 @@ class FlextInfraUtilitiesCodegen(
 
     @staticmethod
     def update_class_stack(
-        class_stack: t.MutableSequenceOf[tuple[str, int]],
+        class_stack: t.MutableSequenceOf[t.Pair[str, int]],
         stripped_line: str,
         indent: int,
     ) -> None:

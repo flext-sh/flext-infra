@@ -24,13 +24,13 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def source_modules(
         sources: t.MappingKV[Path, str], statements: t.SequenceOf[str]
-    ) -> MutableMapping[str, tuple[str, bool]]:
+    ) -> MutableMapping[str, t.Pair[str, bool]]:
         """Index editable sources and referenced installed packages without imports.
 
         Installed files are discovery inputs only. Resolving a top-level spec
         never imports its package initializer or dependency business modules.
         """
-        modules: MutableMapping[str, tuple[str, bool]] = {}
+        modules: MutableMapping[str, t.Pair[str, bool]] = {}
         for path, source in sorted(sources.items()):
             indices = [
                 index
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def declared_exports(
         sources: t.MappingKV[str, t.Pair[str, bool]],
-    ) -> tuple[MutableMapping[str, set[str]], MutableMapping[str, set[str]]]:
+    ) -> t.Pair[MutableMapping[str, set[str]], MutableMapping[str, set[str]]]:
         """Index declared public exports and module-scope import identities."""
         bindings: MutableMapping[str, set[str]] = {}
         exports: MutableMapping[str, set[str]] = {}
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         sources: t.MappingKV[str, t.Pair[str, bool]],
     ) -> t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]]:
         """Discover facade aliases and roots from live source assignments."""
-        discovered: MutableMapping[str, list[tuple[ast.Module, str, str, str]]] = {}
+        discovered: MutableMapping[str, list[t.Quad[ast.Module, str, str, str]]] = {}
         for module, (source, is_package) in sorted(sources.items()):
             if is_package:
                 continue

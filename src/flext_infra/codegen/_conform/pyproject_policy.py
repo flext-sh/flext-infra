@@ -95,7 +95,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         # directives like `.PHONY` can span multiple physical lines. Only
         # collapse non-recipe lines (recipe lines start with whitespace and are
         # skipped below); the reported line number is the first physical line.
-        logical_lines: list[tuple[int, str]] = []
+        logical_lines: list[t.Pair[int, str]] = []
         pending_line: str | None = None
         pending_number: int = 0
         for line_number, raw_line in enumerate(content.splitlines(), start=1):

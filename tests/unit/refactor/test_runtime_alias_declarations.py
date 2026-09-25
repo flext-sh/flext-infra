@@ -18,12 +18,14 @@ from tests import c, m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraRuntimeAliasDeclarations:
     """Keep derived internal declarations tied to real parent classes."""
 
     @staticmethod
-    def _workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _workspace(tmp_path: Path) -> t.Pair[Path, Path]:
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-declarations",

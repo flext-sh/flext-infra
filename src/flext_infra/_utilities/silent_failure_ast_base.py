@@ -6,7 +6,7 @@ import ast
 from collections.abc import MutableMapping
 from typing import ClassVar, NamedTuple
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
@@ -27,7 +27,11 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
     # ``""`` stay OUT: a zero count or empty string is frequently the correct
     # computed result, and the AST cannot distinguish that from a sentinel —
     # flagging them would drown the gate in false positives (flext-t5uhw).
-    _SENTINEL_CONSTANTS: ClassVar[frozenset[object]] = frozenset({False, None, True})
+    _SENTINEL_CONSTANTS: ClassVar[frozenset[p.AttributeProbe]] = frozenset({
+        False,
+        None,
+        True,
+    })
     _BOOLEAN_PREDICATE_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
         "has_",
         "is_",

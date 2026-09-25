@@ -8,7 +8,6 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
@@ -66,16 +65,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
             project=u.Tests.project_spec(repository.name),
             subprojects=(member,),
         )
-        request = u.Tests.conform_request(
-            root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        plan = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root, request=request, initial_workspace=workspace
-            ).plan(request)
-        )
+        plan = u.Tests.conform_plan(root, workspace)
         artifacts = tuple(
             artifact
             for artifact in plan.files
