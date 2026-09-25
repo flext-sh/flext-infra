@@ -56,18 +56,15 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(result.issues[0].code, eq=c.Infra.MARKDOWN_FORMAT)
         tm.that(result.issues[0].file, eq="README.md")
 
-    def test_format_gate_skips_neutrally_without_markdown(self, tmp_path: Path) -> None:
+    def test_format_gate_without_markdown_is_red(self, tmp_path: Path) -> None:
+        """Zero collected markdown is red, never a neutral pass."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-empty")
 
-        result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownFormatGate,
-            tmp_path,
-            project_dir,
-            passed=True,
-            issues_len=0,
+        result = FlextInfraMarkdownFormatGate(tmp_path).check(
+            project_dir, u.Tests.gate_context(tmp_path)
         )
 
-        tm.that(result.result.passed, eq=True)
+        tm.that(result.result.passed, eq=False)
 
     def test_format_gate_fix_is_the_single_writer(self, tmp_path: Path) -> None:
         """`make fmt` drives prettier --write once and the tree reaches green."""

@@ -66,7 +66,7 @@
 	case "$$project_root/" in \
 		"$$mise_storage_root/"*) printf 'ERROR: persistent Mise storage must not contain the checkout: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
 	esac; \
-	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %} "$$mise_storage_root/bootstrap"; do \
+	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %} "$$mise_storage_root/{{ bootstrap.runtime_install_relative_template.rsplit('/', 1)[0] }}"; do \
 		if [ -L "$$persistent_path" ]; then \
 			printf 'ERROR: persistent Mise path must not be a symlink: %s\n' "$$persistent_path" >&2; exit 2; \
 		fi; \
@@ -98,6 +98,11 @@
 			project) mise_config_argument= ;; \
 			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
 		esac; \
+		mise_runtime_path=; \
+		if [ -n "$$caller_mise_version" ]; then \
+			mise_runtime_path="$$mise_storage_root/{{ bootstrap.runtime_install_relative_template | replace('{release}', '${caller_mise_version#v}') | replace('$', '$$') }}"; \
+			if [ "$(OS)" = "Windows_NT" ]; then mise_runtime_path="$$mise_runtime_path.exe"; fi; \
+		fi; \
 		env -i \
 {% for name, value in bootstrap.fixed_environment -%}
 			'{{ name }}={{ value }}' \
@@ -115,6 +120,7 @@
 			$${caller_{{ name | lower }}:+"{{ name }}=$$caller_{{ name | lower }}"} \
 {% endfor -%}
 			$${mise_config_argument:+"$$mise_config_argument"} \
+			$${mise_runtime_path:+"MISE_INSTALL_PATH=$$mise_runtime_path"} \
 			"$$@"; \
 	}; \
 	mise_checked() { \
@@ -144,11 +150,7 @@
 		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
 		*) runtime_release=$${receipt_runtime%% *} ;; \
 	esac; \
-	case "$$runtime_release" in \
-		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2 ;; \
-	esac; \
-	old_ifs=$$IFS; IFS=.; set -- $$runtime_release; IFS=$$old_ifs; \
-	if [ "$$#" -ne 3 ]; then \
+	if ! printf '%s\n' "$$runtime_release" | grep -Eq '^{{ bootstrap.resolved_release_pattern }}$$'; then \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
@@ -206,6 +208,8 @@
 {% endfor -%}
 	fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
+	mise_runtime_path="$$mise_storage_root/{{ bootstrap.runtime_install_relative_template | replace('{release}', '${runtime_release}') | replace('$', '$$') }}"; \
+	if [ "$(OS)" = "Windows_NT" ]; then mise_runtime_path="$$mise_runtime_path.exe"; fi; \
 	env \
 {% for name, relative in bootstrap.persistent_environment -%}
 		"{{ name }}=$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}" \
@@ -214,6 +218,7 @@
 		"MISE_CEILING_PATHS=$$project_parent" \
 		"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
 		"MISE_VERSION=$$runtime_release" \
+		"MISE_INSTALL_PATH=$$mise_runtime_path" \
 		"$$latest_mise" -C "$$project_root" exec -- env \
 		"SETUP_DIRENV=$$direnv_executable" \
 		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \

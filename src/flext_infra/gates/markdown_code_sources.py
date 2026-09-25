@@ -11,15 +11,12 @@ from __future__ import annotations
 import ast
 from doctest import DocTestParser
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from flext_infra import c, u
 
 if TYPE_CHECKING:
     from flext_infra import t
-
-TEST_SKIP_MARKER: Final[str] = "notest"
-"Existing fence marker (pytest-markdown-docs) opting a block out of code validation."
 
 
 def source_name(relative_posix: str, index: int) -> str:
@@ -47,7 +44,7 @@ def write_fenced_block_sources(
         for index, match in enumerate(
             match
             for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
-            if TEST_SKIP_MARKER not in match.group("info")
+            if c.Infra.MARKDOWN_CODE_SKIP_MARKER not in match.group("info")
         ):
             source_text = match.group("code")
             try:
@@ -109,7 +106,6 @@ def write_docstring_sources(
 
 
 __all__: list[str] = [
-    "TEST_SKIP_MARKER",
     "source_name",
     "write_docstring_sources",
     "write_fenced_block_sources",

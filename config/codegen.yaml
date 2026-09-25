@@ -549,6 +549,7 @@ Infra:
           description: Publish only receipt-attested release artifacts.
         - name: gen
           description: Regenerate every managed projection atomically.
+          produces_activation: true
         - name: initialize
           description: Materialize the declared package initializer graph.
         - name: mod

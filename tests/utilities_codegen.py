@@ -35,9 +35,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 *ruff_cfg.lint.ignored_rule_rationales,
             })
         )
-        rows = "\n".join(
-            '"{}" = [{}]'.format(pattern, ", ".join(f'"{rule}"' for rule in rules))
+        quoted_rules = {
+            pattern: ", ".join(f'"{rule}"' for rule in rules)
             for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
+        }
+        rows = "\n".join(
+            f'"{pattern}" = [{names}]' for pattern, names in quoted_rules.items()
         )
         isort = ruff_cfg.lint.isort
         # Why: without the fleet's isort settings (combine-as-imports in

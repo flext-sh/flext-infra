@@ -322,6 +322,10 @@ class TestsFlextInfraCodegenConform:
         request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.PYPROJECT}
         )
+        # The infrastructure checkout publishes its Git origin (208716f4f).
+        u.Tests.initialize_git_repo(
+            tmp_path, origin_url=u.Tests.repository_ref("flext-infra").url
+        )
         pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
         source = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(

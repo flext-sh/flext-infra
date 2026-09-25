@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -87,6 +88,114 @@ class TestsFlextInfraCodegenMakeLockContract:
         tm.that(process.stderr, lacks="mise WARN")
         tm.that(process.stderr, lacks="invalid-parent")
 
+    def test_direnv_runs_real_make_from_pinned_tool_paths_without_lock_changes(
+        self, tmp_path: Path
+    ) -> None:
+        """An outer direnv entry never delegates Make to an older shared shim."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        bootstrap = u.Infra.mise_bootstrap_environment()
+        storage = tm.ok(
+            u.Infra.prepare_mise_runtime_storage(root, os.environ, bootstrap)
+        )
+        sidecars = root / ".mise" / "locks"
+        paths = (
+            root / bootstrap.version_pin_file,
+            root / bootstrap.lock_file,
+            *(path for path in sidecars.rglob("*") if path.is_file()),
+        )
+        before = {path: path.read_bytes() for path in paths}
+
+        identity = tm.ok(
+            u.Cli.run_raw(
+                ["direnv", "exec", str(root), "bash", "-c", "command -v make"],
+                cwd=root,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(identity.outcome),
+            eq=True,
+            msg=identity.stdout + identity.stderr,
+        )
+        install_root = storage / next(
+            relative
+            for name, relative in bootstrap.persistent_environment
+            if name == "MISE_INSTALLS_DIR"
+        )
+        tm.that(Path(identity.stdout.strip()).is_relative_to(install_root), eq=True)
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["direnv", "exec", str(root), "make", "--no-print-directory", "help"],
+                cwd=root,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(process.stdout, has=f"[{c.Infra.MakeProfile.STANDALONE}]")
+        tm.that(identity.stderr + process.stderr, lacks="mise WARN")
+        tm.that({path: path.read_bytes() for path in paths}, eq=before)
+        tm.that(
+            {path for path in sidecars.rglob("*") if path.is_file()},
+            eq={path for path in paths if path.is_relative_to(sidecars)},
+        )
+
+    def test_direnv_rejects_unprovisioned_runtime_without_installing(
+        self, tmp_path: Path
+    ) -> None:
+        """Activation names setup instead of downloading a missing pinned runtime."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        bootstrap = u.Infra.mise_bootstrap_environment()
+        cold_storage = tmp_path / "unprovisioned-mise"
+        tm.that(cold_storage.exists(), eq=False)
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["direnv", "exec", str(root), "make", "--no-print-directory", "help"],
+                cwd=root,
+                env={bootstrap.storage_root_variable: str(cold_storage)},
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(process.stderr, has="missing pinned Mise runtime")
+        tm.that(process.stderr, has="run make setup")
+        tm.that(cold_storage.exists(), eq=False)
+
+    @pytest.mark.parametrize("pin_content", [None, "latest\n", " \n", "1.2.3\n4.5.6\n"])
+    def test_direnv_rejects_unresolved_runtime_pin(
+        self, tmp_path: Path, pin_content: str | None
+    ) -> None:
+        """Missing, symbolic, and malformed pins never launch the bootstrapper."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        pin = root / u.Infra.mise_bootstrap_environment().version_pin_file
+        if pin_content is None:
+            pin.unlink()
+        else:
+            pin.write_text(pin_content, encoding="utf-8")
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["direnv", "exec", str(root), "make", "--no-print-directory", "help"],
+                cwd=root,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+        )
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(process.stderr, has=str(pin))
+        tm.that(process.stdout, lacks=f"[{c.Infra.MakeProfile.STANDALONE}]")
+
     @pytest.mark.parametrize(
         ("verb", "pin_content"),
         [
@@ -149,6 +258,3 @@ class TestsFlextInfraCodegenMakeLockContract:
         else:
             tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that(pin.exists(), eq=False)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenMakeLockContract"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -53,6 +54,9 @@ class FlextInfraUtilitiesCodegen(
                 c.Infra.MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT
             ),
             version_pin_file=c.Infra.MISE_VERSION_PIN_FILENAME,
+            lock_file=c.Infra.MISE_LOCK_FILENAME,
+            runtime_install_relative_template=c.Infra.MISE_RUNTIME_INSTALL_RELATIVE_TEMPLATE,
+            resolved_release_pattern=c.Infra.MISE_RELEASE_PATTERN,
         )
 
     @staticmethod
@@ -144,7 +148,9 @@ class FlextInfraUtilitiesCodegen(
             for _name, relative in contract.persistent_environment
             if relative != "."
         }
-        relative_directories.add("bootstrap")
+        relative_directories.add(
+            Path(contract.runtime_install_relative_template).parent.as_posix()
+        )
         for relative in sorted(relative_directories):
             directory = physical_root / relative
             if directory.is_symlink():
@@ -166,13 +172,13 @@ class FlextInfraUtilitiesCodegen(
     @staticmethod
     def mise_runtime_install_path(storage_root: Path, release: str) -> p.Result[Path]:
         """Return the immutable persistent binary path for one exact release."""
-        components = release.split(".")
-        if len(components) != c.Infra.MISE_RELEASE_COMPONENT_COUNT or not all(
-            component.isdecimal() for component in components
-        ):
+        if re.fullmatch(c.Infra.MISE_RELEASE_PATTERN, release) is None:
             return r[Path].fail(f"invalid Mise runtime release: {release}")
         suffix = ".exe" if os.name == "nt" else ""
-        return r[Path].ok(storage_root / "bootstrap" / f"mise-{release}{suffix}")
+        relative = c.Infra.MISE_RUNTIME_INSTALL_RELATIVE_TEMPLATE.format(
+            release=release
+        )
+        return r[Path].ok(storage_root / f"{relative}{suffix}")
 
     @staticmethod
     def _create_mise_storage_directory(path: Path) -> p.Result[bool]:

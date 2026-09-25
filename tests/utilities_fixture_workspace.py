@@ -572,7 +572,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # A workspace parent declares its own role as workspace: the
             # manifest must agree with the topology the detector observes.
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-                parent, parent.name, role=c.Infra.MakeProfile.WORKSPACE
+                parent,
+                cls.declared_manifest_name(parent),
+                role=c.Infra.MakeProfile.WORKSPACE,
             )
             member_head = TestsFlextInfraUtilitiesGitMixin.git_capture(
                 member, "rev-parse", c.Infra.GIT_HEAD
@@ -672,6 +674,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             )
             return pyproject
 
+        @staticmethod
+        def declared_manifest_name(root: Path) -> str:
+            """Return the name the root's manifest already declares.
+
+            The Git origin was minted from that distribution; the checkout
+            directory name is arbitrary in tmp fixtures and never the identity.
+            """
+            existing = root / "config" / "workspace.yaml"
+            if not existing.is_file():
+                return root.name
+            loaded = tm.ok(u.Cli.config_load(existing, expand_env=False))
+            loaded_name = loaded.data.get("name")
+            if isinstance(loaded_name, str) and loaded_name:
+                return loaded_name
+            return root.name
+
         @classmethod
         def write_gitmodules(cls, root: Path, projects: t.VariadicTuple[str]) -> Path:
             """Declare governed subprojects with the declared fixture contract."""
@@ -697,14 +715,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # arbitrary in tmp fixtures and must never become the identity. A
             # .gitmodules without members declares no topology change, so the
             # root stays standalone.
-            declared = root.name
-            existing = root / "config" / "workspace.yaml"
-            if existing.is_file():
-                loaded = u.Cli.config_load(existing, expand_env=False)
-                if loaded.success:
-                    loaded_name = loaded.value.data.get("name")
-                    if isinstance(loaded_name, str) and loaded_name:
-                        declared = loaded_name
+            declared = cls.declared_manifest_name(root)
             role = (
                 c.Infra.MakeProfile.WORKSPACE
                 if projects
