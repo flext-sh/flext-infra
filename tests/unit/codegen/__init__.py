@@ -60,7 +60,14 @@ if TYPE_CHECKING:
     from .test_codegen_linked_worktree_manifest import (
         TestsFlextInfraCodegenLinkedWorktreeManifest,
     )
+    from .test_codegen_make_authentication import (
+        TestsFlextInfraCodegenMakeAuthentication,
+    )
     from .test_codegen_make_environment import TestsFlextInfraCodegenMakeEnvironment
+    from .test_codegen_make_gate_suspensions import (
+        TestsFlextInfraCodegenMakeGateSuspensions,
+    )
+    from .test_codegen_make_lock_contract import TestsFlextInfraCodegenMakeLockContract
     from .test_codegen_manifestless_existing import (
         TestsFlextInfraCodegenManifestlessExisting,
     )
@@ -80,6 +87,7 @@ if TYPE_CHECKING:
     )
     from .test_codegen_runtime_profiles import TestsFlextInfraCodegenRuntimeProfiles
     from .test_codegen_setup_submodules import TestsFlextInfraCodegenSetupSubmodules
+    from .test_codegen_upg_workspace import TestsFlextInfraCodegenUpgWorkspace
     from .test_codegen_version_file import TestsFlextInfraCodegenVersionFile
     from .test_codegen_workflow_retirement import (
         TestsFlextInfraCodegenWorkflowRetirement,
@@ -148,7 +156,10 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenLinkedWorktreeManifest",
     "TestsFlextInfraCodegenMain",
+    "TestsFlextInfraCodegenMakeAuthentication",
     "TestsFlextInfraCodegenMakeEnvironment",
+    "TestsFlextInfraCodegenMakeGateSuspensions",
+    "TestsFlextInfraCodegenMakeLockContract",
     "TestsFlextInfraCodegenManifestlessExisting",
     "TestsFlextInfraCodegenMiseArtifacts",
     "TestsFlextInfraCodegenPackagedDataWheel",
@@ -160,6 +171,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenScaffolder",
     "TestsFlextInfraCodegenScaffolderNaming",
     "TestsFlextInfraCodegenSetupSubmodules",
+    "TestsFlextInfraCodegenUpgWorkspace",
     "TestsFlextInfraCodegenVersionFile",
     "TestsFlextInfraCodegenViolationKey",
     "TestsFlextInfraCodegenWorkflowRetirement",
@@ -258,8 +270,17 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_codegen_linked_worktree_manifest": (
                 "TestsFlextInfraCodegenLinkedWorktreeManifest",
             ),
+            ".test_codegen_make_authentication": (
+                "TestsFlextInfraCodegenMakeAuthentication",
+            ),
             ".test_codegen_make_environment": (
                 "TestsFlextInfraCodegenMakeEnvironment",
+            ),
+            ".test_codegen_make_gate_suspensions": (
+                "TestsFlextInfraCodegenMakeGateSuspensions",
+            ),
+            ".test_codegen_make_lock_contract": (
+                "TestsFlextInfraCodegenMakeLockContract",
             ),
             ".test_codegen_manifestless_existing": (
                 "TestsFlextInfraCodegenManifestlessExisting",
@@ -286,6 +307,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_codegen_setup_submodules": (
                 "TestsFlextInfraCodegenSetupSubmodules",
             ),
+            ".test_codegen_upg_workspace": ("TestsFlextInfraCodegenUpgWorkspace",),
             ".test_codegen_version_file": ("TestsFlextInfraCodegenVersionFile",),
             ".test_codegen_workflow_retirement": (
                 "TestsFlextInfraCodegenWorkflowRetirement",

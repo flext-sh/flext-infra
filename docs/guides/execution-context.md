@@ -6,6 +6,7 @@
 - [Registrar antes de ampliar o trabalho](#registrar-antes-de-ampliar-o-trabalho)
 - [Reconciliar decisões com seus responsáveis](#reconciliar-decisoes-com-seus-responsaveis)
 - [Diferenciar checkpoint de conclusão](#diferenciar-checkpoint-de-conclusao)
+- [Codemod scanner contract](#codemod-scanner-contract)
 
 <!-- TOC END -->
 
@@ -75,12 +76,45 @@ executada na cidade, recuperou a vinculação; a prova foi uma leitura real com
 `direnv exec <rig> bd show <id> --json`. Não recrie metadata ou bancos manualmente para
 contornar essa validação.
 
-As correções mais recentes do operador exigem provisionamento e atualização
-exclusivamente por `make setup`, dependências Git nos tips das branches de integração
-declaradas e remoção de `APPLY`, `uv.lock` e `mise.lock` em todos os produtores e
-consumidores. Corrija o responsável do setup e regenere pelo `make gen`; instalações
-manuais não substituem o ciclo. Ignorar um lock no Git não remove o contrato se setup,
-deps, build ou release ainda o recriam ou leem.
+As correções mais recentes do operador (2026-09-24) declaram `latest` na configuração e
+fazem de `make upg` o único verbo que resolve versões novas e grava os `uv.lock` e
+`mise.lock` versionados. `make setup`, `make gen` e `make fmt` nunca atualizam: instalam
+congelados a partir desses locks, que é o caminho do CI. Dependências Git seguem os tips
+das branches de integração declaradas e `APPLY` continua removido. Corrija o responsável
+do setup ou do `upg` e regenere pelo `make gen`; instalações manuais não substituem o
+ciclo.
+
+O mesmo `make upg` grava `mise.version`, que fixa o runtime do Mise usado pelo
+bootstrap. Versione esse pin, `mise.lock` e os grafos nativos referenciados em
+`.mise/locks/` juntos; para ferramentas npm, o grafo contém `package.json` e
+`aube-lock.yaml`. Esses arquivos também entram no contexto Docker e nas fixtures de
+checkout. O setup congelado exige o grafo e seu digest válido, conforme o
+[contrato oficial de sidecars do Mise](https://mise.jdx.dev/dev-tools/mise-lock.html#native-dependency-sidecars).
+Caches, instalações e grafos de locks locais continuam fora do Git. Não formate nem
+edite o payload nativo: uma alteração dos bytes exige nova resolução pelo `make upg`. As
+plataformas declaradas por `toolchain.mise_lockfile_platforms` compõem o lock junto com
+a plataforma da máquina que executa a atualização, sempre incluída pelo Mise. Como
+`MISE_SAFE` ignora os settings locais, o bootstrap encaminha `MISE_LOCKFILE`,
+`MISE_LOCKED` e `MISE_LOCKFILE_PLATFORMS`, derivados do mesmo responsável tipado.
+`MISE_LOCKED` ativa também a proteção global contra regravação durante a instalação:
+`tool_config.locked` sozinho não protege essa fronteira. A prova de setup usa storage
+Mise vazio e verifica os bytes dos locks, do pin e de todo o grafo nativo depois da
+instalação.
+
+Depois de resolver o release do Mise, o bootstrap mantém essa versão em todas as
+chamadas da mesma operação e no lifecycle recursivo. O `upg` inicializa os gitlinks
+declarados antes de resolver os locks Python. Os demais verbos que dependem do runtime
+recusam um pin ausente ou não resolvido antes da ativação; `help` e `clean` continuam
+sendo operações locais sem essa dependência.
+
+A credencial segue a precedência oficial do GitHub CLI: `GH_TOKEN`, `GITHUB_TOKEN` e,
+para o bootstrap de rede, a credencial armazenada pelo `gh`. Um token explícito funciona
+antes de instalar o `gh`. Operações locais já provisionadas não exigem login ou uma
+consulta de autenticação na rede. A fonte selecionada mantém seu erro nativo; um token
+inválido nunca provoca nova tentativa anônima ou troca de fonte. O Make deriva
+`MISE_GITHUB_TOKEN` dessa escolha e conserva o valor somente no ambiente. Jobs de CI que
+invocam Make recebem `GITHUB_TOKEN`; containers recebem a variável ou o secret do
+BuildKit explicitamente.
 
 ## Registrar antes de ampliar o trabalho
 
@@ -114,9 +148,53 @@ passando pelo `make mod`.
 Um WIP publicado preserva o trabalho e permite revisão. Conclusão exige os critérios do
 Bead ativo, integração e runtime medido no SHA integrado. Exceções registradas em
 handoffs históricos, incluindo aceite temporário com gates customizados vermelhos, não
-transferem para uma revisão ou Bead posterior. O contrato atual exige os verbos
-canônicos sem warnings ou findings residuais.
+transferem para uma revisão ou Bead posterior. A autorização de 24/09/2026 em
+`flext-xp6ec`, sob `flext-itpd1.3`, suspende somente `duplication`, `codemod`,
+`boundary`, `namespace` e `runtime-census`. O responsável tipado
+`make.check_gate_suspensions` registra gate, autoridade e motivo. O Make emite um recibo
+explícito de cada suspensão, sem contabilizá-la como aprovação. Local, CI e hooks
+derivam seus gates do mesmo conjunto ativo, preservando a partição de tipagem já
+declarada. Os validadores conservam sua severidade e os gates funcionais ativos
+continuam exigindo execução sem warnings ou findings residuais.
 
 O handoff final relaciona PRs, commits de merge e prova após integração aos Beads. Se
 algo permanece pendente, o texto deve nomeá-lo e oferecer a próxima ação executável, sem
 declarar fechamento funcional.
+
+## Codemod scanner contract
+
+The operator's 2026-09-24 decision, retained by `flext-1pquc`, makes codemod policy
+findings observational. This exception applies to those findings only. It does not
+accept failed rule discovery, failed scanner execution, incomplete output, or invalid
+diagnostic payloads, and it does not close the associated migration work.
+
+The gate consumes the complete native `ast-grep scan --json=compact` array. The
+[documented scan contract](https://ast-grep.github.io/reference/cli/scan.html) and
+[native diagnostic schema](https://ast-grep.github.io/guide/tools/json) distinguish a
+completed scan with error-severity findings (exit 1) from a completed scan without
+error-severity findings (exit 0). Exit 1 must carry only ast-grep's complete terminal
+diagnostic, whose count equals the validated error-severity findings. Additional
+traversal diagnostics remain blocking: ast-grep can continue after an unreadable path
+and still return exit 1 because another file contains a finding. The scanner boundary
+checks the
+[native terminal diagnostic](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/error_context.rs#L200)
+and rejects extra output from the
+[native path worker](https://github.com/ast-grep/ast-grep/blob/0.45.3/crates/cli/src/utils/worker.rs#L92).
+Timeouts, forwarded signals, other exit codes, malformed JSON, and disagreement between
+exit code and diagnostic severities remain failures, even when stdout exists. Both
+whole-project checks and `check_files` scan every elected provider rule.
+
+`GateExecution.observational_issues` retains original file, position, rule, message, and
+severity separately from blocking issues and error counts. Workspace reports display
+observation counts separately. SARIF uses explicit observational notes and retains the
+native severity in each note; raw scanner output remains available on the execution. A
+passing gate therefore proves the scanner contract, not zero migration findings.
+
+The same repair validates projected Ruff first-party namespaces strictly: a malformed
+value cannot be replaced with discovered namespaces. A declared empty list remains
+empty; namespace discovery applies only when the list is absent. A bare Python
+annotation does not replace an existing facade binding. Mypy's module-specific
+`follow_untyped_imports` policy analyzes Rope's installed source without suppressing
+`import-untyped`; the typed tooling policy owns both template and dependency-modernizer
+projections. See the
+[Mypy option contract](https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports).

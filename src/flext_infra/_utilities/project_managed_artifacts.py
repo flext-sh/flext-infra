@@ -307,14 +307,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
 
     @classmethod
-    def compose_mise_toml(cls, project_dir: Path, rendered: str) -> p.Result[str]:
-        """Snapshot project YAML and compose Mise from those exact bytes."""
-        source_snapshot = cls.snapshot_config_sources(project_dir)
-        if source_snapshot.failure:
-            return r[str].from_failure(source_snapshot)
-        return cls.compose_mise_toml_from_snapshot(source_snapshot.value, rendered)
-
-    @classmethod
     def compose_mise_toml_from_snapshot(
         cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState], rendered: str
     ) -> p.Result[str]:
