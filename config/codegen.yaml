@@ -1384,7 +1384,6 @@ Infra:
             - "!.opencode/**"
             - "!/config/"
             - "!.claude/CLAUDE.md"
-            - "!.claude/settings.json"
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
@@ -1518,8 +1517,7 @@ Infra:
       # the live workspace topology and can never diverge from each other.
       # `.claude/*` re-blocked the whole directory AFTER the whitelist above
       # had unblocked it, and in gitignore the last matching rule wins — so
-      # every governed provider artifact (.claude/settings.json, the skill
-      # surfaces) became untrackable. Local session data is named explicitly
+      # every governed provider artifact (the skill surfaces) became untrackable. Local session data is named explicitly
       # instead of re-blocking the directory that the whitelist just opened.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
@@ -1571,12 +1569,13 @@ Infra:
       # machine-written settings/hooks surface and its digest sidecar is
       # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
-          # settings.json stays out of this runtime-state block: the governed
-          # provider-projections section (and its tests) own it as a tracked
-          # governance artifact, and in gitignore the last matching rule wins,
-          # so a name block here silently re-ignored the whitelisted file.
+          # Provider settings files wire hooks through machine-absolute paths,
+          # so they are named here; this block follows the provider-tree
+          # whitelists and the last matching gitignore rule wins.
           patterns:
             - ".github/hooks/"
+            - ".claude/settings.json"
+            - ".gemini/settings.json"
             - "*/.hooks.json.agents-governance.json"
             - ".claude/*.agents-governance.json"
             - ".gemini/*.agents-governance.json"
