@@ -77,7 +77,16 @@ class FlextInfraUtilitiesRopePep695Patch:
 
         def _joined_str(self: p.Infra.PatchingASTWalker, node: ast.JoinedStr) -> None:
             """Patch PEP 701 f-strings from parser coordinates, not token guesses."""
-            start, end = self.source.consume_string()
+            # Rope's consume_string tokenizes quotes: a PEP 701 expression that
+            # reuses the outer quote (f"{d["k"]}") ends its span at the inner
+            # quote. The parser's own node span is the literal's real extent.
+            start = _source_offset(self, node.lineno, node.col_offset)
+            end_lineno = node.end_lineno
+            end_col_offset = node.end_col_offset
+            if end_lineno is None or end_col_offset is None:
+                msg = "PEP 701 joined string carries no parser end position"
+                raise ValueError(msg)
+            end = _source_offset(self, end_lineno, end_col_offset)
 
             def joined_expressions(parent: ast.JoinedStr) -> list[ast.AST]:
                 expressions: list[ast.AST] = []
