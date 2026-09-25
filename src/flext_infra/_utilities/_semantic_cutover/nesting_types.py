@@ -111,14 +111,9 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             for name, owner, expected in bindings:
                 if not runtime.same_name(expected, actual):
                     continue
-                if isinstance(node, ast.Attribute):
-                    return f"{ast.unparse(node.value)}.{owner}.{name}"
-                if isinstance(node, ast.Name):
-                    if isinstance(actual, p.Infra.RopeImportedName):
-                        parent = node.id if node.id != actual.imported_name else owner
-                        return f"{parent}.{name}"
-                    if node.id == name:
-                        return f"{owner}.{name}"
+                expression = cls._nested_type_expression(node, actual, name, owner)
+                if expression is not None:
+                    return cls._checked_type_reference(scope, expression)
             return None
 
         return {
@@ -130,6 +125,43 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             )
             for path, source in sources.items()
         }
+
+    @staticmethod
+    def _nested_type_expression(
+        node: ast.expr, actual: p.Infra.RopePyName | None, name: str, owner: str
+    ) -> str | None:
+        if isinstance(node, ast.Attribute):
+            return f"{ast.unparse(node.value)}.{owner}.{name}"
+        if not isinstance(node, ast.Name):
+            return None
+        if isinstance(actual, p.Infra.RopeImportedName):
+            parent = node.id if node.id != actual.imported_name else owner
+            return f"{parent}.{name}"
+        return f"{owner}.{name}" if node.id == name else None
+
+    @staticmethod
+    def _checked_type_reference(scope: p.Infra.RopeScope, expression: str) -> str:
+        """Reject a destination import captured by an existing lexical binding."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        node = ast.parse(expression, mode="eval").body
+        while isinstance(node, ast.Attribute):
+            node = node.value
+        if not isinstance(node, ast.Name):
+            msg = f"quoted type destination is not an identifier chain: {expression}"
+            raise TypeError(msg)
+        module = scope.pyobject.get_module()
+        module_scope = module.get_scope() if module is not None else None
+        if module_scope is None:
+            msg = "quoted type scope has no declaring module"
+            raise ValueError(msg)
+        local = runtime.resolve_symbol(scope, node)
+        global_binding = runtime.resolve_symbol(module_scope, node)
+        if local is not None and (
+            global_binding is None or not runtime.same_name(global_binding, local)
+        ):
+            msg = f"shadowed quoted type destination: {expression}"
+            raise ValueError(msg)
+        return expression
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticNestingTypes"]

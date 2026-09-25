@@ -746,8 +746,9 @@ class TestsFlextInfraPytestRunner:
         existing = set(reports_root.glob("*/run-context.json"))
         (target / "emit-warning").touch()
 
+        inventory_runner = self._runner_for(cached_runner_project)
         with pytest.raises(RuntimeError, match="collection contains blocking findings"):
-            self._runner_for(cached_runner_project).execute()
+            inventory_runner.execute()
 
         (context,) = set(reports_root.glob("*/run-context.json")) - existing
         selection = m.Infra.PytestCollectionManifest.model_validate_json(

@@ -52,8 +52,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         Path | None, m.Field(description="Path to write skipped cases")
     ] = None
 
-    @staticmethod
-    def _extract_report_events(report_log: Path, diag: m.Infra.DiagResult) -> None:
+    @classmethod
+    def _extract_report_events(cls, report_log: Path, diag: m.Infra.DiagResult) -> None:
         """Read real test attempts and every warning independently of terminal text."""
         lines = report_log.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
         if not lines:
@@ -64,13 +64,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             event = m.Infra.PytestReportEvent.model_validate_json(line)
             if event.report_type == "WarningMessage":
                 warnings.append(event)
-            elif event.report_type == "TestReport" and event.nodeid is not None:
-                diag.reported_node_ids.append(event.nodeid)
-            elif event.report_type == "CollectReport" and event.nodeid is not None:
-                if event.outcome == "failed":
-                    diag.collection_failed_cases.append(event.nodeid)
-                elif event.outcome == "skipped":
-                    diag.collection_skip_cases.append(event.nodeid)
+            else:
+                cls._record_case_event(event, diag)
         identities = [
             m.Infra.PytestWarningEvent.model_validate_json(line)
             for line in report_log
@@ -79,22 +74,44 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             .splitlines()
         ]
         for event, identity in zip(warnings, identities, strict=True):
-            if (event.category, event.filename, event.lineno, event.message) != (
-                identity.category,
-                identity.filename,
-                identity.lineno,
-                identity.message,
-            ):
-                msg = "WarningMessage differs from its recorded runtime identity"
-                raise ValueError(msg)
-            warning = (
-                f"{identity.filename}:{identity.lineno}: "
-                f"{identity.category_module}.{identity.category_qualname}: "
-                f"{identity.message}"
-            )
-            diag.warning_lines.append(warning)
-            if identity.suspended:
-                diag.suspended_warning_lines.append(warning)
+            cls._record_warning(event, identity, diag)
+
+    @staticmethod
+    def _record_case_event(
+        event: m.Infra.PytestReportEvent, diag: m.Infra.DiagResult
+    ) -> None:
+        if event.nodeid is None:
+            return
+        if event.report_type == "TestReport":
+            diag.reported_node_ids.append(event.nodeid)
+        elif event.report_type == "CollectReport":
+            if event.outcome == "failed":
+                diag.collection_failed_cases.append(event.nodeid)
+            elif event.outcome == "skipped":
+                diag.collection_skip_cases.append(event.nodeid)
+
+    @staticmethod
+    def _record_warning(
+        event: m.Infra.PytestReportEvent,
+        identity: m.Infra.PytestWarningEvent,
+        diag: m.Infra.DiagResult,
+    ) -> None:
+        if (event.category, event.filename, event.lineno, event.message) != (
+            identity.category,
+            identity.filename,
+            identity.lineno,
+            identity.message,
+        ):
+            msg = "WarningMessage differs from its recorded runtime identity"
+            raise ValueError(msg)
+        warning = (
+            f"{identity.filename}:{identity.lineno}: "
+            f"{identity.category_module}.{identity.category_qualname}: "
+            f"{identity.message}"
+        )
+        diag.warning_lines.append(warning)
+        if identity.suspended:
+            diag.suspended_warning_lines.append(warning)
 
     def extract(
         self, junit_path: Path, log_path: Path, *, report_log: Path

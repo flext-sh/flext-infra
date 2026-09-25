@@ -215,13 +215,12 @@ class FlextInfraPytestRunnerExecution(
         ))
         accepted_cache_hit = cache_hit and not rejected
         final_exit = 0 if accepted_cache_hit else raw_return_code or int(rejected)
-        result = (
-            "failed"
-            if final_exit
-            else "cache_hit"
-            if accepted_cache_hit
-            else "executed"
-        )
+        if final_exit:
+            result = "failed"
+        elif accepted_cache_hit:
+            result = "cache_hit"
+        else:
+            result = "executed"
         external_gates = (
             ""
             if context.execution_mode == c.Infra.PytestExecutionMode.FULL

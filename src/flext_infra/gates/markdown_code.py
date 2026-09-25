@@ -101,7 +101,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
     def _origin_issue(
         self,
-        origin: dict[str, tuple[str, int]],
+        origin: dict[str, t.Pair[str, int]],
         source: str,
         *,
         code: str,
@@ -123,7 +123,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         self,
         project_dir: Path,
         result: p.Cli.CommandOutput,
-        origin: dict[str, tuple[str, int]],
+        origin: dict[str, t.Pair[str, int]],
         *,
         default_code: str,
         default_message: str,

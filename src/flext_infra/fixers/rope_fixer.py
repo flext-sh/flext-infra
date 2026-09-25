@@ -128,7 +128,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         Callable[
             [
                 Path,
-                t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
+                t.SequenceOf[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]],
                 m.Infra.FixEnforcementCommand,
             ],
             m.Infra.ProjectFixResult,
@@ -625,7 +625,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Return source with hoistable inline import statements at module scope."""
         tree = ast.parse(source, filename=str(file_path))
         lines = source.splitlines(keepends=True)
-        line_ranges: list[tuple[int, int]] = []
+        line_ranges: list[t.Pair[int, int]] = []
         import_lines: list[str] = []
         for violation in violations:
             node = cls._find_inline_import_node(tree, violation.line)

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m
+
+if TYPE_CHECKING:
+    from flext_infra import t
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -34,7 +37,7 @@ class CodegenRoutes(CliRouteBase):
     """Own check, codegen, and dependency command routes."""
 
     codegen_routes: ClassVar[
-        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
+        MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
     ] = {
         c.Infra.CLI_GROUP_CHECK: (
             m.Cli.ResultCommandRoute(

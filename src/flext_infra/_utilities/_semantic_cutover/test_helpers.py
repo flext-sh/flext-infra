@@ -27,9 +27,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             self.names = frozenset({name})
 
         @override
-        def leave_Assign(
-            self, original_node: cst.Assign, updated_node: cst.Assign
-        ) -> cst.Assign:
+        def leave_Assign[N: (cst.Assign, cst.AnnAssign)](
+            self, original_node: N, updated_node: N
+        ) -> N:
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
                 updated_node, self.names
             )
@@ -38,9 +38,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         def leave_AnnAssign(
             self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
         ) -> cst.AnnAssign:
-            return FlextInfraUtilitiesQualifiedNames.filter_exports(
-                updated_node, self.names
-            )
+            return self.leave_Assign(original_node, updated_node)
 
     @classmethod
     def _test_helper_edits(

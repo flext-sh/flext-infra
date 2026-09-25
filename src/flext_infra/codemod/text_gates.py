@@ -304,7 +304,7 @@ class FlextInfraModTextGateEngine:
     @classmethod
     def _rewrite_source(
         cls, source: str, target: str, rules: t.VariadicTuple[m.Infra.ModTextRule]
-    ) -> tuple[str, list[m.Infra.ModTextFinding], int]:
+    ) -> t.Triple[str, list[m.Infra.ModTextFinding], int]:
         """Rewrite one source text through every elected rule entry."""
         updated = source
         entries: list[m.Infra.ModTextFinding] = []

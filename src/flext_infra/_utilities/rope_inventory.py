@@ -200,7 +200,7 @@ class FlextInfraUtilitiesRopeInventory:
         names: t.MappingKV[str, t.Infra.RopePyName], resource: t.Infra.RopeResource
     ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
         """Sorted names."""
-        candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
+        candidates: list[t.Triple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in names.items():
             if FlextInfraUtilitiesRopeRuntime.is_imported_name(pyname):
                 continue

@@ -72,7 +72,29 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 origin.get_name(),
                 request.class_name,
             )
-        snapshot = runtime.snapshot_project(project, prepared)
+        cls._move_prepared_helper(request, prepared, quoted_imports, target.get_name())
+        return tuple(
+            m.Infra.SemanticMigrationEdit(
+                file_path=path,
+                original_source=source,
+                updated_source=prepared[path],
+                changes=(f"Rope moved {request.class_name} and its bound references",),
+            )
+            for path, source in sources.items()
+            if source != prepared[path]
+        )
+
+    @staticmethod
+    def _move_prepared_helper(
+        request: m.Infra.ClassMoveRequest,
+        prepared: t.MutableMappingKV[Path, str],
+        quoted_imports: t.MappingKV[Path, str],
+        target: str,
+    ) -> None:
+        """Move the declaration in a closed snapshot and retain quoted imports."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        root = Path(request.rope_project.root.real_path)
+        snapshot = runtime.snapshot_project(request.rope_project, prepared)
         try:
             line = next(
                 node.lineno
@@ -98,23 +120,13 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                     snapshot, prepared[path], resource=resource
                 )
                 prepared[path], binding = runtime.import_binding(
-                    snapshot, module, target.get_name(), request.class_name
+                    snapshot, module, target, request.class_name
                 )
                 if binding != expression:
                     msg = f"moved helper import changed its quoted binding: {path}"
                     raise ValueError(msg)
         finally:
             snapshot.close()
-        return tuple(
-            m.Infra.SemanticMigrationEdit(
-                file_path=path,
-                original_source=source,
-                updated_source=prepared[path],
-                changes=(f"Rope moved {request.class_name} and its bound references",),
-            )
-            for path, source in sources.items()
-            if source != prepared[path]
-        )
 
     @classmethod
     def _moved_quoted_source(
@@ -143,15 +155,16 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                     _, expression = runtime.import_binding(
                         project, module, target, request.class_name
                     )
-            return expression
+            return cls._checked_type_reference(scope, expression)
 
         updated = cls._rewrite_quoted_types(
             project, resource, source, replacement, protected=protected
         )
         return (updated, expression)
 
-    @staticmethod
+    @classmethod
     def _original_helper_imports(
+        cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
         source: str,
@@ -176,19 +189,8 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 info.module_name == origin and info.level == 0
             ):
                 continue
-            kept: list[t.Pair[str, str | None]] = []
-            for imported, alias in info.names_and_aliases:
-                binding = names.get(alias or imported)
-                if (
-                    isinstance(binding, p.Infra.RopeImportedName)
-                    and binding.imported_module.module_name == info.module_name
-                    and binding.imported_module.level == info.level
-                    and runtime.same_name(expected, binding)
-                ):
-                    local = alias or imported
-                    moved.append((name, local if local != name else None))
-                else:
-                    kept.append((imported, alias))
+            kept, matched = cls._partition_helper_import(info, names, expected, name)
+            moved.extend(matched)
             if len(kept) != len(info.names_and_aliases):
                 statement.import_info = runtime.from_import(
                     info.module_name, info.level, kept
@@ -197,6 +199,33 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             return source
         imports.add_import(runtime.from_import(origin, 0, moved))
         return imports.get_changed_source()
+
+    @staticmethod
+    def _partition_helper_import(
+        info: p.Infra.RopeFromImport,
+        names: t.MappingKV[str, p.Infra.RopePyName],
+        expected: p.Infra.RopePyName,
+        name: str,
+    ) -> t.Pair[
+        t.SequenceOf[t.Pair[str, str | None]], t.SequenceOf[t.Pair[str, str | None]]
+    ]:
+        """Separate imports of this declaration from unrelated bindings."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        kept: list[t.Pair[str, str | None]] = []
+        moved: list[t.Pair[str, str | None]] = []
+        for imported, alias in info.names_and_aliases:
+            binding = names.get(alias or imported)
+            if (
+                isinstance(binding, p.Infra.RopeImportedName)
+                and binding.imported_module.module_name == info.module_name
+                and binding.imported_module.level == info.level
+                and runtime.same_name(expected, binding)
+            ):
+                local = alias or imported
+                moved.append((name, local if local != name else None))
+            else:
+                kept.append((imported, alias))
+        return (kept, moved)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticHelperReferences"]

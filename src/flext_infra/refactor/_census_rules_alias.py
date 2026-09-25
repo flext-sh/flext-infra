@@ -48,7 +48,7 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for runtime-alias re-export violations."""
         ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Violation] = []
@@ -117,7 +117,7 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for manual typing-alias violations."""
         manual_ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Violation] = []

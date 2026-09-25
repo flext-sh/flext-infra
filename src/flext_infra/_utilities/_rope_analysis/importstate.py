@@ -19,7 +19,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
 
     _SEMANTIC_STATE_CACHE: ClassVar[
-        MutableMapping[tuple[str, str, int], m.Infra.ModuleSemanticState]
+        MutableMapping[t.Triple[str, str, int], m.Infra.ModuleSemanticState]
     ] = {}
 
     @staticmethod
@@ -205,7 +205,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         current_package: str,
-    ) -> tuple[MutableMapping[str, str], MutableMapping[str, str]]:
+    ) -> t.Pair[MutableMapping[str, str], MutableMapping[str, str]]:
         """Return declared and semantic import maps for one module."""
         semantic_imports: MutableMapping[str, str] = {}
         declared_imports: MutableMapping[str, str] = {}

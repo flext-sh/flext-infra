@@ -26,7 +26,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     # so the 4-5 redundant _declared_exports calls per policy() hit memory
     # instead of re-reading + re-parsing the same file from disk each time.
     _declared_exports_cache: ClassVar[
-        MutableMapping[str, tuple[int, t.StrSequence]]
+        MutableMapping[str, t.Pair[int, t.StrSequence]]
     ] = {}
 
     @staticmethod

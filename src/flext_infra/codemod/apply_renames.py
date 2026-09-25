@@ -49,7 +49,7 @@ class FlextInfraApplyRenames:
             return r[t.SequenceOf[tuple[str, str]]].fail(
                 f"{csv_path}: header must be exactly 'old,new'"
             )
-        pairs: list[tuple[str, str]] = []
+        pairs: list[t.Pair[str, str]] = []
         for row in rows[1:]:
             if len(row) != _RENAME_COLUMNS or not row[0].strip() or not row[1].strip():
                 return r[t.SequenceOf[tuple[str, str]]].fail(
@@ -93,7 +93,7 @@ class FlextInfraApplyRenames:
 
     @staticmethod
     def _scan(
-        files: t.SequenceOf[Path], pairs: t.SequenceOf[tuple[str, str]]
+        files: t.SequenceOf[Path], pairs: t.SequenceOf[t.Pair[str, str]]
     ) -> p.Result[t.Triple[int, int, t.StrSequence]]:
         """Collect pending occurrences, affected files, and report lines."""
         occurrences = 0
@@ -126,7 +126,7 @@ class FlextInfraApplyRenames:
     def _apply(
         files: t.SequenceOf[Path],
         roots: t.SequenceOf[Path],
-        pairs: t.SequenceOf[tuple[str, str]],
+        pairs: t.SequenceOf[t.Pair[str, str]],
     ) -> p.Result[bool]:
         """Rewrite code nodes first, then remaining text occurrences."""
         root_args = tuple(str(root) for root in roots)

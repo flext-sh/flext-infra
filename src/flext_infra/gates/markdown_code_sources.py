@@ -31,7 +31,7 @@ def source_name(relative_posix: str, index: int) -> str:
 
 def write_fenced_block_sources(
     project_dir: Path, markdown_files: t.SequenceOf[Path], target_dir: Path
-) -> dict[str, tuple[str, int]]:
+) -> dict[str, t.Pair[str, int]]:
     """Write one temp source per parseable fenced ``python`` block.
 
     Blocks carrying the ``notest`` fence marker are skipped (opted out of
@@ -40,7 +40,7 @@ def write_fenced_block_sources(
     belong to the flext-tests markdown validator (MD-001 with approved
     exceptions), never to this formatting gate.
     """
-    origin_by_source: dict[str, tuple[str, int]] = {}
+    origin_by_source: dict[str, t.Pair[str, int]] = {}
     for md_path in markdown_files:
         relative_posix = md_path.relative_to(project_dir).as_posix()
         content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
@@ -65,7 +65,7 @@ def write_fenced_block_sources(
 
 def write_docstring_sources(
     project_dir: Path, target_dir: Path
-) -> dict[str, tuple[str, int]]:
+) -> dict[str, t.Pair[str, int]]:
     """Write one temp source per doctest example found in tracked docstrings.
 
     Docstring write-back stays outside the fix contract on purpose: a
@@ -73,7 +73,7 @@ def write_docstring_sources(
     remain manual repairs. Example line numbers are approximate within the
     docstring (stdlib ``doctest`` reports positions relative to its input).
     """
-    origin_by_source: dict[str, tuple[str, int]] = {}
+    origin_by_source: dict[str, t.Pair[str, int]] = {}
     parser = DocTestParser()
     for py_path in u.Infra.iter_matching_files(project_dir, includes=["*.py"]):
         relative_parts = py_path.relative_to(project_dir).parts

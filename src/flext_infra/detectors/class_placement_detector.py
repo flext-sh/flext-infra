@@ -118,7 +118,7 @@ class FlextInfraClassPlacementDetector:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.VariadicTuple[t.Pair[m.Infra.ClassInfo, str]]:
         """Return public governed classes with their family letters."""
-        results: list[tuple[m.Infra.ClassInfo, str]] = []
+        results: list[t.Pair[m.Infra.ClassInfo, str]] = []
         for ci in u.Infra.get_class_info(rope_project, resource):
             if ci.name.startswith("_"):
                 continue
@@ -331,7 +331,7 @@ class FlextInfraClassPlacementDetector:
         """Return module-level type aliases as (name, line) pairs."""
         pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
-        aliases: list[tuple[str, int]] = []
+        aliases: list[t.Pair[str, int]] = []
         for node in getattr(tree, "body", []) or []:
             kind = u.Infra.node_kind(u.Infra.ensure_ast_node(node))
             if kind == "TypeAlias":

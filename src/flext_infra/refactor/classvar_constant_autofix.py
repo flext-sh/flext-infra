@@ -152,7 +152,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         finder = u.Infra.create_occurrence_finder(
             project, plan.constant_name, pyname, imports=True, in_hierarchy=False
         )
-        rewrites: MutableMapping[str, list[tuple[int, int, str]]] = {}
+        rewrites: MutableMapping[str, list[t.Triple[int, int, str]]] = {}
         # Iterate over concrete project resources to avoid rope crashing when
         # an occurrence cannot be resolved to a resource (resource=None).
         for resource in project.get_python_files():
@@ -454,7 +454,9 @@ class FlextInfraRefactorClassvarConstantAutofix:
         )
 
     @classmethod
-    def _apply_edits(cls, text: str, edits: t.SequenceOf[tuple[int, int, str]]) -> str:
+    def _apply_edits(
+        cls, text: str, edits: t.SequenceOf[t.Triple[int, int, str]]
+    ) -> str:
         """Apply (start, end, replacement) edits to ``text`` in reverse order."""
         for start, end, replacement in sorted(edits, reverse=True):
             text = text[:start] + replacement + text[end:]
@@ -678,7 +680,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             f"self.__class__.{constant_name}",
         )
         replacement = f"{constants_alias}.{constant_name}"
-        edits: list[tuple[int, int, str]] = []
+        edits: list[t.Triple[int, int, str]] = []
         for pattern in patterns:
             start = 0
             while True:

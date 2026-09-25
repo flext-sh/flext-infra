@@ -81,7 +81,7 @@ class FlextInfraCodegenTransaction:
 
     @contextmanager
     def _lease_file_participants(
-        self, participants: tuple[m.Infra.CodegenFileParticipant, ...]
+        self, participants: t.VariadicTuple[m.Infra.CodegenFileParticipant]
     ) -> Generator[None]:
         """Serialize shared destinations across worktrees in stable path order."""
         for participant in participants:

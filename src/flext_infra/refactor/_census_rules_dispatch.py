@@ -30,7 +30,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
         @classmethod
         def _lightweight_symbol_index(
             cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
-        ) -> MutableMapping[str, tuple[str, int]]: ...
+        ) -> MutableMapping[str, t.Pair[str, int]]: ...
         @staticmethod
         def _include_rule(
             rule: str,
@@ -49,7 +49,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
         def _rule_manual_typing_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -60,7 +60,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
         def _rule_class_placement(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -72,7 +72,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
         def _rule_private_import_bypass(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -84,7 +84,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
         def _rule_compatibility_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -96,7 +96,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
         def _rule_inline_import(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -108,7 +108,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
         def _rule_silent_failure(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -120,7 +120,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             selected_kinds: frozenset[str],
             symbol_index: t.MappingKV[str, t.Pair[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
+        ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]: ...
 
     def _module_rules(
         self,
@@ -216,7 +216,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
         selected_rules: frozenset[str] | None,
         rule_names: t.StrSequence | None,
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Run catalog-driven declarative rules for one module."""
         violations: list[m.Infra.Violation] = []
         fixes: list[m.Infra.Fix] = []

@@ -118,7 +118,7 @@ class FlextInfraRefactorCensusInventoryMixin:
 
         """
         inventory = cls._build_parent_inventory(repository_root)
-        collisions: list[tuple[m.Infra.Object, t.StrSequence]] = []
+        collisions: list[t.Pair[m.Infra.Object, t.StrSequence]] = []
 
         def collision_breadth(entry: t.Pair[m.Infra.Object, t.StrSequence]) -> int:
             return -len(entry[1])

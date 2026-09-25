@@ -25,7 +25,9 @@ class FlextInfraEnsureCanonicalTImportMixin:
     def _ensure_t_import(self, source: str, module_name: str) -> t.Pair[str, bool]:
         """Inject ``from <module_name> import t`` if needed."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE
-        updated = u.Infra.ensure_alias_import(source, target_module, "t")
+        updated = u.Infra.ensure_alias_import(
+            source, target_module, "t", runtime_required=True
+        )
         return updated, updated != source
 
     def _ensure_alias_import(

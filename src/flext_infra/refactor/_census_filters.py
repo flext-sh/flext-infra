@@ -30,7 +30,7 @@ class FlextInfraRefactorCensusFiltersMixin:
         def object_location(item: m.Infra.Object) -> t.Triple[str, str, int]:
             return item.project, item.file_path, item.line
 
-        groups: MutableMapping[tuple[str, str, str], list[m.Infra.Object]] = (
+        groups: MutableMapping[t.Triple[str, str, str], list[m.Infra.Object]] = (
             defaultdict(list)
         )
         for item in (obj for objects in project_objects for obj in objects):

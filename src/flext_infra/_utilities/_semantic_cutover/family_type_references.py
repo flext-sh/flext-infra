@@ -15,6 +15,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     """Select type positions structurally and bind every edit to Rope identity."""
 
     @classmethod
+    def type_expression_ranges(cls, source: str) -> frozenset[t.Pair[int, int]]:
+        """Expose the same structural roots to concrete-syntax consumer adapters."""
+        return frozenset(
+            cls._expression_range(source, expression)
+            for expression, _line in cls._annotation_roots(ast.parse(source))
+        )
+
+    @classmethod
     def _family_quoted_rewrites(
         cls,
         project: p.Infra.RopeProject,
@@ -72,48 +80,20 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         )
         edits: list[m.Infra.SourceRewrite] = []
         for node in nodes:
-            start, end = cls._expression_range(source, node)
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                blocked, updated = cls._quoted_type_source(
-                    node.value,
-                    project,
-                    resource,
-                    scope,
-                    owner_name=owner_name,
-                    wrapper=wrapper,
-                    names=names,
-                )
-                if blocked:
-                    return (True, source)
-                if updated != node.value:
-                    edits.append(
-                        m.Infra.SourceRewrite(start=start, end=end, text=repr(updated))
-                    )
-            elif isinstance(node, ast.Attribute) and runtime.same_name(
-                wrapper, runtime.resolve_symbol(scope, node.value)
-            ):
-                if node.attr not in names:
-                    return (True, source)
-                parent = (
-                    ast.unparse(node.value.value)
-                    if isinstance(node.value, ast.Attribute)
-                    else owner_name
-                    if scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION
-                    else ""
-                )
-                text = f"{parent}.{names[node.attr]}" if parent else names[node.attr]
-                edits.append(m.Infra.SourceRewrite(start=start, end=end, text=text))
-            elif (
-                isinstance(node, ast.Name)
-                and node.id in names
-                and runtime.same_name(
-                    wrapper.get_object().get_attribute(node.id),
-                    runtime.resolve_symbol(scope, node),
-                )
-            ):
-                edits.append(
-                    m.Infra.SourceRewrite(start=start, end=end, text=names[node.id])
-                )
+            blocked, edit = cls._quoted_node_rewrite(
+                node,
+                source,
+                project,
+                resource,
+                scope,
+                owner_name=owner_name,
+                wrapper=wrapper,
+                names=names,
+            )
+            if blocked:
+                return (True, source)
+            if edit is not None:
+                edits.append(edit)
         for node in nodes:
             start, end = cls._expression_range(source, node)
             if not any(
@@ -125,44 +105,108 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         )
         return (False, change.new_contents)
 
+    @classmethod
+    def _quoted_node_rewrite(
+        cls,
+        node: ast.expr,
+        source: str,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        scope: p.Infra.RopeScope,
+        *,
+        owner_name: str,
+        wrapper: p.Infra.RopePyName,
+        names: t.MappingKV[str, str],
+    ) -> t.Pair[bool, m.Infra.SourceRewrite | None]:
+        """Resolve one selected node; nested strings retain their original scope."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        start, end = cls._expression_range(source, node)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            blocked, updated = cls._quoted_type_source(
+                node.value,
+                project,
+                resource,
+                scope,
+                owner_name=owner_name,
+                wrapper=wrapper,
+                names=names,
+            )
+            if blocked or updated == node.value:
+                return (blocked, None)
+            return (
+                False,
+                m.Infra.SourceRewrite(start=start, end=end, text=repr(updated)),
+            )
+        if isinstance(node, ast.Attribute) and runtime.same_name(
+            wrapper, runtime.resolve_symbol(scope, node.value)
+        ):
+            if node.attr not in names:
+                return (True, None)
+            text = cls._promoted_attribute(node, scope, owner_name, names[node.attr])
+            return (False, m.Infra.SourceRewrite(start=start, end=end, text=text))
+        if (
+            isinstance(node, ast.Name)
+            and node.id in names
+            and runtime.same_name(
+                wrapper.get_object().get_attribute(node.id),
+                runtime.resolve_symbol(scope, node),
+            )
+        ):
+            return (
+                False,
+                m.Infra.SourceRewrite(start=start, end=end, text=names[node.id]),
+            )
+        return (False, None)
+
     @staticmethod
-    def _annotation_roots(module: ast.Module) -> Iterator[t.Pair[ast.expr, int | None]]:
+    def _promoted_attribute(
+        node: ast.Attribute, scope: p.Infra.RopeScope, owner_name: str, name: str
+    ) -> str:
+        """Keep an explicit parent or the method's owning class after promotion."""
+        if isinstance(node.value, ast.Attribute):
+            return f"{ast.unparse(node.value.value)}.{name}"
+        if scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
+            return f"{owner_name}.{name}" if owner_name else name
+        return name
+
+    @classmethod
+    def _annotation_roots(
+        cls, module: ast.Module
+    ) -> Iterator[t.Pair[ast.expr, int | None]]:
         for node in ast.walk(module):
             if isinstance(node, ast.AnnAssign):
                 yield (node.annotation, None)
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                arguments = (
-                    *node.args.posonlyargs,
-                    *node.args.args,
-                    *node.args.kwonlyargs,
-                )
-                for argument in arguments:
-                    annotation = argument.annotation
-                    if annotation is not None:
-                        yield (annotation, node.lineno)
-                for argument in (node.args.vararg, node.args.kwarg):
-                    if argument is None:
-                        continue
-                    annotation = argument.annotation
-                    if annotation is not None:
-                        yield (annotation, node.lineno)
-                if node.returns is not None:
-                    yield (node.returns, node.lineno)
+                yield from cls._function_annotations(node)
             elif isinstance(node, ast.TypeAlias):
                 yield (node.value, None)
             elif isinstance(node, ast.ClassDef):
                 for base in node.bases:
                     yield (base, node.lineno)
-            elif isinstance(node, ast.TypeVar):
-                if node.bound is not None:
+            elif isinstance(node, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple):
+                if isinstance(node, ast.TypeVar) and node.bound is not None:
                     yield (node.bound, None)
                 default_value = node.default_value
                 if default_value is not None:
                     yield (default_value, None)
-            elif isinstance(node, ast.ParamSpec | ast.TypeVarTuple):
-                default_value = node.default_value
-                if default_value is not None:
-                    yield (default_value, None)
+
+    @staticmethod
+    def _function_annotations(
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> Iterator[t.Pair[ast.expr, int | None]]:
+        """Yield each parameter and return annotation in declaration order."""
+        arguments = (
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+            node.args.vararg,
+            node.args.kwarg,
+        )
+        for argument in arguments:
+            if argument is not None and argument.annotation is not None:
+                yield (argument.annotation, node.lineno)
+        if node.returns is not None:
+            yield (node.returns, node.lineno)
 
     @classmethod
     def _type_nodes(

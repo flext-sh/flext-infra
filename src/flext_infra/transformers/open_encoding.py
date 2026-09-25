@@ -46,9 +46,9 @@ class FlextInfraRefactorOpenEncoding(FlextInfraRopeTransformer):
         return "".join(lines), list(self.changes)
 
     @classmethod
-    def _find_open_calls(cls, tree: ast.Module) -> list[tuple[int, int]]:
+    def _find_open_calls(cls, tree: ast.Module) -> list[t.Pair[int, int]]:
         """Return (lineno, col_offset) for text-mode open calls missing encoding."""
-        targets: list[tuple[int, int]] = []
+        targets: list[t.Pair[int, int]] = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue

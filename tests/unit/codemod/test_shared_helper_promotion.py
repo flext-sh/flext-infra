@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import os
 import sys
 from pathlib import Path
@@ -93,12 +94,40 @@ class TestsFlextInfraSharedHelperPromotion:
 
     @pytest.mark.parametrize("reexport", [False, True])
     @pytest.mark.parametrize("quoted_only", [False, True])
+    @pytest.mark.parametrize("lexical_collision", [False, True])
     def test_original_identity_moves_without_effects_until_publication(
-        self, tmp_path: Path, *, reexport: bool, quoted_only: bool
+        self,
+        tmp_path: Path,
+        *,
+        reexport: bool,
+        quoted_only: bool,
+        lexical_collision: bool,
     ) -> None:
         root, source, helper = self._workspace(tmp_path, reexport=reexport)
         if quoted_only:
             (root / c.Infra.DIR_TESTS / "unit" / "consumer.py").unlink()
+        if lexical_collision:
+            quoted = root / c.Infra.DIR_TESTS / "unit" / "quoted.py"
+            with infra.rope_workspace(root) as rope:
+                resource = rope.resource(quoted)
+                assert resource is not None
+                _, binding = u.Infra.import_binding(
+                    rope.rope_project,
+                    rope.rope_project.get_pymodule(resource),
+                    rope.convention(
+                        root / c.Infra.DIR_TESTS / c.Infra.UTILITIES_PY
+                    ).module_name,
+                    helper,
+                )
+            primary = ast.parse(binding, mode="eval").body
+            while isinstance(primary, ast.Attribute):
+                primary = primary.value
+            assert isinstance(primary, ast.Name)
+            quoted.write_text(
+                quoted.read_text(encoding="utf-8")
+                + f"\nclass Local:\n    {primary.id} = str\n    value: 'Shared'\n",
+                encoding="utf-8",
+            )
         probe = (
             "from typing import get_args, get_type_hints\n"
             "from tests.unit.quoted import ORDINARY, annotated, echo\n"
@@ -122,18 +151,28 @@ class TestsFlextInfraSharedHelperPromotion:
                 "assert get_type_hints(Consumer.echo)['return'] is Helper\n"
                 "assert Consumer().echo(Helper()).value() == Consumer().read()\n"
             )
+        if lexical_collision:
+            probe += (
+                "from tests.unit.quoted import Local\n"
+                "assert get_type_hints(Local)['value'] is Helper\n"
+            )
         before = self._run(root, probe)
         sources = {
             path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
         }
         with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
+            result = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources=sources,
             )
+            if lexical_collision:
+                tm.fail(result, has="shadowed quoted type destination")
+                for path, original in sources.items():
+                    tm.that(path.read_text(encoding="utf-8"), eq=original)
+                tm.that(self._run(root, probe), eq=before)
+                return
+            edits = tm.ok(result)
             tm.that(edits, empty=False)
             proposed = dict(sources)
             proposed.update({edit.file_path: edit.updated_source for edit in edits})

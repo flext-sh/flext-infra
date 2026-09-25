@@ -47,7 +47,7 @@ class FlextInfraRefactorCensusRulesStructMixin(
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for misplaced class declarations."""
         _ = symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
@@ -99,7 +99,7 @@ class FlextInfraRefactorCensusRulesStructMixin(
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for private-import bypass violations."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
@@ -152,7 +152,7 @@ class FlextInfraRefactorCensusRulesStructMixin(
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for compatibility-alias violations."""
         ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Violation] = []
@@ -218,7 +218,7 @@ class FlextInfraRefactorCensusRulesStructMixin(
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect + plan fixes for inline/lazy imports inside function bodies."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
@@ -272,7 +272,7 @@ class FlextInfraRefactorCensusRulesStructMixin(
         selected_kinds: frozenset[str],
         symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Violation], list[m.Infra.Fix]]:
+    ) -> t.Pair[list[m.Infra.Violation], list[m.Infra.Fix]]:
         """Detect exception-silencing patterns; auto-fix deterministic sentinels."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)

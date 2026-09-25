@@ -157,7 +157,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 )
         if function_name != "merge_lazy_imports":
             return ((), ())
-        entries: list[tuple[str, t.StrSequence]] = []
+        entries: list[t.Pair[str, t.StrSequence]] = []
         refs: list[str] = []
         for argument in args:
             if not hasattr(argument, "_fields"):
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()
         values = getattr(node, "values", ()) or ()
-        entries: list[tuple[str, t.StrSequence]] = []
+        entries: list[t.Pair[str, t.StrSequence]] = []
         refs: list[str] = []
         for key_node, value_node in zip(keys, values, strict=False):
             if key_node is None:
@@ -596,7 +596,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 else ((), ())
             )
         if call_name == "merge_lazy_imports":
-            entries: list[tuple[str, t.StrSequence]] = []
+            entries: list[t.Pair[str, t.StrSequence]] = []
             refs: list[str] = []
             for arg in FlextInfraUtilitiesRopeAnalysisSourceScan._call_args_source(
                 text, call_name
@@ -674,7 +674,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     ) -> t.VariadicTuple[t.Quad[str, int, str, str]]:
         """Return ``(module, level, original, bound)`` for ``from`` imports."""
         lines = source.splitlines()
-        bindings: list[tuple[str, int, str, str]] = []
+        bindings: list[t.Quad[str, int, str, str]] = []
         for index, line in enumerate(lines):
             stripped = line.strip()
             if not stripped.startswith("from ") or " import " not in stripped:
