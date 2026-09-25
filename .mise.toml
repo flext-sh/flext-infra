@@ -7,17 +7,17 @@
 # Free: no
 # End SECTION: header
 # NOTE: mise carries the Python runtime and native tools from the config SSOT.
-# Python dependency declarations remain owned by pyproject.toml. Mise resolves tools to the
-# newest published release at setup time: the fleet runs unlocked and current.
-# Never run `mise lock`. Never commit mise.lock.
+# Python dependency declarations remain owned by pyproject.toml. Tools are declared
+# `latest`; only `make upg` resolves them and writes the committed mise.lock.
+# Setup installs frozen from that lock and never re-resolves.
 
 # === SECTION: settings (managed) ===
 # Source: config:codegen.toolchain.mise_lockfile / mise_locked
 [settings]
-lockfile = false
-locked = false
+lockfile = true
+locked = true
 [tool_config]
-locked = false
+locked = true
 # End SECTION: settings
 
 # === SECTION: tools (managed) ===

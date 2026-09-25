@@ -21,10 +21,10 @@ Infra:
       # compatible 3.13 patch; no patch is pinned in generated repositories.
       # Derived as computed fields on ToolchainSpec:
       #   python_required_version -> >=3.13,<3.14
-      # Every fleet binary is selected as latest at setup time; mise resolves
-      # each moving selector to the newest published release. Dependency
-      # floors live in pyproject and nowhere else: the fleet resolves them
-      # fresh on every setup and commits no lock (operator 2026-09-14).
+      # Every fleet binary is declared `latest`. Only `make upg` resolves the
+      # moving selectors and dependency floors to the newest releases and
+      # writes the committed uv.lock and mise.lock; setup, gen, and fmt install
+      # frozen from those locks (operator 2026-09-24).
       python_version: "3.13"
       state_directory_name: .flext-runtime
       scratch_namespace: scratch
@@ -49,10 +49,10 @@ Infra:
       # this cap unless meltano upstream drops its own cap; floors derive
       # from deps against this same contract (operator 2026-09-09).
       uv_constraint_dependencies: ["structlog<26"]
-      # Moving selectors consumed by generated .mise.toml and CI. The fleet
-      # runs unlocked: setup converges on the newest published release.
-      # Override these YAML keys only. Never edit .mise.toml. Never run
-      # `mise lock`. Never pin a SHA.
+      # Moving selectors consumed by generated .mise.toml and CI. Only
+      # `make upg` resolves them to the newest release and writes mise.lock;
+      # setup installs exactly what the committed lock pins.
+      # Override these YAML keys only. Never edit .mise.toml. Never pin a SHA.
       uv_version: latest
       kubectl_version: latest
       helm_version: latest
@@ -63,13 +63,10 @@ Infra:
       gitleaks_version: latest
       kubeconform_version: latest
       # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
-      # false is required: existing lockfiles would pin checksums against latest.
-      retired_dependency_artifacts:
-        - uv.lock
-        - mise.lock
-        - .mise.lock
-      mise_lockfile: false
-      mise_locked: false
+      # true: the committed lock written by `make upg` pins every tool, and
+      # setup installs frozen from it.
+      mise_lockfile: true
+      mise_locked: true
       # Projection: .mise.toml [tools] keys. Override the selector here.
       qlty_selector: github:qltysh/qlty
       # Pinned to the last provenance-attested release: 0.644.0 shipped
@@ -479,8 +476,8 @@ Infra:
           description: Show the complete selector-free public interface.
         - name: setup
           description: Provision the declared environment and hooks.
-        - name: deps
-          description: Upgrade, lock, and conform every declared dependency.
+        - name: upg
+          description: Resolve the newest declared releases and write the uv and mise locks.
         - name: build
           description: Build the project distribution artifacts.
         - name: check
@@ -1390,26 +1387,15 @@ Infra:
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
+            - "!uv.lock"
             - "!ruff-shared.toml"
-      # Lockfiles pin resolved versions against a fleet that declares itself
-      # unlocked: setup converges on the newest published release, so a
-      # committed uv.lock only records a snapshot that goes stale and then
-      # makes `uv sync` unsatisfiable. Every profile ignores it; dependency
-      # floors live in pyproject (operator 2026-09-14).
-        - name: "uv lockfile is never tracked"
-          patterns:
-            - "uv.lock"
-            - "**/uv.lock"
         - name: "mise toolchain pinning"
           profiles: [workspace]
           patterns:
             - "!.mise.toml"
+            - "!mise.lock"
+            - "!.mise.lock"
             - "!.python-version"
-        # Lockfiles pin checksums against latest. Never track them.
-            - "mise.lock"
-            - ".mise.lock"
-            - "**/mise.lock"
-            - "**/.mise.lock"
         - name: "Docker configuration"
           profiles: [workspace]
           patterns:
@@ -1825,9 +1811,6 @@ Infra:
             - "*.tpl.rej"
         - name: "--- codegen conform: generated runtime ignores ---"
           patterns:
-            - "mise.lock"
-            - ".mise.lock"
-            - "**/.mise.lock"
             - ".direnv/"
             - ".reports/"
             - ".venv"

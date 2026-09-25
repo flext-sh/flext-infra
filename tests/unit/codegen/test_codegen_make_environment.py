@@ -487,26 +487,36 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         tm.that((project_root / ".venv").exists(), eq=False)
-        process = tm.ok(
+        lock_path = project_root / c.Infra.UV_LOCK_FILENAME
+        # Without a committed lock, setup never resolves: uv refuses loudly.
+        unlocked = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "setup"], cwd=project_root, env=active_env
             )
         )
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
+        tm.that(u.Cli.process_succeeded(unlocked.outcome), eq=False)
+        tm.that(lock_path.exists(), eq=False)
+        # `upg` is the only resolver: it writes both locks and provisions the
+        # environment frozen from them.
+        upgraded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"], cwd=project_root, env=active_env
+            )
         )
-        tm.that(process.stdout, has="installed-runtime-verified")
+        tm.that(
+            u.Cli.process_succeeded(upgraded.outcome),
+            eq=True,
+            msg=upgraded.stdout + upgraded.stderr,
+        )
+        tm.that(lock_path.is_file(), eq=True)
+        tm.that((project_root / c.Infra.MISE_LOCK_FILENAME).is_file(), eq=True)
         tm.that((project_root / ".venv" / "pyvenv.cfg").is_file(), eq=True)
-        tm.that((project_root / "uv.lock").exists(), eq=False)
         tm.that(sentinel.read_text(encoding="utf-8"), eq="untouched\n")
         tm.that(tuple(hostile_bin.iterdir()), eq=())
         tm.that((hostile_venv / "pyvenv.cfg").exists(), eq=False)
-        tm.that((hostile_venv.parent / "uv.lock").exists(), eq=False)
+        tm.that((hostile_venv.parent / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
 
-        # A current lock is accepted in CI; a new runtime declaration must fail
-        # before post-setup without a persisted dependency lock.
+        # CI setup installs frozen from the committed locks and never rewrites them.
         make = config.Infra.codegen.make
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -519,6 +529,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
         )
         ci_env = {**active_env, make.ci.variable: make.ci.value}
+        locked_before = lock_path.read_bytes()
         locked = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
@@ -530,8 +541,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
             msg=locked.stdout + locked.stderr,
         )
         tm.that(locked.stdout, has="ci-runtime-provisioned")
-        lock_path = project_root / "uv.lock"
-        tm.that(lock_path.exists(), eq=False)
+        tm.that(lock_path.read_bytes(), eq=locked_before)
+
+        # A new dependency declaration makes the committed lock stale: setup
+        # fails instead of re-resolving, and the lock stays untouched.
         dependency_root = tmp_path / "external-runtime"
         u.Tests.WorktreeFixture.write_python_project(
             dependency_root, "external-runtime"
@@ -549,13 +562,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
             )
         )
-        tm.that(
-            u.Cli.process_succeeded(stale.outcome),
-            eq=True,
-            msg=stale.stdout + stale.stderr,
-        )
-        tm.that(stale.stdout, has="ci-runtime-provisioned")
-        tm.that(lock_path.exists(), eq=False)
+        tm.that(u.Cli.process_succeeded(stale.outcome), eq=False)
+        tm.that(lock_path.read_bytes(), eq=locked_before)
 
     def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
         self, tmp_path: Path

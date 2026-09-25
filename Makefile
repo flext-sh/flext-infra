@@ -122,8 +122,8 @@ endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
-BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+PUBLIC_VERBS := help setup upg build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
+BUILTIN_VERBS := help setup upg build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication sonarcloud-sync
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -192,6 +192,10 @@ override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 unexport UV
 export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
+# One bootstrap serves `setup` (frozen) and `upg` (resolving); the public verb
+# selects its lifecycle and resolution through target-specific variables.
+TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
+TOOL_BOOTSTRAP_RESOLVE :=
 .PHONY: _bootstrap_setup_tools
 
 _bootstrap_setup_tools:
@@ -292,6 +296,7 @@ mise_exec() { \
 		case "$$mise_config_mode" in \
 			no-config) mise_config_argument='MISE_NO_CONFIG=1' ;; \
 			project) mise_config_argument= ;; \
+			project-resolving) mise_config_argument='MISE_LOCKED=0' ;; \
 			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
 		esac; \
 		env -i \
@@ -401,17 +406,15 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"; \
-	for stale_mise_lock in "$$project_root/mise.lock" "$$project_root/.mise.lock"; do \
-		if [ -f "$$stale_mise_lock" ]; then \
-			printf 'WARN: removing stale Mise lock %s (fleet policy is unlocked; a committed lock only blocks provenance re-resolution)\n' "$$stale_mise_lock" >&2; \
-			rm -f "$$stale_mise_lock"; \
-		fi; \
-	done; \
+	# Only ``upg`` resolves: it re-resolves every ``latest`` selector and the \
+	# Python minor line into mise.lock, then installs unlocked so the lock \
+	# records the resolved download URLs and checksums of this platform. \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		mise_checked "$$scratch/lock.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump; \
+		mise_checked "$$scratch/resolve-install.log" mise_exec project-resolving "$$latest_mise" -C "$$project_root" install --yes; \
+	fi; \
+	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
-	# ``mise install`` may reuse an installed fuzzy match. Upgrade Python inside \
-	# the configured minor line so ``python = \"3.13\"`` always resolves the \
-	# newest available 3.13 patch without rewriting the project selector. \
-	mise_checked "$$scratch/python-upgrade.log" mise_exec project "$$latest_mise" -C "$$project_root" upgrade --no-prune python; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \
@@ -449,7 +452,7 @@ fi; \
 		"$$latest_mise" -C "$$project_root" exec -- env \
 		"SETUP_DIRENV=$$direnv_executable" \
 		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \
-		"CI=$(CI)" $(SELF_MAKE) _setup_lifecycle
+		"CI=$(CI)" $(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -527,11 +530,11 @@ PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
-# No lock is committed, so there is nothing for `--locked` to honour: the fleet
-# resolves dependency floors from pyproject on every setup, in CI exactly as
-# locally. `--upgrade` advances existing local resolutions; `--refresh` re-reads
-# branch metadata instead of retaining a cached tip (operator 2026-09-14).
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages --reinstall-package flext-infra ,)--all-extras --all-groups --upgrade --refresh
+# Setup installs frozen from the committed uv.lock and never re-resolves: it is
+# the CI path and must be stable. A missing or stale lock fails through uv's own
+# error; `make upg` is the only verb that resolves and rewrites it
+# (operator 2026-09-24).
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages --reinstall-package flext-infra ,)--all-extras --all-groups --locked
 
 ifeq ($(GEN_INIT_ONLY),)
 -include custom.mk
@@ -563,15 +566,6 @@ endef
 help:
 
 	$(call RUN_PUBLIC,help)
-
-
-deps: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-deps
-
-.PHONY: _activated-deps
-_activated-deps: _builtin_require_environment
-
-	$(call RUN_PUBLIC,deps)
 
 
 build: _builtin_require_workspace
@@ -772,6 +766,12 @@ _activated-sonarcloud-sync: _builtin_require_environment
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
 
+# `upg` builds the environment from the locks it writes, so like `setup` it
+# must not require an existing environment.
+upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
+upg: TOOL_BOOTSTRAP_RESOLVE := 1
+upg: _bootstrap_setup_tools
+
 .PHONY: _setup_lifecycle
 _setup_lifecycle:
 	@set -eu; \
@@ -796,7 +796,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'setup' 'Provision the declared environment and hooks.';
 
-	@printf '  %-16s %s\n' 'deps' 'Upgrade, lock, and conform every declared dependency.';
+	@printf '  %-16s %s\n' 'upg' 'Resolve the newest declared releases and write the uv and mise locks.';
 
 	@printf '  %-16s %s\n' 'build' 'Build the project distribution artifacts.';
 
@@ -1008,16 +1008,17 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 # End SECTION: setup environment
 
-_builtin_deps_lock:
-	$(call _run_for_all_projects,)
-
-_builtin_deps_upgrade: _builtin_require_environment
-	# Branch-tracked git dependencies are moving sources by declaration
-	# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
-	# stale cached requires-dist can never block or skew the resolution
-	# (flext-62fbu). The refresh re-reads metadata so version movement is
-	# always resolved from live upstream state.
+# `upg` is the only recipe that resolves: the bootstrap above bumps mise.lock
+# before installing, and this lifecycle upgrades every uv.lock, provisions the
+# environment frozen from the new locks, and conforms dependency floors.
+# Branch-tracked git dependencies are moving sources by declaration
+# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
+# stale cached requires-dist can never block or skew the resolution
+# (flext-62fbu).
+.PHONY: _upg_lifecycle
+_upg_lifecycle:
 	$(call _run_for_all_projects,--upgrade --refresh)
+	@$(SELF_MAKE) _builtin_setup_environment
 	@set -eu; \
 	selected="$(strip $(SELECTED_PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
@@ -1203,8 +1204,8 @@ _builtin_release_publish: _builtin_require_environment
 
 # Generation has one transaction owner. Conform preserves the caller's scope and
 # journals ordinary, Mise, lazy-init, and documentation phases through one fixed
-# point. Dependency upgrades remain a separate explicit verb because they rewrite
-# lock floors; gen never runs another writer before or after conform's journal.
+# point. Only `upg` resolves and rewrites the locks; gen installs nothing and
+# never runs another writer before or after conform's journal.
 _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
@@ -1219,7 +1220,6 @@ _builtin_mod_apply: _builtin_require_environment
 
 # Selector-free public verbs map one-to-one to their canonical implementation;
 # each implementation owns one fixed operation.
-_builtin-deps: _builtin_deps_upgrade
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all

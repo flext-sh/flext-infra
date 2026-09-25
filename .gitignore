@@ -5,10 +5,6 @@
 !.beads/metadata.json
 !.beads/identity.toml
 
-# uv lockfile is never tracked
-uv.lock
-**/uv.lock
-
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/local/
 .claude/history/
@@ -279,9 +275,6 @@ legado/
 *.tpl.rej
 
 # --- codegen conform: generated runtime ignores ---
-mise.lock
-.mise.lock
-**/.mise.lock
 .direnv/
 .reports/
 .venv
