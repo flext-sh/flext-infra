@@ -71,8 +71,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
         phase_builder = (
-            m.Infra.DepsToml.PhaseConfig
-            .Builder("pyrefly")
+            m.Infra.DepsToml
+            .PhaseConfigBuilder("pyrefly")
             .table(c.Infra.PYREFLY)
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)
             .deprecated("python-interpreter-path")

@@ -12,6 +12,7 @@ from flext_infra import c, m, t
 from .edits import FlextInfraUtilitiesSemanticCutoverEdits
 from .family_flatten import FlextInfraUtilitiesSemanticFamilyFlatten
 from .nesting_cst import FlextInfraUtilitiesSemanticCutoverNestingCst
+from .test_helpers import FlextInfraUtilitiesSemanticTestHelpers
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesSemanticCutoverNesting(
+    FlextInfraUtilitiesSemanticTestHelpers,
     FlextInfraUtilitiesSemanticFamilyFlatten,
     FlextInfraUtilitiesSemanticCutoverNestingCst,
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -99,21 +101,28 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _plan_class_nesting(
         cls, rope_workspace: p.Infra.RopeWorkspaceDsl, sources: t.MappingKV[Path, str]
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Compose family flattening and orphan nesting in one immutable plan."""
+        """Compose helper promotion, family flattening, and orphan nesting."""
         planned = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        promoted = planned.create_from_callable(
+            lambda: cls._test_helper_edits(rope_workspace, sources)
+        )
+        if promoted.failure:
+            return planned.from_failure(promoted)
+        proposed = dict(sources)
+        merged = {edit.file_path: edit for edit in promoted.value}
+        for edit in promoted.value:
+            proposed[edit.file_path] = edit.updated_source
         flattened = planned.create_from_callable(
-            lambda: cls._family_flatten_edits(rope_workspace, sources)
+            lambda: cls._family_flatten_edits(rope_workspace, proposed)
         )
         if flattened.failure:
             return planned.from_failure(flattened)
-        proposed = dict(sources)
-        merged = {edit.file_path: edit for edit in flattened.value}
         for edit in flattened.value:
             proposed[edit.file_path] = edit.updated_source
         nested = cls._plan_orphan_nesting(rope_workspace, proposed)
         if nested.failure:
             return planned.from_failure(nested)
-        for edit in nested.value:
+        for edit in (*flattened.value, *nested.value):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,

@@ -90,86 +90,83 @@ class FlextInfraModelsDepsToml:
                 m.Field(description="Nested TOML phase configs"),
             ] = ()
 
-            class Builder(m.Identity["FlextInfraModelsDepsToml.DepsToml.PhaseConfig"]):
-                """Fluent builder for ``m.Infra.DepsToml.PhaseConfig``."""
+        class PhaseConfigBuilder(
+            m.Identity["FlextInfraModelsDepsToml.DepsToml.PhaseConfig"]
+        ):
+            """Fluent builder for ``m.Infra.DepsToml.PhaseConfig``."""
 
-                def __init__(self, name: str) -> None:
-                    super().__init__(
-                        state=FlextInfraModelsDepsToml.DepsToml.PhaseConfig(name=name)
+            def __init__(self, name: str) -> None:
+                super().__init__(
+                    state=FlextInfraModelsDepsToml.DepsToml.PhaseConfig(name=name)
+                )
+
+            def table(self, *path: str) -> Self:
+                """Select the primary table path below the root path."""
+                return self._path("table_path", *path)
+
+            def value(self, key: str, value: t.JsonValue) -> Self:
+                """Schedule one scalar or structured value sync."""
+                return self._set(
+                    operations=(
+                        *self.state.operations,
+                        FlextInfraModelsDepsToml.DepsToml.SetOp(key=key, value=value),
                     )
+                )
 
-                def table(self, *path: str) -> Self:
-                    """Select the primary table path below the root path."""
-                    return self._path("table_path", *path)
-
-                def value(self, key: str, value: t.JsonValue) -> Self:
-                    """Schedule one scalar or structured value sync."""
-                    return self._set(
-                        operations=(
-                            *self.state.operations,
-                            FlextInfraModelsDepsToml.DepsToml.SetOp(
-                                key=key, value=value
-                            ),
-                        )
-                    )
-
-                def list(
-                    self,
-                    key: str,
-                    values: t.StrSequence,
-                    *,
-                    strategy: c.Infra.TomlMergeMode = c.Infra.TomlMergeMode.REPLACE,
-                    sort: bool = True,
-                ) -> Self:
-                    """Schedule one string-list sync."""
-                    return self._set(
-                        operations=(
-                            *self.state.operations,
-                            FlextInfraModelsDepsToml.DepsToml.ListOp(
-                                key=key,
-                                values=tuple(values),
-                                strategy=strategy,
-                                sort=sort,
-                            ),
-                        )
-                    )
-
-                def deprecated(self, key: str, *sub_path: str) -> Self:
-                    """Schedule the removal of one deprecated key."""
-                    return self._set(
-                        operations=(
-                            *self.state.operations,
-                            FlextInfraModelsDepsToml.DepsToml.RemoveOp(
-                                key=key, table_path=sub_path
-                            ),
-                        )
-                    )
-
-                def nested(
-                    self,
-                    *path: str,
-                    values: t.SequenceOf[t.Pair[str, t.JsonValue]] = (),
-                    lists: t.SequenceOf[t.StrSequencePair] = (),
-                    deprecated_keys: t.StrSequence = (),
-                ) -> Self:
-                    """Append one nested table phase built from inline operations."""
-                    toml = FlextInfraModelsDepsToml.DepsToml
-                    nested_table = toml.PhaseConfig(
-                        name=self.state.name,
-                        root_path=(),
-                        table_path=path,
-                        operations=(
-                            *(toml.SetOp(key=key, value=item) for key, item in values),
-                            *(
-                                toml.ListOp(key=key, values=tuple(entries))
-                                for key, entries in lists
-                            ),
-                            *(toml.RemoveOp(key=key) for key in deprecated_keys),
+            def list(
+                self,
+                key: str,
+                values: t.StrSequence,
+                *,
+                strategy: c.Infra.TomlMergeMode = c.Infra.TomlMergeMode.REPLACE,
+                sort: bool = True,
+            ) -> Self:
+                """Schedule one string-list sync."""
+                return self._set(
+                    operations=(
+                        *self.state.operations,
+                        FlextInfraModelsDepsToml.DepsToml.ListOp(
+                            key=key, values=tuple(values), strategy=strategy, sort=sort
                         ),
                     )
-                    return self._set(
-                        nested_tables=(*self.state.nested_tables, nested_table)
+                )
+
+            def deprecated(self, key: str, *sub_path: str) -> Self:
+                """Schedule the removal of one deprecated key."""
+                return self._set(
+                    operations=(
+                        *self.state.operations,
+                        FlextInfraModelsDepsToml.DepsToml.RemoveOp(
+                            key=key, table_path=sub_path
+                        ),
                     )
+                )
+
+            def nested(
+                self,
+                *path: str,
+                values: t.SequenceOf[t.Pair[str, t.JsonValue]] = (),
+                lists: t.SequenceOf[t.StrSequencePair] = (),
+                deprecated_keys: t.StrSequence = (),
+            ) -> Self:
+                """Append one nested table phase built from inline operations."""
+                toml = FlextInfraModelsDepsToml.DepsToml
+                nested_table = toml.PhaseConfig(
+                    name=self.state.name,
+                    root_path=(),
+                    table_path=path,
+                    operations=(
+                        *(toml.SetOp(key=key, value=item) for key, item in values),
+                        *(
+                            toml.ListOp(key=key, values=tuple(entries))
+                            for key, entries in lists
+                        ),
+                        *(toml.RemoveOp(key=key) for key in deprecated_keys),
+                    ),
+                )
+                return self._set(
+                    nested_tables=(*self.state.nested_tables, nested_table)
+                )
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToml"]

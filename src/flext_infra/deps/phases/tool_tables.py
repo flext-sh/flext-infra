@@ -40,8 +40,8 @@ class FlextInfraToolTablesPhase:
         mypy = self._tool_config.tools.mypy
         replace = c.Infra.TomlMergeMode.REPLACE
         builder = (
-            m.Infra.DepsToml.PhaseConfig
-            .Builder("mypy")
+            m.Infra.DepsToml
+            .PhaseConfigBuilder("mypy")
             .table(c.Infra.MYPY)
             .deprecated("strict_concatenate")
             .value(
@@ -83,7 +83,7 @@ class FlextInfraToolTablesPhase:
     ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
         """Build every policy table for one project classification."""
         tools = self._tool_config.tools
-        phase = m.Infra.DepsToml.PhaseConfig.Builder
+        phase = m.Infra.DepsToml.PhaseConfigBuilder
         merge, replace = c.Infra.TomlMergeMode.MERGE, c.Infra.TomlMergeMode.REPLACE
         pytest, coverage = tools.pytest, tools.coverage
         codespell = (

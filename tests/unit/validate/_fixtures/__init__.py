@@ -10,20 +10,13 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .base import TestsFlextInfraValidateNamespaceBase
-    from .project import TestsFlextInfraNamespaceProjectFixture
 
 
-__all__: tuple[str, ...] = (
-    "TestsFlextInfraNamespaceProjectFixture",
-    "TestsFlextInfraValidateNamespaceBase",
-)
+__all__: tuple[str, ...] = ("TestsFlextInfraValidateNamespaceBase",)
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
-        MappingProxyType({
-            ".base": ("TestsFlextInfraValidateNamespaceBase",),
-            ".project": ("TestsFlextInfraNamespaceProjectFixture",),
-        }),
+        MappingProxyType({".base": ("TestsFlextInfraValidateNamespaceBase",)}),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
     )

@@ -6,7 +6,7 @@ import ast
 from collections.abc import Iterable
 from pathlib import Path
 
-from flext_infra import p, t
+from flext_infra import c, p, t
 
 from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
@@ -71,9 +71,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         result = resolver(pymodule, offset)
         return result if isinstance(result, p.Infra.RopeImportedName) else None
 
-    @classmethod
+    @staticmethod
     def scope_at(
-        cls, pymodule: p.Infra.RopePyModule, offset: int
+        pymodule: p.Infra.RopePyModule,
+        offset: int,
+        *,
+        declaration_line: int | None = None,
     ) -> p.Infra.RopeScope:
         """Return Rope's lexical scope for a source position."""
         scope = pymodule.get_scope()
@@ -85,6 +88,15 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         if not isinstance(result, p.Infra.RopeScope):
             msg = "Rope lexical lookup returned an invalid scope"
             raise TypeError(msg)
+        if (
+            result.get_start() == declaration_line
+            and result.get_kind() != c.Infra.RopeScopeKind.MODULE
+        ):
+            parent = getattr(result, "parent", None)
+            if not isinstance(parent, p.Infra.RopeScope):
+                msg = "Rope declaration has no defining scope"
+                raise TypeError(msg)
+            return parent
         return result
 
     @classmethod
@@ -92,7 +104,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         cls, scope: p.Infra.RopeScope, expression: ast.expr
     ) -> p.Infra.RopePyName | None:
         """Resolve an identifier chain without evaluating Python expressions."""
-        if not isinstance(expression, ast.Name | ast.Attribute):
+        primary = expression
+        while isinstance(primary, ast.Attribute):
+            primary = primary.value
+        if not isinstance(primary, ast.Name):
             return None
         result = cls._runtime_callable("rope.base.evaluate", "eval_node")(
             scope, expression

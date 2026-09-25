@@ -19,6 +19,7 @@ class FlextInfraProtocolsPromoted(Protocol):
 
     """cosmos-command registry protocol namespace."""
 
+    @runtime_checkable
     class PromotedParam(Protocol):
         """Promoted command parameter contract."""
 
@@ -42,6 +43,7 @@ class FlextInfraProtocolsPromoted(Protocol):
         def choices(self) -> t.VariadicTuple[str]:
             """Choices."""
 
+    @runtime_checkable
     class PromotedCommand(Protocol):
         """Promoted command contract discovered from a script header."""
 
@@ -89,6 +91,7 @@ class FlextInfraProtocolsPromoted(Protocol):
         def rules(self) -> t.VariadicTuple[str]:
             """Rules."""
 
+    @runtime_checkable
     class PromotedAliasTarget(Protocol):
         """Resolved command alias target contract."""
 
@@ -100,6 +103,7 @@ class FlextInfraProtocolsPromoted(Protocol):
         def what(self) -> str:
             """What."""
 
+    @runtime_checkable
     class PromotedWorkspaceSpec(Protocol):
         """Repository facts contract the promoted framework consumes."""
 
@@ -123,6 +127,7 @@ class FlextInfraProtocolsPromoted(Protocol):
         def consumer_scripts_root(self) -> Path | None:
             """Consuming workspace scripts root when vendored as a submodule."""
 
+    @runtime_checkable
     class PromotedRegistry(Protocol):
         """In-memory promoted command registry discovered from script headers."""
 

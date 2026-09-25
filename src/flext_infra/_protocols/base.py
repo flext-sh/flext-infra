@@ -216,6 +216,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Repository-owned types beyond the Gas City baseline."""
             ...
 
+    @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
@@ -253,6 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Workspace whose active interpreter provenance must be validated."""
             ...
 
+    @runtime_checkable
     class CodegenConform(Protocol):
         """Complete state and collaboration contract for conform partials."""
 

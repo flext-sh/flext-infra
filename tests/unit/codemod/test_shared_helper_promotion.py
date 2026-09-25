@@ -1,0 +1,164 @@
+"""Public runtime contracts for promotion of shared test behavior."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import pytest
+from flext_tests import tm
+
+from flext_infra import infra
+from flext_infra.transformers import publish_semantic_file_plans
+from tests import c, m, t, u
+
+
+class TestsFlextInfraSharedHelperPromotion:
+    """Keep real consumers working while the original declaration changes owner."""
+
+    @staticmethod
+    def _workspace(tmp_path: Path, *, reexport: bool) -> t.Triple[Path, Path, str]:
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        tier = root / c.Infra.DIR_TESTS
+        suite = tier / "unit"
+        fixtures = suite / "_fixtures"
+        fixtures.mkdir(parents=True)
+        for directory in (tier, suite, fixtures):
+            (directory / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        stem = f"{tier.name.title()}{u.derive_class_stem(root.name)}"
+        owner = f"{stem}Utilities"
+        (tier / c.Infra.UTILITIES_PY).write_text(
+            f"class {owner}:\n"
+            "    class Tests:\n"
+            "        @staticmethod\n"
+            "        def label() -> str:\n"
+            "            return 'shared behavior'\n\n"
+            f"u = {owner}\n__all__ = ['{owner}', 'u']\n",
+            encoding="utf-8",
+        )
+        helper = f"{stem}Helper"
+        source = fixtures / "behavior.py"
+        source.write_text(
+            "from tests import u\n\n"
+            f"class {helper}:\n"
+            "    def value(self) -> str:\n"
+            "        return u.Tests.label()\n\n"
+            f"__all__ = ['{helper}']\n",
+            encoding="utf-8",
+        )
+        module = "._fixtures" if reexport else "._fixtures.behavior"
+        (suite / "consumer.py").write_text(
+            f"from {module} import {helper} as Shared\n\n"
+            "class Consumer(Shared):\n"
+            "    def read(self) -> str:\n"
+            "        return self.value()\n",
+            encoding="utf-8",
+        )
+        (suite / "unrelated.py").write_text(
+            f"class {helper}:\n"
+            "    def value(self) -> str:\n"
+            "        return 'homonym'\n\n"
+            f"VALUE = {helper}().value()\n",
+            encoding="utf-8",
+        )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        return root, source, helper
+
+    @staticmethod
+    def _run(root: Path, probe: str) -> str:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.pathsep.join([str(root), *sys.path])
+        outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=root, env=env))
+        return outcome.stdout.strip()
+
+    @pytest.mark.parametrize("reexport", [False, True])
+    def test_original_identity_moves_without_effects_until_publication(
+        self, tmp_path: Path, *, reexport: bool
+    ) -> None:
+        root, source, helper = self._workspace(tmp_path, reexport=reexport)
+        probe = (
+            "from tests.unit.consumer import Consumer\n"
+            "from tests.unit.unrelated import VALUE\n"
+            "print(Consumer().read(), VALUE)\n"
+        )
+        before = self._run(root, probe)
+        sources = {
+            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
+        }
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+            tm.that(edits, empty=False)
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                        rope_workspace=rope,
+                        sources=proposed,
+                    )
+                ),
+                empty=True,
+            )
+        for path, original in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=original)
+        plans = tuple(
+            m.Infra.SemanticFilePlan(
+                project=root,
+                path=edit.file_path,
+                before=(
+                    state := tm.ok(
+                        u.Cli.atomic_read_binary_file_state(
+                            edit.file_path, required=True
+                        )
+                    )
+                ),
+                desired_content=edit.updated_source.encode(),
+                desired_mode=state.mode,
+                changes=edit.changes,
+            )
+            for edit in edits
+        )
+        tm.ok(publish_semantic_file_plans(plans, repository_root=root))
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(self._run(root, probe), eq=before)
+        identity = (
+            "from tests import u\n"
+            "from tests.unit.consumer import Consumer\n"
+            "from tests.unit._fixtures import behavior\n"
+            f"assert Consumer.__bases__[0] is u.{helper}\n"
+            f"assert not hasattr(behavior, '{helper}')\n"
+            "print(Consumer().read())\n"
+        )
+        tm.that(self._run(root, identity), eq="shared behavior")
+        tm.that(source.exists(), eq=True)
+
+    def test_two_declared_utilities_owners_fail_without_changing_consumers(
+        self, tmp_path: Path
+    ) -> None:
+        root, _, _ = self._workspace(tmp_path, reexport=True)
+        tier = root / c.Infra.DIR_TESTS
+        u.Tests.write_lazy_init_namespace_module(
+            tier / "other.py", class_name="OtherUtilities", alias="u"
+        )
+        sources = {
+            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
+        }
+        with infra.rope_workspace(root) as rope:
+            tm.fail(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+                has="requires one utilities facade",
+            )
+        for path, original in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=original)

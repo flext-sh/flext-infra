@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from .facade_owners import FlextInfraUtilitiesSemanticCutoverFacadeOwners
     from .family_flatten import FlextInfraUtilitiesSemanticFamilyFlatten
     from .family_references import FlextInfraUtilitiesSemanticFamilyReferences
+    from .family_type_references import FlextInfraUtilitiesSemanticFamilyTypeReferences
     from .nesting import FlextInfraUtilitiesSemanticCutoverNesting
     from .nesting_cst import FlextInfraUtilitiesSemanticCutoverNestingCst
     from .nesting_references import FlextInfraUtilitiesSemanticCutoverNestingReferences
@@ -40,6 +41,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSemanticFamilyFlatten",
     "FlextInfraUtilitiesSemanticFamilyReferences",
+    "FlextInfraUtilitiesSemanticFamilyTypeReferences",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -54,6 +56,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".facade_owners": ("FlextInfraUtilitiesSemanticCutoverFacadeOwners",),
             ".family_flatten": ("FlextInfraUtilitiesSemanticFamilyFlatten",),
             ".family_references": ("FlextInfraUtilitiesSemanticFamilyReferences",),
+            ".family_type_references": (
+                "FlextInfraUtilitiesSemanticFamilyTypeReferences",
+            ),
             ".nesting": ("FlextInfraUtilitiesSemanticCutoverNesting",),
             ".nesting_cst": ("FlextInfraUtilitiesSemanticCutoverNestingCst",),
             ".nesting_references": (

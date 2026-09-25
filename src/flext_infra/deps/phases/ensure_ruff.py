@@ -138,8 +138,8 @@ class FlextInfraEnsureRuffConfigPhase:
                 u.normalize_to_json_value(detected_packages),
             ))
         return (
-            m.Infra.DepsToml.PhaseConfig
-            .Builder("ruff")
+            m.Infra.DepsToml
+            .PhaseConfigBuilder("ruff")
             .table(c.Infra.RUFF)
             .deprecated(c.Infra.EXTEND)
             .list(c.Infra.EXCLUDE, sorted({*ruff_cfg.exclude, *workspace_exclusions}))

@@ -46,8 +46,8 @@ class FlextInfraEnsurePackagingPhase:
             f"{c.Infra.DEFAULT_SRC_DIR}/{module}.py" for module in root_modules
         )
         builder = (
-            m.Infra.DepsToml.PhaseConfig
-            .Builder("packaging")
+            m.Infra.DepsToml
+            .PhaseConfigBuilder("packaging")
             .table("hatch", "build", "targets")
             .nested("wheel", lists=(("packages", package_paths),))
             .nested(
