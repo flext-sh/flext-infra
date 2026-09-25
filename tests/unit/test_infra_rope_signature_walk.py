@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import ast
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from rope.refactor import patchedast
 
-from flext_infra import p
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import u
 
@@ -168,4 +165,3 @@ class TestsFlextInfraRopeSignatureWalk:
             rewritten = resource.read()
 
         tm.that(rewritten, eq=expected)
-

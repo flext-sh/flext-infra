@@ -585,7 +585,6 @@ split-on-trailing-comma = false
   "subprocess-without-shell-equals-true",
   "suspicious-subprocess-import",
 ]
-"src/flext_infra/_utilities/_rope/**/*.py" = ["private-member-access"]
 
 [tool.tomlsort]
 all = true

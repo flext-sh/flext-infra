@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from pathlib import Path
     from types import TracebackType
 
