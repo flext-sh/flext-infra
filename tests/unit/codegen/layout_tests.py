@@ -39,7 +39,10 @@ class TestsFlextInfraCodegenLayout:
                     ),
                 ],
                 cwd=project,
-                env={"FLEXT_INFRA_CONFIG_DIR": str(FlextInfraConfig.ssot_config_dir())},
+                # Consumer-owned configuration discovery is cwd-based: the
+                # probe must not inherit the host SSOT config dir, so the
+                # fixture's own org overlay is the only override in play.
+                remove_env_keys=("FLEXT_INFRA_CONFIG_DIR",),
             )
         )
         tm.that(
