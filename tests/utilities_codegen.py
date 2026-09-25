@@ -13,6 +13,7 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import c, m, p, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
+from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 
 class TestsFlextInfraUtilitiesCodegenMixin:
@@ -149,6 +150,11 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             repository_root, project_name
         )
+        # Semantic publication authenticates every changed path against its Git
+        # checkout.  The shared workspace fixture therefore owns a real,
+        # repository-local identity instead of letting individual tests depend
+        # on whichever checkout happens to contain ``tmp_path``.
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository_root)
         return (repository_root, package_root)
 
     @staticmethod

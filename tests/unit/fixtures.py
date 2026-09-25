@@ -316,6 +316,7 @@ def mod_workspace(tmp_path: Path) -> Path:
                 "\n"
                 "from __future__ import annotations\n"
                 "\n"
+                "from flext_core import t\n"
                 "\n"
                 "class _FixtureInfra:\n"
                 '    """Stand-in infra namespace owning every name the fixture uses."""\n'
