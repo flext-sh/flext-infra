@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from importlib.metadata import requires
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,12 +33,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         ) -> t.StrSequence: ...
 
         def _resolve_inherited_alias_source(
-            self,
-            package_names: t.StrSequence,
-            alias_name: str,
-            *,
-            current_pkg: str,
-            environment_packages: t.StrSequence = (),
+            self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str
         ) -> str: ...
 
     def _resolve_aliases(
@@ -82,8 +76,8 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         alias_names = tuple(
             dict.fromkeys(
                 name
-                for package_name in (*inherited_packages, *environment_packages)
-                for name in self._published_package_abi(package_name)
+                for package_name in inherited_packages
+                for name in self._export_names_for_package(package_name)
                 if name.isidentifier() and name.islower() and not name.startswith("_")
             )
         )
@@ -96,80 +90,12 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             if existing is not None and existing[0] != current_pkg:
                 continue
             package_name = self._resolve_inherited_alias_source(
-                inherited_packages,
-                alias_name,
-                current_pkg=current_pkg,
-                environment_packages=environment_packages,
+                inherited_packages, alias_name, current_pkg=current_pkg
             )
             if package_name and package_name != current_pkg:
                 lazy_map[alias_name] = (package_name, alias_name)
             elif existing is not None and existing[0] == current_pkg:
                 del lazy_map[alias_name]
-
-    def _published_package_abi(self, package_name: str) -> frozenset[str]:
-        """Return the names a package's on-disk initializer actually serves.
-
-        The initializer — generated or hand-written — is the runtime ABI a
-        fresh import resolves against; inherited-alias discovery reads it
-        as-is rather than the declared ``__all__`` superset, because a module
-        may re-export a name its package root never publishes.
-        """
-        package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            package_name
-        ) or u.Infra.declared_package_dir(package_name)
-        if package_dir is None:
-            return frozenset()
-        init_path = package_dir / c.Infra.INIT_PY
-        if not init_path.is_file():
-            return frozenset()
-        return frozenset(
-            u.Infra.public_export_names_source(
-                init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            )
-        )
-
-    def _declared_dependency_closure_packages(self, pkg_dir: Path) -> t.StrSequence:
-        """Return the project's flext dependency closure as importable packages.
-
-        A standalone plan cannot walk a facade parent's own ancestry (the rope
-        index covers only the scanned project), so inherited alias discovery and
-        declarer election would see a smaller package universe than a workspace
-        plan and elect whichever facade merely re-exports a letter. The project's
-        declared dependency closure names the same packages in every mode; sorted
-        deterministically, it lets discovery and declarer election resolve
-        identical owners for standalone and workspace plans.
-        """
-
-        def installed_dependencies(name: str) -> t.StrSequence:
-            return tuple(
-                dependency
-                for raw_requirement in requires(name) or ()
-                if (dependency := u.Infra.dep_name(raw_requirement, active_only=True))
-                is not None
-            )
-
-        project_root = u.Infra.project_root(pkg_dir)
-        if project_root is None:
-            return ()
-        pyproject_path = project_root / "pyproject.toml"
-        if not pyproject_path.is_file():
-            return ()
-        payload = u.Infra.pyproject_payload(pyproject_path.resolve())
-        ordered = u.Infra.dependency_order(
-            u.Infra.declared_dependency_names_from_payload(payload),
-            dependencies=installed_dependencies,
-            prefix=c.Infra.PKG_PREFIX_HYPHEN,
-        )
-        packages = {name.replace("-", "_") for name in ordered}
-        index = self.rope_workspace.workspace_index
-        return tuple(
-            sorted(
-                package_name
-                for package_name in packages
-                if package_name in index.package_dir_by_name
-                or u.Infra.declared_package_dir(package_name) is not None
-            )
-        )
 
     def _resolve_transitive_parent_packages(
         self, package_names: t.StrSequence

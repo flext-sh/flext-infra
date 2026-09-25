@@ -20,22 +20,7 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import cli
-    from flext_tests import (
-        active_rules,
-        api,
-        discover_repository_root,
-        install_local_packages,
-        load_infra_report,
-        split_csv,
-        td,
-        tf,
-        tk,
-        tm,
-        tv,
-    )
-
-    from flext_core import core, d, e, h, lazy_attribute, r, x
+    from flext_cli import d, e, h, r, x
 
     from . import (
         check,
@@ -505,8 +490,6 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
-    "active_rules",
-    "api",
     "c",
     "check",
     "codegen",
@@ -516,7 +499,6 @@ __all__: tuple[str, ...] = (
     "d",
     "deps",
     "detectors",
-    "discover_repository_root",
     "docs",
     "docs_main",
     "e",
@@ -524,9 +506,6 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
-    "install_local_packages",
-    "lazy_attribute",
-    "load_infra_report",
     "m",
     "main",
     "maintenance",
@@ -540,14 +519,8 @@ __all__: tuple[str, ...] = (
     "services",
     "settings",
     "source_name",
-    "split_csv",
     "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
     "transformers",
-    "tv",
     "u",
     "validate",
     "workspace",
@@ -841,21 +814,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("cli",),
-            "flext_core": ("core", "d", "e", "h", "lazy_attribute", "r", "x"),
-            "flext_tests": (
-                "active_rules",
-                "api",
-                "discover_repository_root",
-                "install_local_packages",
-                "load_infra_report",
-                "split_csv",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-            ),
+            "flext_cli": ("d", "e", "h", "r", "x"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
