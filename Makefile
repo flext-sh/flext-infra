@@ -663,17 +663,6 @@ _activated-test: _builtin_require_environment
 
 
 
-test-full: _builtin_require_workspace
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-test-full
-
-.PHONY: _activated-test-full
-_activated-test-full: _builtin_require_environment
-
-	$(call RUN_PUBLIC,test-full)
-
-
-
-
 fmt: _builtin_require_workspace
 	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fmt
 
