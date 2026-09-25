@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraConfig, m
+from flext_infra import FlextInfraConfig, c, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from tests import u
 from tests.unit.codegen.layout_fixture import (
@@ -81,7 +81,7 @@ class TestsFlextInfraCodegenLayout:
         config_dir.mkdir(exist_ok=True)
         tm.ok(
             u.Cli.yaml_dump(
-                config_dir / FlextInfraConfig.ORG_OVERRIDES_FILENAME,
+                config_dir / c.Infra.CODEGEN_ORG_OVERRIDES_FILENAME,
                 declaration.model_dump(mode="json", exclude_none=True),
             )
         )
