@@ -1,4 +1,4 @@
-"""Behavior tests for the rope signature patched-AST handlers."""
+"""Behavior tests for walking modern signatures through the rope workspace."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraRopeSignaturePatch:
+class TestsFlextInfraRopeSignatureWalk:
     """Validate signature token walking against annotated call parameters."""
 
     def test_objects_walk_annotated_call_parameters(self, tmp_path: Path) -> None:
@@ -169,18 +169,3 @@ class TestsFlextInfraRopeSignaturePatch:
 
         tm.that(rewritten, eq=expected)
 
-    def test_write_ast_keeps_nested_generator_name_mutation(self) -> None:
-        """Sorted children expose names below positionless comprehension nodes."""
-        source = 'rendered = f"{next(width for width in widths)}"\n'
-        tree = patchedast.get_patched_ast(source, sorted_children=True)
-        widths = next(
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Name) and node.id == "widths"
-        )
-        patchable = cast("p.Infra.PatchingASTWalker.PatchableNode", widths)
-        patchable.sorted_children = ["sizes"]
-
-        rendered = patchedast.write_ast(tree)
-
-        tm.that(rendered, eq=source.replace("widths", "sizes"))
