@@ -2,6 +2,10 @@ Infra:
   codegen:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
+    # Projections no template renders any more; generation removes the
+    # generated copy from every consumer (renamed: install-git-hooks.sh ->
+    # validate-git-hook.sh).
+    retired_projections: [.github/scripts/install-git-hooks.sh]
 
     # Operator law 2026-09-22: the pyproject template declares `.cli:main`
     # for every distribution while most member cli facades predate that
@@ -978,7 +982,7 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
-      - path: .github/scripts/install-git-hooks.sh
+      - path: .github/scripts/validate-git-hook.sh
         owner: codegen
         policy: full
         mode: 493 # 0o755
@@ -1384,11 +1388,9 @@ Infra:
             - "!.opencode/**"
             - "!/config/"
             - "!.claude/CLAUDE.md"
-            - "!.claude/settings.json"
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-            - "!.claude/settings.local.json"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace]
           patterns:
@@ -1518,8 +1520,8 @@ Infra:
       # the live workspace topology and can never diverge from each other.
       # `.claude/*` re-blocked the whole directory AFTER the whitelist above
       # had unblocked it, and in gitignore the last matching rule wins — so
-      # every governed provider artifact (.claude/settings.json, the skill
-      # surfaces) became untrackable. Local session data is named explicitly
+      # every governed provider artifact (the skill surfaces) became
+      # untrackable. Local session data is named explicitly
       # instead of re-blocking the directory that the whitelist just opened.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
@@ -1571,16 +1573,17 @@ Infra:
       # machine-written settings/hooks surface and its digest sidecar is
       # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
-          # settings.json stays out of this runtime-state block: the governed
-          # provider-projections section (and its tests) own it as a tracked
-          # governance artifact, and in gitignore the last matching rule wins,
-          # so a name block here silently re-ignored the whitelisted file.
+          # Provider settings files are generated per machine (hook commands
+          # and paths of the operator who ran the catalog generator); tracked,
+          # they hand every other clone hooks that do not exist there.
           patterns:
             - ".github/hooks/"
             - "*/.hooks.json.agents-governance.json"
             - ".claude/*.agents-governance.json"
             - ".gemini/*.agents-governance.json"
+            - ".claude/settings.json"
             - ".claude/settings.local.json"
+            - ".gemini/settings.json"
         - name: "Operator-private local config overrides"
           patterns:
             - "/config/codegen-overrides.local.yaml"
@@ -1926,9 +1929,9 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
-          profiles: [workspace]
+        - source: base/.github/scripts/validate-git-hook.sh.j2
+          destination: .github/scripts/validate-git-hook.sh
+          profiles: [workspace, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/flext-law-loop.sh.j2
