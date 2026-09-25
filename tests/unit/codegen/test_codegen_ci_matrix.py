@@ -732,6 +732,7 @@ class TestsFlextInfraCodegenCiMatrix:
             "!README.md",
             "!uv.lock",
             "!.mise.toml",
+            "!mise.lock",
             "!bin/",
             "!bin/mise",
             "!bin/mise.cmd",

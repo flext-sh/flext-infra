@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -791,45 +792,74 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(invocation, has=f"--gates {gates} --projects .")
         tm.that(invocation, lacks="--apply")
 
-    def test_dependency_upgrade_scopes_to_declared_project_locks(
-        self, tmp_path: Path
-    ) -> None:
-        """Upgrade exactly the declared project locks through the deps verb."""
-        project_root, _repository_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
-        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        # The deps dispatch chain is validated behaviorally:
-        # the generated Makefile routes `make deps` through
-        # _builtin_deps_upgrade which locks every declared project
-        # with --upgrade --refresh (branch-tracked git sources re-read
-        # their metadata per operator 2026-09-14), modernizes via
-        # the typed owner, then verifies with --check.
-        tm.that(makefile, has="_builtin-deps: _builtin_deps_upgrade")
-        tm.that(makefile, has="--upgrade --refresh")
-        tm.that(makefile, has="--refresh")
-        tm.that(makefile, has="--check")
-        tm.that(makefile, has="--rewrite-constraints")
-        tm.that(makefile, lacks="--constraint-policy")
-        tm.that(makefile, has="_run_for_all_projects,--check")
+    @staticmethod
+    def _recipe_targets_containing(makefile: str, needle: str) -> set[str]:
+        """Return every rule target whose recipe (not comments) carries *needle*."""
+        targets: set[str] = set()
+        current: str | None = None
+        continued = False
+        for line in makefile.splitlines():
+            if line.startswith("\t") or continued:
+                if current is not None and not line.lstrip().startswith("#"):
+                    if needle in line:
+                        targets.add(current)
+                continued = line.endswith("\\")
+                continue
+            continued = False
+            header = re.match(r"^([A-Za-z0-9_.$()%-]+)\s*:(?![=:])", line)
+            current = header.group(1) if header else None
+        return targets
 
-    def test_dependency_upgrade_runs_with_unrelated_environment_input(
-        self, tmp_path: Path
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_upg_is_the_only_resolver_and_setup_installs_frozen(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
-        """Unrelated ambient input cannot divert the declared dependency operation."""
+        """Operator law 2026-09-24: only `upg` resolves and writes the locks.
+
+        The generated Makefile confines every uv upgrade to the `upg`
+        lifecycle and every `mise lock --bump` to the shared bootstrap gated by
+        a switch that only `upg` sets; `setup` syncs `--locked`, and the
+        generated `.mise.toml` makes mise install exactly what the lock pins.
+        """
         project_root, _repository_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
+            tmp_path, profile, bootstrap=True
         )
-        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        # Unrelated `NAME=value` on the make command line is inert
-        # (operator law 2026-09-14: the Makefile validates no input).
-        # The deps verb still routes to its declared implementation
-        # and runs the full declaration-driven upgrade scope.
-        tm.that(makefile, has="_builtin-deps: _builtin_deps_upgrade")
-        tm.that(makefile, has="--upgrade --refresh")
-        tm.that(makefile, has="--check")
-        tm.that(makefile, has="--rewrite-constraints")
-        tm.that(makefile, lacks="--constraint-policy")
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(
+            self._recipe_targets_containing(makefile, "--upgrade"),
+            eq={"_upg_lifecycle"},
+        )
+        tm.that(
+            self._recipe_targets_containing(makefile, "lock --bump"),
+            eq={"_bootstrap_setup_tools"},
+        )
+        tm.that(makefile, has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then')
+        resolve_assignments = re.findall(
+            r"^(?:([\w-]+): )?TOOL_BOOTSTRAP_RESOLVE :=[ ]?(.*)$",
+            makefile,
+            flags=re.MULTILINE,
+        )
+        tm.that(sorted(resolve_assignments), eq=[("", ""), ("upg", "1")])
+        tm.that(makefile, has="upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle")
+        sync_flags = re.search(r"^UV_SYNC_FLAGS := (.*)$", makefile, re.MULTILINE)
+        assert sync_flags is not None
+        tm.that(sync_flags.group(1), has="--locked")
+        tm.that(sync_flags.group(1), lacks="--upgrade")
+
+        mise_toml = u.Cli.toml_mapping_from_text(
+            (project_root / c.Infra.MISE_TOML_FILENAME).read_text(encoding="utf-8")
+        )
+        assert mise_toml is not None
+        settings = mise_toml.get("settings")
+        tool_config = mise_toml.get("tool_config")
+        assert isinstance(settings, Mapping)
+        assert isinstance(tool_config, Mapping)
+        tm.that(settings.get("lockfile"), eq=True)
+        tm.that(settings.get("locked"), eq=True)
+        tm.that(tool_config.get("locked"), eq=True)
 
     def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
@@ -872,7 +902,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
             # is executed through `mise exec`, so nothing needs an ambient mise
             # and nothing hand-assembles a managed PATH any more.
             'mise_exec project "$$latest_mise" -C "$$project_root" install --yes',
-            "upgrade --no-prune python",
             '"$$latest_mise" -C "$$project_root" exec -- env',
             "SETUP_DIRENV=$$direnv_executable",
             'desired_python=$$("$(SETUP_MISE)" -C "$(PROJECT_ROOT)" which python)',
@@ -894,6 +923,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
+            "upgrade --no-prune python",
         ):
             tm.that(makefile, lacks=forbidden)
         checkout_command = re.search(
@@ -906,15 +936,18 @@ class TestsFlextInfraCodegenMakeEnvironment:
     def test_generated_dependency_upgrade_projects_lock_floors(
         self, tmp_path: Path
     ) -> None:
-        """Make owns lock upgrade, open-floor projection, and final resolution."""
+        """`upg` owns lock upgrade, open-floor projection, and final resolution."""
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
-        tm.that(makefile, has="deps modernize")
-        tm.that(makefile, has="--rewrite-constraints")
-        tm.that(makefile, has="--upgrade --refresh")
+        for needle in ("deps modernize", "--rewrite-constraints", "--upgrade --refresh"):
+            tm.that(
+                self._recipe_targets_containing(makefile, needle),
+                eq={"_upg_lifecycle"},
+            )
+        tm.that(makefile, has="_run_for_all_projects,--check")
         tm.that(makefile, lacks="--constraint-policy")
 
     def test_workspace_without_local_members_retains_external_flext_sources(
@@ -1076,7 +1109,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
-        tm.that(makefile, has="_builtin-deps: _builtin_deps_upgrade")
+        tm.that(makefile, has="upg: _bootstrap_setup_tools")
         tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
         tm.that(makefile, has="_builtin-fix: _builtin_fix_all")
         tm.that(makefile, has="_builtin-fix-enforcement: _builtin_fix_enforcement")
