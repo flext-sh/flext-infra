@@ -254,7 +254,7 @@ class TestsFlextInfraCodegenMiseArtifacts:
         tm.ok(result, eq=True)
 
     def test_latest_selectors_validate_without_resolution(self, tmp_path: Path) -> None:
-        """The unlocked fleet declares moving selectors resolved at setup time."""
+        """Moving selectors validate offline; only `make upg` resolves them."""
         root = self._project(tmp_path / "project", selector="npm:jscpd")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({

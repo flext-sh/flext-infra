@@ -219,6 +219,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # bd base otherwise.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    repository_root_rel=self._repository_root_rel(workspace),
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
                     scratch_home_relative=(codegen.toolchain.scratch_home_relative),

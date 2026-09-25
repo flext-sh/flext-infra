@@ -76,12 +76,45 @@ executada na cidade, recuperou a vinculação; a prova foi uma leitura real com
 `direnv exec <rig> bd show <id> --json`. Não recrie metadata ou bancos manualmente para
 contornar essa validação.
 
-As correções mais recentes do operador exigem provisionamento e atualização
-exclusivamente por `make setup`, dependências Git nos tips das branches de integração
-declaradas e remoção de `APPLY`, `uv.lock` e `mise.lock` em todos os produtores e
-consumidores. Corrija o responsável do setup e regenere pelo `make gen`; instalações
-manuais não substituem o ciclo. Ignorar um lock no Git não remove o contrato se setup,
-deps, build ou release ainda o recriam ou leem.
+As correções mais recentes do operador (2026-09-24) declaram `latest` na configuração e
+fazem de `make upg` o único verbo que resolve versões novas e grava os `uv.lock` e
+`mise.lock` versionados. `make setup`, `make gen` e `make fmt` nunca atualizam: instalam
+congelados a partir desses locks, que é o caminho do CI. Dependências Git seguem os tips
+das branches de integração declaradas e `APPLY` continua removido. Corrija o responsável
+do setup ou do `upg` e regenere pelo `make gen`; instalações manuais não substituem o
+ciclo.
+
+O mesmo `make upg` grava `mise.version`, que fixa o runtime do Mise usado pelo
+bootstrap. Versione esse pin, `mise.lock` e os grafos nativos referenciados em
+`.mise/locks/` juntos; para ferramentas npm, o grafo contém `package.json` e
+`aube-lock.yaml`. Esses arquivos também entram no contexto Docker e nas fixtures de
+checkout. O setup congelado exige o grafo e seu digest válido, conforme o
+[contrato oficial de sidecars do Mise](https://mise.jdx.dev/dev-tools/mise-lock.html#native-dependency-sidecars).
+Caches, instalações e grafos de locks locais continuam fora do Git. Não formate nem
+edite o payload nativo: uma alteração dos bytes exige nova resolução pelo `make upg`. As
+plataformas declaradas por `toolchain.mise_lockfile_platforms` compõem o lock junto com
+a plataforma da máquina que executa a atualização, sempre incluída pelo Mise. Como
+`MISE_SAFE` ignora os settings locais, o bootstrap encaminha `MISE_LOCKFILE`,
+`MISE_LOCKED` e `MISE_LOCKFILE_PLATFORMS`, derivados do mesmo responsável tipado.
+`MISE_LOCKED` ativa também a proteção global contra regravação durante a instalação:
+`tool_config.locked` sozinho não protege essa fronteira. A prova de setup usa storage
+Mise vazio e verifica os bytes dos locks, do pin e de todo o grafo nativo depois da
+instalação.
+
+Depois de resolver o release do Mise, o bootstrap mantém essa versão em todas as
+chamadas da mesma operação e no lifecycle recursivo. O `upg` inicializa os gitlinks
+declarados antes de resolver os locks Python. Os demais verbos que dependem do runtime
+recusam um pin ausente ou não resolvido antes da ativação; `help` e `clean` continuam
+sendo operações locais sem essa dependência.
+
+A credencial segue a precedência oficial do GitHub CLI: `GH_TOKEN`, `GITHUB_TOKEN` e,
+para o bootstrap de rede, a credencial armazenada pelo `gh`. Um token explícito funciona
+antes de instalar o `gh`. Operações locais já provisionadas não exigem login ou uma
+consulta de autenticação na rede. A fonte selecionada mantém seu erro nativo; um token
+inválido nunca provoca nova tentativa anônima ou troca de fonte. O Make deriva
+`MISE_GITHUB_TOKEN` dessa escolha e conserva o valor somente no ambiente. Jobs de CI que
+invocam Make recebem `GITHUB_TOKEN`; containers recebem a variável ou o secret do
+BuildKit explicitamente.
 
 ## Registrar antes de ampliar o trabalho
 
@@ -115,8 +148,14 @@ passando pelo `make mod`.
 Um WIP publicado preserva o trabalho e permite revisão. Conclusão exige os critérios do
 Bead ativo, integração e runtime medido no SHA integrado. Exceções registradas em
 handoffs históricos, incluindo aceite temporário com gates customizados vermelhos, não
-transferem para uma revisão ou Bead posterior. O contrato atual exige os verbos
-canônicos sem warnings ou findings residuais.
+transferem para uma revisão ou Bead posterior. A autorização de 24/09/2026 em
+`flext-xp6ec`, sob `flext-itpd1.3`, suspende somente `duplication`, `codemod`,
+`boundary`, `namespace` e `runtime-census`. O responsável tipado
+`make.check_gate_suspensions` registra gate, autoridade e motivo. O Make emite um recibo
+explícito de cada suspensão, sem contabilizá-la como aprovação. Local, CI e hooks
+derivam seus gates do mesmo conjunto ativo, preservando a partição de tipagem já
+declarada. Os validadores conservam sua severidade e os gates funcionais ativos
+continuam exigindo execução sem warnings ou findings residuais.
 
 O handoff final relaciona PRs, commits de merge e prova após integração aos Beads. Se
 algo permanece pendente, o texto deve nomeá-lo e oferecer a próxima ação executável, sem
