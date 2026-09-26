@@ -182,7 +182,10 @@ class TestsFlextInfraRopeSignaturePatch:
             rope.rope_project.do(changes)
             rewritten = resource.read()
 
-        tm.that(scope, none=False)
+        # A Rope scope is not a payload value; its observable identity is the
+        # enclosing function's scope kind.
+        assert scope is not None
+        tm.that(scope.get_kind(), eq=c.Infra.RopeScopeKind.FUNCTION)
         tm.that(rewritten, eq=expected)
 
     def test_write_ast_keeps_nested_generator_name_mutation(self) -> None:
