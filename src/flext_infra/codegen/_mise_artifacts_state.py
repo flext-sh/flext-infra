@@ -591,62 +591,15 @@ class FlextInfraMiseArtifactsState:
                 )
                 if authorized.failure:
                     return r[bool].from_failure(authorized)
-        # The intermediate temporary trees above the transaction roots (the
-        # state root and its mise-artifacts child) carry no manifest: a created
-        # directory receipt owns only that directory, never descendants
-        # discovered after an interrupted stage. Authenticating every recorded
-        # tree and resident here keeps foreign content from driving recovery
-        # effects that only their cleanup would later reject, leaving a
-        # partially applied rollback behind a retained journal.
-        transaction_roots = {
-            project.transaction_root
-            for project in files.transaction_participants(layout)
-            if project.transaction_root is not None
-        }
-        recorded_trees = {
-            item.path: item
-            for item in journal.directories
-            if item.disposition == "temporary"
-        }
-        for path in sorted(recorded_trees):
-            entry = recorded_trees[path]
-            created = entry.created
-            if created is None:
-                # Not a created-temporary record: nothing to authenticate.
-                continue
-            target = files.resolve_transaction(
-                layout, path, purpose="journaled recovery tree"
-            )
-            if target.failure:
-                return r[bool].from_failure(target)
-            if target.value in transaction_roots or not target.value.exists():
-                continue
-            physical = target.value.lstat()
-            if not stat.S_ISDIR(physical.st_mode) or cls._is_reparse(physical):
-                return r[bool].fail(f"journaled recovery tree is not physical: {path}")
-            if (physical.st_dev, physical.st_ino) != (created.device, created.inode):
-                return r[bool].fail(f"journaled recovery tree identity changed: {path}")
-            try:
-                residents = tuple(target.value.iterdir())
-            except OSError as exc:
-                return r[bool].fail_op(f"inspect journaled recovery tree: {path}", exc)
-            for resident in residents:
-                relative = files.transaction_relative(layout, resident)
-                if relative.failure:
-                    return r[bool].from_failure(relative)
-                descendant = recorded_trees.get(relative.value)
-                if descendant is None or descendant.created is None:
-                    return r[bool].fail(
-                        f"unregistered recovery-tree resident exists: {relative.value}"
-                    )
-                resident_state = resident.lstat()
-                if (resident_state.st_dev, resident_state.st_ino) != (
-                    descendant.created.device,
-                    descendant.created.inode,
-                ):
-                    return r[bool].fail(
-                        f"journaled recovery tree identity changed: {relative.value}"
-                    )
+        # Foreign residents inside recorded temporary trees never block the
+        # restore itself. The journal receipt authenticates the destinations;
+        # staging residue revokes only the cleanup, which still fails closed
+        # after the rollback (guarded deletion refuses unmanifested or
+        # non-empty trees), so a mixed recovery retains the journal and the
+        # foreign bytes instead of stranding published destinations behind
+        # them. Pre-restore authentication of every recorded tree and resident
+        # aborted the rollback before it started, which replaced the tested
+        # mixed outcome with a lost publication.
         return r[bool].ok(True)
 
     @classmethod
