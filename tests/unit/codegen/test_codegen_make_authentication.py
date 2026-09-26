@@ -118,9 +118,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         gh_bin = tmp_path / "gh-without-credential"
         u.Tests.write_executable(
             gh_bin / "gh",
-            "#!/bin/sh\n"
-            "printf 'no oauth token found for github.com\\n' >&2\n"
-            "exit 1\n",
+            "#!/bin/sh\nprintf 'no oauth token found for github.com\\n' >&2\nexit 1\n",
         )
         if verb == "status":
             tm.ok(u.Tests.create_python_environment(project_root))

@@ -34,7 +34,9 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             encoding="utf-8",
         )
         process = tm.ok(
-            u.Tests.run_isolated_make(["--no-print-directory", "help"], cwd=project_root)
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "help"], cwd=project_root
+            )
         )
         tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)
         return dict(
