@@ -142,34 +142,6 @@ backend = "github:kucherenko/jscpd"
 specifiers = ["latest"]
 
 [tools."github:kucherenko/jscpd".options]
-asset_pattern = "jscpd-darwin-arm64.tar.gz"
-
-[tools."github:kucherenko/jscpd"."platforms.macos-arm64"]
-checksum = "sha256:c629e1d2c7a6c41230a0f3bdd72d5ee69996013527a19eabbb5f0e845249dfbc"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634218"
-provenance = "github-attestations"
-
-[[tools."github:kucherenko/jscpd"]]
-version = "5.3.2"
-backend = "github:kucherenko/jscpd"
-specifiers = ["latest"]
-
-[tools."github:kucherenko/jscpd".options]
-asset_pattern = "jscpd-darwin-x64.tar.gz"
-
-[tools."github:kucherenko/jscpd"."platforms.macos-x64"]
-checksum = "sha256:435ae3f0c4d6256ac84199494c45c31fc04ba1165358151c2c1a1b036f1c523d"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-darwin-x64.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634215"
-provenance = "github-attestations"
-
-[[tools."github:kucherenko/jscpd"]]
-version = "5.3.2"
-backend = "github:kucherenko/jscpd"
-specifiers = ["latest"]
-
-[tools."github:kucherenko/jscpd".options]
 asset_pattern = "jscpd-linux-arm64-gnu.tar.gz"
 
 [tools."github:kucherenko/jscpd"."platforms.linux-arm64"]
@@ -190,6 +162,34 @@ asset_pattern = "jscpd-linux-x64-gnu.tar.gz"
 checksum = "sha256:97259f222ea7f6d51a0f2faa98ed5889430233e0fb8d2c129f23d84aff4b93b2"
 url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-linux-x64-gnu.tar.gz"
 url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634214"
+provenance = "github-attestations"
+
+[[tools."github:kucherenko/jscpd"]]
+version = "5.3.2"
+backend = "github:kucherenko/jscpd"
+specifiers = ["latest"]
+
+[tools."github:kucherenko/jscpd".options]
+asset_pattern = "jscpd-darwin-arm64.tar.gz"
+
+[tools."github:kucherenko/jscpd"."platforms.macos-arm64"]
+checksum = "sha256:c629e1d2c7a6c41230a0f3bdd72d5ee69996013527a19eabbb5f0e845249dfbc"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634218"
+provenance = "github-attestations"
+
+[[tools."github:kucherenko/jscpd"]]
+version = "5.3.2"
+backend = "github:kucherenko/jscpd"
+specifiers = ["latest"]
+
+[tools."github:kucherenko/jscpd".options]
+asset_pattern = "jscpd-darwin-x64.tar.gz"
+
+[tools."github:kucherenko/jscpd"."platforms.macos-x64"]
+checksum = "sha256:435ae3f0c4d6256ac84199494c45c31fc04ba1165358151c2c1a1b036f1c523d"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634215"
 provenance = "github-attestations"
 
 [[tools."github:kucherenko/jscpd"]]

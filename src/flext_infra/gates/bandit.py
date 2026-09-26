@@ -40,6 +40,25 @@ class FlextInfraBanditGate(FlextInfraGate):
         return [c.Infra.DEFAULT_SRC_DIR]
 
     @override
+    def _empty_targets_result(
+        self, project_dir: Path, started: float
+    ) -> m.Infra.GateExecution:
+        """No ``src`` tree means no Python package surface to audit.
+
+        A package:false workspace root declares no importable package, so
+        bandit has no legitimate target there; absence is topology, not a
+        lost scan.
+        """
+        return self._neutral_skip_result(
+            project_dir,
+            started,
+            message=(
+                f"{self.gate_id}: no src tree — package:false project declares "
+                "no Python package surface to audit"
+            ),
+        )
+
+    @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:

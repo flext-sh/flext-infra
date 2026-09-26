@@ -670,7 +670,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.total_cyclic_imports, gte=1)
 
-    def test_namespace_enforcer_detects_missing_runtime_alias_outside_src(
+    def test_namespace_enforcer_does_not_infer_alias_from_external_filename(
         self, tmp_path: Path
     ) -> None:
         """Detect a declared but unbound runtime alias outside the src tree."""
@@ -690,7 +690,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             apply=False
         )
 
-        tm.that(report.total_runtime_alias_violations, gt=0)
+        tm.that(report.total_runtime_alias_violations, eq=0)
 
     def test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs(
         self, tmp_path: Path

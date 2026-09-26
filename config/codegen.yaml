@@ -2,6 +2,10 @@ Infra:
   codegen:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
+    # Projections no template renders any more; generation removes the
+    # generated copy from every consumer (renamed: install-git-hooks.sh ->
+    # validate-git-hook.sh).
+    retired_projections: [.github/scripts/install-git-hooks.sh]
 
     # Operator law 2026-09-22: the pyproject template declares `.cli:main`
     # for every distribution while most member cli facades predate that
@@ -63,12 +67,13 @@ Infra:
       gitleaks_version: latest
       kubeconform_version: latest
       # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
-      # false: the fleet runs unlocked and current — tools resolve at setup
-      # time against the newest published release; no committed mise.lock.
-      # (The integration lane pinned-lock state diverged from the newer-mise
-      # aube lock graph; unlocked mode is the adopted fleet contract here.)
-      mise_lockfile: false
-      mise_locked: false
+      # true (operator lock law 2026-09-24, reaffirmed 2026-09-25 over #860):
+      # the committed lock written by `make upg` pins every tool and setup
+      # installs frozen from it. The lock is read only by the pinned mise
+      # release `upg` recorded in mise.version, so an older ambient mise
+      # never parses a newer lockfile format.
+      mise_lockfile: true
+      mise_locked: true
       # Projection: .mise.toml [settings] lockfile_platforms. The platforms the
       # CI matrix runs on (ubuntu, macos, windows runners, x64 and arm64);
       # `make upg` resolves these plus the current host, which mise always adds.
@@ -979,10 +984,6 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
-      - path: .github/scripts/validate-git-hook.sh
-        owner: codegen
-        policy: full
-        mode: 493 # 0o755
       - path: .github/scripts/flext-law-loop.sh
         owner: codegen
         policy: full
@@ -1388,7 +1389,6 @@ Infra:
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-            - "!.claude/settings.local.json"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace]
           patterns:
@@ -1518,7 +1518,8 @@ Infra:
       # the live workspace topology and can never diverge from each other.
       # `.claude/*` re-blocked the whole directory AFTER the whitelist above
       # had unblocked it, and in gitignore the last matching rule wins — so
-      # every governed provider artifact (the skill surfaces) became untrackable. Local session data is named explicitly
+      # every governed provider artifact (the skill surfaces) became
+      # untrackable. Local session data is named explicitly
       # instead of re-blocking the directory that the whitelist just opened.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
@@ -1570,17 +1571,17 @@ Infra:
       # machine-written settings/hooks surface and its digest sidecar is
       # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
-          # Provider settings files wire hooks through machine-absolute paths,
-          # so they are named here; this block follows the provider-tree
-          # whitelists and the last matching gitignore rule wins.
+          # Provider settings files are generated per machine (hook commands
+          # and paths of the operator who ran the catalog generator); tracked,
+          # they hand every other clone hooks that do not exist there.
           patterns:
             - ".github/hooks/"
-            - ".claude/settings.json"
-            - ".gemini/settings.json"
             - "*/.hooks.json.agents-governance.json"
             - ".claude/*.agents-governance.json"
             - ".gemini/*.agents-governance.json"
+            - ".claude/settings.json"
             - ".claude/settings.local.json"
+            - ".gemini/settings.json"
         - name: "Operator-private local config overrides"
           patterns:
             - "/config/codegen-overrides.local.yaml"
@@ -1924,11 +1925,6 @@ Infra:
         - source: base/.github/scripts/check-cqrs-compliance.sh.j2
           destination: .github/scripts/check-cqrs-compliance.sh
           profiles: [workspace]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/validate-git-hook.sh.j2
-          destination: .github/scripts/validate-git-hook.sh
-          profiles: [workspace, standalone]
           delegate: render
           overwrite: false
         - source: base/.github/scripts/flext-law-loop.sh.j2

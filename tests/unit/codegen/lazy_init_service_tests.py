@@ -286,6 +286,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated, contains="TestsFlextTestsConstants")
         tm.that(generated, contains="TestsFlextTestsUtilities")
         tm.that(generated, contains="install_lazy_exports")
+        tm.that(generated, lacks='"tm"')
         tm.that(generated, lacks="TestsCollectedNoise")
         tm.that(generated, lacks=".unit.test_noise")
         child_generated = unit_root.joinpath(c.Infra.INIT_PY).read_text(

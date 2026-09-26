@@ -106,10 +106,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         planned = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
         # The planner contract keeps every failure in the Result (see
         # plan_semantic_cutover); helper promotion raises per rejected move.
+        # A promotion ValueError IS the rejected move's loud contract (one
+        # utilities facade, unshadowed destination, unchanged bindings), so it
+        # propagates instead of demoting to a Result the caller would retry.
         promotion = planned.create_from_callable(
             lambda: cls._test_helper_edits(rope_workspace, sources)
         )
         if promotion.failure:
+            error = promotion.exception
+            if isinstance(error, ValueError):
+                raise error
             return promotion
         promoted = promotion.value
         proposed = dict(sources)
