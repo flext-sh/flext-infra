@@ -225,6 +225,9 @@ class TestsFlextInfraCodegenMakeLockContract:
                 (verb.name, None)
                 for verb in config.Infra.codegen.make.verbs
                 if verb.name not in {"help", "clean", "upg"}
+                # The rendered Makefile is standalone: it declares only the
+                # verbs whose operation applies to that profile.
+                and c.Infra.MakeProfile.STANDALONE in verb.profiles
             ),
             ("status", ""),
             ("status", " \n"),

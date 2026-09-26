@@ -110,20 +110,9 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
-        conformed = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
-        )
-        if conformed.failure:
-            return r[bool].from_failure(conformed)
-        locked = u.Cli.run_checked(
-            [c.Infra.UV, "lock", "--project", str(root)], cwd=root
-        )
-        if locked.failure:
-            return locked
+        settled = FlextInfraCodegenConform.settle_repository(root)
+        if settled.failure:
+            return settled
         projects = u.Infra.resolve_projects(root, ctx.project_names)
         if projects.failure:
             return r[bool].from_failure(projects)
