@@ -351,16 +351,11 @@ class TestsFlextInfraCodegenMakeEnvironment:
             if name == "MISE_INSTALLS_DIR"
         )
         tm.that(any(install_root.iterdir()), eq=True)
-        lock_paths = (
-            c.Infra.UV_LOCK_FILENAME,
-            c.Infra.MISE_LOCK_FILENAME,
-            c.Infra.MISE_VERSION_PIN_FILENAME,
-            ".mise/locks",
-        )
+        resolved_locks = self._locks(template)
         ci_checkout = (
             receipts / c.Tests.MAKE_TEMPLATE_CI_CHECKOUT / profile.value / template.name
         )
-        tm.that(self._lock_drift(ci_checkout, lock_paths), eq="")
+        tm.that(self._locks(ci_checkout), eq=resolved_locks)
 
         # A new dependency declaration makes the committed lock stale: setup
         # fails instead of re-resolving, and the lock stays untouched.
@@ -390,17 +385,19 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
         )
         tm.that(u.Cli.process_succeeded(stale.outcome), eq=False)
-        tm.that(self._lock_drift(checkout, lock_paths), eq="")
+        tm.that(self._locks(checkout), eq=resolved_locks)
 
     @staticmethod
-    def _lock_drift(root: Path, paths: t.StrSequence) -> str:
-        """Return every changed or new committed-lock path, untracked included."""
-        return tm.ok(
-            u.Cli.capture(
-                ["git", "status", "--porcelain", "--untracked-files=all", "--", *paths],
-                cwd=root,
-            )
-        ).strip()
+    def _locks(root: Path) -> t.MappingKV[str, bytes]:
+        """Return every lock artifact ``make upg`` owns, keyed by relative path."""
+        sidecars = root / ".mise" / "locks"
+        paths = (
+            root / c.Infra.UV_LOCK_FILENAME,
+            root / c.Infra.MISE_LOCK_FILENAME,
+            root / c.Infra.MISE_VERSION_PIN_FILENAME,
+            *(path for path in sidecars.rglob("*") if path.is_file()),
+        )
+        return {path.relative_to(root).as_posix(): path.read_bytes() for path in paths}
 
     def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
         self, tmp_path: Path

@@ -257,10 +257,10 @@ def _write_receipt(path: Path, output: p.Cli.CommandOutput) -> None:
 
 
 def _provision_make_template(profile: c.Infra.MakeProfile) -> None:
-    """Resolve one generated consumer through ``make upg`` and commit its locks.
+    """Resolve one generated consumer through ``make upg`` once per run.
 
     The upgrade runs under a foreign uv environment with a declared post-upg
-    hook, and a checkout of the committed result installs every locked tool
+    hook, and a checkout of the resolved result installs every locked tool
     into cold CI storage; both receipts are what the consumers assert.
     """
     parent = _run_scoped("make-templates", profile.value)
@@ -284,9 +284,6 @@ def _provision_make_template(profile: c.Infra.MakeProfile) -> None:
     _write_receipt(parent / _MAKE_UPGRADE_RECEIPT, upgrade)
     if not u.Cli.process_succeeded(upgrade.outcome):
         return
-    # The generated ignore rules keep the environment out of the commit.
-    u.Tests.git_bootstrap(root, ("add", "-A"))
-    u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
     checkout = u.Tests.resolved_make_checkout(
         root, parent / c.Tests.MAKE_TEMPLATE_CI_CHECKOUT, profile
     )
