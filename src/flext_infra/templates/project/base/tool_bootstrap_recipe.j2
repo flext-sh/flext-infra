@@ -8,9 +8,27 @@
 		caller_xdg_data_home="$$caller_home/.local/share"; \
 	fi; \
 	caller_path="$$PATH"; \
-{% for name in bootstrap.passthrough_environment if name != "PATH" -%}
-	caller_{{ name | lower }}="$({{ name }})"; \
+{% for name, value in bootstrap.fixed_environment if name == "MISE_LOCKFILE_PLATFORMS" -%}
+	mise_lockfile_platforms="{{ value }}"; \
 {% endfor -%}
+{% for name in bootstrap.passthrough_environment if name != "PATH" -%}
+	caller_{{ name | lower }}="{{ '$${' ~ name ~ ':-}' }}"; \
+{% endfor -%}
+	# Only ``upg`` resolves the Mise release; every other lifecycle launches \
+	# exactly the release ``upg`` recorded in the committed pin file. \
+	mise_pin_file="$$project_root/{{ bootstrap.version_pin_file }}"; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" != "1" ]; then \
+		if [ ! -f "$$mise_pin_file" ]; then \
+			printf 'ERROR: missing %s; make upg resolves and records the Mise release\n' "$$mise_pin_file" >&2; \
+			exit 2; \
+		fi; \
+		mise_pin=$$(cat "$$mise_pin_file"); \
+		if [ -n "$$caller_mise_version" ] && [ "$${caller_mise_version#v}" != "$$mise_pin" ]; then \
+			printf 'ERROR: MISE_VERSION=%s conflicts with %s=%s\n' "$$caller_mise_version" "$$mise_pin_file" "$$mise_pin" >&2; \
+			exit 2; \
+		fi; \
+		caller_mise_version="$$mise_pin"; \
+	fi; \
 	if [ -z "$$mise_storage_root" ]; then \
 		if [ -n "$$caller_xdg_data_home" ]; then \
 			mise_storage_root="$$caller_xdg_data_home/mise"; \
@@ -51,7 +69,7 @@
 	case "$$project_root/" in \
 		"$$mise_storage_root/"*) printf 'ERROR: persistent Mise storage must not contain the checkout: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
 	esac; \
-	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %} "$$mise_storage_root/bootstrap"; do \
+	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %} "$$mise_storage_root/{{ bootstrap.runtime_install_relative_template.rsplit('/', 1)[0] }}"; do \
 		if [ -L "$$persistent_path" ]; then \
 			printf 'ERROR: persistent Mise path must not be a symlink: %s\n' "$$persistent_path" >&2; exit 2; \
 		fi; \
@@ -83,10 +101,16 @@
 			project) mise_config_argument= ;; \
 			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
 		esac; \
+		mise_runtime_path=; \
+		if [ -n "$$caller_mise_version" ]; then \
+			mise_runtime_path="$$mise_storage_root/{{ bootstrap.runtime_install_relative_template | replace('{release}', '${caller_mise_version#v}') | replace('$', '$$') }}"; \
+			if [ "$(OS)" = "Windows_NT" ]; then mise_runtime_path="$$mise_runtime_path.exe"; fi; \
+		fi; \
 		env -i \
-{% for name, value in bootstrap.fixed_environment -%}
+{% for name, value in bootstrap.fixed_environment if name != "MISE_LOCKFILE_PLATFORMS" -%}
 			'{{ name }}={{ value }}' \
 {% endfor -%}
+			$${mise_lockfile_platforms:+"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms"} \
 {% for name, relative in bootstrap.transient_environment -%}
 			"{{ name }}=$$scratch/{{ relative }}" \
 {% endfor -%}
@@ -100,6 +124,7 @@
 			$${caller_{{ name | lower }}:+"{{ name }}=$$caller_{{ name | lower }}"} \
 {% endfor -%}
 			$${mise_config_argument:+"$$mise_config_argument"} \
+			$${mise_runtime_path:+"MISE_INSTALL_PATH=$$mise_runtime_path"} \
 			"$$@"; \
 	}; \
 	mise_checked() { \
@@ -129,17 +154,20 @@
 		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
 		*) runtime_release=$${receipt_runtime%% *} ;; \
 	esac; \
-	case "$$runtime_release" in \
-		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2 ;; \
-	esac; \
-	old_ifs=$$IFS; IFS=.; set -- $$runtime_release; IFS=$$old_ifs; \
-	if [ "$$#" -ne 3 ]; then \
+	if ! printf '%s\n' "$$runtime_release" | grep -Eq '^{{ bootstrap.resolved_release_pattern }}$$'; then \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		printf '%s\n' "$$runtime_release" > "$$mise_pin_file"; \
+	elif [ "$$runtime_release" != "$$mise_pin" ]; then \
+		printf 'ERROR: launched Mise %s differs from the pinned %s\n' "$$runtime_release" "$$mise_pin" >&2; \
+		exit 2; \
+	fi; \
+	caller_mise_version="$$runtime_release"; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"
 {%- endmacro %}
 
-{% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle, bootstrap, make) -%}
+{% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle, bootstrap, make, mise_lockfile_platforms, qlty_selector, jscpd_selector, prettier_selector, scc_selector, waza_selector) -%}
 .PHONY: {{ target }}
 
 {{ target }}:
@@ -151,17 +179,16 @@
 		exit 2; \
 	fi; \
 	{{ mise_runtime_bootstrap(project_root, mise, bootstrap) }}; \
-	for stale_mise_lock in "$$project_root/mise.lock" "$$project_root/.mise.lock"; do \
-		if [ -f "$$stale_mise_lock" ]; then \
-			printf 'WARN: removing stale Mise lock %s (fleet policy is unlocked; a committed lock only blocks provenance re-resolution)\n' "$$stale_mise_lock" >&2; \
-			rm -f "$$stale_mise_lock"; \
-		fi; \
-	done; \
+	# Only ``upg`` resolves. Artifact tools own a five-platform URL/checksum \
+	# matrix; npm owns one platform-independent Aube dependency graph. \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		mise_checked "$$scratch/lock-artifacts.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump python uv kubectl helm kind direnv taplo ast-grep gitleaks "{{ scc_selector }}" kubeconform node go make "{{ qlty_selector }}" "{{ jscpd_selector }}" "{{ waza_selector }}"; \
+		mise_lockfile_platforms=; \
+		mise_checked "$$scratch/lock-npm-prettier.log" mise_exec project "$$latest_mise" -C "$$project_root" lock --bump "{{ prettier_selector }}"; \
+		mise_lockfile_platforms="{{ mise_lockfile_platforms | join(',') }}"; \
+	fi; \
+	# ``locked`` mode installs exactly what the committed mise.lock pins. \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
-	# ``mise install`` may reuse an installed fuzzy match. Upgrade Python inside \
-	# the configured minor line so ``python = \"3.13\"`` always resolves the \
-	# newest available 3.13 patch without rewriting the project selector. \
-	mise_checked "$$scratch/python-upgrade.log" mise_exec project "$$latest_mise" -C "$$project_root" upgrade --no-prune python; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \
@@ -188,6 +215,8 @@
 {% endfor -%}
 	fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
+	mise_runtime_path="$$mise_storage_root/{{ bootstrap.runtime_install_relative_template | replace('{release}', '${runtime_release}') | replace('$', '$$') }}"; \
+	if [ "$(OS)" = "Windows_NT" ]; then mise_runtime_path="$$mise_runtime_path.exe"; fi; \
 	env \
 {% for name, relative in bootstrap.persistent_environment -%}
 		"{{ name }}=$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}" \
@@ -195,6 +224,8 @@
 		"GIT_CEILING_DIRECTORIES=$$project_parent" \
 		"MISE_CEILING_PATHS=$$project_parent" \
 		"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
+		"MISE_VERSION=$$runtime_release" \
+		"MISE_INSTALL_PATH=$$mise_runtime_path" \
 		"$$latest_mise" -C "$$project_root" exec -- env \
 		"SETUP_DIRENV=$$direnv_executable" \
 		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \

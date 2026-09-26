@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from tests import c, t, u
@@ -472,9 +473,9 @@ class TestsFlextInfraLazyInitHelpers:
         # to own it, and until then the generator propagates, never infers.
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
         )
-        tm.that(init_content, has="FlextMeltanoConstants as c")
+        tm.that(init_content, lacks="FlextMeltanoConstants as c")
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
@@ -556,16 +557,21 @@ class TestsFlextInfraLazyInitHelpers:
             nearest.mkdir(parents=True)
             owner.mkdir(parents=True)
             nearest.joinpath(c.Infra.INIT_PY).write_text(
-                '__all__ = ("c",)\nc = object()\nraise RuntimeError("must not import")\n',
+                "from owner_parent import r\n\n"
+                "class NearestParentConstants:\n    pass\n\n"
+                "c = NearestParentConstants\n"
+                '__all__ = ("c", "r")\nraise RuntimeError("must not import")\n',
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
             owner.joinpath(c.Infra.INIT_PY).write_text(
-                '__all__ = ("r",)\nr = object()\nraise RuntimeError("must not import")\n',
+                "class OwnerParentResult:\n    pass\n\n"
+                "r = OwnerParentResult\n"
+                '__all__ = ("r",)\nraise RuntimeError("must not import")\n',
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
             package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
                 "from nearest_parent import c\n"
-                "from owner_parent import r\n\n"
+                "\n"
                 "class FlextChildConstants(c):\n"
                 "    pass\n\n"
                 '__all__ = ("FlextChildConstants",)\n',
@@ -575,8 +581,8 @@ class TestsFlextInfraLazyInitHelpers:
             tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
             generated = self._generated_init(package_root)
 
-            tm.that(generated, has='"owner_parent": ("r",)')
-            tm.that(generated, lacks='"nearest_parent": ("r",)')
+            tm.that(generated, has='"nearest_parent": ("c", "r")')
+            tm.that(generated, lacks='"owner_parent": ("r",)')
         finally:
             sys.path.remove(str(installed_root))
 
@@ -664,14 +670,16 @@ class TestsFlextInfraLazyInitHelpers:
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitConstants:\n"
             "    pass\n\n"
-            '__all__: list[str] = ["TestsFlextDemoUnitConstants"]\n',
+            "c = TestsFlextDemoUnitConstants\n\n"
+            '__all__: list[str] = ["TestsFlextDemoUnitConstants", "c"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_unit_root.joinpath(c.Infra.MODELS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitModels:\n"
             "    pass\n\n"
-            '__all__: list[str] = ["TestsFlextDemoUnitModels"]\n',
+            "m = TestsFlextDemoUnitModels\n\n"
+            '__all__: list[str] = ["TestsFlextDemoUnitModels", "m"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
@@ -679,8 +687,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        for public_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
+        for public_name in ("c", "m"):
             tm.that(init_content, has=f'"{public_name}"')
+        for undeclared_name in set(c.Infra.TEST_RUNTIME_ALIAS_TARGETS) - {"c", "m"}:
+            tm.that(init_content, lacks=f'"{undeclared_name}"')
         tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
@@ -710,6 +720,44 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
+
+    def test_independent_packages_accept_same_export_name_without_warnings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A public name belongs to its package, not to a workspace-wide census."""
+        repository_root, package_root = self._workspace(tmp_path)
+        other_package = package_root.with_name("independent_package")
+        other_package.mkdir()
+        other_package.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        for package in (package_root, other_package):
+            package.joinpath("holder.py").write_text(
+                "class SharedPackageDeclaration:\n    pass\n\n"
+                '__all__ = ["SharedPackageDeclaration"]\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
+        captured = capsys.readouterr()
+        tm.that(captured.out + captured.err, lacks="WARN:")
+
+    def test_unpublished_module_homonyms_do_not_compete_for_exports(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Independent implementation declarations need no global renaming."""
+        repository_root, package_root = self._workspace(tmp_path)
+        for module in ("first", "second"):
+            package_root.joinpath(f"{module}.py").write_text(
+                "class ModuleLocalDeclaration:\n    pass\n\n__all__: list[str] = []\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
+        captured = capsys.readouterr()
+        tm.that(captured.out + captured.err, lacks="WARN:")
 
     def test_duplicate_public_export_fails_before_generation(
         self, tmp_path: Path

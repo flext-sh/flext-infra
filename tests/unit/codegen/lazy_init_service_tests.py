@@ -286,7 +286,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated, contains="TestsFlextTestsConstants")
         tm.that(generated, contains="TestsFlextTestsUtilities")
         tm.that(generated, contains="install_lazy_exports")
-        tm.that(generated, contains='"tm"')
+        tm.that(generated, lacks='"tm"')
         tm.that(generated, lacks="TestsCollectedNoise")
         tm.that(generated, lacks=".unit.test_noise")
         child_generated = unit_root.joinpath(c.Infra.INIT_PY).read_text(
@@ -621,6 +621,3 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((nested_io_root / c.Infra.INIT_PY).exists(), eq=True)
         tm.that(check_result.success, eq=True)
         tm.that(check_service.modified_files, eq=())
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]

@@ -63,7 +63,13 @@ if TYPE_CHECKING:
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-    from .codegen.pipeline import FlextInfraCodegenPipeline
+    from .codegen.pipeline import (
+        FlextInfraCodegenLazyInitGenerationMixin,
+        FlextInfraCodegenPipeline,
+        FlextInfraCodegenPipelineStagesMixin,
+        FlextInfraMiseArtifactsFiles,
+        publish_file_plan,
+    )
     from .codegen.project_new import FlextInfraCodegenProjectNew
     from .codegen.protocol_models import FlextInfraCodegenProtocolModels
     from .codegen.py_typed import FlextInfraCodegenPyTyped
@@ -152,7 +158,6 @@ if TYPE_CHECKING:
     from .gates.markdown import FlextInfraMarkdownGate
     from .gates.markdown_code import FlextInfraMarkdownCodeGate
     from .gates.markdown_code_sources import (
-        TEST_SKIP_MARKER,
         source_name,
         write_docstring_sources,
         write_fenced_block_sources,
@@ -277,7 +282,6 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "TEST_SKIP_MARKER",
     "CliDispatchService",
     "CliRouteBase",
     "CliRouteService",
@@ -301,10 +305,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
@@ -378,6 +384,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownFormatGate",
     "FlextInfraMarkdownGate",
     "FlextInfraMarkdownGateBase",
+    "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -501,6 +508,7 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
+    "publish_file_plan",
     "r",
     "read_ignore_patterns",
     "refactor",
@@ -548,7 +556,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
-            ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
+            ".codegen.pipeline": (
+                "FlextInfraCodegenLazyInitGenerationMixin",
+                "FlextInfraCodegenPipeline",
+                "FlextInfraCodegenPipelineStagesMixin",
+                "FlextInfraMiseArtifactsFiles",
+                "publish_file_plan",
+            ),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
             ".codegen.protocol_models": ("FlextInfraCodegenProtocolModels",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
@@ -651,7 +665,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.markdown": ("FlextInfraMarkdownGate",),
             ".gates.markdown_code": ("FlextInfraMarkdownCodeGate",),
             ".gates.markdown_code_sources": (
-                "TEST_SKIP_MARKER",
                 "source_name",
                 "write_docstring_sources",
                 "write_fenced_block_sources",

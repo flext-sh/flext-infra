@@ -91,31 +91,8 @@ class FlextInfraProtocolsBase(Protocol):
     # These declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
-    class MiseToolSpec(Protocol):
-        """One exact mise backend selector and immutable version."""
-
-        @property
-        def selector(self) -> str:
-            """Canonical mise backend selector."""
-            ...
-
-        @property
-        def version(self) -> str:
-            """Exact tool version installed by mise."""
-            ...
-
-    @runtime_checkable
-    class ProtectedMiseToolSpec(MiseToolSpec, Protocol):
-        """Fleet-owned mise distribution identity."""
-
-        @property
-        def selector_patterns(self) -> t.StrSequence:
-            """Glob patterns identifying equivalent distributions."""
-            ...
-
-    @runtime_checkable
-    class BeadsToolSpec(ProtectedMiseToolSpec, Protocol):
-        """Canonical Beads distribution and Gas City projection contract."""
+    class BeadsToolSpec(Protocol):
+        """Beads ledger and Gas City projection contract."""
 
         @property
         def endpoint_origin(self) -> str:
@@ -239,6 +216,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Repository-owned types beyond the Gas City baseline."""
             ...
 
+    @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
 
@@ -276,6 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Workspace whose active interpreter provenance must be validated."""
             ...
 
+    @runtime_checkable
     class CodegenConform(Protocol):
         """Complete state and collaboration contract for conform partials."""
 
@@ -548,26 +527,6 @@ class FlextInfraProtocolsBase(Protocol):
         def delegate(self) -> str:
             """Canonical template rendering delegate."""
             ...
-
-    @classmethod
-    def is_public_python_module_file(cls, file_name: str) -> bool:
-        """Return whether a file names a public Python module."""
-        ...
-
-    @staticmethod
-    def runtime_singleton_export(file_name: str) -> str | None:
-        """Return the public singleton exported by a runtime module."""
-        ...
-
-    @staticmethod
-    def ordered_namespace_exports(*, export_names: t.StrSequence) -> t.StrSequence:
-        """Order root-package exports with alias hierarchy preserved."""
-        ...
-
-    @classmethod
-    def matches_project_namespace_package(cls, package_name: str) -> bool:
-        """Return whether a package is a governed project namespace root."""
-        ...
 
     @runtime_checkable
     class Validator(Protocol):

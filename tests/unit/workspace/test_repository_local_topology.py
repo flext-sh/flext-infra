@@ -229,7 +229,13 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """Ignore every parent input when deriving one child repository."""
         parent = tmp_path / "parent"
-        parent.mkdir()
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            parent,
+            "parent",
+            workspace="parent-workspace",
+            database="parent-database",
+            issue_prefix="parent-prefix",
+        )
         u.Tests.WorktreeFixture.write_gitmodules(parent, ("child",))
         child = parent / "child"
         u.Tests.WorktreeFixture.initialize_governed_project(
@@ -617,6 +623,10 @@ class TestsFlextInfraRepositoryLocalTopology:
             "\tflext-managed = false\n",
             encoding="utf-8",
         )
+        # A root declaring submodules is a workspace; its manifest must agree.
+        _ = u.Tests.write_workspace_manifest(
+            root, "fixture-workspace", role=c.Infra.MakeProfile.WORKSPACE
+        )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
@@ -654,6 +664,10 @@ class TestsFlextInfraRepositoryLocalTopology:
             "\tbranch = develop\n",
             encoding="utf-8",
         )
+        # A root declaring submodules is a workspace; its manifest must agree.
+        _ = u.Tests.write_workspace_manifest(
+            root, "fixture-workspace", role=c.Infra.MakeProfile.WORKSPACE
+        )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
@@ -682,8 +696,10 @@ class TestsFlextInfraRepositoryLocalTopology:
     def test_gitmodule_rejects_unknown_provider_without_raw_url(
         self, tmp_path: Path
     ) -> None:
-        """Reject unknown declared_repository ownership before inspecting its checkout."""
+        """Reject an unknown declared owner without leaking its raw URL."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "unknown-provider")
+        # The detector requires the governed checkout before comparing origins.
+        _ = u.Tests.WorktreeFixture.attach_member_child(root)
         raw_host_marker = "private-submodule-host"
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
@@ -709,6 +725,3 @@ class TestsFlextInfraRepositoryLocalTopology:
         tm.that(first, eq=second)
         tm.that(first.name, eq=u.Tests.provider().name)
         tm.that(first.organization, eq=u.Tests.provider().organization)
-
-
-__all__: list[str] = ["TestsFlextInfraRepositoryLocalTopology"]

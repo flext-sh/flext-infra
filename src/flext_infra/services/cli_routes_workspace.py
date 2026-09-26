@@ -46,7 +46,7 @@ class WorkspaceRoutes(RefactorRoutes):
         )
 
     workspace_routes: ClassVar[
-        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
+        MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
     ] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
         c.Infra.CLI_GROUP_RELEASE: (

@@ -26,7 +26,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     # so the 4-5 redundant _declared_exports calls per policy() hit memory
     # instead of re-reading + re-parsing the same file from disk each time.
     _declared_exports_cache: ClassVar[
-        MutableMapping[str, tuple[int, t.StrSequence]]
+        MutableMapping[str, t.Pair[int, t.StrSequence]]
     ] = {}
 
     @staticmethod
@@ -296,7 +296,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             layout = cls.layout(project_root)
             direct_tier = file_path.parent.parent == project_root
             public_root = layout is not None and file_path.parent == layout.package_dir
-            if direct_tier or public_root:
+            # A stub is never a facade source: Rope loads only Python sources,
+            # and stub law is judged by its own rule.
+            facade_source = file_path.suffix == c.Infra.EXT_PYTHON
+            if facade_source and (direct_tier or public_root):
                 resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
                     rope_project, file_path
                 )
@@ -498,7 +501,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             current_pkg=current_pkg,
         )
         project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
-        if project_root is None:
+        # A stub is never a facade source (Rope loads only Python sources).
+        if project_root is None or file_path.suffix != c.Infra.EXT_PYTHON:
             return policy
         layout = cls.layout(project_root)
         if file_path.parent.parent != project_root and (

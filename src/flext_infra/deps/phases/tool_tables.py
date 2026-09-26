@@ -35,13 +35,13 @@ class FlextInfraToolTablesPhase:
             u.Infra.project_name_from_payload(path, payload).replace("-", "_"),
         })
 
-    def _mypy_phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
+    def _mypy_phase(self) -> m.Infra.DepsToml.PhaseConfig:
         """Build the mypy table: toolchain Python plus config-owned policy."""
         mypy = self._tool_config.tools.mypy
         replace = c.Infra.TomlMergeMode.REPLACE
         builder = (
-            m.Infra.Deps.Toml.PhaseConfig
-            .Builder("mypy")
+            m.Infra.DepsToml
+            .PhaseConfigBuilder("mypy")
             .table(c.Infra.MYPY)
             .deprecated("strict_concatenate")
             .value(
@@ -66,6 +66,7 @@ class FlextInfraToolTablesPhase:
                 {
                     "module": list(entry.modules),
                     "disable_error_code": list(entry.disable_error_codes),
+                    "follow_untyped_imports": entry.follow_untyped_imports,
                 }
                 for entry in mypy.overrides
             ]),
@@ -80,10 +81,10 @@ class FlextInfraToolTablesPhase:
 
     def _phases(
         self, *, first_party: t.StrSequence, project_kind: str
-    ) -> t.SequenceOf[m.Infra.Deps.Toml.PhaseConfig]:
+    ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
         """Build every policy table for one project classification."""
         tools = self._tool_config.tools
-        phase = m.Infra.Deps.Toml.PhaseConfig.Builder
+        phase = m.Infra.DepsToml.PhaseConfigBuilder
         merge, replace = c.Infra.TomlMergeMode.MERGE, c.Infra.TomlMergeMode.REPLACE
         pytest, coverage = tools.pytest, tools.coverage
         codespell = (

@@ -34,7 +34,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[MutableMapping[str, p.Cli.CommandOutput]] = {}
     _python_behavior_cache: ClassVar[
-        MutableMapping[tuple[str, int, int], tuple[tuple[int, int], ...]]
+        MutableMapping[t.Triple[str, int, int], t.VariadicTuple[t.Pair[int, int]]]
     ] = {}
 
     @override

@@ -111,26 +111,28 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     def retired_projection_plans(
         cls, root: Path, profile: c.Infra.MakeProfile
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan removal of generated projections excluded from this profile."""
+        """Plan removal of generated projections this profile no longer renders.
+
+        A projection retires either because its template entry excludes this
+        profile or because no template renders it any more (a renamed or
+        deleted template, declared in ``retired_projections``). Either way only
+        a file carrying the generated marker is removed.
+        """
         planned: list[m.Infra.CodegenFilePlan] = []
-        for filename in config.Infra.codegen.toolchain.retired_dependency_artifacts:
-            path = root / filename
-            if path.is_symlink() or (path.exists() and not path.is_file()):
+        destinations: list[str] = [
+            entry.destination
+            for entry in config.Infra.codegen.templates.entries
+            if profile not in entry.profiles and "{" not in entry.destination
+        ]
+        for retired in config.Infra.codegen.retired_projections:
+            relative = Path(retired)
+            if relative.is_absolute() or ".." in relative.parts:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"Refusing non-file dependency artifact: {path}"
+                    f"retired projection must be a normalized relative path: {retired}"
                 )
-            if not path.exists():
-                continue
-            absent_plan = cls._absent_file_plan(root, path)
-            if absent_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    absent_plan
-                )
-            planned.append(absent_plan.value)
-        for entry in config.Infra.codegen.templates.entries:
-            if profile in entry.profiles or "{" in entry.destination:
-                continue
-            path = root / Path(entry.destination)
+            destinations.append(retired)
+        for destination in destinations:
+            path = root / Path(destination)
             if not path.is_file():
                 continue
             current = u.Cli.files_read_text(path)

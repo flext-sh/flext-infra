@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class FlextInfraEnforcementEvaluation:
     """Collected rule probes and collection failures for one project."""
 
-    violations: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]
+    violations: list[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]]
     failures: list[m.Infra.FailedFix]
 
 
@@ -27,7 +27,7 @@ class FlextInfraEnforcementCollectionBase:
     @staticmethod
     def collect_project_probe(
         project_dir: Path, rule: m.EnforcementRuleSpec
-    ) -> list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]:
+    ) -> list[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]]:
         """Return one project-level probe for gate-backed rules."""
         return [(rule, FlextInfraEnforcementCollectionBase.probe_for_path(project_dir))]
 
@@ -60,8 +60,8 @@ class FlextInfraEnforcementCollectionBase:
 
     def _empty_failure(
         self, project_dir: Path, rule: m.EnforcementRuleSpec, message: str
-    ) -> tuple[
-        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+    ) -> t.Pair[
+        list[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Return a typed empty collection plus one structured failure."""
         return [], [self.collection_failure(project_dir, rule, message)]

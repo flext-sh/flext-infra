@@ -64,13 +64,13 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.raw_output, lacks="Working...")
 
     @pytest.mark.parametrize(
-        ("markdown_text", "config_text", "passed", "codes"),
+        ("markdown_text", "config_text", "findings_block", "codes"),
         [
             # A project with no markdown has nothing to check, so the gate is
             # not applicable and skips neutrally (4dc7027ed).
-            ("", None, True, []),
-            (HEADING_SKIP, None, False, ["MD001"]),
-            ("# Test\n", '{"broken": [', False, ["TOOL_ERROR"]),
+            ("", None, False, []),
+            (HEADING_SKIP, None, True, ["MD001"]),
+            ("# Test\n", '{"broken": [', True, ["TOOL_ERROR"]),
         ],
     )
     def test_markdown_check(
@@ -79,7 +79,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tmp_path: Path,
         markdown_text: str,
         config_text: str | None,
-        passed: bool,
+        findings_block: bool,
         codes: t.StrSequence,
     ) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-project")
@@ -94,11 +94,16 @@ class TestsFlextInfraBanditAndMarkdownGates:
             FlextInfraMarkdownGate,
             tmp_path,
             project_dir,
-            passed=passed,
+            passed=not findings_block,
             issues_len=len(codes),
         )
 
         tm.that([issue.code for issue in result.issues], eq=list(codes))
+        if codes:
+            tm.that(
+                [issue.severity.lower() for issue in result.issues],
+                eq=[str(c.Infra.GateSeverity.ERROR.value)] * len(codes),
+            )
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:
         """A standalone project's gate never crosses its repository boundary."""
@@ -265,6 +270,3 @@ class TestsFlextInfraBanditAndMarkdownGates:
         _ = u.Tests.check_gate_asserting(
             FlextInfraMarkdownGate, tmp_path, project_dir, passed=True, issues_len=0
         )
-
-
-__all__: t.StrSequence = ["TestsFlextInfraBanditAndMarkdownGates"]

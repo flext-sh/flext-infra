@@ -94,6 +94,15 @@ class FlextInfraConfigModelsArtifact:
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        retired_projections: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                description=(
+                    "Repository-relative generated projections that no template "
+                    "renders any more; generation removes them from consumers"
+                )
+            ),
+        ] = ()
         fresh_import_entry_points_warn_only: Annotated[
             bool,
             m.Field(
@@ -626,20 +635,6 @@ class FlextInfraConfigModelsArtifact:
         patterns: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
-        ] = ()
-
-    class CheckPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Quality-gate blocking policy: warning gates report without failing."""
-
-        warning_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description=(
-                    "Gate ids whose findings stay visible as warnings and never "
-                    "block the check verdict"
-                ),
-            ),
         ] = ()
 
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):

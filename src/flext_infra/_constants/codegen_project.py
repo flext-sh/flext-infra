@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
+    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
+
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
@@ -179,6 +182,7 @@ class FlextInfraConstantsCodegenProject:
     WORKSPACE_MANIFEST_FILENAME: ClassVar[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
     UV_LOCK_FILENAME: ClassVar[str] = "uv.lock"
+    MISE_LOCK_FILENAME: ClassVar[str] = "mise.lock"
     GIT_URL_SUFFIX: ClassVar[str] = ".git"
     "Canonical clone-URL suffix every governed RepositoryRef URL carries."
     CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"

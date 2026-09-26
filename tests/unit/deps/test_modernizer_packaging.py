@@ -37,9 +37,26 @@ class TestsFlextInfraDepsModernizerPackaging:
                 )
             )
         if materialize_package:
+            # The declared root keeps its initializer, and the distribution
+            # root package gets a real module with declared exports: the
+            # planner only emits a WRITE plan (the public export contract the
+            # fresh-import validation demands) for a root that publishes at
+            # least one local module.
             tm.ok(
                 u.Cli.atomic_write_text_file(
-                    source_root / root_package / c.Infra.INIT_PY, "VALUE = 1\n"
+                    source_root / root_package / c.Infra.INIT_PY, '"""Fixture."""\n'
+                )
+            )
+            module_root = source_root / "flext_packaging_fixture"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    module_root / "core.py",
+                    'VALUE = 1\n\n__all__: list[str] = ["VALUE"]\n',
+                )
+            )
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    module_root / c.Infra.INIT_PY, '"""Fixture package."""\n'
                 )
             )
         _ = u.Tests.write_standalone_workspace_manifest(
@@ -141,6 +158,3 @@ class TestsFlextInfraDepsModernizerPackaging:
         with pytest.raises(FileNotFoundError, match=f"root {missing_kind}"):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes(), eq=before)
-
-
-__all__: list[str] = ["TestsFlextInfraDepsModernizerPackaging"]

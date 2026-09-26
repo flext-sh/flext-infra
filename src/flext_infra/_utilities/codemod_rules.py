@@ -45,7 +45,7 @@ class FlextInfraUtilitiesCodemodRules:
         runtime_order = cls._provider_order(runtime, indexed)
         if runtime_order.failure:
             return r[m.Infra.CodemodRulePlan].from_failure(runtime_order)
-        providers: list[tuple[str, Path]] = []
+        providers: list[t.Pair[str, Path]] = []
         for name in (*universal_order.value, *runtime_order.value):
             config = universal.get(name) or runtime.get(name)
             if config is None:
@@ -393,7 +393,7 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _declared_expected(
-        document: t.MappingKV[str, object],
+        document: t.MappingKV[str, t.JsonValue],
     ) -> p.Result[t.VariadicTuple[int]]:
         """Read one rule's declared finding-count receipt from its metadata.
 

@@ -72,7 +72,9 @@ class FlextInfraWrapperRootNamespaceRefactor(
     def _scan_workspace(
         self,
     ) -> p.Result[
-        tuple[t.SequenceOf[Path], MutableMapping[str, frozenset[str]], frozenset[str]]
+        t.Triple[
+            t.SequenceOf[Path], MutableMapping[str, frozenset[str]], frozenset[str]
+        ]
     ]:
         """Resolve project paths and discover Python files + runtime alias map."""
         selected_projects: t.StrSequence = (

@@ -224,6 +224,3 @@ class TestsFlextInfraTransactionLease:
             transaction.run_locked(prepare=False, operation=fail)
         tm.that(failure.value is original, eq=True)
         tm.ok(transaction.run_locked(prepare=False, operation=self._ok_path))
-
-
-__all__: list[str] = ["TestsFlextInfraTransactionLease"]

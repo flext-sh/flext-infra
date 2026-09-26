@@ -11,15 +11,12 @@ from __future__ import annotations
 import ast
 from doctest import DocTestParser
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from flext_infra import c, u
 
 if TYPE_CHECKING:
     from flext_infra import t
-
-TEST_SKIP_MARKER: Final[str] = "notest"
-"Existing fence marker (pytest-markdown-docs) opting a block out of code validation."
 
 
 def source_name(relative_posix: str, index: int) -> str:
@@ -31,7 +28,7 @@ def source_name(relative_posix: str, index: int) -> str:
 
 def write_fenced_block_sources(
     project_dir: Path, markdown_files: t.SequenceOf[Path], target_dir: Path
-) -> dict[str, tuple[str, int]]:
+) -> dict[str, t.Pair[str, int]]:
     """Write one temp source per parseable fenced ``python`` block.
 
     Blocks carrying the ``notest`` fence marker are skipped (opted out of
@@ -40,20 +37,19 @@ def write_fenced_block_sources(
     belong to the flext-tests markdown validator (MD-001 with approved
     exceptions), never to this formatting gate.
     """
-    origin_by_source: dict[str, tuple[str, int]] = {}
+    origin_by_source: dict[str, t.Pair[str, int]] = {}
     for md_path in markdown_files:
         relative_posix = md_path.relative_to(project_dir).as_posix()
         content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
         for index, match in enumerate(
             match
             for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
-            if TEST_SKIP_MARKER not in match.group("info")
+            if c.Infra.MARKDOWN_CODE_SKIP_MARKER not in match.group("info")
         ):
             source_text = match.group("code")
-            try:
-                compile(source_text, str(md_path), "exec")
-            except SyntaxError:
-                continue
+            # An invalid block in a python fence is a documentation defect; the
+            # skip marker is the declared way to keep a non-runnable snippet.
+            compile(source_text, str(md_path), "exec")
             name = source_name(relative_posix, index)
             (target_dir / name).write_text(source_text, c.Cli.ENCODING_DEFAULT)
             origin_by_source[name] = (
@@ -65,7 +61,7 @@ def write_fenced_block_sources(
 
 def write_docstring_sources(
     project_dir: Path, target_dir: Path
-) -> dict[str, tuple[str, int]]:
+) -> dict[str, t.Pair[str, int]]:
     """Write one temp source per doctest example found in tracked docstrings.
 
     Docstring write-back stays outside the fix contract on purpose: a
@@ -73,17 +69,13 @@ def write_docstring_sources(
     remain manual repairs. Example line numbers are approximate within the
     docstring (stdlib ``doctest`` reports positions relative to its input).
     """
-    origin_by_source: dict[str, tuple[str, int]] = {}
+    origin_by_source: dict[str, t.Pair[str, int]] = {}
     parser = DocTestParser()
     for py_path in u.Infra.iter_matching_files(project_dir, includes=["*.py"]):
         relative_parts = py_path.relative_to(project_dir).parts
         if any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in relative_parts):
             continue
-        try:
-            tree = ast.parse(py_path.read_text(c.Cli.ENCODING_DEFAULT))
-        except SyntaxError:
-            # Source syntax is the ruff lint gate's finding, not this gate's.
-            continue
+        tree = ast.parse(py_path.read_text(c.Cli.ENCODING_DEFAULT))
         for node in ast.walk(tree):
             # Only these carry docstrings; ast.walk also yields expression
             # nodes and ast.get_docstring raises TypeError on those.
@@ -98,10 +90,7 @@ def write_docstring_sources(
             relative_posix = py_path.relative_to(project_dir).as_posix()
             for index, example in enumerate(parser.get_examples(docstring)):
                 source_text = example.source
-                try:
-                    compile(source_text, str(py_path), "exec")
-                except SyntaxError:
-                    continue
+                compile(source_text, str(py_path), "exec")
                 name = source_name(relative_posix, index)
                 (target_dir / name).write_text(source_text, c.Cli.ENCODING_DEFAULT)
                 origin_by_source[name] = (relative_posix, body_start + example.lineno)
@@ -109,7 +98,6 @@ def write_docstring_sources(
 
 
 __all__: list[str] = [
-    "TEST_SKIP_MARKER",
     "source_name",
     "write_docstring_sources",
     "write_fenced_block_sources",

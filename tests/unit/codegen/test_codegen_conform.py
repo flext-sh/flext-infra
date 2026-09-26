@@ -93,7 +93,11 @@ class TestsFlextInfraCodegenConform:
         tmp_path: Path, scenario: str
     ) -> tuple[Path, m.Infra.CodegenConformRequest, Path, bytes, Path]:
         """Create one conformed tree, then introduce one recoverable publication."""
-        root = u.Tests.git_repository(tmp_path, name=scenario)
+        root = tmp_path / scenario
+        root.mkdir(parents=True)
+        u.Tests.initialize_git_repo(
+            root, origin_url=u.Tests.repository_ref(config.Infra.name).url
+        )
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         request = u.Tests.conform_request(
@@ -148,11 +152,13 @@ class TestsFlextInfraCodegenConform:
             with pytest.raises(OSError, match="raised after begin") as raised:
                 execute(request)
             tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+        elif scenario == "docs-failure":
+            with pytest.raises(ValueError, match="Invalid JSON"):
+                execute(request)
         else:
             failed = execute(request)
             expected = {
-                "cas": "atomic source changed",
-                "docs-failure": "JSON",
+                "cas": "atomic destination content changed",
                 "lazy-failure": "refusing obsolete root-support symlink",
             }.get(scenario, "failed after begin")
             tm.fail(failed, has=expected)
@@ -163,7 +169,8 @@ class TestsFlextInfraCodegenConform:
             "failure-mixed",
         }
         tm.that(journal.exists(), eq=retained)
-        tm.that(published.read_bytes() == original, eq=not retained)
+        publication_is_preserved = not retained or scenario == "failure-mixed"
+        tm.that(published.read_bytes() == original, eq=publication_is_preserved)
         if scenario == "failure-changed":
             tm.that(journal.read_bytes().endswith(b"\n"), eq=True)
         elif scenario == "exception-replaced":
@@ -183,7 +190,9 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """A raised prepared operation removes invocation-owned root and Git state."""
         root = tmp_path / "exception-scaffold"
-        repository = u.Tests.repository_ref("exception-scaffold")
+        repository = u.Tests.repository_ref(
+            "exception-scaffold", role=c.Infra.MakeProfile.STANDALONE
+        )
         workspace = u.Tests.workspace_spec(
             repository, project=u.Tests.project_spec(repository.name)
         )
@@ -318,6 +327,10 @@ class TestsFlextInfraCodegenConform:
         request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.PYPROJECT}
         )
+        # The infrastructure checkout publishes its Git origin (208716f4f).
+        u.Tests.initialize_git_repo(
+            tmp_path, origin_url=u.Tests.repository_ref("flext-infra").url
+        )
         pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
         source = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(
@@ -431,6 +444,7 @@ class TestsFlextInfraCodegenConform:
         # rows prove the result does not depend on the distribution name.
         root = tmp_path / name
         service = FlextInfraCodegenProjectNew(
+            flext_source=u.Tests.flext_source(),
             name=name,
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
@@ -542,6 +556,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         existing_root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
+            flext_source=u.Tests.flext_source(),
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,

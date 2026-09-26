@@ -65,7 +65,7 @@ class FlextInfraValidateImportCycles(FlextInfraProjectSelectionServiceBase[bool]
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("import-cycles scan", exc)
         total_modules = 0
-        cycles: list[tuple[str, t.StrSequence]] = []
+        cycles: list[t.Pair[str, t.StrSequence]] = []
         for label, graph in graphs:
             total_modules += len(graph)
             cycles.extend(
@@ -93,7 +93,7 @@ class FlextInfraValidateImportCycles(FlextInfraProjectSelectionServiceBase[bool]
 
     def _build_graphs(
         self, repository_root: Path
-    ) -> list[tuple[str, MutableMapping[str, set[str]]]]:
+    ) -> list[t.Pair[str, MutableMapping[str, set[str]]]]:
         """Build one import graph per governed project root (one import unit).
 
         Falls back to a single graph over ``repository_root`` when no governed

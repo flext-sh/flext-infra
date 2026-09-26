@@ -129,6 +129,17 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         candidate_packages: t.StrSequence = tuple(
             name for name in package_names if name and name != current_pkg
         )
+        # ADR-018 p.1: the owner of a letter is the package whose own module
+        # DECLARES it in its explicit __all__ (flext_core/result.py owns `r`).
+        # Every generated initializer re-exports the letters it inherits, so
+        # "the nearest parent whose init lists the name" would elect whichever
+        # dependency sorts first — a tooling package re-exporting `r` made a
+        # test package import it through flext_infra and cycle at runtime.
+        for package_name in candidate_packages:
+            if package_name == current_pkg:
+                continue
+            if alias_name in self._declared_alias_names_for_package(package_name):
+                return f"{package_name}"
         for package_name in candidate_packages:
             if self._serves_facade_letter(package_name, alias_name, visited=set()):
                 return f"{package_name}"

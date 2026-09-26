@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m
+
+if TYPE_CHECKING:
+    from flext_infra import t
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.collector import FlextInfraDocCollector
@@ -25,7 +28,7 @@ class ValidationRoutes(ValidationCommandRoutes):
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
     validation_routes: ClassVar[
-        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
+        MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
     ] = {
         c.Infra.CLI_GROUP_DOCS: (
             m.Cli.ResultCommandRoute(

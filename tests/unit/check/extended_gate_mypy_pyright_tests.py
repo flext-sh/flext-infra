@@ -106,7 +106,7 @@ class TestsFlextInfraTypeGates:
         source = project / "src" / "test_pkg" / "contract.py"
         source.write_text('value: int = "incorrect"\n', encoding="utf-8")
         failed = gate.check(project, ctx)
-        assert not failed.result.passed
+        assert failed.result.passed is False
         assert failed.issues
         assert failed.result.errors
         assert any(issue.severity.lower() == "error" for issue in failed.issues)
@@ -162,7 +162,7 @@ class TestsFlextInfraTypeGates:
         result = gate_class(project).check(
             project, m.Infra.GateContext(repository_root=project, reports_dir=reports)
         )
-        assert not result.result.passed
+        assert result.result.passed is False
         assert any(issue.severity in {"warn", "warning"} for issue in result.issues)
 
     @pytest.mark.slow
@@ -182,7 +182,7 @@ class TestsFlextInfraTypeGates:
         ).errors
         pyproject.write_text("[tool.pyrefly\n", encoding="utf-8")
         failed = gate.check(project, checker_context)
-        assert not failed.result.passed
+        assert failed.result.passed is False
         assert failed.raw_output
 
     @pytest.mark.slow
@@ -202,13 +202,13 @@ class TestsFlextInfraTypeGates:
         assert not result.issues
 
         selected_error = gate.check_files([unselected], project, checker_context)
-        assert not selected_error.result.passed, selected_error
+        assert selected_error.result.passed is False, selected_error
         assert any(
             issue.file.endswith(unselected.name) for issue in selected_error.issues
         )
 
         full_project = gate.check(project, checker_context)
-        assert not full_project.result.passed, full_project
+        assert full_project.result.passed is False, full_project
         assert any(
             issue.file.endswith(unselected.name) for issue in full_project.issues
         )
@@ -223,7 +223,9 @@ class TestsFlextInfraTypeGates:
             tmp_path,
             m.Infra.GateContext(repository_root=tmp_path, reports_dir=tmp_path),
         )
-        assert not result.result.passed
+        assert result.result.passed is False
+        # An empty source must never read as a clean pass: the skipped state
+        # stays visible in the execution errors for every gate posture.
         assert result.result.errors
 
     @pytest.mark.parametrize("payload", ["", " ", "not JSON", "{}", "[]", "null"])
@@ -280,6 +282,3 @@ class TestsFlextInfraTypeGates:
     def test_mypy_requires_native_source_evidence(self, payload: str) -> None:
         with pytest.raises(c.ValidationError):
             m.Infra.MypyCoverageReport.model_validate_json(payload, strict=True)
-
-
-__all__: list[str] = ["TestsFlextInfraTypeGates"]
