@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, m
+from flext_infra import FlextInfraConfig, c, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from tests import u
 from tests.unit.codegen.layout_fixture import (
@@ -39,10 +39,7 @@ class TestsFlextInfraCodegenLayout:
                     ),
                 ],
                 cwd=project,
-                # Consumer-owned configuration discovery is cwd-based: the
-                # probe must not inherit the host SSOT config dir, so the
-                # fixture's own org overlay is the only override in play.
-                remove_env_keys=("FLEXT_INFRA_CONFIG_DIR",),
+                env={"FLEXT_INFRA_CONFIG_DIR": str(FlextInfraConfig.ssot_config_dir())},
             )
         )
         tm.that(
@@ -80,15 +77,16 @@ class TestsFlextInfraCodegenLayout:
                 }
             }
         })
-        # The consumer org overlay lives in the checkout's own config directory
-        # (the loader reads it from the process working directory), never in
-        # the installed package's built-in config dir.
-        config_dir = project / c.Infra.CODEGEN_CONFIG_DIR
-        config_dir.mkdir(exist_ok=True)
+        org_overlay = (
+            project
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.CODEGEN_ORG_OVERRIDES_FILENAME
+        )
+        tm.that(org_overlay.is_relative_to(tmp_path), eq=True)
+        org_overlay.parent.mkdir(exist_ok=True)
         tm.ok(
             u.Cli.yaml_dump(
-                config_dir / c.Infra.CODEGEN_ORG_OVERRIDES_FILENAME,
-                declaration.model_dump(mode="json", exclude_none=True),
+                org_overlay, declaration.model_dump(mode="json", exclude_none=True)
             )
         )
 

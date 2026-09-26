@@ -14,13 +14,38 @@ pytestmark = pytest.mark.slow
 
 
 class TestsFlextInfraDepsDetectorMain:
+    @staticmethod
+    def _set_tool_option(
+        root: Path, tool: str, key: str, *, value: bool | list[str]
+    ) -> None:
+        """Set one ``[tool.<tool>]`` option through the TOML document owner."""
+        pyproject = root / "pyproject.toml"
+        document = tm.ok(u.Cli.toml_read_document(pyproject))
+        table = u.Cli.toml_ensure_table(u.Cli.toml_ensure_table(document, "tool"), tool)
+        table[key] = value
+        tm.ok(u.Cli.toml_write_document(pyproject, document))
+
+    @classmethod
+    def _report_untyped_imports(cls, root: Path) -> None:
+        """Make the consumer's mypy report untyped imports as missing stubs.
+
+        The governed mypy profile follows untyped imports, so mypy never emits
+        the missing-stub hints the typings detector reads; a consumer that
+        type-checks untyped imports strictly opts out of that policy.
+        """
+        cls._set_tool_option(root, "mypy", "follow_untyped_imports", value=False)
+
     def test_run_without_typings_skips_typings_detection(
         self, real_detector_project: Path
     ) -> None:
         root = real_detector_project
         before = (root / "pyproject.toml").read_bytes()
         outcome = tm.ok(u.Tests.run_real_detector(root, "--no-pip-check"))
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True, msg=outcome.stderr)
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome),
+            eq=True,
+            msg=f"{outcome.stdout}\n{outcome.stderr}",
+        )
         tm.that((root / "pyproject.toml").read_bytes(), eq=before)
         report = tm.ok(
             u.Cli.json_read(
@@ -42,27 +67,38 @@ class TestsFlextInfraDepsDetectorMain:
     # here exercise only modules that still lack inline types today.
     # `requests` stays a listed module (not just the always-declared `feature`
     # extra) so deptry does not flag it as an unused runtime dependency.
+    # A conformed consumer's dev group already carries every stub the scaffold
+    # declares, so the scenario uses untyped libraries whose stubs it lacks.
     @pytest.mark.parametrize(
         "real_detector_project",
-        [("requests", "dateutil"), ("requests", "dateutil", "yaml")],
+        [("requests", "pytz"), ("requests", "pytz", "six")],
         indirect=True,
     )
     def test_apply_typings_installs_and_preserves_custom_source(
         self, real_detector_project: Path
     ) -> None:
         root = real_detector_project
+        self._report_untyped_imports(root)
         before = u.Tests.toml_payload((root / "pyproject.toml").read_text())
+        expected = {"pytz": "types-pytz", "six": "types-six"}
+        declared_dev = {
+            u.Infra.dep_name(item)
+            for item in u.Tests.toml_strings(
+                u.Tests.toml_mapping(before["dependency-groups"])["dev"]
+            )
+        }
+        tm.that(declared_dev & set(expected.values()), eq=set())
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root, "--apply-typings", "--apply", "--no-pip-check"
             )
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True, msg=outcome.stderr)
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome),
+            eq=True,
+            msg=f"{outcome.stdout}\n{outcome.stderr}",
+        )
         after = u.Tests.toml_payload((root / "pyproject.toml").read_text())
-        expected = {
-            "python-dateutil": "types-python-dateutil",
-            "pyyaml": "types-pyyaml",
-        }
         # `requests` (when present) needs no stub package; only the
         # still-untyped requirements below drive the typings-group assertion.
         requirements = [
@@ -136,7 +172,11 @@ class TestsFlextInfraDepsDetectorMain:
                 root, "--apply-typings", "--apply", "--no-pip-check"
             )
         )
-        tm.that(u.Cli.process_succeeded(repeated.outcome), eq=True, msg=repeated.stderr)
+        tm.that(
+            u.Cli.process_succeeded(repeated.outcome),
+            eq=True,
+            msg=f"{repeated.stdout}\n{repeated.stderr}",
+        )
         tm.that((root / "pyproject.toml").read_bytes(), eq=snapshot)
 
     def test_apply_typings_dry_run_preserves_source_and_lock(
@@ -148,21 +188,30 @@ class TestsFlextInfraDepsDetectorMain:
         outcome = tm.ok(
             u.Tests.run_real_detector(root, "--apply-typings", "--no-pip-check")
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True, msg=outcome.stderr)
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome),
+            eq=True,
+            msg=f"{outcome.stdout}\n{outcome.stderr}",
+        )
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
     # Why: `requests` now ships inline types (`py.typed`); it never triggers
     # a `types-requests` add, so the unsatisfiable-constraint scenario needs
-    # a module that still lacks inline types (`yaml`/`types-pyyaml`).
+    # a module that still lacks inline types and whose stub the conformed dev
+    # group does not already carry (`pytz`/`types-pytz`).
     @pytest.mark.parametrize(
-        "real_detector_project", [("requests", "yaml")], indirect=True
+        "real_detector_project", [("requests", "pytz")], indirect=True
     )
     def test_unsatisfiable_typing_add_is_not_success_even_with_no_fail(
         self, real_detector_project: Path
     ) -> None:
         root = real_detector_project
-        with (root / "pyproject.toml").open("a", encoding="utf-8") as stream:
-            stream.write('\n[tool.uv]\nconstraint-dependencies = ["types-pyyaml<0"]\n')
+        self._report_untyped_imports(root)
+        # The resolved consumer already owns a ``[tool.uv]`` table; the
+        # constraint joins it instead of redeclaring the table.
+        self._set_tool_option(
+            root, "uv", "constraint-dependencies", value=["types-pytz<0"]
+        )
         before = (root / "pyproject.toml").read_bytes()
         outcome = tm.ok(
             u.Tests.run_real_detector(
@@ -185,12 +234,13 @@ class TestsFlextInfraDepsDetectorMain:
     # for it; use a module that still needs a stub package so the missing-uv
     # launch failure is actually exercised.
     @pytest.mark.parametrize(
-        "real_detector_project", [("requests", "yaml")], indirect=True
+        "real_detector_project", [("requests", "pytz")], indirect=True
     )
     def test_missing_uv_launch_is_not_reported_as_success(
         self, real_detector_project: Path
     ) -> None:
         root = real_detector_project
+        self._report_untyped_imports(root)
         before = (root / "pyproject.toml").read_bytes()
         outcome = tm.ok(
             u.Tests.run_real_detector(

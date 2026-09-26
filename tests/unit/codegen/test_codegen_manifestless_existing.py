@@ -34,39 +34,37 @@ class TestsFlextInfraCodegenManifestlessExisting:
         seeded = {**preserved, "README.md": "# Existing repository\n"}
         pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
-        # Fresh-import validation loads every declared entry point from the
-        # built candidate, so the fixture materializes each declared module
-        # and attribute inside its own package: the distribution never
-        # declares a module it omits, without indexing the whole real
-        # package into this conform cycle's budget.
-        manifest = u.Cli.toml_mapping_from_text(pyproject_source)
-        assert manifest is not None
-        project_table = manifest.get("project")
-        assert isinstance(project_table, dict)
-        entry_groups = project_table.get("entry-points", {})
-        assert isinstance(entry_groups, dict)
+        package_name = u.Infra.project_package_name(Path.cwd())
+        package_init = root / c.Infra.DEFAULT_SRC_DIR / package_name / "__init__.py"
+        package_init.parent.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        # The copied manifest declares scripts and entry points; conform's
+        # fresh-import gate loads each one, so the seeded tree carries every
+        # declared target (module and attribute) inside its own package —
+        # never a copy of the whole production package.
+        manifest = tm.not_none(u.Cli.toml_mapping_from_text(pyproject_source))
+        project_table = u.Cli.json_as_mapping(
+            u.Cli.toml_mapping_child(manifest, "project")
+        )
+        entry_groups = u.Cli.json_as_mapping(
+            u.Cli.toml_mapping_child(project_table, "entry-points")
+        )
         declared_groups = (
-            project_table.get("scripts", {}),
-            project_table.get("gui-scripts", {}),
-            *entry_groups.values(),
+            u.Cli.json_as_mapping(u.Cli.toml_mapping_child(project_table, "scripts")),
+            u.Cli.json_as_mapping(
+                u.Cli.toml_mapping_child(project_table, "gui-scripts")
+            ),
+            *(u.Cli.json_as_mapping(group) for group in entry_groups.values()),
         )
         targets: dict[Path, set[str]] = {}
         for entries in declared_groups:
-            assert isinstance(entries, dict)
             for target in entries.values():
                 module_name, _, attribute = str(target).partition(":")
                 module_path = (
-                    root / "src" / Path(*module_name.split("."))
+                    root / c.Infra.DEFAULT_SRC_DIR / Path(*module_name.split("."))
                 ).with_suffix(".py")
                 targets.setdefault(module_path, set()).add(attribute.split(".")[0])
-        # A regular package __init__ pins the candidate import origin: without
-        # it the package resolves as a namespace spanning this checkout too,
-        # and the fresh-import origin gate fails on real-checkout modules.
-        package_init = root / "src" / "flext_infra" / c.Infra.INIT_PY
-        package_init.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
         for module_path, attributes in targets.items():
-            module_path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(
                 u.Cli.atomic_write_text_file(
                     module_path,

@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import fcntl
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -72,44 +74,116 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
     return u.Tests.tool_config_document()
 
 
-@pytest.fixture(params=[("requests",)])
-def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
-    """Provision a real isolated detector consumer through generated Make upgrade."""
-    modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
-    distributions = {
-        "requests": "requests",
-        "dateutil": "python-dateutil",
-        "yaml": "pyyaml",
-    }
-    dependencies = ", ".join(f'"{distributions[name]}"' for name in modules)
+_DETECTOR_FIXTURE = "real_detector_project"
+_DETECTOR_PROJECT_NAME = "detector-fixture"
+_DETECTOR_UPGRADE_RECEIPT = "upgrade-receipt.json"
+
+
+def _detector_template_parent(modules: t.StrSequence) -> Path:
+    """Return the run-scoped home of one resolved detector consumer.
+
+    The pytest invocation's temporary root is shared by every worker of one
+    run and removed with it, so each run resolves its own environment once.
+    """
+    return Path(tempfile.gettempdir()) / "detector-templates" / "-".join(modules)
+
+
+def _import_declared_runtime(root: Path) -> None:
+    """Make the consumer import every runtime requirement it declares.
+
+    Conform renders the upstream dependency profile into the consumer's
+    runtime dependencies, so a real consumer that declares them also uses
+    them. The import names are read from the consumer's own resolved
+    environment, never listed here.
+    """
+    declared = frozenset(
+        name
+        for item in u.Infra.project_dependency_names_from_payload(
+            u.Tests.toml_payload(
+                (root / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+            )
+        )
+        if (name := u.Infra.dep_name(item)) is not None
+    )
+    probe = tm.ok(
+        u.Cli.capture(
+            [
+                str(root / c.Infra.VENV_BIN_REL / "python"),
+                "-c",
+                (
+                    "import importlib.metadata, json; "
+                    "print(json.dumps(importlib.metadata.packages_distributions()))"
+                ),
+            ],
+            cwd=root,
+        )
+    )
+    owners = u.Cli.json_as_mapping(tm.ok(tm.not_none(u.Cli.json_parse(probe))))
+    imported = sorted(
+        module
+        for module, distributions in owners.items()
+        if module.isidentifier()
+        and not module.startswith("_")
+        and any(
+            u.Infra.dep_name(distribution) in declared
+            for distribution in t.Infra.STR_SEQ_ADAPTER.validate_python(distributions)
+        )
+    )
+    (root / "src" / "detector_fixture" / c.Infra.INIT_PY).write_text(
+        "".join(f"import {module}\n" for module in imported), encoding="utf-8"
+    )
+
+
+def _provision_detector_template(modules: t.StrSequence) -> None:
+    """Resolve one detector consumer through ``make upg`` and commit its locks.
+
+    ``make upg`` is the sole writer of a new consumer's locks; it resolves over
+    the network, so it runs once per run and dependency set, before any test
+    item starts. The command output is kept as the receipt every consumer of
+    the template asserts.
+    """
+    parent = _detector_template_parent(modules)
+    distributions = {"requests": "requests", "pytz": "pytz", "six": "six"}
+    # A governed FLEXT consumer declares exactly one runtime upstream profile;
+    # conform derives its project spec from it (context_render.py).
+    upstream = u.Tests.flext_source("flext-core")
+    dependencies = ", ".join(
+        f'"{name}"' for name in (upstream, *(distributions[name] for name in modules))
+    )
     infrastructure = tm.ok(
         u.Infra.configured_repository_ref(
             codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
         )
     )
-    integration_branch = tm.ok(
+    integration = tm.ok(
         u.Infra.flext_integration_line(
             codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
         )
-    ).branch
+    )
     root = u.Tests.mk_project(
-        tmp_path,
-        "detector-fixture",
+        parent,
+        _DETECTOR_PROJECT_NAME,
         with_src=True,
         pyproject=(
             '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
             '[project]\nname = "detector-fixture"\nversion = "0.1.0"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
+            # A governed checkout declares every internal requirement with its
+            # own direct Git source; the scaffold dev SSOT includes flext-tests.
             '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
-            f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration_branch}"]\n'
+            f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration.branch}", '
+            f'"{u.Tests.flext_source("flext-tests")}"]\n'
+            "[tool.hatch.metadata]\nallow-direct-references = true\n"
             "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),
     )
     (root / "src" / "detector_fixture" / "__init__.py").write_text(
-        "\n".join(f"import {name}" for name in modules) + "\n", encoding="utf-8"
+        "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+        encoding="utf-8",
     )
     u.Tests.copy_tracked_mise_seeds(root)
     repository = u.Tests.repository_ref(
@@ -140,20 +214,78 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
-    # A newly scaffolded consumer has no committed locks yet. The fixture
-    # provisions exactly what the upgrade lifecycle would leave behind — one
-    # resolved lock plus one synced environment — through direct lock and sync
-    # calls in an isolated environment: `make upg` wraps the same resolution
-    # in a forced `--upgrade --refresh` re-resolution (a full network pass
-    # over every pin) that no detector case needs, and that re-resolution is
-    # what pushed each case past its runtime wall.
-    isolated = c.Tests.MAKE_ISOLATION_ENV_KEYS
-    tm.ok(u.Cli.run_checked(["uv", "lock"], cwd=root, remove_env_keys=isolated))
+    # A newly scaffolded consumer has no committed locks yet. The public upgrade
+    # lifecycle is their sole writer; frozen setup starts only after that first
+    # resolved environment has been reviewed and committed by the consumer.
+    upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
+    u.Tests.record_dependency_command_output(upgrade)
+    if u.Cli.process_succeeded(upgrade.outcome):
+        _import_declared_runtime(root)
+        u.Tests.git_bootstrap(root, ("add", "-A"))
+        u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
     tm.ok(
-        u.Cli.run_checked(
-            ["uv", "sync", "--all-groups"], cwd=root, remove_env_keys=isolated
+        u.Cli.atomic_write_text_file(
+            parent / _DETECTOR_UPGRADE_RECEIPT,
+            m.Cli.CommandOutput.model_validate(
+                upgrade, from_attributes=True
+            ).model_dump_json(),
         )
     )
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Resolve every selected detector dependency set before any item runs.
+
+    Network resolution is provisioning, not the behaviour under test, so it
+    never runs inside an item's time budget. Workers of one run share the
+    templates; the first worker resolves a set while the others wait on its
+    lock and reuse the committed result.
+    """
+    selected = dict.fromkeys(
+        tuple(
+            t.Infra.STR_SEQ_ADAPTER.validate_python(
+                item.callspec.params[_DETECTOR_FIXTURE]
+            )
+        )
+        for item in session.items
+        if isinstance(item, pytest.Function) and _DETECTOR_FIXTURE in item.fixturenames
+    )
+    for modules in selected:
+        parent = _detector_template_parent(modules)
+        parent.mkdir(parents=True, exist_ok=True)
+        with (parent.with_suffix(".lock")).open("a", encoding="utf-8") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if not (parent / _DETECTOR_UPGRADE_RECEIPT).is_file():
+                _provision_detector_template(modules)
+
+
+@pytest.fixture(params=[("requests",)])
+def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
+    """Check out the run's resolved detector consumer and set it up from its locks.
+
+    The consumer clones the committed template exactly as a developer clones a
+    reviewed repository, then ``make setup`` provisions its own environment
+    from the committed locks without resolving anything new.
+    """
+    modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
+    parent = _detector_template_parent(modules)
+    upgrade = m.Cli.CommandOutput.model_validate_json(
+        (parent / _DETECTOR_UPGRADE_RECEIPT).read_text(encoding="utf-8")
+    )
+    tm.that(u.Cli.process_succeeded(upgrade.outcome), eq=True, msg=upgrade.stderr)
+    root = tmp_path / _DETECTOR_PROJECT_NAME
+    u.Tests.git_bootstrap(
+        tmp_path, ("clone", "-q", str(parent / _DETECTOR_PROJECT_NAME), str(root))
+    )
+    u.Tests.initialize_git_repo(
+        root,
+        origin_url=u.Tests.repository_ref(
+            root.name, role=c.Infra.MakeProfile.STANDALONE
+        ).url,
+    )
+    setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=root, capture=False))
+    u.Tests.record_dependency_command_output(setup)
+    tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(
         "[typing_libraries]\nexclude = []\n", encoding="utf-8"

@@ -334,7 +334,14 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(u.Cli.process_succeeded(unlocked.outcome), eq=False)
         tm.that(lock_path.exists(), eq=False)
         # `upg` is the only resolver: it writes both locks and provisions the
-        # environment frozen from them.
+        # environment frozen from them, then runs the declared post-upg hook
+        # inside the activated environment, exactly as setup runs post-setup.
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                project_root / "custom.mk",
+                ".PHONY: post-upg\npost-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n",
+            )
+        )
         upgraded = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "upg"], cwd=project_root, env=active_env
@@ -346,6 +353,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             msg=upgraded.stdout + upgraded.stderr,
         )
         tm.that(lock_path.is_file(), eq=True)
+        tm.that(upgraded.stdout, has="upg-hook-ran")
         tm.that((project_root / c.Infra.MISE_LOCK_FILENAME).is_file(), eq=True)
         tm.that((project_root / ".venv" / "pyvenv.cfg").is_file(), eq=True)
         tm.that(sentinel.read_text(encoding="utf-8"), eq="untouched\n")
@@ -665,7 +673,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             makefile,
             has=[
                 f'mise_lockfile_platforms="{platform_matrix}";',
-                '"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms"',
+                '$${mise_lockfile_platforms:+"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms"}',
                 'mise_lockfile_platforms=; \\\n\t\tmise_checked "$$scratch/lock-npm-prettier.log"',
                 'mise_checked "$$scratch/lock-npm-prettier.log"',
                 f'mise_lockfile_platforms="{platform_matrix}"; \\\n\tfi;',

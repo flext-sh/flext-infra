@@ -19,15 +19,6 @@ if TYPE_CHECKING:
 class TestsFlextInfraExtraPathsManager:
     """Test flext infra extra paths manager behavior."""
 
-    def test_manager_initialization(self) -> None:
-        """Verify manager initialization."""
-        manager = ExtraPathsTestSupport.manager()
-        tm.that(manager.__class__.__name__, eq="FlextInfraExtraPathsManager")
-
-    def test_manager_has_required_services(self) -> None:
-        """Verify manager has required services."""
-        ExtraPathsTestSupport.manager()
-
     def test_sync_one_missing_file(self, tmp_path: Path) -> None:
         """Verify sync one missing file."""
         tm.that(

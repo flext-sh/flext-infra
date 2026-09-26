@@ -772,7 +772,7 @@ class TestsFlextInfraCodegenConform:
         )
 
     @pytest.mark.slow
-    def test_repository_root_catalog_profile_preserves_platform_coverage(
+    def test_repository_root_catalog_profile_projects_no_coverage_floor(
         self, tmp_path: Path
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
@@ -825,10 +825,7 @@ class TestsFlextInfraCodegenConform:
         tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
         tm.that(addopts, lacks="--session-timeout")
         tm.that(set(addopts) >= set(pytest_policy.standard_addopts), eq=True)
-        tm.that(
-            report["fail_under"],
-            eq=config.Infra.tooling.tools.coverage.fail_under.platform,
-        )
+        tm.that(report, lacks="fail_under")
 
     @pytest.mark.slow
     def test_project_root_inherits_declared_upstream_facets(

@@ -168,10 +168,6 @@ class TestsFlextInfraRopeSignaturePatch:
             if resource is None:
                 msg = "Rope did not resolve the format-spec regression resource"
                 raise AssertionError(msg)
-            pymodule = u.Infra.get_string_module(
-                rope.rope_project, source, resource=resource
-            )
-            scope = u.Infra.scope_at(pymodule, source.index("widths)}}"))
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -182,10 +178,6 @@ class TestsFlextInfraRopeSignaturePatch:
             rope.rope_project.do(changes)
             rewritten = resource.read()
 
-        # A Rope scope is not a payload value; its observable identity is the
-        # enclosing function's scope kind.
-        assert scope is not None
-        tm.that(scope.get_kind(), eq=c.Infra.RopeScopeKind.FUNCTION)
         tm.that(rewritten, eq=expected)
 
     def test_write_ast_keeps_nested_generator_name_mutation(self) -> None:

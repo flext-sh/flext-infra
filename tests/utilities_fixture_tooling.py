@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from flext_infra import config, u
+from flext_infra import u
 from tests import c, p, t
 
 
@@ -45,23 +45,17 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     def copy_tracked_mise_seeds(root: Path, *, source_root: Path | None = None) -> None:
         """Copy declared Mise inputs from this checkout or a native upgrade seed.
 
-        A governed repository carries the declaration, launchers, and runtime
-        pin; the dependency lock travels with them only when the codegen SSOT
-        declares ``toolchain.mise_lockfile``. Unlocked fleet mode commits no
-        lock, so none is seeded. Native dependency graphs referenced by a lock
-        must travel with it so frozen setup never resolves replacements.
+        A governed repository carries the declaration, launchers, runtime pin,
+        and dependency lock together. Native dependency graphs referenced by
+        the lock must travel with it so frozen setup never resolves replacements.
+        Conform renders declarations; only ``make upg`` resolves new versions.
         """
         source_root = (
             Path(__file__).resolve().parents[1] if source_root is None else source_root
         )
-        lock_seeds = (
-            (c.Infra.MISE_LOCK_FILENAME,)
-            if config.Infra.codegen.toolchain.mise_lockfile
-            else ()
-        )
         for relative in (
             c.Infra.MISE_TOML_FILENAME,
-            *lock_seeds,
+            c.Infra.MISE_LOCK_FILENAME,
             c.Infra.MISE_VERSION_PIN_FILENAME,
             "bin/mise",
             "bin/mise.cmd",
@@ -95,14 +89,15 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         capture: bool = True,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest."""
-        isolated_keys = c.Tests.MAKE_ISOLATION_ENV_KEYS
         return u.Cli.run_raw(
             [c.Infra.MAKE, *args],
             cwd=cwd,
             env=env,
             capture=capture,
             remove_env_keys=tuple(
-                key for key in isolated_keys if env is None or key not in env
+                key
+                for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
+                if env is None or key not in env
             ),
         )
 
