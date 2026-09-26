@@ -52,7 +52,20 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         )
         """Repository-local variables Git exports to hooks and aliases."""
 
+        DIRENV_STATE_ENV_KEYS: ClassVar[t.StrSequence] = (
+            "DIRENV_DIFF",
+            "DIRENV_DIR",
+            "DIRENV_FILE",
+            "DIRENV_WATCHES",
+        )
+        """direnv's loaded-activation protocol; ``direnv exec`` first reverts it.
+
+        An outer activation (the operator's shell) would otherwise undo the
+        variables a test hands to the activation under test.
+        """
+
         MAKE_ISOLATION_ENV_KEYS: ClassVar[t.StrSequence] = (
+            *DIRENV_STATE_ENV_KEYS,
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",

@@ -8,6 +8,7 @@ primitive, never through hardcoded per-project logic.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from flext_tests import tm
@@ -62,14 +63,22 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
     def test_repository_root_upg_profiles_canonical_modernization(
         self, tmp_path: Path
     ) -> None:
-        """Generated upg renders the exact lock-upgrade and modernizer invocation."""
+        """Generated upg renders the exact lock-upgrade and modernizer invocation.
+
+        ``upg`` bootstraps Mise (network) and then dispatches its lifecycle with
+        the Mise-resolved direnv handoff; the dry run enters that lifecycle with
+        the same handoff contract, so its recursive ``+`` activation still runs.
+        """
         repository_root = self._render_root_makefile(tmp_path)
 
         execution = tm.ok(
-            test_u.Cli.run_raw(
-                [c.Infra.MAKE, "--dry-run", "_upg_lifecycle"],
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                remove_env_keys=("MAKEFLAGS",),
+                env={
+                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
+                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
+                },
             )
         )
 
