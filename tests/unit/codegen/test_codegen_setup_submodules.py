@@ -13,7 +13,7 @@ from tests import p, t, u as test_u
 
 # The run-scoped template resolves a real toolchain through Make upg before any
 # item starts; each scenario provisions its own physical environment frozen
-# from those committed dependency locks.
+# from those resolved dependency locks.
 # Make test-full owns these external installer and Git integration scenarios.
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
 
@@ -23,45 +23,8 @@ class TestsFlextInfraCodegenSetupSubmodules:
     def generated_project_template(
         self, resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path]
     ) -> Path:
-        root = tmp_path_factory.mktemp("setup-submodules") / "project"
-        repository = test_u.Tests.repository_ref(
-            "flext-demo", role=c.Infra.MakeProfile.STANDALONE
-        )
-        beads = test_u.Tests.beads_project(repository.distribution)
-        test_u.Tests.WorktreeFixture.initialize_governed_project(
-            root,
-            repository.distribution,
-            workspace=beads.workspace,
-            database=beads.database,
-            issue_prefix=beads.issue_prefix,
-        )
-        workspace = test_u.Tests.workspace_spec(
-            repository, project=test_u.Tests.project_spec(repository.name)
-        )
-        request = test_u.Tests.conform_request(
-            root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        plan = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root, request=request, initial_workspace=workspace
-            ).plan(request)
-        )
-        # Setup consumes generated environment declarations and tracked Mise
-        # seeds; documentation publication belongs to the conform tests.
-        for filename in (
-            c.Infra.MAKEFILE_FILENAME,
-            c.PYPROJECT_FILENAME,
-            c.Infra.ENVRC_FILENAME,
-        ):
-            planned = next(file for file in plan.files if file.path.name == filename)
-            tm.ok(
-                u.Cli.atomic_write_text_file(
-                    root / filename, test_u.Tests.codegen_file_text(planned)
-                )
-            )
-        return root
+        """Return the run's standalone consumer, resolved once by ``make upg``."""
+        return resolved_make_templates[c.Infra.MakeProfile.STANDALONE]
 
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:

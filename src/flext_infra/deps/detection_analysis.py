@@ -131,7 +131,9 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         name = project.get(c.Infra.NAME)
         distribution = u.Infra.dep_name(name) if isinstance(name, str) else None
         if distribution is None:
-            return r[t.StrSequence].fail(f"[project].name must be declared: {pyproject}")
+            return r[t.StrSequence].fail(
+                f"[project].name must be declared: {pyproject}"
+            )
         runtime_names = {
             dependency
             for item in t.Infra.STR_SEQ_ADAPTER.validate_python(
@@ -206,12 +208,8 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         if table.failure:
             return r[bool].from_failure(table)
         pyproject, data = table.value
-        tool = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            data.get(c.Infra.TOOL, {})
-        )
-        mypy = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            tool.get(c.Infra.MYPY, {})
-        )
+        tool = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(data.get(c.Infra.TOOL, {}))
+        mypy = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(tool.get(c.Infra.MYPY, {}))
         declared = mypy.get(key, c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT)
         if declared != governed:
             return r[bool].fail(
@@ -222,9 +220,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return r[bool].ok(governed)
 
     def get_required_typings(
-        self,
-        project_path: Path,
-        limits_path: Path | None = None,
+        self, project_path: Path, limits_path: Path | None = None
     ) -> p.Result[m.Infra.TypingsReport]:
         """Analyze project and generate typing stubs requirements report.
 

@@ -52,8 +52,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         tm.that(report.untyped_imports_followed, eq=followed)
         tm.that(report.to_add, empty=True)
         tm.that(
-            report.to_remove,
-            eq=[] if followed else ["types-pyyaml", "types-requests"],
+            report.to_remove, eq=[] if followed else ["types-pyyaml", "types-requests"]
         )
 
     def test_project_policy_conflict_fails_loud(self, tmp_path: Path) -> None:
