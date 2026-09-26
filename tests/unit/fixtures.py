@@ -99,6 +99,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         pyproject=(
             '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
             '[project]\nname = "detector-fixture"\nversion = "0.1.0"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
