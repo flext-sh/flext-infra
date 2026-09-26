@@ -85,6 +85,13 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         gitleaks_target = workspace / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH
         gitleaks_target.parent.mkdir(parents=True, exist_ok=True)
         gitleaks_target.write_text(rendered_gitleaks.value, encoding="utf-8")
+        if not project_names:
+            # A standalone FLEXT repository publishes its own Python package;
+            # the release stamp's conform guard probes that layout in a fresh
+            # interpreter, so the fixture carries the package it releases.
+            root_package = workspace / c.Infra.DEFAULT_SRC_DIR / workspace.name
+            root_package.mkdir(parents=True, exist_ok=True)
+            (root_package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
         for name in project_names:
             project = workspace / name
             project.mkdir(parents=True, exist_ok=True)
