@@ -539,7 +539,7 @@ dependencies = []
         configured = config.Infra.codegen.uv_exclude_dependencies
         member = configured[0].project
         rendered = test_u.Tests.scaffold_text(
-            tmp_path / "fixture-project", c.Infra.PYPROJECT_FILENAME, members=(member,)
+            tmp_path / "fixture-project", c.PYPROJECT_FILENAME, members=(member,)
         )
         uv = test_u.Tests.toml_table_at(rendered, "tool", "uv")
         local = {"fixture-project", member}

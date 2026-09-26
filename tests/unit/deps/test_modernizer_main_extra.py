@@ -76,7 +76,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             modernizer_workspace_with_projects / "selected" / c.PYPROJECT_FILENAME
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
-        root_pyproject = modernizer_workspace_with_projects / c.Infra.PYPROJECT_FILENAME
+        root_pyproject = modernizer_workspace_with_projects / c.PYPROJECT_FILENAME
         root_before = root_pyproject.read_bytes()
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=modernizer_workspace_with_projects,

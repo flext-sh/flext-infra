@@ -100,7 +100,7 @@ def _import_declared_runtime(root: Path) -> None:
         name
         for item in u.Infra.project_dependency_names_from_payload(
             u.Tests.toml_payload(
-                (root / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
             )
         )
         if (name := u.Infra.dep_name(item)) is not None

@@ -364,7 +364,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         u.Tests.WorktreeFixture.write_python_project(
             dependency_root, "external-runtime"
         )
-        pyproject_path = checkout / c.Infra.PYPROJECT_FILENAME
+        pyproject_path = checkout / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(pyproject_path.read_text(encoding="utf-8"))
         project = tm.not_none(u.Cli.toml_table_child(document, "project"))
         project["dependencies"] = [
