@@ -275,6 +275,7 @@ if TYPE_CHECKING:
     )
     from .workspace.flext_binding import FlextInfraFlextBindingService
     from .workspace.orchestrator import FlextInfraOrchestratorService
+    from .workspace.propagation import FlextInfraWorkspacePropagation
     from .workspace.rope import FlextInfraRopeWorkspace
     from .worktree import FlextInfraWorktreeService
 
@@ -468,6 +469,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentSync",
+    "FlextInfraWorkspacePropagation",
     "FlextInfraWorktreeService",
     "FlextInfraWrapperRootNamespaceRefactor",
     "GateContractInfraError",
@@ -803,6 +805,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".workspace.flext_binding": ("FlextInfraFlextBindingService",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
+            ".workspace.propagation": ("FlextInfraWorkspacePropagation",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
             "flext_cli": ("d", "e", "h", "r", "x"),
