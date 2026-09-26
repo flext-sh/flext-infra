@@ -99,57 +99,6 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
             FlextInfraConstants.Infra.ReleasePhase.PUBLISH
         )
 
-        INFRA_PUBLIC_ROOT_EXPORTS: ClassVar[t.StrSequence] = (
-            "FlextInfra",
-            "c",
-            "infra",
-            "m",
-            "main",
-            "p",
-            "s",
-            "t",
-            "u",
-        )
-        INFRA_PUBLIC_WRAPPER_MODULES: ClassVar[t.StrSequence] = (
-            "flext_infra.__version__",
-            "flext_infra.constants",
-            "flext_infra.models",
-            "flext_infra.protocols",
-            "flext_infra.typings",
-            "flext_infra.utilities",
-        )
-        INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS: ClassVar[
-            t.VariadicTuple[t.Pair[str, str]]
-        ] = (
-            ("c", "FlextInfraConstants"),
-            ("m", "FlextInfraModels"),
-            ("p", "FlextInfraProtocols"),
-            ("s", "FlextInfraServiceBase"),
-            ("t", "FlextInfraTypes"),
-            ("u", "FlextInfraUtilities"),
-        )
-        INFRA_PUBLIC_WRAPPER_ALIAS_EXPECTATIONS: ClassVar[
-            t.VariadicTuple[t.Triple[str, str, str]]
-        ] = (
-            ("flext_infra.constants", "c", "FlextInfraConstants"),
-            ("flext_infra.models", "m", "FlextInfraModels"),
-            ("flext_infra.protocols", "p", "FlextInfraProtocols"),
-            ("flext_infra.typings", "t", "FlextInfraTypes"),
-            ("flext_infra.utilities", "u", "FlextInfraUtilities"),
-        )
-        INFRA_PUBLIC_NAMESPACE_ALIAS_NAMES: ClassVar[t.StrSequence] = (
-            "c",
-            "m",
-            "p",
-            "t",
-            "u",
-        )
-        INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: ClassVar[t.StrSequence] = (
-            "plan_semantic_cutover",
-            "current_workspace_version",
-            "parse_semver",
-        )
-
         WORKSPACE_PROJECT_NAME: ClassVar[str] = "workspace"
         DEMO_PROJECT_NAME: ClassVar[str] = "demo-project"
         PROJECT_A_NAME: ClassVar[str] = "proj-a"
