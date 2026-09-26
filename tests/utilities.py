@@ -253,14 +253,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         def resolved_make_checkout(
             template: Path, parent: Path, profile: c.Infra.MakeProfile
         ) -> Path:
-            """Clone a committed ``make upg`` template exactly as a developer does.
+            """Check out a resolved ``make upg`` template as a fresh repository.
 
-            The clone carries the reviewed source and locks, never the
-            template's environment; frozen setup provisions its own.
+            The checkout carries the source and locks the upgrade wrote, never
+            the template's environment or Git store; frozen setup provisions
+            its own environment from those locks.
             """
             root = parent / profile.value / template.name
-            root.parent.mkdir(parents=True, exist_ok=True)
-            u.Tests.git_bootstrap(parent, ("clone", "-q", str(template), str(root)))
+            shutil.copytree(
+                template,
+                root,
+                symlinks=True,
+                ignore=shutil.ignore_patterns(".venv", ".git"),
+            )
             u.Tests.initialize_git_repo(
                 root, origin_url=u.Tests.repository_ref(root.name, role=profile).url
             )

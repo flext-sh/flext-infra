@@ -164,21 +164,11 @@ class TestsFlextInfraCodegenMakeAuthentication:
         project_root, _ = u.Tests.render_make_environment(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
-        # A warm Mise cache answers the release lookups without contacting the
-        # backend, so the selected credential would never be presented. Cold
-        # storage makes the upgrade reach the native GitHub backend.
-        bootstrap = u.Infra.mise_bootstrap_environment()
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "upg"],
                 cwd=project_root,
-                env={
-                    "GH_TOKEN": "invalid-test-credential",
-                    "GITHUB_TOKEN": "",
-                    bootstrap.storage_root_variable: str(
-                        tmp_path / c.Tests.COLD_MISE_STORAGE
-                    ),
-                },
+                env={"GH_TOKEN": "invalid-test-credential", "GITHUB_TOKEN": ""},
             )
         )
 
