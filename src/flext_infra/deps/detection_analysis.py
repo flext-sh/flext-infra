@@ -104,7 +104,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         self, project_path: Path
     ) -> p.Result[t.Pair[Path, t.JsonMapping]]:
         """Read one project's pyproject once, as a plain mapping, with its path."""
-        pyproject = project_path / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_path / c.PYPROJECT_FILENAME
         read_result = self._read_plain(pyproject)
         if read_result.failure:
             return r[t.Pair[Path, t.JsonMapping]].fail_op(

@@ -43,7 +43,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(makefile_fields.get("@flext-adjust", ""), has="never this projection")
 
         pyproject = u.Tests.scaffold_text(
-            tmp_path / "fixture-project", c.Infra.PYPROJECT_FILENAME
+            tmp_path / "fixture-project", c.PYPROJECT_FILENAME
         )
         tm.that(pyproject, starts=c.Infra.BANNER)
         pyproject_fields = self._fields(pyproject)
@@ -56,12 +56,12 @@ class TestsFlextInfraManagedMaintenanceHeaders:
     def test_pyproject_header_is_a_fixed_point(self, tmp_path: Path) -> None:
         """Recomposing a published pyproject keeps exactly one header."""
         root = tmp_path / "fixture-project"
-        first = u.Tests.scaffold_text(root, c.Infra.PYPROJECT_FILENAME)
+        first = u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME)
         root.mkdir(parents=True, exist_ok=True)
-        (root / c.Infra.PYPROJECT_FILENAME).write_text(first, encoding="utf-8")
+        (root / c.PYPROJECT_FILENAME).write_text(first, encoding="utf-8")
         second = tm.ok(
             FlextInfraCodegenConform.compose_project_artifact(
-                root, c.Infra.PYPROJECT_FILENAME, first
+                root, c.PYPROJECT_FILENAME, first
             )
         ).rendered
         tm.that(second, eq=first)
