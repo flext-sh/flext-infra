@@ -67,24 +67,28 @@ class TestsFlextInfraDepsModernizerMainExtra:
         tm.that(audit_exit, eq=0)
 
     def test_run_fails_when_selected_project_has_invalid_toml(
-        self, modernizer_workspace_with_projects: Path
+        self,
+        modernizer_workspace_with_projects: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Report invalid TOML from an explicitly selected declared member."""
+        """Reject invalid TOML in a declared member before any write."""
         selected_pyproject = (
             modernizer_workspace_with_projects / "selected" / c.PYPROJECT_FILENAME
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
+        root_pyproject = modernizer_workspace_with_projects / c.Infra.PYPROJECT_FILENAME
+        root_before = root_pyproject.read_bytes()
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=modernizer_workspace_with_projects,
             apply_changes=True,
             skip_comments=True,
             skip_check=False,
         )
-        with pytest.raises(
-            ValueError, match="docs pyproject TOML is invalid"
-        ) as raised:
-            modernizer.run()
-        tm.that(str(raised.value), has=str(selected_pyproject))
+
+        tm.that(modernizer.run(), eq=2)
+        tm.that(capsys.readouterr().out, has=str(selected_pyproject))
+        tm.that(root_pyproject.read_bytes(), eq=root_before)
+        tm.that(selected_pyproject.read_text(encoding="utf-8"), eq="[invalid")
 
     def test_run_rewrite_constraints_uses_provisioned_runtime(
         self, modernizer_workspace: Path

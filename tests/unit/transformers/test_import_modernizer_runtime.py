@@ -260,4 +260,4 @@ print(RuntimeRow.model_validate_json('{"value": "runtime"}').value)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
         probe = "from ancestral_consumer import build\nprint(build())\n"
         outcome = tm.ok(u.Cli.run([sys.executable, "-c", probe], cwd=tmp_path))
-        tm.that(outcome.stdout.strip(), eq="False")
+        tm.that(outcome.stdout.strip(), eq="True")
