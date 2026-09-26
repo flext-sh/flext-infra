@@ -35,16 +35,47 @@ class TestsFlextInfraCodegenManifestlessExisting:
         pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
         # Fresh-import validation loads every declared entry point from the
-        # built candidate.  Seed the real package boundary so this repository
-        # fixture proves the installed pytest plugin instead of publishing a
-        # distribution that declares a module it deliberately omitted.
-        package_name = u.Infra.project_package_name(Path.cwd())
-        tm.ok(
-            u.Cli.files_copy_directory(
-                Path.cwd() / c.Infra.DEFAULT_SRC_DIR / package_name,
-                root / c.Infra.DEFAULT_SRC_DIR / package_name,
-            )
+        # built candidate, so the fixture materializes each declared module
+        # and attribute inside its own package: the distribution never
+        # declares a module it omits, without indexing the whole real
+        # package into this conform cycle's budget.
+        manifest = u.Cli.toml_mapping_from_text(pyproject_source)
+        assert manifest is not None
+        project_table = manifest.get("project")
+        assert isinstance(project_table, dict)
+        entry_groups = project_table.get("entry-points", {})
+        assert isinstance(entry_groups, dict)
+        declared_groups = (
+            project_table.get("scripts", {}),
+            project_table.get("gui-scripts", {}),
+            *entry_groups.values(),
         )
+        targets: dict[Path, set[str]] = {}
+        for entries in declared_groups:
+            assert isinstance(entries, dict)
+            for target in entries.values():
+                module_name, _, attribute = str(target).partition(":")
+                module_path = (
+                    root / "src" / Path(*module_name.split("."))
+                ).with_suffix(".py")
+                targets.setdefault(module_path, set()).add(attribute.split(".")[0])
+        # A regular package __init__ pins the candidate import origin: without
+        # it the package resolves as a namespace spanning this checkout too,
+        # and the fresh-import origin gate fails on real-checkout modules.
+        package_init = root / "src" / "flext_infra" / c.Infra.INIT_PY
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        for module_path, attributes in targets.items():
+            module_path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    module_path,
+                    "".join(
+                        f"class {attribute}:\n    pass\n\n\n"
+                        for attribute in sorted(attributes)
+                    ),
+                )
+            )
         vscode_settings = root / ".vscode" / "settings.json"
         vscode_settings.parent.mkdir()
         tm.ok(
