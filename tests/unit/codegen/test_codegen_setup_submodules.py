@@ -22,23 +22,44 @@ class TestsFlextInfraCodegenSetupSubmodules:
     def generated_project_template(
         self, tmp_path_factory: pytest.TempPathFactory
     ) -> Path:
-        """Resolve source inputs once without lending the seed environment."""
-        # This public fixture publishes only setup inputs and the activation
-        # contract. Documentation publication remains in the conform scenarios.
-        root, _ = test_u.Tests.render_make_environment(
-            tmp_path_factory.mktemp("setup-submodules"),
-            c.Infra.MakeProfile.STANDALONE,
-            bootstrap=True,
+        root = tmp_path_factory.mktemp("setup-submodules") / "project"
+        repository = test_u.Tests.repository_ref(
+            "flext-demo", role=c.Infra.MakeProfile.STANDALONE
         )
-        process = tm.ok(
-            test_u.Tests.run_isolated_make(["--no-print-directory", "upg"], cwd=root)
+        beads = test_u.Tests.beads_project(repository.distribution)
+        test_u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            repository.distribution,
+            workspace=beads.workspace,
+            database=beads.database,
+            issue_prefix=beads.issue_prefix,
         )
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
+        workspace = test_u.Tests.workspace_spec(
+            repository, project=test_u.Tests.project_spec(repository.name)
         )
-        tm.that((root / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
+        request = test_u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root, request=request, initial_workspace=workspace
+            ).plan(request)
+        )
+        # Setup consumes generated environment declarations and tracked Mise
+        # seeds; documentation publication belongs to the conform tests.
+        for filename in (
+            c.Infra.MAKEFILE_FILENAME,
+            c.Infra.PYPROJECT_FILENAME,
+            c.Infra.ENVRC_FILENAME,
+        ):
+            planned = next(file for file in plan.files if file.path.name == filename)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / filename, test_u.Tests.codegen_file_text(planned)
+                )
+            )
         return root
 
     @staticmethod

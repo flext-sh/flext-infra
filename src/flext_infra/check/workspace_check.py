@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, m, p, t, u
 
 from ..base import FlextInfraServiceBase
 from ._workspace_check_reports import FlextInfraWorkspaceCheckReportsMixin
