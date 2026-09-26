@@ -429,9 +429,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(source, lacks='"m"')
         tm.that(source, lacks="m = FlextDemoModels")
 
-    def test_refactor_census_binds_declared_runtime_alias(
-        self, tmp_path: Path
-    ) -> None:
+    def test_refactor_census_binds_declared_runtime_alias(self, tmp_path: Path) -> None:
         """A letter declared in ``__all__`` receives its derived facade binding."""
         workspace, module_path = self._build_module_workspace(
             tmp_path, self._MISSING_RUNTIME_ALIAS_MODULE

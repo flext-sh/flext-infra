@@ -672,10 +672,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
     @pytest.mark.parametrize(
         ("declaration", "violations"),
-        [
-            ("", 0),
-            ('__all__: list[str] = ["DemoConstants", "c"]\n\n', 1),
-        ],
+        [("", 0), ('__all__: list[str] = ["DemoConstants", "c"]\n\n', 1)],
     )
     def test_namespace_enforcer_does_not_infer_alias_from_external_filename(
         self, tmp_path: Path, declaration: str, violations: int
