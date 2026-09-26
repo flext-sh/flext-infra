@@ -181,7 +181,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         (repository_root / "Makefile").write_text(
             "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
         )
-        (repository_root / c.Infra.PYPROJECT_FILENAME).write_text(
+        (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()

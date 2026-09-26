@@ -66,7 +66,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     ) -> None:
         """Keep standalone projects eligible for a real parent uv workspace."""
         rendered = u.Tests.scaffold_text(
-            tmp_path / "fixture-project", c.Infra.PYPROJECT_FILENAME
+            tmp_path / "fixture-project", c.PYPROJECT_FILENAME
         )
 
         tm.that(rendered, has="[project]")

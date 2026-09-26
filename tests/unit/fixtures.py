@@ -17,7 +17,7 @@ from flext_tests import tm
 
 from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import c, m, t, u
+from tests import c, m, p, t, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -86,52 +86,6 @@ def _detector_template_parent(modules: t.StrSequence) -> Path:
     run and removed with it, so each run resolves its own environment once.
     """
     return Path(tempfile.gettempdir()) / "detector-templates" / "-".join(modules)
-
-
-def _import_declared_runtime(root: Path) -> None:
-    """Make the consumer import every runtime requirement it declares.
-
-    Conform renders the upstream dependency profile into the consumer's
-    runtime dependencies, so a real consumer that declares them also uses
-    them. The import names are read from the consumer's own resolved
-    environment, never listed here.
-    """
-    declared = frozenset(
-        name
-        for item in u.Infra.project_dependency_names_from_payload(
-            u.Tests.toml_payload(
-                (root / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-            )
-        )
-        if (name := u.Infra.dep_name(item)) is not None
-    )
-    probe = tm.ok(
-        u.Cli.capture(
-            [
-                str(root / c.Infra.VENV_BIN_REL / "python"),
-                "-c",
-                (
-                    "import importlib.metadata, json; "
-                    "print(json.dumps(importlib.metadata.packages_distributions()))"
-                ),
-            ],
-            cwd=root,
-        )
-    )
-    owners = u.Cli.json_as_mapping(tm.ok(tm.not_none(u.Cli.json_parse(probe))))
-    imported = sorted(
-        module
-        for module, distributions in owners.items()
-        if module.isidentifier()
-        and not module.startswith("_")
-        and any(
-            u.Infra.dep_name(distribution) in declared
-            for distribution in t.Infra.STR_SEQ_ADAPTER.validate_python(distributions)
-        )
-    )
-    (root / "src" / "detector_fixture" / c.Infra.INIT_PY).write_text(
-        "".join(f"import {module}\n" for module in imported), encoding="utf-8"
-    )
 
 
 def _provision_detector_template(modules: t.StrSequence) -> None:
@@ -218,45 +172,204 @@ def _provision_detector_template(modules: t.StrSequence) -> None:
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
     upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
-    u.Tests.record_dependency_command_output(upgrade)
     if u.Cli.process_succeeded(upgrade.outcome):
-        _import_declared_runtime(root)
         u.Tests.git_bootstrap(root, ("add", "-A"))
         u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
+    _write_receipt(parent / _DETECTOR_UPGRADE_RECEIPT, upgrade)
+
+
+_MAKE_TEMPLATES_FIXTURE = "resolved_make_templates"
+_MAKE_UPGRADE_RECEIPT = c.Tests.MAKE_TEMPLATE_UPG_RECEIPT
+_MAKE_CI_SETUP_RECEIPT = c.Tests.MAKE_TEMPLATE_CI_RECEIPT
+_INFRA_CHECKOUT_FIXTURE = "provisioned_infra_checkout"
+_INFRA_SETUP_RECEIPT = "setup-receipt.json"
+# Every scenario that provisions the candidate's own environment before `gen`.
+_INFRA_CHECKOUT_SCENARIOS = (
+    "builtin",
+    "custom",
+    "producer-failure",
+    "activation-failure",
+)
+
+
+def _run_scoped(kind: str, key: str) -> Path:
+    """Return the run-scoped home of one provisioned consumer."""
+    return Path(tempfile.gettempdir()) / kind / key
+
+
+def _write_receipt(path: Path, output: p.Cli.CommandOutput) -> None:
+    u.Tests.record_dependency_command_output(output)
     tm.ok(
         u.Cli.atomic_write_text_file(
-            parent / _DETECTOR_UPGRADE_RECEIPT,
+            path,
             m.Cli.CommandOutput.model_validate(
-                upgrade, from_attributes=True
+                output, from_attributes=True
             ).model_dump_json(),
         )
     )
 
 
-def pytest_collection_finish(session: pytest.Session) -> None:
-    """Resolve every selected detector dependency set before any item runs.
+def _provision_make_template(profile: c.Infra.MakeProfile) -> None:
+    """Resolve one generated consumer through ``make upg`` once per run.
 
-    Network resolution is provisioning, not the behaviour under test, so it
-    never runs inside an item's time budget. Workers of one run share the
-    templates; the first worker resolves a set while the others wait on its
-    lock and reuse the committed result.
+    The upgrade runs under a foreign uv environment with a declared post-upg
+    hook, and a checkout of the resolved result installs every locked tool
+    into cold CI storage; both receipts are what the consumers assert.
     """
-    selected = dict.fromkeys(
+    parent = _run_scoped("make-templates", profile.value)
+    root, _ = u.Tests.render_make_environment(parent, profile, bootstrap=True)
+    hostile_venv = parent / c.Tests.MAKE_TEMPLATE_HOSTILE_VENV
+    (hostile_venv / "bin").mkdir(parents=True)
+    (hostile_venv / "sentinel").write_text("untouched\n", encoding="utf-8")
+    custom = root / c.Infra.CUSTOM_MAKE_FILENAME
+    custom.write_text(
+        custom.read_text(encoding="utf-8")
+        + ".PHONY: post-upg\npost-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n",
+        encoding="utf-8",
+    )
+    upgrade = tm.ok(
+        u.Tests.run_isolated_make(
+            ["--no-print-directory", "upg"],
+            cwd=root,
+            env=u.Tests.hostile_uv_environment(hostile_venv),
+        )
+    )
+    _write_receipt(parent / _MAKE_UPGRADE_RECEIPT, upgrade)
+    if not u.Cli.process_succeeded(upgrade.outcome):
+        return
+    checkout = u.Tests.resolved_make_checkout(
+        root, parent / c.Tests.MAKE_TEMPLATE_CI_CHECKOUT, profile
+    )
+    make = config.Infra.codegen.make
+    (checkout / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+        ".PHONY: post-setup\npost-setup:\n"
+        '\t@test -x "$(MAKE_COMMAND)"\n'
+        '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
+        f'\t@test "$({make.ci.variable})" = "{make.ci.value}"\n'
+        "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
+        encoding="utf-8",
+    )
+    setup = tm.ok(
+        u.Tests.run_isolated_make(
+            ["--no-print-directory", "setup"],
+            cwd=checkout,
+            env={
+                **u.Tests.hostile_uv_environment(hostile_venv),
+                make.ci.variable: make.ci.value,
+                u.Infra.mise_bootstrap_environment().storage_root_variable: str(
+                    parent / c.Tests.COLD_MISE_STORAGE
+                ),
+            },
+        )
+    )
+    _write_receipt(parent / _MAKE_CI_SETUP_RECEIPT, setup)
+
+
+def _provision_infra_checkout(scenario: str) -> None:
+    """Set up one candidate checkout from its committed locks before its item."""
+    parent = _run_scoped("infra-checkouts", scenario)
+    root = u.Tests.infra_source_checkout(parent)
+    setup = tm.ok(
+        u.Tests.run_isolated_make(["--no-print-directory", "setup"], cwd=root)
+    )
+    _write_receipt(parent / _INFRA_SETUP_RECEIPT, setup)
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Provision every selected run-scoped consumer before any item runs.
+
+    Network resolution and environment installation are provisioning, not the
+    behaviour under test, so they never run inside an item's time budget.
+    Workers of one run share the provisioned consumers; the first worker
+    provisions one while the others wait on its lock and reuse its receipt.
+    """
+    functions = tuple(
+        item for item in session.items if isinstance(item, pytest.Function)
+    )
+    detector = dict.fromkeys(
         tuple(
             t.Infra.STR_SEQ_ADAPTER.validate_python(
                 item.callspec.params[_DETECTOR_FIXTURE]
             )
         )
-        for item in session.items
-        if isinstance(item, pytest.Function) and _DETECTOR_FIXTURE in item.fixturenames
+        for item in functions
+        if _DETECTOR_FIXTURE in item.fixturenames
     )
-    for modules in selected:
-        parent = _detector_template_parent(modules)
+    profiles = (
+        tuple(c.Infra.MakeProfile)
+        if any(_MAKE_TEMPLATES_FIXTURE in item.fixturenames for item in functions)
+        else ()
+    )
+    scenarios = dict.fromkeys(
+        str(item.callspec.params[_INFRA_CHECKOUT_FIXTURE])
+        for item in functions
+        if _INFRA_CHECKOUT_FIXTURE in item.fixturenames
+    )
+    jobs = (
+        *(
+            (_detector_template_parent(modules), _DETECTOR_UPGRADE_RECEIPT, modules)
+            for modules in detector
+        ),
+        *(
+            (
+                _run_scoped("make-templates", profile.value),
+                _MAKE_UPGRADE_RECEIPT,
+                profile,
+            )
+            for profile in profiles
+        ),
+        *(
+            (_run_scoped("infra-checkouts", scenario), _INFRA_SETUP_RECEIPT, scenario)
+            for scenario in scenarios
+        ),
+    )
+    for parent, receipt, key in jobs:
         parent.mkdir(parents=True, exist_ok=True)
         with (parent.with_suffix(".lock")).open("a", encoding="utf-8") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            if not (parent / _DETECTOR_UPGRADE_RECEIPT).is_file():
-                _provision_detector_template(modules)
+            if (parent / receipt).is_file():
+                continue
+            match key:
+                case c.Infra.MakeProfile():
+                    _provision_make_template(key)
+                case str():
+                    _provision_infra_checkout(key)
+                case _:
+                    _provision_detector_template(key)
+
+
+@pytest.fixture
+def resolved_make_templates() -> t.MappingKV[c.Infra.MakeProfile, Path]:
+    """Return every profile's committed ``make upg`` template for this run.
+
+    Consumers clone a template rather than resolving inside their budget; the
+    template directory also holds the upgrade and cold CI setup receipts.
+    """
+    templates: dict[c.Infra.MakeProfile, Path] = {}
+    for profile in c.Infra.MakeProfile:
+        parent = _run_scoped("make-templates", profile.value)
+        upgrade = u.Tests.command_receipt(parent / _MAKE_UPGRADE_RECEIPT)
+        tm.that(
+            u.Cli.process_succeeded(upgrade.outcome),
+            eq=True,
+            msg=upgrade.stdout + upgrade.stderr,
+        )
+        templates[profile] = parent / profile.value / "fixture-project"
+    return templates
+
+
+@pytest.fixture(params=_INFRA_CHECKOUT_SCENARIOS)
+def provisioned_infra_checkout(request: pytest.FixtureRequest) -> t.Pair[str, Path]:
+    """Return one scenario's candidate checkout, set up from committed locks."""
+    scenario = str(request.param)
+    parent = _run_scoped("infra-checkouts", scenario)
+    setup = u.Tests.command_receipt(parent / _INFRA_SETUP_RECEIPT)
+    tm.that(
+        u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stdout + setup.stderr
+    )
+    root = parent / config.Infra.name
+    tm.that((root / ".venv" / "pyvenv.cfg").is_file(), eq=True)
+    return scenario, root
 
 
 @pytest.fixture(params=[("requests",)])
@@ -426,7 +539,7 @@ def mod_workspace(tmp_path: Path) -> Path:
     tm.ok(u.Cli.ensure_dir(workspace))
     tm.ok(
         u.Cli.atomic_write_text_file(
-            workspace / c.Infra.PYPROJECT_FILENAME,
+            workspace / c.PYPROJECT_FILENAME,
             (
                 "[project]\n"
                 f'name = "{workspace.name.replace("_", "-")}"\n'
@@ -521,7 +634,7 @@ def real_workspace(tmp_path: Path) -> Path:
 def modernizer_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+    (workspace / c.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject(), encoding="utf-8"
     )
     u.Tests.write_beads_project(
@@ -533,7 +646,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
-    (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+    (modernizer_workspace / c.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject("selected", "ignored"), encoding="utf-8"
     )
     selected = u.Tests.mk_project(

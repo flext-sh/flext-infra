@@ -72,6 +72,21 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         )
         """Repository-local variables Git exports to hooks and aliases."""
 
+        MAKE_TEMPLATE_HOSTILE_VENV: ClassVar[str] = "hostile/.venv"
+        """Foreign environment beside a run-scoped ``make upg`` template."""
+
+        COLD_MISE_STORAGE: ClassVar[str] = "cold-mise-storage"
+        """Mise storage that starts empty, so every tool and lookup is fetched."""
+
+        MAKE_TEMPLATE_CI_CHECKOUT: ClassVar[str] = "ci"
+        """Home of the template checkout set up once in cold CI storage."""
+
+        MAKE_TEMPLATE_UPG_RECEIPT: ClassVar[str] = "upg-receipt.json"
+        """Recorded ``make upg`` outcome of one run-scoped template."""
+
+        MAKE_TEMPLATE_CI_RECEIPT: ClassVar[str] = "ci-setup-receipt.json"
+        """Recorded cold-storage CI ``make setup`` outcome of one template."""
+
         DIRENV_STATE_ENV_KEYS: ClassVar[t.StrSequence] = (
             "DIRENV_DIFF",
             "DIRENV_DIR",

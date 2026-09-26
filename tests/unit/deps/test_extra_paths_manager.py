@@ -60,7 +60,7 @@ class TestsFlextInfraExtraPathsManager:
         ],
     )
     def test_sync_one_success_cases(
-        self, tmp_path: Path, tool_doc: t.MappingKV[str, t.Infra.InfraValue]
+        self, tmp_path: Path, tool_doc: t.MappingKV[str, t.JsonValue]
     ) -> None:
         """Verify sync one success cases."""
         pyproject = tmp_path / "pyproject.toml"

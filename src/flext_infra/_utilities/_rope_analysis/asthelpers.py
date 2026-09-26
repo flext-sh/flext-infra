@@ -27,7 +27,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     def ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node, narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(obj):
-            msg = f"Expected an AST node, got {type(obj).__name__}"
+            msg = f"Expected AST node, got {type(obj).__name__}"
             raise TypeError(msg)
         return obj
 
