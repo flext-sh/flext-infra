@@ -51,7 +51,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 )
                 excludes = (
                     cls.routed_uv_exclude_dependencies(
-                        repository=repository, target=target, codegen=codegen
+                        repository=repository,
+                        codegen=codegen,
+                        workspace=workspace,
                     )
                     if target is not None
                     else ()

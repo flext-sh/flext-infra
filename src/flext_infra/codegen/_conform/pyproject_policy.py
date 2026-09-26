@@ -79,21 +79,32 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     def routed_uv_exclude_dependencies(
         *,
         repository: m.Infra.RepositoryRef,
-        target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
+        workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> t.VariadicTuple[m.Infra.UvScopedDependencyExclusionSpec]:
         """Return the uv dependency exclusions routed to one repository.
 
-        Workspace root owns resolution for attached subprojects (uv reads
-        exclude-dependencies only from the workspace root). Subprojects still
-        receive their own routed excludes for standalone CI clones.
+        A scoped exclusion cuts one reverse edge because the routing
+        repository itself provides the cut package: its editable root, or a
+        declared workspace member whose real source replaces the conflicting
+        ``git+https`` declaration. A workspace root therefore carries every
+        exclusion whose cut package the root or one of its declared members
+        provides (uv reads exclude-dependencies only from the workspace
+        root); cutting an edge nothing provides would strand the excluded
+        dependency out of resolution entirely and fail ``uv pip check`` on
+        the installed metadata. Subprojects still receive their own routed
+        excludes for standalone CI clones.
         """
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
-            return tuple(codegen.uv_exclude_dependencies)
+        provided = {repository.distribution}
+        provided.update(
+            subproject.distribution
+            for subproject in (workspace.subprojects if workspace is not None else ())
+        )
         return tuple(
             item
             for item in codegen.uv_exclude_dependencies
             if item.project == repository.distribution
+            or provided.issuperset(item.dependencies)
         )
 
     @staticmethod
