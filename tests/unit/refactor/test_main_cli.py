@@ -24,9 +24,11 @@ class TestsFlextInfraRefactorMainCli:
 
     _FUTURE_INIT = "from __future__ import annotations\n"
 
+    # The letter is declared in __all__ but never bound: the fix binds it to
+    # the declared facade class. An undeclared letter is never inferred.
     _MISSING_RUNTIME_ALIAS_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels"]\n\n'
+        '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
         "class FlextDemoModels:\n"
         "    pass\n"
     )
@@ -406,7 +408,7 @@ class TestsFlextInfraRefactorMainCli:
         result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
-    def test_refactor_census_apply_fixes_missing_runtime_alias(
+    def test_refactor_census_does_not_infer_runtime_alias_from_filename(
         self, tmp_path: Path
     ) -> None:
         workspace, module_path = self._build_module_workspace(
@@ -416,8 +418,8 @@ class TestsFlextInfraRefactorMainCli:
         self._apply_census(workspace, rules="runtime_alias")
 
         source = module_path.read_text(encoding="utf-8")
-        tm.that(source, has='"m"')
-        tm.that(source, has="m = FlextDemoModels")
+        tm.that(source, lacks='"m"')
+        tm.that(source, lacks="m = FlextDemoModels")
 
     def test_refactor_census_reports_duplicate_runtime_alias(
         self, tmp_path: Path

@@ -11,13 +11,11 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from .pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from .project import FlextInfraRopeProject
-    from .signature_patch import FlextInfraUtilitiesRopeSignaturePatch
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraRopeProject",
     "FlextInfraUtilitiesRopePep695Patch",
-    "FlextInfraUtilitiesRopeSignaturePatch",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -25,7 +23,6 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             ".project": ("FlextInfraRopeProject",),
-            ".signature_patch": ("FlextInfraUtilitiesRopeSignaturePatch",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

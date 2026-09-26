@@ -19,8 +19,6 @@ from flext_infra._utilities.private_import_facades import (
 )
 
 from ._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
-from ._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
-from ._utilities._rope.signature_patch import FlextInfraUtilitiesRopeSignaturePatch
 from ._utilities.base import FlextInfraUtilitiesBase
 from ._utilities.census import FlextInfraUtilitiesRefactorCensus
 from ._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -51,6 +49,8 @@ from ._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCom
 from ._utilities.namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
 from ._utilities.namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
 from ._utilities.network import FlextInfraUtilitiesNetwork
+from ._utilities.private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
+from ._utilities.private_import_facades import FlextInfraUtilitiesPrivateImportFacades
 from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -129,7 +129,6 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesRopeRuntime,
         FlextInfraUtilitiesRopeSource,
         FlextInfraUtilitiesRopeStructure,
-        FlextInfraUtilitiesRopePep695Patch,
         FlextInfraUtilitiesTransformerHeader,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
@@ -171,13 +170,6 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesPrivateImportFacades,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
-
-        _rope_pep695_patch_applied: bool = (
-            FlextInfraUtilitiesRopePep695Patch.apply() or True
-        )
-        _rope_signature_patch_applied: bool = (
-            FlextInfraUtilitiesRopeSignaturePatch.apply() or True
-        )
 
 
 u = FlextInfraUtilities

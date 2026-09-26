@@ -203,10 +203,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             resolved_file_path = file_path.resolve()
             if cls._is_generated_init_stub(resolved_file_path):
                 continue
-            try:
-                resource_path = resolved_file_path.relative_to(resolved_root).as_posix()
-            except ValueError:
+            if not resolved_file_path.is_relative_to(resolved_root):
                 continue
+            resource_path = resolved_file_path.relative_to(resolved_root).as_posix()
             package_dir = resolved_file_path.parent
             is_package_init = resolved_file_path.name in {
                 c.Infra.INIT_PY,

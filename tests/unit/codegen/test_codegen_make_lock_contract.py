@@ -28,7 +28,12 @@ class TestsFlextInfraCodegenMakeLockContract:
         lock.write_bytes((Path(__file__).resolve().parents[3] / lock.name).read_bytes())
         paths = (
             lock,
-            root / c.Infra.MISE_LOCK_FILENAME,
+            # Unlocked fleet mode commits no mise.lock; the SSOT decides.
+            *(
+                (root / c.Infra.MISE_LOCK_FILENAME,)
+                if config.Infra.codegen.toolchain.mise_lockfile
+                else ()
+            ),
             root / c.Infra.MISE_VERSION_PIN_FILENAME,
             *(path for path in (root / ".mise" / "locks").rglob("*") if path.is_file()),
         )
@@ -47,6 +52,10 @@ class TestsFlextInfraCodegenMakeLockContract:
         )
 
         tm.that({path: path.read_bytes() for path in paths}, eq=before)
+        tm.that(
+            (root / c.Infra.MISE_LOCK_FILENAME).exists(),
+            eq=config.Infra.codegen.toolchain.mise_lockfile,
+        )
 
     def test_direnv_isolates_nested_checkout_from_parent_mise_config(
         self, tmp_path: Path
@@ -102,7 +111,11 @@ class TestsFlextInfraCodegenMakeLockContract:
         sidecars = root / ".mise" / "locks"
         paths = (
             root / bootstrap.version_pin_file,
-            root / bootstrap.lock_file,
+            *(
+                (root / bootstrap.lock_file,)
+                if config.Infra.codegen.toolchain.mise_lockfile
+                else ()
+            ),
             *(path for path in sidecars.rglob("*") if path.is_file()),
         )
         before = {path: path.read_bytes() for path in paths}
@@ -140,6 +153,10 @@ class TestsFlextInfraCodegenMakeLockContract:
         tm.that(process.stdout, has=f"[{c.Infra.MakeProfile.STANDALONE}]")
         tm.that(identity.stderr + process.stderr, lacks="mise WARN")
         tm.that({path: path.read_bytes() for path in paths}, eq=before)
+        tm.that(
+            (root / c.Infra.MISE_LOCK_FILENAME).exists(),
+            eq=config.Infra.codegen.toolchain.mise_lockfile,
+        )
         tm.that(
             {path for path in sidecars.rglob("*") if path.is_file()},
             eq={path for path in paths if path.is_relative_to(sidecars)},

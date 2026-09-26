@@ -6,12 +6,10 @@ from pathlib import Path
 
 from flext_tests import tm
 
-import tests.utilities
+from tests import u
 
 
-class TestsFlextInfraRule4Annotations(
-    tests.utilities.TestsFlextInfraUtilities.TestsFlextInfraValidateNamespaceBase
-):
+class TestsFlextInfraRule4Annotations:
     """Test suite for namespace validator Rule 4 (annotations)."""
 
     def test_rule4_annotated_field_factory_not_flagged_as_banned(
@@ -33,11 +31,11 @@ class TestsFlextInfraRule4Annotations(
             "    default_headers: typing.Annotated["
             "t.MappingKV[str, str], m.Field(default_factory=dict)] = None\n"
         )
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="_settings.py"
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -54,14 +52,14 @@ class TestsFlextInfraRule4Annotations(
             "    def transform(self, data: dict) -> object:\n"
             "        return data\n"
         )
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="services.py"
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
-        self._assert_violation_contains(root, "banned annotation")
+        u.Tests.assert_namespace_violation_contains(root, "banned annotation")
 
     def test_rule4_canonical_singleton_with_trailing_docstring_allowed(
         self, tmp_path: Path
@@ -80,14 +78,16 @@ class TestsFlextInfraRule4Annotations(
             '"""Global FlextTest facade instance."""\n'
             '__all__: list[str] = ["FlextTest", "api"]\n'
         )
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
-        self._assert_no_violation_contains(root, "module alias/data declaration")
+        u.Tests.assert_namespace_no_violation_contains(
+            root, "module alias/data declaration"
+        )
 
     def test_rule4_bare_module_annotation_is_not_import_time_wiring(
         self, tmp_path: Path
@@ -106,14 +106,14 @@ class TestsFlextInfraRule4Annotations(
             "Declared: type[FlextTestServices]\n"
             '"""Documented re-export slot."""\n'
         )
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="services.py"
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
-        self._assert_no_violation_contains(root, "import-time wiring")
+        u.Tests.assert_namespace_no_violation_contains(root, "import-time wiring")
 
     def test_rule4_module_level_construction_still_flagged(
         self, tmp_path: Path
@@ -125,11 +125,11 @@ class TestsFlextInfraRule4Annotations(
             "    pass\n\n"
             "wired: FlextTestServices = FlextTestServices()\n"
         )
-        root = self._create_namespace_project(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="services.py"
         )
 
-        result = self.validator.validate_project(root)
+        result = u.Tests.namespace_validator().validate_project(root)
 
         tm.ok(result)
-        self._assert_violation_contains(root, "import-time wiring")
+        u.Tests.assert_namespace_violation_contains(root, "import-time wiring")

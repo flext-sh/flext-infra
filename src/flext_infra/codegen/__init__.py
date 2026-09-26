@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from ._layout_files import FlextInfraCodegenLayoutFilesMixin
     from ._layout_gitignore import FlextInfraCodegenLayoutGitignoreMixin
     from ._layout_plan import FlextInfraCodegenLayoutPlanMixin
+    from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
     from ._lazy_init_generation_files import (
         FlextInfraCodegenLazyInitGenerationFilePlanMixin,
     )
@@ -207,6 +208,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._layout_files": ("FlextInfraCodegenLayoutFilesMixin",),
             "._layout_gitignore": ("FlextInfraCodegenLayoutGitignoreMixin",),
             "._layout_plan": ("FlextInfraCodegenLayoutPlanMixin",),
+            "._lazy_init_generation": ("FlextInfraCodegenLazyInitGenerationMixin",),
             "._lazy_init_generation_files": (
                 "FlextInfraCodegenLazyInitGenerationFilePlanMixin",
             ),

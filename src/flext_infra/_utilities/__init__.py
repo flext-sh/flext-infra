@@ -66,7 +66,6 @@ if TYPE_CHECKING:
     from ._pyproject.uv_sources import FlextInfraUtilitiesPyprojectUvSources
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
-    from ._rope.signature_patch import FlextInfraUtilitiesRopeSignaturePatch
     from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
     from ._rope_analysis.base import FlextInfraUtilitiesRopeAnalysisBase
     from ._rope_analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
@@ -354,7 +353,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
-    "FlextInfraUtilitiesRopeSignaturePatch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
@@ -466,7 +464,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope": ("_rope",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
-            "._rope.signature_patch": ("FlextInfraUtilitiesRopeSignaturePatch",),
             "._rope_analysis": ("_rope_analysis",),
             "._rope_analysis.asthelpers": (
                 "FlextInfraUtilitiesRopeAnalysisAstHelpers",
