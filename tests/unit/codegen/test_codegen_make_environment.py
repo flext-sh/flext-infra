@@ -322,8 +322,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 project_root / "custom.mk",
-                ".PHONY: post-upg\npost-upg:\n"
-                "\t@printf '%s\\n' 'upg-hook-ran'\n",
+                ".PHONY: post-upg\npost-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n",
             )
         )
         upgraded = tm.ok(
