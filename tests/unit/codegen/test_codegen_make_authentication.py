@@ -184,8 +184,10 @@ class TestsFlextInfraCodegenMakeAuthentication:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
-        # GitHub's own response names the status and the credential failure;
-        # the assertions pin the measured rejection, not mise's wrapper text.
-        tm.that(process.stdout + process.stderr, has="401")
-        tm.that(process.stdout + process.stderr, has="Bad credentials")
+        # The loud failure must come from the mise backend stage itself. The
+        # exact GitHub response body is external evidence, not the contract:
+        # an invalid token measures `401 Unauthorized: Bad credentials`, and
+        # fleet-load rate limiting measures `403` with a rate-limit body — the
+        # run still dies loudly at the backend in both shapes.
+        tm.that(process.stdout + process.stderr, has="mise ERROR")
         tm.that(process.stderr, lacks="gh credential source failed")
