@@ -110,7 +110,7 @@
 {% for name, value in bootstrap.fixed_environment if name != "MISE_LOCKFILE_PLATFORMS" -%}
 			'{{ name }}={{ value }}' \
 {% endfor -%}
-			"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms" \
+			$${mise_lockfile_platforms:+"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms"} \
 {% for name, relative in bootstrap.transient_environment -%}
 			"{{ name }}=$$scratch/{{ relative }}" \
 {% endfor -%}
