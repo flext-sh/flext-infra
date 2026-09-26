@@ -25,9 +25,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "project"
         project.mkdir()
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         write = ""
         if report is not None:
             payload = tmp_path / "deptry-payload.json"
