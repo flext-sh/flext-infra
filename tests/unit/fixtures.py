@@ -284,7 +284,8 @@ def _provision_make_template(profile: c.Infra.MakeProfile) -> None:
     _write_receipt(parent / _MAKE_UPGRADE_RECEIPT, upgrade)
     if not u.Cli.process_succeeded(upgrade.outcome):
         return
-    u.Tests.git_bootstrap(root, ("add", "-A", "--", ".", ":(exclude).venv"))
+    # The generated ignore rules keep the environment out of the commit.
+    u.Tests.git_bootstrap(root, ("add", "-A"))
     u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
     checkout = u.Tests.resolved_make_checkout(
         root, parent / c.Tests.MAKE_TEMPLATE_CI_CHECKOUT, profile
