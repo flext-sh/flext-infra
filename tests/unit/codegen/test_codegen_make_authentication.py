@@ -164,14 +164,28 @@ class TestsFlextInfraCodegenMakeAuthentication:
         project_root, _ = u.Tests.render_make_environment(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
+        # The credential proves itself only where mise actually consults it:
+        # the GitHub artifact-attestation verification of a cold install. A
+        # warm storage skips installation entirely and would never reach the
+        # rejection, so the bootstrap runs on this fixture's own isolated
+        # Mise storage.
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "upg"],
                 cwd=project_root,
-                env={"GH_TOKEN": "invalid-test-credential", "GITHUB_TOKEN": ""},
+                env={
+                    "GH_TOKEN": "invalid-test-credential",
+                    "GITHUB_TOKEN": "",
+                    u.Infra.mise_bootstrap_environment().storage_root_variable: str(
+                        u.Tests.isolated_mise_bootstrap_storage(project_root)
+                    ),
+                },
             )
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
+        # GitHub's own response names the status and the credential failure;
+        # the assertions pin the measured rejection, not mise's wrapper text.
         tm.that(process.stdout + process.stderr, has="401")
+        tm.that(process.stdout + process.stderr, has="Bad credentials")
         tm.that(process.stderr, lacks="gh credential source failed")
