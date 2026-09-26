@@ -60,6 +60,22 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
             tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
+    def test_repository_root_declares_member_propagation(self, tmp_path: Path) -> None:
+        """The workspace profile declares propagate through the workspace CLI."""
+        repository_root = self._render_root_makefile(tmp_path)
+        execution = tm.ok(
+            test_u.Cli.run_raw(
+                [c.Infra.MAKE, "--dry-run", "_builtin-propagate"],
+                cwd=repository_root,
+                remove_env_keys=("MAKEFLAGS",),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
+        tm.that(
+            execution.stdout + execution.stderr,
+            has=f"{c.Infra.CLI_GROUP_WORKSPACE} propagate",
+        )
+
     def test_repository_root_upg_profiles_canonical_modernization(
         self, tmp_path: Path
     ) -> None:

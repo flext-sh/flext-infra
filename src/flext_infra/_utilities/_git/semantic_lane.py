@@ -32,7 +32,10 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         after ``produce`` was produced by it; exactly those paths are committed
         under ``subject``, the lane is pushed, and its pull request is opened or
         updated. A rerun continues the open lane (local or remote), merges
-        ``base`` in, reproduces identical bytes and commits nothing.
+        ``base`` in, reproduces identical bytes and commits nothing. A lane
+        that carries nothing beyond ``base`` publishes nothing: the checkout
+        returns to ``base``, the empty lane branch is removed, and the result
+        is ``False``.
         """
         root = request.repo_root
         status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
@@ -55,12 +58,32 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             lambda: cls._git_enter_lane(request),
             produce,
             lambda: cls._git_commit_produced(request),
-            lambda: cls._git_open_pull_request(request),
         ):
             outcome = step()
             if outcome.failure:
                 return outcome
-        return r[bool].ok(True)
+        ahead = u.Cli.capture(
+            [c.Infra.GIT, "rev-list", "--count", f"{request.base}..{request.branch}"],
+            cwd=root,
+        )
+        if ahead.failure:
+            return r[bool].from_failure(ahead)
+        if ahead.value.strip() == "0":
+            return cls._git_discard_empty_lane(request)
+        return cls._git_open_pull_request(request)
+
+    @classmethod
+    def _git_discard_empty_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+        """Return to ``base`` and remove the lane branch that carries nothing."""
+        root = request.repo_root
+        for command in (
+            [c.Infra.GIT, "switch", request.base],
+            [c.Infra.GIT, "branch", "--delete", request.branch],
+        ):
+            outcome = u.Cli.run_checked(command, cwd=root)
+            if outcome.failure:
+                return outcome
+        return r[bool].ok(False)
 
     @classmethod
     def _git_enter_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
