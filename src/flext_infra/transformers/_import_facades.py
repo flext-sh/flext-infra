@@ -30,9 +30,7 @@ class FlextInfraRefactorImportFacades:
         def __init__(
             self,
             sources: t.MappingKV[str, t.Pair[str, bool]],
-            index: Callable[
-                [t.MappingKV[str, t.Pair[str, bool]]], t.MappingKV[str, V]
-            ],
+            index: Callable[[t.MappingKV[str, t.Pair[str, bool]]], t.MappingKV[str, V]],
         ) -> None:
             self.sources = sources
             self.index = index
@@ -45,9 +43,7 @@ class FlextInfraRefactorImportFacades:
                 module = ".".join(parts[:size])
                 if module in self.sources and module not in self.indexed:
                     self.indexed.add(module)
-                    self.entries.update(
-                        self.index({module: self.sources[module]})
-                    )
+                    self.entries.update(self.index({module: self.sources[module]}))
 
         @override
         def __getitem__(self, identity: str) -> V:
