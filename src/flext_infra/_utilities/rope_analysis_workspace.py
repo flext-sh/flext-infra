@@ -74,9 +74,25 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
     @classmethod
     def _governed_roots(cls, repository_root: Path) -> frozenset[Path]:
-        """Return every declared governed project root, resolved."""
+        """Return every root the opened Rope workspace scope declares, resolved.
+
+        The nested-repository guard below classifies a ``.git`` boundary as
+        foreign when its root is not a workspace member. That membership test
+        must ask the same authority that opened the workspace:
+        ``init_rope_workspace`` spans every direct Python project
+        (``discover_rope_project_roots``), so a sibling member carrying its own
+        checkout identity is a governed member here. Classifying membership
+        with the narrower declared-submodule authority instead pruned exactly
+        the files the Rope project indexed as source folders, and the workspace
+        index disagreed with the scope it was built from.
+        """
         return frozenset(
-            FlextInfraUtilitiesProjectDiscovery.governed_project_roots(repository_root)
+            (
+                repository_root.resolve(),
+                *FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
+                    repository_root
+                ),
+            )
         )
 
     @staticmethod
