@@ -36,14 +36,21 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
         tm.that(result.issues[0].code, eq="B101")
 
-    def test_bandit_rejects_missing_source_scope(self, tmp_path: Path) -> None:
+    def test_bandit_skips_neutrally_without_source_scope(self, tmp_path: Path) -> None:
+        """No src tree is package:false topology, not a lost scan (864).
+
+        The base gate keeps failing loud for gates whose targets are
+        unconditional; bandit declares its target conditional, so the
+        missing tree yields a neutral skip naming the condition.
+        """
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 
         result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.result.errors), eq=1)
+        tm.that(result.result.passed, eq=True)
+        tm.that(len(result.result.errors), eq=0)
         tm.that(len(result.issues), eq=0)
+        tm.that(result.raw_output, has="no src tree")
 
     def test_bandit_scans_large_tree_with_sanitized_path(self, tmp_path: Path) -> None:
         """The workspace interpreter runs Bandit without any PATH-provided tool."""
