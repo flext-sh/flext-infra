@@ -74,9 +74,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
     @classmethod
     def _governed_roots(cls, repository_root: Path) -> frozenset[Path]:
-        """Return every declared governed project root, resolved."""
+        """Return every declared governed project root, resolved.
+
+        The authority is the same election the Rope opener uses
+        (``discover_rope_project_roots``): a candidate the session indexes is
+        governed by definition, so the index filter and the opened project set
+        can never disagree about a sibling repository.
+        """
         return frozenset(
-            FlextInfraUtilitiesProjectDiscovery.governed_project_roots(repository_root)
+            FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
+                repository_root
+            )
         )
 
     @staticmethod
