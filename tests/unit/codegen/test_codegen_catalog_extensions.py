@@ -41,11 +41,18 @@ class TestsFlextInfraCodegenCatalogExtensions:
     ) -> None:
         """Source validation happens before creating a directory or Git metadata."""
         root = tmp_path / "unborn"
-        project = u.Tests.project_spec("new-project").model_copy(
-            update={"flext_source": config.Infra.codegen.infra_repository.distribution}
-        )
+        consumer = u.Tests.repository_ref("new-project")
+        # The scaffold source the materialization consumes is the workspace's
+        # bootstrap source; naming a repository other than the infrastructure
+        # distribution makes it invalid.
         workspace = u.Tests.workspace_spec(
-            u.Tests.repository_ref("new-project"), project=project
+            consumer, project=u.Tests.project_spec(consumer.name)
+        ).model_copy(
+            update={
+                "flext_source": m.Infra.CodegenBootstrapSource(
+                    url=consumer.url, ref=u.Tests.provider_branch()
+                )
+            }
         )
         result = FlextInfraCodegenConform.execute_request(
             u.Tests.conform_request(
@@ -56,6 +63,10 @@ class TestsFlextInfraCodegenCatalogExtensions:
             initial_workspace=workspace,
         )
         tm.that(result.failure, eq=True)
+        tm.that(
+            result.error,
+            has=f"must be the {config.Infra.codegen.infra_repository.distribution}",
+        )
         tm.that(root.exists(), eq=False)
 
     def _repository(
