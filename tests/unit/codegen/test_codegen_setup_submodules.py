@@ -13,7 +13,7 @@ from tests import p, t, u as test_u
 
 # The run-scoped template resolves a real toolchain through Make upg before any
 # item starts; each scenario provisions its own physical environment frozen
-# from those committed dependency locks.
+# from those resolved dependency locks.
 # Make test-full owns these external installer and Git integration scenarios.
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
 

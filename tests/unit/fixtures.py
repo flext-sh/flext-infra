@@ -88,52 +88,6 @@ def _detector_template_parent(modules: t.StrSequence) -> Path:
     return Path(tempfile.gettempdir()) / "detector-templates" / "-".join(modules)
 
 
-def _import_declared_runtime(root: Path) -> None:
-    """Make the consumer import every runtime requirement it declares.
-
-    Conform renders the upstream dependency profile into the consumer's
-    runtime dependencies, so a real consumer that declares them also uses
-    them. The import names are read from the consumer's own resolved
-    environment, never listed here.
-    """
-    declared = frozenset(
-        name
-        for item in u.Infra.project_dependency_names_from_payload(
-            u.Tests.toml_payload(
-                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-            )
-        )
-        if (name := u.Infra.dep_name(item)) is not None
-    )
-    probe = tm.ok(
-        u.Cli.capture(
-            [
-                str(root / c.Infra.VENV_BIN_REL / "python"),
-                "-c",
-                (
-                    "import importlib.metadata, json; "
-                    "print(json.dumps(importlib.metadata.packages_distributions()))"
-                ),
-            ],
-            cwd=root,
-        )
-    )
-    owners = u.Cli.json_as_mapping(tm.ok(tm.not_none(u.Cli.json_parse(probe))))
-    imported = sorted(
-        module
-        for module, distributions in owners.items()
-        if module.isidentifier()
-        and not module.startswith("_")
-        and any(
-            u.Infra.dep_name(distribution) in declared
-            for distribution in t.Infra.STR_SEQ_ADAPTER.validate_python(distributions)
-        )
-    )
-    (root / "src" / "detector_fixture" / c.Infra.INIT_PY).write_text(
-        "".join(f"import {module}\n" for module in imported), encoding="utf-8"
-    )
-
-
 def _provision_detector_template(modules: t.StrSequence) -> None:
     """Resolve one detector consumer through ``make upg`` and commit its locks.
 
@@ -219,7 +173,6 @@ def _provision_detector_template(modules: t.StrSequence) -> None:
     # resolved environment has been reviewed and committed by the consumer.
     upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
     if u.Cli.process_succeeded(upgrade.outcome):
-        _import_declared_runtime(root)
         u.Tests.git_bootstrap(root, ("add", "-A"))
         u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
     _write_receipt(parent / _DETECTOR_UPGRADE_RECEIPT, upgrade)
