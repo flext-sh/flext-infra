@@ -69,15 +69,18 @@ class FlextInfraPyprojectModernizerRun:
         aliases: MutableMapping[str, t.MutableSequenceOf[Path]] = {}
         for path in declared.values():
             aliases.setdefault(path.name, []).append(path)
+            # A declared subproject whose pyproject cannot be read or named
+            # would otherwise vanish from the alias map and resurface as a
+            # false "missing" or "ambiguous" project further down.
             state = self._read_document_state(path / c.Infra.PYPROJECT_FILENAME)
             if state.failure:
-                continue
-            try:
-                name = u.Infra.project_name_from_payload(
-                    state.value.pyproject_path, state.value.payload
+                return result_type.fail(
+                    f"workspace subproject {path} has an unreadable pyproject: "
+                    f"{state.error}"
                 )
-            except c.EXC_TYPE_VALIDATION:
-                continue
+            name = u.Infra.project_name_from_payload(
+                state.value.pyproject_path, state.value.payload
+            )
             if path not in aliases.setdefault(name, []):
                 aliases[name].append(path)
         selected = [name for name in self.project_names or () if name != "."]
@@ -142,7 +145,7 @@ class FlextInfraPyprojectModernizerRun:
         drift_reported = False
         ordered = sorted(files)
         for index, file_path in enumerate(ordered, start=1):
-            u.Cli.progress(index, len(ordered), str(file_path), c.Infra.VERB_DEPS)
+            u.Cli.progress(index, len(ordered), str(file_path), c.Infra.CLI_GROUP_DEPS)
             state = (
                 root_state
                 if file_path.resolve() == root_pyproject.resolve()

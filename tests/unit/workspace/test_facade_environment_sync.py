@@ -6,7 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, config, infra, m, t, u
+from flext_infra import config, infra
+from tests import c, m, t, u
 
 
 class TestsFlextInfraFacadeEnvironmentSync:
@@ -27,8 +28,12 @@ class TestsFlextInfraFacadeEnvironmentSync:
         """Return one variable as the real direnv activation of ``workspace`` sees it.
 
         ``HOME`` is isolated so the activation creates its scratch root under the
-        test tree instead of the operator's home.
+        test tree instead of the operator's home; the inherited Mise storage
+        still provides the pinned runtime ``make setup`` installed.
         """
+        # A governed checkout carries its Mise declaration, launcher, and
+        # release pin; activation refuses to run without the recorded pin.
+        u.Tests.copy_tracked_mise_seeds(workspace)
         activation_env = {"HOME": str(home), **env}
         tm.ok(
             u.Cli.run_checked(
@@ -162,6 +167,3 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
         tm.ok(result)
         tm.that((workspace / ".envrc").exists(), eq=False)
-
-
-__all__: list[str] = ["TestsFlextInfraFacadeEnvironmentSync"]

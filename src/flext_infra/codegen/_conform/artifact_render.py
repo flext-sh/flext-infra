@@ -180,7 +180,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     gitignore_sections=u.Infra.gitignore_sections(
                         codegen,
                         profile=target.make_profile,
-                        project_name=repository_root.name,
+                        # The declared distribution is the project identity; a
+                        # scaffold renders before its pyproject exists.
+                        project_name=repository.distribution,
                         workspace=workspace,
                         project_patterns=project_patterns,
                     )
@@ -216,6 +218,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # bd base otherwise.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    repository_root_rel=self._repository_root_rel(workspace),
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
                     scratch_home_relative=(codegen.toolchain.scratch_home_relative),
@@ -237,10 +240,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             toolchain_data = {
                 field_name: value
                 for field_name, value in codegen.toolchain.model_dump().items()
-                if field_name in m.Infra.MiseTomlRenderSpec.model_fields
+                if field_name in m.Infra.ToolchainSpec.model_fields
             }
-            toolchain_data["gascity_enabled"] = target.gascity_enabled
-            return r[p.Model].ok(m.Infra.MiseTomlRenderSpec(**toolchain_data))
+            return r[p.Model].ok(m.Infra.ToolchainSpec(**toolchain_data))
 
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             project_types = target.beads.custom_issue_types
@@ -389,6 +391,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=self.link_mode(repository, codegen.toolchain),
                     uv_version=codegen.toolchain.uv_version,
+                    mise_lockfile_platforms=codegen.toolchain.mise_lockfile_platforms,
+                    qlty_selector=codegen.toolchain.qlty_selector,
+                    jscpd_selector=codegen.toolchain.jscpd_selector,
+                    prettier_selector=codegen.toolchain.prettier_selector,
+                    scc_selector=codegen.toolchain.scc_selector,
+                    waza_selector=codegen.toolchain.waza_selector,
                     make=codegen.make,
                     extra_verbs=(
                         self._merge_extra_verbs(

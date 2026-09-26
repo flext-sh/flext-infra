@@ -74,8 +74,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.that(rendered.value, has=f"{archive_root()}/")
 
     @pytest.mark.slow
+    @pytest.mark.parametrize("directory_suffix", ["", "-lane"])
     def test_conform_materializes_layout_gitignore_additions(
-        self, tmp_path: Path
+        self, tmp_path: Path, directory_suffix: str
     ) -> None:
         """``codegen conform`` renders the layout override additions into ``.gitignore``.
 
@@ -84,6 +85,10 @@ class TestsFlextInfraCodegenLayoutGitignore:
         and a governed member ended up hand-editing the projection. One owner now
         derives the sections for every renderer: after conform, the layout engine
         finds no missing gitignore pattern for a project declared in the SSOT.
+
+        The override is keyed by the declared ``[project].name``, never by the
+        checkout directory: a linked worktree named after its lane renders the same
+        additions (conform used ``repository_root.name`` and dropped them there).
         """
         owner, override = next(
             (name, item)
@@ -92,7 +97,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
             )
             if item.gitignore_additions
         )
-        root = tmp_path / owner
+        root = tmp_path / f"{owner}{directory_suffix}"
         u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             owner,
@@ -151,6 +156,3 @@ class TestsFlextInfraCodegenLayoutGitignore:
         paths = {finding.path for finding in report.findings}
         tm.that(local.name in paths, eq=False)
         tm.that(tracked.name in paths, eq=True)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenLayoutGitignore"]

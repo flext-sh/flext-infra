@@ -16,7 +16,7 @@ from .base import FlextInfraSmellFixer
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 class _BooleanSimplifier(ast.NodeTransformer):
@@ -65,7 +65,7 @@ class FlextInfraBooleanLogicFixer(FlextInfraSmellFixer):
     tag: ClassVar[str] = "smell_boolean_logic"
 
     @override
-    def fix(self, project_dir: Path, issue: m.Infra.Issue) -> tuple[bool, list[str]]:
+    def fix(self, project_dir: Path, issue: m.Infra.Issue) -> t.Pair[bool, list[str]]:
         """Rewrite eligible boolean chains in the issue's file."""
         source_path = project_dir / issue.file
         try:

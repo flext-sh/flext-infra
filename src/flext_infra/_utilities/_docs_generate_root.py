@@ -40,7 +40,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         class_counts: MutableMapping[str, int] = {}
         scope_modules: MutableMapping[str, list[str]] = {}
         src_paths: t.MutableSequenceOf[str] = []
-        root_api: list[tuple[Path, str]] = []
+        root_api: list[t.Pair[Path, str]] = []
         for scope in scopes:
             if scope.name == c.Infra.RK_ROOT:
                 continue
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 "description": str(project_contract.get("description", "")).strip(),
                 "api_page": f"../../api-reference/generated/{scope.name}.md",
             })
-        rendered: list[tuple[Path, str]] = [
+        rendered: list[t.Pair[Path, str]] = [
             *root_api,
             (
                 repository_root / "mkdocs.yml",

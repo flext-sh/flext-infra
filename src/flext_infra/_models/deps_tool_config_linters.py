@@ -192,6 +192,13 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 description="Error codes disabled for these modules.",
             ),
         ]
+        follow_untyped_imports: Annotated[
+            bool,
+            m.Field(
+                alias="follow-untyped-imports",
+                description="Analyze installed source even without typing metadata.",
+            ),
+        ] = False
         justification: Annotated[
             str,
             m.Field(

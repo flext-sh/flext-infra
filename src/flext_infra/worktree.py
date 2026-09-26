@@ -111,7 +111,7 @@ class FlextInfraWorktreeService(s[str]):
         )
         if listed.failure:
             return r[t.VariadicTuple[t.Pair[Path, str]]].from_failure(listed)
-        entries: list[tuple[Path, str]] = []
+        entries: list[t.Pair[Path, str]] = []
         current: Path | None = None
         branch = ""
         for line in (*listed.value.text.splitlines(), ""):

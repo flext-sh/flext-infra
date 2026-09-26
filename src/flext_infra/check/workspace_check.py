@@ -88,7 +88,16 @@ class FlextInfraWorkspaceChecker(
         project_targets = project_targets_result.value
         # An omitted gate selection is the typed SSOT default: every default
         # check gate (the set an unset CI token runs), never an empty run.
-        gates = list(params.gates) or list(c.Infra.CANONICAL_DEFAULT_GATE_IDS)
+        if params.gates:
+            gates = list(params.gates)
+        else:
+            policy = config.Infra.codegen.make
+            gates = list(policy.check_gates_default)
+            for suspension in policy.check_gate_suspensions:
+                u.Cli.info(
+                    f"SUSPENDED check gate {suspension.gate}; "
+                    f"authority={suspension.authority}; reason={suspension.reason}"
+                )
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             reports_dir=params.reports_dir_path,

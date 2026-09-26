@@ -111,6 +111,25 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr,
             m.Field(description="mise-owned uv version used by bootstrap validation"),
         ]
+        mise_lockfile_platforms: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Platforms carried by artifact-tool lock entries"),
+        ]
+        qlty_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured Mise selector for qlty")
+        ]
+        jscpd_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured Mise selector for jscpd")
+        ]
+        prettier_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured Mise selector for Prettier")
+        ]
+        scc_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured Mise selector for scc")
+        ]
+        waza_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured Mise selector for Waza")
+        ]
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -367,16 +386,6 @@ class FlextInfraConfigModelsContexts:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
-        beads_tool_selector: Annotated[
-            t.NonEmptyStr, m.Field(description="Official Beads mise selector")
-        ]
-        beads_tool_version: Annotated[
-            Literal["latest"], m.Field(description="Moving Beads release selector")
-        ]
-        beads_tool_prerelease: Annotated[
-            bool,
-            m.Field(description="Whether mise may resolve prerelease Beads versions"),
-        ] = False
         beads: Annotated[
             FlextInfraConfigModelsBeads.BeadsProjectSpec,
             m.Field(description="Repository-local Beads identity"),
@@ -566,6 +575,13 @@ class FlextInfraConfigModelsContexts:
 
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
+
+        flext_source: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Direct Git infrastructure requirement declared for scaffolding"
+            ),
+        ] = None
 
         dependency_revisions: Annotated[
             Mapping[t.NonEmptyStr, Annotated[str, m.Field(pattern=r"^[0-9a-f]{40}$")]],

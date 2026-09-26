@@ -245,7 +245,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         return r[bool].ok(True)
 
     @staticmethod
-    def raw_requirement_values(raw: object) -> list[str]:
+    def raw_requirement_values(raw: p.AttributeProbe) -> list[str]:
         """Collect raw requirement strings from a dependencies value or group table.
 
         ``project.dependencies`` is one array while ``optional-dependencies``

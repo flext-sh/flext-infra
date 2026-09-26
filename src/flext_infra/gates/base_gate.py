@@ -64,8 +64,20 @@ class FlextInfraGate:
         started = time.monotonic()
         check_dirs = self._get_check_dirs(project_dir, ctx)
         if not check_dirs:
-            return self._skip_result(project_dir, started)
+            return self._empty_targets_result(project_dir, started)
         return self._execute_check_command(project_dir, ctx, check_dirs, started)
+
+    def _empty_targets_result(
+        self, project_dir: Path, started: float
+    ) -> m.Infra.GateExecution:
+        """Outcome when a gate collects no check targets.
+
+        Failing loud is the default: a selected gate with no inputs did not
+        establish acceptance. A gate whose targets are conditional on the
+        project topology (absent by declared design, not by accident)
+        overrides this with a neutral skip naming the condition.
+        """
+        return self._skip_result(project_dir, started)
 
     def check_files(
         self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
@@ -235,6 +247,7 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
         accept_reported_issues: bool = False,
+        observational_issues: t.SequenceOf[m.Infra.Issue] = (),
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
@@ -243,6 +256,8 @@ class FlextInfraGate:
         lines (fix paths report applied changes there).
         ``accept_reported_issues`` is the fix contract: reported issues are
         the residue a fixer could not repair and do not decide acceptance.
+        Explicit observational findings remain visible in the report but do
+        not change the verdict of blocking ``issues`` or native execution.
         """
         _ = ctx
         verdict = passed and (accept_reported_issues or not issues)
@@ -259,6 +274,7 @@ class FlextInfraGate:
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=tuple(issues),
+            observational_issues=tuple(observational_issues),
             raw_output=raw_output,
         )
 

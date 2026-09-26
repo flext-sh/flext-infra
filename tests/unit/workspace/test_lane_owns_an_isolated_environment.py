@@ -153,6 +153,3 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
         assert lane.is_dir()
         assert not (lane / _VENV_NAME).exists()
         assert not (lane / "setup-runs.log").exists()
-
-
-__all__: list[str] = ["TestsFlextInfraLaneOwnsAnIsolatedEnvironment"]

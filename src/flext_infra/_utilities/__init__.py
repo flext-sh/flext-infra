@@ -64,9 +64,7 @@ if TYPE_CHECKING:
     from ._pyproject.requirements import FlextInfraUtilitiesPyprojectRequirements
     from ._pyproject.toml_phases import FlextInfraUtilitiesPyprojectTomlPhases
     from ._pyproject.uv_sources import FlextInfraUtilitiesPyprojectUvSources
-    from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
-    from ._rope.signature_patch import FlextInfraUtilitiesRopeSignaturePatch
     from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
     from ._rope_analysis.base import FlextInfraUtilitiesRopeAnalysisBase
     from ._rope_analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
@@ -95,6 +93,12 @@ if TYPE_CHECKING:
     from ._semantic_cutover.family_references import (
         FlextInfraUtilitiesSemanticFamilyReferences,
     )
+    from ._semantic_cutover.family_type_references import (
+        FlextInfraUtilitiesSemanticFamilyTypeReferences,
+    )
+    from ._semantic_cutover.helper_references import (
+        FlextInfraUtilitiesSemanticHelperReferences,
+    )
     from ._semantic_cutover.nesting import FlextInfraUtilitiesSemanticCutoverNesting
     from ._semantic_cutover.nesting_cst import (
         FlextInfraUtilitiesSemanticCutoverNestingCst,
@@ -102,6 +106,7 @@ if TYPE_CHECKING:
     from ._semantic_cutover.nesting_references import (
         FlextInfraUtilitiesSemanticCutoverNestingReferences,
     )
+    from ._semantic_cutover.nesting_types import FlextInfraUtilitiesSemanticNestingTypes
     from ._semantic_cutover.private_import_cst import (
         FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
     )
@@ -341,13 +346,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeInventory",
     "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
-    "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
-    "FlextInfraUtilitiesRopeSignaturePatch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
@@ -366,6 +369,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSemanticFamilyFlatten",
     "FlextInfraUtilitiesSemanticFamilyReferences",
+    "FlextInfraUtilitiesSemanticFamilyTypeReferences",
+    "FlextInfraUtilitiesSemanticHelperReferences",
+    "FlextInfraUtilitiesSemanticNestingTypes",
     "FlextInfraUtilitiesSignatureRules",
     "FlextInfraUtilitiesSilentFailureAst",
     "FlextInfraUtilitiesSilentFailureAstBase",
@@ -454,9 +460,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._pyproject.toml_phases": ("FlextInfraUtilitiesPyprojectTomlPhases",),
             "._pyproject.uv_sources": ("FlextInfraUtilitiesPyprojectUvSources",),
             "._rope": ("_rope",),
-            "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
-            "._rope.signature_patch": ("FlextInfraUtilitiesRopeSignaturePatch",),
             "._rope_analysis": ("_rope_analysis",),
             "._rope_analysis.asthelpers": (
                 "FlextInfraUtilitiesRopeAnalysisAstHelpers",
@@ -497,6 +501,12 @@ _LAZY_IMPORTS = MappingProxyType(
             "._semantic_cutover.family_references": (
                 "FlextInfraUtilitiesSemanticFamilyReferences",
             ),
+            "._semantic_cutover.family_type_references": (
+                "FlextInfraUtilitiesSemanticFamilyTypeReferences",
+            ),
+            "._semantic_cutover.helper_references": (
+                "FlextInfraUtilitiesSemanticHelperReferences",
+            ),
             "._semantic_cutover.nesting": (
                 "FlextInfraUtilitiesSemanticCutoverNesting",
             ),
@@ -505,6 +515,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._semantic_cutover.nesting_references": (
                 "FlextInfraUtilitiesSemanticCutoverNestingReferences",
+            ),
+            "._semantic_cutover.nesting_types": (
+                "FlextInfraUtilitiesSemanticNestingTypes",
             ),
             "._semantic_cutover.private_import_cst": (
                 "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",

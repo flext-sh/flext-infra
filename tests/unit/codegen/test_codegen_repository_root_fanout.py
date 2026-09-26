@@ -51,7 +51,7 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
                 test_u.Cli.run_raw(
-                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}", ""],
+                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
                 )
@@ -59,26 +59,30 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
             tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
-    def test_repository_root_deps_profiles_canonical_modernization(
+    def test_repository_root_upg_profiles_canonical_modernization(
         self, tmp_path: Path
     ) -> None:
-        """Generated deps renders the exact lock-upgrade and modernizer invocation."""
+        """Generated upg renders the exact lock-upgrade and modernizer invocation."""
         repository_root = self._render_root_makefile(tmp_path)
 
         execution = tm.ok(
             test_u.Cli.run_raw(
-                [c.Infra.MAKE, "--dry-run", "_builtin-deps", ""],
+                [c.Infra.MAKE, "--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
                 remove_env_keys=("MAKEFLAGS",),
             )
         )
 
-        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
+        tm.that(
+            u.Cli.process_succeeded(execution.outcome),
+            eq=True,
+            msg=execution.stdout + execution.stderr,
+        )
         rendered = execution.stdout + execution.stderr
         tm.that(rendered, has="deps modernize")
-        tm.that(rendered, has="--apply --rewrite-constraints --skip-check")
-        tm.that(rendered, has="uv lock --project")
-        tm.that(rendered, has="--upgrade")
+        tm.that(rendered, has="--apply --rewrite-constraints")
+        tm.that(rendered, has="lock --project")
+        tm.that(rendered, has="--upgrade --refresh")
 
     def _render_root_makefile(self, tmp_path: Path) -> Path:
         """Render base/Makefile.j2 from a typed workspace fixture."""
@@ -86,10 +90,10 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         workspace = u.Tests.workspace_spec(
             repository, project=u.Tests.project_spec(repository.name)
         )
-        repository_root = tmp_path / "workspace"
-        # The bootstrap projection refreshes the dispatcher of an existing checkout:
-        # the root is present, even when it carries no metadata or topology yet.
-        repository_root.mkdir()
+        # The bootstrap projection refreshes the dispatcher of an existing
+        # checkout: the root is a Git repository (the workspace profile resolves
+        # itself through Git), even when it carries no topology yet.
+        repository_root = u.Tests.git_repository(tmp_path, "workspace")
         request = u.Tests.conform_request(
             repository_root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -114,6 +118,3 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         return repository_root
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenRepositoryRootFanout"]

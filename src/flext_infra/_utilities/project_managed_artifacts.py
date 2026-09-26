@@ -5,13 +5,12 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import MutableMapping
-from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_cli import u
 
 from flext_core import r
-from flext_infra import c, config, m, p, t
+from flext_infra import c, m, p, t
 
 from .git import FlextInfraUtilitiesGit
 
@@ -141,35 +140,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             state.st_mtime_ns,
             state.st_ctime_ns,
         )
-
-    @staticmethod
-    def validate_mise_tool_selectors(
-        selectors: t.StrSequence, *, source: Path
-    ) -> p.Result[bool]:
-        """Reject alternate distributions of fleet-owned tool identities."""
-        toolchain = config.Infra.codegen.toolchain
-        protected_tools = tuple(
-            (owner, getattr(toolchain, owner))
-            for owner in toolchain.protected_mise_tools
-        )
-        for selector in selectors:
-            for owner, tool in protected_tools:
-                if not any(
-                    fnmatchcase(selector, pattern) for pattern in tool.selector_patterns
-                ):
-                    continue
-                if selector == tool.selector:
-                    # Identity validation owns only the distribution question:
-                    # the canonical selector IS the fleet identity. Whether a
-                    # project may redeclare a tool the fleet template already
-                    # publishes is the composition owner's rule.
-                    continue
-                return r[bool].fail(
-                    "project Mise selector declares an alternate distribution "
-                    f"for fleet identity {owner!r}: {selector!r} in "
-                    f"{source}; canonical selector is {tool.selector!r}"
-                )
-        return r[bool].ok(True)
 
     @classmethod
     def load_project_managed_artifacts(
@@ -337,14 +307,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
 
     @classmethod
-    def compose_mise_toml(cls, project_dir: Path, rendered: str) -> p.Result[str]:
-        """Snapshot project YAML and compose Mise from those exact bytes."""
-        source_snapshot = cls.snapshot_config_sources(project_dir)
-        if source_snapshot.failure:
-            return r[str].from_failure(source_snapshot)
-        return cls.compose_mise_toml_from_snapshot(source_snapshot.value, rendered)
-
-    @classmethod
     def compose_mise_toml_from_snapshot(
         cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState], rendered: str
     ) -> p.Result[str]:
@@ -362,12 +324,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         local_tools = resolution.artifacts.Mise.tools
         if not local_tools:
             return r[str].ok(rendered)
-        for selector in local_tools:
-            selector_validation = cls.validate_mise_tool_selectors(
-                (selector,), source=resolution.mise_tool_sources[selector]
-            )
-            if selector_validation.failure:
-                return r[str].from_failure(selector_validation)
         doc = u.Cli.toml_parse_text(rendered)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")

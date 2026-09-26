@@ -11,8 +11,8 @@ from flext_infra import c, m, t, u
 if TYPE_CHECKING:
     from flext_infra import p
 
-type _DocsScopeArtifacts = tuple[
-    m.Infra.DocScope, tuple[t.Triple[Path, Path, str | None], ...]
+type _DocsScopeArtifacts = t.Pair[
+    m.Infra.DocScope, t.VariadicTuple[t.Triple[Path, Path, str | None]]
 ]
 
 

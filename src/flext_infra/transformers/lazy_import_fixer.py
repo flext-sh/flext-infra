@@ -34,7 +34,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
 
     def scan_lines_for_hoist(
         self, lines: t.SequenceOf[str]
-    ) -> tuple[list[str], list[str]]:
+    ) -> t.Pair[list[str], list[str]]:
         """Scan source lines, hoist body-local imports, and keep remaining lines."""
         existing_imports: set[str] = set()
         hoisted: list[str] = []

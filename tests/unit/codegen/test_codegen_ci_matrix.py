@@ -31,6 +31,7 @@ class TestsFlextInfraCodegenCiMatrix:
     def _render_project(root: Path) -> Path:
         """Render one fresh internal_flext project into root and return it."""
         service = FlextInfraCodegenProjectNew(
+            flext_source=u.Tests.flext_source(),
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
@@ -169,7 +170,8 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(workflow, has="- name: gen fixed point (blocking)")
         tm.that(workflow, has="CI=Y make gen")
         tm.that(
-            workflow, has='test -z "$(git status --porcelain --untracked-files=all)"'
+            workflow,
+            has='test -z "$(git status --porcelain --untracked-files=all --ignore-submodules=none)"',
         )
         tm.that(workflow, lacks="run: CI=Y make conform")
         tm.that(workflow, has="run: CI=Y make audit")
@@ -239,23 +241,20 @@ class TestsFlextInfraCodegenCiMatrix:
         ci = config.Infra.codegen.make.ci
 
         for hook_id, context in (
-            ("flext-pre-commit", "pre_commit"),
-            ("flext-pre-push", "pre_push"),
+            ("flext-pre-commit-candidate", "pre_commit"),
+            ("flext-pre-push-candidate", "pre_push"),
         ):
             enabled = bool(getattr(config.Infra.codegen.make, context))
-            commands = " && ".join(
-                (
-                    f"{ci.variable}={ci.value} make {step.verb}"
-                    if step.verb == "check"
-                    else f"make {step.verb}"
-                )
-                + ("")
-                for step in workflow
-                if context in step.contexts
+            commands = "; ".join(
+                f"make {step.verb}" for step in workflow if context in step.contexts
             )
             if enabled:
                 tm.that(hooks, has=f"id: {hook_id}")
-                tm.that(hooks, has=f"'{commands}'")
+                stage = hooks.split(f"id: {hook_id}", maxsplit=1)[1].split(
+                    "pass_filenames:", maxsplit=1
+                )[0]
+                tm.that(stage, has=f"{commands};")
+                tm.that(stage, has=f"unset MAKEFLAGS {ci.variable};")
             else:
                 tm.that(hooks, lacks=f"id: {hook_id}")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
@@ -422,7 +421,7 @@ class TestsFlextInfraCodegenCiMatrix:
             tm.that(content, lacks="ENV MISE_GITHUB_TOKEN=")
             tm.that(
                 content,
-                has="--mount=type=secret,id=github_token,env=MISE_GITHUB_TOKEN,required=true",
+                has="--mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=true",
             )
             tm.that(content, lacks='GITHUB_TOKEN="')
 
@@ -485,6 +484,37 @@ class TestsFlextInfraCodegenCiMatrix:
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
         tm.that(windows.count("shell: bash"), eq=3)
+
+    def test_runtime_jobs_supply_the_native_github_credential(
+        self, tmp_path: Path
+    ) -> None:
+        """Each Make job inherits a token; pure Git jobs require no extra input."""
+        root = self._render_project(tmp_path / "external")
+        for filename in ("ci.yml", "ci-matrix.yml"):
+            workflow = u.Cli.yaml_load_mapping(
+                root / ".github" / "workflows" / filename
+            )
+            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+            for value in jobs.values():
+                job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+                steps = t.Cli.JSON_LIST_ADAPTER.validate_python(job["steps"])
+                commands = tuple(
+                    step["run"]
+                    for raw in steps
+                    if (step := t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw)).get(
+                        "run"
+                    )
+                )
+                invokes_make = any(
+                    isinstance(command, str) and re.search(r"\bmake\s", command)
+                    for command in commands
+                )
+                if invokes_make:
+                    environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
+                    tm.that(environment["GITHUB_TOKEN"], eq="${{ github.token }}")
+                elif "env" in job:
+                    environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
+                    tm.that(environment, lacks="GITHUB_TOKEN")
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
         self, tmp_path: Path
@@ -599,6 +629,8 @@ class TestsFlextInfraCodegenCiMatrix:
             "# End SECTION: distro-matrix", maxsplit=1
         )[0]
         tm.that(smoke, has=f"-e {ci.variable}={ci.value}")
+        tm.that(smoke, has="-e GITHUB_TOKEN")
+        tm.that(smoke, lacks="-e GITHUB_TOKEN=")
         tm.that(smoke, has="make help")
         tm.that(smoke, has="make check")
         tm.that(smoke, lacks="} make test")
@@ -732,6 +764,7 @@ class TestsFlextInfraCodegenCiMatrix:
             "!README.md",
             "!uv.lock",
             "!.mise.toml",
+            "!mise.lock",
             "!bin/",
             "!bin/mise",
             "!bin/mise.cmd",
@@ -741,6 +774,3 @@ class TestsFlextInfraCodegenCiMatrix:
             "!tests/fixtures/ci/docker/",
         ):
             tm.that(content, has=marker)
-
-
-__all__: list[str] = ["TestsFlextInfraCodegenCiMatrix"]

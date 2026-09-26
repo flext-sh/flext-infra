@@ -250,6 +250,3 @@ class TestsFlextInfraLazyInitAliasInheritance:
                 " resolves nowhere in the active environment"
             ),
         )
-
-
-__all__: list[str] = ["TestsFlextInfraLazyInitAliasInheritance"]
