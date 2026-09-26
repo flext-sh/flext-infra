@@ -33,6 +33,8 @@
 
 # Agent hooks and operator config (runtime state, never source)
 .github/hooks/
+.claude/settings.json
+.gemini/settings.json
 */.hooks.json.agents-governance.json
 .claude/*.agents-governance.json
 .gemini/*.agents-governance.json
