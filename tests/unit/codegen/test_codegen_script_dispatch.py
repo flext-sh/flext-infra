@@ -262,8 +262,10 @@ class TestsFlextInfraScriptDispatchMakefile:
 
         tm.ok(invoked)
         tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=False)
-        tm.that(invoked.value.stderr, has="missing or empty")
-        tm.that(invoked.value.stderr, has="mise.version")
+        tm.that(
+            invoked.value.stderr,
+            has=["missing environment interpreter", "make setup creates it"],
+        )
         tm.that((package / c.Infra.INIT_PY).exists(), eq=False)
 
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
