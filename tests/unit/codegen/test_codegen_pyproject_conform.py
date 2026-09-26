@@ -532,6 +532,32 @@ dependencies = []
         )
         tm.that("project" not in test_u.Tests.toml_mapping(excludes[0]), eq=True)
 
+    def test_workspace_root_routes_only_exclusions_of_local_projects(
+        self, tmp_path: Path
+    ) -> None:
+        """An exclusion for an absent project would drop its only install edge."""
+        configured = config.Infra.codegen.uv_exclude_dependencies
+        member = configured[0].project
+        rendered = test_u.Tests.scaffold_text(
+            tmp_path / "fixture-project", c.Infra.PYPROJECT_FILENAME, members=(member,)
+        )
+        uv = test_u.Tests.toml_table_at(rendered, "tool", "uv")
+        local = {"fixture-project", member}
+        tm.that(
+            test_u.Tests.toml_list(uv["exclude-dependencies"]),
+            eq=[
+                {
+                    key: value
+                    for key, value in item.model_dump(
+                        mode="json", exclude_none=True
+                    ).items()
+                    if key != "project"
+                }
+                for item in configured
+                if item.project in local
+            ],
+        )
+
     def test_overlay_preserves_custom_scripts_and_unmanaged_tools(self) -> None:
         """Package requirements survive without restoring stale profile pins."""
         rendered = """[project]
