@@ -285,6 +285,15 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
         for plan in changed:
             before = u.Infra.codegen_file_before_state(plan)
+            if plan.desired_content is not None and (
+                before.failure or before.value.parent_inode is None
+            ):
+                # Planning is read-only, so a destination planned into an absent
+                # directory chain carries no parent identity. Like the
+                # transaction owner at apply, the publisher materializes the
+                # chain and reads the destination again before publishing.
+                plan.path.parent.mkdir(parents=True, exist_ok=True)
+                before = u.Cli.atomic_read_binary_file_state(plan.path)
             if before.failure:
                 return r[bool].from_failure(before)
             if plan.desired_content is None:

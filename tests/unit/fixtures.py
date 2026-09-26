@@ -81,7 +81,12 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         "dateutil": "python-dateutil",
         "yaml": "pyyaml",
     }
-    dependencies = ", ".join(f'"{distributions[name]}"' for name in modules)
+    # A governed FLEXT consumer declares exactly one runtime upstream profile;
+    # conform derives its project spec from it (context_render.py).
+    upstream = u.Tests.flext_source("flext-core")
+    dependencies = ", ".join(
+        f'"{name}"' for name in (upstream, *(distributions[name] for name in modules))
+    )
     infrastructure = tm.ok(
         u.Infra.configured_repository_ref(
             codegen=config.Infra.codegen, repository_root=_PROJECT_ROOT
@@ -105,12 +110,14 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
             '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
             f'"{infrastructure.distribution} @ git+{infrastructure.url}@{integration.branch}"]\n'
+            "[tool.hatch.metadata]\nallow-direct-references = true\n"
             "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),
     )
     (root / "src" / "detector_fixture" / "__init__.py").write_text(
-        "\n".join(f"import {name}" for name in modules) + "\n", encoding="utf-8"
+        "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+        encoding="utf-8",
     )
     u.Tests.copy_tracked_mise_seeds(root)
     repository = u.Tests.repository_ref(
