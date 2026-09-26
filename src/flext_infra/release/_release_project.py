@@ -59,14 +59,14 @@ class FlextInfraReleaseProjectMixin(FlextInfraReleaseMetadataMixin):
         if staged.failure:
             return r[m.Infra.BuildRecord].from_failure(staged)
         snapshot, license_sha256 = staged.value
-        source = u.Cli.files_read_text(stage / c.Infra.PYPROJECT_FILENAME)
+        source = u.Cli.files_read_text(stage / c.PYPROJECT_FILENAME)
         if source.failure:
             return r[m.Infra.BuildRecord].from_failure(source)
         rendered = self._release_pyproject(source.value, version, versions)
         if rendered.failure:
             return r[m.Infra.BuildRecord].from_failure(rendered)
         for destination in (
-            stage / c.Infra.PYPROJECT_FILENAME,
+            stage / c.PYPROJECT_FILENAME,
             output_dir / "metadata" / f"{name}-pyproject.toml",
         ):
             written = self._write_release_text(destination, rendered.value)
