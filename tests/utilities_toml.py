@@ -21,27 +21,6 @@ class TestsFlextInfraUtilitiesTomlMixin:
         """Decode the present text payload of a generated-file test plan."""
         return tm.not_none(plan.desired_content).decode(c.Cli.ENCODING_DEFAULT)
 
-    class TomlReaderSequence(p.Infra.TomlReader):
-        """Protocol-compatible TOML reader that replays typed results."""
-
-        def __init__(self, values: t.SequenceOf[p.Result[t.JsonMapping]]) -> None:
-            """Store the ordered TOML results for replay."""
-            self._values = list(values)
-            self._index = 0
-
-        @override
-        def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
-            del path
-            current = self._index
-            self._index = current + 1
-            if not self._values:
-                return r[t.JsonMapping].fail("toml reader sequence is empty")
-            return (
-                self._values[current]
-                if current < len(self._values)
-                else self._values[-1]
-            )
-
     @staticmethod
     def infra_mapping(value: t.Infra.InfraMapping) -> t.JsonMapping:
         """Provide the typed test helper `infra_mapping`."""
