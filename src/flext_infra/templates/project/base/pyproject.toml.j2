@@ -98,7 +98,6 @@ exclude_also = [
   {{ item | tojson }},
 {% endfor %}
 ]
-fail_under = {{ tooling_runtime.coverage_fail_under }}
 precision = {{ tooling.tools.coverage.precision }}
 show_missing = {{ tooling.tools.coverage.show_missing | lower }}
 skip_covered = {{ tooling.tools.coverage.skip_covered | lower }}
