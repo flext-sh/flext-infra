@@ -216,8 +216,11 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             msg = f"quoted type destination is not an identifier chain: {expression}"
             raise TypeError(msg)
         module = scope.pyobject.get_module()
-        module_scope = module.get_scope() if module is not None else None
-        if module is None or module_scope is None:
+        if module is None:
+            msg = "quoted type scope has no declaring module"
+            raise ValueError(msg)
+        module_scope = module.get_scope()
+        if module_scope is None:
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
         cap = cls._captured_names(module)
