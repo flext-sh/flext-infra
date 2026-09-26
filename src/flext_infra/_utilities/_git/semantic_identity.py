@@ -122,11 +122,16 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
             return r[m.Infra.GitBoolReport].fail(
                 f"failed to probe Git work tree: {exc}", exception=exc
             )
-        return r[m.Infra.GitBoolReport].ok(
-            m.Infra.GitBoolReport(
-                value=not repo.bare and repo.working_tree_dir is not None
+        # GitPython pins a `git cat-file` child per open handle: the probe owns
+        # its handle, so it is released before the report leaves the boundary.
+        try:
+            return r[m.Infra.GitBoolReport].ok(
+                m.Infra.GitBoolReport(
+                    value=not repo.bare and repo.working_tree_dir is not None
+                )
             )
-        )
+        finally:
+            repo.close()
 
     @classmethod
     def _collect_identity_facts(
@@ -158,9 +163,14 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         raw_super = repo.git.rev_parse("--show-superproject-working-tree").strip()
         if not raw_super and primary_root != working_tree:
             primary_repo = cls._repo(primary_root)
-            raw_super = primary_repo.git.rev_parse(
-                "--show-superproject-working-tree"
-            ).strip()
+            try:
+                raw_super = primary_repo.git.rev_parse(
+                    "--show-superproject-working-tree"
+                ).strip()
+            finally:
+                # The secondary handle is only opened for this one probe; every
+                # open GitPython handle pins a `git cat-file` child.
+                primary_repo.close()
         superproject = Path(raw_super).resolve() if raw_super else None
 
         is_worktree = git_dir != common_dir
