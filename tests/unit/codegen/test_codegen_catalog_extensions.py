@@ -210,60 +210,52 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(result.failure, eq=True)
         tm.that(result.error, has="is undeclared by this checkout")
 
-    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
-        template = (
-            Path(__file__).parents[3]
-            / "src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2"
-        ).read_text(encoding="utf-8")
-        tm.that(template, lacks="latest_release_url")
-        tm.that(template, lacks="curl ")
-        tm.that(template, lacks="--windows --version")
-        tm.that(template, lacks="mise_install_path=")
-        tm.that(template, has='latest_mise="$$mise"')
-        tm.that(template, has="receipt_runtime")
+    def test_bootstrap_toolchain_tracks_latest_mise_release(
+        self, tmp_path: Path
+    ) -> None:
+        """The rendered bootstrap launches the tracked Mise and records its receipt."""
+        makefile = u.Tests.scaffold_text(
+            tmp_path / "fixture-project", c.Infra.MAKEFILE_FILENAME
+        )
+        tm.that(makefile, lacks="latest_release_url")
+        tm.that(makefile, lacks="curl ")
+        tm.that(makefile, lacks="--windows --version")
+        tm.that(makefile, lacks="mise_install_path=")
+        tm.that(makefile, has='latest_mise="$$mise"')
+        tm.that(makefile, has="receipt_runtime")
         tm.that(
             tuple(type(config.Infra.codegen.toolchain).model_fields),
             lacks="mise_version",
         )
 
-    def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
+    def test_setup_provisions_only_and_gen_owns_conformance(
+        self, tmp_path: Path
+    ) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
-        template = (
-            Path(__file__).parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "Makefile.j2"
-        )
-        content = template.read_text(encoding="utf-8")
-        tm.that("_builtin_setup_conform" in content, eq=False)
+        plan = u.Tests.scaffold_plan(tmp_path / "fixture-project")
+        content = tm.not_none(u.Tests.planned_text(plan, c.Infra.MAKEFILE_FILENAME))
+        tm.that(content, lacks="_builtin_setup_conform")
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
-        tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that(setup_env.split("\n\n", 1)[0], lacks="codegen conform")
         tm.that(
             content,
             has='"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow',
         )
-        mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
-        tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
-        tm.that(mise_template, has='go = "{{ go_version }}"')
-        tm.that(mise_template, has='make = "{{ make_version }}"')
-        tm.that(mise_template, lacks="credential_command")
-        tm.that(mise_template, lacks="minimum_release_age")
+        toolchain = config.Infra.codegen.toolchain
+        mise = tm.not_none(u.Tests.planned_text(plan, c.Infra.MISE_TOML_FILENAME))
+        tm.that(mise, has=f'direnv = "{toolchain.direnv_version}"')
+        tm.that(mise, has=f'go = "{toolchain.go_version}"')
+        tm.that(mise, has=f'make = "{toolchain.make_version}"')
+        tm.that(mise, lacks="credential_command")
+        tm.that(mise, lacks="minimum_release_age")
         # S1 (operator law 2026-09-14): gen has one always-apply recipe; the
         # CHECK_ONLY-selected check/apply pair no longer exists.
-        tm.that("_builtin_gen_check:" in content, eq=False)
-        tm.that("_builtin_gen_apply:" in content, eq=False)
-        tm.that("_builtin_gen_all:" in content, eq=True)
-        bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
-            encoding="utf-8"
-        )
-        tm.that(bootstrap, lacks="latest_release_url")
-        tm.that(bootstrap, lacks="curl ")
-        tm.that(bootstrap, lacks="GH_CONFIG_DIR")
-        tm.that(bootstrap, lacks="self-update")
-        tm.that("mise launcher version mismatch" in bootstrap, eq=False)
+        tm.that(content, lacks="_builtin_gen_check:")
+        tm.that(content, lacks="_builtin_gen_apply:")
+        tm.that(content, has="_builtin_gen_all:")
+        tm.that(content, lacks="GH_CONFIG_DIR")
+        tm.that(content, lacks="self-update")
+        tm.that(content, lacks="mise launcher version mismatch")
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that(verb_names, has="setup")
         tm.that(verb_names, has="gen")

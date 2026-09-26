@@ -84,6 +84,50 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
 
     @staticmethod
+    def scaffold_plan(
+        root: Path, *, members: t.StrSequence = ()
+    ) -> m.Infra.CodegenPlan:
+        """Plan every artifact conform renders for a fresh repository scaffold.
+
+        Without members the fixture repository is standalone; each member
+        makes it a workspace composing that project, so generated surfaces
+        are observed exactly as the public codegen owner renders them.
+        """
+        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        repository = fixture.repository_ref(
+            "fixture-project",
+            role=(
+                c.Infra.MakeProfile.WORKSPACE
+                if members
+                else c.Infra.MakeProfile.STANDALONE
+            ),
+        )
+        return TestsFlextInfraUtilitiesCodegenMixin.conform_plan(
+            root,
+            fixture.workspace_spec(
+                repository,
+                project=fixture.project_spec(repository.name),
+                subprojects=tuple(
+                    fixture.repository_ref(name, path=Path(name)) for name in members
+                ),
+            ),
+        )
+
+    @staticmethod
+    def scaffold_text(
+        root: Path, destination: str, *, members: t.StrSequence = ()
+    ) -> str:
+        """Return one rendered scaffold artifact, failing when it is not planned."""
+        return tm.not_none(
+            TestsFlextInfraUtilitiesCodegenMixin.planned_text(
+                TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
+                    root, members=members
+                ),
+                destination,
+            )
+        )
+
+    @staticmethod
     def governed_project_plan(root: Path) -> m.Infra.CodegenPlan:
         """Plan every declared artifact of one governed fixture project read-only."""
         for entry in config.Infra.codegen.templates.entries:
