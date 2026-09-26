@@ -149,7 +149,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             *next(
                 item
                 for item in config.Infra.codegen.managed_files
-                if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+                if item.path.as_posix() == c.PYPROJECT_FILENAME
             ).conflict_sections,
         ],
     )
@@ -177,7 +177,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             if section is not None
             else conflict + declaration
         )
-        path = root / c.Infra.PYPROJECT_FILENAME
+        path = root / c.PYPROJECT_FILENAME
         path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
 
         result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)

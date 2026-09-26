@@ -239,7 +239,7 @@ class TestsFlextInfraCodegenConform:
         )
         plan = tm.ok(service.plan(request))
         pyproject = next(
-            item for item in plan.files if item.path.name == c.Infra.PYPROJECT_FILENAME
+            item for item in plan.files if item.path.name == c.PYPROJECT_FILENAME
         )
         return service, request, pyproject
 
@@ -303,15 +303,11 @@ class TestsFlextInfraCodegenConform:
             root, Path("scripts/hatch_build.py")
         )
         root.mkdir(parents=True, exist_ok=True)
-        (root / c.Infra.PYPROJECT_FILENAME).write_bytes(
-            tm.not_none(first.desired_content)
-        )
+        (root / c.PYPROJECT_FILENAME).write_bytes(tm.not_none(first.desired_content))
 
         second_plan = tm.ok(service.plan(request))
         second = next(
-            item
-            for item in second_plan.files
-            if item.path.name == c.Infra.PYPROJECT_FILENAME
+            item for item in second_plan.files if item.path.name == c.PYPROJECT_FILENAME
         )
 
         tm.that(u.Tests.codegen_file_text(second), eq=u.Tests.codegen_file_text(first))
@@ -331,7 +327,7 @@ class TestsFlextInfraCodegenConform:
         u.Tests.initialize_git_repo(
             tmp_path, origin_url=u.Tests.repository_ref("flext-infra").url
         )
-        pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         source = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(
             source + 'dependencies = ["custom-runtime>=0.22", '
@@ -804,12 +800,10 @@ class TestsFlextInfraCodegenConform:
         first = tm.ok(service.plan(request))
         second = tm.ok(service.plan(request))
         first_pyproject = next(
-            item for item in first.files if item.path.name == c.Infra.PYPROJECT_FILENAME
+            item for item in first.files if item.path.name == c.PYPROJECT_FILENAME
         )
         second_pyproject = next(
-            item
-            for item in second.files
-            if item.path.name == c.Infra.PYPROJECT_FILENAME
+            item for item in second.files if item.path.name == c.PYPROJECT_FILENAME
         )
         rendered_pyproject = u.Tests.codegen_file_text(first_pyproject)
         report = u.Tests.toml_table_at(rendered_pyproject, "tool", "coverage", "report")

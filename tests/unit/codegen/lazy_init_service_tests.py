@@ -464,7 +464,7 @@ class TestsFlextInfraCodegenLazyInitService:
             "format",
             "--check",
             "--config",
-            str(Path(__file__).resolve().parents[3] / c.Infra.PYPROJECT_FILENAME),
+            str(Path(__file__).resolve().parents[3] / c.PYPROJECT_FILENAME),
             "--line-length",
             str(c.Infra.MAX_LINE_LENGTH),
             str(package_root / c.Infra.INIT_PY),

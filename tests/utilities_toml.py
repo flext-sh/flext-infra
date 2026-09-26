@@ -43,7 +43,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             )
 
     @staticmethod
-    def infra_mapping(value: t.Infra.InfraMapping) -> t.JsonMapping:
+    def infra_mapping(value: t.JsonMapping) -> t.JsonMapping:
         """Provide the typed test helper `infra_mapping`."""
         result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         return result
@@ -75,7 +75,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         )
 
     @staticmethod
-    def infra_mapping_result(value: t.Infra.InfraMapping) -> p.Result[t.JsonMapping]:
+    def infra_mapping_result(value: t.JsonMapping) -> p.Result[t.JsonMapping]:
         """Provide the typed test helper `infra_mapping_result`."""
         return r[t.JsonMapping].ok(
             TestsFlextInfraUtilitiesTomlMixin.infra_mapping(value)

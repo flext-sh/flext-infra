@@ -101,7 +101,7 @@ class TestsFlextInfraStubChain:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         hidden_dir = tmp_path / ".hidden"
         hidden_dir.mkdir()
-        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text("", encoding="utf-8")
+        (hidden_dir / c.PYPROJECT_FILENAME).write_text("", encoding="utf-8")
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Tests.mk_project(tmp_path, "project-b", with_src=False)
         valid_project = u.Tests.mk_project(tmp_path, "project-c", with_src=True)

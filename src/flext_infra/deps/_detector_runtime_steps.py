@@ -81,7 +81,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         limits_path: Path,
         params: m.Infra.DetectCommand,
         do_typings: bool,
-        projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
+        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
     ) -> p.Result[bool]:
         """Run deptry + optional typings detection/apply for one project."""
         detector = self._detector
@@ -116,7 +116,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         typing_deps: p.Infra.TypingsDepsService | None,
         limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
+        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
     ) -> p.Result[bool]:
         """Declare CUSTOM typing extras and install them through UV's source editor."""
         detector = self._detector

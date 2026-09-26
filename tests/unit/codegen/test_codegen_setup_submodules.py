@@ -52,7 +52,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         # seeds; documentation publication belongs to the conform tests.
         for filename in (
             c.Infra.MAKEFILE_FILENAME,
-            c.Infra.PYPROJECT_FILENAME,
+            c.PYPROJECT_FILENAME,
             c.Infra.ENVRC_FILENAME,
         ):
             planned = next(file for file in plan.files if file.path.name == filename)
@@ -88,7 +88,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         test_u.Tests.copy_tracked_mise_seeds(root, source_root=template)
         for relative in (
             c.Infra.MAKEFILE_FILENAME,
-            c.Infra.PYPROJECT_FILENAME,
+            c.PYPROJECT_FILENAME,
             c.Infra.UV_LOCK_FILENAME,
             c.Infra.ENVRC_FILENAME,
             c.Infra.ENVRC_LOCAL_RELPATH,
@@ -211,7 +211,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         nested_marker = project / "vendor/source/child/nested/marker.txt"
         # Hatchling consumes this real gitlink file while uv builds the package.
         # A setup that reaches the build before initialization fails natively.
-        pyproject = project / c.Infra.PYPROJECT_FILENAME
+        pyproject = project / c.PYPROJECT_FILENAME
         document = test_u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
         metadata = tm.not_none(u.Cli.toml_table_child(document, "project"))
         metadata["readme"] = {

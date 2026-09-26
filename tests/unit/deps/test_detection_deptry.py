@@ -24,16 +24,14 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
         project.mkdir()
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         return venv_bin, project
 
     def test_success(self, tmp_path: Path) -> None:
         """Verify dependency project discovery succeeds."""
         project = u.Tests.create_project_info(tmp_path / "test-project")
         project.path.mkdir()
-        (project.path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (project.path / c.PYPROJECT_FILENAME).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
         service = u.Tests.create_deptry_service(projects=[project])

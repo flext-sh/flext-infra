@@ -168,7 +168,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         spec = next(
             item
             for item in config.Infra.codegen.managed_files
-            if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+            if item.path.as_posix() == c.PYPROJECT_FILENAME
         )
         project_key = spec.preserve_project_keys[0]
         tool_table = spec.managed_tool_tables[0]

@@ -122,7 +122,9 @@ class TestsFlextInfraDepsModernizerComments:
 
     def test_inject_comments_phase_deduplicates_family_markers(self) -> None:
         """Emit one marker for multiple tables in the same tool family."""
-        rendered = "[tool.coverage.run]\nbranch = true\n[tool.coverage.report]\nprecision = 2"
+        rendered = (
+            "[tool.coverage.run]\nbranch = true\n[tool.coverage.report]\nprecision = 2"
+        )
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that(result.count(self._owned_marker("tool.coverage")), eq=1)
 

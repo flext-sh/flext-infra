@@ -33,7 +33,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         versions: t.StrMapping,
     ) -> p.Result[bool]:
         """Render validated registry metadata into stage and audit output."""
-        pyproject_path = stage_path / c.Infra.PYPROJECT_FILENAME
+        pyproject_path = stage_path / c.PYPROJECT_FILENAME
         source_result = u.Cli.files_read_text(pyproject_path)
         if source_result.failure:
             return r[bool].from_failure(source_result)

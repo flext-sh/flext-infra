@@ -190,7 +190,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             if bootstrap:
                 paths.update(
                     project_root / name
-                    for name in (c.Infra.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
+                    for name in (c.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
                 )
             artifacts = tuple(
                 file

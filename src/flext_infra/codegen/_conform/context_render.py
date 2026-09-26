@@ -298,7 +298,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             repository_root=repository_root,
             bootstrap_source=(
                 workspace.flext_source
-                if not (repository_root / c.Infra.PYPROJECT_FILENAME).exists()
+                if not (repository_root / c.PYPROJECT_FILENAME).exists()
                 else None
             ),
         )
@@ -349,7 +349,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         # typed initial version and the protocol owns every change after that.
         version_result = (
             u.Infra.current_workspace_version(repository_root)
-            if (repository_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            if (repository_root / c.PYPROJECT_FILENAME).is_file()
             else r[str].ok(config.Infra.initial_project_version)
         )
         if version_result.failure:

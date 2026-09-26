@@ -27,8 +27,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         target: m.Infra.RepositoryConformTarget | None = None,
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Apply typed project overlays after canonical template rendering."""
-        if destination == c.Infra.PYPROJECT_FILENAME:
-            live_path = repository_root / c.Infra.PYPROJECT_FILENAME
+        if destination == c.PYPROJECT_FILENAME:
+            live_path = repository_root / c.PYPROJECT_FILENAME
             live: str | None = None
             if live_path.is_file():
                 # Overlay reads the live text (managed merge conflicts

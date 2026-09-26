@@ -195,7 +195,7 @@ class FlextInfraUtilitiesDependencies:
         suffix: str = "",
     ) -> t.SequenceOf[Path]:
         """Resolve runtime, local, and test dependency resources in order."""
-        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_root / c.PYPROJECT_FILENAME
         payload = u.Cli.toml_read_json(pyproject).unwrap()
         project_name = canonicalize_name(
             FlextInfraUtilitiesPyproject.project_name_from_payload(
@@ -446,7 +446,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_requirement_names(
-        cls, *, raw_requirements: t.Infra.InfraValue, names: set[str]
+        cls, *, raw_requirements: t.JsonValue, names: set[str]
     ) -> None:
         """Append requirement names."""
         if not isinstance(raw_requirements, list):
@@ -459,7 +459,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_mapping_dependency_names(
-        cls, *, raw_mapping: t.Infra.InfraValue, names: set[str]
+        cls, *, raw_mapping: t.JsonValue, names: set[str]
     ) -> None:
         """Append mapping dependency names."""
         if not isinstance(raw_mapping, Mapping):
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def flext_dependency_namespaces_from_payload(
-        cls, payload: t.MappingKV[str, t.Infra.InfraValue]
+        cls, payload: t.MappingKV[str, t.JsonValue]
     ) -> t.StrSequence:
         """Extract every declared ``flext-*`` dependency as a Python namespace."""
         # flext-j47u (codex): FLEXT dependencies are first-party contracts even

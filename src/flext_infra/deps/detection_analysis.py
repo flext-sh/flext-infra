@@ -16,11 +16,9 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
     """Typings analysis + conversion helpers composed with the tool-runner mixin."""
 
     @override
-    def _to_toml_config(
-        self, payload: t.MappingKV[str, t.Infra.InfraValue]
-    ) -> t.JsonMapping:
+    def _to_toml_config(self, payload: t.MappingKV[str, t.JsonValue]) -> t.JsonMapping:
         """To toml config."""
-        normalized: MutableMapping[str, t.Infra.InfraValue] = {}
+        normalized: MutableMapping[str, t.JsonValue] = {}
         for key, value in payload.items():
             if value is None:
                 normalized[key] = None
@@ -32,17 +30,17 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return normalized
 
     @staticmethod
-    def to_infra_value(value: t.Infra.InfraValue | None) -> t.Infra.InfraValue | None:
+    def to_infra_value(value: t.JsonValue | None) -> t.JsonValue | None:
         """Convert container value to namespaced infra value."""
         if value is None:
             return None
         if isinstance(value, t.PRIMITIVES_TYPES):
-            primitive: t.Infra.InfraValue = value
+            primitive: t.JsonValue = value
             return primitive
         scalar_types = t.PRIMITIVES_TYPES
         if isinstance(value, list):
             sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
-            converted: t.MutableSequenceOf[t.Infra.InfraValue] = []
+            converted: t.MutableSequenceOf[t.JsonValue] = []
             for item in sequence:
                 if item is None:
                     converted.append(None)
@@ -53,7 +51,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
                 converted.append(conv)
             return list(t.Cli.JSON_LIST_ADAPTER.validate_python(converted))
         mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
+        converted_map: MutableMapping[str, t.JsonValue] = {}
         for key, map_item in mapping_value.items():
             if map_item is None:
                 converted_map[key] = None
@@ -62,16 +60,14 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             if conv is None or not isinstance(conv, scalar_types):
                 return None
             converted_map[key] = conv
-        mapping: t.Infra.InfraValue = t.json_dict_adapter().validate_python(
-            converted_map
-        )
+        mapping: t.JsonValue = t.json_dict_adapter().validate_python(converted_map)
         return mapping
 
     def get_current_typings_from_pyproject(
         self, project_path: Path, *, include_dev: bool = True
     ) -> t.StrSequence:
         """Read CUSTOM typing requirements and the canonical development group."""
-        pyproject = project_path / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_path / c.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return []
         read_result = self._read_plain(pyproject)
@@ -161,7 +157,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
 
     def load_dependency_limits(
         self, limits_path: Path | None = None
-    ) -> t.MappingKV[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.JsonValue]:
         """Load dependency limits configuration from TOML file."""
         path = (
             limits_path
@@ -174,7 +170,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return result.value
 
     def module_to_types_package(
-        self, module_name: str, limits: t.MappingKV[str, t.Infra.InfraValue]
+        self, module_name: str, limits: t.MappingKV[str, t.JsonValue]
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]

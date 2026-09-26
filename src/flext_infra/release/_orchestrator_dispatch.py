@@ -217,7 +217,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         if base_oid == head_oid.value.strip():
             return r[bool].ok(True)
         base_content = u.Cli.capture(
-            [c.Infra.GIT, "show", f"{base_oid}:{c.Infra.PYPROJECT_FILENAME}"], cwd=root
+            [c.Infra.GIT, "show", f"{base_oid}:{c.PYPROJECT_FILENAME}"], cwd=root
         )
         if base_content.failure:
             return r[bool].from_failure(base_content)
@@ -238,7 +238,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return r[bool].ok(True)
         release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
         return r[bool].fail(
-            f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
+            f"{c.PYPROJECT_FILENAME} version changed outside the release "
             f"protocol: {base_version} -> {version} (HEAD {head_oid.value.strip()[:12]} "
             f"carries no {release_subject!r}); run `make release WHAT=version` "
             "instead"

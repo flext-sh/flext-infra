@@ -216,7 +216,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
 
     @staticmethod
     def detect_command(
-        repository_root: Path, **overrides: t.Infra.InfraValue
+        repository_root: Path, **overrides: t.JsonValue
     ) -> m.Infra.DetectCommand:
         """Create a validated dependency-detection command."""
         validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
