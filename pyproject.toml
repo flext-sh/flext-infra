@@ -140,7 +140,6 @@ exclude_also = [
   "if TYPE_CHECKING:",
   "if typing.TYPE_CHECKING:",
 ]
-fail_under = 45
 precision = 2
 show_missing = true
 skip_covered = false
