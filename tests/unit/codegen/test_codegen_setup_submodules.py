@@ -9,19 +9,19 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, u
-from flext_infra.codegen import FlextInfraCodegenConform
-from tests import p, u as test_u
+from tests import p, t, u as test_u
 
-# The module fixture resolves a real toolchain through Make upg; each scenario
-# provisions its own physical environment frozen from those dependency locks.
+# The run-scoped template resolves a real toolchain through Make upg before any
+# item starts; each scenario provisions its own physical environment frozen
+# from those committed dependency locks.
 # Make test-full owns these external installer and Git integration scenarios.
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
 
 
 class TestsFlextInfraCodegenSetupSubmodules:
-    @pytest.fixture(scope="module")
+    @pytest.fixture
     def generated_project_template(
-        self, tmp_path_factory: pytest.TempPathFactory
+        self, resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path]
     ) -> Path:
         root = tmp_path_factory.mktemp("setup-submodules") / "project"
         repository = test_u.Tests.repository_ref(

@@ -649,6 +649,12 @@ class FlextInfraProtocolsBase(Protocol):
             """Run deptry on a project and return issues."""
             ...
 
+        def govern_deptry_issues(
+            self, project_path: Path, issues: t.SequenceOf[t.JsonMapping]
+        ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
+            """Drop findings the governed dependency profile makes policy."""
+            ...
+
         def build_project_report(
             self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
         ) -> FlextInfraProtocolsBase.ProjectReportLike:
@@ -669,8 +675,6 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_path: Path,
             limits_path: Path | None = None,
-            *,
-            include_mypy: bool = True,
         ) -> p.Result[m.Infra.TypingsReport]:
             """Get required typing libraries for a project."""
             ...

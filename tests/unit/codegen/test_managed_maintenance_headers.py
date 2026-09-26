@@ -8,6 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import t, u
 
 pytestmark = pytest.mark.slow
@@ -41,12 +42,30 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(makefile_fields.get("@flext-owner", ""), has="config/codegen.yaml")
         tm.that(makefile_fields.get("@flext-adjust", ""), has="never this projection")
 
-        pyproject_fields = self._fields(c.Infra.BANNER)
+        pyproject = u.Tests.scaffold_text(
+            tmp_path / "fixture-project", c.Infra.PYPROJECT_FILENAME
+        )
+        tm.that(pyproject, starts=c.Infra.BANNER)
+        pyproject_fields = self._fields(pyproject)
         tm.that(pyproject_fields.get("@flext-generated"), eq="continuous")
         tm.that(pyproject_fields.get("@flext-regenerate"), eq="make gen")
         tm.that(pyproject_fields.get("@flext-owner", ""), has="config/codegen.yaml")
         tm.that(pyproject_fields.get("@flext-adjust", ""), has="overwrite_project_keys")
         tm.that(pyproject_fields.get("@flext-adjust", ""), has="conflict_sections")
+
+    def test_pyproject_header_is_a_fixed_point(self, tmp_path: Path) -> None:
+        """Recomposing a published pyproject keeps exactly one header."""
+        root = tmp_path / "fixture-project"
+        first = u.Tests.scaffold_text(root, c.Infra.PYPROJECT_FILENAME)
+        root.mkdir(parents=True, exist_ok=True)
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(first, encoding="utf-8")
+        second = tm.ok(
+            FlextInfraCodegenConform.compose_project_artifact(
+                root, c.Infra.PYPROJECT_FILENAME, first
+            )
+        ).rendered
+        tm.that(second, eq=first)
+        tm.that(second.count(c.Infra.BANNER), eq=1)
 
     def test_scaffold_once_owner_has_no_continuous_contract(
         self, tmp_path: Path

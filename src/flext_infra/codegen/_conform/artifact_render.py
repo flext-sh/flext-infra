@@ -51,7 +51,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 )
                 excludes = (
                     cls.routed_uv_exclude_dependencies(
-                        repository=repository, target=target, codegen=codegen
+                        repository=repository,
+                        target=target,
+                        codegen=codegen,
+                        workspace=workspace,
                     )
                     if target is not None
                     else ()
@@ -73,7 +76,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 toolchain_root=repository_root,
                 taplo_version=config.Infra.codegen.toolchain.taplo_version,
             )
-            rendered = formatted.value if formatted.success else rendered
+            if formatted.failure:
+                return r[m.Infra.CodegenArtifactComposition].from_failure(formatted)
+            # The parse-merge-dump overlay drops every template comment, so
+            # this composition owner publishes the one generated-file header
+            # (owner, adjustment rule, regeneration verb) on the final bytes.
+            # A re-run reads the live file as data, so it never accumulates.
+            rendered = f"{c.Infra.BANNER}\n{formatted.value.lstrip()}"
         if destination != c.Infra.MISE_TOML_FILENAME:
             return r[m.Infra.CodegenArtifactComposition].ok(
                 m.Infra.CodegenArtifactComposition(rendered=rendered)
