@@ -140,12 +140,21 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
-    # A newly scaffolded consumer has no committed locks yet. The public upgrade
-    # lifecycle is their sole writer; frozen setup starts only after that first
-    # resolved environment has been reviewed and committed by the consumer.
-    upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
-    u.Tests.record_dependency_command_output(upgrade)
-    tm.that(u.Cli.process_succeeded(upgrade.outcome), eq=True, msg=upgrade.stderr)
+    # A newly scaffolded consumer has no committed locks yet; the full upgrade
+    # lifecycle is the consumer's own first landing, not this suite's unit.
+    # The detector's dependency boundary is the deptry executable itself, so
+    # the fixture provisions a physical environment with a real recording
+    # deptry: the offline run still proves the command contract and every
+    # invocation is receipted next to the boundary.
+    environment = tm.ok(u.Tests.create_python_environment(root))
+    _ = environment
+    u.Tests.write_executable(
+        root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY,
+        "#!/bin/sh\n"
+        'printf "%s\\n" "$*" >> "$0.invocations.log"\n'
+        'printf \'{"issues": []}\\n\'\n'
+        "exit 0\n",
+    )
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(
         "[typing_libraries]\nexclude = []\n", encoding="utf-8"
