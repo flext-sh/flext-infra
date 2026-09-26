@@ -586,7 +586,7 @@ def mod_workspace(tmp_path: Path) -> Path:
     tm.ok(u.Cli.ensure_dir(workspace))
     tm.ok(
         u.Cli.atomic_write_text_file(
-            workspace / c.Infra.PYPROJECT_FILENAME,
+            workspace / c.PYPROJECT_FILENAME,
             (
                 "[project]\n"
                 f'name = "{workspace.name.replace("_", "-")}"\n'
@@ -681,7 +681,7 @@ def real_workspace(tmp_path: Path) -> Path:
 def modernizer_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+    (workspace / c.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject(), encoding="utf-8"
     )
     u.Tests.write_beads_project(
@@ -693,7 +693,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
-    (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+    (modernizer_workspace / c.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject("selected", "ignored"), encoding="utf-8"
     )
     selected = u.Tests.mk_project(

@@ -190,9 +190,12 @@ endif
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
-# Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
+# Source: config:make.verbs and the canonical gate vocabulary. A verb exists
+# only in the profiles it declares (make.verbs[].profiles).
+{% set profile = namespace(verbs=[]) -%}
+{% for verb in make.verbs if make_profile in verb.profiles %}{% set profile.verbs = profile.verbs + [verb] %}{% endfor -%}
+PUBLIC_VERBS :={% for verb in profile.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
+BUILTIN_VERBS :={% for verb in profile.verbs %} {{ verb.name }}{% endfor %}
 SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 {% if script_dispatch %}
 SCRIPT_ROOTS :={{ script_dispatch.roots | join(" ") }}
@@ -414,7 +417,7 @@ $(filter-out help clean upg,$(PUBLIC_VERBS)): _builtin_require_mise_pin
 {# Provisioning creates the physical environment. Activation producers use that
    existing environment to regenerate activation inputs before consuming them.
    All other operational verbs activate before their handlers and hooks. -#}
-{% for verb in (make.verbs | list) + (extra_verbs | list) if verb.name not in ("setup", "upg") %}
+{% for verb in profile.verbs + (extra_verbs | list) if verb.name not in ("setup", "upg") %}
 {% if verb.produces_activation %}
 # The pre hook and selected producer run once before activation. The producer
 # owns the complete generation transaction; activation adds no second writer.
@@ -469,7 +472,7 @@ _setup_activated:
 
 _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
-{% for verb in (make.verbs | list) + (extra_verbs | list) %}
+{% for verb in profile.verbs + (extra_verbs | list) %}
 	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}';
 {% endfor %}
 
@@ -654,6 +657,12 @@ _builtin_fix_enforcement: _builtin_require_environment
 
 _builtin_sonarcloud_sync_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb sonarcloud-sync $(WORKSPACE_PROJECT_ARGS)
+
+# Member propagation exists only where members exist: this workspace's
+# flext-infra conforms and relocks each declared member and publishes one
+# pull-request lane per member that changed. It never merges.
+_builtin-propagate: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} propagate --repository-root "$(PROJECT_ROOT)"
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"

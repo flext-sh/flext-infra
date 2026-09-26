@@ -520,6 +520,11 @@ Infra:
           description: Provision the declared environment and hooks.
         - name: upg
           description: Resolve the newest declared releases and write the uv and mise locks.
+        # Workspace-only (topology owns applicability): a standalone Makefile
+        # never declares it. Never merges; a rerun continues the same lanes.
+        - name: propagate
+          description: Apply this workspace's flext-infra to every declared member (conform, then lock) and publish one pull-request lane per member whose projections or lock change; unchanged members publish nothing.
+          profiles: [workspace]
         - name: build
           description: Build the project distribution artifacts.
         - name: check
