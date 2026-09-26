@@ -731,7 +731,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             makefile,
             has=[
                 f'mise_lockfile_platforms="{platform_matrix}";',
-                '"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms"',
+                '$${mise_lockfile_platforms:+"MISE_LOCKFILE_PLATFORMS=$$mise_lockfile_platforms"}',
                 'mise_lockfile_platforms=; \\\n\t\tmise_checked "$$scratch/lock-npm-prettier.log"',
                 'mise_checked "$$scratch/lock-npm-prettier.log"',
                 f'mise_lockfile_platforms="{platform_matrix}"; \\\n\tfi;',
