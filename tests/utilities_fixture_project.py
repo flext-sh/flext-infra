@@ -48,7 +48,6 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             declared_subproject=declared_subproject,
         )
 
-
     @staticmethod
     def provider(name: str = FIXTURE_PROVIDER_NAME) -> m.Infra.ProviderIdentitySpec:
         """Return the declared fixture provider identity for one provider key."""
