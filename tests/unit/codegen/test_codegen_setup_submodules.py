@@ -23,8 +23,45 @@ class TestsFlextInfraCodegenSetupSubmodules:
     def generated_project_template(
         self, resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path]
     ) -> Path:
-        """Return the run's standalone consumer, resolved once by ``make upg``."""
-        return resolved_make_templates[c.Infra.MakeProfile.STANDALONE]
+        root = tmp_path_factory.mktemp("setup-submodules") / "project"
+        repository = test_u.Tests.repository_ref(
+            "flext-demo", role=c.Infra.MakeProfile.STANDALONE
+        )
+        beads = test_u.Tests.beads_project(repository.distribution)
+        test_u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            repository.distribution,
+            workspace=beads.workspace,
+            database=beads.database,
+            issue_prefix=beads.issue_prefix,
+        )
+        workspace = test_u.Tests.workspace_spec(
+            repository, project=test_u.Tests.project_spec(repository.name)
+        )
+        request = test_u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root, request=request, initial_workspace=workspace
+            ).plan(request)
+        )
+        # Setup consumes generated environment declarations and tracked Mise
+        # seeds; documentation publication belongs to the conform tests.
+        for filename in (
+            c.Infra.MAKEFILE_FILENAME,
+            c.PYPROJECT_FILENAME,
+            c.Infra.ENVRC_FILENAME,
+        ):
+            planned = next(file for file in plan.files if file.path.name == filename)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / filename, test_u.Tests.codegen_file_text(planned)
+                )
+            )
+        return root
 
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:
@@ -51,7 +88,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         test_u.Tests.copy_tracked_mise_seeds(root, source_root=template)
         for relative in (
             c.Infra.MAKEFILE_FILENAME,
-            c.Infra.PYPROJECT_FILENAME,
+            c.PYPROJECT_FILENAME,
             c.Infra.UV_LOCK_FILENAME,
             c.Infra.ENVRC_FILENAME,
             c.Infra.ENVRC_LOCAL_RELPATH,
@@ -174,7 +211,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         nested_marker = project / "vendor/source/child/nested/marker.txt"
         # Hatchling consumes this real gitlink file while uv builds the package.
         # A setup that reaches the build before initialization fails natively.
-        pyproject = project / c.Infra.PYPROJECT_FILENAME
+        pyproject = project / c.PYPROJECT_FILENAME
         document = test_u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
         metadata = tm.not_none(u.Cli.toml_table_child(document, "project"))
         metadata["readme"] = {

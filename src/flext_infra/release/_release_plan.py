@@ -147,7 +147,7 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         if base_oid == head_oid:
             return r[bool].ok(True)
         content = u.Cli.capture(
-            [c.Infra.GIT, "show", f"{base_oid}:{c.Infra.PYPROJECT_FILENAME}"], cwd=root
+            [c.Infra.GIT, "show", f"{base_oid}:{c.PYPROJECT_FILENAME}"], cwd=root
         )
         if content.failure:
             return r[bool].from_failure(content)
@@ -162,7 +162,7 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
             return r[bool].ok(True)
         subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
         return r[bool].fail(
-            f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
+            f"{c.PYPROJECT_FILENAME} version changed outside the release "
             f"protocol: {base_version} -> {version} (HEAD {head_oid[:12]} "
             f"carries no {subject!r}); run `make release WHAT=version` instead"
         )

@@ -66,7 +66,7 @@ class TestsFlextInfraBeadsEnvironmentSync:
         self, tmp_path: Path
     ) -> None:
         """Selecting Beads retains Python activation and explicit server mode."""
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "beads-python"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         tm.ok(
@@ -119,7 +119,7 @@ class TestsFlextInfraBeadsEnvironmentSync:
 
     def test_none_backend_without_beads_identity(self, tmp_path: Path) -> None:
         """A repository with no Beads identity renders only the unset chain."""
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "bare"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         result = infra.sync_environment_files(
