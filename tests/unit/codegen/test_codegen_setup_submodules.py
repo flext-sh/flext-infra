@@ -9,6 +9,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, u
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import p, u as test_u
 
 # The module fixture resolves a real toolchain through Make upg; each scenario
