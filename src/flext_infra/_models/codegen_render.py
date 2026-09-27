@@ -118,6 +118,13 @@ class FlextInfraModelsCodegenRender:
         lazy_alias_mapping: t.NonEmptyStr = m.Field(
             description="Canonical rendered lazy alias mapping."
         )
+        lazy_call_arguments: str = m.Field(
+            default="",
+            description=(
+                "Lazy-import call arguments joined on one continuation line when "
+                "they fit the line budget; empty keeps the exploded rendering"
+            ),
+        )
 
     class StaticPackageInitRender(m.ArbitraryTypesModel):
         """Template context for a non-root static ``__init__.py``."""

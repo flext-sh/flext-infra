@@ -6,7 +6,6 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, t
 
-from ..._models.codemod import FlextInfraModelsCodemod
 from ..rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
 from ..rope_runtime_refactors import FlextInfraUtilitiesRopeRuntimeRefactors
 from ..rope_structure import FlextInfraUtilitiesRopeStructure
@@ -32,7 +31,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         )
         if not candidates:
             return ()
-        rule = FlextInfraModelsCodemod.FamilyFlattenRule.model_validate(
+        rule = m.Infra.FamilyFlattenRule.model_validate(
             u.Cli.yaml_safe_load(
                 type(config).ssot_config_dir()
                 / "rules/rope/flatten-family-namespace-wrapper.yaml"
@@ -89,6 +88,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             msg = f"family part has no Rope scope: {path}"
             raise ValueError(msg)
         owner_name = workspace.convention(path).module_policy.expected_family
+        if owner_name is None:
+            return 0
         owner_scope = next(
             (
                 item
@@ -149,10 +150,11 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             msg = f"family owner inheritance is unresolved: {path}:{owner_name}"
             raise ValueError(msg)
         occupied = set(owner_scope.pyobject.get_attributes()) - {wrapper_name}
-        renamed = {
-            name: f"{wrapper_name}{name}" if name in occupied else name
-            for name in names
-        }
+        # Prefix merging is the public identity of a flattened domain. Keeping
+        # an unprefixed child merely because it does not collide in this file
+        # can still overwrite a peer mixed into the composed facade (for
+        # example Promoted.WorkspaceSpec versus Base.WorkspaceSpec).
+        renamed = {name: f"{wrapper_name}{name}" for name in names}
         if any(name in occupied for name in renamed.values()) or len(
             set(renamed.values())
         ) != len(renamed):
