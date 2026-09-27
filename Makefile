@@ -111,7 +111,12 @@ TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/testmon/.testmondata
 export TESTMON_DATAFILE
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
 # Source: physical checkout topology; caller variables cannot select a workspace.
-ifneq ($(filter standalone,$(MAKE_PROFILE))$(GEN_INIT_ONLY),)
+# Operator law 2026-09-24: inside a workspace every make run, from the root or
+# from a member, uses the workspace environment; a project's own .venv exists
+# only when the checkout has no superproject. The rendered profile describes the
+# repository (a member is a standalone repository), not where it is checked out,
+# so it never decides the runtime: the physical superproject does.
+ifneq ($(GEN_INIT_ONLY),)
 override REPOSITORY_ROOT := $(MAKEFILE_ROOT)
 else
 override REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree) && if [ -n "$$root" ]; then cd "$$root" && pwd -P; else pwd -P; fi)
