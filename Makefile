@@ -1520,6 +1520,10 @@ _builtin-self-fix: _builtin_fix_all
 
 _builtin-self-fix-enforcement: _builtin_fix_enforcement
 
+_builtin-self-fix-namespace: _builtin_fix_namespace
+
+_builtin-self-fix-accessors: _builtin_fix_accessors
+
 _builtin-self-build: _builtin_build_artifacts
 
 
@@ -1602,6 +1606,14 @@ _builtin_fix_all: _builtin_require_environment
 # declared safe, applied through its registered adapter.
 _builtin_fix_enforcement: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
+
+# Declared namespace/accessor migrations applied to this checkout through
+# their refactor CLI routes (declared in codegen.yaml make.verbs).
+_builtin_fix_namespace: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor namespace-enforce --repository-root "$(PROJECT_ROOT)" --apply
+
+_builtin_fix_accessors: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor accessor-migrate --repository-root "$(PROJECT_ROOT)" --apply
 
 _builtin_sonarcloud_sync_all: _builtin_sonarcloud_sync_project
 
@@ -1773,6 +1785,8 @@ _builtin-test-full: _builtin_test_full_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-fix-enforcement: _builtin_fix_enforcement
+_builtin-fix-namespace: _builtin_fix_namespace
+_builtin-fix-accessors: _builtin_fix_accessors
 _builtin-audit:
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
