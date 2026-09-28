@@ -263,10 +263,18 @@ class FlextInfraUtilitiesProjectDiscovery(
         return runtime.repository_root / c.Infra.ENVIRONMENT_DIRECTORY
 
     @classmethod
-    def runtime_python(cls, project_root: Path) -> Path:
-        """Resolve the fixed Python entrypoint inside the managed environment."""
+    def runtime_python(
+        cls, project_root: Path, *, runtime_root: Path | None = None
+    ) -> Path:
+        """Resolve the fixed Python entrypoint inside the managed environment.
+
+        An explicit ``runtime_root`` names the environment the invocation runs
+        in; undeclared, the sibling ``runtime_environment_dir`` derives it
+        exactly as the generated Makefile resolves ``RUNTIME_ROOT``. The
+        fresh-import probes execute a target checkout's code, so they pass it.
+        """
         return (
-            cls.runtime_environment_dir(project_root)
+            cls.runtime_environment_dir(project_root, runtime_root=runtime_root)
             / ("Scripts" if sys.platform == "win32" else "bin")
             / ("python.exe" if sys.platform == "win32" else c.Infra.PYTHON)
         )
