@@ -120,7 +120,7 @@ class TestsFlextInfraTransactionLease:
             )
             tm.ok(
                 transaction.commit_locked(
-                    session, lambda: owner.validate_artifacts(root, scope_root)
+                    session, lambda: owner.validate_artifacts(root)
                 )
             )
             return r[bool].ok(True)
@@ -196,10 +196,7 @@ class TestsFlextInfraTransactionLease:
             )
             tm.ok(
                 FlextInfraCodegenTransaction(independent_owner).run_locked(
-                    prepare=True,
-                    operation=lambda scope: independent_owner.validate_artifacts(
-                        independent, scope
-                    ),
+                    prepare=True, operation=independent_owner.validate_artifacts
                 )
             )
             tm.that(journal_path.read_bytes(), eq=journal_before)
@@ -234,8 +231,7 @@ class TestsFlextInfraTransactionLease:
         owner = FlextInfraCodegenMiseArtifacts(repository_root=member)
         tm.ok(
             FlextInfraCodegenTransaction(owner).run_locked(
-                prepare=True,
-                operation=lambda scope: owner.validate_artifacts(member, scope),
+                prepare=True, operation=lambda _scope: owner.validate_artifacts(member)
             )
         )
         tm.that(lock_path.stat().st_ino, eq=lock_after.st_ino)
@@ -245,23 +241,35 @@ class TestsFlextInfraTransactionLease:
     ) -> None:
         """Leasing a publication root adds no entry beside its tracked content."""
         root = test_u.Tests.git_repository(tmp_path)
+        participant_root = root / "docs"
+        participant_root.mkdir()
         test_u.Tests.copy_tracked_mise_seeds(root)
-        before = {path.name for path in root.iterdir()}
+        before = {path.name for path in participant_root.iterdir()}
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
 
-        tm.ok(transaction.run_files_locked({"@docs-0": root}, self._ok_path))
-        tm.ok(transaction.run_files_locked({"@docs-0": root}, self._ok_path))
+        tm.ok(
+            transaction.run_files_locked(
+                {"@docs-0": participant_root}, self._ok_path
+            )
+        )
+        tm.ok(
+            transaction.run_files_locked(
+                {"@docs-0": participant_root}, self._ok_path
+            )
+        )
 
         tm.that(
-            {path.name for path in root.iterdir()} - before,
+            {path.name for path in participant_root.iterdir()} - before,
             eq={c.Infra.TRANSACTION_STATE_DIRNAME},
         )
         tm.that(
             [
                 path.name
-                for path in (root / c.Infra.TRANSACTION_STATE_DIRNAME).iterdir()
+                for path in (
+                    participant_root / c.Infra.TRANSACTION_STATE_DIRNAME
+                ).iterdir()
             ],
             eq=[f"{c.Infra.JOURNAL_NAME}.lock"],
         )
