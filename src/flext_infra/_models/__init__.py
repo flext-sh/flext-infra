@@ -10,6 +10,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import _codegen, _config, _git
+    from ._codegen.base import FlextInfraCodegen
     from ._codegen.fix import FlextInfraModelsCodegenFixModels
     from ._codegen.journal import FlextInfraModelsCodegenJournalModels
     from ._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
@@ -21,7 +22,6 @@ if TYPE_CHECKING:
     from ._config.beads import FlextInfraConfigModelsBeads
     from ._config.contexts import FlextInfraConfigModelsContexts
     from ._config.contract import FlextInfraConfigModelsContract
-    from ._config.infra import FlextInfraConfigModelsInfra
     from ._config.make import FlextInfraConfigModelsMake
     from ._config.provider import FlextInfraConfigModelsProvider
     from ._config.release import FlextInfraConfigModelsRelease
@@ -31,13 +31,11 @@ if TYPE_CHECKING:
     from ._config.static import FlextInfraConfigModelsStatic
     from ._config.templates import FlextInfraConfigModelsTemplates
     from ._config.workspace import FlextInfraConfigModelsWorkspace
-    from ._defaults import FlextInfraModelsDefaults
     from ._git.identity import FlextInfraModelsGitIdentity
     from ._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
     from .check import FlextInfraModelsCheck
-    from .codegen import FlextInfraCodegen
     from .codegen_render import FlextInfraModelsCodegenRender
     from .codegen_toolchain import FlextInfraModelsCodegenToolchain
     from .codemod import FlextInfraModelsCodemod
@@ -92,7 +90,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",
-    "FlextInfraConfigModelsInfra",
     "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsProvider",
     "FlextInfraConfigModelsRelease",
@@ -115,7 +112,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCodegenTransactionModels",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
-    "FlextInfraModelsDefaults",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
     "FlextInfraModelsDepsToolConfig",
@@ -162,6 +158,7 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._codegen": ("_codegen",),
+            "._codegen.base": ("FlextInfraCodegen",),
             "._codegen.fix": ("FlextInfraModelsCodegenFixModels",),
             "._codegen.journal": ("FlextInfraModelsCodegenJournalModels",),
             "._codegen.lazy_init": ("FlextInfraModelsCodegenLazyInitModels",),
@@ -174,7 +171,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.beads": ("FlextInfraConfigModelsBeads",),
             "._config.contexts": ("FlextInfraConfigModelsContexts",),
             "._config.contract": ("FlextInfraConfigModelsContract",),
-            "._config.infra": ("FlextInfraConfigModelsInfra",),
             "._config.make": ("FlextInfraConfigModelsMake",),
             "._config.provider": ("FlextInfraConfigModelsProvider",),
             "._config.release": ("FlextInfraConfigModelsRelease",),
@@ -184,14 +180,12 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.static": ("FlextInfraConfigModelsStatic",),
             "._config.templates": ("FlextInfraConfigModelsTemplates",),
             "._config.workspace": ("FlextInfraConfigModelsWorkspace",),
-            "._defaults": ("FlextInfraModelsDefaults",),
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
             "._git.worktree_facts": ("FlextInfraModelsGitWorktreeFacts",),
             ".base": ("FlextInfraModelsBase",),
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),
-            ".codegen": ("FlextInfraCodegen",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
             ".codegen_toolchain": ("FlextInfraModelsCodegenToolchain",),
             ".codemod": ("FlextInfraModelsCodemod",),

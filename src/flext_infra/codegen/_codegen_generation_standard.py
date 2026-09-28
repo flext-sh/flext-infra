@@ -283,13 +283,34 @@ class FlextInfraCodegenGenerationStandardMixin(
         prior behavior.
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
-            if not (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+            if not (candidate / c.PYPROJECT_FILENAME).is_file():
                 continue
             metadata_result = u.Infra.read_project_metadata_result(candidate)
             if metadata_result.success:
                 return metadata_result.value.package_name
             return candidate.name.replace("-", "_")
         return None
+
+    @staticmethod
+    def _project_first_party_names(project_root: Path) -> t.StrSequence:
+        """Read strict Ruff policy, deriving namespaces only when it is absent."""
+        project_payload = u.Infra.pyproject_payload(
+            (project_root / c.PYPROJECT_FILENAME).resolve()
+        )
+        projected: t.JsonValue | None = project_payload.get("tool")
+        for section in ("ruff", "lint", "isort", "known-first-party"):
+            if projected is None:
+                break
+            if not isinstance(projected, dict):
+                msg = f"Ruff configuration before {section!r} must be a table"
+                raise TypeError(msg)
+            projected = projected.get(section)
+        if projected is not None:
+            return t.str_sequence_adapter().validate_python(projected, strict=True)
+        return (
+            *u.Infra.discover_first_party_namespaces(project_root),
+            *u.Infra.flext_dependency_namespaces_from_payload(project_payload),
+        )
 
     @classmethod
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
@@ -326,36 +347,12 @@ class FlextInfraCodegenGenerationStandardMixin(
             (
                 candidate
                 for candidate in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
-                if (candidate / c.Infra.PYPROJECT_FILENAME).is_file()
+                if (candidate / c.PYPROJECT_FILENAME).is_file()
             ),
             None,
         )
         if project_root is not None:
-            project_payload = u.Infra.pyproject_payload(
-                (project_root / c.Infra.PYPROJECT_FILENAME).resolve()
-            )
-            table = project_payload
-            projected: t.StrSequence | None = None
-            for key in ("tool", "ruff", "lint", "isort"):
-                if key not in table:
-                    break
-                table = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                    table[key], strict=True
-                )
-            else:
-                if "known-first-party" in table:
-                    projected = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                        table["known-first-party"], strict=True
-                    )
-            if projected is not None:
-                first_party_names.update(projected)
-            else:
-                first_party_names.update(
-                    u.Infra.discover_first_party_namespaces(project_root)
-                )
-                first_party_names.update(
-                    u.Infra.flext_dependency_namespaces_from_payload(project_payload)
-                )
+            first_party_names.update(cls._project_first_party_names(project_root))
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
             cls.generate_type_checking(

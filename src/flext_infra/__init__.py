@@ -44,11 +44,9 @@ if TYPE_CHECKING:
     from .api import FlextInfra, infra
     from .base import FlextInfraServiceBase, s
     from .base_selection import FlextInfraProjectSelectionServiceBase
+    from .check.gate_registry import FlextInfraGateRegistry
     from .check.workspace_check import FlextInfraWorkspaceChecker
-    from .check.workspace_check_gates import (
-        FlextInfraGateRegistry,
-        FlextInfraWorkspaceCheckGatesMixin,
-    )
+    from .check.workspace_check_gates import FlextInfraWorkspaceCheckGatesMixin
     from .cli import FlextInfraCli, docs_main, main
     from .codegen.census import FlextInfraCodegenCensus
     from .codegen.codegen_generation import FlextInfraCodegenGeneration
@@ -56,6 +54,7 @@ if TYPE_CHECKING:
     from .codegen.conform import FlextInfraCodegenConform
     from .codegen.consolidator import FlextInfraCodegenConsolidator
     from .codegen.constants_quality_gate import FlextInfraCodegenQualityGate
+    from .codegen.file_leases import FlextInfraCodegenFileLeases
     from .codegen.fixer import FlextInfraCodegenFixer
     from .codegen.layout import FlextInfraCodegenLayout
     from .codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -147,7 +146,7 @@ if TYPE_CHECKING:
     from .fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
     from .gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .gates.bandit import FlextInfraBanditGate
-    from .gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
+    from .gates.base_gate import FlextInfraGate
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .gates.direnv import FlextInfraDirenvGate
@@ -158,7 +157,7 @@ if TYPE_CHECKING:
     from .gates.markdown import FlextInfraMarkdownGate
     from .gates.markdown_code import FlextInfraMarkdownCodeGate
     from .gates.markdown_code_sources import (
-        TEST_SKIP_MARKER,
+        is_syntax_broken,
         source_name,
         write_docstring_sources,
         write_fenced_block_sources,
@@ -176,6 +175,7 @@ if TYPE_CHECKING:
     from .gates.ruff_format import FlextInfraRuffFormatGate
     from .gates.ruff_lint import FlextInfraRuffLintGate
     from .gates.runtime_census import FlextInfraRuntimeCensusGate
+    from .gates.scanner_gate import FlextInfraScannerGateMixin
     from .gates.silent_failure import FlextInfraSilentFailureGate
     from .gates.smells import FlextInfraSmellsGate
     from .gates.tier_whitelist import FlextInfraTierWhitelistGate
@@ -205,16 +205,14 @@ if TYPE_CHECKING:
     from .refactor.signature_propagation import FlextInfraRefactorSignaturePropagation
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
-    from .release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
-    from .release.policy_render import FlextInfraReleasePolicyRender
-    from .services.cli_dispatch import CliDispatchService
-    from .services.cli_route_base import CliRouteBase
-    from .services.cli_routes import CliRouteService
-    from .services.cli_routes_codegen import CodegenRoutes
-    from .services.cli_routes_refactor import RefactorRoutes
-    from .services.cli_routes_validate import ValidationRoutes
-    from .services.cli_routes_validate_commands import ValidationCommandRoutes
-    from .services.cli_routes_workspace import WorkspaceRoutes
+    from .services.cli_dispatch import FlextInfraCliDispatchService
+    from .services.cli_route_base import FlextInfraCliRouteBase
+    from .services.cli_routes import FlextInfraCliRouteService
+    from .services.cli_routes_codegen import FlextInfraCodegenRoutes
+    from .services.cli_routes_refactor import FlextInfraRefactorRoutes
+    from .services.cli_routes_validate import FlextInfraValidationRoutes
+    from .services.cli_routes_validate_commands import FlextInfraValidationCommandRoutes
+    from .services.cli_routes_workspace import FlextInfraWorkspaceRoutes
     from .services.codegen import FlextInfraCodegen
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
@@ -231,9 +229,8 @@ if TYPE_CHECKING:
     from .transformers.open_encoding import FlextInfraRefactorOpenEncoding
     from .transformers.pattern import FlextInfraRefactorPatternTransformer
     from .transformers.pydantic_modernizer import FlextInfraRefactorPydanticModernizer
+    from .transformers.rope_transformer import FlextInfraRopeTransformer
     from .transformers.signature_propagator import FlextInfraRefactorSignaturePropagator
-    from .transformers.smells.base import FlextInfraSmellFixer
-    from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
     from .typings import FlextInfraTypes, FlextInfraTypes as t
@@ -243,10 +240,6 @@ if TYPE_CHECKING:
     from .validate.gate_contract import FlextInfraGateContractValidator
     from .validate.gate_contract_checks import FlextInfraGateContractChecksMixin
     from .validate.gate_contract_content import FlextInfraGateContractContentMixin
-    from .validate.gate_contract_errors import (
-        GateContractInfraError,
-        GateContractUsageError,
-    )
     from .validate.gate_contract_report import FlextInfraGateContractReportMixin
     from .validate.gate_contract_scan import FlextInfraGateContractScanMixin
     from .validate.import_cycles import FlextInfraValidateImportCycles
@@ -268,41 +261,37 @@ if TYPE_CHECKING:
     from .validate.tier_whitelist import FlextInfraValidateTierWhitelist
     from .workspace.detector import FlextInfraWorkspaceDetector
     from .workspace.environment import FlextInfraWorkspaceEnvironmentMixin
-    from .workspace.environment_beads import (
-        FlextInfraWorkspaceBeadsEnvironmentMixin,
-        FlextInfraWorkspaceEnvironmentSync,
-    )
+    from .workspace.environment_beads import FlextInfraWorkspaceEnvironmentSync
     from .workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
     from .workspace.environment_provenance import (
         FlextInfraWorkspaceEnvironmentProvenance,
     )
     from .workspace.flext_binding import FlextInfraFlextBindingService
     from .workspace.orchestrator import FlextInfraOrchestratorService
+    from .workspace.propagation import FlextInfraWorkspacePropagation
     from .workspace.rope import FlextInfraRopeWorkspace
     from .worktree import FlextInfraWorktreeService
 
 
 __all__: tuple[str, ...] = (
-    "TEST_SKIP_MARKER",
-    "CliDispatchService",
-    "CliRouteBase",
-    "CliRouteService",
-    "CodegenRoutes",
     "FlextInfra",
     "FlextInfraAbstractionBoundaryGate",
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraApplyRenames",
     "FlextInfraBanditGate",
-    "FlextInfraBooleanLogicFixer",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
+    "FlextInfraCliDispatchService",
+    "FlextInfraCliRouteBase",
+    "FlextInfraCliRouteService",
     "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConsolidator",
+    "FlextInfraCodegenFileLeases",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
@@ -317,6 +306,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
+    "FlextInfraCodegenRoutes",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
@@ -429,13 +419,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorPatternTransformer",
     "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
+    "FlextInfraRefactorRoutes",
     "FlextInfraRefactorSignaturePropagation",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraReleaseOrchestrator",
-    "FlextInfraReleaseOrchestratorPhases",
-    "FlextInfraReleasePolicyRender",
+    "FlextInfraRopeTransformer",
     "FlextInfraRopeWorkspace",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
@@ -450,7 +440,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraSilentFailureGate",
     "FlextInfraSilentFailureValidator",
     "FlextInfraSkillValidator",
-    "FlextInfraSmellFixer",
     "FlextInfraSmellsGate",
     "FlextInfraSonarcloudSettingsSync",
     "FlextInfraStubSupplyChain",
@@ -466,7 +455,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraValidateLazyMapFreshness",
     "FlextInfraValidateMetadataDiscipline",
     "FlextInfraValidateTierWhitelist",
-    "FlextInfraWorkspaceBeadsEnvironmentMixin",
+    "FlextInfraValidationCommandRoutes",
+    "FlextInfraValidationRoutes",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
@@ -474,14 +464,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentSync",
+    "FlextInfraWorkspacePropagation",
+    "FlextInfraWorkspaceRoutes",
     "FlextInfraWorktreeService",
     "FlextInfraWrapperRootNamespaceRefactor",
-    "GateContractInfraError",
-    "GateContractUsageError",
-    "RefactorRoutes",
-    "ValidationCommandRoutes",
-    "ValidationRoutes",
-    "WorkspaceRoutes",
     "__author__",
     "__author_email__",
     "__description__",
@@ -506,6 +492,7 @@ __all__: tuple[str, ...] = (
     "gates",
     "h",
     "infra",
+    "is_syntax_broken",
     "m",
     "main",
     "maintenance",
@@ -538,11 +525,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".base": ("FlextInfraServiceBase", "s"),
             ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
             ".check": ("check",),
+            ".check.gate_registry": ("FlextInfraGateRegistry",),
             ".check.workspace_check": ("FlextInfraWorkspaceChecker",),
-            ".check.workspace_check_gates": (
-                "FlextInfraGateRegistry",
-                "FlextInfraWorkspaceCheckGatesMixin",
-            ),
+            ".check.workspace_check_gates": ("FlextInfraWorkspaceCheckGatesMixin",),
             ".cli": ("FlextInfraCli", "docs_main", "main"),
             ".codegen": ("codegen",),
             ".codegen.census": ("FlextInfraCodegenCensus",),
@@ -551,6 +536,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.conform": ("FlextInfraCodegenConform",),
             ".codegen.consolidator": ("FlextInfraCodegenConsolidator",),
             ".codegen.constants_quality_gate": ("FlextInfraCodegenQualityGate",),
+            ".codegen.file_leases": ("FlextInfraCodegenFileLeases",),
             ".codegen.fixer": ("FlextInfraCodegenFixer",),
             ".codegen.layout": ("FlextInfraCodegenLayout",),
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
@@ -656,7 +642,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates": ("gates",),
             ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
-            ".gates.base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
+            ".gates.base_gate": ("FlextInfraGate",),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".gates.direnv": ("FlextInfraDirenvGate",),
@@ -667,7 +653,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.markdown": ("FlextInfraMarkdownGate",),
             ".gates.markdown_code": ("FlextInfraMarkdownCodeGate",),
             ".gates.markdown_code_sources": (
-                "TEST_SKIP_MARKER",
+                "is_syntax_broken",
                 "source_name",
                 "write_docstring_sources",
                 "write_fenced_block_sources",
@@ -685,6 +671,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.ruff_format": ("FlextInfraRuffFormatGate",),
             ".gates.ruff_lint": ("FlextInfraRuffLintGate",),
             ".gates.runtime_census": ("FlextInfraRuntimeCensusGate",),
+            ".gates.scanner_gate": ("FlextInfraScannerGateMixin",),
             ".gates.silent_failure": ("FlextInfraSilentFailureGate",),
             ".gates.smells": ("FlextInfraSmellsGate",),
             ".gates.tier_whitelist": ("FlextInfraTierWhitelistGate",),
@@ -721,17 +708,17 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".release": ("release",),
             ".release.orchestrator": ("FlextInfraReleaseOrchestrator",),
-            ".release.orchestrator_phases": ("FlextInfraReleaseOrchestratorPhases",),
-            ".release.policy_render": ("FlextInfraReleasePolicyRender",),
             ".services": ("services",),
-            ".services.cli_dispatch": ("CliDispatchService",),
-            ".services.cli_route_base": ("CliRouteBase",),
-            ".services.cli_routes": ("CliRouteService",),
-            ".services.cli_routes_codegen": ("CodegenRoutes",),
-            ".services.cli_routes_refactor": ("RefactorRoutes",),
-            ".services.cli_routes_validate": ("ValidationRoutes",),
-            ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
-            ".services.cli_routes_workspace": ("WorkspaceRoutes",),
+            ".services.cli_dispatch": ("FlextInfraCliDispatchService",),
+            ".services.cli_route_base": ("FlextInfraCliRouteBase",),
+            ".services.cli_routes": ("FlextInfraCliRouteService",),
+            ".services.cli_routes_codegen": ("FlextInfraCodegenRoutes",),
+            ".services.cli_routes_refactor": ("FlextInfraRefactorRoutes",),
+            ".services.cli_routes_validate": ("FlextInfraValidationRoutes",),
+            ".services.cli_routes_validate_commands": (
+                "FlextInfraValidationCommandRoutes",
+            ),
+            ".services.cli_routes_workspace": ("FlextInfraWorkspaceRoutes",),
             ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
             ".transformers.class_reconstructor": (
@@ -759,11 +746,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.pydantic_modernizer": (
                 "FlextInfraRefactorPydanticModernizer",
             ),
+            ".transformers.rope_transformer": ("FlextInfraRopeTransformer",),
             ".transformers.signature_propagator": (
                 "FlextInfraRefactorSignaturePropagator",
             ),
-            ".transformers.smells.base": ("FlextInfraSmellFixer",),
-            ".transformers.smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
             ".transformers.symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
             ".transformers.typing_unifier": ("FlextInfraRefactorTypingUnifier",),
             ".typings": ("FlextInfraTypes", "t"),
@@ -774,10 +760,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validate.gate_contract": ("FlextInfraGateContractValidator",),
             ".validate.gate_contract_checks": ("FlextInfraGateContractChecksMixin",),
             ".validate.gate_contract_content": ("FlextInfraGateContractContentMixin",),
-            ".validate.gate_contract_errors": (
-                "GateContractInfraError",
-                "GateContractUsageError",
-            ),
             ".validate.gate_contract_report": ("FlextInfraGateContractReportMixin",),
             ".validate.gate_contract_scan": ("FlextInfraGateContractScanMixin",),
             ".validate.import_cycles": ("FlextInfraValidateImportCycles",),
@@ -800,10 +782,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace": ("workspace",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),
             ".workspace.environment": ("FlextInfraWorkspaceEnvironmentMixin",),
-            ".workspace.environment_beads": (
-                "FlextInfraWorkspaceBeadsEnvironmentMixin",
-                "FlextInfraWorkspaceEnvironmentSync",
-            ),
+            ".workspace.environment_beads": ("FlextInfraWorkspaceEnvironmentSync",),
             ".workspace.environment_contracts": (
                 "FlextInfraWorkspaceEnvironmentContracts",
             ),
@@ -812,6 +791,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".workspace.flext_binding": ("FlextInfraFlextBindingService",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
+            ".workspace.propagation": ("FlextInfraWorkspacePropagation",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
             "flext_cli": ("d", "e", "h", "r", "x"),

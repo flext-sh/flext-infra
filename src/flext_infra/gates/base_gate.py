@@ -64,8 +64,20 @@ class FlextInfraGate:
         started = time.monotonic()
         check_dirs = self._get_check_dirs(project_dir, ctx)
         if not check_dirs:
-            return self._skip_result(project_dir, started)
+            return self._empty_targets_result(project_dir, started)
         return self._execute_check_command(project_dir, ctx, check_dirs, started)
+
+    def _empty_targets_result(
+        self, project_dir: Path, started: float
+    ) -> m.Infra.GateExecution:
+        """Outcome when a gate collects no check targets.
+
+        Failing loud is the default: a selected gate with no inputs did not
+        establish acceptance. A gate whose targets are conditional on the
+        project topology (absent by declared design, not by accident)
+        overrides this with a neutral skip naming the condition.
+        """
+        return self._skip_result(project_dir, started)
 
     def check_files(
         self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
@@ -103,7 +115,7 @@ class FlextInfraGate:
             remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
         )
         if u.Cli.process_succeeded(result.outcome):
-            self._validate_check_report(project_dir, ctx, targets)
+            self._validate_check_report(project_dir, ctx, targets, result)
         return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     @classmethod
@@ -114,7 +126,7 @@ class FlextInfraGate:
     def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass."""
         return m.Infra.Issue(
-            file=c.Infra.PYPROJECT_FILENAME,
+            file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
             code=self.gate_id,
@@ -235,6 +247,7 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
         accept_reported_issues: bool = False,
+        observational_issues: t.SequenceOf[m.Infra.Issue] = (),
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
@@ -243,6 +256,8 @@ class FlextInfraGate:
         lines (fix paths report applied changes there).
         ``accept_reported_issues`` is the fix contract: reported issues are
         the residue a fixer could not repair and do not decide acceptance.
+        Explicit observational findings remain visible in the report but do
+        not change the verdict of blocking ``issues`` or native execution.
         """
         _ = ctx
         verdict = passed and (accept_reported_issues or not issues)
@@ -259,6 +274,7 @@ class FlextInfraGate:
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=tuple(issues),
+            observational_issues=tuple(observational_issues),
             raw_output=raw_output,
         )
 
@@ -369,10 +385,14 @@ class FlextInfraGate:
         return None
 
     def _validate_check_report(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        targets: t.StrSequence,
+        result: p.Cli.CommandOutput,
     ) -> None:
         """Validate native execution evidence against the exact submitted targets."""
-        _ = project_dir, ctx, targets
+        _ = project_dir, ctx, targets, result
 
     def _check_env(
         self, project_dir: Path, ctx: m.Infra.GateContext
@@ -560,7 +580,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
         if files_result.failure:
             return self._build_single_issue_result(
                 project_dir,
-                Path(c.Infra.PYPROJECT_FILENAME),
+                Path(c.PYPROJECT_FILENAME),
                 files_result.error or self.scan_error_message,
                 passed=False,
                 started=started,

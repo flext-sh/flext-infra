@@ -83,8 +83,8 @@ class FlextInfraModelsMiseToolchain:
         """Language-runtime and native-tool versions shared by generated projects.
 
         Language runtimes and native tools are declared as moving ``latest``
-        selectors or a major.minor line. No mise.lock: setup resolves the
-        newest published release. Python linters/type-checkers remain owned
+        selectors or a major.minor line. Only ``make upg`` resolves them and
+        writes the committed mise.lock; setup installs frozen from it. Python linters/type-checkers remain owned
         by pyproject manifests.
         """
 
@@ -108,29 +108,6 @@ class FlextInfraModelsMiseToolchain:
                 pattern=r"^[0-9]+\.[0-9]+$",
                 description="Python major.minor line, e.g. '3.13'",
             ),
-        ]
-        state_directory_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Runtime state directory beside the checkout"),
-        ]
-        scratch_namespace: Annotated[
-            t.NonEmptyStr, m.Field(description="Scratch directory namespace")
-        ]
-        scratch_home_relative: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Home-relative scratch root; scratch never lives inside a "
-                    "versioned tree, so it mirrors the checkout path below it"
-                )
-            ),
-        ]
-        pycache_namespace: Annotated[
-            t.NonEmptyStr, m.Field(description="Python bytecode cache namespace")
-        ]
-        mise_namespace: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mise publication namespace under runtime state"),
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
@@ -184,30 +161,44 @@ class FlextInfraModelsMiseToolchain:
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
-        retired_dependency_artifacts: Annotated[
-            t.VariadicTuple[Literal["uv.lock", "mise.lock", ".mise.lock"]],
-            m.Field(description="Exact dependency artifacts retired by generation"),
-        ]
         mise_lockfile: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Rendered as [settings] lockfile in .mise.toml. Keep false. "
-                    "Override toolchain.mise_lockfile; never run mise lock; "
-                    "never edit the projection."
+                    "Rendered as [settings] lockfile and bootstrap MISE_LOCKFILE. "
+                    "Keep true: "
+                    "make upg writes the committed mise.lock. "
+                    "Override toolchain.mise_lockfile; never edit the projection."
                 )
             ),
-        ] = False
+        ] = True
         mise_locked: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Rendered as [settings] locked and [tool_config] locked. "
-                    "Keep false so new SHAs/releases install without a lockfile. "
+                    "Rendered as [settings] locked, [tool_config] locked, "
+                    "and bootstrap MISE_LOCKED. "
+                    "Keep true so setup installs only what mise.lock pins. "
                     "Override toolchain.mise_locked."
                 )
             ),
-        ] = False
+        ] = True
+        mise_lockfile_platforms: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Rendered as [settings] lockfile_platforms: the platforms "
+                    "`make upg` resolves into mise.lock, with the current host "
+                    "always included by mise. "
+                    "Override toolchain.mise_lockfile_platforms."
+                ),
+            ),
+        ]
+        npm_package_manager: Annotated[
+            Literal["aube"],
+            m.Field(description="Mise npm installer with a locked dependency graph"),
+        ]
         qlty_selector: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -236,6 +227,16 @@ class FlextInfraModelsMiseToolchain:
         jscpd_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
+        ]
+        jscpd_asset_patterns: Annotated[
+            t.StrMapping,
+            m.Field(
+                description=(
+                    "Mise platform -> release asset pattern for jscpd. Its "
+                    "assets carry libc/ABI suffixes (-gnu, -musl, -msvc) that "
+                    "mise autodetection cannot resolve into a lock entry."
+                )
+            ),
         ]
         prettier_selector: Annotated[
             t.NonEmptyStr,
@@ -267,8 +268,21 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr,
             m.Field(description="Moving Waza release selector, e.g. 'latest'"),
         ]
+        waza_version_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Release tag prefix of the Waza tool. The repository also "
+                    "publishes azd-extension tags that GitHub marks latest; the "
+                    "prefix keeps them out of resolution."
+                )
+            ),
+        ]
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
+        ast_grep_selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Mise selector for the ast-grep CLI")
         ]
         ast_grep_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
@@ -368,6 +382,60 @@ class FlextInfraModelsMiseToolchain:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Explicitly reinjected host variables"),
         ]
+        version_pin_file: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9._-]+$",
+                description=(
+                    "Project-root file holding the Mise release `make upg` "
+                    "resolved; setup launches exactly that release."
+                ),
+            ),
+        ]
+        version_pin_header: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Generated-marker comments `make upg` writes above the release",
+            ),
+        ]
+        version_pin_reader: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="POSIX awk program selecting the first release line"),
+        ]
+        release_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[a-z]+:[A-Za-z0-9._/-]+$",
+                description="Tool selector `make upg` resolves for the Mise release",
+            ),
+        ]
+        artifact_specs: Annotated[
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, int]],
+            m.Field(
+                min_length=3,
+                max_length=3,
+                description="Unix launcher, Windows launcher, and pin with modes",
+            ),
+        ]
+        lock_file: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9._-]+$",
+                description="Committed native graph watched by runtime activation",
+            ),
+        ]
+        runtime_install_relative_template: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+\{release\}$",
+                description="Storage-relative address of an installed Mise release",
+            ),
+        ]
+        resolved_release_pattern: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Shared Python and shell resolved-release grammar"),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_environment_contract(self) -> Self:
@@ -404,6 +472,14 @@ class FlextInfraModelsMiseToolchain:
                     if path.startswith("/") or ".." in path:
                         msg = f"relative path must not be absolute or escape: {path}"
                         raise ValueError(msg)
+            unsafe = ("'", "\n", "\r", "\0")
+            for line in (*self.version_pin_header, self.version_pin_reader):
+                if any(character in line for character in unsafe):
+                    msg = "Mise pin header and reader must be literal-shell safe"
+                    raise ValueError(msg)
+            if not all(line.startswith("#") for line in self.version_pin_header):
+                msg = "Mise pin header lines must be comments"
+                raise ValueError(msg)
             return self
 
 

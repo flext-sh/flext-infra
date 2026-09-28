@@ -14,6 +14,13 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
 
+    CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
+    """Run every independent quality gate unless fail-fast is requested."""
+    SERVICE_FAIL_FAST: ClassVar[bool] = True
+    """Stop mutating service workflows at the first failed project or rule."""
+
+    PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
+
     @unique
     class SarifSchema(StrEnum):
         """Supported SARIF schema identities."""
@@ -104,6 +111,10 @@ class FlextInfraConstantsCheck:
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
+    MYPY_FOUND_SOURCE_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^LOG:\s+Found source:\s+BuildSource\(path='(?P<path>[^']+)'", re.MULTILINE
+    )
+    "Mypy ``--verbose`` source-set line; native inventory that survives the cache."
     MARKDOWN_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?P<file>.*?):(?P<line>\d+):(?P<col>\d+):\s+\[(?P<code>MD\d+)\]\s+(?P<msg>.*)$"
     )
@@ -118,6 +129,8 @@ class FlextInfraConstantsCheck:
     "Canonical fenced-Python-block extractor; the flext-tests markdown validator consumes the same pattern."
     MARKDOWN_CODE_SOURCE_FORMAT: ClassVar[str] = "{}_b{}.py"
     "Temp-file name for one extracted block: sanitized doc path plus block index."
+    MARKDOWN_CODE_SKIP_MARKER: ClassVar[str] = "notest"
+    "Existing fence marker (pytest-markdown-docs) opting a block out of code validation."
     MARKDOWN_CODE_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?P<file>\S+):\d+:\d+:\s+unformatted:\s+"
     )
@@ -200,15 +213,11 @@ class FlextInfraConstantsCheck:
             ),
             "imports subprocess — use cli.run / cli.capture",
         ),
-        (
-            re.compile(r"^\s*print\(", re.MULTILINE),
-            "uses u.Cli.print() — use cli.print",
-        ),
-        (
-            re.compile(r"^\s*sys\.exit\(", re.MULTILINE),
-            "uses sys.exit() — use cli.exit()",
-        ),
     )
+    BOUNDARY_CALL_RULES: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
+        "print": "uses u.Cli.print() — use cli.print",
+        "sys.exit": "uses sys.exit() — use cli.exit()",
+    })
     # The boundary gate's own rule-definition source files legitimately contain the
     # forbidden-pattern strings as DETECTION RULES (not as usage); exempt them from
     # self-scanning so the detector does not flag its own catalog.
