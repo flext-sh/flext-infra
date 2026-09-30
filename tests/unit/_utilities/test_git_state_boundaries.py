@@ -242,8 +242,16 @@ class TestsFlextInfraGitStateBoundaries:
             u.Infra.git_checkpoint_worktree_state(snapshot, "refs/captures/drift")
         )
         lane = tmp_path / "lane"
-        test_u.Tests.git_run(source, "worktree", "add", "--detach", str(lane))
+        # The saved candidate must land on a branch: a detached worktree has
+        # no HEAD ref for the capture commit to advance.
+        test_u.Tests.git_run(
+            source, "worktree", "add", "-b", "capture/drift", str(lane)
+        )
         tm.ok(u.Infra.git_apply_worktree_checkpoint(checkpoint, lane))
+        # The applied capture reproduces both layers exactly: the captured
+        # README was unstaged at the source, so the lane holds it as an
+        # untracked file that the save commit must stage explicitly.
+        test_u.Tests.git_run(lane, "add", ".")
         test_u.Tests.git_run(lane, "commit", "-am", "saved")
         saved = test_u.Tests.git_capture(lane, "rev-parse", "HEAD").strip()
         remote = tmp_path / "retained.git"
