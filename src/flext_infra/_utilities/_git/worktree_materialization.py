@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from stat import S_IMODE
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from git import GitCommandError
+from git import GitCommandError, Repo
 
 from flext_core import r
 from flext_infra import c, t
@@ -140,15 +141,10 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
             return r[bool].fail(f"failed to copy worktree state: {exc}", exception=exc)
 
     @classmethod
-    def _git_copy_worktree_layers(
-        cls,
-        source_root: Path,
-        worktree_root: Path,
-        excluded: t.SequenceOf[Path],
-        pathspecs: t.VariadicTuple[str],
+    def _git_copy_layers_preflight(
+        cls, repo: Repo, worktree_repo: Repo, source_root: Path, worktree_root: Path
     ) -> p.Result[bool]:
-        repo = cls._repo(source_root)
-        worktree_repo = cls._repo(worktree_root)
+        """Reject same-root, non-worktree, cross-repo, dirty, or unmerged setups."""
         if source_root.resolve() == worktree_root.resolve():
             return r[bool].fail("source and destination must be distinct worktrees")
         if any(
@@ -167,6 +163,60 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
             return r[bool].fail("destination worktree must be clean")
         if repo.git.ls_files("--unmerged", "-z"):
             return r[bool].fail("source index has unresolved merge entries")
+        return r[bool].ok(True)
+
+    @classmethod
+    def _git_untracked_destination_safety(
+        cls,
+        repo: Repo,
+        source_root: Path,
+        worktree_root: Path,
+        excluded: t.SequenceOf[Path],
+        deleted: set[str],
+    ) -> p.Result[bool]:
+        """Reject untracked captures whose destination exists or has unsafe parents."""
+        for raw_path in repo.git.ls_files("--others", "--exclude-standard", "-z").split(
+            "\0"
+        ):
+            relative = Path(raw_path)
+            if not raw_path or cls._git_path_is_excluded(relative, excluded):
+                continue
+            source_path = source_root / relative
+            if source_path.is_dir() and not source_path.is_symlink():
+                return r[bool].fail(
+                    f"nested repository requires separate capture: {relative}"
+                )
+            destination = worktree_root / relative
+            if (
+                destination.exists() or destination.is_symlink()
+            ) and raw_path not in deleted:
+                return r[bool].fail(f"untracked destination already exists: {relative}")
+            for parent in relative.parents:
+                candidate = worktree_root / parent
+                if os.fspath(parent) not in deleted and (
+                    candidate.is_symlink()
+                    or (candidate.exists() and not candidate.is_dir())
+                ):
+                    return r[bool].fail(
+                        f"unsafe untracked destination parent: {parent}"
+                    )
+        return r[bool].ok(True)
+
+    @classmethod
+    def _git_copy_worktree_layers(
+        cls,
+        source_root: Path,
+        worktree_root: Path,
+        excluded: t.SequenceOf[Path],
+        pathspecs: t.VariadicTuple[str],
+    ) -> p.Result[bool]:
+        repo = cls._repo(source_root)
+        worktree_repo = cls._repo(worktree_root)
+        preflight = cls._git_copy_layers_preflight(
+            repo, worktree_repo, source_root, worktree_root
+        )
+        if preflight.failure:
+            return preflight
         patches = tuple(
             repo.git.diff(
                 *layer,
@@ -194,31 +244,11 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 *pathspecs,
             ).split("\0")
         )
-        for raw_path in repo.git.ls_files("--others", "--exclude-standard", "-z").split(
-            "\0"
-        ):
-            relative = Path(raw_path)
-            if not raw_path or cls._git_path_is_excluded(relative, excluded):
-                continue
-            source_path = source_root / relative
-            if source_path.is_dir() and not source_path.is_symlink():
-                return r[bool].fail(
-                    f"nested repository requires separate capture: {relative}"
-                )
-            destination = worktree_root / relative
-            if (
-                destination.exists() or destination.is_symlink()
-            ) and raw_path not in deleted:
-                return r[bool].fail(f"untracked destination already exists: {relative}")
-            for parent in relative.parents:
-                candidate = worktree_root / parent
-                if parent.as_posix() not in deleted and (
-                    candidate.is_symlink()
-                    or (candidate.exists() and not candidate.is_dir())
-                ):
-                    return r[bool].fail(
-                        f"unsafe untracked destination parent: {parent}"
-                    )
+        safety = cls._git_untracked_destination_safety(
+            repo, source_root, worktree_root, excluded, deleted
+        )
+        if safety.failure:
+            return safety
         for check in (True, False):
             for patch_bytes, layer in zip(patches, ((), ("--cached",)), strict=True):
                 if not patch_bytes:
