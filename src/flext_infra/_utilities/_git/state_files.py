@@ -17,13 +17,7 @@ from .worktree_io import FlextInfraUtilitiesGitWorktreeIO
 class FlextInfraUtilitiesGitStateFilesMixin(
     FlextInfraUtilitiesGitStatePublicationMixin
 ):
-    """Consume CLI physical-state primitives under the shared writer lease.
-
-    File effects use the CLI's guarded atomic-file primitives. Symlink
-    effects are implemented here — the Git capture owner's own guarded
-    compare-and-swap semantics over ``os`` primitives — because the CLI
-    surface has no guarded symlink-state verbs (flagged upstream owner gap).
-    """
+    """Consume CLI physical-state primitives under the shared writer lease."""
 
     @staticmethod
     def _state_require_directory_scope(
@@ -36,74 +30,38 @@ class FlextInfraUtilitiesGitStateFilesMixin(
                 msg = f"directory transition would remove unowned content: {relative}"
                 raise ValueError(msg)
 
-    @staticmethod
-    def _state_mode_bits(before_content: bytes | None, before_mode: int) -> str:
-        """Map one before-state to its Git file mode string."""
-        if before_content is None:
-            return "100644"
-        if stat.S_ISLNK(before_mode):
-            return "120000"
-        return "100755" if before_mode & stat.S_IXUSR else "100644"
-
     @classmethod
     def _state_require_payload(
         cls,
         root: Path,
-        path: Path,
-        before_content: bytes | None,
-        before_mode: int,
+        before: m.Cli.AtomicFileState | m.Cli.AtomicSymlinkState,
         allowed: t.SequenceOf[m.Infra.GitWorktreeFileState | None],
     ) -> None:
-        if before_content is None and None in allowed:
+        path = before.path.relative_to(root)
+        if isinstance(before, m.Cli.AtomicFileState):
+            content = before.content
+            permissions = before.mode if before.mode is not None else 0
+            mode = "100755" if permissions & stat.S_IXUSR else "100644"
+        else:
+            identity = before.identity
+            if identity is None or before.target is None:
+                msg = f"symlink disappeared before guarded effect: {path}"
+                raise ValueError(msg)
+            content = os.fsencode(before.target)
+            permissions = identity.mode
+            mode = "120000"
+        if content is None and None in allowed:
             return
-        if before_content is not None:
-            with FlextInfraUtilitiesGitWorktreeIO.git_stdin(before_content) as stream:
+        if content is not None:
+            with FlextInfraUtilitiesGitWorktreeIO.git_stdin(content) as stream:
                 oid = cls._repo(root).git.hash_object("--stdin", istream=stream)
             observed = m.Infra.GitWorktreeFileState(
-                path=path,
-                mode=cls._state_mode_bits(before_content, before_mode),
-                permissions=stat.S_IMODE(before_mode),
-                oid=oid,
+                path=path, mode=mode, permissions=permissions, oid=oid
             )
             if observed in allowed:
                 return
         msg = f"owned file changed before guarded effect: {path}"
         raise ValueError(msg)
-
-    @staticmethod
-    def _state_symlink_target(destination: Path) -> bytes | None:
-        """Return the current symlink target bytes, or ``None`` when absent."""
-        if not destination.is_symlink():
-            return None
-        return os.fsencode(destination.readlink())
-
-    @classmethod
-    def _state_effect_symlink(
-        cls,
-        root: Path,
-        path: Path,
-        desired: m.Infra.GitWorktreeFileState,
-        before_target: bytes,
-    ) -> None:
-        """Guarded rewrite of one symlink whose before-state matched."""
-        payload = cls._repo(root).odb.stream(bytes.fromhex(desired.oid)).read()
-        if payload != before_target:
-            destination = root / path
-            destination.unlink()
-            destination.symlink_to(os.fsdecode(payload))
-
-    @classmethod
-    def _state_effect_regular(
-        cls,
-        root: Path,
-        desired: m.Infra.GitWorktreeFileState,
-        before_file: m.Cli.AtomicFileState,
-    ) -> None:
-        """Guarded write of one regular file through the CLI owner."""
-        payload = cls._repo(root).odb.stream(bytes.fromhex(desired.oid)).read()
-        u.Cli.atomic_write_binary_file_guarded(
-            before_file, payload, permission_mode=desired.permissions
-        ).unwrap()
 
     @classmethod
     def _state_effect_file(
@@ -114,48 +72,46 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         allowed: t.SequenceOf[m.Infra.GitWorktreeFileState | None],
     ) -> None:
         destination = root / path
-        before_target = cls._state_symlink_target(destination)
-        if before_target is not None:
-            cls._state_require_payload(
-                root, path, before_target, destination.lstat().st_mode, allowed
-            )
+        if destination.is_symlink():
+            before_link = u.Cli.atomic_read_symlink_state(
+                destination, required=True
+            ).unwrap()
+            cls._state_require_payload(root, before_link, allowed)
             if desired is not None and desired.mode == "120000":
-                cls._state_effect_symlink(root, path, desired, before_target)
+                payload = cls._repo(root).odb.stream(bytes.fromhex(desired.oid)).read()
+                u.Cli.atomic_write_symlink_guarded(
+                    before_link, os.fsdecode(payload)
+                ).unwrap()
                 return
-            destination.unlink()
-            if desired is None:
+            u.Cli.atomic_delete_symlink_guarded(before_link).unwrap()
+        else:
+            before_file = u.Cli.atomic_read_binary_file_state(
+                destination, required=False
+            ).unwrap()
+            cls._state_require_payload(root, before_file, allowed)
+            if desired is not None and desired.mode != "120000":
+                payload = cls._repo(root).odb.stream(bytes.fromhex(desired.oid)).read()
+                u.Cli.atomic_write_binary_file_guarded(
+                    before_file, payload, permission_mode=desired.permissions
+                ).unwrap()
                 return
-            # Symlink-to-file kind transition: the absent intermediate is the
-            # recorded, recoverable state, so the regular write re-runs with
-            # absence allowed.
-            cls._state_effect_file(root, path, desired, (None,))
-            return
-        before_file = u.Cli.atomic_read_binary_file_state(
-            destination, required=False
-        ).unwrap()
-        cls._state_require_payload(
-            root,
-            path,
-            before_file.content,
-            before_file.mode if before_file.mode is not None else 0,
-            allowed,
-        )
-        if desired is None:
             if before_file.content is not None:
                 u.Cli.atomic_delete_binary_file_guarded(before_file).unwrap()
-            return
-        if desired.mode != "120000":
-            cls._state_effect_regular(root, desired, before_file)
-            return
-        # File-to-symlink kind transition: the regular file is deleted first
-        # and the absent intermediate is the recorded, recoverable state.
-        if before_file.content is not None:
-            u.Cli.atomic_delete_binary_file_guarded(before_file).unwrap()
-        if cls._state_symlink_target(destination) is not None:
-            msg = f"destination appeared during kind transition: {path}"
-            raise ValueError(msg)
-        payload = cls._repo(root).odb.stream(bytes.fromhex(desired.oid)).read()
-        destination.symlink_to(os.fsdecode(payload))
+        if desired is not None:
+            # A kind transition has a recorded, recoverable absent intermediate.
+            if desired.mode == "120000":
+                absent = u.Cli.atomic_read_symlink_state(
+                    destination, required=False
+                ).unwrap()
+                if absent.target is not None:
+                    msg = f"destination appeared during kind transition: {path}"
+                    raise ValueError(msg)
+                payload = cls._repo(root).odb.stream(bytes.fromhex(desired.oid)).read()
+                u.Cli.atomic_write_symlink_guarded(
+                    absent, os.fsdecode(payload)
+                ).unwrap()
+            else:
+                cls._state_effect_file(root, path, desired, (None,))
 
     @staticmethod
     def _state_remove_empty_tree(path: Path) -> None:

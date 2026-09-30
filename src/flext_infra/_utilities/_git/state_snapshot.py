@@ -110,72 +110,6 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
             entries.append(m.Infra.GitWorktreeIndexEntry(path=path, mode=mode, oid=oid))
         return tuple(entries)
 
-    @staticmethod
-    def _state_validate_scope_roots(
-        root: Path, paths: t.SequenceOf[Path], candidates: t.SequenceOf[Path]
-    ) -> None:
-        """Fail when the snapshot scope would traverse an unowned symlink."""
-        for path in (*paths, *candidates):
-            for parent in path.parents:
-                if (root / parent).is_symlink() and parent not in candidates:
-                    msg = f"snapshot scope traverses an unowned symlink: {path}"
-                    raise ValueError(msg)
-
-    @classmethod
-    def _state_gitlink_map(
-        cls,
-        root: Path,
-        paths: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
-    ) -> tuple[dict[Path, str], set[Path]]:
-        """Collect gitlink oids from HEAD/index and the indexed gitlink paths."""
-        gitlinks = {
-            entry.path: entry.oid
-            for entry in (*cls._state_head_entries(root, paths), *entries)
-            if entry.mode == "160000"
-        }
-        indexed_gitlinks = {entry.path for entry in entries if entry.mode == "160000"}
-        return gitlinks, indexed_gitlinks
-
-    @classmethod
-    def _state_snapshot_candidate(
-        cls,
-        root: Path,
-        path: Path,
-        gitlinks: dict[Path, str],
-        indexed_gitlinks: set[Path],
-    ) -> m.Infra.GitWorktreeFileState | None:
-        """Reduce one candidate path to its file state, or ``None`` to skip.
-
-        Candidates that traverse a symlinked parent are out of scope; a
-        gitlink carries its HEAD (materialized) or index oid; directories
-        are skipped — their descendants are separate ls-files entries.
-        """
-        candidate = root / path
-        if any((root / parent).is_symlink() for parent in path.parents):
-            return None
-        if path in gitlinks and (
-            (candidate / ".git").exists() or path in indexed_gitlinks
-        ):
-            return m.Infra.GitWorktreeFileState(
-                path=path,
-                mode="160000",
-                permissions=0,
-                oid=cls._repo(candidate).head.commit.hexsha
-                if (candidate / ".git").exists()
-                else gitlinks[path],
-            )
-        if candidate.is_dir() and not candidate.is_symlink():
-            if (candidate / ".git").exists():
-                msg = f"nested repository requires independent capture: {path}"
-                raise ValueError(msg)
-            # A former HEAD file can now be a directory; its descendants
-            # are separate ls-files entries and the old file is absent.
-            return None
-        if candidate.exists() or candidate.is_symlink():
-            return cls._state_file(root, path)
-        return None
-
     @classmethod
     def _state_snapshot_files(
         cls,
@@ -199,15 +133,43 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
             },
             key=Path.as_posix,
         )
-        cls._state_validate_scope_roots(root, paths, candidates)
-        gitlinks, indexed_gitlinks = cls._state_gitlink_map(root, paths, entries)
+        gitlinks = {
+            entry.path: entry.oid
+            for entry in (*cls._state_head_entries(root, paths), *entries)
+            if entry.mode == "160000"
+        }
+        indexed_gitlinks = {entry.path for entry in entries if entry.mode == "160000"}
+        for path in (*paths, *candidates):
+            for parent in path.parents:
+                if (root / parent).is_symlink() and parent not in candidates:
+                    msg = f"snapshot scope traverses an unowned symlink: {path}"
+                    raise ValueError(msg)
         files: list[m.Infra.GitWorktreeFileState] = []
         for path in candidates:
-            state = cls._state_snapshot_candidate(
-                root, path, gitlinks, indexed_gitlinks
-            )
-            if state is not None:
-                files.append(state)
+            candidate = root / path
+            if any((root / parent).is_symlink() for parent in path.parents):
+                continue
+            if path in gitlinks and (
+                (candidate / ".git").exists() or path in indexed_gitlinks
+            ):
+                files.append(
+                    m.Infra.GitWorktreeFileState(
+                        path=path,
+                        mode="160000",
+                        permissions=0,
+                        oid=cls._repo(candidate).head.commit.hexsha
+                        if (candidate / ".git").exists()
+                        else gitlinks[path],
+                    )
+                )
+            elif candidate.is_dir() and not candidate.is_symlink():
+                if (candidate / ".git").exists():
+                    msg = f"nested repository requires independent capture: {path}"
+                    raise ValueError(msg)
+                # A former HEAD file can now be a directory; its descendants
+                # are separate ls-files entries and the old file is absent.
+            elif candidate.exists() or candidate.is_symlink():
+                files.append(cls._state_file(root, path))
         return tuple(files)
 
     @classmethod

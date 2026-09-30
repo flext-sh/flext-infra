@@ -15,37 +15,26 @@ from .state_files import FlextInfraUtilitiesGitStateFilesMixin
 class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFilesMixin):
     """Accept only captured, baseline, or planned kind-transition absence."""
 
-    @classmethod
-    def _state_baseline_permissions(
-        cls,
+    @staticmethod
+    def _state_baseline_file(
         entry: m.Infra.GitWorktreeIndexEntry,
-        original: m.Infra.GitWorktreeFileState | None,
-    ) -> int:
-        """Resolve the working-tree permission bits one baseline entry carries."""
-        if entry.mode == "160000":
-            return 0
-        if entry.mode == "120000":
-            return 0o777
-        permissions = int(entry.mode, 8) & 0o777
+        original: m.Infra.GitWorktreeFileState | None = None,
+    ) -> m.Infra.GitWorktreeFileState:
+        permissions = (
+            0
+            if entry.mode == "160000"
+            else 0o777
+            if entry.mode == "120000"
+            else int(entry.mode, 8) & 0o777
+        )
         if (
             original is not None
             and original.mode in {"100644", "100755"}
             and entry.mode in {"100644", "100755"}
         ):
             permissions = original.permissions & ~0o111 | (int(entry.mode, 8) & 0o111)
-        return permissions
-
-    @classmethod
-    def _state_baseline_file(
-        cls,
-        entry: m.Infra.GitWorktreeIndexEntry,
-        original: m.Infra.GitWorktreeFileState | None = None,
-    ) -> m.Infra.GitWorktreeFileState:
         return m.Infra.GitWorktreeFileState(
-            path=entry.path,
-            mode=entry.mode,
-            permissions=cls._state_baseline_permissions(entry, original),
-            oid=entry.oid,
+            path=entry.path, mode=entry.mode, permissions=permissions, oid=entry.oid
         )
 
     @classmethod
@@ -82,110 +71,19 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
             None,
         )
 
-    @staticmethod
-    def _state_is_kind_transition(
-        original: m.Infra.GitWorktreeFileState | None,
-        baseline: m.Infra.GitWorktreeFileState | None,
-    ) -> bool:
-        """Whether original and baseline disagree on the symlink kind."""
-        return (
-            original is not None
-            and baseline is not None
-            and (original.mode == "120000") != (baseline.mode == "120000")
-        )
-
     @classmethod
     def _state_allowed_files(
         cls,
         original: m.Infra.GitWorktreeFileState | None,
         baseline: m.Infra.GitWorktreeFileState | None,
     ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState | None]:
-        """The file states the path may currently hold, always three slots.
-
-        A kind transition additionally permits absence (``None``); without
-        one the third slot repeats an existing state so membership semantics
-        never widen.
-        """
-        if cls._state_is_kind_transition(original, baseline):
-            return original, baseline, None
-        repeated = original if original is not None else baseline
-        return original, baseline, repeated
-
-    @staticmethod
-    def _state_require_captured_root(
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
-        actual: m.Infra.GitWorktreeStateSnapshot,
-    ) -> None:
-        if actual.common_dir != snapshot.common_dir or actual.head != snapshot.head:
-            msg = "state transition requires the captured repository and HEAD"
-            raise ValueError(msg)
-
-    @staticmethod
-    def _state_require_unowned_index(
-        path: Path,
-        current_index: t.MappingKV[Path, m.Infra.GitWorktreeIndexEntry],
-        base: t.MappingKV[Path, m.Infra.GitWorktreeIndexEntry],
-        indexed: t.MappingKV[Path, m.Infra.GitWorktreeIndexEntry],
-    ) -> None:
-        current_entry = current_index.get(path)
-        if current_entry != base.get(path) and current_entry != indexed.get(path):
-            msg = f"owned index entry changed: {path}"
-            raise ValueError(msg)
-
-    @staticmethod
-    def _state_require_unobstructed(
-        path: Path,
-        obstruction: Path | None,
-        paths: set[Path],
-        desired: t.MappingKV[Path, object],
-    ) -> None:
-        if obstruction is not None and (
-            obstruction not in paths or (obstruction in desired and path in desired)
+        if (
+            original is not None
+            and baseline is not None
+            and (original.mode == "120000") != (baseline.mode == "120000")
         ):
-            msg = f"unowned ancestor obstructs state transition: {path}"
-            raise ValueError(msg)
-
-    @classmethod
-    def _state_preflight_one(
-        cls,
-        root: Path,
-        *,
-        cleanup: bool,
-        path: Path,
-        base: t.MappingKV[Path, m.Infra.GitWorktreeIndexEntry],
-        indexed: t.MappingKV[Path, m.Infra.GitWorktreeIndexEntry],
-        current_index: t.MappingKV[Path, m.Infra.GitWorktreeIndexEntry],
-        expected: t.MappingKV[Path, m.Infra.GitWorktreeFileState],
-        current_files: t.MappingKV[Path, m.Infra.GitWorktreeFileState],
-        paths: set[Path],
-        desired: t.MappingKV[Path, object],
-    ) -> None:
-        """Run every guarded proof for one owned path before materialization."""
-        cls._state_require_unowned_index(path, current_index, base, indexed)
-        original = expected.get(path)
-        previous = (
-            cls._state_baseline_at(root, base[path], original, cleanup=cleanup)
-            if path in base
-            else None
-        )
-        current = current_files.get(path)
-        target = root / path
-        obstruction = cls._state_obstruction(root, path)
-        cls._state_require_unobstructed(path, obstruction, paths, desired)
-        if obstruction is None and current is None:
-            if target.is_dir() and not target.is_symlink():
-                cls._state_require_directory_scope(root, path, tuple(paths))
-            elif target.exists() or target.is_symlink():
-                current = cls._state_file(root, path)
-        required = previous if cleanup else original
-        allowed = cls._state_allowed_files(original, previous)
-        if current is not None and current.mode == "160000":
-            if current != required:
-                msg = f"nested worktree requires independent reconciliation: {path}"
-                raise ValueError(msg)
-        elif current not in allowed:
-            msg = f"owned working file changed: {path}"
-            raise ValueError(msg)
+            return original, baseline, None
+        return original, baseline
 
     @classmethod
     def _state_preflight_transition(
@@ -194,7 +92,9 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         actual = cls._state_snapshot(
             m.Infra.GitWorktreeStateRequest(repo_root=root, paths=snapshot.paths)
         )
-        cls._state_require_captured_root(snapshot, actual)
+        if actual.common_dir != snapshot.common_dir or actual.head != snapshot.head:
+            msg = "state transition requires the captured repository and HEAD"
+            raise ValueError(msg)
         baseline = cls._state_tree_entries(root, snapshot.head, snapshot.paths)
         base = {entry.path: entry for entry in baseline}
         indexed = {entry.path: entry for entry in snapshot.index_entries}
@@ -214,18 +114,38 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
                 payload = cls._repo(root).odb.stream(bytes.fromhex(entry.oid)).read()
                 os.fsdecode(payload).encode(c.Cli.ENCODING_DEFAULT, errors="strict")
         for path in paths:
-            cls._state_preflight_one(
-                root,
-                cleanup=cleanup,
-                path=path,
-                base=base,
-                indexed=indexed,
-                current_index=current_index,
-                expected=expected,
-                current_files=current_files,
-                paths=paths,
-                desired=desired,
+            current_entry = current_index.get(path)
+            if current_entry != base.get(path) and current_entry != indexed.get(path):
+                msg = f"owned index entry changed: {path}"
+                raise ValueError(msg)
+            original = expected.get(path)
+            previous = (
+                cls._state_baseline_at(root, base[path], original, cleanup=cleanup)
+                if path in base
+                else None
             )
+            current = current_files.get(path)
+            target = root / path
+            obstruction = cls._state_obstruction(root, path)
+            if obstruction is not None and (
+                obstruction not in paths
+                or (obstruction in desired and path in desired)
+            ):
+                msg = f"unowned ancestor obstructs state transition: {path}"
+                raise ValueError(msg)
+            if obstruction is None and current is None:
+                if target.is_dir() and not target.is_symlink():
+                    cls._state_require_directory_scope(root, path, tuple(paths))
+                elif target.exists() or target.is_symlink():
+                    current = cls._state_file(root, path)
+            if current is not None and current.mode == "160000":
+                required = previous if cleanup else original
+                if current != required:
+                    msg = f"nested worktree requires independent reconciliation: {path}"
+                    raise ValueError(msg)
+            elif current not in cls._state_allowed_files(original, previous):
+                msg = f"owned working file changed: {path}"
+                raise ValueError(msg)
         return baseline
 
     @classmethod
