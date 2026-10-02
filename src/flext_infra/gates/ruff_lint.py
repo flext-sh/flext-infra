@@ -106,6 +106,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 c.Infra.LintFixRecipe.YIELDS_SECTION,
                 c.Infra.LintFixRecipe.RAISES_SECTION,
             }),
+            # The staticmethod rewrite rewrites the def itself: it runs last,
+            # alone, so its findings never share a phase with docstring edits
+            # computed against the pre-rewrite positions.
+            frozenset({c.Infra.LintFixRecipe.NO_SELF_USE}),
         ):
             by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
             for issue in execution.issues:
@@ -116,23 +120,23 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             with self._mutation_lease(project_dir):
                 # Every repair is computed before the first write: a module
                 # the recipes cannot place stops the phase with nothing written.
-                planned: t.MutableSequenceOf[t.Pair[m.Cli.AtomicFileState, str]] = []
+                planned: t.MutableSequenceOf[
+                    t.Triple[m.Cli.AtomicFileState, str, list[m.Infra.Issue]]
+                ] = []
                 for path, issues in sorted(by_file.items()):
                     before = u.Cli.atomic_read_binary_file_state(
                         path,
                         required=True,
                     ).unwrap()
-                    planned.append((
-                        before,
-                        u.Infra.apply_lint_recipes(
-                            (before.content or b"").decode(c.Cli.ENCODING_DEFAULT),
-                            issues,
-                            path=path,
-                            recipes=recipes,
-                            notice=u.Infra.copyright_notice(path.parent),
-                        ),
-                    ))
-                for before, repaired in planned:
+                    repaired, left_issues = u.Infra.apply_lint_recipes(
+                        (before.content or b"").decode(c.Cli.ENCODING_DEFAULT),
+                        issues,
+                        path=path,
+                        recipes=recipes,
+                        notice=u.Infra.copyright_notice(path.parent),
+                    )
+                    planned.append((before, repaired, left_issues))
+                for before, repaired, _ in planned:
                     u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
             execution = super().fix(project_dir, ctx)
         left = sorted(
@@ -141,8 +145,13 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             if issue.code in recipes
         )
         if left:
-            msg = f"lint recipes left their own findings: {', '.join(left)}"
-            raise ValueError(msg)
+            # Owner-visible, never silent: the unplaceable findings (e.g. a
+            # no-self-use method the staticmethod rewrite cannot hold) are
+            # the L2 campaign's manual repair queue, reported per finding.
+            u.Cli.info(
+                "lint recipes left their own findings (manual repair): "
+                + ", ".join(left),
+            )
         return execution
 
     def _lint_command(

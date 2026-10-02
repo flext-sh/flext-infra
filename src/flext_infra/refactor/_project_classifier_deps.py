@@ -98,8 +98,8 @@ class FlextInfraProjectClassifierDepsMixin:
             return keys
         return sorted(keys)
 
+    @staticmethod
     def _mapping_order_is_trusted(
-        self,
         raw_mapping: t.MappingKV[str, t.JsonValue],
     ) -> bool:
         """Check whether the mapping order is trusted.
@@ -159,7 +159,8 @@ class FlextInfraProjectClassifierDepsMixin:
             base_token = path.name
         return self._normalize_dependency_name(base_token)
 
-    def _normalize_dependency_name(self, raw_name: str) -> str:
+    @staticmethod
+    def _normalize_dependency_name(raw_name: str) -> str:
         """Normalize dependency name.
 
         Returns:

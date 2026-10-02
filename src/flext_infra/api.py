@@ -42,8 +42,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
 
     app_name: ClassVar[str] = "flext-infra"
 
+    @staticmethod
     def bootstrap_candidate(
-        self,
         request: m.Infra.CandidateBootstrapCommand,
     ) -> p.Result[bool]:
         """Compose typed declarations, conform planner and one atomic publisher.
@@ -93,7 +93,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
         )
         return FlextInfraRopeWorkspace.open_workspace(resolved_root)
 
-    def check(self, request: m.Infra.RunCommand) -> p.Result[bool]:
+    @staticmethod
+    def check(request: m.Infra.RunCommand) -> p.Result[bool]:
         """Compose one shared Rope cycle and execute every requested gate.
 
         Returns:
@@ -104,7 +105,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
             repository_root=request.repository_root,
         ).execute_payload(request)
 
-    def codegen_census(self, request: m.Infra.CodegenCommand) -> p.Result[str]:
+    @staticmethod
+    def codegen_census(request: m.Infra.CodegenCommand) -> p.Result[str]:
         """Run the read-only census within the facade-owned Rope lifecycle.
 
         Returns:
@@ -119,7 +121,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
             output_format=request.output_format,
         ).execute()
 
-    def codegen_auto_fix(self, request: m.Infra.CodegenAutoFixCommand) -> p.Result[str]:
+    @staticmethod
+    def codegen_auto_fix(request: m.Infra.CodegenAutoFixCommand) -> p.Result[str]:
         """Run namespace fixes within the facade-owned Rope lifecycle.
 
         Returns:
@@ -252,8 +255,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
             update={"format_gate": self.markdown_format_gate},
         ).execute()
 
+    @staticmethod
     def apply_renames(
-        self,
         request: m.Infra.ApplyRenamesInput,
     ) -> p.Result[m.Infra.ApplyRenamesReport]:
         """Compose and run one explicitly supplied CSV rename campaign.
@@ -320,8 +323,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
                 rename_inputs=tuple(campaigns),
             ).execute()
 
+    @staticmethod
     def validate_namespace(
-        self,
         request: m.Infra.NamespaceValidateCommand,
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate one project against the rule catalog.
@@ -334,7 +337,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
             repository_root=request.repository_root,
         ).build_report()
 
-    def mod_text(self, request: m.Infra.ModTextCommand) -> p.Result[t.Cli.ResultValue]:
+    @staticmethod
+    def mod_text(request: m.Infra.ModTextCommand) -> p.Result[t.Cli.ResultValue]:
         """Compose the standalone authenticated text-rule replay.
 
         Returns:
@@ -344,8 +348,8 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         return FlextInfraModTextGateEngine.run(root, apply=request.apply)
 
+    @staticmethod
     def mod_text_candidate(
-        self,
         request: m.Infra.ModTextCommand,
     ) -> p.Result[t.Cli.ResultValue]:
         """Replay one manifest-declared candidate using this healthy provider.

@@ -98,6 +98,8 @@ class FlextInfraUtilitiesLintRecipes:
             ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
             str,
         ] = {}
+        static_methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+        left: list[m.Infra.Issue] = []
         wants_notice = False
         for issue in issues:
             recipe = recipes.get(issue.code)
@@ -120,6 +122,18 @@ class FlextInfraUtilitiesLintRecipes:
                     sections.setdefault(function, {}).setdefault("Raises", []).append(
                         cls._raises_entry(function, issue, path),
                     )
+                case c.Infra.LintFixRecipe.NO_SELF_USE:
+                    function = cls._defined_at(tree, issue.line, path)
+                    if not isinstance(
+                        function,
+                        ast.FunctionDef | ast.AsyncFunctionDef,
+                    ):
+                        msg = f"{path}: no-self-use finding at line {issue.line} is not a function"
+                        raise ValueError(msg)
+                    if cls._require_staticmethod_candidate(function, path):
+                        static_methods.append(function)
+                    else:
+                        left.append(issue)
                 case c.Infra.LintFixRecipe.SUMMARY_DOCSTRING:
                     definition = cls._defined_at(tree, issue.line, path)
                     summaries[definition] = cls._summary_for(definition)
@@ -150,6 +164,28 @@ class FlextInfraUtilitiesLintRecipes:
             first_line = min((first.lineno, *(item.lineno for item in decorators)))
             offset = cls._offset(lines, first_line, 0)
             edits.append((offset, offset, f'{" " * first.col_offset}"""{text}"""\n'))
+        for function in static_methods:
+            def_start = cls._offset(lines, function.lineno, 0)
+            indent = " " * function.col_offset
+            body_first = cls._offset(
+                lines,
+                function.body[0].lineno,
+                function.body[0].col_offset,
+            )
+            # ONE edit per function: replace the whole def header with the
+            # staticmethod form whose leading bare self is removed. The span
+            # self..next-param comes byte-precise from the AST, so single- and
+            # multiline signatures both reduce to their static form.
+            self_start, removal_end = cls._self_parameter_span(source, function)
+            header = source[def_start:body_first]
+            self_at = self_start - def_start
+            removal_at = removal_end - def_start
+            updated_header = header[:self_at] + header[removal_at:]
+            edits.append((
+                def_start,
+                body_first,
+                f"{indent}@staticmethod\n{updated_header}",
+            ))
         if wants_notice:
             module_docstring = cls._docstring_expr(tree)
             if module_docstring is None:
@@ -167,7 +203,7 @@ class FlextInfraUtilitiesLintRecipes:
         rewritten = source
         for start, end, text in sorted(edits, key=lambda edit: edit[0], reverse=True):
             rewritten = f"{rewritten[:start]}{text}{rewritten[end:]}"
-        return rewritten
+        return rewritten, left
 
     @staticmethod
     def _docstring_expr(
@@ -237,6 +273,61 @@ class FlextInfraUtilitiesLintRecipes:
             msg = f"{path}: no function encloses line {line}"
             raise ValueError(msg)
         return max(enclosing, key=lambda node: node.lineno)
+
+    @staticmethod
+    def _require_staticmethod_candidate(
+        function: ast.FunctionDef | ast.AsyncFunctionDef,
+        path: Path,
+    ) -> bool:
+        """Return whether the staticmethod rewrite mechanically holds.
+
+        Dunders are protocol hooks whose static form changes their meaning;
+        parameter defaults, keyword-only/vararg parameters, or annotations on
+        the rewritten self parameter need the author's judgment. Simple named
+        decorators (override, abstractmethod) compose with the rewrite.
+
+        Returns:
+            ``True`` when the rewrite is mechanical; ``False`` when the
+            finding must stay reported for manual repair.
+
+        """
+        if function.name.startswith("__") and function.name.endswith("__"):
+            return False
+        for decorator in function.decorator_list:
+            name = ast.unparse(decorator)
+            if name not in {"override", "abstractmethod", "typing.override"}:
+                return False
+        args = function.args
+        if args.kwonlyargs or args.vararg or args.kwarg:
+            return False
+        params = (*args.posonlyargs, *args.args)
+        if not params or params[0].arg != "self" or params[0].annotation:
+            return False
+        defaults = (*([None] * (len(params) - len(args.defaults))), *args.defaults)
+        return not any(default is not None for default in defaults[1:])
+
+    @classmethod
+    def _self_parameter_span(
+        cls,
+        source: str,
+        function: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> tuple[int, int]:
+        """Return the ``(start, end)`` span of the leading bare ``self``.
+
+        Byte-precise from the AST positions of self and the following
+        parameter — single- and multiline signatures alike.
+
+        """
+        lines = source.splitlines(keepends=True)
+        self_arg = function.args.args[0]
+        start = cls._offset(lines, self_arg.lineno, 0) + self_arg.col_offset
+        if len(function.args.args) > 1:
+            next_param = function.args.args[1]
+            end = cls._offset(lines, next_param.lineno, 0) + next_param.col_offset
+            return start, end
+        # Sole parameter: the parentheses close right after self.
+        tail = source[start:]
+        return start, start + tail.index(")")
 
     @staticmethod
     def _defined_at(
