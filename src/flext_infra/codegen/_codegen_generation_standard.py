@@ -78,15 +78,14 @@ class FlextInfraCodegenGenerationStandardMixin(
         ]
         eager_lines: t.MutableSequenceOf[str] = []
         eager_groups = cls._group_imports(plan.eager_dunders)
-        previous_top: str | None = None
         for module in sorted(eager_groups, key=str.lower):
             rendered_module = cls._absolute_import_module(
                 current_pkg,
                 cls._compact_lazy_module_path(current_pkg, module),
             )
-            top = rendered_module.split(".", maxsplit=1)[0]
-            if previous_top is not None and top != previous_top:
-                eager_lines.append("")
+            # No blank line between top-level groups: every eager import is
+            # one first-party isort section and a separator re-diverges from
+            # the formatter on every generation (unsorted-imports).
             parts = tuple(
                 cls._format_import_part(imported_name, export_name)
                 for export_name, imported_name in sorted(eager_groups[module])
@@ -97,7 +96,6 @@ class FlextInfraCodegenGenerationStandardMixin(
                 # diverged from the formatter's canonical single (parenthesized)
                 # import and every generation re-diverged after the autofix.
                 eager_lines.extend(cls._format_import("", rendered_module, parts))
-            previous_top = top
         if lines and eager_lines:
             lines.append("")
         lines.extend(eager_lines)
