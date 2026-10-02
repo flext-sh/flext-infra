@@ -751,6 +751,80 @@ class FlextInfraBootstrap:
         return completed.stdout
 
     @staticmethod
+    def _latest_selectors(manifest: Path) -> list[str]:
+        """Name every manifest tool declared ``latest``.
+
+        Returns:
+            The resulting ``list[str]``.
+        """
+        payload = tomllib.loads(manifest.read_text(encoding="utf-8"))
+        tools = payload.get("tools")
+        if not isinstance(tools, dict):
+            return []
+        selectors: list[str] = []
+        for name, declaration in tools.items():
+            if declaration == "latest":
+                selectors.append(str(name))
+            elif (
+                isinstance(declaration, dict)
+                and declaration.get("version") == "latest"
+            ):
+                selectors.append(str(name))
+        return selectors
+
+    @staticmethod
+    def _cooldown_visible_release(
+        runtime: Path,
+        environment: dict[str, str],
+        tool: str,
+    ) -> str | None:
+        """Resolve the newest release the cooldown leaves visible for one tool.
+
+        ``minimum_release_age`` hides the newest release from Mise's own
+        ``latest`` resolution (the same defect the tool bootstrap resolve
+        stage works around with ``ls-remote``); ``ls-remote`` lists exactly
+        the in-window releases. Newest match wins; ``None`` when nothing
+        qualifies.
+
+        Returns:
+            The resulting ``str | None``.
+        """
+        try:
+            output = FlextInfraBootstrap._run(runtime, ["ls-remote", tool], environment)
+        except ValueError:
+            return None
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        return lines[-1] if lines else None
+
+    @classmethod
+    def _pin_cooldown_visible_latest(
+        cls,
+        runtime: Path,
+        stage: Path,
+        environment: dict[str, str],
+    ) -> list[str]:
+        """Write concrete lock entries for every ``latest`` tool selector.
+
+        Runs inside the staged lock transaction BEFORE the ``lock``/install
+        passes: each ``latest`` selector resolves through the cooldown-aware
+        ``ls-remote`` fallback and ``mise lock <tool>@<release>`` creates or
+        updates that entry in the staged ``mise.lock``. Tools with no visible
+        release keep Mise's native resolution. The staged dry-run remains the
+        publication gate.
+
+        Returns:
+            The resulting ``list[str]`` of unresolved selectors.
+        """
+        unresolved: list[str] = []
+        for tool in cls._latest_selectors(stage / ".mise.toml"):
+            release = cls._cooldown_visible_release(runtime, environment, tool)
+            if release is None:
+                unresolved.append(tool)
+                continue
+            cls._run(runtime, ["-C", str(stage), "lock", f"{tool}@{release}"], environment)
+        return unresolved
+
+    @staticmethod
     def _staged_lock_satisfies(runtime: Path, stage: Path, environment: dict[str, str]) -> bool:
         """Prove the staged lock satisfies the manifest without mutating tools.
 
@@ -809,6 +883,7 @@ class FlextInfraBootstrap:
                 if payload is not None:
                     (stage / "mise.lock").write_bytes(payload)
                 environment = cls._mise_environment(storage, stage, scratch, cooldown, platforms)
+                unresolved = cls._pin_cooldown_visible_latest(runtime, stage, environment)
                 try:
                     cls._run(runtime, ["-C", str(stage), "lock"], environment)
                 except ValueError as error:
