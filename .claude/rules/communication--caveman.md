@@ -1,5 +1,0 @@
-# Communicate precisely
-
-Use Caveman as the final style layer: concise, objective, evidence-led prose that states
-purpose. It never changes reasoning, commands, evidence, decisions, safety, or project
-law.

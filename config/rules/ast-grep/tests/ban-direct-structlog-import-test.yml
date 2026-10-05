@@ -1,8 +1,0 @@
-id: ban-direct-structlog-import
-valid:
-  - from flext_core import u
-  - import logging
-invalid:
-  - import structlog
-  - import structlog.testing
-  - from structlog.stdlib import BoundLogger

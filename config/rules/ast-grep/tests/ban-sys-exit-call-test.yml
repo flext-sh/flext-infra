@@ -1,7 +1,0 @@
-id: ban-sys-exit-call
-valid:
-  - cli.exit(1)
-  - exit_code = sys.exitcode
-invalid:
-  - sys.exit(1)
-  - sys.exit()

@@ -1,7 +1,0 @@
-{% from "docker_mise_bootstrap.j2" import docker_header, docker_apt_seed, docker_bootstrap_proof with context -%}
-{{ docker_header("debian.Dockerfile.j2", "Debian") }}
-FROM debian:bookworm-slim
-
-{{ docker_apt_seed() }}
-
-{{ docker_bootstrap_proof('["make", "help"]') }}

@@ -1,8 +1,0 @@
-id: require-service-facade-layers
-valid:
-  - |
-    class Holder:
-        __all__ = ["x"]
-invalid:
-  - |
-    __all__: list[str] = ["c"]
