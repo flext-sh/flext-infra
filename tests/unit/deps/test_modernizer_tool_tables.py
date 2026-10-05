@@ -77,6 +77,15 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.toml_strings(mypy["plugins"])),
             eq=list(mypy_policy.plugins),
         )
+        # The renderer canonicalizes list order; suppression is a set of codes.
+        tm.that(
+            sorted(u.Tests.toml_strings(mypy["disable_error_code"])),
+            eq=sorted(mypy_policy.suppressed_error_codes),
+        )
+        tm.that(
+            list(mypy_policy.suppressed_error_codes),
+            eq=["prop-decorator", "call-arg"],
+        )
         tm.that(
             list(u.Tests.toml_list(mypy["overrides"])),
             eq=[
@@ -92,6 +101,28 @@ class TestsFlextInfraDepsModernizerToolTables:
             **mypy_policy.string_settings,
         }.items():
             tm.that(mypy[key], eq=value)
+
+    @staticmethod
+    def test_mypy_suppression_and_plugin_defaults_are_mandatory() -> None:
+        """A project overlay omitting the keys still gets the ruling defaults.
+
+        Operator ruling 2026-10-05: pydantic.mypy stays on for every project
+        and prop-decorator/call-arg are suppressed fleet-wide; code edited to
+        quiet them is a regression.
+        """
+        fields = type(config.Infra.tooling.tools.mypy).model_fields
+        tm.that(
+            list(
+                fields["suppressed_error_codes"].get_default(
+                    call_default_factory=True,
+                ),
+            ),
+            eq=["prop-decorator", "call-arg"],
+        )
+        tm.that(
+            list(fields["plugins"].get_default(call_default_factory=True)),
+            eq=["pydantic.mypy"],
+        )
 
     def test_pytest_table_replaces_policy_and_merges_extensions(
         self,

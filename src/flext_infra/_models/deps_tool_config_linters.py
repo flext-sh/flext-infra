@@ -379,9 +379,32 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
-        plugins: Annotated[t.StrSequence, m.Field(description="Mypy plugins list.")] = (
-            m.Field(default_factory=tuple)
-        )
+        plugins: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Mypy plugins list. The pydantic.mypy plugin is mandatory"
+                    " on every project (operator ruling 2026-10-05): Pydantic 2"
+                    " is the law and the plugin is its type surface, so the"
+                    " default below keeps it on wherever a project overlay"
+                    " does not declare its own list."
+                ),
+            ),
+        ] = m.Field(default_factory=lambda: ("pydantic.mypy",))
+        suppressed_error_codes: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="suppressed-error-codes",
+                description=(
+                    "Mypy error codes mandatorily suppressed fleet-wide"
+                    " (operator ruling 2026-10-05): the pydantic.mypy plugin's"
+                    " decorator and init synthesis lawfully produces"
+                    " prop-decorator and call-arg dynamics under Pydantic 2,"
+                    " so the resolution is this suppression, never code edits."
+                    " Code changed to quiet those two codes is a regression."
+                ),
+            ),
+        ] = m.Field(default_factory=lambda: ("prop-decorator", "call-arg"))
         facade_rebind_error_codes: Annotated[
             t.StrSequence,
             m.Field(

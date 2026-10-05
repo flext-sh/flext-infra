@@ -232,6 +232,13 @@ python_version = {{ python_version | tojson }}
 {% for key, value in tooling.tools.mypy.string_settings | dictsort %}
 {{ key }} = {{ value | tojson }}
 {% endfor %}
+{% if tooling.tools.mypy.suppressed_error_codes %}
+disable_error_code = [
+{% for item in tooling.tools.mypy.suppressed_error_codes %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% endif %}
 {% for override in tooling.tools.mypy.overrides %}
 
 [[tool.mypy.overrides]]

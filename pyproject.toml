@@ -197,6 +197,7 @@ warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
 follow_imports = "normal"
+disable_error_code = ["prop-decorator", "call-arg"]
 
 [[tool.mypy.overrides]]
 module = ["rope.*"]
