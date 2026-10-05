@@ -382,6 +382,18 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         plugins: Annotated[t.StrSequence, m.Field(description="Mypy plugins list.")] = (
             m.Field(default_factory=tuple)
         )
+        suspended_error_codes: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="suspended-error-codes",
+                description=(
+                    "Mypy error codes suspended fleet-wide because they flag the "
+                    "mandatory Pydantic 2 idioms (prop-decorator on the canonical "
+                    "@computed_field/@property stacks; call-arg on aliased "
+                    "settings constructors); mypy must not report them."
+                ),
+            ),
+        ]
         facade_rebind_error_codes: Annotated[
             t.StrSequence,
             m.Field(

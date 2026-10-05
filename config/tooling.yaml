@@ -340,6 +340,14 @@ Infra:
         # variable changes it.
         timeout_seconds: 120
         plugins: [pydantic.mypy]
+        # Operator ruling 2026-10-05: Pydantic 2 is mandatory across the fleet
+        # and `plugins: [pydantic.mypy]` is always active. The prop-decorator
+        # code flags the canonical `@computed_field`/`@property` stacks the
+        # Pydantic law requires, and call-arg flags aliased Pydantic settings
+        # constructors the plugin's synthesized signatures cannot see; both
+        # are false positives against the mandated runtime. mypy must not
+        # report them anywhere (operator-ruling-2026-10-05-suspend-mypy-pydantic-codes).
+        suspended-error-codes: [prop-decorator, call-arg]
         # The canonical facade form imports the parent letter, subclasses it
         # and rebinds the letter (`from flext_core import u`,
         # `class FlextCliUtilities(u)`, `u = FlextCliUtilities`). Mypy 2.3.1
