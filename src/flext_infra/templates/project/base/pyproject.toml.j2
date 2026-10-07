@@ -513,7 +513,7 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 # [MANAGED] tool.uv
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
-{% if make_profile == "workspace" %}
+{% if make_profile == "workspace" and owns_workspace_manifest %}
 
 # [MANAGED] tool.uv.workspace
 # Every declared member is a native uv workspace member: the root environment

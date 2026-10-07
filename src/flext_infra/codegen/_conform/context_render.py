@@ -163,6 +163,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
+                owns_workspace_manifest=(repository_root / "config/workspace.yaml").is_file(),
                 workspace_repositories=subprojects,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,

@@ -238,6 +238,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         resolution: m.Infra.UvResolutionSpec,
         candidate_sources: t.StrMapping,
         workspace_members: t.StrSequence = (),
+        owns_workspace: bool = False,
     ) -> p.Result[bool]:
         """Render the conform-owned ``[tool.uv]`` keys and workspace identity.
 
@@ -312,7 +313,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        cls._sync_uv_workspace(uv, document, workspace_members)
+        cls._sync_uv_workspace(uv, document, workspace_members, owns_workspace=owns_workspace)
         return r[bool].ok(value=True)
 
     @classmethod
@@ -368,6 +369,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv: Table,
         document: t.Cli.TomlDocument,
         workspace_members: t.StrSequence,
+        *,
+        owns_workspace: bool = False,
     ) -> None:
         """Render or remove the native uv workspace identity and its sources.
 
@@ -379,12 +382,16 @@ class FlextInfraUtilitiesPyprojectUvSources(
         workspace table and no member sources survive there.
         """
         if workspace_members:
-            members = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(
-                members,
-                "members",
-                tuple(sorted(workspace_members)),
-            )
+            # Only the workspace ROOT owns the members table; a member inside
+            # a superproject uv workspace renders SOURCES only — a nested
+            # table is an uv parse error.
+            if owns_workspace:
+                members = u.Cli.toml_ensure_table(uv, "workspace")
+                u.Cli.toml_sync_string_list(
+                    members,
+                    "members",
+                    tuple(sorted(workspace_members)),
+                )
             cls._sync_member_sources(
                 uv,
                 cls._wanted_workspace_members(document, workspace_members),

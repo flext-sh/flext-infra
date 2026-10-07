@@ -79,6 +79,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.VariadicTuple[str],
             m.Field(description="Declared workspace subproject paths"),
         ] = ()
+        owns_workspace_manifest: Annotated[
+            bool,
+            m.Field(
+                description="Whether this repository owns the workspace manifest",
+            ),
+        ] = False
         workspace_gitlinks: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
             m.Field(description="Provider-resolved governed Git submodules"),
@@ -136,6 +142,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
+        owns_workspace_manifest: Annotated[
+            bool,
+            m.Field(
+                description="Whether this repository owns the workspace manifest",
+            ),
+        ] = False
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Generated Make command contract"),

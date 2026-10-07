@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableMapping
 from pathlib import Path
 from urllib.parse import urlparse
@@ -265,6 +266,7 @@ class FlextInfraUtilitiesRepository:
                 pyproject_path=pyproject_path,
                 distribution=distribution,
                 prefix=f"{distribution.partition('-')[0]}-",
+                preference=preference,
             )
             if declared.failure or declared.value[0]:
                 return declared
@@ -408,6 +410,7 @@ class FlextInfraUtilitiesRepository:
         pyproject_path: Path,
         distribution: str,
         prefix: str,
+        preference: t.StrSequence,
     ) -> p.Result[t.Pair[str, str]]:
         """Return the family line the pyproject declares, as a source for one member.
 
@@ -453,6 +456,29 @@ class FlextInfraUtilitiesRepository:
         if lines:
             (base_url, ref), _ = next(iter(lines.items()))
             return r[t.Pair[str, str]].ok((f"{base_url}/{distribution}.git", ref))
+        # uv workspace membership IS a declaration: a bare-name requirement of
+        # the distribution backed by a workspace = true source resolves
+        # through the workspace root's manifest; the member checkout IS the
+        # provider and its integration line names the published source.
+        sources = (
+            payload.get("tool", {}).get("uv", {}).get("sources", {})
+            if isinstance(payload.get("tool"), dict)
+            else {}
+        )
+        entry = sources.get(distribution)
+        if isinstance(entry, dict) and entry.get("workspace") is True:
+            for requirement in cls._dependency_requirements(payload):
+                bare = re.split(r"[\s;(\[]", requirement.strip(), maxsplit=1)[0]
+                if bare == distribution:
+                    return cls.resolve_integration_branch(
+                        pyproject_path.parent,
+                        preference=preference,
+                    ).map(
+                        lambda branch: (
+                            f"https://github.com/flext-sh/{distribution}.git",
+                            branch,
+                        ),
+                    )
         # No declared source: absence is an EMPTY payload, never None.
         return r[t.Pair[str, str]].ok(("", ""))
 
