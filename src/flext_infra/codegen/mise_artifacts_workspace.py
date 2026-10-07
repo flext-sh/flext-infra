@@ -544,10 +544,15 @@ class FlextInfraMiseWorkspacePlanner:
         # layer (global config + global mise.lock pin the running release)
         # and no repo launchers, pin file, or bootstrap triple exist. The
         # packaged cold-start seeds were retired with the bootstrap
-        # machinery; an absent triple is the valid native state.
+        # machinery; the absent triple carries one explicit absent state
+        # per spec slot (content None), the same shape an absent seed read
+        # produced before the retirement.
+        absent = m.Cli.AtomicFileState(path=paths[0])
         return result_type.ok(
             m.Infra.MiseToolchainArtifactSet(
-                artifacts=(),
+                unix_launcher=absent,
+                windows_launcher=m.Cli.AtomicFileState(path=paths[1]),
+                version_pin=m.Cli.AtomicFileState(path=paths[2]),
             ),
         )
 

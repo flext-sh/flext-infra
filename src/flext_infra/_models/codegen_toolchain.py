@@ -278,8 +278,10 @@ class FlextInfraModelsCodegenToolchain:
         def sources(self) -> t.VariadicTuple[m.Cli.AtomicFileState]:
             """Every state the publication reads: declarations, then the triple.
 
-            Returns:
-                The resulting ``t.VariadicTuple[m.Cli.AtomicFileState]``.
+            Absent triple slots (content ``None`` — the native mise layout
+            carries no launchers or pin file) are not read sources: nothing
+            on disk feeds the publication through them, so the source
+            barrier must not observe them.
             """
             return (
                 *(
@@ -287,7 +289,11 @@ class FlextInfraModelsCodegenToolchain:
                     for project in self.projects
                     for state in project.config.sources
                 ),
-                *self.runtime_artifacts.states,
+                *(
+                    state
+                    for state in self.runtime_artifacts.states
+                    if state.content is not None
+                ),
             )
 
         @m.model_validator(mode="after")

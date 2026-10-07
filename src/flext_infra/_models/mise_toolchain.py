@@ -646,6 +646,15 @@ class FlextInfraModelsMiseToolchain:
                 description="Storage-relative address of an installed Mise release",
             ),
         ]
+        resolved_release: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Declared Mise release the running binary must match "
+                    "(native mise layout guard)"
+                ),
+            ),
+        ] = ""
         resolved_release_pattern: Annotated[
             t.NonEmptyStr,
             m.Field(description="Shared Python and shell resolved-release grammar"),

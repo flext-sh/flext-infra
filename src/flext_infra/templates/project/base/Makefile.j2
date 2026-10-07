@@ -407,8 +407,6 @@ override PROJECT_TOOL_EXEC = $(SHELL) -c '$(subst ','"'"',$(PROJECT_TOOL_RUNTIME
 # selects its lifecycle, Mise release resolution and tool locking through
 # target-specific variables.
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
-TOOL_BOOTSTRAP_RESOLVE :=
-TOOL_BOOTSTRAP_LOCK :=
 {{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", mise_bootstrap, make) }}
 
 # Every repository evaluates only itself, locally exactly as in CI: a workspace
@@ -627,8 +625,6 @@ _builtin-pre-commit:
 # that manifest is byte-identical to the one the first half locked, the lock
 # already satisfies it and the relock installs from it without resolving again.
 upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
-upg: TOOL_BOOTSTRAP_RESOLVE := 1
-upg: TOOL_BOOTSTRAP_LOCK := 1
 upg: _builtin_require_runtime_root _bootstrap_setup_tools
 else
 {% for verb in profile.verbs %}
@@ -684,48 +680,17 @@ _builtin-help:
 # A provisioned local setup needs no GitHub credential. Mise and Git receive
 # only the explicit process credential above; an operation that actually needs
 # network access reports its own failure without a preflight or fallback.
-_bootstrap_setup_tools: _builtin_recover_mise $(if $(filter upg,$(MAKECMDGOALS)),,_builtin_require_mise_pin)
-
-.PHONY: _builtin_recover_mise
-_builtin_recover_mise:
-	@set -eu; \
-	project_root=$$(cd "$(RUNTIME_ROOT)" && pwd -P); \
-	project_parent=$${project_root%/*}; \
-	if [ -z "$$project_parent" ]; then project_parent=/; fi; \
-	for prior in "$$project_parent/.$${project_root##*/}.mise-lock-stage."*; do \
-		if [ ! -d "$$prior" ]; then continue; fi; \
-		if [ ! -f "$$prior/transaction.json" ]; then \
-{# Preserve the owning process's stage without splitting the recipe shell. #}			if [ -f "$$prior/owner.pid" ]; then \
-				IFS= read -r stage_owner < "$$prior/owner.pid"; \
-				if [ -n "$$stage_owner" ] && kill -0 "$$stage_owner" 2>/dev/null; then \
-					printf 'INFO: keeping the live Mise stage (owner pid %s is running): %s\n' "$$stage_owner" "$$prior" >&2; \
-					continue; \
-				fi; \
-			fi; \
-			printf 'INFO: removing the dead Mise stage (crashed before its lock commit point; nothing was published): %s\n' "$$prior" >&2; \
-			find "$$prior" -depth -delete; \
-			continue; \
-		fi; \
-		if [ ! -f "$$prior/python-path" ]; then printf 'ERROR: Mise transaction lacks its Python receipt: %s\n' "$$prior" >&2; exit 2; fi; \
-		IFS= read -r recovery_python < "$$prior/python-path"; \
-		if [ ! -x "$$recovery_python" ]; then printf 'ERROR: Mise transaction Python is unavailable: %s\n' "$$recovery_python" >&2; exit 2; fi; \
-		"$$recovery_python" "$$project_root/{{ mise_bootstrap.lock_transaction_script }}" recover "$$project_root" "$$prior"; \
-	done
 
 .PHONY: _builtin_require_mise_pin
-_builtin_require_mise_pin: _builtin_recover_mise
+_builtin_require_mise_pin:
 	@set -eu; \
-	if [ ! -s "$(MISE_VERSION_PIN)" ]; then \
-		printf 'ERROR: missing or empty %s; make upg records the Mise release\n' "$(MISE_VERSION_PIN)" >&2; \
+	if ! command -v mise >/dev/null 2>&1; then \
+		printf 'ERROR: mise is not installed; install it (https://mise.run) and retry\n' >&2; \
 		exit 2; \
 	fi; \
-	mise_pin=$$(awk '{{ mise_bootstrap.version_pin_reader | replace('$', '$$') }}' "$(MISE_VERSION_PIN)"); \
-	if ! printf '%s\n' "$$mise_pin" | grep -Eq '^{{ mise_bootstrap.resolved_release_pattern }}$$'; then \
-		printf 'ERROR: %s must contain a resolved Mise release; make upg writes it\n' "$(MISE_VERSION_PIN)" >&2; \
-		exit 2; \
-	fi; \
-	if [ -n "$${MISE_VERSION:-}" ] && [ "$${MISE_VERSION#v}" != "$$mise_pin" ]; then \
-		printf 'ERROR: MISE_VERSION conflicts with %s\n' "$(MISE_VERSION_PIN)" >&2; \
+	mise_actual="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
+	if [ "$$mise_actual" != "{{ mise_bootstrap.resolved_release }}" ]; then \
+		printf 'ERROR: mise %s differs from the declared release %s; run: mise use -g %s@%s\n' "$$mise_actual" "{{ mise_bootstrap.resolved_release }}" "{{ mise_bootstrap.release_selector.split('@')[0] }}" "{{ mise_bootstrap.resolved_release }}" >&2; \
 		exit 2; \
 	fi
 

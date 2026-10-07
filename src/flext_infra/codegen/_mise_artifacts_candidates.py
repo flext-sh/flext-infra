@@ -41,11 +41,18 @@ class FlextInfraMiseArtifactsCandidates:
                 project.artifacts.windows_launcher,
                 project.artifacts.version_pin,
             )
-            for before, (name, mode) in zip(
-                before_states,
-                c.Infra.PUBLICATION_SPECS,
-                strict=True,
-            ):
+            # The native mise layout stages the config only: absent runtime
+            # triple slots (content None) publish no staged receipts.
+            present = (
+                (before, pair)
+                for before, pair in zip(
+                    before_states,
+                    c.Infra.PUBLICATION_SPECS,
+                    strict=True,
+                )
+                if before.content is not None
+            )
+            for before, (name, mode) in present:
                 replacement = files.read_state(stage / name, required=True)
                 if replacement.failure or replacement.value.content is None:
                     return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(

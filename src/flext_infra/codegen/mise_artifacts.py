@@ -138,6 +138,12 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
         declared = self._validate_config(project_root)
         if declared.failure:
             return declared
+        # The native mise layout carries no runtime triple: with no
+        # mise.version on the runtime root the launcher/pin derivation has
+        # nothing to prove — the declaration itself is the whole contract.
+        pin = runtime_root / c.Infra.MISE_VERSION_PIN_FILENAME
+        if not pin.is_file():
+            return r[bool].ok(value=True)
         return FlextInfraMiseArtifactsDerivation.validate(project_root, runtime_root)
 
     @override

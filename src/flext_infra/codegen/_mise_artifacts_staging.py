@@ -56,18 +56,22 @@ class FlextInfraMiseStaging:
         ]
         if not plan.projects:
             return result_type.fail("Mise plan declares no projects")
-        projected = tuple(
-            state.content
+        present_states = [
+            state
             for state in plan.runtime_artifacts.states
             if state.content is not None
-        )
-        if len(projected) != len(c.Infra.ARTIFACT_SPECS):
+        ]
+        # The native mise layout carries NO runtime triple: mise resolves
+        # from the user layer and the retired launchers/pin stay absent.
+        # Partial sets remain broken projections and fail as before.
+        if len(present_states) not in (0, len(c.Infra.ARTIFACT_SPECS)):
             return result_type.fail(
                 "runtime Mise artifacts are incomplete; run make upg in "
                 f"{plan.layout.scope_root}",
             )
         publications: list[m.Infra.CodegenStagedFile] = []
         directories: list[m.Cli.AtomicDirectoryState] = []
+        projected = tuple(state.content for state in present_states)
         for project in plan.projects:
             if project.layout.transaction_root is None:
                 return result_type.fail(
@@ -125,14 +129,17 @@ class FlextInfraMiseStaging:
         )
         if config_write.failure:
             return result_type.from_failure(config_write)
-        for content, (name, mode) in zip(
-            projected,
-            c.Infra.ARTIFACT_SPECS,
-            strict=True,
-        ):
-            copied = process.write_new(stage_root / name, content, mode)
-            if copied.failure:
-                return result_type.from_failure(copied)
+        # The native mise layout stages no triple (projected empty); a
+        # present triple still writes every spec slot byte-exact.
+        if projected:
+            for content, (name, mode) in zip(
+                projected,
+                c.Infra.ARTIFACT_SPECS,
+                strict=True,
+            ):
+                copied = process.write_new(stage_root / name, content, mode)
+                if copied.failure:
+                    return result_type.from_failure(copied)
         return result_type.ok(tuple(created.value))
 
 

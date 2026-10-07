@@ -78,6 +78,7 @@ class FlextInfraUtilitiesCodegen(
                 if toolchain.mise_version == c.Infra.MISE_MOVING_SELECTOR
                 else f"{toolchain.mise_selector}@{toolchain.mise_version}"
             ),
+            resolved_release=toolchain.mise_version,
             artifact_specs=c.Infra.ARTIFACT_SPECS,
             lock_file=c.Infra.MISE_LOCK_FILENAME,
             lock_transaction_script=c.Infra.MISE_LOCK_TRANSACTION_SCRIPT,

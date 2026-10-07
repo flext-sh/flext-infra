@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, t, u
+from flext_infra import c, m, t, u
 from flext_infra.codegen._codegen_transaction_recovery import (
     FlextInfraCodegenTransactionRecovery,
 )
@@ -448,46 +448,61 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionRecovery):
                 ),
             )
         mise_files, mise_directories = mise_staged.value
-        staged_manifest = verify.register_transaction_manifests(
-            layout,
-            active_journal,
-            created=(
-                *mise_directories,
-                *(
+        # The native mise layout carries no runtime triple: when staging
+        # produced only declarations, the launcher/pin offline derivation
+        # (which reads mise.version) has nothing to prove — skip straight
+        # to publication without the staged-manifest journal round-trip.
+        native_layout = not any(
+            item.before.path.name != c.Infra.CONFIG_SPEC[0][0]
+            and item.replacement is not None
+            for item in mise_files
+        )
+        if not native_layout:
+            staged_manifest = verify.register_transaction_manifests(
+                layout,
+                active_journal,
+                created=(
+                    *mise_directories,
+                    *(
+                        item.replacement
+                        for item in mise_files
+                        if item.replacement is not None
+                    ),
+                ),
+            )
+            if staged_manifest.failure:
+                return result_type.from_failure(staged_manifest)
+            recorded = journal_io.record_directories(active_journal, staged_manifest.value)
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            persisted = self._write_journal(
+                layout,
+                recorded.value,
+                expected=active_state,
+            )
+            if persisted.failure:
+                return result_type.from_failure(persisted)
+            active_journal, active_state = recorded.value, persisted.value
+            for project in plan.value.projects:
+                staged_config = next(
                     item.replacement
                     for item in mise_files
-                    if item.replacement is not None
-                ),
-            ),
-        )
-        if staged_manifest.failure:
-            return result_type.from_failure(staged_manifest)
-        recorded = journal_io.record_directories(active_journal, staged_manifest.value)
-        if recorded.failure:
-            return result_type.from_failure(recorded)
-        persisted = self._write_journal(layout, recorded.value, expected=active_state)
-        if persisted.failure:
-            return result_type.from_failure(persisted)
-        active_journal, active_state = recorded.value, persisted.value
-        for project in plan.value.projects:
-            staged_config = next(
-                item.replacement
-                for item in mise_files
-                if item.before.path == project.config.before.path
-            )
-            if staged_config is None:
-                return result_type.fail("Mise staging receipt has no configuration")
-            # The staged set is complete and self-contained; its projection of
-            # the runtime root is proven again on the published destinations.
-            staged_root = staged_config.path.parent
-            validated = self._owner.validate_artifacts(staged_root, staged_root)
-            if validated.failure:
-                return result_type.from_failure(
-                    self._recover_failure(
-                        layout,
-                        validated.error or "Mise staged validation failed",
-                    ),
+                    if item.before.path == project.config.before.path
                 )
+                if staged_config is None:
+                    return result_type.fail("Mise staging receipt has no configuration")
+                # The staged set is complete and self-contained; its projection
+                # of the runtime root is proven again on the published
+                # destinations.
+                staged_root = staged_config.path.parent
+                validated = self._owner.validate_artifacts(staged_root, staged_root)
+                if validated.failure:
+                    return result_type.from_failure(
+                        self._recover_failure(
+                            layout,
+                            validated.error or "Mise staged validation failed",
+                        ),
+                    )
         mise_publications = tuple(
             item
             for item in mise_files

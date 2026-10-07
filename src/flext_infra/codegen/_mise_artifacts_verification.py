@@ -998,10 +998,17 @@ class FlextInfraMiseArtifactsVerification:
                 project.artifacts.windows_launcher,
                 project.artifacts.version_pin,
             )
-            for expected, (_name, required_mode) in zip(
-                artifacts,
-                c.Infra.PUBLICATION_SPECS,
-                strict=True,
+            # The native mise layout publishes the declaration only: absent
+            # triple slots stay absent (nothing was staged or replaced), so
+            # the publication snapshot carries no expectation for them.
+            for expected, (_name, required_mode) in (
+                pair
+                for pair in zip(
+                    artifacts,
+                    c.Infra.PUBLICATION_SPECS,
+                    strict=True,
+                )
+                if pair[0].content is not None or replacements.get(pair[0].path)
             ):
                 current = files.read_state(expected.path, required=False)
                 if current.failure or current.value.content is None:
