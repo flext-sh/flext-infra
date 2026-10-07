@@ -188,6 +188,7 @@ class FlextInfraUtilitiesCodegenFacades:
         namespace: str,
         family: Literal["u", "p", "m"],
     ) -> frozenset[str]:
+
         from flext_infra._utilities import (
             FlextInfraUtilitiesRopeCore,
             FlextInfraUtilitiesRopeRuntime,
@@ -365,6 +366,7 @@ class FlextInfraUtilitiesCodegenFacades:
         # The owner lives in the package being rendered. Naming this project
         # instead made every generated consumer facade import from flext-infra,
         # a module that does not exist in the consumer's own distribution.
+
         from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 
         lines = source.splitlines(keepends=True)

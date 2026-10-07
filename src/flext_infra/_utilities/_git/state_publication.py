@@ -22,6 +22,7 @@ class FlextInfraUtilitiesGitStatePublicationMixin(
 
     @classmethod
     def _state_remote_url(cls, root: Path, remote: str) -> str:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 
         repo = cls._repo(root)

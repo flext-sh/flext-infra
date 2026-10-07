@@ -306,10 +306,21 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         *,
         ropefolder: str,
         save_objectdb: bool,
-        ignored_resources: t.SequenceOf[str],
-        source_folders: t.SequenceOf[str],
-        extension_modules: t.SequenceOf[str],
+        filter_lists: t.Triple[t.SequenceOf[str], t.SequenceOf[str], t.SequenceOf[str]],
     ) -> t.Infra.RopeProject:
+        """Create one Rope project.
+
+        ``filter_lists`` carries the Rope filter sequences in order:
+        ignored resources, source folders, extension modules.
+
+        Returns:
+            The resulting ``t.Infra.RopeProject``.
+
+        Raises:
+            TypeError: If Rope project does not satisfy its project contract.
+
+        """
+        ignored_resources, source_folders, extension_modules = filter_lists
         project_factory = cls._runtime_callable(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",

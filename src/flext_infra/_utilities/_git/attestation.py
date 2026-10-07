@@ -35,6 +35,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 
         repo_root = Path(request.workspace).expanduser().resolve()
@@ -69,6 +70,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         gates: t.StrSequence,
     ) -> p.Result[t.VariadicTuple[m.Infra.GateCommandEvidence]]:
+
         from flext_cli import u
 
         evidence: list[m.Infra.GateCommandEvidence] = []
@@ -100,6 +102,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
+
         from flext_cli import u
 
         repo = cls._repo(repo_root)
@@ -162,16 +165,46 @@ class FlextInfraUtilitiesGitAttestationMixin(
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
 
         """
-        from flext_cli import u
-
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
         if not allowed.is_file():
             return r[m.Infra.GateAttestationReport].fail(
                 f"allowed_signers file not found: {allowed}",
             )
+        tag = cls._attestation_tag(request.commit_sha)
+        predicate_result = cls._verified_gate_predicate(
+            request,
+            repo_root,
+            allowed,
+            tag,
+        )
+        if predicate_result.failure:
+            return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
+        predicate = predicate_result.value
+        published = cls._published_attestation_report(request, predicate)
+        if published.failure:
+            return r[m.Infra.GateAttestationReport].from_failure(published)
+        return r[m.Infra.GateAttestationReport].ok(
+            cls._attestation_report(tag, predicate),
+        )
+
+    @classmethod
+    def _verified_gate_predicate(
+        cls,
+        request: m.Infra.GateAttestationVerifyRequest,
+        repo_root: Path,
+        allowed: Path,
+        tag: str,
+    ) -> p.Result[m.Infra.GateAttestationPredicate]:
+        """Verify the tag signature and gate coverage against the predicate.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.GateAttestationPredicate]``.
+
+        """
+        from flext_cli import u
+
         commit_sha = request.commit_sha
-        tag = cls._attestation_tag(commit_sha)
         verification = u.Cli.run_raw(
             [
                 "git",
@@ -186,10 +219,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             cwd=repo_root,
         )
         if verification.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(verification)
+            return r[m.Infra.GateAttestationPredicate].from_failure(verification)
         predicate_result = cls._predicate_from_tag(repo_root, tag, commit_sha)
         if predicate_result.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
+            return r[m.Infra.GateAttestationPredicate].from_failure(predicate_result)
         predicate = predicate_result.value
         checked = cls._attestation_predicate_from_value(
             repo_root,
@@ -197,7 +230,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             commit_sha,
         )
         if checked.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(checked)
+            return r[m.Infra.GateAttestationPredicate].from_failure(checked)
         output = verification.value
         match = re.search(
             r'^Good "git" signature for (\S+) with ',
@@ -205,27 +238,41 @@ class FlextInfraUtilitiesGitAttestationMixin(
             flags=re.MULTILINE,
         )
         if match is None or match.group(1) != predicate.signer:
-            return r[m.Infra.GateAttestationReport].fail(
+            return r[m.Infra.GateAttestationPredicate].fail(
                 f"verified signature does not identify signer: {predicate.signer}",
             )
         if tuple(request.expected_gates) != tuple(predicate.covered_gates):
-            return r[m.Infra.GateAttestationReport].fail(
+            return r[m.Infra.GateAttestationPredicate].fail(
                 "attestation gate coverage does not exactly match required gates",
             )
-        if request.output is not None:
-            serialized = u.Cli.json_dumps(
-                predicate.model_dump(mode="json"),
-                sort_keys=True,
-            )
-            if serialized.failure:
-                return r[m.Infra.GateAttestationReport].from_failure(serialized)
-            Path(request.output).expanduser().resolve().write_text(
-                serialized.value,
-                encoding="utf-8",
-            )
-        return r[m.Infra.GateAttestationReport].ok(
-            cls._attestation_report(tag, predicate),
+        return r[m.Infra.GateAttestationPredicate].ok(predicate)
+
+    @staticmethod
+    def _published_attestation_report(
+        request: m.Infra.GateAttestationVerifyRequest,
+        predicate: m.Infra.GateAttestationPredicate,
+    ) -> p.Result[bool]:
+        """Write the attestation report when the request names an output path.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        from flext_cli import u
+
+        if request.output is None:
+            return r[bool].ok(value=True)
+        serialized = u.Cli.json_dumps(
+            predicate.model_dump(mode="json"),
+            sort_keys=True,
         )
+        if serialized.failure:
+            return r[bool].from_failure(serialized)
+        Path(request.output).expanduser().resolve().write_text(
+            serialized.value,
+            encoding="utf-8",
+        )
+        return r[bool].ok(value=True)
 
     @classmethod
     def _predicate_from_tag(
@@ -234,6 +281,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         tag: str,
         commit_sha: str,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
+
         from flext_cli import u
 
         try:
@@ -269,6 +317,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         predicate: m.Infra.GateAttestationPredicate,
         commit_sha: str,
     ) -> p.Result[bool]:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))

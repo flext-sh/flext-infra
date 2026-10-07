@@ -31,8 +31,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def __init__(
             self,
             *,
-            module_name: str,
-            is_package_init: bool,
+            scope: t.Pair[str, bool],
             bindings_by_module: t.MappingKV[str, t.StrMapping],
             definitions: t.StrMapping,
             scan: m.Infra.NestingModuleAliasScan,
@@ -44,6 +43,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         ) -> None:
             self.imported_module, self.resolved_relative, self.member_name = resolvers
             self.scan = scan
+            self.module_name, self.is_package_init = scope
             # A nested module has exactly one owner (the planner rejects a
             # file with several), so its bindings name it once.
             self.owners_by_module = {
@@ -56,8 +56,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 for local, module in scan.aliases.items()
                 if module in self.owners_by_module
             }
-            self.module_name = module_name
-            self.is_package_init = is_package_init
             self.bindings_by_module = bindings_by_module
             self.definitions = definitions
             self.qualified = {
@@ -120,6 +118,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+
             from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
             bindings = self.bindings_by_module.get(self._import_module(node), {})
@@ -246,6 +245,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             original_node: cst.Name,
             updated_node: cst.Name,
         ) -> cst.BaseExpression:
+
             from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
             bound = self._single_binding(original_node, ambiguity="binding")
@@ -308,6 +308,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             original_node: cst.ImportFrom,
             updated_node: cst.ImportFrom,
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+
             from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
             if not isinstance(updated_node.names, cst.ImportStar):
@@ -379,6 +380,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             original_node: cst.Import,
             updated_node: cst.Import,
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+
             from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
             kept = tuple(
@@ -465,6 +467,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             original_node: cst.Assign,
             updated_node: cst.Assign,
         ) -> cst.BaseSmallStatement:
+
             from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
@@ -478,6 +481,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             original_node: cst.AnnAssign,
             updated_node: cst.AnnAssign,
         ) -> cst.BaseSmallStatement:
+
             from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
@@ -550,8 +554,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             MetadataWrapper(cst.parse_module(source))
             .visit(
                 cls._NestingTransformer(
-                    module_name=module_name,
-                    is_package_init=is_package_init,
+                    scope=(module_name, is_package_init),
                     bindings_by_module=bindings_by_module,
                     definitions=definitions,
                     scan=scan,

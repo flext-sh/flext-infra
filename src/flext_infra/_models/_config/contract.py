@@ -99,7 +99,4 @@ class FlextInfraConfigModelsContract:
     # that). A bare assignment keeps the attribute as the class itself.
     BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec
     BeadsToolSpec = FlextInfraModelsMiseToolchain.BeadsToolSpec
-    MiseBootstrapEnvironmentSpec = (
-        FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
-    )
     ToolchainSpec = FlextInfraModelsMiseToolchain.ToolchainSpec

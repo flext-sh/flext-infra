@@ -47,6 +47,7 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         path: Path,
         owned: t.SequenceOf[Path],
     ) -> None:
+
         from flext_cli import u
 
         manifest = u.Cli.atomic_inventory_physical_tree(root / path).unwrap()
@@ -117,6 +118,7 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         desired: m.Infra.GitWorktreeFileState | None,
         allowed: t.SequenceOf[m.Infra.GitWorktreeFileState | None],
     ) -> None:
+
         from flext_cli import u
 
         destination = root / path
@@ -184,6 +186,7 @@ class FlextInfraUtilitiesGitStateFilesMixin(
 
     @staticmethod
     def _state_remove_empty_tree(path: Path) -> None:
+
         from flext_cli import u
 
         manifest = u.Cli.atomic_inventory_physical_tree(path).unwrap()

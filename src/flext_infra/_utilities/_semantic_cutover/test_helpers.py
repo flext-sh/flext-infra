@@ -134,6 +134,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         sources: t.MappingKV[Path, str],
         editable: frozenset[Path],
     ) -> m.Infra.ClassMoveRequest | None:
+
         from flext_infra._utilities import (
             FlextInfraUtilitiesRopeCorePyModuleMixin,
             FlextInfraUtilitiesRopeRuntimeModules,

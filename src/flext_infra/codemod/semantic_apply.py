@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, MutableMapping
+from functools import partial
 from pathlib import Path
 
 from flext_cli import cli
@@ -142,18 +143,12 @@ class FlextInfraCodemodSemanticApply:
                     ),
                 )
             if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
-                deferred = cls._deferred_model_edits(working)
-                cls._apply_plan(working, deferred, changed)
-                counts["deferred_models"] = len(deferred)
-                if deferred:
-                    residue = residue.flat_map(
-                        lambda _: cls._check_residue(
-                            "deferred-models",
-                            r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
-                                cls._deferred_model_edits(working),
-                            ),
-                        ),
-                    )
+                residue = cls._apply_deferred_models(
+                    working,
+                    changed,
+                    counts,
+                    residue,
+                )
             if residue.failure:
                 return r[bool].from_failure(residue)
             cli.display_text(f"mod: semantic phase {phase} complete")
@@ -165,29 +160,74 @@ class FlextInfraCodemodSemanticApply:
             # Every phase just planned against this identical source snapshot.
             # With no publication there is no second state to validate.
             return r[bool].ok(value=True)
-
-        def validate_published() -> p.Result[bool]:
-            published = dict(cls._source_inventory(root, preflight))
-            rope_workspace.refresh()
-            return cls._verify_fixed_point(
-                root,
-                published,
-                preflight,
-                rope_workspace,
-            ).flat_map(
-                lambda _: cls._check_residue(
-                    "import-alignment",
-                    cls._phase_import_alignment(root, published, rope_workspace),
-                ),
-            )
-
+        validator = partial(
+            cls._validate_published,
+            root,
+            preflight,
+            rope_workspace,
+        )
         return cls._check_definition_time(original, working, changed).flat_map(
             lambda _: cls._publish(
                 root,
                 original,
                 working,
                 changed,
-                validator=validate_published,
+                validator=validator,
+            ),
+        )
+
+    @classmethod
+    def _apply_deferred_models(
+        cls,
+        working: t.MutableMappingKV[Path, str],
+        changed: set[Path],
+        counts: MutableMapping[str, int],
+        residue: p.Result[bool],
+    ) -> p.Result[bool]:
+        """Apply the deferred model edits of the class-nesting phase.
+
+        Returns:
+            The resulting residue re-checked over the deferred edits.
+
+        """
+        deferred = cls._deferred_model_edits(working)
+        cls._apply_plan(working, deferred, changed)
+        counts["deferred_models"] = len(deferred)
+        if deferred:
+            return residue.flat_map(
+                lambda _: cls._check_residue(
+                    "deferred-models",
+                    r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+                        cls._deferred_model_edits(working),
+                    ),
+                ),
+            )
+        return residue
+
+    @classmethod
+    def _validate_published(
+        cls,
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> p.Result[bool]:
+        """Re-read, refresh, and verify the fixed point of the published sources.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        published = dict(cls._source_inventory(root, preflight))
+        rope_workspace.refresh()
+        return cls._verify_fixed_point(
+            root,
+            published,
+            preflight,
+            rope_workspace,
+        ).flat_map(
+            lambda _: cls._check_residue(
+                "import-alignment",
+                cls._phase_import_alignment(root, published, rope_workspace),
             ),
         )
 

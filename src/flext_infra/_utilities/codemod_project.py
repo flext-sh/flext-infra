@@ -446,19 +446,84 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
             The resulting ``bool``.
 
         Raises:
-            ValueError: If project layout is unresolved; or if predicate.
+            ValueError: If the predicate is not one the engine declares.
 
         """
-        from flext_infra._config import config
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesCodegenNamespace,
-            FlextInfraUtilitiesPyproject,
-        )
+        from flext_infra._utilities import FlextInfraUtilitiesPyproject
+
+        predicate = condition.predicate
+        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        match predicate:
+            case (
+                c.Infra.CodemodContextPredicate.STDLIB_MODULE
+                | c.Infra.CodemodContextPredicate.OWN_PACKAGE
+                | c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE
+                | c.Infra.CodemodContextPredicate.FACADE_PACKAGE
+                | c.Infra.CodemodContextPredicate.RUNTIME_ALIAS
+                | c.Infra.CodemodContextPredicate.LOCAL_ALIAS
+            ):
+                return cls._context_package_holds(
+                    root,
+                    predicate,
+                    captured,
+                    own,
+                    facts,
+                )
+            case (
+                c.Infra.CodemodContextPredicate.MODULE_EXPORT
+                | c.Infra.CodemodContextPredicate.FILE_FAMILY
+                | c.Infra.CodemodContextPredicate.PACKAGE_EXPORT
+                | c.Infra.CodemodContextPredicate.FACADE_MODULE
+                | c.Infra.CodemodContextPredicate.LATER_LAYER
+                | c.Infra.CodemodContextPredicate.CLASS_STEM
+            ):
+                return cls._context_module_holds(
+                    root,
+                    predicate,
+                    captured,
+                    file_path,
+                    condition,
+                )
+            case c.Infra.CodemodContextPredicate.PACKAGE_LAYERS:
+                return cls._package_has_layers(file_path.parent, condition.arg)
+            case (
+                c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT
+                | c.Infra.CodemodContextPredicate.FAMILY_BASE
+                | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
+                | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
+            ):
+                return cls._context_project_holds(
+                    root,
+                    predicate,
+                    captured,
+                    file_path,
+                    facts,
+                )
+        message = f"predicate is not declared: {predicate}"
+        raise ValueError(message)
+
+    @classmethod
+    def _context_package_holds(
+        cls,
+        root: Path,
+        predicate: c.Infra.CodemodContextPredicate,
+        captured: t.Pair[str, str | None],
+        own: str,
+        facts: m.Infra.CodemodProjectFacts,
+    ) -> bool:
+        """Evaluate one package-scope predicate.
+
+        Returns:
+            The resulting ``bool``.
+
+        Raises:
+            ValueError: If project layout is unresolved.
+
+        """
+        from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 
         value, of = captured
-        predicate = condition.predicate
         module = cls._top_module(value)
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
             case c.Infra.CodemodContextPredicate.STDLIB_MODULE:
                 return module in sys.stdlib_module_names
@@ -485,6 +550,31 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
                     msg = f"project layout is unresolved: {root}"
                     raise ValueError(msg)
                 return value in layout.runtime_aliases
+        message = f"predicate is not package-scoped: {predicate}"
+        raise ValueError(message)
+
+    @classmethod
+    def _context_module_holds(
+        cls,
+        root: Path,
+        predicate: c.Infra.CodemodContextPredicate,
+        captured: t.Pair[str, str | None],
+        file_path: Path,
+        condition: m.Infra.CodemodContextCondition,
+    ) -> bool:
+        """Evaluate one module-scope predicate.
+
+        Returns:
+            The resulting ``bool``.
+
+        Raises:
+            ValueError: If project layout is unresolved; or if predicate.
+
+        """
+        from flext_infra._config import config
+
+        value, of = captured
+        match predicate:
             case c.Infra.CodemodContextPredicate.MODULE_EXPORT:
                 return value in cls._module_exports(file_path)
             case c.Infra.CodemodContextPredicate.FILE_FAMILY:
@@ -503,20 +593,58 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
                 return cls._later_layer(root, file_path, value, condition)
             case c.Infra.CodemodContextPredicate.CLASS_STEM:
                 return cls._has_class_stem(root, file_path, value)
-            case c.Infra.CodemodContextPredicate.PACKAGE_LAYERS:
-                return cls._package_has_layers(file_path.parent, condition.arg)
+        message = f"predicate is not module-scoped: {predicate}"
+        raise ValueError(message)
+
+    @classmethod
+    def _context_project_holds(
+        cls,
+        root: Path,
+        predicate: c.Infra.CodemodContextPredicate,
+        captured: t.Pair[str, str | None],
+        file_path: Path,
+        facts: m.Infra.CodemodProjectFacts,
+    ) -> bool:
+        """Evaluate one project-scope predicate.
+
+        Returns:
+            The resulting ``bool``.
+
+        Raises:
+            ValueError: If project layout is unresolved.
+
+        """
+        value, of = captured
+        match predicate:
             case c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT:
-                layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
-                if layout is None:
-                    msg = f"project layout is unresolved: {root}"
-                    raise ValueError(msg)
-                return file_path.resolve() == layout.init_path.resolve()
+                return cls._context_root_init_holds(root, file_path)
             case c.Infra.CodemodContextPredicate.FAMILY_BASE:
                 return cls._family_package_has_base(file_path)
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
             case c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:
                 return cls.composes_family_package(file_path, value)
+        message = f"predicate is not project-scoped: {predicate}"
+        raise ValueError(message)
+
+    @staticmethod
+    def _context_root_init_holds(root: Path, file_path: Path) -> bool:
+        """Evaluate the ``PACKAGE_ROOT_INIT`` predicate.
+
+        Returns:
+            The resulting ``bool``.
+
+        Raises:
+            ValueError: If project layout is unresolved.
+
+        """
+        from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
+        if layout is None:
+            msg = f"project layout is unresolved: {root}"
+            raise ValueError(msg)
+        return file_path.resolve() == layout.init_path.resolve()
 
     @staticmethod
     def _top_module(value: str) -> str:

@@ -158,6 +158,21 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             return FlextInfraUtilitiesRopeAnalysisSourceScan._dict_entries_refs(node)
         if kind != "Call":
             return ((), ())
+        return FlextInfraUtilitiesRopeAnalysisSourceScan._call_entries_refs(node)
+
+    @classmethod
+    def _call_entries_refs(
+        cls,
+        node: t.Infra.RopeAstNode,
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
+        """Return entries and references of one mapping-producing call.
+
+        Returns:
+            Literal mapping entries plus variable references.
+
+        """
+        from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysisAstHelpers
+
         func = getattr(node, "func", None)
         function_name = (
             FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(func)

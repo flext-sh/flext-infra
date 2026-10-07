@@ -51,6 +51,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         *,
         index_file: Path | None = None,
     ) -> None:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
 
         repo = cls._repo(root)

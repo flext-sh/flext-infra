@@ -25,8 +25,9 @@ RUNTIME_ROOT="${RUNTIME_ROOT:-${PROJECT_ROOT}}"
 RUNTIME_ROOT="$(cd "${RUNTIME_ROOT}" && pwd -P)"
 watch_file "${PROJECT_ROOT}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/pyproject.toml"
+watch_file "${RUNTIME_ROOT}/uv.lock"
 watch_file "${RUNTIME_ROOT}/.mise.toml"
-watch_file "${RUNTIME_ROOT}/{{ mise_bootstrap.lock_file }}"
+watch_file "${RUNTIME_ROOT}/mise.lock"
 runtime_parent="$(cd "${RUNTIME_ROOT}/.." && pwd -P)"
 export GIT_CEILING_DIRECTORIES="${runtime_parent}"
 export MISE_CEILING_PATHS="${runtime_parent}"
@@ -55,65 +56,29 @@ export PYTHONUNBUFFERED=1
 # End SECTION: repository environment
 
 # === SECTION: mise activation (managed) ===
-# Source: typed generated Mise storage contract; setup owns installation.
-if [[ -n "${{ '{' }}{{ mise_bootstrap.storage_root_variable }}-}" ]]; then
-  MISE_STORAGE_ROOT="${{ '{' }}{{ mise_bootstrap.storage_root_variable }}{{ '}' }}"
-elif [[ -n "${XDG_DATA_HOME-}" ]]; then
-  MISE_STORAGE_ROOT="${XDG_DATA_HOME}/mise"
-elif [[ -n "${HOME-}" ]]; then
-  MISE_STORAGE_ROOT="${HOME}/.local/share/mise"
-else
-  log_error "{{ mise_bootstrap.storage_root_variable }}, XDG_DATA_HOME, or HOME must identify persistent Mise storage"
-  return 1
-fi
-case "${MISE_STORAGE_ROOT}" in
-  /*) ;;
-  *) log_error "{{ mise_bootstrap.storage_root_variable }} must be absolute"; return 1 ;;
-esac
-export {{ mise_bootstrap.storage_root_variable }}="${MISE_STORAGE_ROOT}"
-# Native mise activation: mise self-manages at the user layer (its global
-# config + global lock pin the running release) and the committed repository
-# mise.lock owns every tool identity. Activation only reads installed paths —
-# it never installs or resolves; a missing tool is a `make setup` concern and
-# fails loud here.
+# Source: native mise activation. mise self-manages through the [tools] entry
+# the committed mise.lock pins: `mise install` provisions the pinned release,
+# and the mise-managed shims directory resolves every declared tool — mise
+# included — to exactly that lock. Activation never installs or resolves.
 if ! command -v mise >/dev/null 2>&1; then
   log_error "mise is not installed; install it (https://mise.run) and run make setup"
   return 1
 fi
-_mise_scratch="$(mktemp -d)" || return $?
-MISE_LOCKED=1 MISE_AUTO_INSTALL=false MISE_NOT_FOUND_AUTO_INSTALL=false \
-  mise -C "${RUNTIME_ROOT}" bin-paths >"${_mise_scratch}/paths" 2>"${_mise_scratch}/stderr"
-_mise_status=$?
-cat "${_mise_scratch}/stderr" >&2
-if [[ ${_mise_status} -ne 0 ]]; then
-  rm -rf "${_mise_scratch}"
-  return "${_mise_status}"
+mise_shims_dir="$(mise shims dir 2>/dev/null || true)"
+if [[ -z "${mise_shims_dir}" ]]; then
+  # mise releases without `mise shims dir` publish shims at their own data
+  # root; the documented default keeps activation native and guarded.
+  mise_shims_dir="${XDG_DATA_HOME:-${HOME}/.local/share}/mise/shims"
 fi
-mise_bin_paths="$(cat "${_mise_scratch}/paths")"
-rm -rf "${_mise_scratch}"
-if [[ -z "${mise_bin_paths}" ]]; then
-  log_error "Mise returned no installed tool paths; run make setup"
+if [[ ! -d "${mise_shims_dir}" ]]; then
+  log_error "mise has no shims directory (${mise_shims_dir}); run make setup"
   return 1
 fi
-mise_paths=()
-while IFS= read -r runtime_bin; do
-  if [[ "${runtime_bin}" != /* || ! -d "${runtime_bin}" ]]; then
-    log_error "Mise returned an unavailable tool directory ${runtime_bin}; run make setup"
-    return 1
-  fi
-  mise_paths+=("${runtime_bin}")
-done <<< "${mise_bin_paths}"
-for ((index={{ '${#mise_paths[@]}' }}-1; index>=0; index--)); do
-  PATH_add "${mise_paths[index]}"
-done
+PATH_add "${mise_shims_dir}"
 # End SECTION: mise activation
 
 # === SECTION: configured paths (managed) ===
 # Source: config:environment_path_prepends
-# The tracked bin/mise launcher is reached by the Makefile through its own
-# path, never through PATH: a project bin on PATH made `mise reshim` inside a
-# direnv-loaded checkout bind every shim of the shared MISE_DATA_DIR to that
-# checkout's launcher.
 {%- for extra_path in environment_path_prepends %}
 if [[ -d "${PROJECT_ROOT}/{{ extra_path }}" ]]; then
   PATH_add "${PROJECT_ROOT}/{{ extra_path }}"

@@ -19,8 +19,12 @@ import signal
 import sys
 import time
 from types import FrameType
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
+
+if TYPE_CHECKING:
+    from flext_cli import s
 
 
 class FlextInfraMypyDarwinSupervisor:
@@ -56,6 +60,7 @@ class FlextInfraMypyDarwinSupervisor:
 
     @staticmethod
     def _usage(pid: int) -> t.Pair[int, bool]:
+
         from flext_cli import u
 
         snapshot = u.Cli.run(
@@ -70,6 +75,82 @@ class FlextInfraMypyDarwinSupervisor:
                 total_kib += int(rss)
                 alive = True
         return total_kib * c.Infra.BYTES_PER_KIB, alive
+
+    @staticmethod
+    def _ask_group_exit(
+        child: s.ManagedProcess,
+        received_signal: int,
+        kill_after: int,
+    ) -> None:
+        """Ask the live group to exit and wait through the kill-after grace."""
+        if FlextInfraMypyDarwinSupervisor._usage(child.pid)[1]:
+            FlextInfraMypyDarwinSupervisor._signal_group(
+                child.pid,
+                received_signal or signal.SIGTERM,
+            )
+        end = time.monotonic() + kill_after
+        while time.monotonic() < end:
+            child.poll()
+            if not FlextInfraMypyDarwinSupervisor._usage(child.pid)[1]:
+                break
+            time.sleep(c.Infra.MYPY_SUPERVISOR_SHUTDOWN_POLL_SECONDS)
+
+    @classmethod
+    def _kill_group(cls, child: s.ManagedProcess) -> None:
+        """Hard-kill a still-live group and reap the leader."""
+        if cls._usage(child.pid)[1]:
+            cls._signal_group(child.pid, signal.SIGKILL)
+        child.wait().unwrap()
+
+    @classmethod
+    def _supervised_exit_code(
+        cls,
+        child: s.ManagedProcess,
+        deadline: float,
+        memory_bytes: int,
+        kill_after: int,
+    ) -> int:
+        """Relay signals, enforce limits, and clean the group before returning.
+
+        Returns:
+            The resulting ``int``.
+
+        """
+        received_signal: int = 0
+
+        def receive_signal(signum: int, _frame: FrameType | None) -> None:
+            nonlocal received_signal
+            received_signal = signum
+
+        previous = {
+            signum: signal.signal(signum, receive_signal)
+            for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+        }
+        try:
+            while (exit_code := child.poll()) is None:
+                if received_signal:
+                    return 128 + received_signal
+                if time.monotonic() >= deadline:
+                    sys.stderr.write("Mypy wall-time limit reached\n")
+                    return 124
+                if cls._usage(child.pid)[0] > memory_bytes:
+                    sys.stderr.write("Mypy out of memory: RSS limit reached\n")
+                    return 137
+                time.sleep(c.Infra.MYPY_SUPERVISOR_POLL_SECONDS)
+            return exit_code if exit_code >= 0 else 128 - exit_code
+        finally:
+            # Always clean descendants, even when their leader already exited.
+            # Why ask-first: signaling only a natively-proven-live group keeps
+            # absence out of the cleanup path entirely — no suppression, no
+            # sentinel; a race between proof and signal propagates visibly.
+            try:
+                cls._ask_group_exit(child, received_signal, kill_after)
+            finally:
+                try:
+                    cls._kill_group(child)
+                finally:
+                    for signum, handler in previous.items():
+                        signal.signal(signum, handler)
 
     @classmethod
     def run(
@@ -103,50 +184,7 @@ class FlextInfraMypyDarwinSupervisor:
             capture=False,
             start_new_session=True,
         ).unwrap()
-        received_signal: int = 0
-
-        def receive_signal(signum: int, _frame: FrameType | None) -> None:
-            nonlocal received_signal
-            received_signal = signum
-
-        previous = {
-            signum: signal.signal(signum, receive_signal)
-            for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
-        }
-        try:
-            while (exit_code := child.poll()) is None:
-                if received_signal:
-                    return 128 + received_signal
-                if time.monotonic() >= deadline:
-                    sys.stderr.write("Mypy wall-time limit reached\n")
-                    return 124
-                if cls._usage(child.pid)[0] > memory_bytes:
-                    sys.stderr.write("Mypy out of memory: RSS limit reached\n")
-                    return 137
-                time.sleep(c.Infra.MYPY_SUPERVISOR_POLL_SECONDS)
-            return exit_code if exit_code >= 0 else 128 - exit_code
-        finally:
-            # Always clean descendants, even when their leader already exited.
-            # Why ask-first: signaling only a natively-proven-live group keeps
-            # absence out of the cleanup path entirely — no suppression, no
-            # sentinel; a race between proof and signal propagates visibly.
-            try:
-                if cls._usage(child.pid)[1]:
-                    cls._signal_group(child.pid, received_signal or signal.SIGTERM)
-                end = time.monotonic() + kill_after
-                while time.monotonic() < end:
-                    child.poll()
-                    if not cls._usage(child.pid)[1]:
-                        break
-                    time.sleep(c.Infra.MYPY_SUPERVISOR_SHUTDOWN_POLL_SECONDS)
-            finally:
-                try:
-                    if cls._usage(child.pid)[1]:
-                        cls._signal_group(child.pid, signal.SIGKILL)
-                    child.wait().unwrap()
-                finally:
-                    for signum, handler in previous.items():
-                        signal.signal(signum, handler)
+        return cls._supervised_exit_code(child, deadline, memory_bytes, kill_after)
 
 
 if __name__ == "__main__":

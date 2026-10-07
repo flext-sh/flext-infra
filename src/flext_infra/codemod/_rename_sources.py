@@ -56,6 +56,15 @@ class FlextInfraRenameSources:
         roots: t.SequenceOf[Path],
         params: m.Infra.ApplyRenamesInput,
     ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
+        """Index scanned files minus ignored, generated, and driver paths.
+
+        Returns:
+            The authenticated file states of every electable rename source.
+
+        Raises:
+            ValueError: If rename source disappeared.
+
+        """
         from flext_infra._config import FlextInfraConfig
 
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}

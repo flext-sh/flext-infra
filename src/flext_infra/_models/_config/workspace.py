@@ -39,7 +39,6 @@ class FlextInfraConfigModelsWorkspace:
                 raise ValueError(msg)
             if self.what not in {
                 FlextInfraConstantsCodegenProject.CodegenConformSurface.MAKEFILE,
-                FlextInfraConstantsCodegenProject.CodegenConformSurface.MISE_TRIPLE,
                 FlextInfraConstantsCodegenProject.CodegenConformSurface.DOCS_CONFIG,
                 FlextInfraConstantsCodegenProject.CodegenConformSurface.PYPROJECT,
             }:
@@ -441,6 +440,20 @@ class FlextInfraConfigModelsWorkspace:
         subprojects: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),
+        ] = ()
+        superproject_members: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Distribution names of the sibling members a superproject's "
+                    "[tool.uv.workspace] declares when this checkout is one of "
+                    "its members; empty for workspace roots and true standalones. "
+                    "Membership informs fleet tooling only: a published member "
+                    "manifest renders internal references as inline git+ URLs, "
+                    "never through [tool.uv.sources] workspace = true — that "
+                    "provenance resolves solely inside the root's manifest."
+                ),
+            ),
         ] = ()
         external_dependency_paths: Annotated[
             t.VariadicTuple[Path],

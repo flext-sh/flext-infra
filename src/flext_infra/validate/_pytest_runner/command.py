@@ -361,7 +361,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             workers = "0"
         return self._suite_argv(
             report_dir,
-            serial=serial,
             execution_mode=execution_mode,
             targets=(
                 self._node_targets()
@@ -421,7 +420,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
         return self._suite_argv(
             report_dir,
-            serial=workers == "0",
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
             targets=self._node_targets(),
             workers=workers,
@@ -439,7 +437,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         self,
         report_dir: Path,
         *,
-        serial: bool,
         execution_mode: c.Infra.PytestExecutionMode,
         targets: t.StrSequence,
         workers: str,
@@ -447,13 +444,16 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     ) -> t.VariadicTuple[str]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.
 
+        A serial dispatch keeps one item in flight, so its drain reserve is
+        the single-item budget instead of the xdist two-deep worst case.
+
         Returns:
             The resulting ``t.VariadicTuple[str]``.
 
         """
         pytest = config.Infra.tooling.tools.pytest
         suite_stop = self.suite_stop_monotonic(
-            serial=serial,
+            serial=workers == "0",
             execution_mode=execution_mode,
         )
         return (

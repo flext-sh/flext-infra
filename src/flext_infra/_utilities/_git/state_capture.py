@@ -25,6 +25,7 @@ class FlextInfraUtilitiesGitStateCaptureMixin(
     @classmethod
     @contextmanager
     def _state_leases(cls, roots: t.SequenceOf[Path]) -> Generator[None]:
+
         from flext_cli import u
 
         from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan

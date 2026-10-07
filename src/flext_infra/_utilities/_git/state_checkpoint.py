@@ -40,6 +40,7 @@ class FlextInfraUtilitiesGitStateCheckpointMixin(FlextInfraUtilitiesGitStateTree
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         checkpoint_ref: str,
     ) -> m.Infra.GitWorktreeStateCheckpoint:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
 
         cls._state_require_original(snapshot)

@@ -36,6 +36,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
+
         from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -74,6 +75,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, str]:
+
         from flext_infra._utilities import (
             FlextInfraUtilitiesRopeRuntimeModules,
             FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -259,6 +261,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         project: p.Infra.RopeProject,
         scope: p.Infra.RopeScope,
     ) -> Iterator[ast.expr]:
+
         from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
 
         yield node

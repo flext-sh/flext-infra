@@ -49,9 +49,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         from flext_infra.codegen._mise_artifacts_journal import (
             FlextInfraMiseArtifactsJournal,
         )
-        from flext_infra.codegen._mise_artifacts_state import (
-            FlextInfraMiseArtifactsState,
-        )
 
         result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
         current_journal = journal
@@ -59,49 +56,15 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         for intent in current_journal.directories:
             if intent.created is not None:
                 continue
-            created = FlextInfraMiseArtifactsState.create_journaled_directory(
+            materialized = self._create_and_record_directory(
                 layout,
-                current_journal.directories,
+                current_journal,
+                current_state,
                 intent,
             )
-            if created.failure:
-                return result_type.from_failure(
-                    self._recover_failure(
-                        layout,
-                        created.error or f"cannot create directory {intent.path}",
-                    ),
-                )
-            directories = tuple(
-                created.value if entry.path == intent.path else entry
-                for entry in current_journal.directories
-            )
-            recorded = FlextInfraMiseArtifactsJournal.record_directories(
-                current_journal,
-                directories,
-            )
-            if recorded.failure:
-                failed = self._compensate_directory_persistence(
-                    layout,
-                    created.value,
-                    recorded.error or f"cannot record directory {intent.path}",
-                    journal_write=False,
-                )
-                return result_type.from_failure(failed)
-            persisted = self._write_journal(
-                layout,
-                recorded.value,
-                expected=current_state,
-            )
-            if persisted.failure:
-                failed = self._compensate_directory_persistence(
-                    layout,
-                    created.value,
-                    persisted.error or f"cannot persist directory {intent.path}",
-                    journal_write=True,
-                )
-                return result_type.from_failure(failed)
-            current_journal = recorded.value
-            current_state = persisted.value
+            if materialized.failure:
+                return result_type.from_failure(materialized)
+            current_journal, current_state = materialized.value
         manifested = FlextInfraMiseArtifactsJournal.record_transaction_manifests(
             layout,
             current_journal,
@@ -130,6 +93,71 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         if persisted.failure:
             return result_type.from_failure(persisted)
         return result_type.ok((manifested.value, persisted.value))
+
+    def _create_and_record_directory(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+        intent: m.Infra.CodegenJournalDirectory,
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Create one journaled directory, then record and persist its receipt.
+
+        Returns:
+            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionJournal,
+                m.Cli.AtomicFileState]]``.
+
+        """
+        from flext_infra.codegen._mise_artifacts_journal import (
+            FlextInfraMiseArtifactsJournal,
+        )
+        from flext_infra.codegen._mise_artifacts_state import (
+            FlextInfraMiseArtifactsState,
+        )
+
+        result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
+        created = FlextInfraMiseArtifactsState.create_journaled_directory(
+            layout,
+            journal.directories,
+            intent,
+        )
+        if created.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout,
+                    created.error or f"cannot create directory {intent.path}",
+                ),
+            )
+        directories = tuple(
+            created.value if entry.path == intent.path else entry
+            for entry in journal.directories
+        )
+        recorded = FlextInfraMiseArtifactsJournal.record_directories(
+            journal,
+            directories,
+        )
+        if recorded.failure:
+            failed = self._compensate_directory_persistence(
+                layout,
+                created.value,
+                recorded.error or f"cannot record directory {intent.path}",
+                journal_write=False,
+            )
+            return result_type.from_failure(failed)
+        persisted = self._write_journal(
+            layout,
+            recorded.value,
+            expected=journal_state,
+        )
+        if persisted.failure:
+            failed = self._compensate_directory_persistence(
+                layout,
+                created.value,
+                persisted.error or f"cannot persist directory {intent.path}",
+                journal_write=True,
+            )
+            return result_type.from_failure(failed)
+        return result_type.ok((recorded.value, persisted.value))
 
     def _compensate_directory_persistence(
         self,
@@ -313,28 +341,54 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "generation recovery journal changed from owned receipt",
             )
         if journal.file_participants:
-            if journal.projects:
-                return r[bool].fail(
-                    "mixed Mise and file-only recovery requires explicit composition",
-                )
-            recovery_layout = self._planner.file_layout(
-                layout.scope_root,
-                {item.selector: item.root for item in journal.file_participants},
-                transaction_id=journal.transaction_id,
+            return self._recover_file_participants(layout, journal, journal_state)
+        return self._recover_project_selectors(layout, journal, journal_state)
+
+    def _recover_file_participants(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+    ) -> p.Result[bool]:
+        """Recover a file-only journal under its participants' leases.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        if journal.projects:
+            return r[bool].fail(
+                "mixed Mise and file-only recovery requires explicit composition",
             )
-            if recovery_layout.failure:
-                return r[bool].from_failure(recovery_layout)
-            if recovery_layout.value.journal_path != layout.journal_path:
-                return r[bool].fail("file journal identity changed during recovery")
-            with self._lease_file_participants(journal.file_participants):
-                recovered = self._recovery.execute(
-                    recovery_layout.value,
-                    journal,
-                    journal_state,
-                )
-            if recovered.success:
-                self._journal_receipts.pop(layout.journal_path, None)
-            return recovered
+        recovery_layout = self._planner.file_layout(
+            layout.scope_root,
+            {item.selector: item.root for item in journal.file_participants},
+            transaction_id=journal.transaction_id,
+        )
+        if recovery_layout.failure:
+            return r[bool].from_failure(recovery_layout)
+        if recovery_layout.value.journal_path != layout.journal_path:
+            return r[bool].fail("file journal identity changed during recovery")
+        with self._lease_file_participants(journal.file_participants):
+            recovered = self._recovery.execute(
+                recovery_layout.value,
+                journal,
+                journal_state,
+            )
+        return self._settle_recovery(layout, recovered)
+
+    def _recover_project_selectors(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+    ) -> p.Result[bool]:
+        """Recover a Mise journal through its recorded project selectors.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         selectors = tuple(project.selector for project in journal.projects)
         recovery_layout = self._planner.layout_from_selectors(
             layout.scope_root,
@@ -350,6 +404,19 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             journal,
             journal_state,
         )
+        return self._settle_recovery(layout, recovered)
+
+    def _settle_recovery(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        recovered: p.Result[bool],
+    ) -> p.Result[bool]:
+        """Drop the owned receipt once a recovery fully succeeded.
+
+        Returns:
+            The recovery outcome.
+
+        """
         if recovered.success:
             self._journal_receipts.pop(layout.journal_path, None)
         return recovered

@@ -468,12 +468,14 @@ class FlextInfraPytestRunnerExecution(
         # A graceful stop at the suite stop instant publishes the executed
         # prefix and remains red: the unexecuted remainder is the next run's
         # testmon selection.
-        incomplete = (
+        # A graceful stop at the suite stop instant publishes the executed
+        # prefix and remains red: the unexecuted remainder is the next run's
+        # testmon selection.
+        if final_exit and (
             selected_count is not None
             and accounting.executed_count < selected_count
             and not (diagnostics.failed_count or diagnostics.error_count)
-        )
-        if final_exit and incomplete:
+        ):
             result = "incomplete"
         elif final_exit:
             result = "failed"
@@ -481,15 +483,6 @@ class FlextInfraPytestRunnerExecution(
             result = "cache_hit"
         else:
             result = "executed"
-        external_gates = (
-            ""
-            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
-            else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
-        )
-        ci_excluded = self.ci_excluded_markers(execution_mode=context.execution_mode)
-        phase_counts = "".join(
-            f"{phase}_warnings={item.warning_count}\n" for phase, item in phases
-        )
         summary = (
             f"outcome={result}\n"
             f"selected={selected_count}\n"
@@ -498,12 +491,12 @@ class FlextInfraPytestRunnerExecution(
             f"accounting_complete={accounting_complete}\n"
             f"deselected={accounting.deselected_count}\n"
             f"inventory={accounting.inventory_count}\n"
-            f"not_executed_external_gates={external_gates}\n"
-            f"not_executed_ci_markers={','.join(ci_excluded)}\n"
+            f"not_executed_external_gates={self._external_gate_markers(context)}\n"
+            f"not_executed_ci_markers={self._ci_marker_list(context)}\n"
             f"cache_restored={cache_restored}\n"
             f"failed={diagnostics.failed_count}\nerrors={diagnostics.error_count}\n"
             f"warnings={warnings}\n"
-            f"{phase_counts}"
+            f"{self._phase_warning_lines(phases)}"
             f"skipped={diagnostics.skipped_count}\n"
             f"collection_errors={diagnostics.collection_failed_count}\n"
             f"collection_skips={diagnostics.collection_skipped_count}\n"
@@ -516,6 +509,45 @@ class FlextInfraPytestRunnerExecution(
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
         sys.stderr.write(f"Reports: {report_dir}\n")
         return r.ok(final_exit)
+
+    @staticmethod
+    def _external_gate_markers(context: m.Infra.PytestRunContext) -> str:
+        """Return the not-executed external gate marker list of one run.
+
+        Returns:
+            The not-executed external gate marker list of one run.
+
+        """
+        return (
+            ""
+            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
+            else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
+        )
+
+    def _ci_marker_list(self, context: m.Infra.PytestRunContext) -> str:
+        """Return the CI-excluded marker list of one run.
+
+        Returns:
+            The CI-excluded marker list of one run.
+
+        """
+        return ",".join(
+            self.ci_excluded_markers(
+                execution_mode=context.execution_mode,
+            ),
+        )
+
+    @staticmethod
+    def _phase_warning_lines(phases: t.SequenceOf[t.Pair[str, t.JsonValue]]) -> str:
+        """Return one warnings line per phase.
+
+        Returns:
+            One warnings line per phase.
+
+        """
+        return "".join(
+            f"{phase}_warnings={item.warning_count}\n" for phase, item in phases
+        )
 
     @override
     def execute(self) -> p.Result[int]:
@@ -730,25 +762,41 @@ class FlextInfraPytestRunnerExecution(
             cache_hit=cache_hit,
         )
         if result.success:
-            accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-                (report_dir / "run-accounting.json").read_text(encoding="utf-8"),
-            )
-            completed = (
-                accounting.executed_count == accounting.reported_count
-                and accounting.inventory_count is not None
-                and accounting.executed_count + accounting.deselected_count
-                == accounting.inventory_count
-            )
-            digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
-            if digest is None:
-                msg = "completed testmon run has no checkpointed database"
-                raise RuntimeError(msg)
-            self._cache_publication = m.Infra.TestmonCachePublication(
-                database=self.testmon_db,
-                digest=digest,
-                saveable=policy.save_enabled and state.saveable and completed,
-            )
+            self._publish_cache_publication(report_dir, state, policy)
         return result
+
+    def _publish_cache_publication(
+        self,
+        report_dir: Path,
+        state: m.Infra.TestmonCacheState,
+        policy: m.Infra.TestmonCachePolicySpec,
+    ) -> None:
+        """Publish the checkpointed database as the run's cache publication.
+
+        Raises:
+            RuntimeError: If completed testmon run has no checkpointed database.
+
+        """
+        from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+
+        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+            (report_dir / "run-accounting.json").read_text(encoding="utf-8"),
+        )
+        completed = (
+            accounting.executed_count == accounting.reported_count
+            and accounting.inventory_count is not None
+            and accounting.executed_count + accounting.deselected_count
+            == accounting.inventory_count
+        )
+        digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
+        if digest is None:
+            msg = "completed testmon run has no checkpointed database"
+            raise RuntimeError(msg)
+        self._cache_publication = m.Infra.TestmonCachePublication(
+            database=self.testmon_db,
+            digest=digest,
+            saveable=policy.save_enabled and state.saveable and completed,
+        )
 
     def execute_coverage(self) -> p.Result[int]:
         """Execute the whole suite under the coverage plugin (never testmon).

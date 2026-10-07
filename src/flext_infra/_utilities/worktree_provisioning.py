@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 class FlextInfraWorktreeProvisioning:
     @staticmethod
     def _ensure_gitlink_checkout(lane: Path, member_path: Path) -> p.Result[bool]:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitSemanticSubmoduleMixin
 
         reference = member_path.as_posix()
@@ -46,6 +47,7 @@ class FlextInfraWorktreeProvisioning:
         declared_url: str,
         recorded_oid: str,
     ) -> p.Result[bool]:
+
         from flext_infra._utilities import (
             FlextInfraUtilitiesGitSemanticIdentityMixin,
             FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
@@ -77,6 +79,7 @@ class FlextInfraWorktreeProvisioning:
         lane: Path,
         member_path: Path,
     ) -> p.Result[bool]:
+
         from flext_infra._utilities import (
             FlextInfraUtilitiesGitSemanticIndexMixin,
             FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
@@ -106,6 +109,7 @@ class FlextInfraWorktreeProvisioning:
 
     @classmethod
     def _prepare_governed_gitlinks(cls, lane: Path) -> p.Result[bool]:
+
         from flext_infra._utilities import (
             FlextInfraUtilitiesGitSemanticSubmoduleMixin,
             FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
@@ -145,6 +149,7 @@ class FlextInfraWorktreeProvisioning:
 
     @classmethod
     def setup_lane(cls, lane: Path) -> p.Result[bool]:
+
         from flext_cli import u
 
         from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery

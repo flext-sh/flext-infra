@@ -78,17 +78,28 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if parsed.failure:
             return r[str].from_failure(parsed)
         source, project_name = parsed.value
-        cls._sync_dependency_groups(
-            source,
-            project_name=project_name,
-            required_dev_dependencies=required_dev_dependencies,
-            workspace_members=tuple(
+        # Only the workspace root's render owns the workspace identity: it
+        # redirects its declared member requirements through [tool.uv.sources]
+        # workspace = true, which resolves solely inside the root's own
+        # manifest. Every other render — a superproject-attached member (the
+        # detector's single superproject-manifest read) or a true standalone —
+        # carries no member identity at all: its internal requirements render
+        # as inline PEP 508 git pins, the only shape a published manifest
+        # resolves from alone (a bare name plus a workspace source dies in
+        # every standalone consumer's uv).
+        workspace_members = (
+            tuple(
                 member.distribution
                 for member in workspace.subprojects
                 if member.package
             )
             if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
-            else (),
+            else ()
+        )
+        cls._sync_dependency_groups(
+            source,
+            project_name=project_name,
+            required_dev_dependencies=required_dev_dependencies,
         )
         declared_sources = (
             {
@@ -116,13 +127,44 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
+            workspace_members=workspace_members,
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
         cls._remove_legacy_tooling(source)
+        synced = cls._synced_conform_tables(
+            source,
+            uv_resolution=uv_resolution,
+            candidate_sources=candidate_sources,
+            workspace_members=workspace_members,
+            workspace=workspace,
+        )
+        if synced.failure:
+            return r[str].from_failure(synced)
+        rendered = u.Cli.toml_dumps(source)
+        if u.Cli.toml_parse_text(rendered) is None:
+            return r[str].fail("canonical pyproject rendering produced invalid TOML")
+        return r[str].ok(rendered)
+
+    @classmethod
+    def _synced_conform_tables(
+        cls,
+        source: t.Cli.TomlDocument,
+        *,
+        uv_resolution: m.Infra.UvResolutionSpec,
+        candidate_sources: t.StrMapping,
+        workspace_members: t.StrSequence,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[bool]:
+        """Sync the canonical typecheck, namespace, uv, and provenance tables.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
-            return r[str].from_failure(typecheck_paths)
+            return r[bool].from_failure(typecheck_paths)
         namespace_scope = cls._sync_namespace_scope(
             source,
             workspace.project.namespace_scan_dirs
@@ -130,24 +172,25 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             else None,
         )
         if namespace_scope.failure:
-            return r[str].from_failure(namespace_scope)
+            return r[bool].from_failure(namespace_scope)
         sources_result = cls._sync_uv_sources(
             source,
             resolution=uv_resolution,
             candidate_sources=candidate_sources,
+            workspace_members=workspace_members,
+            owns_workspace_table=(
+                workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            ),
         )
         if sources_result.failure:
-            return r[str].from_failure(sources_result)
+            return r[bool].from_failure(sources_result)
         provenance_result = cls._validate_dependency_provenance(
             source,
             workspace=workspace,
         )
         if provenance_result.failure:
-            return r[str].from_failure(provenance_result)
-        rendered = u.Cli.toml_dumps(source)
-        if u.Cli.toml_parse_text(rendered) is None:
-            return r[str].fail("canonical pyproject rendering produced invalid TOML")
-        return r[str].ok(rendered)
+            return r[bool].from_failure(provenance_result)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:

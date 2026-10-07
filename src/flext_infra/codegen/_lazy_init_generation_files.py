@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra._config import config
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
@@ -124,9 +123,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             path=before.path,
             before=before,
             desired_content=desired_content,
-            desired_mode=config.Infra.codegen.modes.file_default
-            if desired_content is not None
-            else None,
+            desired_mode=0o644 if desired_content is not None else None,
         )
 
     @staticmethod

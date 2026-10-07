@@ -35,41 +35,27 @@ class FlextInfraMiseArtifactsCandidates:
         """
         publications: list[m.Infra.CodegenStagedFile] = []
         for project, stage in zip(projects, stages, strict=True):
-            before_states = (
-                project.config.before,
-                project.artifacts.unix_launcher,
-                project.artifacts.windows_launcher,
-                project.artifacts.version_pin,
+            before = project.config.before
+            replacement = files.read_state(
+                stage / before.path.name,
+                required=True,
             )
-            # The native mise layout stages the config only: absent runtime
-            # triple slots (content None) publish no staged receipts.
-            present = (
-                (before, pair)
-                for before, pair in zip(
-                    before_states,
-                    c.Infra.PUBLICATION_SPECS,
-                    strict=True,
+            if replacement.failure or replacement.value.content is None:
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(
+                    replacement,
                 )
-                if before.content is not None
+            if replacement.value.mode != before.mode:
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
+                    f"staged Mise artifact mode differs: {stage / before.path.name}",
+                )
+            publications.append(
+                m.Infra.CodegenStagedFile(
+                    phase=c.Infra.CodegenStagedFilePhase.MISE,
+                    project=project.layout.root,
+                    before=before,
+                    replacement=replacement.value,
+                ),
             )
-            for before, (name, mode) in present:
-                replacement = files.read_state(stage / name, required=True)
-                if replacement.failure or replacement.value.content is None:
-                    return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(
-                        replacement,
-                    )
-                if replacement.value.mode != mode:
-                    return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
-                        f"staged Mise artifact mode differs: {stage / name}",
-                    )
-                publications.append(
-                    m.Infra.CodegenStagedFile(
-                        phase=c.Infra.CodegenStagedFilePhase.MISE,
-                        project=project.layout.root,
-                        before=before,
-                        replacement=replacement.value,
-                    ),
-                )
         return r[tuple[m.Infra.CodegenStagedFile, ...]].ok(tuple(publications))
 
 

@@ -74,14 +74,12 @@ class FlextInfraUtilitiesCodegenFilePlan:
             JournalLeaseTimeoutError: If ``time.monotonic() >= deadline``.
 
         """
-        from flext_infra._config import config
-
         lock_path = journal_path.with_name(f"{journal_path.name}.lock")
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         descriptor = os.open(
             lock_path,
             os.O_RDWR | os.O_CREAT,
-            config.Infra.codegen.modes.file_private,
+            c.Infra.JOURNAL_MODE,
         )
         acquired = False
         try:

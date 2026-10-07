@@ -36,6 +36,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
 
     @classmethod
     def _state_file(cls, root: Path, relative: Path) -> m.Infra.GitWorktreeFileState:
+
         from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
 
         path = root / relative

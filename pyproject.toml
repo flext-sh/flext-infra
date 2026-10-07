@@ -27,6 +27,8 @@ dependencies = [
   "dependency-injector>=4.49.1",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "GitPython>=3.2.0",
   "jinja2>=3.1.6",
   "libcst>=1.9.0",
@@ -76,6 +78,7 @@ dev = [
   "bandit>=1.9.4",
   "deptry",
   "editables>=0.6",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "hypothesis",
   "mkdocs",
@@ -574,6 +577,10 @@ split-on-trailing-comma = false
   "undocumented-public-method",
   "unused-class-method-argument",
 ]
+"**/bootstrap.py" = [
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
 "**/docx.py" = ["import-outside-top-level"]
 "**/file_test_helpers.py" = ["line-too-long"]
 "**/flextcliutilitiesfiletesthelpersmixin_part_03.py" = ["line-too-long"]
@@ -583,6 +590,7 @@ split-on-trailing-comma = false
 "**/tests/**" = [
   "boolean-positional-value-in-call",
   "compare-to-empty-string",
+  "import-private-name",
   "magic-value-comparison",
   "mutable-class-default",
   "no-self-use",
@@ -690,6 +698,7 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true

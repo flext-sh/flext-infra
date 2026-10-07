@@ -404,6 +404,81 @@ class FlextInfraUtilitiesRopeInventory:
         return validated_scope
 
     @staticmethod
+    def _in_class_scope(
+        class_chain: t.StrSequence,
+        scope_chain: t.StrSequence,
+    ) -> bool:
+        """Report whether the binding depth matches a class attribute position.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        return bool(class_chain) and len(scope_chain) == len(class_chain)
+
+    @staticmethod
+    def _scoped_binding_kind(name: str) -> str:
+        """Return the kind of a name bound inside a nested scope.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        return "local" if not name.isupper() else "constant"
+
+    @staticmethod
+    def _assigned_kind(
+        *,
+        class_chain: t.StrSequence,
+        scope_chain: t.StrSequence,
+        name: str,
+    ) -> str:
+        """Kind of a name Rope reports as assigned or bound as a parameter.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        if FlextInfraUtilitiesRopeInventory._in_class_scope(class_chain, scope_chain):
+            return "attribute"
+        if scope_chain:
+            return FlextInfraUtilitiesRopeInventory._scoped_binding_kind(name)
+        return "constant" if name.isupper() else "assignment"
+
+    @staticmethod
+    def _declared_kind(
+        pyname: t.Infra.RopePyName,
+        *,
+        class_chain: t.StrSequence,
+        scope_chain: t.StrSequence,
+        name: str,
+    ) -> str:
+        """Kind of a name bound by a declaration instead of an assignment.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
+
+        obj = pyname.get_object()
+        if FlextInfraUtilitiesRopeRuntime.abstract_class(obj):
+            return "class"
+        if FlextInfraUtilitiesRopeRuntime.py_function(obj):
+            member = FlextInfraUtilitiesRopeInventory._in_class_scope(
+                class_chain,
+                scope_chain,
+            )
+            return "method" if member else "function"
+        if FlextInfraUtilitiesRopeInventory._in_class_scope(class_chain, scope_chain):
+            return "attribute"
+        if scope_chain:
+            return FlextInfraUtilitiesRopeInventory._scoped_binding_kind(name)
+        if FlextInfraUtilitiesRopeRuntime.defined_name(pyname) and name.isupper():
+            return "constant"
+        return "assignment"
+
+    @staticmethod
     def _kind_for(
         pyname: t.Infra.RopePyName,
         *,
@@ -419,37 +494,145 @@ class FlextInfraUtilitiesRopeInventory:
         """
         from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
-        result: str
         if FlextInfraUtilitiesRopeRuntime.parameter_name(pyname):
-            result = "parameter"
-        elif FlextInfraUtilitiesRopeRuntime.assigned_name(pyname):
-            if class_chain and len(scope_chain) == len(class_chain):
-                result = "attribute"
-            elif scope_chain:
-                result = "local" if not name.isupper() else "constant"
-            elif name.isupper():
-                result = "constant"
-            else:
-                result = "assignment"
-        else:
-            obj = pyname.get_object()
-            if FlextInfraUtilitiesRopeRuntime.abstract_class(obj):
-                result = "class"
-            elif FlextInfraUtilitiesRopeRuntime.py_function(obj):
-                result = (
-                    "method"
-                    if class_chain and len(scope_chain) == len(class_chain)
-                    else "function"
+            return "parameter"
+        if FlextInfraUtilitiesRopeRuntime.assigned_name(pyname):
+            return FlextInfraUtilitiesRopeInventory._assigned_kind(
+                class_chain=class_chain,
+                scope_chain=scope_chain,
+                name=name,
+            )
+        return FlextInfraUtilitiesRopeInventory._declared_kind(
+            pyname,
+            class_chain=class_chain,
+            scope_chain=scope_chain,
+            name=name,
+        )
+
+    @staticmethod
+    def _occurrence_search_resources(
+        options: m.Infra.RopeInventoryRecordInput,
+        definition_path: Path | None,
+        name: str,
+    ) -> t.VariadicTuple[t.Infra.RopeResource] | None:
+        """Scope the occurrence search resources, or ``None`` to search everywhere.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Infra.RopeResource] | None``.
+
+        """
+        from flext_infra._utilities import FlextInfraUtilitiesRopeImports
+
+        if definition_path is None:
+            return None
+        module_name = options.module_name
+        dependent_import_targets = (
+            (module_name, f"{module_name}.{name}")
+            if module_name
+            and FlextInfraUtilitiesRopeInventory._reference_surface(definition_path)
+            != c.Infra.DEFAULT_SRC_DIR
+            else ()
+        )
+        return FlextInfraUtilitiesRopeImports.indexed_search_resources(
+            options.rope_workspace,
+            resource=options.resource,
+            name=name,
+            definition_path=definition_path,
+            dependent_import_targets=dependent_import_targets,
+        )
+
+    @staticmethod
+    def _new_deduped_site(
+        site: m.Infra.ReferenceSite,
+        seen_sites: set[t.Triple[str, int, str]],
+    ) -> bool:
+        """Whether one site is new and outside ``__init__`` re-exports.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        if Path(site.file_path).name == c.Infra.INIT_PY:
+            return False
+        site_key = (site.file_path, site.line, site.surface)
+        if site_key in seen_sites:
+            return False
+        seen_sites.add(site_key)
+        return True
+
+    @staticmethod
+    def _classified_occurrence_sites(
+        hits: t.SequenceOf[t.Infra.RopeLocation],
+        *,
+        definition_path: Path | None,
+        line: int,
+        offset: int,
+    ) -> t.Triple[
+        list[m.Infra.ReferenceSite],
+        list[m.Infra.ReferenceSite],
+        bool,
+    ]:
+        """Split occurrence hits into runtime and script sites, skipping tests.
+
+        Returns:
+            The resulting ``(runtime sites, script sites, definition skipped)``.
+
+        """
+        runtime_reference_sites: list[m.Infra.ReferenceSite] = []
+        script_reference_sites: list[m.Infra.ReferenceSite] = []
+        seen_sites: set[t.Triple[str, int, str]] = set()
+        skipped_definition = False
+        for hit in hits:
+            if (
+                not skipped_definition
+                and FlextInfraUtilitiesRopeInventory._is_definition_occurrence(
+                    hit,
+                    definition_path=definition_path,
+                    line=line,
+                    offset=offset,
                 )
-            elif class_chain and len(scope_chain) == len(class_chain):
-                result = "attribute"
-            elif scope_chain:
-                result = "local" if not name.isupper() else "constant"
-            elif FlextInfraUtilitiesRopeRuntime.defined_name(pyname) and name.isupper():
-                result = "constant"
-            else:
-                result = "assignment"
-        return result
+            ):
+                skipped_definition = True
+                continue
+            reference_site = FlextInfraUtilitiesRopeInventory._reference_site(hit)
+            if reference_site is None or not (
+                FlextInfraUtilitiesRopeInventory._new_deduped_site(
+                    reference_site,
+                    seen_sites,
+                )
+            ):
+                continue
+            # Tests and examples are deliberately outside production reachability.
+            if reference_site.surface in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
+                continue
+            if reference_site.surface == c.Infra.DIR_SCRIPTS:
+                script_reference_sites.append(reference_site)
+                continue
+            runtime_reference_sites.append(reference_site)
+        return runtime_reference_sites, script_reference_sites, skipped_definition
+
+    @staticmethod
+    def _discard_unreferenced_definition(
+        runtime_sites: list[m.Infra.ReferenceSite],
+        script_sites: list[m.Infra.ReferenceSite],
+        *,
+        definition_path: Path,
+        line: int,
+    ) -> None:
+        """Drop the definition's own site from the surface that owns it."""
+        surface = FlextInfraUtilitiesRopeInventory._reference_surface(definition_path)
+        if surface == c.Infra.DIR_SCRIPTS:
+            FlextInfraUtilitiesRopeInventory._discard_definition_site(
+                script_sites,
+                definition_path=definition_path,
+                line=line,
+            )
+        elif surface not in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
+            FlextInfraUtilitiesRopeInventory._discard_definition_site(
+                runtime_sites,
+                definition_path=definition_path,
+                line=line,
+            )
 
     @staticmethod
     def _reference_sites(
@@ -485,82 +668,35 @@ class FlextInfraUtilitiesRopeInventory:
             options.rope_project,
             options.resource,
         )
-        search_resources: t.VariadicTuple[t.Infra.RopeResource] | None = None
-        if definition_path is not None:
-            module_name = options.module_name
-            dependent_import_targets = (
-                (module_name, f"{module_name}.{name}")
-                if module_name
-                and FlextInfraUtilitiesRopeInventory._reference_surface(definition_path)
-                != c.Infra.DEFAULT_SRC_DIR
-                else ()
+        search_resources = (
+            FlextInfraUtilitiesRopeInventory._occurrence_search_resources(
+                options,
+                definition_path,
+                name,
             )
-            search_resources = FlextInfraUtilitiesRopeImports.indexed_search_resources(
-                options.rope_workspace,
-                resource=options.resource,
-                name=name,
-                definition_path=definition_path,
-                dependent_import_targets=dependent_import_targets,
-            )
+        )
         hits = FlextInfraUtilitiesRopeImports.find_occurrences(
             options.rope_project,
             options.resource,
             offset,
             resources=search_resources,
         )
-        runtime_reference_sites: list[m.Infra.ReferenceSite] = []
-        script_reference_sites: list[m.Infra.ReferenceSite] = []
-        seen_sites: set[t.Triple[str, int, str]] = set()
-        skipped_definition = False
-        for hit in hits:
-            if (
-                not skipped_definition
-                and FlextInfraUtilitiesRopeInventory._is_definition_occurrence(
-                    hit,
-                    definition_path=definition_path,
-                    line=line,
-                    offset=offset,
-                )
-            ):
-                skipped_definition = True
-                continue
-            reference_site = FlextInfraUtilitiesRopeInventory._reference_site(hit)
-            if reference_site is None:
-                continue
-            if Path(reference_site.file_path).name == c.Infra.INIT_PY:
-                continue
-            site_key = (
-                reference_site.file_path,
-                reference_site.line,
-                reference_site.surface,
+        runtime_sites, script_sites, skipped_definition = (
+            FlextInfraUtilitiesRopeInventory._classified_occurrence_sites(
+                hits,
+                definition_path=definition_path,
+                line=line,
+                offset=offset,
             )
-            if site_key in seen_sites:
-                continue
-            seen_sites.add(site_key)
-            # Tests and examples are deliberately outside production reachability.
-            if reference_site.surface in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
-                continue
-            if reference_site.surface == c.Infra.DIR_SCRIPTS:
-                script_reference_sites.append(reference_site)
-                continue
-            runtime_reference_sites.append(reference_site)
+        )
         if not skipped_definition and definition_path is not None:
-            surface = FlextInfraUtilitiesRopeInventory._reference_surface(
-                definition_path,
+            FlextInfraUtilitiesRopeInventory._discard_unreferenced_definition(
+                runtime_sites,
+                script_sites,
+                definition_path=definition_path,
+                line=line,
             )
-            if surface == c.Infra.DIR_SCRIPTS:
-                FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    script_reference_sites,
-                    definition_path=definition_path,
-                    line=line,
-                )
-            elif surface not in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
-                FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    runtime_reference_sites,
-                    definition_path=definition_path,
-                    line=line,
-                )
-        return (tuple(runtime_reference_sites), tuple(script_reference_sites))
+        return (tuple(runtime_sites), tuple(script_sites))
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:
