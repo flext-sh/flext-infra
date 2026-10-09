@@ -248,10 +248,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
                 "--upgrade --refresh",
-                "deps modernize",
-                "_builtin-gen",
                 "lock --bump",
                 "install --yes",
+                "deps modernize",
+                "_builtin-gen",
                 "_activated-gen",
             )
         ]
@@ -269,7 +269,11 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         rendered = next(i for i, s in enumerate(steps) if "_builtin-gen" in s)
         lock_check = max(i for i, s in enumerate(steps) if "lock --check" in s)
         tool_lock = next(i for i, s in enumerate(steps) if "lock --bump" in s)
-        tm.that(rendered < final_lock < lock_check < tool_lock, eq=True)
+        # C19: the upgraded Mise is relocked and installed before the
+        # resolution renders; the 5kqsx double resolution keeps the upgraded
+        # generator's lock before the render and the final relock after it.
+        tm.that(tool_lock < rendered, eq=True)
+        tm.that(upgrade_lock < rendered < final_lock < lock_check, eq=True)
         tm.that(execution.stdout + execution.stderr, has="_upg_activated")
 
     @staticmethod

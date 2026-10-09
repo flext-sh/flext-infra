@@ -146,5 +146,5 @@ mise -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ to
 	"$$mise_bootstrap_bin" reshim; \
 	printf 'setup: mise %s provisioned\n' "$$mise_receipt"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}
+	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${MISE_SHIMS_DIR}:$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}
 {%- endmacro %}
