@@ -242,6 +242,27 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(jobs, has="Block WIP heads from protected integration branches")
 
     @staticmethod
+    def test_approval_step_only_runs_on_manual_dispatch(
+        rendered_project: Path,
+    ) -> None:
+        """The approval chain assumes an attended environment.
+
+        Running `make pre-commit` (setup -> audit -> check -> test) on every
+        push fails unattended runs the moment any verb needs a human context,
+        painting CI red on every landing. The step stays for manual dispatch
+        only; the push-path gates keep their own steps.
+        """
+        workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8",
+        )
+        approval_block = workflow.split("- name: Approval (blocking)", maxsplit=1)[1]
+        approval_block = approval_block.split("\n      - name:", maxsplit=1)[0]
+        tm.that(
+            approval_block,
+            has="if: ${{ github.event_name == 'workflow_dispatch' }}",
+        )
+
+    @staticmethod
     def test_ci_runs_make_test_through_the_persistent_testmon_database(
         rendered_project: Path,
     ) -> None:

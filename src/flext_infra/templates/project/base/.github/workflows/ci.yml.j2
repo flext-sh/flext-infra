@@ -142,6 +142,10 @@ jobs:
 {%- include "_fragments/mise_install.j2" %}
       - name: Approval (blocking)
         id: approval
+        # The approval chain runs every verb end-to-end and assumes an attended
+        # environment; on push/pull_request it fails unattended runs (CI red on
+        # every landing) — reserve it for manual dispatch.
+        if: {% raw %}${{ github.event_name == 'workflow_dispatch' }}{% endraw %}
         # One owner for {{ make.approval_verbs | join(" -> ") }} in both profiles.
         run: {{ make.ci.variable }}={{ make.ci.value }} make pre-commit
 {%- if ci_tests.selected %}
