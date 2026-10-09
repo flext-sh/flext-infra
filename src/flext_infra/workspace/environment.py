@@ -35,25 +35,28 @@ class FlextInfraWorkspaceEnvironmentMixin:
             The resulting ``p.Result[m.Infra.WorkspaceEnvironmentSyncResult]``.
 
         """
-        result_type = m.Infra.WorkspaceEnvironmentSyncResult
         repository_root = request.repository_root
         if not (repository_root / c.PYPROJECT_FILENAME).is_file():
             result = cls._remove_generated_environment_files(request)
         else:
             envrc_result = cls._sync_envrc(request)
             if envrc_result.failure:
-                return r[result_type].from_failure(envrc_result)
+                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(
+                    envrc_result,
+                )
             changed = (
                 (repository_root / c.Infra.ENVRC_FILENAME,)
                 if envrc_result.value
                 else ()
             )
-            result = r[result_type].ok(result_type(changed_files=changed))
+            result = r[m.Infra.WorkspaceEnvironmentSyncResult].ok(
+                m.Infra.WorkspaceEnvironmentSyncResult(changed_files=changed),
+            )
         if result.failure:
             return result
         allow_result = cls._allow_direnv_if_requested(request, runner=runner)
         if allow_result.failure:
-            return r[result_type].from_failure(allow_result)
+            return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(allow_result)
         return result
 
     @classmethod
@@ -93,14 +96,10 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / f"{destination}.j2"
         )
         render_context = m.Infra.EnvrcRenderSpec(
-            worktree_environment_directory=(
-                config.Infra.codegen.toolchain.worktree_environment_directory
-            ),
             repository_root_rel=".",
             environment_path_prepends=(
                 config.Infra.codegen.toolchain.environment_path_prepends
             ),
-            mise_bootstrap=u.Infra.mise_bootstrap_environment(),
         )
         return u.Cli.template_render(template_path, render_context)
 
@@ -120,6 +119,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         envrc = request.repository_root / c.Infra.ENVRC_FILENAME
         if not request.apply or not request.allow_direnv or not envrc.is_file():
             return r[bool].ok(value=False)
+        verified = cls._verify_generated_envrc(envrc)
+        if verified.failure:
+            return verified
         runner_service = runner or u.Cli
         result = runner_service.run_raw(
             (c.Infra.CLI_DIRENV, "allow", str(request.repository_root)),
@@ -133,6 +135,28 @@ class FlextInfraWorkspaceEnvironmentMixin:
             return r[bool].fail(
                 f"direnv allow failed for {request.repository_root}: "
                 f"{output.stderr.strip() or output.stdout.strip()}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _verify_generated_envrc(cls, envrc: Path) -> p.Result[bool]:
+        """Authenticate the exact rendered owner bytes before native approval.
+
+        Returns:
+            Owned content identity or an explicit refusal to authorize it.
+
+        """
+        if envrc.is_symlink():
+            return r[bool].fail(f"refusing to authorize symlinked environment: {envrc}")
+        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
+        if rendered.failure:
+            return r[bool].from_failure(rendered)
+        observed = u.Cli.files_read_text(envrc)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != rendered.value:
+            return r[bool].fail(
+                f"refusing to authorize environment not produced by its owner: {envrc}",
             )
         return r[bool].ok(value=True)
 
@@ -165,7 +189,6 @@ class FlextInfraWorkspaceEnvironmentMixin:
             The resulting ``p.Result[m.Infra.WorkspaceEnvironmentSyncResult]``.
 
         """
-        result_type = m.Infra.WorkspaceEnvironmentSyncResult
         removed: list[Path] = []
         for filename in c.Infra.WORKSPACE_ENV_FILES:
             target_path = request.repository_root / filename
@@ -174,10 +197,12 @@ class FlextInfraWorkspaceEnvironmentMixin:
                 apply=request.apply,
             )
             if result.failure:
-                return r[result_type].from_failure(result)
+                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(result)
             if result.value:
                 removed.append(target_path)
-        return r[result_type].ok(result_type(changed_files=tuple(removed)))
+        return r[m.Infra.WorkspaceEnvironmentSyncResult].ok(
+            m.Infra.WorkspaceEnvironmentSyncResult(changed_files=tuple(removed)),
+        )
 
     @classmethod
     def _remove_generated_environment_file(
