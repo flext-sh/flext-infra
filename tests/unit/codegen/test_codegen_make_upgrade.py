@@ -152,7 +152,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(
             self._recipe_targets_containing(
                 makefile,
-                r"\bmise\b[^\n]*\block\b[^\n]*--bump\b",
+                # The bootstrap runs the pinned binary it recovered
+                # ($$mise_bootstrap_bin); the lifecycle runs the mise shim.
+                r"(?:\bmise\b|\$\$mise_bootstrap_bin\b)[^\n]*\block\b[^\n]*--bump\b",
                 regex=True,
             ),
             eq={"_bootstrap_setup_tools", "_upg_lifecycle"},
@@ -175,13 +177,13 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(len(installs), eq=2)
         tm.that({install.strip() for install in installs}, eq={declared})
         # Setup proves the provisioned toolchain before post-setup runs; the
-        # proof consumes Make's resolved UV so it can pin it against the
-        # mise.lock release.
+        # proof resolves uv through the mise-locked installation (#1887) so it
+        # pins the mise.lock release, never a uv found earlier on PATH.
         activated = makefile.split("_setup_activated:\n", 1)[1].split("\n\n", 1)[0]
         tm.that(activated.splitlines()[0], has="codegen mise-proof")
         tm.that(
             activated.splitlines()[0],
-            has='--uv-executable "$$(command -v $(UV))"',
+            has='--uv-executable "$$(mise which uv)"',
         )
         tm.that(makefile, has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then')
         resolve_assignments = re.findall(

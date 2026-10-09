@@ -53,8 +53,10 @@ class TestsFlextInfraCodegenConformProgress:
             where=bool,
             msg=captured[-3000:],
         )
+        # The Makefile surface takes the bootstrap path: it renders and
+        # compares the Makefile after the per-repository topology stage.
         tm.that(
-            "stage=pyproject" in captured or "stage=templates" in captured,
+            "stage=topology repository=" in captured,
             where=bool,
             msg=captured[-3000:],
         )
