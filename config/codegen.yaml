@@ -64,23 +64,21 @@ Infra:
       # mise refuses the replacement and the lock stage keeps the current lock
       # (fix-forward) until the release regains coverage.
       # The minor line only: the frozen patch is mise.lock's ownership
-      # (the cooldown keeps the asset-less 20260929 python-build-standalone
-      # out of every resolution — operator decision 2026-10-06 raised the
-      # window to 10d because the release aged past the 7d boundary and its
-      # missing assets broke the floating 3.13 lock-time listing again; so
-      # 3.13.15 stays the resolved patch without a config value the
-      # FlextInfraConfig model forbids).
+      # (the cooldown below keeps the asset-less 20260929
+      # python-build-standalone release out of every resolution, so 3.13.15
+      # stays the resolved patch without a config value the FlextInfraConfig
+      # model forbids).
       python_version: "3.13"
-      # Supply-chain cooldown (operator 2026-10-01): ONE value for every
-      # resolver — the generated mise `minimum_release_age` (so `make upg`
-      # never selects a release younger than this, e.g. a Python patch with
-      # no precompiled builds yet) and every dependabot ecosystem entry.
-      # Forks and local projects never enter it: dependabot excludes the
-      # requirements a project takes by direct git reference. uv carries no
-      # cooldown key (`exclude-newer` stays banned, operator 2026-09-16).
-      # 2026-10-06: 7d → 10d — the asset-less 20260929 python-build release
-      # aged past the 7d window and re-entered every python resolution,
-      # breaking the floating 3.13 lock-time listing fleet-wide.
+      # Supply-chain cooldown (rule security/supply-chain: a rolling cooldown
+      # of at least seven days): ONE value for every resolver — the generated
+      # mise `minimum_release_age` (so `make upg` never selects a release
+      # younger than this, e.g. a Python patch with no precompiled builds yet)
+      # and every dependabot ecosystem entry. Forks and local projects never
+      # enter it: dependabot excludes the requirements a project takes by
+      # direct git reference. uv carries no cooldown key (`exclude-newer` is
+      # banned, rule ethics/conformance-sweep). 10d, not 7d: the asset-less
+      # 20260929 python-build release aged past a 7d window and re-entered
+      # every python resolution, breaking the 3.13 lock-time listing.
       dependency_cooldown_days: 10
       uv_link_mode: copy
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
@@ -479,10 +477,12 @@ Infra:
     make:
       examples_timeout_seconds: 120
       submodule_timeout_seconds: 120
-      # Operator 2026-09-08: ruff is the formatting and autofix rule.
-      # Every ruff invocation uses --preview. Never weaken ruff to keep a
-      # file; change the code. [tool.ruff] preview: true in tooling.yaml is
-      # the same policy projected into pyproject.
+      # Ruff is the formatting and autofix rule. Every ruff invocation uses
+      # --preview (tracker memory
+      # operator-ruling-2026-10-09-authority-confirmation-0122, item 1).
+      # Never weaken ruff to keep a file; change the code. [tool.ruff]
+      # preview: true in tooling.yaml is the same policy projected into
+      # pyproject.
       # Repair and formatting never break on findings (operator rulings
       # 2026-10-01, lint automation): a tool run ends clean, with findings
       # under the findings status its tooling config declares, or in error.
@@ -491,14 +491,12 @@ Infra:
       # lint_fix is the lint gate's apply mode and the ONLY lint repair: make
       # fmt runs format only (single-pass verb law), so no lint_apply exists.
       #
-      # *** OPERATOR LAW (2026-10-05, direct order — OBLIGATORY, NEVER DISABLE
-      # AGAIN): lint_fix ALWAYS runs `--preview --fix --unsafe-fix`. Unsafe
-      # fixes are MANDATORY in every make fix, in every project and
-      # subproject, forever. MakeRuffSpec fails validation without the flag;
-      # removing it is a regression against an explicit operator order and is
-      # reverted on sight. Rules whose fixes would destroy information stay
-      # declared unfixable in tooling.yaml (rule selection, never disabling
-      # the unsafe channel). ***
+      # lint_fix ALWAYS runs `--preview --fix --unsafe-fix` (tracker memory
+      # operator-ruling-2026-10-09-authority-confirmation-0122, item 4):
+      # unsafe fixes are mandatory in every make fix, in every project and
+      # subproject. MakeRuffSpec fails validation without the flag. Rules
+      # whose fixes would destroy information stay declared unfixable in
+      # tooling.yaml (rule selection, never disabling the unsafe channel).
       ruff:
         format_check: [ --preview, --check ]
         format_apply: [ --preview ]
@@ -804,7 +802,7 @@ Infra:
     - { name: .agents, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .beads, source_scan_ignore: true }
     - { name: .benchmarks }
-    # Historical evidence trees (operator law: archives are evidence only,
+    # Historical evidence trees (AGENTS.md law: archives are evidence only,
     # never live authority) are not production input to any analyzer.
     # Archive-not-delete target for the layout engine; the generated
     # .gitignore projection must never track archived loose files.
