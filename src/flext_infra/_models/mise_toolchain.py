@@ -124,6 +124,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ]
+        environment: Annotated[
+            t.StrMapping,
+            m.Field(
+                description=(
+                    "Environment overrides the probe process receives; empty "
+                    "for every tool whose version command prints only its "
+                    "identity"
+                ),
+            ),
+        ] = m.Field(default_factory=dict[str, str])
 
         @m.model_validator(mode="after")
         def _validate_pattern(self) -> Self:

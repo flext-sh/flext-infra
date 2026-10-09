@@ -185,6 +185,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             (str(executable), *probe.arguments),
             cwd=executable.parent,
             timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(env=probe.environment),
         )
         if run.failure:
             return r[bool].from_failure(run)
@@ -358,6 +359,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
                     binary=c.Infra.MISE,
                     arguments=("--version",),
                     pattern="^{version} ",
+                    environment=c.Infra.MISE_IDENTITY_PROBE_ENVIRONMENT,
                 ),
             ),
             m.Infra.MiseToolEntry(

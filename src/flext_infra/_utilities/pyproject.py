@@ -113,6 +113,7 @@ class FlextInfraUtilitiesPyproject:
             (str(binary), "--version"),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(env=c.Infra.MISE_IDENTITY_PROBE_ENVIRONMENT),
         )
         if identity.failure:
             return r[Path].from_failure(identity)
