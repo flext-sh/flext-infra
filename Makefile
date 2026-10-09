@@ -411,6 +411,9 @@ _bootstrap_setup_tools:
 		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
 	fi; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		if [ "$$mise_lock_usable" = 0 ]; then \
+			rm -f "$$mise_lock"; \
+		fi; \
 		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
 		mise_lock_usable=1; \
 	fi; \
@@ -427,7 +430,7 @@ _bootstrap_setup_tools:
 		fi; \
 	done; \
 	if [ -n "$$mise_from_lock" ]; then \
-		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --yes $$mise_from_lock; \
+		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --locked --yes $$mise_from_lock; \
 	fi; \
 	if [ -n "$$mise_without_lock" ]; then \
 		MISE_LOCKFILE=false "$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --yes $$mise_without_lock; \
@@ -489,7 +492,13 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		uv_lock_mode=--frozen; \
 	fi; \
 	locked_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$locked_python" $(UV_SYNC_FLAGS) $$uv_lock_mode --link-mode "$(UV_LINK_MODE)"; \
+	if [ -n "$$uv_lock_mode" ]; then \
+		$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$locked_python" $(UV_SYNC_FLAGS) $$uv_lock_mode --link-mode "$(UV_LINK_MODE)"; \
+	else \
+		$(UV) venv --allow-existing --python "$$locked_python" "$(RUNTIME_VENV)"; \
+		uv_groups="$$(awk '/^\[dependency-groups\]/ { inside = 1; next } /^\[/ { inside = 0 } inside && $$2 == "=" { printf " --group $(UV_PROJECT)/pyproject.toml:%s", $$1 }' "$(UV_PROJECT)/pyproject.toml")"; \
+		$$credential_env $(UV) pip install --python "$(RUNTIME_VENV)/bin/python" --link-mode "$(UV_LINK_MODE)" --all-extras $$uv_groups --editable "$(UV_PROJECT)"$(foreach member,$(WORKSPACE_SUBPROJECTS), --editable "$(PROJECT_ROOT)/$(member)"); \
+	fi; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)"; \
 	if [ "$(strip $(CI))" != "Y" ]; then \
 		for member in $(WORKSPACE_SUBPROJECTS); do \
@@ -539,10 +548,11 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
 # Setup uses the committed uv.lock and never stops on it
 # (operator-ruling-2026-10-09-setup-resilient): a present, readable lock always
-# installs `--frozen` (exactly its pins, current or stale, never rewritten); only
-# when no readable lock exists does uv resolve the manifests natively, the one
-# case uv cannot install without writing a lock. `make audit` holds the verdict
-# (law 14) and `make upg` cures it.
+# installs `--frozen` (exactly its pins, current or stale, never rewritten).
+# Without a readable lock (missing, or merge markers uv cannot parse) uv pip
+# installs the project and its declared groups from the manifests into the
+# environment, never reading or writing uv.lock. `make audit` holds the
+# verdict (law 14) and `make upg` cures it.
 UV_SYNC_FLAGS := --all-extras --all-groups --all-packages
 ifeq ($(strip $(CI)),Y)
 override UV_SYNC_FLAGS := --all-extras --all-groups --all-packages --no-editable
@@ -1596,6 +1606,9 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
+	@if [ -f "$(PROJECT_ROOT)/uv.lock" ] && grep -qE '^(<<<<<<< |=======$$|>>>>>>> )' "$(PROJECT_ROOT)/uv.lock"; then \
+		rm -f "$(PROJECT_ROOT)/uv.lock"; \
+	fi
 	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
