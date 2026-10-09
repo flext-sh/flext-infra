@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c
 from tests import u
 
 
@@ -251,7 +250,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 installed_dependency_path / "table_provider.py",
                 u.Tests.runtime_root_import() + "class Handler(RuntimeRoot):\n"
                 "    _control_char_table = str.maketrans(\n"
-                f"        {c: fr'\\x{c:02x}' for c in range(32)})\n"
+                "        {code: fr'\\x{code:02x}' for code in range(32)})\n"
                 "    _control_char_table[ord('\\\\')] = r'\\\\'\n",
             ),
         )
