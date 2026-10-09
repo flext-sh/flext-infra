@@ -243,6 +243,34 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(jobs, has="Block WIP heads from protected integration branches")
 
     @staticmethod
+    def test_every_approval_verb_blocks_on_push_and_pull_request(
+        rendered_project: Path,
+    ) -> None:
+        """CI runs each approval verb as its own blocking step on every event.
+
+        The former single ``make pre-commit`` step failed unattended runs
+        because setup refused a stale lock; setup now provisions whatever the
+        locks state (operator-ruling-2026-10-09-setup-resilient), so the gates
+        run on push and pull request instead of only on manual dispatch. After
+        setup, every verb reports even when an earlier one is red.
+        """
+        workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8",
+        )
+        verbs = config.Infra.codegen.make.approval_verbs
+        for index, verb in enumerate(verbs):
+            block = workflow.split(f"- name: make {verb} (blocking)", maxsplit=1)[1]
+            block = block.split("\n      - name:", maxsplit=1)[0]
+            tm.that(block, lacks="workflow_dispatch")
+            tm.that(block, has=f"make {verb}")
+            if index:
+                tm.that(
+                    block,
+                    has=f"steps.approval-{verbs[0]}.outcome == 'success'",
+                )
+        tm.that(workflow, lacks="- name: Approval (blocking)")
+
+    @staticmethod
     def test_ci_runs_make_test_through_the_persistent_testmon_database(
         rendered_project: Path,
     ) -> None:
