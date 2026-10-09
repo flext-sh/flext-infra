@@ -1,4 +1,4 @@
-"""Make CI partitions follow config; the fast hook follows registry gate kinds.
+"""CI follows its declared partition; local checks retain every active gate.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -40,8 +40,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
     @staticmethod
-    def test_ci_partition_complements_the_declared_local_set() -> None:
-        """CI and local checks partition the active set without hidden gates."""
+    def test_ci_excludes_only_declared_local_only_gates() -> None:
+        """Local checks cover every active gate; CI excludes its declared set."""
         make = config.Infra.codegen.make
         local = frozenset(make.ci.local_check_gates)
         tm.that(
@@ -52,10 +52,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 if gate not in local
             ),
         )
-        tm.that(set(make.check_gates_ci) & set(make.check_gates_local), eq=set())
+        tm.that(make.check_gates_local, eq=make.check_gates_default)
         tm.that(
-            set(make.check_gates_ci) | set(make.check_gates_local),
-            eq=set(make.check_gates_default),
+            set(make.check_gates_ci) <= set(make.check_gates_local),
+            eq=True,
         )
 
     @staticmethod
@@ -91,7 +91,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
         tm.that(active.check_gates_default, has="fixture-project-gate")
         tm.that(active.check_gates_ci, has="fixture-project-gate")
-        tm.that("fixture-project-gate" in active.check_gates_local, eq=False)
+        tm.that(active.check_gates_local, has="fixture-project-gate")
 
     @staticmethod
     def test_ci_workflow_runs_only_the_ci_partition() -> None:

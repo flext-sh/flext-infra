@@ -236,8 +236,8 @@ contains no projects or when a selected project has no `pyproject.toml`; no proj
 skipped silently.
 
 Local runs, CI, and hooks derive their gates from the same active set: `CI=N make check`
-runs the intersection with `make.ci.local_check_gates`, `CI=Y make check` runs the
-complement (Pyrefly included), and `make check` without `CI` runs the union. The
+and `make check` without `CI` run the complete active set. `CI=Y make check` excludes
+only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
 configuration keeps Mypy, Pyright, codemod and smells out of CI. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate, so Mypy and Pyright

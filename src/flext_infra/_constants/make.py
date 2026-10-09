@@ -52,7 +52,7 @@ class FlextInfraConstantsMake:
     MAKE_REPOSITORY_ROOT: ClassVar[str] = "REPOSITORY_ROOT"
     "Make variable the workspace orchestrator passes to attached members."
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
-    "Ruff CLI flag that applies unsafe fixes; never part of the lint repair."
+    "Ruff CLI flag used by the operator-confirmed lint repair channel."
 
     VERB_CHECK: ClassVar[str] = "check"
     VERB_TEST: ClassVar[str] = "test"

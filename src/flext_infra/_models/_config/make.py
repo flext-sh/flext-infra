@@ -1075,13 +1075,12 @@ class FlextInfraConfigModelsMake(
         @m.computed_field
         @property
         def check_gates_local(self) -> t.VariadicTuple[str]:
-            """Intersect the local partition with the same active default universe.
+            """Run the complete active gate universe locally and at pre-push.
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
             """
-            local = frozenset(self.ci.local_check_gates)
-            return tuple(gate for gate in self.check_gates_default if gate in local)
+            return self.check_gates_default
 
         @m.computed_field
         @property
@@ -1091,7 +1090,7 @@ class FlextInfraConfigModelsMake(
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
             """
-            local = frozenset(self.check_gates_local)
+            local = frozenset(self.ci.local_check_gates)
             return tuple(gate for gate in self.check_gates_default if gate not in local)
 
         @m.computed_field

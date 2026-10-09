@@ -321,6 +321,11 @@ Infra:
           # (D203/D211, multi-line-summary-first-line/D213) included, so no run warns about them.
           pydocstyle:
             convention: google
+          # Authority: tracker memory operator-ruling-2026-10-09-ruff-dunder-descriptors.
+          # The two read-only Python type descriptors retain their native names.
+          # PLW3201 remains active for every other unrecognized dunder.
+          pylint:
+            allow-dunder-method-names: [__base__, __bases__]
           # Each exception exists only with the operator ruling that authorized
           # it and its reason; Ruff receives the unscoped entries as `ignore`
           # and the scoped ones as `per-file-ignores`. Repositories declare no
