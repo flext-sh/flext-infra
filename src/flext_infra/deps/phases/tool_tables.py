@@ -75,6 +75,10 @@ class FlextInfraToolTablesPhase:
         """
         if not (project_dir / c.PYPROJECT_FILENAME).is_file():
             return ()
+        # Topology law: only a repository that declares .gitmodules composes
+        # child projects; a standalone checkout has none to discover.
+        if not (project_dir / c.Infra.GITMODULES).is_file():
+            return ()
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             project_dir,
             allow_unprovisioned_members=True,

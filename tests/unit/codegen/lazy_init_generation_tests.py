@@ -14,9 +14,10 @@ import pytest
 from flext_tests import tm
 
 import flext_core
-from flext_infra import c, config, m, t, u
+from flext_infra import config
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from tests import c, m, t, u
 
 
 class TestsFlextInfraCodegenGeneration:
@@ -610,6 +611,8 @@ class TestsFlextInfraCodegenGeneration:
             'authors = [{ name = "Fixture Author" }]\n',
             encoding="utf-8",
         )
+        # A FLEXT project is a Git repository; workspace detection reads it.
+        u.Tests.initialize_git_repo(project_root)
         plan = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
                 pkg_dir=wrapper_root,
@@ -668,6 +671,8 @@ class TestsFlextInfraCodegenGeneration:
             f'authors = [{{ name = "Fixture Author" }}]\n{table}',
             encoding="utf-8",
         )
+        # A FLEXT project is a Git repository; workspace detection reads it.
+        u.Tests.initialize_git_repo(tmp_path)
         plan = self._plan(
             "examples",
             ("extra", "external"),

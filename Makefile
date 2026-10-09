@@ -465,7 +465,7 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 			printf 'ERROR[setup] uv.lock does not match the manifests of %s:\n%s\n  Right way: CI installs only a lock that satisfies its manifests; a drifted lock is RED, never installed --frozen.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
 			exit 2; \
 		fi; \
-		printf 'WARNING[setup] uv.lock does not match the manifests of %s:\n%s\n  Right way: only `make upg` writes uv.lock; setup installs the committed lock as-is (--frozen) and never relocks.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
+		printf 'ERROR[setup] uv.lock does not match the manifests of %s:\n%s\n  setup still provisions the environment from the committed lock (--frozen) and ends RED after the lifecycle.\n  Right way: only `make upg` writes uv.lock and cures the drift.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
 		uv_lock_mode=--frozen; \
 	fi; \
 	locked_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
@@ -1202,6 +1202,19 @@ _setup_lifecycle:
 	esac
 	@$(SELF_MAKE) _builtin_setup_environment
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
+	@$(SELF_MAKE) _builtin_setup_lock_verdict
+
+# Setup always provisions the environment, even from a drifted lock (local
+# runs install the committed lock --frozen); the drift itself stays RED: the
+# verdict runs after the whole lifecycle so the environment exists and setup
+# still fails until `make upg` cures the lock.
+.PHONY: _builtin_setup_lock_verdict
+_builtin_setup_lock_verdict:
+	@set -eu; \
+	if ! uv_lock_report=$$($(UV) lock --check --project "$(UV_PROJECT)" 2>&1); then \
+		printf 'ERROR[setup] environment provisioned, but uv.lock does not match the manifests of %s:\n%s\n  Right way: only `make upg` writes uv.lock and cures the drift.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
+		exit 2; \
+	fi
 
 .PHONY: _setup_activated
 # The reality proof runs before post-setup: every declared tool must be the
