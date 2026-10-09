@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_infra import c
 from tests import u
 
 
@@ -63,7 +64,12 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 {tmp_path / "src" / "native_diamond" / "models.py": source},
                 u.Tests.runtime_evaluated_roots(),
             ),
-            eq=tuple(sorted((*u.Tests.runtime_evaluated_roots(), "native_diamond.models.Joint.Contract"))),
+            eq=tuple(
+                sorted((
+                    *u.Tests.runtime_evaluated_roots(),
+                    "native_diamond.models.Joint.Contract",
+                ))
+            ),
         )
 
     def test_shared_private_native_parent_is_still_a_duplicate_base(
@@ -171,7 +177,12 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 },
                 u.Tests.runtime_evaluated_roots(),
             ),
-            eq=tuple(sorted((*u.Tests.runtime_evaluated_roots(), "metadata_provider.Derived"))),
+            eq=tuple(
+                sorted((
+                    *u.Tests.runtime_evaluated_roots(),
+                    "metadata_provider.Derived",
+                ))
+            ),
         )
         tm.that("metadata_provider" in sys.modules, eq=False)
 
@@ -255,7 +266,9 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 },
                 u.Tests.runtime_evaluated_roots(),
             ),
-            eq=tuple(sorted({*u.Tests.runtime_evaluated_roots(), "table_provider.Handler"})),
+            eq=tuple(
+                sorted({*u.Tests.runtime_evaluated_roots(), "table_provider.Handler"})
+            ),
         )
 
     def test_inconsistent_mro_fails_visibly(self, tmp_path: Path) -> None:
@@ -293,7 +306,12 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 {tmp_path / "src" / "qualified_contract" / "models.py": source},
                 u.Tests.runtime_evaluated_roots(),
             ),
-            eq=tuple(sorted((*u.Tests.runtime_evaluated_roots(), "qualified_contract.models.Contract"))),
+            eq=tuple(
+                sorted((
+                    *u.Tests.runtime_evaluated_roots(),
+                    "qualified_contract.models.Contract",
+                ))
+            ),
         )
 
     def test_libcst_module_alias_resolves_the_published_class(
@@ -345,7 +363,12 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 {tmp_path / "src" / "provider_contract" / "models.py": source},
                 u.Tests.runtime_evaluated_roots(),
             ),
-            eq=tuple(sorted((*u.Tests.runtime_evaluated_roots(), "declared_provider.exports.Alias"))),
+            eq=tuple(
+                sorted((
+                    *u.Tests.runtime_evaluated_roots(),
+                    "declared_provider.exports.Alias",
+                ))
+            ),
         )
         tm.that("declared_provider" in sys.modules, eq=False)
 
@@ -390,7 +413,9 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         }
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots()),
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
             eq=tuple(
                 sorted((
                     *u.Tests.runtime_evaluated_roots(),
@@ -545,8 +570,12 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         }
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots()),
-            eq=tuple(sorted((*u.Tests.runtime_evaluated_roots(), "planned_bridge.Contract"))),
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
+            eq=tuple(
+                sorted((*u.Tests.runtime_evaluated_roots(), "planned_bridge.Contract"))
+            ),
         )
         tm.that(package.exists(), eq=False)
         tm.that("planned_bridge" in sys.modules, eq=False)
@@ -565,7 +594,9 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         }
         with pytest.raises(ValueError, match="Cyclic class alias"):
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots())
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            )
 
     def test_missing_inherited_member_cannot_be_deselected(
         self,

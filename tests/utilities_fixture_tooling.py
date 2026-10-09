@@ -169,9 +169,11 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     @staticmethod
     def runtime_root_import() -> str:
         """Return an import binding the first configured root as ``RuntimeRoot``."""
-        module, _, name = TestsFlextInfraUtilitiesToolingFixtureMixin.runtime_evaluated_roots()[
-            0
-        ].rpartition(".")
+        module, _, name = (
+            TestsFlextInfraUtilitiesToolingFixtureMixin.runtime_evaluated_roots()[
+                0
+            ].rpartition(".")
+        )
         return f"from {module} import {name} as RuntimeRoot\n"
 
     @staticmethod

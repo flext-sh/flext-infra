@@ -203,7 +203,10 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 "    reflected.Contract = replacement\n",
             ),
         )
-        expected = {*u.Tests.runtime_evaluated_roots(), "namespace_provider.Facade.Contract"}
+        expected = {
+            *u.Tests.runtime_evaluated_roots(),
+            "namespace_provider.Facade.Contract",
+        }
         if replacement_model:
             expected.add("namespace_provider.Facade.Namespace.Contract")
         tm.that(
@@ -270,7 +273,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         }
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(root, planned, u.Tests.runtime_evaluated_roots()),
+            u.Infra.runtime_evaluated_base_classes(
+                root, planned, u.Tests.runtime_evaluated_roots()
+            ),
             eq=tuple(
                 sorted((
                     *u.Tests.runtime_evaluated_roots(),
@@ -325,7 +330,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(source, encoding="utf-8")
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(tmp_path, {}, u.Tests.runtime_evaluated_roots()),
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, {}, u.Tests.runtime_evaluated_roots()
+            ),
             eq=actual,
         )
 
@@ -415,7 +422,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         }
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots()),
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
             eq=tuple(
                 sorted((
                     *u.Tests.runtime_evaluated_roots(),
@@ -460,7 +469,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         }
         was_imported = "flext" in sys.modules
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots()),
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
             eq=tuple(sorted({*u.Tests.runtime_evaluated_roots(), "flext.m.BaseModel"})),
         )
         tm.that("flext" in sys.modules, eq=was_imported)
@@ -479,7 +490,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         with pytest.raises(
             ValueError, match=r"Unresolved planned base: flext\.BaseModel"
         ):
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots())
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            )
 
     def test_native_stdlib_aliases_preserve_the_same_qualified_bases(
         self,
@@ -550,7 +563,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         }
         tm.that(
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots()),
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
             eq=tuple(
                 sorted((
                     *u.Tests.runtime_evaluated_roots(),
@@ -586,7 +601,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         }
         with pytest.raises(ValueError, match=diagnostic):
-            u.Infra.runtime_evaluated_base_classes(tmp_path, planned, u.Tests.runtime_evaluated_roots())
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            )
 
     def test_planned_submodule_does_not_invent_a_missing_class(
         self,
