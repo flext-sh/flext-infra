@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     # This boundary also supplies t.Infra's aliases, so it cannot depend on them.
-    from flext_core import p, t
+    from flext_core import p
+    from flext_infra import t
 
 
 @runtime_checkable
@@ -96,8 +97,15 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         __module__: str
         __qualname__: str
-        __base__: FlextInfraProtocolsRopeRuntime.NativeClassMetadata | None
-        __bases__: tuple[FlextInfraProtocolsRopeRuntime.NativeClassMetadata, ...]
+        @property
+        def __base__(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.NativeClassMetadata | None: ...
+
+        @property
+        def __bases__(
+            self,
+        ) -> tuple[FlextInfraProtocolsRopeRuntime.NativeClassMetadata, ...]: ...
 
     @runtime_checkable
     class RopeBuiltinClass(Protocol):

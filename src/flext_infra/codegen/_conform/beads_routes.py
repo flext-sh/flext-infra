@@ -9,10 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r
-from flext_infra.codegen._conform.docs_ownership import (
-    FlextInfraCodegenConformDocsOwnership,
-)
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen._conform import FlextInfraCodegenConformDocsOwnership
+from flext_infra import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformDocsOwnership):

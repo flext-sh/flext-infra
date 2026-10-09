@@ -16,12 +16,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDocsGithubLinks,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs_audit_detectors import (
-    FlextInfraUtilitiesDocsAuditDetectorsMixin,
-)
-from flext_infra._utilities._docs_command_contract import (
-    FlextInfraUtilitiesDocsCommandContractMixin,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDocsAuditDetectorsMixin
+from flext_infra._utilities import FlextInfraUtilitiesDocsCommandContractMixin
 
 
 class FlextInfraUtilitiesDocsAudit(

@@ -173,8 +173,10 @@ class TestsFlextInfraDocsGeneratorGuides:
         destination = workspace / "flext-a/docs/guides/operator.md"
         destination.parent.mkdir(parents=True)
         destination.write_text(
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->\n"
-            "<!-- Source of truth: `docs/guides/operator.md`; adjust that source, never this projection. -->\n\n"
+            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the "
+            "workspace root. -->\n"
+            "<!-- Source of truth: `docs/guides/operator.md`; adjust that source, "
+            "never this projection. -->\n\n"
             "# flext-a - Operator\n\n> Project profile: `flext-a`\n\nPrevious.\n",
             encoding="utf-8",
         )
@@ -205,8 +207,10 @@ class TestsFlextInfraDocsGeneratorGuides:
         destination = workspace / "flext-a/docs/guides/operator.md"
         destination.parent.mkdir(parents=True)
         destination.write_text(
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->\n"
-            "<!-- Source of truth: `docs/guides/operator.md`; adjust that source, never this projection. -->\n\n"
+            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the "
+            "workspace root. -->\n"
+            "<!-- Source of truth: `docs/guides/operator.md`; adjust that source, "
+            "never this projection. -->\n\n"
             "# flext-a - Operator\n\n> Project profile: `flext-a`\n\nPrevious.\n",
             encoding="utf-8",
         )

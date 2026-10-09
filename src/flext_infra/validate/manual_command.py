@@ -22,7 +22,7 @@ import shlex
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra.base import s
+from flext_infra import s
 
 
 class FlextInfraManualCommandValidator(s[bool]):

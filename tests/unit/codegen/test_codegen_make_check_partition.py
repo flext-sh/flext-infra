@@ -46,11 +46,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         local = frozenset(make.ci.local_check_gates)
         tm.that(
             make.check_gates_ci,
-            eq=tuple(
-                gate
-                for gate in make.check_gates_default
-                if gate not in local
-            ),
+            eq=tuple(gate for gate in make.check_gates_default if gate not in local),
         )
         tm.that(make.check_gates_local, eq=make.check_gates_default)
         tm.that(
@@ -117,18 +113,32 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.that(any("make pre-commit" in command for command in commands), eq=False)
 
     @staticmethod
-    def test_pre_commit_runs_only_fast_external_gates() -> None:
-        """The pre-commit gate set is the registry's external gates, nothing else."""
+    def test_pre_commit_runs_only_the_declared_fast_scope() -> None:
+        """The hook consumes its declared scope, not every external tool."""
         make = config.Infra.codegen.make
         tm.that(bool(make.check_gates_pre_commit), eq=True)
         tm.that(
-            {c.Infra.GATE_KINDS[gate] for gate in make.check_gates_pre_commit},
-            eq={c.Infra.GateKind.EXTERNAL},
+            make.check_gates_pre_commit,
+            eq=tuple(
+                gate
+                for gate in make.ci.pre_commit_check_gates
+                if gate in make.check_gates_default
+            ),
         )
         tm.that(
             set(make.check_gates_pre_commit) <= set(make.check_gates_default),
             eq=True,
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("checker", sorted(c.Infra.TYPE_CHECKER_GATES))
+    def test_fast_hook_refuses_whole_program_type_checkers(checker: str) -> None:
+        """An expensive type-check route cannot replace the fast hook contract."""
+        make = config.Infra.codegen.make
+        payload = make.ci.model_dump(exclude_computed_fields=True)
+        payload["pre_commit_check_gates"] = (checker,)
+        with pytest.raises(e.PydanticValidationError, match="whole-program"):
+            m.Infra.MakeCiSpec.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize("verb", ["setup", "audit", "test"])
@@ -146,7 +156,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             }
             for row in payload["workflow"]
         ]
-        with pytest.raises(e.PydanticValidationError, match="pre-commit hook runs only"):
+        with pytest.raises(
+            e.PydanticValidationError, match="pre-commit hook runs only"
+        ):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod

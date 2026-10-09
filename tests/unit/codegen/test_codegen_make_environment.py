@@ -219,7 +219,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
                 f"\t@printf '%s\\n' '{target}' >> dispatch.log\n"
                 + (
-                    '\t@"$(RUNTIME_PYTHON)" -c "import sys; print(sys.prefix)" > runtime.log\n'
+                    '\t@"$(RUNTIME_PYTHON)" -c "import sys; print(sys.prefix)" > '
+                    'runtime.log\n'
                     if target == "_custom-status"
                     else ""
                 )
@@ -744,7 +745,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile,
             eq=True,
         )
-        # Template uses `override UV := "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- uv`;
+        # Template uses `override UV := "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec --
+        # uv`;
         # there is no bare `UV ?= uv` assignment.
         tm.that("UV ?= uv" in makefile, eq=False)
         # UV_RUN's environment binding is exercised by the real runtime test
@@ -1056,7 +1058,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(makefile, has="install --yes")
         tm.that(
             makefile,
-            lacks='mise_exec project "$$pinned_mise" -C "$$project_root" install --dry-run',
+            lacks='mise_exec project "$$pinned_mise" -C "$$project_root" install '
+                  '--dry-run',
         )
         platform_matrix = ",".join(toolchain.mise_lockfile_platforms)
         tm.that(makefile, has=f'mise_lockfile_platforms="{platform_matrix}";')

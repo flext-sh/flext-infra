@@ -19,7 +19,7 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
+from flext_infra import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
     from flext_infra import p

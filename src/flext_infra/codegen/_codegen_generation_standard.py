@@ -11,10 +11,8 @@ from operator import itemgetter
 from sys import stdlib_module_names
 
 from flext_infra import c, config, m, t, u
-from flext_infra.codegen._codegen_generation_renderers import (
-    FlextInfraCodegenGenerationRenderersMixin,
-)
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.codegen import FlextInfraCodegenGenerationRenderersMixin
+from flext_infra import FlextInfraToolTablesPhase
 
 
 # Keep lazy loading only at the public package root and

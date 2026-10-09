@@ -30,9 +30,7 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.codegen._lazy_init_planner_public_root import (
-    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
 
 
 class FlextInfraCodegenLazyInitPlanner(

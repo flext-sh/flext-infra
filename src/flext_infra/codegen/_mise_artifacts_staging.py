@@ -10,12 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, u
-from flext_infra.codegen._mise_artifacts_candidates import (
-    FlextInfraMiseArtifactsCandidates,
-)
-from flext_infra.codegen._mise_artifacts_process import (
-    FlextInfraMiseArtifactsProcess as process,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsCandidates
+from flext_infra.codegen import FlextInfraMiseArtifactsProcess as process
 
 if TYPE_CHECKING:
     from flext_infra import p, t

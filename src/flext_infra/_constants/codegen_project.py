@@ -20,7 +20,7 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t

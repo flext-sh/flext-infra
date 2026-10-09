@@ -11,11 +11,9 @@ from typing import Self, override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenTransaction
-from flext_infra.codegen._conform.execute_directed import (
-    FlextInfraCodegenConformExecuteDirected,
-)
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
+from flext_infra import FlextInfraCodegenLazyInit
+from flext_infra import FlextInfraCodegenMiseArtifacts
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
@@ -649,7 +647,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase="lazy-init",
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=tuple(files),
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(publications),
@@ -965,7 +963,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(docs_plans)
         owned_docs_files = self.owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase="docs",
+            phase=c.Infra.CodegenStagedFilePhase.DOCS,
             files=owned_docs_files,
             inputs=docs_bundle.value.source_states,
         )

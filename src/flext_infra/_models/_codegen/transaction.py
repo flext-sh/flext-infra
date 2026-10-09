@@ -10,12 +10,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, p
+from flext_cli import m
+from flext_infra import p
 
 from flext_infra import t
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models.codegen_toolchain import FlextInfraModelsCodegenToolchain
-from flext_infra._models.rope import FlextInfraModelsRope
+from flext_infra._models._codegen import FlextInfraModelsCodegenJournalModels
+from flext_infra._models import FlextInfraModelsCodegenToolchain
+from flext_infra._models import FlextInfraModelsRope
 
 
 class FlextInfraModelsCodegenTransactionModels:

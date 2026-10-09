@@ -114,7 +114,7 @@ class FlextInfraConformWiring:
         """
         return FlextInfraDocGenerator(
             repository_root=repository_root,
-            projects=projects,
+            selected_projects=projects,
             include_root=include_root,
         )
 

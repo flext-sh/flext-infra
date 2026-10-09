@@ -15,9 +15,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDocsGuidesMixin,
     FlextInfraUtilitiesDocsRender,
 )
-from flext_infra._utilities._docs_generate_plan import (
-    FlextInfraUtilitiesDocsGeneratePlanMixin,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDocsGeneratePlanMixin
 
 
 class FlextInfraUtilitiesDocsGenerateProjectMixin(

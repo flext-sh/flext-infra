@@ -16,7 +16,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._semantic_cutover.family_type_references import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
@@ -80,7 +80,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         *,
         protected: t.Pair[int, int] | None = None,
     ) -> str:
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeRefactors
 
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
@@ -245,9 +244,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
 
     @staticmethod
     def _module_source(module: p.Infra.RopePyModule) -> str:
-        resource = getattr(module, "resource", None)
-        if resource is not None:
-            return resource.read()
         return module.source_code
 
     @staticmethod

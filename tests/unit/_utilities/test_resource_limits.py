@@ -67,7 +67,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         budget = config.Infra.tooling.tools.mypy.timeout_seconds // 2
         (tmp_path / "config").mkdir()
         (tmp_path / "config" / "tooling.yaml").write_text(
-            f"Infra:\n  tooling:\n    tools:\n      mypy:\n        timeout_seconds: {budget}\n",
+            f"Infra:\n  tooling:\n    tools:\n      mypy:\n        timeout_seconds: "
+            f"{budget}\n",
             encoding="utf-8",
         )
         expected_limit = m.Infra.MypyResourceLimit(
@@ -88,7 +89,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         above = config.Infra.tooling.tools.mypy.timeout_seconds + 1
         (tmp_path / "config").mkdir()
         (tmp_path / "config" / "tooling.yaml").write_text(
-            f"Infra:\n  tooling:\n    tools:\n      mypy:\n        timeout_seconds: {above}\n",
+            f"Infra:\n  tooling:\n    tools:\n      mypy:\n        timeout_seconds: "
+            f"{above}\n",
             encoding="utf-8",
         )
 

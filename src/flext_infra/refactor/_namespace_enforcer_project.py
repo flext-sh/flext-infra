@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m
-from flext_infra.refactor.namespace_relocations import (
-    FlextInfraNamespaceRelocationCascade,
-)
+from flext_infra import FlextInfraNamespaceRelocationCascade
 
 if TYPE_CHECKING:
     from flext_infra import t

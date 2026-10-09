@@ -12,7 +12,8 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
-from flext_cli import r, u
+from flext_infra import r
+from flext_cli import u
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies

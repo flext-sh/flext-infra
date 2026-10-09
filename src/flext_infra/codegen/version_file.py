@@ -17,11 +17,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_core import r
+from flext_infra import r
 from flext_core.__version__ import FlextVersion
 from flext_infra import c, m, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
+from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraMisePublication
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -131,7 +131,7 @@ class FlextInfraCodegenVersionFile(FlextInfraCodegenExecutionBase[bool]):
         )
         published = FlextInfraMisePublication.publish_file_plan(
             planned,
-            phase="version-file",
+            phase=c.Infra.CodegenStagedFilePhase.VERSION_FILE,
         )
         if published.failure:
             return r[str].from_failure(published)

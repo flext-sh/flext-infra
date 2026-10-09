@@ -346,7 +346,8 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
                 f'[submodule "{project}"]\n'
                 f"\tpath = {project}\n"
                 f"\turl = {provider.base_url.rstrip('/')}/{Path(project).name}.git\n"
-                f"\tbranch = {TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n"
+                f"\tbranch = "
+                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n"
                 for project in projects
             ),
             encoding="utf-8",

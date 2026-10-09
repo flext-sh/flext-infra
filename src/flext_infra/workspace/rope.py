@@ -14,8 +14,8 @@ from types import TracebackType
 from typing import Annotated, ClassVar, Self, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
-from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
+from flext_infra import s
+from flext_infra.workspace import FlextInfraRopeQueryMixin
 
 
 class FlextInfraRopeWorkspace(

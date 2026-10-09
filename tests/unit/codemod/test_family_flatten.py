@@ -59,7 +59,8 @@ class TestsFlextInfraFamilyFlatten:
         )
         consumer.write_text(references, encoding="utf-8")
         homonym = package / "unrelated.py"
-        unrelated = "class Other:\n    class Wrapper:\n        TEXT = 'unrelated'\nVALUE = Other.Wrapper.TEXT\n"
+        unrelated = ("class Other:\n    class Wrapper:\n        TEXT = "
+                     "'unrelated'\nVALUE = Other.Wrapper.TEXT\n")
         homonym.write_text(unrelated, encoding="utf-8")
         sources = {path: source, consumer: references, homonym: unrelated}
         # Imports and MRO must resolve the proposed wrapper, not its disk name.
@@ -120,7 +121,8 @@ class TestsFlextInfraFamilyFlatten:
         (family / "__init__.py").write_text("", encoding="utf-8")
         path = family / "payload.py"
         owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
-        source = f"from enum import Enum\nclass {owner}:\n    {entity}\n\n__all__ = ['{owner}']\n"
+        source = (f"from enum import Enum\nclass {owner}:\n    {entity}\n\n__all__ = "
+                  f"['{owner}']\n")
         path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(

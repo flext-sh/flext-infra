@@ -23,7 +23,7 @@ from flext_tests import tm
 
 from flext_core import p as core_p
 from flext_infra import FlextInfraBindingService, c, config
-from tests import t, u
+from tests import m, t, u
 
 
 class TestsFlextInfraWorktreeBinding:

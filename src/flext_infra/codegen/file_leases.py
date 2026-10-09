@@ -12,9 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:
     from flext_infra import p

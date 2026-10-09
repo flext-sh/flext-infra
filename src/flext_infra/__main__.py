@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_cli import cli
 
-from flext_infra.cli import main
+from flext_infra import main
 
 
 class FlextInfraMain:

@@ -15,9 +15,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesWorkspaceManifest,
 )
-from flext_infra._utilities._docs_scope_selection import (
-    FlextInfraUtilitiesDocsScopeSelectionMixin,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDocsScopeSelectionMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

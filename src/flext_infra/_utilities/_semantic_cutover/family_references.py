@@ -11,9 +11,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
+from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticFamilyTypeReferences
 
 
 class FlextInfraUtilitiesSemanticFamilyReferences(

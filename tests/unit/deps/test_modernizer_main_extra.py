@@ -188,7 +188,8 @@ class TestsFlextInfraDepsModernizerMainExtra:
                 "[project]\n"
                 'name = "workspace"\n'
                 'version = "0.1.0"\n'
-                'dependencies = ["requests>=2.0", "httpx[socks]>=0.1; python_version < \'3.14\'", "flext-core"]\n\n'
+                'dependencies = ["requests>=2.0", "httpx[socks]>=0.1; python_version < '
+                '\'3.14\'", "flext-core"]\n\n'
                 "[tool.uv.workspace]\n"
                 'members = ["flext-core"]\n\n'
                 "[tool.poetry.dependencies]\n"

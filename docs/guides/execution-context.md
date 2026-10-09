@@ -241,8 +241,12 @@ only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
 configuration keeps Mypy, Pyright, codemod and smells out of CI. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate, so Mypy and Pyright
-block at pre-push. The pre-commit hook runs only the fast external gates the registry
-declares (`make.check_gates_pre_commit`) and no tests.
+block at pre-push. The pre-commit hook runs only the ordered scope declared by
+`make.ci.pre_commit_check_gates` and no tests. Tool kind does not redefine that scope.
+Conflict detection uses the canonical Git inventory, including unpublished files,
+and the shared merge-control classifier. It reads literal source-link targets without
+following them. Every finding, including a native warning, blocks approval while its
+original severity remains in the receipt.
 
 Every workspace and standalone projection exposes `make pre-commit` for the fast hook
 workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
@@ -260,6 +264,10 @@ without retrying under a different lock mode.
 
 Normal test verbs remain incremental testmon only and omit the configured slow
 markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
+The explicit single-file operation runs incremental selection followed by complete
+execution of that file, including its declared slow tests, on the same database.
+No empty marker phase is invoked or converted to success. Zero execution is accepted
+only as an integrity-checked cache hit with complete inventory/deselection accounting.
 Actions restores only that project database and saves only on an allowed integration
 push with a fresh completed-run path/digest/saveability receipt. The SQLite owner
 checkpoints and checks integrity before the runner releases its lease and exports

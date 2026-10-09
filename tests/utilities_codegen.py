@@ -67,7 +67,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             "[tool.ruff.lint.isort]\n"
             f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
             f"force-single-line = {str(isort.force_single_line).lower()}\n"
-            f"split-on-trailing-comma = {str(isort.split_on_trailing_comma).lower()}\n\n"
+            f"split-on-trailing-comma = "
+            f"{str(isort.split_on_trailing_comma).lower()}\n\n"
             f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
         )
 

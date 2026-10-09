@@ -13,9 +13,7 @@ from pathlib import Path
 
 from flext_infra import c, m, t
 from flext_infra._utilities import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_collection_verify import (
-    FlextInfraUtilitiesDocsCollectionVerify,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDocsCollectionVerify
 
 
 class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify):

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra import FlextInfraDocServiceBase
 
 
 class FlextInfraDocFormatter(FlextInfraDocServiceBase):

@@ -13,9 +13,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._layout_plan import FlextInfraCodegenLayoutPlanMixin
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen import FlextInfraCodegenLayoutPlanMixin
+from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenLayoutGitignoreMixin:
@@ -83,7 +83,9 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             owner="codegen",
             policy="full",
         )
-        written = FlextInfraMisePublication.publish_file_plan(planned, phase="layout")
+        written = FlextInfraMisePublication.publish_file_plan(
+            planned, phase=c.Infra.CodegenStagedFilePhase.LAYOUT
+        )
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         applied_status: t.Infra.LayoutStatus = "applied"
@@ -135,7 +137,9 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             owner="codegen",
             policy="merge",
         )
-        written = FlextInfraMisePublication.publish_file_plan(planned, phase="layout")
+        written = FlextInfraMisePublication.publish_file_plan(
+            planned, phase=c.Infra.CodegenStagedFilePhase.LAYOUT
+        )
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         applied_status: t.Infra.LayoutStatus = "applied"

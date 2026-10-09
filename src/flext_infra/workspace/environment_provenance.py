@@ -15,7 +15,7 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, config, m, r, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution

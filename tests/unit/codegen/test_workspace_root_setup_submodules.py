@@ -84,7 +84,9 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         member.mkdir()
         (member / "pyproject.toml").write_text(
             "[project]\nname = 'flext-core'\nversion = '0.1.0'\n"
-            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\ndependencies = []\n',
+            f'requires-python = '
+            f'"{config.Infra.codegen.toolchain.python_required_version}"\ndependencies '
+            f'= []\n',
             encoding="utf-8",
         )
         pkg = member / "src" / "flext_core"

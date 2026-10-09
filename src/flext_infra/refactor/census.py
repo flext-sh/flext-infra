@@ -13,7 +13,7 @@ from typing import Annotated, override
 from flext_cli import cli
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor import (
     FlextInfraRefactorCensusFiltersMixin,
     FlextInfraRefactorCensusObjectsMixin,
@@ -21,11 +21,9 @@ from flext_infra.refactor import (
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
-from flext_infra.refactor._census_collect import FlextInfraRefactorCensusCollectMixin
-from flext_infra.refactor._census_collect_helpers import (
-    FlextInfraRefactorCensusCollectHelpersMixin,
-)
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.refactor import FlextInfraRefactorCensusCollectMixin
+from flext_infra.refactor import FlextInfraRefactorCensusCollectHelpersMixin
+from flext_infra import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(

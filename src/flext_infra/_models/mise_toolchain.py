@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 from typing import Annotated, Literal, Self
 
-from flext_core import m, t
+from flext_core import m
+from flext_infra import t
 
 
 class FlextInfraModelsMiseToolchain:

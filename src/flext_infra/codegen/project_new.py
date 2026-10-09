@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra import FlextInfraCodegenConform
 
 # New file per operator live
 # order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);

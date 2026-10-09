@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra import FlextInfraModGateEngine
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

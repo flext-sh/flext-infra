@@ -13,23 +13,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._git.attestation import (
-    FlextInfraUtilitiesGitAttestationMixin,
-)
-from flext_infra._utilities._git.lane_hygiene import (
-    FlextInfraUtilitiesGitLaneHygieneMixin,
-)
-from flext_infra._utilities._git.mutation_scope import (
-    FlextInfraUtilitiesGitMutationScopeMixin,
-)
-from flext_infra._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
-from flext_infra._utilities._git.semantic_submodule import (
-    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
-)
-from flext_infra._utilities._git.state_capture import (
-    FlextInfraUtilitiesGitStateCaptureMixin,
-)
-from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitAttestationMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitLaneHygieneMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitMutationScopeMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitScopeMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticSubmoduleMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateCaptureMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMixin
 
 
 class FlextInfraUtilitiesGit(

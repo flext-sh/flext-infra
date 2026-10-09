@@ -11,11 +11,11 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
-from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra import FlextInfraServiceBase
+from flext_infra import FlextInfraModGateEngine
+from flext_infra import FlextInfraModReplacements
+from flext_infra import FlextInfraCodemodSemanticApply
+from flext_infra import FlextInfraModTextGateEngine
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):

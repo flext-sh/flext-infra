@@ -140,7 +140,8 @@ class TestsFlextInfraDepsDetectorMain:
                     "-c",
                     (
                         "import importlib.metadata,sys; "
-                        "[print(importlib.metadata.version(name)) for name in sys.argv[1:]]"
+                        "[print(importlib.metadata.version(name)) for name in "
+                        "sys.argv[1:]]"
                     ),
                     *sorted(added),
                 ],
@@ -233,7 +234,8 @@ class TestsFlextInfraDepsDetectorMain:
             with_src=True,
             pyproject=(
                 '[project]\nname = "member"\nversion = "0.1.0"\n'
-                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
+                f'requires-python = '
+                f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'dependencies = ["pyyaml"]\n'
                 "[tool.mypy]\n"
             ),

@@ -196,8 +196,8 @@ class TestsFlextInfraUtilitiesGitMixin:
         behavioral operation is expressed through the typed ``u.Infra.git_*``
         facade, which binds the repository explicitly.
 
-        Isolation is expressed with ``remove_env_keys`` because ``env`` is an
-        overlay that can only add or replace keys, never remove them
+        Isolation is expressed through the typed process options because
+        ``env`` only adds or replaces keys; ``remove_env_keys`` removes them.
         ``overrides`` carries topology the fixture itself requires, such as
         permitting the file transport for a local bare origin.
         """
@@ -205,8 +205,10 @@ class TestsFlextInfraUtilitiesGitMixin:
             cli_facade.run_checked(
                 [c.Infra.GIT, *command],
                 cwd=repo_root,
-                env=overrides,
-                remove_env_keys=TestsFlextInfraUtilitiesGitMixin.isolated_git_keys(),
+                options=m.Cli.ProcessOptions(
+                    env=overrides,
+                    remove_env_keys=TestsFlextInfraUtilitiesGitMixin.isolated_git_keys(),
+                ),
             ),
         )
 

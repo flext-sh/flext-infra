@@ -12,7 +12,7 @@ from typing import ClassVar
 
 from flext_cli import t
 
-from flext_core import m, u
+from flext_infra import m, u
 
 
 class FlextInfraTypesAdapters:

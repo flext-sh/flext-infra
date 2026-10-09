@@ -328,11 +328,13 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_dir / "colors.py").write_text(
-            'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__: list[str] = ["BLUE"]\n',
+            'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__: list[str] '
+            '= ["BLUE"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_dir / "cli.py").write_text(
-            'from __future__ import annotations\n\ndef main() -> str:\n    return "ok"\n',
+            'from __future__ import annotations\n\ndef main() -> str:\n    return '
+            '"ok"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         u.Tests.write_lazy_init_namespace_module(

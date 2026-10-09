@@ -9,9 +9,10 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import c as core_c, r
+from flext_core import c as core_c
+from flext_infra import r
 from flext_infra import c, m, p, t, u
-from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
+from flext_infra import FlextInfraDependencyDetectionAnalysis
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):

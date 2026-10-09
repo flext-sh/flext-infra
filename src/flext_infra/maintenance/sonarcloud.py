@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.maintenance.sonarcloud_client import FlextInfraSonarcloudClient
+from flext_infra import FlextInfraSonarcloudClient
 
 if TYPE_CHECKING:
     from flext_infra import p

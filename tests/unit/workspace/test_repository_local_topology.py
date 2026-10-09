@@ -993,7 +993,8 @@ class TestsFlextInfraRepositoryLocalTopology:
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
-            f"\turl = {u.Tests.WorktreeFixture.governed_repository_url('fixture-child')}\n"
+            f"\turl = "
+            f"{u.Tests.WorktreeFixture.governed_repository_url('fixture-child')}\n"
             "\tbranch = develop\n",
             encoding="utf-8",
         )

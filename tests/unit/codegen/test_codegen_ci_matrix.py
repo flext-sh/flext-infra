@@ -432,7 +432,8 @@ class TestsFlextInfraCodegenCiMatrix:
             workflow,
             lacks=(
                 'rm -f "$key_path"\n\n\n'
-                "      # Why: GitHub runners expose umask 002, so git checkout materializes"
+                "      # Why: GitHub runners expose umask 002, so git checkout "
+                "materializes"
             ),
         )
         # Included fragments start on their own line: a rationale comment is

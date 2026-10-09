@@ -10,7 +10,7 @@ import ast
 from collections.abc import MutableMapping
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor._import_ast import FlextInfraImportNormalizationAstMixin
+from flext_infra.refactor import FlextInfraImportNormalizationAstMixin
 
 
 class FlextInfraImportNormalizationRoutesMixin(

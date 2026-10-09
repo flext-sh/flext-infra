@@ -12,10 +12,10 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModelsContexts
+from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models import FlextInfraModelsMixins
 
 
 class FlextInfraModelsWorkspace:
@@ -288,13 +288,15 @@ class FlextInfraModelsWorkspace:
         lint_findings: Annotated[
             t.NonNegativeInt | None,
             m.Field(
-                description="Executed eligible lint findings; null is unknown/not executed",
+                description="Executed eligible lint findings; null is unknown/not "
+                            "executed",
             ),
         ]
         pyrefly_findings: Annotated[
             t.NonNegativeInt | None,
             m.Field(
-                description="Executed eligible Pyrefly findings; null is unknown/not executed",
+                description="Executed eligible Pyrefly findings; null is unknown/not "
+                            "executed",
             ),
         ]
         codemod_findings: Annotated[

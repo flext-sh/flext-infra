@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
 from flext_infra import c, m
-from flext_infra._settings import settings
+from flext_infra import settings
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 
 if TYPE_CHECKING:

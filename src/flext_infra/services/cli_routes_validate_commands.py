@@ -9,17 +9,17 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_infra import m, p, r, t
-from flext_infra.api import infra
-from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
-from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
-from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from flext_infra.validate.inventory import FlextInfraInventoryService
-from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
-from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+from flext_infra import infra
+from flext_infra import FlextInfraCliRouteBase
+from flext_infra import FlextInfraCProfileReport
+from flext_infra import FlextInfraValidateFreshImport
+from flext_infra import FlextInfraInventoryService
+from flext_infra import FlextInfraValidateLazyMapFreshness
+from flext_infra import FlextInfraPytestDiagExtractor
+from flext_infra import FlextInfraRuntimeCensusValidator
+from flext_infra import FlextInfraTextPatternScanner
+from flext_infra import FlextInfraSkillValidator
+from flext_infra import FlextInfraStubSupplyChain
 
 
 class FlextInfraValidationCommandRoutes(FlextInfraCliRouteBase):

@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra.services.cli_routes_codegen import FlextInfraCodegenRoutes
-from flext_infra.services.cli_routes_validate import FlextInfraValidationRoutes
-from flext_infra.services.cli_routes_workspace import FlextInfraWorkspaceRoutes
+from flext_infra import FlextInfraCodegenRoutes
+from flext_infra import FlextInfraValidationRoutes
+from flext_infra import FlextInfraWorkspaceRoutes
 
 if TYPE_CHECKING:
     from flext_infra import m, t

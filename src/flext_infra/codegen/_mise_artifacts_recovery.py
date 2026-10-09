@@ -11,21 +11,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_journal import (
-    FlextInfraMiseArtifactsJournal as journal_io,
-)
-from flext_infra.codegen._mise_artifacts_process import (
-    FlextInfraMiseArtifactsProcess as process,
-)
-from flext_infra.codegen._mise_artifacts_state import (
-    FlextInfraMiseArtifactsState as state,
-)
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification as verify,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra.codegen import FlextInfraMiseArtifactsJournal as journal_io
+from flext_infra.codegen import FlextInfraMiseArtifactsProcess as process
+from flext_infra.codegen import FlextInfraMiseArtifactsState as state
+from flext_infra.codegen import FlextInfraMiseArtifactsVerification as verify
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -425,7 +415,7 @@ class FlextInfraMiseRecovery:
         )
         return r[m.Infra.CodegenStagedFile].ok(
             m.Infra.CodegenStagedFile(
-                phase="recovery",
+                phase=c.Infra.CodegenStagedFilePhase.RECOVERY,
                 project=project,
                 before=action.current,
                 replacement=candidate.value,
@@ -584,7 +574,7 @@ class FlextInfraMiseRecovery:
             )
             candidates.append(
                 m.Infra.CodegenStagedFile(
-                    phase="recovery",
+                    phase=c.Infra.CodegenStagedFilePhase.RECOVERY,
                     project=project,
                     before=action.current,
                     replacement=candidate.value,

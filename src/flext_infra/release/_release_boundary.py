@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraProjectSelectionServiceBase
 
 
 class FlextInfraReleaseBoundaryMixin(FlextInfraProjectSelectionServiceBase[bool]):

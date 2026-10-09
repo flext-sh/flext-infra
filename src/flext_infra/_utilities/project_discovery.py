@@ -19,9 +19,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesWorkspaceManifest,
 )
-from flext_infra._utilities._project_discovery_candidates import (
-    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 
 if TYPE_CHECKING:
     from flext_infra import t

@@ -10,16 +10,14 @@ import operator
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_core.result import FlextResult as r
+from flext_infra import r
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
 )
-from flext_infra._utilities._docs_scope_policy import (
-    FlextInfraUtilitiesDocsScopePolicyMixin,
-)
-from flext_infra.protocols import FlextInfraProtocols as p
+from flext_infra._utilities import FlextInfraUtilitiesDocsScopePolicyMixin
+from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsScopeProjectsMixin(

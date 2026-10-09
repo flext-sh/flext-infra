@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
-from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra import FlextInfraCodegenTransaction
+from flext_infra import FlextInfraCodegenMiseArtifacts
+from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
+from flext_infra import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from flext_infra import p

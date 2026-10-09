@@ -71,11 +71,16 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "Gate ids run by make check under the local CI token. This "
-                    "is the ONLY declared set; the CI token runs its strict "
-                    "complement and an unset token runs every active default "
-                    "gate."
+                    "Local-only gates excluded from CI. Local check and "
+                    "pre-push retain the complete active gate set."
                 ),
+            ),
+        ]
+        pre_commit_check_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Ordered fast-hook gate scope; never the full CI approval",
             ),
         ]
 
@@ -97,6 +102,19 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(unknown)}"
                 )
                 raise ValueError(msg)
+            hook = self.pre_commit_check_gates
+            if len(hook) != len(set(hook)):
+                message = "make.ci.pre_commit_check_gates must be unique"
+                raise ValueError(message)
+            invalid = sorted(set(hook) - allowed)
+            if invalid:
+                message = (
+                    f"make.ci.pre_commit_check_gates contains unknown gates: {invalid}"
+                )
+                raise ValueError(message)
+            if set(hook) & c.Infra.TYPE_CHECKER_GATES:
+                message = "whole-program type checkers cannot run in the fast hook"
+                raise ValueError(message)
             return self
 
     class MakeVerbSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -991,9 +1009,7 @@ class FlextInfraConfigModelsMake(
                 step.verb for step in self.workflow if "ci" in step.contexts
             )
             if approval != ("setup", "audit", "check", "test", "verify-clean"):
-                msg = (
-                    "CI requires the setup/audit/check/test/verify-clean workflow"
-                )
+                msg = "CI requires the setup/audit/check/test/verify-clean workflow"
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
@@ -1096,19 +1112,15 @@ class FlextInfraConfigModelsMake(
         @m.computed_field
         @property
         def check_gates_pre_commit(self) -> t.VariadicTuple[str]:
-            """Fast external gates the pre-commit hook runs, derived from the registry.
-
-            Only gates the registry declares ``GateKind.EXTERNAL`` qualify:
-            whole-program type checkers and this package's own validators
-            never run at pre-commit.
+            """Run the declared fast scope within the complete active gate universe.
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
             """
             return tuple(
                 gate
-                for gate in self.check_gates_default
-                if c.Infra.GATE_KINDS.get(gate) is c.Infra.GateKind.EXTERNAL
+                for gate in self.ci.pre_commit_check_gates
+                if gate in self.check_gates_default
             )
 
         @m.computed_field

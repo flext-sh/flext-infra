@@ -14,9 +14,7 @@ from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNamePr
 
 from flext_infra import m, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._semantic_cutover.nesting_module_aliases import (
-    FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
-)
+from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverNestingModuleAliases
 
 
 class FlextInfraUtilitiesSemanticCutoverNestingReferences(

@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m, u
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraCodegenFileLeases
+from flext_infra import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -490,12 +490,9 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
-        Every parsed finding blocks the gate except the ones a gate reports
-        as ``warning`` severity: a warning finding stays in the gate log, the
-        summary and the SARIF reports while never failing the run (operator
-        ruling 2026-10-05: rules the operator never authorized as blocking
-        are informative only). A blocking verdict still requires the tool
-        run itself to have succeeded.
+        Every parsed finding blocks, preserving its native severity in the
+        log and SARIF. Warnings are never converted into approval. A clean
+        verdict also requires the tool run itself to have succeeded.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.

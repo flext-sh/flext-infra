@@ -15,10 +15,8 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins
-from flext_infra._models.refactor_namespace_enforcer import (
-    FlextInfraModelsNamespaceEnforcer,
-)
+from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsNamespaceEnforcer
 
 
 class FlextInfraModelsScan:
@@ -109,10 +107,9 @@ class FlextInfraModelsScan:
         binding_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(
-                default_factory=tuple,
                 description="Closed occurrence-binding source receipts",
             ),
-        ]
+        ] = m.Field(default_factory=tuple)
         range: Annotated[
             t.JsonMapping,
             m.Field(description="Exact ast-grep source range payload"),

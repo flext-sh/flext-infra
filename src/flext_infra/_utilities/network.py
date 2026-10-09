@@ -10,7 +10,7 @@ from http import HTTPStatus
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from urllib.parse import urlencode, urlsplit
 
-from flext_core import p, r
+from flext_infra import p, r
 from flext_infra import t
 
 

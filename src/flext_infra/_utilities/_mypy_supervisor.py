@@ -27,7 +27,7 @@ from flext_infra import c, m, t
 from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
 
 if TYPE_CHECKING:
-    from flext_cli import s
+    from flext_infra import s
 
 
 class FlextInfraMypyDarwinSupervisor:

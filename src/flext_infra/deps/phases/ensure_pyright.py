@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from flext_infra import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyrightConfigPhase:

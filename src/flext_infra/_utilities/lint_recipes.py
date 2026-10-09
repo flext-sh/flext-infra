@@ -37,9 +37,8 @@ class FlextInfraUtilitiesLintRecipes:
     def ruff_finding_severity(code: str, advisory: Iterable[str]) -> str:
         """Severity one Ruff finding reports at.
 
-        Rules declared advisory (operator ruling 2026-10-05) report as
-        warnings: they keep flowing to every report surface while the gate
-        verdict ignores them.
+        The declared warning classification is retained in every report.
+        Severity never exempts a finding from the blocking gate verdict.
 
         Returns:
             The resulting ``str``.
@@ -55,16 +54,13 @@ class FlextInfraUtilitiesLintRecipes:
     def blocking_gate_findings(
         issues: t.SequenceOf[m.Infra.Issue],
     ) -> tuple[m.Infra.Issue, ...]:
-        """Findings whose severity still fails a gate verdict.
-
-        Warnings never block (operator ruling 2026-10-05); a tool error
-        arrives as an ``error``-severity issue and keeps blocking.
+        """Retain every finding as blocking under the approved quality baseline.
 
         Returns:
             The resulting ``tuple[m.Infra.Issue, ...]``.
 
         """
-        return tuple(issue for issue in issues if issue.severity.lower() != "warning")
+        return tuple(issues)
 
     @staticmethod
     def copyright_notice(pkg_dir: Path, *, module: Path | None = None) -> str:

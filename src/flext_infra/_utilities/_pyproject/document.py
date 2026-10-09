@@ -9,13 +9,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated
 
-from flext_cli import r, u
+from flext_infra import r
+from flext_cli import u
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
-from flext_infra._utilities._pyproject.uv_sources import (
-    FlextInfraUtilitiesPyprojectUvSources,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectUvSources
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):

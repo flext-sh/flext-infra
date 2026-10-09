@@ -15,7 +15,8 @@ from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
-from flext_cli import r, u
+from flext_infra import r
+from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 

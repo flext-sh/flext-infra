@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
-from flext_infra.codegen._layout_apply import FlextInfraCodegenLayoutApplyMixin
-from flext_infra.codegen._layout_plan import FlextInfraCodegenLayoutPlanMixin
+from flext_infra import s
+from flext_infra.codegen import FlextInfraCodegenLayoutApplyMixin
+from flext_infra.codegen import FlextInfraCodegenLayoutPlanMixin
 
 
 class FlextInfraCodegenLayout(

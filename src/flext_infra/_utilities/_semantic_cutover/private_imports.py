@@ -16,12 +16,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
 )
-from flext_infra._utilities._semantic_cutover.edits import (
-    FlextInfraUtilitiesSemanticCutoverEdits,
-)
-from flext_infra._utilities._semantic_cutover.private_import_cst import (
-    FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
-)
+from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverEdits
+from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverPrivateImportCst
 
 if TYPE_CHECKING:
     from pathlib import Path

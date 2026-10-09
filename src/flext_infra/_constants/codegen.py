@@ -14,12 +14,10 @@ from enum import StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._constants.codegen_detection import FlextInfraConstantsCodegenDetection
-from flext_infra._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
-from flext_infra._constants.codegen_render_names import (
-    FlextInfraConstantsCodegenRenderNames,
-)
-from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
+from flext_infra._constants import FlextInfraConstantsCodegenDetection
+from flext_infra._constants import FlextInfraConstantsCodegenLazy
+from flext_infra._constants import FlextInfraConstantsCodegenRenderNames
+from flext_infra._constants import FlextInfraConstantsWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import t

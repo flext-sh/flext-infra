@@ -19,8 +19,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import m, r, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraCodegenLazyInit
 
 if TYPE_CHECKING:
     from pathlib import Path

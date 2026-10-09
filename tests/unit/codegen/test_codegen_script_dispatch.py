@@ -81,11 +81,13 @@ class TestsFlextInfraScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-                    description="Dispatch incidente through the declared script dispatcher.",
+                    description="Dispatch incidente through the declared script "
+                                "dispatcher.",
                 ),
                 m.Infra.MakeVerbSpec(
                     name="charts",
-                    description="Dispatch charts through the declared script dispatcher.",
+                    description="Dispatch charts through the declared script "
+                                "dispatcher.",
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -403,11 +405,13 @@ class TestsFlextInfraScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="charts",
-                    description="Dispatch charts through the declared script dispatcher.",
+                    description="Dispatch charts through the declared script "
+                                "dispatcher.",
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
-                    description="Dispatch chart-release through the declared script dispatcher.",
+                    description="Dispatch chart-release through the declared script "
+                                "dispatcher.",
                 ),
                 m.Infra.MakeVerbSpec(
                     name="bead",
