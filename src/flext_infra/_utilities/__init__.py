@@ -322,6 +322,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_path_cutover import (
         FlextInfraUtilitiesCodegenPathCutover,
     )
+    from flext_infra._utilities.codemod_binding_chain import (
+        FlextInfraUtilitiesCodemodBindingChain,
+    )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
     from flext_infra._utilities.compatibility_alias_validation import (
@@ -488,6 +491,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
+    "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -689,6 +693,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
+        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (

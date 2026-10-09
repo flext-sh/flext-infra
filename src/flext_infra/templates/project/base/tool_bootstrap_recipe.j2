@@ -80,9 +80,9 @@ mise -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ to
 		https://github.com/*/releases/download/*\|sha256:*) ;; \
 		*) mise_pin= ;; \
 	esac; \
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 	if [ -n "$$mise_pin" ]; then \
 		mise_sha256="$${mise_checksum#sha256:}"; \
-		mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 		mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
 		if [ ! -x "$$mise_bootstrap_bin" ]; then \
 			printf 'setup: recovering {{ mise_selector }} %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
@@ -109,6 +109,12 @@ mise -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ to
 		mise_bootstrap_bin="$$(command -v mise)"; \
 		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
 	fi; \
+{#- Project setup never writes the host shim farm: a shim is bound to the mise
+    that wrote it, so every install and reshim the bootstrap and its lifecycle
+    run writes a farm scoped to the running release instead (measured: a
+    cached mise rebound every ~/.local/share/mise/shims entry to itself).
+    Tool installs stay in the shared data directory. #}
+	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
 		if [ "$$mise_lock_usable" = 0 ]; then \
 			rm -f "$$mise_lock"; \

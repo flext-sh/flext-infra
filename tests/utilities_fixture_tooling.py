@@ -158,6 +158,23 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         path.chmod(0o444)
 
     @staticmethod
+    def runtime_evaluated_roots() -> t.StrTuple:
+        """Return the configured runtime-evaluated roots, first-seen order."""
+        return tuple(
+            dict.fromkeys(
+                config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
+            ),
+        )
+
+    @staticmethod
+    def runtime_root_import() -> str:
+        """Return an import binding the first configured root as ``RuntimeRoot``."""
+        module, _, name = TestsFlextInfraUtilitiesToolingFixtureMixin.runtime_evaluated_roots()[
+            0
+        ].rpartition(".")
+        return f"from {module} import {name} as RuntimeRoot\n"
+
+    @staticmethod
     def copy_tracked_mise_seeds(root: Path, *, source_root: Path | None = None) -> None:
         """Copy declared Mise inputs from this checkout or a native upgrade seed.
 

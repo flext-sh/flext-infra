@@ -31,6 +31,23 @@ rule:
           has:
             stopBy: end
             matches: u-imported-from-flext
+    # A library's own stdlib logger configured here stays stdlib (see the
+    # fixing rule below).
+    - not:
+        inside:
+          kind: assignment
+          has:
+            field: left
+            pattern: $LOGGER
+          inside:
+            kind: block
+            stopBy: end
+            has:
+              stopBy: end
+              any:
+                - pattern: $LOGGER.addHandler($$$HANDLER)
+                - pattern: $LOGGER.removeHandler($$$HANDLER)
+                - pattern: $LOGGER.setLevel($$$LEVEL)
 message: >-
   Stdlib logger construction must become u.fetch_logger(...), but this module
   does not bind the utilities facade `u`. Add the facade import first; no
@@ -71,6 +88,25 @@ rule:
         has:
           stopBy: end
           matches: u-imported-from-flext
+    # Configuring a library's own stdlib logger (its handlers or level) is the
+    # stdlib logging contract: u.fetch_logger returns a FLEXT bound logger,
+    # not the library's logger, so the rewrite would silently detach the
+    # configuration (observed: mkdocs warning capture in docs_build).
+    - not:
+        inside:
+          kind: assignment
+          has:
+            field: left
+            pattern: $LOGGER
+          inside:
+            kind: block
+            stopBy: end
+            has:
+              stopBy: end
+              any:
+                - pattern: $LOGGER.addHandler($$$HANDLER)
+                - pattern: $LOGGER.removeHandler($$$HANDLER)
+                - pattern: $LOGGER.setLevel($$$LEVEL)
 fix: u.fetch_logger($$$ARGS)
 message: >-
   Stdlib logger construction must route through the FLEXT utilities facade

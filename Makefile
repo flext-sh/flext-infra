@@ -381,9 +381,9 @@ _bootstrap_setup_tools:
 		https://github.com/*/releases/download/*\|sha256:*) ;; \
 		*) mise_pin= ;; \
 	esac; \
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 	if [ -n "$$mise_pin" ]; then \
 		mise_sha256="$${mise_checksum#sha256:}"; \
-		mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 		mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
 		if [ ! -x "$$mise_bootstrap_bin" ]; then \
 			printf 'setup: recovering github:jdx/mise %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
@@ -410,6 +410,7 @@ _bootstrap_setup_tools:
 		mise_bootstrap_bin="$$(command -v mise)"; \
 		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
 	fi; \
+	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
 		if [ "$$mise_lock_usable" = 0 ]; then \
 			rm -f "$$mise_lock"; \

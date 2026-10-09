@@ -877,7 +877,7 @@ Infra:
         python.analysis.includeAliasesFromUserFiles: false
         python.analysis.includeExtraPathSymbolsInSymbolSearch: false
         python.analysis.includeVenvInWorkspaceSymbols: false
-        python.analysis.useNearestConfiguration: false
+        python.analysis.useNearestConfiguration: true
         python.analysis.usePerProjectEnvironments: false
         python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python

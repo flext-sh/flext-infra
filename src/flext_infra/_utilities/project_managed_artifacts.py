@@ -138,7 +138,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(sources))
 
     @staticmethod
-    def is_config_source(project_dir: Path, path: Path) -> bool:
+    def direct_config_source(project_dir: Path, path: Path) -> bool:
         """Whether ``path`` is one direct ``config/*.yaml`` source of the project.
 
         Returns:
@@ -249,7 +249,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 sorted(
                     path
                     for path in config_dir.iterdir()
-                    if cls.is_config_source(config_dir.parent, path)
+                    if cls.direct_config_source(config_dir.parent, path)
                 ),
             )
         except OSError as exc:

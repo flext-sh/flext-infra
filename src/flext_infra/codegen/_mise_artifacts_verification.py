@@ -255,7 +255,7 @@ class FlextInfraMiseArtifactsVerification(
         own = {
             item.before.path: item
             for item in published
-            if u.Infra.is_config_source(project.layout.root, item.before.path)
+            if u.Infra.direct_config_source(project.layout.root, item.before.path)
         }
         kept = (item for item in project.config.sources if item.path not in own)
         landed = (
