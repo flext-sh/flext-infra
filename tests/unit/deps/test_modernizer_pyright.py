@@ -56,7 +56,7 @@ class TestsFlextInfraDepsModernizerPyright:
             The resulting ``Path``.
 
         """
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         project_dir = tmp_path / "flext-sample"
         source_dir = project_dir / source_dir_name / "flext_sample"
         source_dir.mkdir(parents=True)

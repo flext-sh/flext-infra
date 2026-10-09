@@ -93,8 +93,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
             subprojects=(member,),
         )
         root = tmp_path / "flext"
-        # The governed tree above the workspace carries the committed Taplo pin.
-        u.Tests.seed_locked_taplo(tmp_path)
+        # The governed tree above the workspace carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,

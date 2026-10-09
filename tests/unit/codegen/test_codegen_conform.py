@@ -246,7 +246,7 @@ class TestsFlextInfraCodegenConform:
         """A raised prepared operation removes invocation-owned root and Git state."""
         root = tmp_path / "exception-scaffold"
         # A new project is created inside a tree that already carries the lock.
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         repository = u.Tests.repository_ref(
             "exception-scaffold",
             role=c.Infra.MakeProfile.STANDALONE,
@@ -433,8 +433,9 @@ class TestsFlextInfraCodegenConform:
         # rows prove the result does not depend on the distribution name.
         """Test new project is complete and idempotent."""
         root = tmp_path / name
-        # The governed tree above the scaffold carries the committed Taplo pin.
-        u.Tests.seed_locked_taplo(tmp_path)
+        # The governed tree above the scaffold carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         service = FlextInfraCodegenProjectNew(
             flext_source=u.Tests.flext_source(),
             name=name,
@@ -803,7 +804,7 @@ class TestsFlextInfraCodegenConform:
             project=u.Tests.project_spec("arbitrary-root"),
         )
         root = tmp_path / "arbitrary-root"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,
@@ -853,7 +854,7 @@ class TestsFlextInfraCodegenConform:
         )
         workspace = u.Tests.workspace_spec(repository, project=project)
         root = tmp_path / "consumer"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         tm.ok(
             infra.codegen_conform(
                 u.Tests.conform_request(
