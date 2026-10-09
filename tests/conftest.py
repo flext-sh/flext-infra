@@ -291,6 +291,9 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     # The governed tree above the clone carries the committed Mise
     # declaration and lock that activate its locked tools.
     u.Tests.copy_tracked_mise_seeds(infra_test_workspace.parent)
+    # The repository carries its own committed lock: the declaration the
+    # conform publishes into it resolves only against its sibling mise.lock.
+    u.Tests.seed_locked_taplo(repo)
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
     u.Tests.write_project_beads_config(repo, config.Infra.name)
