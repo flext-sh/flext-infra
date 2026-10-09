@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import override
 
 from flext_tests import FlextTestsUtilities, tm
 
@@ -82,7 +81,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     deploy_keys=(key,),
                 )
 
-            @override
             @staticmethod
             def workflow_spec(
                 *,

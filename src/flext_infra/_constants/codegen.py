@@ -34,6 +34,9 @@ class FlextInfraConstantsCodegen(
 
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
 
+    MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: ClassVar[str] = "MISE_DATA_DIR"
+    """Env key routing the packaged mise bootstrap to its storage root."""
+
     CONFIG_SPEC: ClassVar[t.Pair[str, int]] = (
         FlextInfraConstantsWorkspace.MISE_TOML_FILENAME,
         0o644,

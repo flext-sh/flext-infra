@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -286,10 +285,10 @@ class TestsFlextInfraCodegenPyprojectConform:
     ) -> None:
         """Replace stale multiplicity without changing SSOT or CUSTOM tables."""
         header = f'[project]\nname = "workspace"\n[tool.{".".join(table_path)}]\n'
-        rendered = header + f"{key} = {json.dumps(list(expected))}\n"
+        rendered = header + f"{key} = {tm.ok(u.Cli.json_dumps(list(expected)))}\n"
         live = (
             header
-            + f"{key} = {json.dumps([*expected, *expected])}\n"
+            + f"{key} = {tm.ok(u.Cli.json_dumps([*expected, *expected]))}\n"
             + '[tool.recovery_regression]\nvalue = "custom"\n'
         )
 
