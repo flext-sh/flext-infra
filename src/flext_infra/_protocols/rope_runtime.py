@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Iterator
+from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -295,6 +296,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> None: ...
 
         def close(self) -> None: ...
+
+        def frozen_layout(
+            self,
+        ) -> AbstractContextManager[FlextInfraProtocolsRopeRuntime.RopeProject]: ...
 
     @runtime_checkable
     class RopeLocation(Protocol):

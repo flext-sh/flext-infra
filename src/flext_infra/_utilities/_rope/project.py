@@ -13,17 +13,25 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, override
 
 from rope.base.project import Project
+from rope.base.resources import Folder
 
 from flext_infra import t
 
 
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired."""
+
+    # Rope recomputes both folder lists on every module lookup (it walks the
+    # whole root and resolves every sys.path entry) because a live project
+    # can gain folders while open. A read-only analysis pass cannot, so it
+    # freezes them for its duration; outside one, Rope's behaviour stands.
+    _frozen_folders: tuple[list[Folder], list[Folder]] | None = None
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -85,6 +93,47 @@ class FlextInfraRopeProject(Project):
             ignored_resources=list(ignored_resources),
             source_folders=source_folders,
         )
+
+    @contextmanager
+    def frozen_layout(self) -> Generator[Self]:
+        """Freeze the source and Python path folders for one read-only pass.
+
+        Yields:
+            This project, its folder layout computed once for the pass.
+
+        """
+        self._frozen_folders = (
+            super().get_source_folders(),
+            super().get_python_path_folders(),
+        )
+        try:
+            yield self
+        finally:
+            self._frozen_folders = None
+
+    @override
+    def get_source_folders(self) -> list[Folder]:
+        """Return the source folders, frozen during a read-only pass.
+
+        Returns:
+            The resulting ``list[Folder]``.
+
+        """
+        if self._frozen_folders is None:
+            return super().get_source_folders()
+        return list(self._frozen_folders[0])
+
+    @override
+    def get_python_path_folders(self) -> list[Folder]:
+        """Return the Python path folders, frozen during a read-only pass.
+
+        Returns:
+            The resulting ``list[Folder]``.
+
+        """
+        if self._frozen_folders is None:
+            return super().get_python_path_folders()
+        return list(self._frozen_folders[1])
 
     @override
     def _init_source_folders(self) -> None:

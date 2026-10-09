@@ -975,9 +975,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             if self._stdlib_backing_cache is None:
                 self._stdlib_backing_cache = {}
-            cached = self._stdlib_backing_cache.get(target, "")
-            if cached:
-                return cached or None
+            if target in self._stdlib_backing_cache:
+                return self._stdlib_backing_cache[target] or None
             backing: str | None = None
             try:
                 runtime = importlib.import_module(target)
