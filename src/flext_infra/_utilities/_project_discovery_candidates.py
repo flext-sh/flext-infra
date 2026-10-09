@@ -9,8 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities import FlextInfraUtilitiesGit
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscoveryShapeMixin
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesProjectDiscoveryShapeMixin,
+)
 
 
 class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(

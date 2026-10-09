@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import m, r, u
-from flext_infra import s
-from flext_infra import FlextInfraGitLanes
+from flext_infra import FlextInfraGitLanes, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p

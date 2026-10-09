@@ -17,11 +17,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import r
 from flext_core.__version__ import FlextVersion
-from flext_infra import c, m, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
-from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra import c, m, r, u
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraMisePublication,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t

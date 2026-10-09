@@ -15,8 +15,6 @@ from libcst.codemod.visitors import AddImportsVisitor
 
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
-)
-from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
 )
 

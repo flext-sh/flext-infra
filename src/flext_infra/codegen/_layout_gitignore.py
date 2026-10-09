@@ -12,10 +12,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLayoutPlanMixin
-from flext_infra.codegen import FlextInfraMisePublication
-from flext_infra import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector, c, config, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenLayoutPlanMixin,
+    FlextInfraMisePublication,
+)
 
 
 class FlextInfraCodegenLayoutGitignoreMixin:

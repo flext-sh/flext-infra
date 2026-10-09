@@ -10,8 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import r
-from flext_infra import m, t
+from flext_infra import m, r, t
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:

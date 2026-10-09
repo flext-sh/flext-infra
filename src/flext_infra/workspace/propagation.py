@@ -9,10 +9,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, config, m, p, r, u
-from flext_infra import s
-from flext_infra import FlextInfraCodegenConform
-from flext_infra import FlextInfraWorkspaceDetector
+from flext_infra import (
+    FlextInfraCodegenConform,
+    FlextInfraWorkspaceDetector,
+    c,
+    config,
+    m,
+    p,
+    r,
+    s,
+    u,
+)
 
 
 class FlextInfraWorkspacePropagation(s[bool]):

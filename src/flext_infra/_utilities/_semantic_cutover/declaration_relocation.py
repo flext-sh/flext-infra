@@ -12,10 +12,10 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import r
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -26,7 +26,6 @@ from flext_infra._utilities import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
-from flext_infra._utilities import FlextInfraUtilitiesCodemodProject
 
 
 class FlextInfraUtilitiesSemanticDeclarationRelocation(

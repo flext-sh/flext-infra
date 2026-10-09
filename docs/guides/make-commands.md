@@ -99,6 +99,10 @@ modules that construct their own facade. This boundary derives from the project'
 runtime import graph and lazy export providers, not a filename exception. A helper
 must not import the facade that is loading that helper.
 
+Functional generic bounds retain their typed payload contract. Class-bound lazy alias
+deferral is a detection-only repair at the canonical typings owner, never an automatic
+deletion of constraints.
+
 ## Verb single-pass contract
 
 Each mutating verb owns exactly one operation per tool, and `make check` is strictly

@@ -15,8 +15,8 @@ from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesDocsScopeBuildMixin,
 )
-from flext_infra._utilities import FlextInfraUtilitiesDocsScopeBuildMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable

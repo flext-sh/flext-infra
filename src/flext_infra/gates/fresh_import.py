@@ -14,9 +14,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
-from flext_infra import FlextInfraGate
-from flext_infra import FlextInfraValidateFreshImport
+from flext_infra import FlextInfraGate, FlextInfraValidateFreshImport, c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

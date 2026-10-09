@@ -11,8 +11,7 @@ import pstats
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
-from flext_infra import m, r, u
-from flext_infra import s
+from flext_infra import m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t

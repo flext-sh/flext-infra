@@ -17,10 +17,16 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import c, p, r, t, u
-from flext_infra import FlextInfraServiceBase
-from flext_infra import FlextInfraModGateEngine
-from flext_infra import FlextInfraModTextGateEngine
+from flext_infra import (
+    FlextInfraModGateEngine,
+    FlextInfraModTextGateEngine,
+    FlextInfraServiceBase,
+    c,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):

@@ -12,8 +12,10 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models import FlextInfraModelsDepsToolConfigLinters
-from flext_infra._models import FlextInfraModelsDepsToolConfigTypeCheckers
+from flext_infra._models import (
+    FlextInfraModelsDepsToolConfigLinters,
+    FlextInfraModelsDepsToolConfigTypeCheckers,
+)
 
 
 class FlextInfraModelsDepsToolConfig(

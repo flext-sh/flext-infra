@@ -9,8 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitScopeMixin
-from flext_infra._utilities import FlextInfraUtilitiesIterationDirectory
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGitScopeMixin,
+    FlextInfraUtilitiesIterationDirectory,
+)
 
 
 class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):

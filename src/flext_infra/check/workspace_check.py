@@ -10,11 +10,19 @@ import shlex
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra import FlextInfraServiceBase
+from flext_infra import (
+    FlextInfraGateRegistry,
+    FlextInfraServiceBase,
+    FlextInfraWorkspaceCheckGatesMixin,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 from flext_infra.check import FlextInfraWorkspaceCheckReportsMixin
-from flext_infra import FlextInfraGateRegistry
-from flext_infra import FlextInfraWorkspaceCheckGatesMixin
 
 
 class FlextInfraWorkspaceChecker(

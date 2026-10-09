@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra import FlextInfraSonarcloudClient
+from flext_infra import FlextInfraSonarcloudClient, c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p

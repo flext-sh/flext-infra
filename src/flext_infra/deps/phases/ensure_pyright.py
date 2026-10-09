@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, t, u
-from flext_infra import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector, c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraExtraPathsManager

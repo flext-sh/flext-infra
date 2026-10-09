@@ -13,11 +13,13 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._constants import FlextInfraConstantsCodegenProject
-from flext_infra._models._codegen import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInitModels
-from flext_infra._models._codegen import FlextInfraModelsCodegenScaffoldModels
-from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenLazyInitModels,
+    FlextInfraModelsCodegenScaffoldModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenPipelineModels:

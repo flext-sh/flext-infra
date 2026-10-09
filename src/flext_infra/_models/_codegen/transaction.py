@@ -11,12 +11,10 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
-from flext_infra import p
 
-from flext_infra import t
+from flext_infra import p, t
+from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen import FlextInfraModelsCodegenJournalModels
-from flext_infra._models import FlextInfraModelsCodegenToolchain
-from flext_infra._models import FlextInfraModelsRope
 
 
 class FlextInfraModelsCodegenTransactionModels:

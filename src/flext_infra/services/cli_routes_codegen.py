@@ -9,25 +9,28 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m
-from flext_infra import infra
-from flext_infra import FlextInfraCodegenConsolidator
-from flext_infra import FlextInfraCodegenQualityGate
-from flext_infra import FlextInfraCodegenLayout
-from flext_infra import FlextInfraCodegenLazyInit
-from flext_infra import FlextInfraCodegenMakeBootstrap
-from flext_infra import FlextInfraCodegenMiseArtifacts
-from flext_infra import FlextInfraCodegenMiseToolchainProof
-from flext_infra import FlextInfraCodegenProjectNew
-from flext_infra import FlextInfraCodegenPyTyped
-from flext_infra import FlextInfraCodegenScaffolder
-from flext_infra import FlextInfraCodegenVersionFile
-from flext_infra import FlextInfraRuntimeDevDependencyDetector
-from flext_infra import FlextInfraExtraPathsManager
-from flext_infra import FlextInfraConfigFixer
-from flext_infra import FlextInfraLockIntegrityVerifier
-from flext_infra import FlextInfraPyprojectModernizer
-from flext_infra import FlextInfraCliRouteBase
+from flext_infra import (
+    FlextInfraCliRouteBase,
+    FlextInfraCodegenConsolidator,
+    FlextInfraCodegenLayout,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMakeBootstrap,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenMiseToolchainProof,
+    FlextInfraCodegenProjectNew,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenQualityGate,
+    FlextInfraCodegenScaffolder,
+    FlextInfraCodegenVersionFile,
+    FlextInfraConfigFixer,
+    FlextInfraExtraPathsManager,
+    FlextInfraLockIntegrityVerifier,
+    FlextInfraPyprojectModernizer,
+    FlextInfraRuntimeDevDependencyDetector,
+    c,
+    infra,
+    m,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t

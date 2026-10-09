@@ -14,9 +14,9 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsContract,
+    FlextInfraUtilitiesDocsGenerateProjectMixin,
     FlextInfraUtilitiesDocsRender,
 )
-from flext_infra._utilities import FlextInfraUtilitiesDocsGenerateProjectMixin
 
 
 class FlextInfraUtilitiesDocsGenerateRootMixin(

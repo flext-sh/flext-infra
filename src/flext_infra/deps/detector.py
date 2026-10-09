@@ -10,10 +10,14 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import m, p, t
-from flext_infra import FlextInfraProjectSelectionServiceBase
-from flext_infra import FlextInfraDependencyDetectionService
-from flext_infra import FlextInfraDependencyDetectorRuntime
+from flext_infra import (
+    FlextInfraDependencyDetectionService,
+    FlextInfraDependencyDetectorRuntime,
+    FlextInfraProjectSelectionServiceBase,
+    m,
+    p,
+    t,
+)
 
 
 class FlextInfraRuntimeDevDependencyDetector(

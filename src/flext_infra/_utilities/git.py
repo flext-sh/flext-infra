@@ -13,13 +13,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._git import FlextInfraUtilitiesGitAttestationMixin
-from flext_infra._utilities._git import FlextInfraUtilitiesGitLaneHygieneMixin
-from flext_infra._utilities._git import FlextInfraUtilitiesGitMutationScopeMixin
-from flext_infra._utilities._git import FlextInfraUtilitiesGitScopeMixin
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticSubmoduleMixin
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateCaptureMixin
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitAttestationMixin,
+    FlextInfraUtilitiesGitLaneHygieneMixin,
+    FlextInfraUtilitiesGitMutationScopeMixin,
+    FlextInfraUtilitiesGitScopeMixin,
+    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
+    FlextInfraUtilitiesGitStateCaptureMixin,
+    FlextInfraUtilitiesGitWorktreeMixin,
+)
 
 
 class FlextInfraUtilitiesGit(

@@ -11,10 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_infra import t
-
 from flext_core import m
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDuplication
 
 # Gate models use base type primitives; importing the composing project facade

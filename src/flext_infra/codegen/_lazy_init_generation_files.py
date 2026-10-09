@@ -10,8 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, u
-from flext_infra import FlextInfraCodegenGeneration
+from flext_infra import FlextInfraCodegenGeneration, c, config, m, r, u
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet

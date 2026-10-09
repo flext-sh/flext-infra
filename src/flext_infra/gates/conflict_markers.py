@@ -10,8 +10,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, t, u
-from flext_infra import FlextInfraGate
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraConflictMarkersGate(FlextInfraGate):

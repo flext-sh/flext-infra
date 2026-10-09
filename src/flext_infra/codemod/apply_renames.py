@@ -11,8 +11,7 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod import FlextInfraRenameSources
-from flext_infra.codemod import FlextInfraRenameSymbols
+from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 

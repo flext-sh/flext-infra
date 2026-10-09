@@ -9,11 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
-from flext_infra.codegen import FlextInfraMiseArtifactsJournalRelocation
-from flext_infra.codegen import FlextInfraMiseArtifactsProcess as process
-from flext_infra.codegen import FlextInfraMiseArtifactsState as journal_state
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles as files,
+    FlextInfraMiseArtifactsJournalRelocation,
+    FlextInfraMiseArtifactsProcess as process,
+    FlextInfraMiseArtifactsState as journal_state,
+    FlextInfraMiseArtifactsVerification,
+)
 
 
 class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):

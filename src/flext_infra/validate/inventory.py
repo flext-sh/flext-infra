@@ -12,8 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, cast, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra import s
+from flext_infra import c, m, p, r, s, t, u
 
 
 class FlextInfraInventoryService(s[bool]):

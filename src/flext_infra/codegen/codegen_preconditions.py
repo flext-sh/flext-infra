@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r
-from flext_infra.codegen import FlextInfraMiseArtifactsState
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t

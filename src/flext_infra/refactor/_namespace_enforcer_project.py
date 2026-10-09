@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m
-from flext_infra import FlextInfraNamespaceRelocationCascade
+from flext_infra import FlextInfraNamespaceRelocationCascade, m
 
 if TYPE_CHECKING:
     from flext_infra import t

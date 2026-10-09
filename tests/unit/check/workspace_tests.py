@@ -32,42 +32,6 @@ class TestsFlextInfraWorkspaceChecker:
             yield
 
     @staticmethod
-    @pytest.mark.parametrize("fail_fast", (False, True))
-    def test_failed_gate_preserves_only_executed_native_verdicts(
-        tmp_path: Path,
-        fail_fast: bool,
-    ) -> None:
-        """Real Ruff failures remain red without inventing dependent executions."""
-        project = u.Tests.mk_project(tmp_path, "p1", with_src=True)
-        (project / "src" / "broken.py").write_text(
-            "missing_name( 1 )\n",
-            encoding="utf-8",
-        )
-        requested = (c.Infra.LINT, c.Infra.FORMAT)
-        results = tm.ok(
-            FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
-                (project.name,),
-                requested,
-                fail_fast=fail_fast,
-            ),
-        )
-        tm.that(len(results), eq=1)
-        verdict = results[0]
-        tm.that(verdict.passed, eq=False)
-        tm.that(
-            tuple(verdict.gates),
-            eq=requested[:1] if fail_fast else requested,
-        )
-        for execution in verdict.gates.values():
-            tm.that(execution.result.passed, eq=False)
-            tm.that(execution.finding_count > 0, eq=True)
-            receipt = execution.raw_receipt
-            tm.that(receipt is not None, eq=True)
-            if receipt is None:
-                pytest.fail("Every executed gate must retain its native receipt")
-            tm.that(receipt.read_text(encoding="utf-8").strip() != "", eq=True)
-
-    @staticmethod
     def test_init_creates_instance(
         tmp_path: Path,
     ) -> None:

@@ -12,10 +12,9 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from flext_infra import c, m, r, t, u
+from flext_infra import FlextInfraRuffFormatGate, c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import _DeadScaffold
 from flext_infra.codemod._batch_orphan_import import _OrphanImport
-from flext_infra import FlextInfraRuffFormatGate
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:

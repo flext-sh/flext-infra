@@ -14,9 +14,9 @@ from flext_cli import u
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDocsScopePathsMixin,
     FlextInfraUtilitiesPyproject,
 )
-from flext_infra._utilities import FlextInfraUtilitiesDocsScopePathsMixin
 
 
 class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):

@@ -8,9 +8,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra import FlextInfraExtraPathsManager
-from flext_infra import FlextInfraEnsurePyrightConfigPhase
+from flext_infra import (
+    FlextInfraEnsurePyrightConfigPhase,
+    FlextInfraExtraPathsManager,
+    c,
+    config,
+    m,
+    r,
+    t,
+    u,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

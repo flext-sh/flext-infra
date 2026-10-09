@@ -11,8 +11,10 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
-from flext_infra.codegen import FlextInfraCodegenPipelineStagesMixin
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenPipelineStagesMixin,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable

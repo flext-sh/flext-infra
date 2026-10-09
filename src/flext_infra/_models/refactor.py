@@ -16,9 +16,11 @@ from typing import TYPE_CHECKING, Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models import FlextInfraModelsRefactorGrep
-from flext_infra._models import FlextInfraModelsNamespaceEnforcer
+from flext_infra._models import (
+    FlextInfraModelsMixins,
+    FlextInfraModelsNamespaceEnforcer,
+    FlextInfraModelsRefactorGrep,
+)
 
 if TYPE_CHECKING:
     from flext_infra._models import FlextInfraModelsScan
@@ -387,7 +389,8 @@ class FlextInfraModelsRefactor(
         facade_dependencies: Annotated[
             frozenset[str],
             m.Field(
-                description="Facade aliases whose runtime providers depend on this module",
+                description="Facade aliases whose runtime providers depend on this "
+                "module",
             ),
         ] = frozenset()
         family_letter: Annotated[

@@ -13,11 +13,11 @@ from flext_infra import c, config, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsAuditDetectorsMixin,
+    FlextInfraUtilitiesDocsCommandContractMixin,
     FlextInfraUtilitiesDocsGithubLinks,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities import FlextInfraUtilitiesDocsAuditDetectorsMixin
-from flext_infra._utilities import FlextInfraUtilitiesDocsCommandContractMixin
 
 
 class FlextInfraUtilitiesDocsAudit(

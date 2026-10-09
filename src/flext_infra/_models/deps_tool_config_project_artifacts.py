@@ -12,8 +12,10 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models import FlextInfraModelsDepsToolConfigProjectGitignore
-from flext_infra._models import FlextInfraModelsDepsToolConfigProjectMise
+from flext_infra._models import (
+    FlextInfraModelsDepsToolConfigProjectGitignore,
+    FlextInfraModelsDepsToolConfigProjectMise,
+)
 
 
 class FlextInfraModelsDepsToolConfigProjectArtifacts(

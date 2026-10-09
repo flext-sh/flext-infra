@@ -12,8 +12,8 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._codegen import FlextInfraModelsCodegenScaffoldModels
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._codegen import FlextInfraModelsCodegenScaffoldModels
 
 
 class FlextInfraModelsCodegenFixModels:

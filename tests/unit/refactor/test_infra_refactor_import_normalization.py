@@ -59,8 +59,10 @@ class TestsFlextInfraRefactorImportNormalization:
                 (
                     sys.executable,
                     "-c",
-                    "from demo_pkg import u; "
-                    "assert u.ADAPTER.validate_python('native-value') == 'native-value'",
+                    (
+                        "from demo_pkg import u\nassert u.ADAPTER.validate_python('x') == "
+                        "'x'"
+                    ),
                 ),
                 cwd=project,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
@@ -101,8 +103,10 @@ class TestsFlextInfraRefactorImportNormalization:
                 (
                     sys.executable,
                     "-c",
-                    f"from demo_pkg.{directory}.provider_boundary import ADAPTER; "
-                    "assert ADAPTER.validate_python('native-value') == 'native-value'",
+                    (
+                        f"from demo_pkg.{directory}.provider_boundary import ADAPTER; "
+                        "assert ADAPTER.validate_python('native-value') == 'native-value'"
+                    ),
                 ),
                 cwd=project,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),

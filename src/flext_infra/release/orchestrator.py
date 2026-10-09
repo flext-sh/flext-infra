@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra import FlextInfraCodegenConform
+from flext_infra import FlextInfraCodegenConform, c, m, p, r, t, u
 from flext_infra.release import FlextInfraReleasePlanMixin
 
 

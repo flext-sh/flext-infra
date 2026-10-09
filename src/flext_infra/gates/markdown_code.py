@@ -22,10 +22,14 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
-from flext_infra import FlextInfraGate
-from flext_infra import FlextInfraMarkdownCodeSources
-from flext_infra import FlextInfraMarkdownGateBase
+from flext_infra import (
+    FlextInfraGate,
+    FlextInfraMarkdownCodeSources,
+    FlextInfraMarkdownGateBase,
+    c,
+    m,
+    u,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -432,7 +436,14 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             return self._skip_result(project_dir, started)
         return self._build_gate_execution(
             project_dir,
-            verdict=passed,
+            verdict=passed and not issues,
+            outcome=(
+                c.Infra.ToolOutcome.ERROR
+                if not passed
+                else c.Infra.ToolOutcome.FINDINGS
+                if issues
+                else c.Infra.ToolOutcome.CLEAN
+            ),
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
             started=started,

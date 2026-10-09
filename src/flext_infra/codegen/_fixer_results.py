@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import m, u
-from flext_infra import FlextInfraNamespaceValidator
+from flext_infra import FlextInfraNamespaceValidator, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

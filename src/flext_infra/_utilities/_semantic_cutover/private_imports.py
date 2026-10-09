@@ -18,8 +18,6 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
-)
-from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
 )
 

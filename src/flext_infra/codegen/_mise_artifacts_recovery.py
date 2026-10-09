@@ -11,11 +11,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
-from flext_infra.codegen import FlextInfraMiseArtifactsJournal as journal_io
-from flext_infra.codegen import FlextInfraMiseArtifactsProcess as process
-from flext_infra.codegen import FlextInfraMiseArtifactsState as state
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification as verify
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles as files,
+    FlextInfraMiseArtifactsJournal as journal_io,
+    FlextInfraMiseArtifactsProcess as process,
+    FlextInfraMiseArtifactsState as state,
+    FlextInfraMiseArtifactsVerification as verify,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -12,10 +12,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, r, t
-from flext_infra._utilities import FlextInfraUtilitiesNamespaceConfig
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
-from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities import (
+    FlextInfraUtilitiesNamespaceConfig,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeAnalysis,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

@@ -37,7 +37,7 @@ class TestsFlextInfraLintRecipes:
         code: str,
     ) -> None:
         """Reject a whole-module recipe instead of silently returning its input."""
-        with pytest.raises(ValueError) as failure:
+        with pytest.raises(ValueError, match=code) as failure:
             TestsFlextInfraLintRecipes._apply(
                 "import os\n",
                 (code, 1, "A gate-owned repair is required"),

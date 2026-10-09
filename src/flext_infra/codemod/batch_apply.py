@@ -10,12 +10,18 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, r, t, u
-from flext_infra import FlextInfraServiceBase
-from flext_infra import FlextInfraModGateEngine
-from flext_infra import FlextInfraModReplacements
-from flext_infra import FlextInfraCodemodSemanticApply
-from flext_infra import FlextInfraModTextGateEngine
+from flext_infra import (
+    FlextInfraCodemodSemanticApply,
+    FlextInfraModGateEngine,
+    FlextInfraModReplacements,
+    FlextInfraModTextGateEngine,
+    FlextInfraServiceBase,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):

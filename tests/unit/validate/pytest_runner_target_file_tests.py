@@ -51,10 +51,9 @@ class TestsFlextInfraPytestTargetFile:
             msg=generated.stdout + generated.stderr,
         )
         make = config.Infra.codegen.make
-        cache = make.testmon_cache
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
         filename = config.Infra.tooling.tools.pytest.python_files[0].replace("*", probe)
-        relative = Path(cache.target_directory) / filename
+        relative = Path(make.testmon_cache.target_directory) / filename
         proof = root / f"{probe}.log"
         source, expected = TestsFlextInfraPytestTargetFile._probe_source(
             proof,
@@ -68,7 +67,7 @@ class TestsFlextInfraPytestTargetFile:
             "def test_unrelated() -> None:\n    assert False\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        reports = root / cache.reports_directory
+        reports = root / make.testmon_cache.reports_directory
         before = set(reports.glob("*/run-context.json"))
         process = tm.ok(
             u.Tests.run_isolated_make(
@@ -82,7 +81,9 @@ class TestsFlextInfraPytestTargetFile:
             eq=bool(expected) and not failure,
             msg=process.stdout + process.stderr,
         )
-        observed = proof.read_text().splitlines() if proof.exists() else []
+        observed: t.StrSequence = (
+            proof.read_text().splitlines() if proof.exists() else []
+        )
         tm.that(set(observed) <= set(expected), eq=True)
         if expected and not failure:
             tm.that(set(observed), eq=set(expected))

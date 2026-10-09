@@ -11,8 +11,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, t, u
-from flext_infra import FlextInfraGate
+from flext_infra import FlextInfraGate, c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p

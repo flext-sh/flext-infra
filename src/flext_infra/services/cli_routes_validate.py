@@ -9,21 +9,24 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m
-from flext_infra import infra
-from flext_infra import FlextInfraDocAuditor
-from flext_infra import FlextInfraDocBuilder
-from flext_infra import FlextInfraDocCollector
-from flext_infra import FlextInfraDocFixer
-from flext_infra import FlextInfraDocFormatter
-from flext_infra import FlextInfraDocGenerator
-from flext_infra import FlextInfraDocServer
-from flext_infra import FlextInfraDocValidator
-from flext_infra import FlextInfraCleanService
-from flext_infra import FlextInfraPythonVersionEnforcer
-from flext_infra import FlextInfraSonarcloudSettingsSync
-from flext_infra import FlextInfraSonarcloudIssues
-from flext_infra import FlextInfraValidationCommandRoutes
+from flext_infra import (
+    FlextInfraCleanService,
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocCollector,
+    FlextInfraDocFixer,
+    FlextInfraDocFormatter,
+    FlextInfraDocGenerator,
+    FlextInfraDocServer,
+    FlextInfraDocValidator,
+    FlextInfraPythonVersionEnforcer,
+    FlextInfraSonarcloudIssues,
+    FlextInfraSonarcloudSettingsSync,
+    FlextInfraValidationCommandRoutes,
+    c,
+    infra,
+    m,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t

@@ -8,16 +8,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra import FlextInfraExtraPathsManager
-from flext_infra import FlextInfraConsolidateGroupsPhase
-from flext_infra import FlextInfraEnsurePackagingPhase
-from flext_infra import FlextInfraEnsurePyreflyConfigPhase
-from flext_infra import FlextInfraEnsurePyrightConfigPhase
-from flext_infra import FlextInfraEnsureRuffConfigPhase
-from flext_infra import FlextInfraInjectCommentsPhase
-from flext_infra import FlextInfraToolTablesPhase
-from flext_infra import FlextInfraProjectClassifier
+from flext_infra import (
+    FlextInfraConsolidateGroupsPhase,
+    FlextInfraEnsurePackagingPhase,
+    FlextInfraEnsurePyreflyConfigPhase,
+    FlextInfraEnsurePyrightConfigPhase,
+    FlextInfraEnsureRuffConfigPhase,
+    FlextInfraExtraPathsManager,
+    FlextInfraInjectCommentsPhase,
+    FlextInfraProjectClassifier,
+    FlextInfraToolTablesPhase,
+    c,
+    config,
+    m,
+    r,
+    t,
+    u,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

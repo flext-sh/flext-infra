@@ -8,14 +8,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+    FlextInfraRuntimeDevDependencyDetector,
+    c,
+    m,
+    t,
+    u,
+)
 from flext_infra.codegen import FlextInfraCodegenCensus
-from flext_infra import FlextInfraCodegenConform
-from flext_infra import FlextInfraCodegenFixer
-from flext_infra import FlextInfraCodegenLazyInit
-from flext_infra import FlextInfraCodegenPyTyped
-from flext_infra import FlextInfraCodegenScaffolder
-from flext_infra import FlextInfraRuntimeDevDependencyDetector
 
 if TYPE_CHECKING:
     from collections.abc import Callable

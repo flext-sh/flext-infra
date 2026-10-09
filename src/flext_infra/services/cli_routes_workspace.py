@@ -9,19 +9,25 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from flext_infra import c, m, p, t, u
-from flext_infra import infra
-from flext_infra import FlextInfraGitService
-from flext_infra import FlextInfraReleaseOrchestrator
-from flext_infra import FlextInfraCliRouteBase
-from flext_infra import FlextInfraRefactorRoutes
-from flext_infra import FlextInfraWorkspaceDetector
-from flext_infra import FlextInfraWorkspaceEnvironmentMixin
-from flext_infra import FlextInfraWorkspaceEnvironmentProvenance
-from flext_infra import FlextInfraWorkspaceFleetGaps
-from flext_infra import FlextInfraFlextBindingService
-from flext_infra import FlextInfraWorkspaceLifecycle
-from flext_infra import FlextInfraWorkspacePropagation
+from flext_infra import (
+    FlextInfraCliRouteBase,
+    FlextInfraFlextBindingService,
+    FlextInfraGitService,
+    FlextInfraRefactorRoutes,
+    FlextInfraReleaseOrchestrator,
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentMixin,
+    FlextInfraWorkspaceEnvironmentProvenance,
+    FlextInfraWorkspaceFleetGaps,
+    FlextInfraWorkspaceLifecycle,
+    FlextInfraWorkspacePropagation,
+    c,
+    infra,
+    m,
+    p,
+    t,
+    u,
+)
 
 
 class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):

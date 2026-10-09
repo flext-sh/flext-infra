@@ -10,8 +10,10 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor import FlextInfraProjectClassifierDepsMixin
-from flext_infra.refactor import FlextInfraProjectClassifierFamilyMixin
+from flext_infra.refactor import (
+    FlextInfraProjectClassifierDepsMixin,
+    FlextInfraProjectClassifierFamilyMixin,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

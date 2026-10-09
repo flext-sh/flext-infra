@@ -10,8 +10,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import r
-from flext_infra import c, p, t
+from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGit
 
 

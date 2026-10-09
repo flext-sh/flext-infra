@@ -19,10 +19,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra import FlextInfraProjectSelectionServiceBase
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    FlextInfraWorkspaceDetector,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 from flext_infra.deps import FlextInfraExtraPathsSyncMixin
-from flext_infra import FlextInfraWorkspaceDetector
 
 
 class FlextInfraExtraPathsManager(

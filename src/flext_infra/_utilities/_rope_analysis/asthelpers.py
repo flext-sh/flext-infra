@@ -11,8 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar, TypeGuard
 
-from flext_infra import m, p, t
-from flext_infra import settings
+from flext_infra import m, p, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,

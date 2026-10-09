@@ -10,8 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
-from flext_infra import FlextInfraCodegenLazyInit
+from flext_infra import FlextInfraCodegenLazyInit, m, u
 from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 
 if TYPE_CHECKING:

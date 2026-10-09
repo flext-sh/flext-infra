@@ -12,8 +12,7 @@ import importlib.util as importlib_util
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 
 class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):

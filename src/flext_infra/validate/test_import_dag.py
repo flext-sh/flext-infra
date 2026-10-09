@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, r, t, u
-from flext_infra import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p

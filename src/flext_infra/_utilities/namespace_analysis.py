@@ -11,8 +11,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, t
-from flext_infra._utilities import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities import FlextInfraUtilitiesRefactorNamespaceCommon
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRefactorNamespaceCommon,
+)
 
 
 class FlextInfraUtilitiesRefactorNamespaceFlext(

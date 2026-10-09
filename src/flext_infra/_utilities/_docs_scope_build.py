@@ -12,10 +12,10 @@ from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesDocsScopeSelectionMixin,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesWorkspaceManifest,
 )
-from flext_infra._utilities import FlextInfraUtilitiesDocsScopeSelectionMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

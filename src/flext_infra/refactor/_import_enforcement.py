@@ -10,8 +10,10 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor import FlextInfraImportNormalizationPlacementMixin
-from flext_infra.refactor import FlextInfraImportNormalizationRoutesMixin
+from flext_infra.refactor import (
+    FlextInfraImportNormalizationPlacementMixin,
+    FlextInfraImportNormalizationRoutesMixin,
+)
 
 
 class FlextInfraImportNormalization(

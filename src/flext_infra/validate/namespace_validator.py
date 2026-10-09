@@ -13,9 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
-from flext_infra import m, p, r, t, u
-from flext_infra import s
-from flext_infra import FlextInfraModGateEngine
+from flext_infra import FlextInfraModGateEngine, m, p, r, s, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path

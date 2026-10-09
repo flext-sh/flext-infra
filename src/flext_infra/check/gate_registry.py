@@ -10,26 +10,30 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, t
-from flext_infra import FlextInfraBanditGate
+from flext_infra import (
+    FlextInfraBanditGate,
+    FlextInfraConflictMarkersGate,
+    FlextInfraDirenvGate,
+    FlextInfraDuplicationGate,
+    FlextInfraFreshImportGate,
+    FlextInfraIndexDeclarationsGate,
+    FlextInfraLayoutGate,
+    FlextInfraLocCapGate,
+    FlextInfraMarkdownCodeGate,
+    FlextInfraMarkdownFormatGate,
+    FlextInfraMarkdownGate,
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
+    FlextInfraRuntimeCensusGate,
+    FlextInfraSmellsGate,
+    c,
+    p,
+    t,
+)
 from flext_infra.gates.codemod import FlextInfraCodemodGate
-from flext_infra import FlextInfraConflictMarkersGate
-from flext_infra import FlextInfraDirenvGate
-from flext_infra import FlextInfraDuplicationGate
-from flext_infra import FlextInfraFreshImportGate
-from flext_infra import FlextInfraIndexDeclarationsGate
-from flext_infra import FlextInfraLayoutGate
-from flext_infra import FlextInfraLocCapGate
-from flext_infra import FlextInfraMarkdownGate
-from flext_infra import FlextInfraMarkdownCodeGate
-from flext_infra import FlextInfraMarkdownFormatGate
-from flext_infra import FlextInfraMypyGate
-from flext_infra import FlextInfraPyreflyGate
-from flext_infra import FlextInfraPyrightGate
-from flext_infra import FlextInfraRuffFormatGate
-from flext_infra import FlextInfraRuffLintGate
-from flext_infra import FlextInfraRuntimeCensusGate
-from flext_infra import FlextInfraSmellsGate
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraGate

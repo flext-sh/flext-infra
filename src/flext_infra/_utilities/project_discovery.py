@@ -17,9 +17,9 @@ from flext_cli import u
 from flext_infra import c, config, m
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     FlextInfraUtilitiesWorkspaceManifest,
 )
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 
 if TYPE_CHECKING:
     from flext_infra import t

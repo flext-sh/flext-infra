@@ -15,9 +15,7 @@ from abc import ABC
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import e, r
-from flext_infra import c, m
-from flext_infra import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, e, m, r
 
 if TYPE_CHECKING:
     from collections.abc import Callable

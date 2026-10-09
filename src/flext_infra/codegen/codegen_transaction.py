@@ -12,11 +12,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t, u
-from flext_infra.codegen import FlextInfraCodegenTransactionGeneration
-from flext_infra.codegen import FlextInfraCodegenTransactionPhases
-from flext_infra.codegen import FlextInfraMiseArtifactsJournal as journal_io
-from flext_infra.codegen import FlextInfraMiseArtifactsState as state
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification as verify
+from flext_infra.codegen import (
+    FlextInfraCodegenTransactionGeneration,
+    FlextInfraCodegenTransactionPhases,
+    FlextInfraMiseArtifactsJournal as journal_io,
+    FlextInfraMiseArtifactsState as state,
+    FlextInfraMiseArtifactsVerification as verify,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p

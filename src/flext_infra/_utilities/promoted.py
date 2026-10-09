@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedCommands
-from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedExecution
-from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedRendering
+from flext_infra._utilities._promoted import (
+    FlextInfraUtilitiesPromotedCommands,
+    FlextInfraUtilitiesPromotedExecution,
+    FlextInfraUtilitiesPromotedRendering,
+)
 
 
 class FlextInfraUtilitiesPromoted(

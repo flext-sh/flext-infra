@@ -10,9 +10,11 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import m, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeSourceBasesAliases
-from flext_infra._utilities import FlextInfraUtilitiesRopeSourceBasesInventory
-from flext_infra._utilities import FlextInfraUtilitiesRopeSourceBasesRuntime
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeSourceBasesInventory,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
 
 
 class FlextInfraUtilitiesRopeSourceBases:
