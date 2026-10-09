@@ -315,17 +315,6 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = True
-        mise_locked: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Rendered as [settings] locked, [tool_config] locked, "
-                    "and bootstrap MISE_LOCKED. "
-                    "Keep true so setup installs only what mise.lock pins. "
-                    "Override toolchain.mise_locked."
-                ),
-            ),
-        ] = True
         mise_provenance_api_failures_fatal: Annotated[
             bool,
             m.Field(

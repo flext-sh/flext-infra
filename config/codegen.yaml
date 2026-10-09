@@ -119,6 +119,13 @@ Infra:
       # declares a tool whose upstream release metadata publishes no checksum
       # (mise.lock then carries the URL only); every other tool's current
       # platform lock section must carry one.
+      # Base toolchain: only what this generator's own verbs run (python, the
+      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
+      # the pyright wrapper, qlty, jscpd, waza). A project that needs more
+      # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
+      # in its own config/codegen-org.yaml under Infra.codegen.toolchain.tools;
+      # the config loader concatenates them onto this base. The library never
+      # lists its consumers' tools (DI).
       tools:
       - name: uv
         version: latest
@@ -126,24 +133,6 @@ Infra:
           binary: uv
           arguments: [ --version ]
           pattern: "^uv {version} "
-      - name: kubectl
-        version: latest
-        version_probe:
-          binary: kubectl
-          arguments: [ version, --client ]
-          pattern: "^Client Version: v{version}$"
-      - name: helm
-        version: latest
-        version_probe:
-          binary: helm
-          arguments: [ version, --short ]
-          pattern: "^v{version}\\+"
-      - name: kind
-        version: latest
-        version_probe:
-          binary: kind
-          arguments: [ version ]
-          pattern: "^kind v{version} "
       - name: direnv
         version: latest
         version_probe:
@@ -182,12 +171,6 @@ Infra:
           binary: scc
           arguments: [ --version ]
           pattern: "^scc version {version}$"
-      - name: kubeconform
-        version: latest
-        version_probe:
-          binary: kubeconform
-          arguments: [ -v ]
-          pattern: "^v{version}$"
       # pyright's PyPI wrapper runs node from PATH.
       - name: node
         version: latest
@@ -195,12 +178,6 @@ Infra:
           binary: node
           arguments: [ --version ]
           pattern: "^v{version}$"
-      - name: go
-        version: latest
-        version_probe:
-          binary: go
-          arguments: [ version ]
-          pattern: "^go version go{version} "
       # Make, curl and Git remain system-owned. Recursive Make keeps the
       # physical executable that invoked the generated lifecycle.
       - name: qlty
@@ -242,13 +219,11 @@ Infra:
       # compiling from source selected releases ahead of their published
       # builds and stalled the fleet bootstrap (operator 2026-10-01).
       python_compile: false
-      # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
-      # true: the committed lock written by `make upg` pins every tool and setup
-      # installs frozen from it. Native mise reads its own lock; the release is
-      # pinned by the self-managed [tools] entry below, so no older ambient
-      # release can silently parse a newer lockfile format.
+      # Projection: .mise.toml [settings] lockfile. Mise uses the committed lock
+      # written by `make upg` wherever it pins a tool; no strict locked mode, so
+      # a stale or incomplete lock never blocks install, use, setup or a verb
+      # (operator-ruling-2026-10-09-setup-resilient).
       mise_lockfile: true
-      mise_locked: true
       # Projection: .mise.toml [settings] lockfile_platforms. The platforms the
       # CI matrix runs on (ubuntu, macos, windows runners, x64 and arm64);
       # `make upg` resolves these plus the current host, which mise always adds.
