@@ -394,7 +394,9 @@ class FlextInfraWorkspaceChecker(
                     for target in targets
                 ),
                 results=tuple(outcome.results),
-                selected_files=(),
+                # A file-scoped run publishes its selection, so no consumer
+                # reads its counts as whole-project quality.
+                selected_files=tuple(effective_ctx.selected_files),
             ),
         )
 
