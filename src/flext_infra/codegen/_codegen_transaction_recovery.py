@@ -40,14 +40,18 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
 
-    def participant_policy(self) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+    def participant_policy(
+        self,
+        *,
+        initial_workspace: m.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
         """Snapshot the canonical physical topology without creating state.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
         """
         result_type = r[m.Infra.CodegenParticipantPolicy]
-        layout = self._planner.layout()
+        layout = self._planner.layout(initial_workspace=initial_workspace)
         if layout.failure:
             return result_type.from_failure(layout)
         roots: list[m.Cli.AtomicDirectoryChainPlan] = []

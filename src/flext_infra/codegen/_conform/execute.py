@@ -550,7 +550,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "ports; run it through FlextInfra.codegen_conform",
             )
         mode = c.Infra.CodegenConformMode(request.mode)
-        policy = ports.participant_policy(request.root)
+        policy = ports.participant_policy(
+            request.root,
+            initial_workspace=self.initial_workspace,
+        )
         if policy.failure:
             return r[m.Infra.CodegenResult].from_failure(policy)
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)

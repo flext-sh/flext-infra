@@ -832,6 +832,42 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             eq=f"Unsupported class binding mutation in mutating_provider: {mutation}",
         )
 
+    def test_class_local_table_subscript_store_is_not_a_class_rebinding(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """A subscript store into a class-local table binds no class.
+
+        CPython's ``http.server.BaseHTTPRequestHandler`` builds
+        ``_control_char_table = str.maketrans(...)`` and then writes
+        ``_control_char_table[ord('\\')] = r'\\'`` in the class body; the
+        inventory accepts it and keeps resolving the class lineage.
+        """
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                installed_dependency_path / "table_provider.py",
+                self._root_import()
+                + "class Handler(RuntimeRoot):\n"
+                "    _control_char_table = str.maketrans(\n"
+                "        {c: fr'\\x{c:02x}' for c in range(32)})\n"
+                "    _control_char_table[ord('\\\\')] = r'\\\\'\n",
+            ),
+        )
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    tmp_path / "src" / "table_consumer" / "models.py": (
+                        "from table_provider import Handler\n"
+                        "class Consumer(Handler): pass\n"
+                    ),
+                },
+                self._roots(),
+            ),
+            eq=tuple(sorted({*self._roots(), "table_provider.Handler"})),
+        )
+
     def test_inconsistent_mro_fails_visibly(self, tmp_path: Path) -> None:
         source = (
             "class Left: pass\nclass Right: pass\n"
