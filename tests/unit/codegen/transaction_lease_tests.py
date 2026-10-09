@@ -28,23 +28,28 @@ class TestsFlextInfraTransactionLease:
     """Keep live journal recovery behind the shared physical scope lease."""
 
     @staticmethod
-    @pytest.mark.parametrize("boundary", ["service", "cli"])
     def test_native_acquisition_denial_escapes_without_waiting(
         tmp_path: Path,
-        boundary: str,
     ) -> None:
         """A Python audit policy denial is not kernel lock contention.
 
-        The child installs a real audit hook instead of replacing flock.
-        The public service and CLI preserve the exception and its traceback;
-        the lease can then acquire the unchanged physical lock file.
+        The child installs a real audit hook instead of replacing flock. The
+        public lease boundary preserves the exception and its traceback — the
+        EPERM is outside the {EACCES, EAGAIN, EWOULDBLOCK} wait set, so the
+        acquisition escapes instead of entering the polite wait — and the
+        lease can then acquire the unchanged physical lock file.
+
+        Why the public conform pipeline is not the vehicle anymore: the facade
+        boundary returns a ``FlextResult`` (it never raises) and a bare
+        repository fails its Beads precondition before any lease is taken, so
+        the denial could never reach the lock there. The lease boundary is the
+        surface this contract owns.
         """
         root = u.Tests.git_repository(tmp_path)
         script = (
             "import errno, sys\n"
             "from pathlib import Path\n"
-            "from flext_infra import infra, m, u\n"
-            "from flext_infra.cli import main\n"
+            "from flext_infra import m, u\n"
             "from flext_infra.codegen import FlextInfraMiseWorkspacePlanner\n"
             "root = Path(sys.argv[1])\n"
             "identity = u.Infra.git_identity("
@@ -57,11 +62,8 @@ class TestsFlextInfraTransactionLease:
             "        raise original\n"
             "sys.addaudithook(policy)\n"
             "try:\n"
-            "    if sys.argv[2] == 'service':\n"
-            "        infra.codegen_conform(m.Infra.CodegenConformRequest(root=root))\n"
-            "    else:\n"
-            "        main(['codegen', 'conform', '--root', str(root), "
-            "'--scope', 'self', '--mode', 'apply'])\n"
+            "    with u.Infra.codegen_transaction_lease(journal):\n"
+            "        pass\n"
             "except OSError as failure:\n"
             "    assert failure is original\n"
             "    assert failure.errno == errno.EPERM\n"
@@ -80,7 +82,7 @@ class TestsFlextInfraTransactionLease:
         )
         outcome = tm.ok(
             u.Cli.run_raw(
-                [sys.executable, "-c", script, str(root), boundary],
+                [sys.executable, "-c", script, str(root)],
                 timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
