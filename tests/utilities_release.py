@@ -12,9 +12,8 @@ from flext_infra import config, main, u
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
+from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 
 class TestsFlextInfraUtilitiesReleaseMixin:

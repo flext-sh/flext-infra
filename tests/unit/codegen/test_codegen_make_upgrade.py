@@ -120,6 +120,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 continued = line.endswith("\\")
                 continue
             continued = False
+            # Make conditionals (ifeq/ifneq/ifdef/else/endif) sit inside a
+            # recipe without ending it.
+            if re.match(r"^(?:ifeq|ifneq|ifdef|ifndef|else|endif)\b", line):
+                continue
             header = re.match(r"^([A-Za-z0-9_.$()%-]+)\s*:(?![=:])", line)
             current = header.group(1) if header else None
         return targets
@@ -132,9 +136,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
         The generated Makefile confines every uv upgrade to the `upg`
         lifecycle and every `mise lock --bump` to that lifecycle or its shared
-        bootstrap gated by a switch that only `upg` sets; `setup` syncs
-        `--locked`, and the generated `.mise.toml` makes mise install exactly
-        what the lock pins.
+        bootstrap gated by a switch that only `upg` sets. `setup` installs
+        what the committed locks pin (`--frozen`, `install --locked`) and
+        never stops on a stale lock; `audit` holds the lock verdict.
         """
         _profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
@@ -170,26 +174,42 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 'relock "$(PROJECT_ROOT)"',
             ],
         )
-        # Every `mise install` names exactly the declared toolchain keys: a
-        # bare install would also provision the operator's global registry.
+        # Every `mise install` names only declared toolchain keys: a bare
+        # install would also provision the operator's global registry. Setup
+        # installs what the lock pins `--locked` and the rest unlocked, so an
+        # incomplete or stale lock never stops it
+        # (operator-ruling-2026-10-09-setup-resilient).
         declared = " ".join(f'"{key}"' for key in toolchain.mise_install_keys)
+        tm.that(makefile, has=f"for mise_tool in {declared};")
         installs = re.findall(r"install --yes(.*?)(?:; \\|$)", makefile, re.MULTILINE)
-        tm.that(len(installs), eq=2)
-        tm.that({install.strip() for install in installs}, eq={declared})
-        # Setup proves the provisioned toolchain before post-setup runs; the
-        # proof resolves uv through the mise-locked installation (#1887) so it
-        # pins the mise.lock release, never a uv found earlier on PATH.
-        activated = makefile.split("_setup_activated:\n", 1)[1].split("\n\n", 1)[0]
-        tm.that(activated.splitlines()[0], has="codegen mise-proof")
         tm.that(
-            activated.splitlines()[0],
-            has='--uv-executable "$$(mise which uv)"',
+            {install.strip() for install in installs},
+            eq={declared, "$$mise_without_lock"},
         )
+        tm.that(makefile, has="install --locked --yes $$mise_from_lock")
         tm.that(
             makefile,
-            has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] '
-            '&& [ "$$mise_lock_resolved" = "0" ]; then',
+            has='MISE_LOCKFILE=false "$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" '
+            "install --yes $$mise_without_lock",
         )
+        # Setup holds no lock verdict: the toolchain proof runs in `audit`,
+        # resolving uv through the mise installation (#1887), never PATH.
+        activated = makefile.split("_setup_activated:\n", 1)[1].split("\n\n", 1)[0]
+        tm.that(activated, lacks="mise-proof")
+        audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]
+        tm.that(
+            audit,
+            has=[
+                (
+                    'codegen mise-proof --repository-root "$(PROJECT_ROOT)" '
+                    '--uv-executable "$$(mise which uv)"'
+                ),
+                '$(UV) lock --check --project "$(UV_PROJECT)"',
+                "deps verify-locks",
+                "make upg",
+            ],
+        )
+        tm.that(makefile, has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then')
         resolve_assignments = re.findall(
             r"^(?:([\w-]+): )?TOOL_BOOTSTRAP_RESOLVE :=[ ]?(.*)$",
             makefile,
@@ -200,34 +220,39 @@ class TestsFlextInfraCodegenMakeUpgrade:
         sync_flags = re.search(r"^UV_SYNC_FLAGS := (.*)$", makefile, re.MULTILINE)
         assert sync_flags is not None
         tm.that(sync_flags.group(1), lacks="--upgrade")
-        # Lock law (operator 2026-10-03): setup never writes uv.lock. Its only
-        # uv lock call is the read-only check; a matching lock syncs --locked,
-        # a drifted lock is reported and synced --frozen, and nothing deletes
-        # or re-derives the committed lock.
+        # Setup never resolves, checks or writes uv.lock: a readable lock
+        # installs --frozen, an unreadable one provisions straight from the
+        # manifest, and nothing deletes or re-derives the committed lock.
         setup_recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
             "\n\n",
             1,
         )[0]
+        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=[])
+        tm.that(setup_recipe, has=["uv_lock_mode=--frozen", "$$uv_lock_mode"])
         tm.that(
-            re.findall(r"\$\(UV\) lock (--\S+)", setup_recipe),
-            eq=["--check"],
+            setup_recipe,
+            has='--requirements "$(UV_PROJECT)/pyproject.toml" --all-extras',
         )
-        tm.that(setup_recipe, has=["uv_lock_mode=--locked", "uv_lock_mode=--frozen"])
-        tm.that(setup_recipe, has="$$uv_lock_mode")
-        tm.that(setup_recipe, lacks=['rm -f "$(UV_PROJECT)/uv.lock"', ">/dev/null"])
-        tm.that(setup_recipe, has="make upg")
+        tm.that(
+            setup_recipe,
+            lacks=[
+                "uv_lock_mode=--locked",
+                'rm -f "$(UV_PROJECT)/uv.lock"',
+                ">/dev/null",
+                "make upg",
+            ],
+        )
 
         mise_toml = u.Cli.toml_mapping_from_text(
             (project_root / c.Infra.MISE_TOML_FILENAME).read_text(encoding="utf-8"),
         )
         assert mise_toml is not None
         settings = mise_toml.get("settings")
-        tool_config = mise_toml.get("tool_config")
         assert isinstance(settings, Mapping)
-        assert isinstance(tool_config, Mapping)
         tm.that(settings.get("lockfile"), eq=toolchain.mise_lockfile)
-        tm.that(settings.get("locked"), eq=toolchain.mise_locked)
-        tm.that(tool_config.get("locked"), eq=toolchain.mise_locked)
+        tm.that(settings.get("disable_update_warning"), eq=True)
+        tm.that(dict(settings), lacks="locked")
+        tm.that(dict(mise_toml), lacks="tool_config")
         tm.that(
             settings.get("lockfile_platforms"),
             eq=list(toolchain.mise_lockfile_platforms),
@@ -335,12 +360,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
     ) -> None:
         """One `make upg` converges when the generator moves the Mise self-pin.
 
-        Every stage that resolves a managed tool (deps modernize, the gen
-        producer and activation) authenticates the Mise reader against the
-        lock's self pin. The upgraded generator's `.mise.toml` is therefore
-        rendered, locked (`mise lock --bump`) and installed before any of
-        them, or a consumer generated by an earlier generator, whose lock has
-        no self pin yet, stops before gen can render it (C19).
+        The upgraded generator's `.mise.toml` is rendered, locked
+        (`mise lock --bump`) and installed before any stage that resolves a
+        managed tool (deps modernize, the gen producer and activation), so a
+        consumer generated by an earlier generator, whose lock has no self pin
+        yet, converges in one run (C19). No stage authenticates the Mise
+        reader against the lock: that verdict lives in `audit`.
         """
         _profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
@@ -358,7 +383,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "--what mise-config --scope self --mode apply",
                 "lock --bump",
                 "install --yes",
-                "$(SELF_MAKE) _builtin_require_mise",
                 "deps modernize",
                 "$(SELF_MAKE) _builtin_require_environment",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
@@ -375,9 +399,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(makefile, has="_activated-gen: _builtin_require_environment")
         tm.that(
             makefile,
-            has="_builtin_require_environment: _builtin_require_workspace "
-            "_builtin_require_mise",
+            has="_builtin_require_environment: _builtin_require_workspace\n",
         )
+        tm.that(makefile, lacks="_builtin_require_mise")
 
         # GNU Make itself expands the canned halves: the producer half never
         # re-enters the environment, the activation half does, and the public
@@ -414,37 +438,36 @@ class TestsFlextInfraCodegenMakeUpgrade:
             eq=[*halves["PRODUCE"].split(), *halves["ACTIVATE"].split()],
         )
 
-    def test_ci_setup_refuses_a_drifted_lock(
+    def test_setup_holds_no_lock_verdict_and_audit_owns_it(
         self,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
-        """Law 14: under CI a lock that no longer satisfies its manifests is RED.
+        """Setup provisions and ends green; ``audit`` judges the locks.
 
-        Locally the drift is reported and the committed lock installs
-        ``--frozen``; under the CI contract the same drift exits before any
-        sync, so CI never installs the old pins green.
+        Premise (operator-ruling-2026-10-09-setup-resilient): an invalid or
+        stale lock never aborts installation or execution. No setup stage
+        checks a lock or prints a lock verdict, in any context; ``audit``,
+        which CI runs right after setup, ends RED with the ``make upg`` cure.
         """
         _profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
         )
-        setup_recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
-            "\n\n",
-            1,
-        )[0]
-        drift = setup_recipe.split("lock --check", 1)[1].split(
-            "uv_lock_mode=--frozen",
-            1,
-        )[0]
-        ci = config.Infra.codegen.make.ci
         tm.that(
-            drift,
-            has=[
-                f'if [ "$(strip $({ci.variable}))" = "{ci.value}" ]; then',
-                "ERROR[setup]",
-                "exit 2",
-            ],
+            self._recipe_targets_containing(
+                makefile,
+                r"\$\(UV\) lock --check\b",
+                regex=True,
+            ),
+            eq={"_upg_lifecycle", "_builtin-audit"},
         )
+        tm.that(
+            self._recipe_targets_containing(makefile, "codegen mise-proof"),
+            eq={"_builtin-audit"},
+        )
+        tm.that(makefile, lacks=["_builtin_setup_lock_verdict", "ERROR[setup]"])
+        audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]
+        tm.that(audit, has=["ERROR[audit]", "make upg", "exit 2"])
 
     @pytest.mark.parametrize(
         "generated_make_template",

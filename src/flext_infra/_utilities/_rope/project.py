@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Self, override
 
 from rope.base.project import Project
-from rope.base.resources import Folder
+from rope.base.resources import File, Folder
 
 from flext_infra import t
 
@@ -31,7 +31,7 @@ class FlextInfraRopeProject(Project):
     # whole root and resolves every sys.path entry) because a live project
     # can gain folders while open. A read-only analysis pass cannot, so it
     # freezes them for its duration; outside one, Rope's behaviour stands.
-    _frozen_folders: tuple[list[Folder], list[Folder]] | None = None
+    _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -102,37 +102,38 @@ class FlextInfraRopeProject(Project):
             This project, its folder layout computed once for the pass.
 
         """
-        self._frozen_folders = (
-            super().get_source_folders(),
-            super().get_python_path_folders(),
-        )
+        source_folders: list[File | Folder] = super().get_source_folders()
+        python_path_folders: list[File | Folder] = super().get_python_path_folders()
+        self._frozen_folders = (source_folders, python_path_folders)
         try:
             yield self
         finally:
             self._frozen_folders = None
 
     @override
-    def get_source_folders(self) -> list[Folder]:
+    def get_source_folders(self) -> list[File | Folder]:
         """Return the source folders, frozen during a read-only pass.
 
         Returns:
-            The resulting ``list[Folder]``.
+            The folders Rope's own contract returns.
 
         """
         if self._frozen_folders is None:
-            return super().get_source_folders()
+            folders: list[File | Folder] = super().get_source_folders()
+            return folders
         return list(self._frozen_folders[0])
 
     @override
-    def get_python_path_folders(self) -> list[Folder]:
+    def get_python_path_folders(self) -> list[File | Folder]:
         """Return the Python path folders, frozen during a read-only pass.
 
         Returns:
-            The resulting ``list[Folder]``.
+            The folders Rope's own contract returns.
 
         """
         if self._frozen_folders is None:
-            return super().get_python_path_folders()
+            folders: list[File | Folder] = super().get_python_path_folders()
+            return folders
         return list(self._frozen_folders[1])
 
     @override

@@ -381,9 +381,9 @@ _bootstrap_setup_tools:
 		https://github.com/*/releases/download/*\|sha256:*) ;; \
 		*) mise_pin= ;; \
 	esac; \
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 	if [ -n "$$mise_pin" ]; then \
 		mise_sha256="$${mise_checksum#sha256:}"; \
-		mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 		mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
 		if [ ! -x "$$mise_bootstrap_bin" ]; then \
 			printf 'setup: recovering github:jdx/mise %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
@@ -410,6 +410,7 @@ _bootstrap_setup_tools:
 		mise_bootstrap_bin="$$(command -v mise)"; \
 		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
 	fi; \
+	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
 		if [ "$$mise_lock_usable" = 0 ]; then \
 			rm -f "$$mise_lock"; \
@@ -442,6 +443,8 @@ _bootstrap_setup_tools:
 	printf 'setup: mise %s provisioned\n' "$$mise_receipt"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${PATH}" "CI=$(CI)" $(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)
+# The local structural guard runs before any credential or lock owner.
+_bootstrap_setup_tools: _builtin_require_workspace
 _bootstrap_setup_tools: _builtin_require_upg_lock_owner
 _bootstrap_setup_tools: _builtin_require_network_auth
 
@@ -526,8 +529,6 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 .PHONY: _builtin_require_workspace
 _builtin_require_workspace:
 	@$(REQUIRE_WORKSPACE_ENVIRONMENT)
-
-_bootstrap_setup_tools: _builtin_require_workspace
 
 # Execute the interpreter provisioned by setup without discovering a project
 # workspace or creating a dependency-resolution file during a runtime command.

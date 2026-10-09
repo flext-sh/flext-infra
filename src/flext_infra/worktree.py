@@ -281,29 +281,34 @@ class FlextInfraWorktreeService(s[str]):
             return r[str].fail("worktree add requires --apply")
         if base.startswith("-"):
             return r[str].fail(f"invalid base commitish: {base}")
-        admitted = u.Infra.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=self.repository_root,
-                operation="create",
-                candidate=base,
-            ),
+        return (
+            u.Infra
+            .git_verify_lane(
+                m.Infra.GitLaneVerificationRequest(
+                    repo_root=self.repository_root,
+                    operation="create",
+                    candidate=base,
+                ),
+            )
+            .flat_map(lambda _admitted: self._resolved_base(primary_root, base))
+            .flat_map(
+                lambda base_oid: (
+                    FlextInfraGitLanes
+                    .admit_lane(primary_root, branch, base_oid)
+                    .flat_map(
+                        lambda _admission: self._new_lane_path(primary_root, branch)
+                    )
+                    .flat_map(
+                        lambda lane: self._create_lane(
+                            primary_root,
+                            lane,
+                            branch,
+                            base_oid,
+                        ),
+                    )
+                ),
+            )
         )
-        if admitted.failure:
-            return r[str].from_failure(admitted)
-        base_oid = self._resolved_base(primary_root, base)
-        if base_oid.failure:
-            return r[str].from_failure(base_oid)
-        admission = FlextInfraGitLanes.admit_lane(
-            primary_root,
-            branch,
-            base_oid.value,
-        )
-        if admission.failure:
-            return r[str].from_failure(admission)
-        lane = self._new_lane_path(primary_root, branch)
-        if lane.failure:
-            return r[str].from_failure(lane)
-        return self._create_lane(primary_root, lane.value, branch, base_oid.value)
 
     @staticmethod
     def _resolved_base(primary_root: Path, base: str) -> p.Result[str]:

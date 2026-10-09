@@ -187,6 +187,9 @@ class FlextInfraUtilitiesLintRecipes:
         Returns:
             The resulting ``(sections, summaries, wants notice)`` triple.
 
+        Raises:
+            ValueError: If a whole-module recipe reaches the edit planner.
+
         """
         sections: MutableMapping[
             ast.FunctionDef | ast.AsyncFunctionDef,
@@ -222,6 +225,17 @@ class FlextInfraUtilitiesLintRecipes:
                 case c.Infra.LintFixRecipe.STATIC_METHOD:
                     # Planned per method below, after duplicates collapse.
                     continue
+                case (
+                    c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                    | c.Infra.LintFixRecipe.WRAP_LONG_LINE
+                ):
+                    # The ruff-lint gate applies both as whole-module rewrites
+                    # before planning; reaching the planner breaks that contract.
+                    msg = (
+                        f"{path}: lint finding {issue.code} is a whole-module "
+                        "recipe and never reaches the edit planner"
+                    )
+                    raise ValueError(msg)
         return sections, summaries, wants_notice
 
     @classmethod

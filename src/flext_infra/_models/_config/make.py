@@ -991,9 +991,7 @@ class FlextInfraConfigModelsMake(
                 step.verb for step in self.workflow if "ci" in step.contexts
             )
             if approval != ("setup", "audit", "check", "test", "verify-clean"):
-                msg = (
-                    "CI requires the setup/audit/check/test/verify-clean workflow"
-                )
+                msg = "CI requires the setup/audit/check/test/verify-clean workflow"
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts

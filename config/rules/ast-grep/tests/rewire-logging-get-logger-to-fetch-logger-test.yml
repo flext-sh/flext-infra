@@ -21,6 +21,24 @@ valid:
     from flext_infra import u
 
     logger = gl(__name__)
+  - |
+    import logging
+
+    from flext_infra import u
+
+
+    def capture() -> None:
+        library_logger = logging.getLogger("mkdocs")
+        library_logger.addHandler(logging.NullHandler())
+  - |
+    import logging
+
+    from flext_infra import u
+
+
+    def quiet() -> None:
+        library_logger = logging.getLogger("urllib3")
+        library_logger.setLevel(logging.WARNING)
 invalid:
   - |
     import logging
@@ -34,3 +52,12 @@ invalid:
     from flext_infra import u
 
     logger = getLogger(__name__)
+  - |
+    import logging
+
+    from flext_infra import u
+
+
+    def run() -> None:
+        logger = logging.getLogger(__name__)
+        logger.info("started")

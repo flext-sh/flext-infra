@@ -210,6 +210,45 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
+    def test_mypy_deferral_trace_does_not_poison_the_report(
+        checker_context: m.Infra.GateContext,
+    ) -> None:
+        """Mypy's deferral-trace stdout is trace payload; the report still parses.
+
+        A semantic-analysis internal error makes mypy print a "Deferral trace:"
+        header plus indented lines on stdout before (or instead of) the JSON
+        report. The one-JSON-object-per-line contract treats nothing indented
+        as a report line, so the trace must never reach the JSON validator.
+        """
+        project = checker_context.repository_root
+        plugin = project / "plugin.py"
+        plugin.write_text(
+            "from mypy.plugin import Plugin\n"
+            "def plugin(version: str) -> type[Plugin]:\n"
+            "    print('Deferral trace:')\n"
+            "    print('    "
+            "flext_infra._utilities._pyproject._requirements_provenance:13')\n"
+            "    return Plugin\n",
+            encoding="utf-8",
+        )
+        pyproject = project / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8").replace(
+                "[tool.mypy]\n",
+                '[tool.mypy]\nplugins = ["plugin.py"]\n',
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraMypyGate(project).check(project, checker_context)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(
+            "\n".join(issue.message for issue in result.issues),
+            lacks="not a valid structured report",
+        )
+
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize(
         "gate_class",

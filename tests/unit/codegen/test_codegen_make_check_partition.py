@@ -142,7 +142,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             }
             for row in payload["workflow"]
         ]
-        with pytest.raises(e.PydanticValidationError, match="pre-commit hook runs only"):
+        with pytest.raises(
+            e.PydanticValidationError, match="pre-commit hook runs only"
+        ):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
