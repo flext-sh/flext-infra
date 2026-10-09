@@ -226,7 +226,8 @@ class TestsFlextInfraTypeGates:
             "from mypy.plugin import Plugin\n"
             "def plugin(version: str) -> type[Plugin]:\n"
             "    print('Deferral trace:')\n"
-            "    print('    flext_infra._utilities._pyproject._requirements_provenance:13')\n"
+            "    print('    "
+            "flext_infra._utilities._pyproject._requirements_provenance:13')\n"
             "    return Plugin\n",
             encoding="utf-8",
         )

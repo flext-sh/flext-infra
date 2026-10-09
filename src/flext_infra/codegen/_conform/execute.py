@@ -558,9 +558,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[bool].ok(value=True)
         payload = (
             f"version: {beads.version}\n"
-            f'workspace: {json.dumps(beads.workspace)}\n'
-            f'database: {json.dumps(beads.database)}\n'
-            f'issue_prefix: {json.dumps(beads.issue_prefix)}\n'
+            f"workspace: {json.dumps(beads.workspace)}\n"
+            f"database: {json.dumps(beads.database)}\n"
+            f"issue_prefix: {json.dumps(beads.issue_prefix)}\n"
         )
         written = u.Cli.atomic_write_text_file(destination, payload)
         if written.failure:
