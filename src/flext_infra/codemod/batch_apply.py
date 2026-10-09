@@ -368,11 +368,48 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             if message is not None:
                 return r[t.Cli.ResultValue].fail(message)
+            relocations = self._relocation_verdict(root, rope_workspace, current)
+            if relocations is not None:
+                return r[t.Cli.ResultValue].fail(relocations)
             self.progress.emit(
                 "mod: joint AST, semantic, and text fixed point verified "
                 "with zero actionable findings",
             )
             return r[t.Cli.ResultValue].ok(value=True)
+
+    def _relocation_verdict(
+        self,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        current: m.Infra.ModScanReport,
+    ) -> str | None:
+        """Report each unresolved declaration relocation as its own finding.
+
+        Every other rewrite of the run is already published; an unresolved
+        owner is a finding of that declaration, never a plan crash.
+
+        Returns:
+            The failure message naming every unresolved declaration, or
+            ``None`` when every payload declaration has a resolved owner.
+
+        """
+        findings = FlextInfraCodemodSemanticApply.relocation_findings(
+            root,
+            FlextInfraModGateEngine.authored(current),
+            rope_workspace,
+        )
+        for finding in findings:
+            self.progress.emit(
+                "mod: declaration-relocation finding "
+                f"{finding.file_path}:{finding.declaration} "
+                f"expected owner {finding.expected_owner}: {finding.reason}",
+            )
+        if not findings:
+            return None
+        return (
+            f"mod: {len(findings)} declaration-relocation finding(s) remain for "
+            "owner repair; every other rewrite was applied"
+        )
 
     @staticmethod
     def _import_cycles(root: Path) -> t.SequenceOf[frozenset[str]]:

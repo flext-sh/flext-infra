@@ -15,6 +15,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import infra
+from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from tests import c, u
 
@@ -30,6 +31,8 @@ class TestsFlextInfraDeclarationRelocation:
         base: str = "PayloadBase",
         cycle: bool = False,
         existing_imports: bool = False,
+        stray: bool = False,
+        composed: bool = True,
     ) -> tuple[Path, dict[Path, str]]:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         stem = u.derive_class_stem(root.name)
@@ -63,7 +66,8 @@ class TestsFlextInfraDeclarationRelocation:
             ),
             package / "models.py": (
                 f"from {package.name}._models.payload import {owner}\n"
-                f"class {facade}({owner}):\n    pass\nm = {facade}\n"
+                f"class {facade}{f'({owner})' if composed else ''}:\n"
+                f"    pass\nm = {facade}\n"
                 f"__all__ = ['{facade}', 'm']\n"
             ),
             utilities / "payload.py": (
@@ -72,7 +76,13 @@ class TestsFlextInfraDeclarationRelocation:
                 f"class {source_owner}:\n"
                 f"    class Payload({base}):\n        {body}\n"
                 f"\ndef local():\n    return {source_owner}.Payload()\n"
-                f"\n__all__ = ['{source_owner}']\n"
+                + (
+                    f"class {stem}StrayHolder:\n"
+                    "    class Stray(PayloadBase):\n        value: str = 'stray'\n"
+                    if stray
+                    else ""
+                )
+                + f"\n__all__ = ['{source_owner}']\n"
             ),
             package / "consumer.py": (
                 "from __future__ import annotations\n"
@@ -458,3 +468,81 @@ class TestsFlextInfraDeclarationRelocation:
             )
         for path, source in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_unresolved_source_owner_is_a_finding_not_a_crash(
+        tmp_path: Path,
+    ) -> None:
+        """An unexpected outer owner is reported while resolvable moves apply."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            stray=True,
+        )
+        stem = u.derive_class_stem(root.name)
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+            findings = u.Infra.declaration_relocation_findings(rope, sources)
+        tm.ok(planned)
+        tm.that(len(planned.value), eq=3)
+        tm.that(len(findings), eq=1)
+        tm.that(findings[0].declaration, eq=f"{stem}StrayHolder.Stray")
+        tm.that(findings[0].expected_owner, eq=f"{stem}UtilitiesPayload")
+        tm.that(findings[0].reason, has="unresolved source owner")
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_uncomposed_model_owner_is_a_finding_and_other_rules_apply(
+        tmp_path: Path,
+    ) -> None:
+        """Zero composed model owners report the declaration; mod still rewrites."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            composed=False,
+        )
+        stem = u.derive_class_stem(root.name)
+        origin = next(
+            path
+            for path in sources
+            if path.parent.name
+            == u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        )
+        tm.that(sources[origin], lacks="from __future__ import annotations")
+        preflight = FlextInfraModGateEngine.authored(
+            FlextInfraModGateEngine.scan(root, fix=False).unwrap(),
+        )
+        tm.that(
+            any(
+                finding.rule_id == "require-future-annotations"
+                for finding in preflight.entries
+            ),
+            eq=True,
+        )
+        with infra.rope_workspace(root) as rope:
+            findings = FlextInfraCodemodSemanticApply.relocation_findings(
+                root,
+                preflight,
+                rope,
+            )
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+            tm.ok(planned)
+            tm.that(planned.value, empty=True)
+            applied = FlextInfraCodemodSemanticApply.apply(root, preflight, rope)
+        tm.that(len(findings), eq=1)
+        tm.that(findings[0].file_path, eq=origin.resolve())
+        tm.that(findings[0].declaration, eq=f"{stem}UtilitiesPayload.Payload")
+        tm.that(findings[0].expected_owner, has="one authored model owner")
+        tm.that(findings[0].reason, has="found []")
+        tm.ok(applied)
+        published = origin.read_text(encoding="utf-8")
+        tm.that(published, has="from __future__ import annotations")
+        tm.that(published, has="class Payload(")
