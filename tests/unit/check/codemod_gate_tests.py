@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.cli import main
 from flext_infra.gates.codemod import FlextInfraCodemodGate
-from tests import u
+from tests import c, m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,6 +33,9 @@ class TestsFlextInfraCodemodGate:
         rules = config_path.parent / c.Cli.RULES_DIR_NAME
         rules.mkdir(parents=True)
         (project / "src").mkdir()
+        # A governed repository carries its committed toolchain lock; the
+        # scanner version comes from it, never from a moving selector.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "scanner-contract"\nversion = "1.0.0"\n'
             "dependencies = []\n",
@@ -67,7 +70,7 @@ class TestsFlextInfraCodemodGate:
         policy_findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
-        tm.that(len(policy_findings), eq=1)
+        tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
         finding = policy_findings[0]
         tm.that(finding.file.endswith("src/subject.py"), eq=True)
         tm.that((finding.line, finding.column), eq=(2, 1))
@@ -91,9 +94,93 @@ class TestsFlextInfraCodemodGate:
 
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
 
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
         tm.that(execution.issues, empty=True)
         tm.that(execution.raw_output, has="exit=0")
+
+    @staticmethod
+    def _rule_files(
+        project: Path,
+        rule_id: str,
+        tmp_path: Path,
+    ) -> t.StrSequence:
+        """Project-relative files the bundled rule ``rule_id`` reports.
+
+        Returns:
+            The sorted project-relative files the real scan reported.
+        """
+        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        return sorted(
+            (project / issue.file).resolve().relative_to(project.resolve()).as_posix()
+            for issue in execution.issues
+            if issue.code == rule_id
+        )
+
+    def test_flext_tests_import_is_banned_only_in_the_infra_package(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The project-root scan reports flext_tests only inside flext_infra.
+
+        Premise (operator-ruling-2026-10-08-subprocess-test-imports, item 2):
+        the rule fires when flext-infra scans itself (``src/...`` paths), not
+        only from the workspace root, and never binds another package.
+        """
+        project = self._project(tmp_path)
+        for relative in ("src/flext_infra/leak.py", "src/flext_tests/tier.py"):
+            module = project / relative
+            module.parent.mkdir(parents=True)
+            module.write_text("import flext_tests\n", encoding="utf-8")
+
+        tm.that(
+            self._rule_files(project, "ban-infra-runtime-flext-tests-import", tmp_path),
+            eq=["src/flext_infra/leak.py"],
+        )
+
+    def test_subprocess_is_banned_outside_the_run_owner_scope(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Only the Bandit-authorized owner modules may import subprocess.
+
+        Premise (operator-ruling-2026-10-08-subprocess-test-imports, item 1):
+        the codemod rule and the Bandit authorized exception share one owner
+        scope; every other module runs processes through u.Cli.run.
+        """
+        project = self._project(tmp_path)
+        entry = config.Infra.tooling.tools.bandit.authorized_exceptions[0]
+        owners = tuple(
+            pattern.replace("**/", "").replace("*", "spawn") for pattern in entry.files
+        )
+        consumer = "src/consumer/spawn.py"
+        for relative in (*owners, consumer):
+            module = project / relative
+            module.parent.mkdir(parents=True, exist_ok=True)
+            module.write_text("import subprocess\n", encoding="utf-8")
+
+        tm.that(
+            self._rule_files(project, "ban-subprocess-outside-run-owner", tmp_path),
+            eq=[consumer],
+        )
+
+    def test_generated_source_tree_is_outside_the_scan(self, tmp_path: Path) -> None:
+        """A tracked generated-source module never reaches the policy scan.
+
+        Premise (flext-gknfx): generated trees are tracked, so Git ignore rules
+        no longer hide them from ast-grep; the codegen artifact key does.
+        """
+        names = config.Infra.codegen.generated_sources
+        tm.that(names, empty=False)
+        project = self._project(tmp_path)
+        tree = project / "src" / "pkg" / names[0]
+        tree.mkdir(parents=True)
+        (tree / "wire_pb2.py").write_text("\nsecond(1)\n", encoding="utf-8")
+        (project / "src" / "pkg" / "subject.py").write_text("", encoding="utf-8")
+
+        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+
+        tm.that(execution.result.passed, eq=True, msg=str(execution.issues))
+        tm.that(execution.issues, empty=True)
 
     def test_manifest_external_file_does_not_hide_owned_sibling(
         self,
@@ -148,7 +235,7 @@ class TestsFlextInfraCodemodGate:
         policy_findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
-        tm.that(len(policy_findings), eq=1)
+        tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
         tm.that(policy_findings[0].file.endswith("src/selected.py"), eq=True)
 
     def test_missing_requested_file_cannot_be_deselected(self, tmp_path: Path) -> None:
@@ -191,7 +278,8 @@ class TestsFlextInfraCodemodGate:
             str(reports),
         ])
         tm.that(code, eq=1 if finding else 0)
-        report_path = reports / c.Infra.CHECK_REPORT_SARIF_FILENAME
+        # Each invocation owns one report directory below the base.
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         findings = tm.ok(
             u.Infra.check_report_findings(project, reports_dir=report_path.parent),
         )

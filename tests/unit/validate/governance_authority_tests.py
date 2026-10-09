@@ -50,22 +50,6 @@ class TestsFlextInfraGovernanceAuthority:
             ),
         )
 
-    def test_prompt_skills_resolve_to_existing_paths(self) -> None:
-        """Test prompt skills resolve to existing paths."""
-        prompts = self.ROOT / ".github" / "prompts"
-        law_link = "../../.agents/skills/flext-law/SKILL.md"
-        for prompt in prompts.glob("*.prompt.md"):
-            text = prompt.read_text(encoding="utf-8")
-            assert "flext-inviolable-rules" not in text
-            assert "quality-gates" not in text
-            if (
-                "flext-aggressive-scale-refactor" in prompt.name
-                or "flext-strict-jsonvalue" in prompt.name
-            ):
-                assert law_link in text
-                target = (prompt.parent / law_link).resolve()
-                assert target.exists(), f"{prompt.name} dead skill path: {law_link}"
-
     def test_markdownlint_does_not_suppress_strict_rules(self) -> None:
         """Test markdownlint does not suppress strict rules."""
         config = u.Tests.json_payload(

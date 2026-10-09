@@ -11,11 +11,12 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -132,8 +133,7 @@ class TestsFlextInfraTypeGates:
             "--reports-dir",
             str(reports),
         ])
-        informative = gate in config.Infra.codegen.make.ci.informative_check_gates
-        tm.that(code, eq=0 if informative else 1)
+        tm.that(code, eq=1)
         (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         findings = tm.ok(
             u.Infra.check_report_findings(project, reports_dir=report_path.parent),

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, config, main, u as infra_u
+from flext_infra import FlextInfraPyprojectModernizer, config, main
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -53,8 +53,8 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
         config_path = tmp_path / ".taplo.toml"
         config_path.write_text('include = ["**/*.toml"]\n', encoding="utf-8")
-        formatter = infra_u.Infra.format_toml_source
-        taplo_version = config.Infra.codegen.toolchain.taplo_version
+        formatter = u.Infra.format_toml_source
+        taplo_version = config.Infra.codegen.toolchain.tool_versions["taplo"]
         process_timeout_seconds = (
             config.Infra.tooling.tools.tomlsort.process_timeout_seconds
         )
@@ -97,11 +97,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
         future_root = tmp_path / "future" / "project"
 
         formatted = tm.ok(
-            infra_u.Infra.format_toml_source(
+            u.Infra.format_toml_source(
                 'name="demo"\n',
                 path=future_root / "pyproject.toml",
                 toolchain_root=future_root,
-                taplo_version=config.Infra.codegen.toolchain.taplo_version,
+                taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
                 process_timeout_seconds=(
                     config.Infra.tooling.tools.tomlsort.process_timeout_seconds
                 ),
@@ -137,11 +137,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
             f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
         )
 
-        formatted = infra_u.Infra.format_toml_source(
+        formatted = u.Infra.format_toml_source(
             'name="demo"\n',
             path=tmp_path / "pyproject.toml",
             toolchain_root=tmp_path,
-            taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
             process_timeout_seconds=(
                 config.Infra.tooling.tools.tomlsort.process_timeout_seconds
             ),
@@ -153,11 +153,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
     @staticmethod
     def test_taplo_fails_loud_without_a_committed_lock(tmp_path: Path) -> None:
         """No mise.lock above the workspace means no offline generation."""
-        formatted = infra_u.Infra.format_toml_source(
+        formatted = u.Infra.format_toml_source(
             'name="demo"\n',
             path=tmp_path / "pyproject.toml",
             toolchain_root=tmp_path,
-            taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
             process_timeout_seconds=(
                 config.Infra.tooling.tools.tomlsort.process_timeout_seconds
             ),
@@ -236,7 +236,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         sort_first: t.StrSequence | None,
     ) -> None:
         """Keep project scalars explicit for arbitrary valid top-level orders."""
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         pyproject = tmp_path / c.PYPROJECT_FILENAME
         package_init = tmp_path / "src" / "flext_example" / "__init__.py"
         package_init.parent.mkdir(parents=True)
@@ -328,7 +328,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
     ) -> None:
         """Resolve a configured member through its canonical project name."""
         workspace = tmp_path / "workspace"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         member = workspace / "member-dir"
         member.mkdir(parents=True)
         (workspace / c.PYPROJECT_FILENAME).write_text(
@@ -367,7 +367,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
     ) -> None:
         """Do not require root project metadata for member-only modernization."""
         workspace = tmp_path / "workspace"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         member = workspace / "member"
         member.mkdir(parents=True)
         (workspace / c.PYPROJECT_FILENAME).write_text(
@@ -401,7 +401,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
     ) -> None:
         """Fail loud when one canonical project name selects multiple members."""
         workspace = tmp_path / "workspace"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         (workspace / "first-dir").mkdir(parents=True)
         (workspace / "second-dir").mkdir()
         (workspace / c.PYPROJECT_FILENAME).write_text(

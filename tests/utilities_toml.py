@@ -64,18 +64,16 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
     @staticmethod
     def seed_locked_taplo(root: Path) -> None:
-        """Pin Taplo under ``root`` exactly as this checkout's committed lock does.
+        """Seed the complete committed mise.lock into ``root``.
 
-        Generation formats TOML only through the release ``mise.lock`` pins,
-        found at or above the generated tree, so a fixture tree carries it.
+        For a root whose Mise declaration the conform publishes itself: that
+        declaration resolves only against its sibling lock. Native tool
+        identities and metadata are preserved; no selector is resolved.
         """
-        tool = c.Infra.TAPLO_MISE_TOOL_NAME
-        TestsFlextInfraUtilitiesTomlMixin.write_mise_lock(
-            root,
-            tool,
-            TestsFlextInfraUtilitiesTomlMixin.pinned_mise_version(
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.MISE_LOCK_FILENAME,
                 TestsFlextInfraUtilitiesTomlMixin.repo_mise_lock(),
-                tool,
             ),
         )
 
