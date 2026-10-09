@@ -123,48 +123,52 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
 
         """
         result = r[m.Infra.GitRemoteBranchRequest]
-        primary = cls._git_primary_worktree_root_path(request.repo_root)
-        if primary.failure:
-            return result.from_failure(primary)
-        superproject = cls._git_repository_root_path(primary.value)
-        if superproject.failure:
-            return result.from_failure(superproject)
-        if superproject.value == primary.value:
-            default = cls.git_remote_default_branch(
-                m.Infra.GitRemoteRequest(
-                    repo_root=request.repo_root,
-                    remote=request.remote,
-                ),
-            )
-            if default.failure:
-                return result.from_failure(default)
-            return result.ok(
-                m.Infra.GitRemoteBranchRequest(
-                    repo_root=request.repo_root,
-                    remote=request.remote,
-                    branch=default.value.text,
-                ),
-            )
-        declaration = cls.git_submodule_declaration(
-            m.Infra.GitSubmoduleContractRequest(
-                repo_root=superproject.value,
-                member_path=primary.value.relative_to(superproject.value).as_posix(),
-            ),
-        )
-        if declaration.failure:
-            return result.from_failure(declaration)
-        branch = declaration.value.branch
-        if branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
-            return result.fail(
-                "lane admission requires a named .gitmodules branch; "
-                f"{declaration.value.path} follows its superproject",
-            )
-        return result.ok(
-            m.Infra.GitRemoteBranchRequest(
+
+        def declared(branch: str) -> m.Infra.GitRemoteBranchRequest:
+            return m.Infra.GitRemoteBranchRequest(
                 repo_root=request.repo_root,
                 remote=request.remote,
                 branch=branch,
-            ),
+            )
+
+        def member_line(
+            superproject: Path,
+            primary: Path,
+        ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+            return cls.git_submodule_declaration(
+                m.Infra.GitSubmoduleContractRequest(
+                    repo_root=superproject,
+                    member_path=primary.relative_to(superproject).as_posix(),
+                ),
+            ).flat_map(
+                lambda declaration: (
+                    result.fail(
+                        "lane admission requires a named .gitmodules branch; "
+                        f"{declaration.path} follows its superproject",
+                    )
+                    if declaration.branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH
+                    else result.ok(declared(declaration.branch))
+                ),
+            )
+
+        def integration_line(
+            primary: Path,
+        ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+            return cls._git_repository_root_path(primary).flat_map(
+                lambda superproject: (
+                    cls.git_remote_default_branch(
+                        m.Infra.GitRemoteRequest(
+                            repo_root=request.repo_root,
+                            remote=request.remote,
+                        ),
+                    ).map(lambda default: declared(default.text))
+                    if superproject == primary
+                    else member_line(superproject, primary)
+                ),
+            )
+
+        return cls._git_primary_worktree_root_path(request.repo_root).flat_map(
+            integration_line,
         )
 
     @classmethod
