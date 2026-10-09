@@ -50,7 +50,9 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     Gates resolve their persistent caches (codemod rule catalogs, Mypy) below
     ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
     so the session scopes that home to one temporary directory per worker and
-    restores the environment on exit.
+    restores the environment on exit. The native UV source cache selected
+    before that isolation is preserved, so hermetic Git fixtures can read the
+    provisioned objects.
 
     Root cause (flext-eles2): dependency-floor rewrite tests exercised the
     public ``--rewrite-constraints`` entry point through workspaces that never
@@ -64,12 +66,14 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     suite, current and future.
     """
     spec = config.Infra.codegen.make.codemod_rules_cache
+    uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
     isolation = ExitStack()
     cache_home = isolation.enter_context(
         tempfile.TemporaryDirectory(prefix="xdg-cache-"),
     )
     isolation.enter_context(
         u.Tests.env_vars_context({
+            "UV_CACHE_DIR": uv_cache,
             spec.data_home_environment_variable: cache_home,
         }),
     )

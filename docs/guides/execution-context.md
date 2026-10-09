@@ -47,13 +47,23 @@ without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
 
-Activation exposes the native Mise shims and watches `.mise.toml` and `mise.lock`.
-The installed release is selected by the self-management entry in that lock, not
-by a separate launcher or pin file. Make and direnv restrict global and system
-configuration discovery to the elected runtime's `.mise` directory; unrelated
-host tool declarations never belong to project provisioning. A missing pin
-requires `make upg`; missing installed tools require `make setup`, which
-provisions before activation. Activation itself neither installs nor resolves.
+Activation loads the native `mise env --shell bash` output, which puts the
+installed tool directories ahead of the host's shared shims. This includes the
+self-managed Mise executable: a shim named `mise` otherwise invokes the host
+release instead of the project release. Activation does not install tools or
+write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
+`make upg`. A missing pin requires `make upg`; a runtime that is not yet installed
+requires `make setup`, whose provisioning happens before activation.
+Make and direnv restrict global and system configuration discovery to the
+elected runtime's `.mise` directory; unrelated host tool declarations never
+belong to project provisioning.
+
+If `mise.lock` has no self-managed Mise entry, `make setup` fails without
+changing it. `make upg` uses the installed host Mise to resolve the declared
+manifest first, then provisions the newly recorded release from its verified
+asset and continues the normal lifecycle. The generated `.mise.toml` must match
+the current toolchain owner before that recovery; `mise-config` conformance
+repairs this single declaration without regenerating unrelated project files.
 
 When Beads tracking is configured, the generated `.envrc.local` carries its environment:
 `AGENTS_GAS_CITY_ROOT` selects the Gas City root, the Gas City runtime publication
