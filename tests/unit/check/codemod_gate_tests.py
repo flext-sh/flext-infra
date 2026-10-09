@@ -278,7 +278,8 @@ class TestsFlextInfraCodemodGate:
             str(reports),
         ])
         tm.that(code, eq=1 if finding else 0)
-        report_path = reports / c.Infra.CHECK_REPORT_SARIF_FILENAME
+        # Each invocation owns one report directory below the base.
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         findings = tm.ok(
             u.Infra.check_report_findings(project, reports_dir=report_path.parent),
         )
