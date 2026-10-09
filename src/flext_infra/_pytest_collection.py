@@ -32,7 +32,7 @@ from pytest_markdown_docs.plugin import (
 )
 from xdist.dsession import DSession
 
-from flext_infra import u
+from flext_cli import u
 from flext_infra._constants import FlextInfraConstantsCheck, FlextInfraConstantsMake
 from flext_infra._models import FlextInfraModelsCore
 
