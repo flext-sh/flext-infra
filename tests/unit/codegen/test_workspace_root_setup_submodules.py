@@ -187,7 +187,8 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             rendered,
             has=(
                 "_builtin_setup_environment: "
-                f"$(if $(filter {ci.value},$({ci.variable})),,_builtin_setup_submodules)"
+                f"$(if $(filter "
+                f"{ci.value},$({ci.variable})),,_builtin_setup_submodules)"
             ),
         )
         # uv syncs the runtime root's project (UV_PROJECT := RUNTIME_ROOT).

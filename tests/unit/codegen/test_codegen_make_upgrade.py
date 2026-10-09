@@ -200,8 +200,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(
             audit,
             has=[
-                'codegen mise-proof --repository-root "$(PROJECT_ROOT)" '
-                '--uv-executable "$$(mise which uv)"',
+                (
+                    'codegen mise-proof --repository-root "$(PROJECT_ROOT)" '
+                    '--uv-executable "$$(mise which uv)"'
+                ),
                 '$(UV) lock --check --project "$(UV_PROJECT)"',
                 "deps verify-locks",
                 "make upg",

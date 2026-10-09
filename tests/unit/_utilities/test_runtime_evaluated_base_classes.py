@@ -837,7 +837,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tmp_path: Path,
         installed_dependency_path: Path,
     ) -> None:
-        """A subscript store into a class-local table binds no class.
+        r"""A subscript store into a class-local table binds no class.
 
         CPython's ``http.server.BaseHTTPRequestHandler`` builds
         ``_control_char_table = str.maketrans(...)`` and then writes
@@ -847,10 +847,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 installed_dependency_path / "table_provider.py",
-                self._root_import()
-                + "class Handler(RuntimeRoot):\n"
+                self._root_import() + "class Handler(RuntimeRoot):\n"
                 "    _control_char_table = str.maketrans(\n"
-                "        {c: fr'\\x{c:02x}' for c in range(32)})\n"
+                f"        {c: fr'\\x{c:02x}' for c in range(32)})\n"
                 "    _control_char_table[ord('\\\\')] = r'\\\\'\n",
             ),
         )

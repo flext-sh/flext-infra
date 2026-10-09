@@ -49,7 +49,9 @@ class TestsFlextInfraCiSystemPackages:
             ),
         )
         # The approval steps need the engines installed before the first runs.
-        first_approval = f"make {config.Infra.codegen.make.approval_verbs[0]} (blocking)"
+        first_approval = (
+            f"make {config.Infra.codegen.make.approval_verbs[0]} (blocking)"
+        )
         tm.that(
             rendered.index(self.step_name) < rendered.index(first_approval),
             eq=True,
