@@ -181,6 +181,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         tm.that(
             {u.Infra.dep_name(item) for item in owned},
             eq={u.Infra.dep_name(item) for item in profile.runtime},
+            msg=rendered,
         )
         tm.that(
             u.Tests.toml_table_at(rendered, "tool", "pyrefly", "errors"),
@@ -221,6 +222,13 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         ),
     )
     @pytest.mark.parametrize("composed", [False, True])
+    # Two complete governed pyproject renders per case (tooling context,
+    # template, overlay, conform, taplo) over a real git fixture: measured
+    # 3.3-4.9s per render under a four-worker phase, so each case exceeds the
+    # bounded-phase item budget. Integration-scale, so it runs in the slow
+    # phase under its per-item bound (rules/workflow/gate-budget.md), never a
+    # raised limit.
+    @pytest.mark.slow
     def test_declared_profile_restores_runtime_and_preserves_custom_specs(
         self,
         tmp_path: Path,
