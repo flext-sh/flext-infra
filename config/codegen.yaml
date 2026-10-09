@@ -31,6 +31,16 @@ Infra:
       evidence: '"proseWrap"'
     - path: .prettierignore
       evidence: "# @flext-ssot: flext-infra/config/tooling.yaml"
+    # Agent configuration never lives in projects (ai-hub store memory
+    # operator-ruling-2026-10-09-no-agent-config-in-projects; only
+    # CLAUDE.md -> AGENTS.md stays). These projections carried no generated
+    # marker, so each declares the rendered bytes that prove provenance.
+    - path: .github/copilot-instructions.md
+      evidence: "# Copilot instructions (pointer)"
+    - path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+      evidence: "name: flext-aggressive-scale-refactor"
+    - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+      evidence: "name: flext-strict-jsonvalue-session-continuation"
 
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
@@ -1157,16 +1167,7 @@ Infra:
     - path: .github/ci-template/ci.yml
       owner: codegen
       policy: full
-    - path: .github/copilot-instructions.md
-      owner: codegen
-      policy: full
     - path: .github/dependabot.yml
-      owner: codegen
-      policy: full
-    - path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
-      owner: codegen
-      policy: full
-    - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
       owner: codegen
       policy: full
     - path: .github/scripts/check-beads-policy.sh
@@ -2067,21 +2068,9 @@ Infra:
         destination: .github/ci-template/ci.yml
         profiles: [ workspace ]
         delegate: render
-      - source: base/.github/copilot-instructions.md.j2
-        destination: .github/copilot-instructions.md
-        profiles: [ workspace ]
-        delegate: render
       - source: base/.github/dependabot.yml.j2
         destination: .github/dependabot.yml
         profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.github/prompts/flext-aggressive-scale-refactor.prompt.md.j2
-        destination: .github/prompts/flext-aggressive-scale-refactor.prompt.md
-        profiles: [ workspace ]
-        delegate: render
-      - source: base/.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2
-        destination: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
-        profiles: [ workspace ]
         delegate: render
       - source: base/.github/scripts/check-beads-policy.sh.j2
         destination: .github/scripts/check-beads-policy.sh
