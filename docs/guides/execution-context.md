@@ -103,11 +103,9 @@ with the interpreter hosting the tool. Without a declaration, the owner derives 
 checkout's Git root; a declaration without an interpreter fails.
 
 The environment belongs to the `RUNTIME_ROOT`. A member attached as a submodule uses
-its containing Git superproject's environment. A primary standalone checkout keeps
-`<RUNTIME_ROOT>/.venv`. A linked Git worktree owns a physical sibling environment at
-`<RUNTIME_ROOT>/../<toolchain.worktree_environment_directory>/<worktree-name>`.
-The directory component is declared in `config/codegen.yaml`; Git's distinct worktree
-and common directories identify the linked checkout. The generated Makefile, generated
+its containing Git superproject's environment. A standalone checkout or linked Git
+worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environment
+from the primary checkout or Git common directory. The generated Makefile, generated
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
@@ -237,13 +235,36 @@ gate. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-Local runs, CI, and hooks derive their gates from the same active set, preserving the
-declared typing partition: `CI=N make check` runs the intersection with
-`make.ci.local_check_gates`, `CI=Y make check` runs the complement, and `make check`
-without `CI` runs the union. The `check` pre-push hook drops the inherited `CI` to run
-every active gate; the hook's other verbs keep the local token. The CI workflow runs
-both partitions without overlap. Validators keep their severity, and active functional
-gates still require execution without warnings or residual findings.
+Local runs, CI, and hooks derive their gates from the same active set: `CI=N make check`
+runs the intersection with `make.ci.local_check_gates`, `CI=Y make check` runs the
+complement (Pyrefly included), and `make check` without `CI` runs the union. The
+configuration keeps Mypy, Pyright, codemod and smells out of CI. Every gate blocks in
+every context that runs it; there is no informative or advisory gate. The `check`
+pre-push hook drops the inherited `CI` to run every active gate, so Mypy and Pyright
+block at pre-push. The pre-commit hook runs only the fast external gates the registry
+declares (`make.check_gates_pre_commit`) and no tests.
+
+Every workspace and standalone projection exposes `make pre-commit` for the fast hook
+workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
+declared order, and closes with `verify-clean`; it never substitutes the fast hook for
+approval. The configured CI token selects the blocking CI gate partition. Audit is
+read-only conformance and installed-lock provenance, not generation or a dirty-tree
+check; legitimate staged changes are not rejected simply for being staged.
+
+CI setup always reconciles the owned physical environment through locked,
+noneditable installation, including an existing venv. It does not initialize,
+activate or operate on members, and uses root-declared topology rather than reading
+sibling manifests. Local setup without the CI token retains local source routing.
+Only local upgrade resolves or writes locks; setup preserves the first install error
+without retrying under a different lock mode.
+
+Normal test verbs remain incremental testmon only and omit the configured slow
+markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
+Actions restores only that project database and saves only on an allowed integration
+push with a fresh completed-run path/digest/saveability receipt. The SQLite owner
+checkpoints and checks integrity before the runner releases its lease and exports
+the receipt. PRs, forks, cancelled or incomplete runs cannot publish cache state;
+a completed failing test run may save without changing its failing status.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The

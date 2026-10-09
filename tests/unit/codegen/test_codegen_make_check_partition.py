@@ -1,4 +1,4 @@
-"""The Make check partition derives from the gate kind in the registry.
+"""Make CI partitions follow config; the fast hook follows registry gate kinds.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,14 +12,14 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, t, u
+from tests import c, e, m, t, u
 from tests.unit.codegen.test_ci_integration_branch_triggers import (
     TestsFlextInfraCiIntegrationBranchTriggers,
 )
 
 
 class TestsFlextInfraCodegenMakeCheckPartition:
-    """CI and pre-commit run only external gates; the rest block locally."""
+    """Keep CI, local checks and the fast hook on their declared boundaries."""
 
     @staticmethod
     def test_registry_declares_one_kind_per_gate() -> None:
@@ -40,16 +40,16 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
     @staticmethod
-    def test_fast_partition_holds_only_active_external_gates() -> None:
-        """CI=Y is exactly the active external gates; CI=N is the complement."""
+    def test_ci_partition_complements_the_declared_local_set() -> None:
+        """CI and local checks partition the active set without hidden gates."""
         make = config.Infra.codegen.make
-        external = c.Infra.GateKind.EXTERNAL
+        local = frozenset(make.ci.local_check_gates)
         tm.that(
             make.check_gates_ci,
             eq=tuple(
                 gate
                 for gate in make.check_gates_default
-                if c.Infra.GATE_KINDS.get(gate) is external
+                if gate not in local
             ),
         )
         tm.that(set(make.check_gates_ci) & set(make.check_gates_local), eq=set())
@@ -57,24 +57,48 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             set(make.check_gates_ci) | set(make.check_gates_local),
             eq=set(make.check_gates_default),
         )
-        for gate in make.check_gates_local:
-            tm.that(c.Infra.GATE_KINDS.get(gate) is external, eq=False)
 
     @staticmethod
-    def test_project_declared_gates_never_join_the_fast_partition() -> None:
-        """A gate the registry does not classify as external stays local."""
+    def test_ci_partition_runs_the_non_local_type_checkers() -> None:
+        """Active type checkers follow the declared partition for any value.
+
+        The local-only set is config-owned: a checker declared in
+        ``ci.local_check_gates`` stays out of CI, and every checker outside the
+        declared local set surfaces in the CI partition.
+        """
+        make = config.Infra.codegen.make
+        active_type_checkers = c.Infra.TYPE_CHECKER_GATES & set(
+            make.check_gates_default,
+        )
+        tm.that(bool(active_type_checkers), eq=True)
+        local = frozenset(make.ci.local_check_gates)
+        tm.that(
+            active_type_checkers & local <= set(make.check_gates_local),
+            eq=True,
+        )
+        tm.that(
+            active_type_checkers - local <= set(make.check_gates_ci),
+            eq=True,
+        )
+
+    @staticmethod
+    def test_project_declared_gates_follow_the_declared_partition() -> None:
+        """A project gate absent from the local set runs in the CI partition."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["project_check_gates"] = ("fixture-project-gate",)
 
         active = m.Infra.MakeSpec.model_validate(payload)
 
         tm.that(active.check_gates_default, has="fixture-project-gate")
-        tm.that(active.check_gates_local, has="fixture-project-gate")
-        tm.that("fixture-project-gate" in active.check_gates_ci, eq=False)
+        tm.that(active.check_gates_ci, has="fixture-project-gate")
+        tm.that("fixture-project-gate" in active.check_gates_local, eq=False)
 
     @staticmethod
-    def test_ci_workflow_runs_only_the_fast_partition() -> None:
-        """The rendered CI job never runs the local check partition."""
+    def test_ci_workflow_runs_only_the_ci_partition() -> None:
+        """The CI job runs each approval verb once, in order, under the CI token.
+
+        CI never runs the pre-commit hook verb and never the local partition.
+        """
         make = config.Infra.codegen.make
         steps = u.CodegenTestSupport.Ci.ci_job_steps(
             TestsFlextInfraCiIntegrationBranchTriggers.render_ci(
@@ -82,10 +106,66 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             ),
         )
         commands = [str(step.get("run", "")) for step in steps]
-        fast = f"{make.ci.variable}={make.ci.value} make {c.Infra.VERB_CHECK}"
-        local = f"{make.ci.variable}={make.ci.local_value} make {c.Infra.VERB_CHECK}"
-        tm.that(sum(fast in command for command in commands), eq=1)
+        approvals = [
+            f"{make.ci.variable}={make.ci.value} make {verb}"
+            for verb in make.approval_verbs
+        ]
+        positions = [commands.index(approval) for approval in approvals]
+        tm.that(positions, eq=sorted(positions))
+        local = f"{make.ci.variable}={make.ci.local_value} make"
         tm.that(any(local in command for command in commands), eq=False)
+        tm.that(any("make pre-commit" in command for command in commands), eq=False)
+
+    @staticmethod
+    def test_pre_commit_runs_only_fast_external_gates() -> None:
+        """The pre-commit gate set is the registry's external gates, nothing else."""
+        make = config.Infra.codegen.make
+        tm.that(bool(make.check_gates_pre_commit), eq=True)
+        tm.that(
+            {c.Infra.GATE_KINDS[gate] for gate in make.check_gates_pre_commit},
+            eq={c.Infra.GateKind.EXTERNAL},
+        )
+        tm.that(
+            set(make.check_gates_pre_commit) <= set(make.check_gates_default),
+            eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("verb", ["setup", "audit", "test"])
+    def test_pre_commit_workflow_refuses_slow_steps(verb: str) -> None:
+        """A pre-commit workflow row other than the fast check is refused."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["workflow"] = [
+            {
+                **row,
+                "contexts": (
+                    (*row["contexts"], "pre_commit")
+                    if row["verb"] == verb
+                    else row["contexts"]
+                ),
+            }
+            for row in payload["workflow"]
+        ]
+        with pytest.raises(e.PydanticValidationError, match="pre-commit hook runs only"):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    @staticmethod
+    def test_ci_workflow_requires_the_closing_clean_tree() -> None:
+        """CI approval without the closing verify-clean row is refused."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["workflow"] = [
+            {
+                **row,
+                "contexts": tuple(
+                    context for context in row["contexts"] if context != "ci"
+                )
+                if row["verb"] == "verify-clean"
+                else row["contexts"],
+            }
+            for row in payload["workflow"]
+        ]
+        with pytest.raises(e.PydanticValidationError, match="verify-clean workflow"):
+            m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     @pytest.mark.slow

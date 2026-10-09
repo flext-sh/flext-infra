@@ -29,18 +29,22 @@ class TestsFlextInfraGateRegistry:
             tm.that(gate_cls is not None and gate_cls.gate_id == gate_id, eq=True)
 
     @staticmethod
-    def test_check_vocabulary_is_allowed_minus_mutating() -> None:
-        """Test check vocabulary is allowed minus mutating."""
-        allowed = frozenset(c.Infra.CANONICAL_GATE_IDS)
-        tm.that(allowed, eq=c.Infra.ALLOWED_GATES - c.Infra.MUTATING_GATES)
-        tm.that(allowed & c.Infra.MUTATING_GATES, eq=frozenset())
+    def test_check_vocabulary_is_the_whole_registry() -> None:
+        """Every registered gate checks read-only, the formatters included."""
+        tm.that(frozenset(c.Infra.CANONICAL_GATE_IDS), eq=c.Infra.ALLOWED_GATES)
 
     @staticmethod
     def test_default_and_fixable_are_subsets_of_check_vocabulary() -> None:
-        """Test default and fixable are subsets of check vocabulary."""
-        allowed = frozenset(c.Infra.CANONICAL_GATE_IDS)
-        tm.that(frozenset(c.Infra.CANONICAL_DEFAULT_GATE_IDS) <= allowed, eq=True)
-        tm.that(frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS) <= allowed, eq=True)
+        """Default, local-only and fixable gates stay in the check vocabulary."""
+        make = config.Infra.codegen.make
+        allowed = frozenset(make.check_gates_allowed)
+        tm.that(frozenset(make.check_gates_default) <= allowed, eq=True)
+        tm.that(frozenset(make.ci.local_check_gates) <= allowed, eq=True)
+        tm.that(
+            frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS)
+            <= frozenset(c.Infra.CANONICAL_GATE_IDS),
+            eq=True,
+        )
 
     @staticmethod
     def test_every_allowed_gate_resolves_in_the_registry() -> None:
