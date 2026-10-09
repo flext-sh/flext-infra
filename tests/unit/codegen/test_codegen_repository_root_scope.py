@@ -350,7 +350,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         self,
         tmp_path: Path,
     ) -> None:
-        """After gen publishes, the lifecycle re-enters only `upg` or its own converge."""
+        """After gen publishes, the lifecycle re-enters only `upg` or its converge."""
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
         lifecycle = rendered.split("\n_upg_lifecycle: _builtin_setup_submodules\n", 1)[
