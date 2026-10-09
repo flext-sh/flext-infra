@@ -9,12 +9,13 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+from typing import override
 
 from flext_tests import FlextTestsUtilities, tm
 
-from flext_infra import FlextInfraUtilities, config, r
+from flext_infra import FlextInfraUtilities, config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, t
+from tests import c, m, p, r, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
 from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
@@ -81,6 +82,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     deploy_keys=(key,),
                 )
 
+            @override
             @staticmethod
             def workflow_spec(
                 *,
