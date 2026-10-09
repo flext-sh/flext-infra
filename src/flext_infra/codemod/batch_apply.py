@@ -365,12 +365,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 baseline_cycles,
                 (before, phase_states),
                 (current, current_text),
-            )
+            ) or self._relocation_verdict(root, rope_workspace, current)
             if message is not None:
                 return r[t.Cli.ResultValue].fail(message)
-            relocations = self._relocation_verdict(root, rope_workspace, current)
-            if relocations is not None:
-                return r[t.Cli.ResultValue].fail(relocations)
             self.progress.emit(
                 "mod: joint AST, semantic, and text fixed point verified "
                 "with zero actionable findings",

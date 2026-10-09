@@ -29,10 +29,7 @@ class TestsFlextInfraDeclarationRelocation:
         *,
         body: str = "value: str = Field(default='payload')",
         base: str = "PayloadBase",
-        cycle: bool = False,
-        existing_imports: bool = False,
-        stray: bool = False,
-        composed: bool = True,
+        variants: frozenset[str] = frozenset(),
     ) -> tuple[Path, dict[Path, str]]:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         stem = u.derive_class_stem(root.name)
@@ -54,19 +51,20 @@ class TestsFlextInfraDeclarationRelocation:
                 '"""Authored payload family."""\nfrom __future__ import annotations\n'
                 + (
                     "from pydantic import BaseModel as PayloadBase, Field\n"
-                    if existing_imports
+                    if "existing_imports" in variants
                     else ""
                 )
                 + (
                     f"from {package.name}._utilities.payload import {source_owner}\n"
-                    if cycle
+                    if "cycle" in variants
                     else ""
                 )
                 + f"class {owner}:\n    pass\n\n__all__ = ['{owner}']\n"
             ),
             package / "models.py": (
                 f"from {package.name}._models.payload import {owner}\n"
-                f"class {facade}{f'({owner})' if composed else ''}:\n"
+                f"class {facade}"
+                f"{'' if 'uncomposed' in variants else f'({owner})'}:\n"
                 f"    pass\nm = {facade}\n"
                 f"__all__ = ['{facade}', 'm']\n"
             ),
@@ -79,7 +77,7 @@ class TestsFlextInfraDeclarationRelocation:
                 + (
                     f"class {stem}StrayHolder:\n"
                     "    class Stray(PayloadBase):\n        value: str = 'stray'\n"
-                    if stray
+                    if "stray" in variants
                     else ""
                 )
                 + f"\n__all__ = ['{source_owner}']\n"
@@ -118,7 +116,7 @@ class TestsFlextInfraDeclarationRelocation:
         """
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
-            existing_imports=existing_imports,
+            variants=frozenset({"existing_imports"} if existing_imports else ()),
         )
         with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
@@ -217,7 +215,10 @@ class TestsFlextInfraDeclarationRelocation:
     @staticmethod
     def test_cycle_refuses_without_mutation(tmp_path: Path) -> None:
         """Test cycle refuses without mutation."""
-        root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path, cycle=True)
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            variants=frozenset({"cycle"}),
+        )
         with (
             infra.rope_workspace(root) as rope,
             pytest.raises(ValueError, match="runtime import cycle"),
@@ -476,7 +477,7 @@ class TestsFlextInfraDeclarationRelocation:
         """An unexpected outer owner is reported while resolvable moves apply."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
-            stray=True,
+            variants=frozenset({"stray"}),
         )
         stem = u.derive_class_stem(root.name)
         with infra.rope_workspace(root) as rope:
@@ -503,7 +504,7 @@ class TestsFlextInfraDeclarationRelocation:
         """Zero composed model owners report the declaration; mod still rewrites."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
-            composed=False,
+            variants=frozenset({"uncomposed"}),
         )
         stem = u.derive_class_stem(root.name)
         origin = next(

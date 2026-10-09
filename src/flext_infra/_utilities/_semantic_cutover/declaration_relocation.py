@@ -92,19 +92,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 if family is None or family == "m" or "tests" in path.parts:
                     continue
                 while True:
-                    candidates = tuple(
-                        (outer, node, binding)
-                        for outer in ast.parse(working[path]).body
-                        if isinstance(outer, ast.ClassDef)
-                        for node in outer.body
-                        if isinstance(node, ast.ClassDef)
-                        if (path, outer.name, node.name) not in unresolved
-                        if (binding := cls.payload_declaration(project, path, node))
-                        is not None
+                    candidate = cls._next_payload(
+                        project,
+                        path,
+                        working[path],
+                        unresolved,
                     )
-                    if not candidates:
+                    if candidate is None:
                         break
-                    outer, node, binding = candidates[0]
+                    outer, node, binding = candidate
                     declaration = f"{outer.name}.{node.name}"
                     resolved = (
                         cls._declaration_target(
@@ -150,6 +146,34 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             )
         finally:
             project.close()
+
+    @classmethod
+    def _next_payload(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+        unresolved: set[t.Triple[Path, str, str]],
+    ) -> t.Triple[ast.ClassDef, ast.ClassDef, p.Infra.RopePyName] | None:
+        """Return the first bound payload declaration not already reported.
+
+        Returns:
+            The outer owner, payload node and its binding, or ``None``.
+
+        """
+        for outer in ast.parse(source).body:
+            if not isinstance(outer, ast.ClassDef):
+                continue
+            for node in outer.body:
+                if (
+                    not isinstance(node, ast.ClassDef)
+                    or (path, outer.name, node.name) in unresolved
+                ):
+                    continue
+                binding = cls.payload_declaration(project, path, node)
+                if binding is not None:
+                    return outer, node, binding
+        return None
 
     @classmethod
     def _declaration_target(
