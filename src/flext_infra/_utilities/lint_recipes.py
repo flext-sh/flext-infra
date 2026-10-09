@@ -232,8 +232,8 @@ class FlextInfraUtilitiesLintRecipes:
                     # The ruff-lint gate applies both as whole-module rewrites
                     # before planning; reaching the planner breaks that contract.
                     msg = (
-                        f"{path}: lint finding {issue.code} is a whole-module "
-                        "recipe and never reaches the edit planner"
+                        f"{path}: lint recipe {recipe.value} for {issue.code} "
+                        "requires the Ruff lint gate and cannot reach the edit planner"
                     )
                     raise ValueError(msg)
         return sections, summaries, wants_notice
