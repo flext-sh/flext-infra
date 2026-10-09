@@ -558,9 +558,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[bool].ok(value=True)
         payload = (
             f"version: {beads.version}\n"
-            f'workspace: {json.dumps(beads.workspace)}\n'
-            f'database: {json.dumps(beads.database)}\n'
-            f'issue_prefix: {json.dumps(beads.issue_prefix)}\n'
+            f"workspace: {json.dumps(beads.workspace)}\n"
+            f"database: {json.dumps(beads.database)}\n"
+            f"issue_prefix: {json.dumps(beads.issue_prefix)}\n"
         )
         written = u.Cli.atomic_write_text_file(destination, payload)
         if written.failure:
@@ -587,7 +587,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         seeded = self._seed_declared_beads_identity(request.root)
         if seeded.failure:
             return r[m.Infra.CodegenResult].from_failure(seeded)
-        policy = ports.participant_policy(request.root)
+        policy = ports.participant_policy(
+            request.root,
+            initial_workspace=self.initial_workspace,
+        )
         if policy.failure:
             return r[m.Infra.CodegenResult].from_failure(policy)
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
@@ -686,7 +689,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase="lazy-init",
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=tuple(files),
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(publications),
@@ -1002,7 +1005,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(docs_plans)
         owned_docs_files = self.owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase="docs",
+            phase=c.Infra.CodegenStagedFilePhase.DOCS,
             files=owned_docs_files,
             inputs=docs_bundle.value.source_states,
         )

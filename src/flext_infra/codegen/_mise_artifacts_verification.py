@@ -217,26 +217,59 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
-    def sources(cls, plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
-        """Prove every Mise config source still equals its full snapshot.
+    def sources(
+        cls,
+        plan: m.Infra.MiseToolchainWorkspacePlan,
+        published: t.VariadicTuple[m.Infra.CodegenStagedFile] = (),
+    ) -> p.Result[bool]:
+        """Prove every Mise config source equals its expected full snapshot.
+
+        Before publication the expectation is the plan-time snapshot. After
+        it, every config source this transaction published itself replaces or
+        joins that snapshot with its staged identity (``publications_live``
+        already proved that identity live); any other change is foreign.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
         for project in plan.projects:
-            if project.config.before.content is None:
-                # First publication: the config sources are themselves created
-                # by this transaction, so their post-transaction bytes cannot
-                # equal a pre-publication snapshot. Integrity for these is
-                # owned by the publication-receipt verification.
-                continue
             current = u.Infra.snapshot_config_sources(project.layout.root)
             if current.failure:
                 return r[bool].from_failure(current)
-            if current.value != project.config.sources:
+            if current.value != cls._expected_sources(project, published):
                 return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _expected_sources(
+        project: m.Infra.MiseToolchainProjectState,
+        published: t.VariadicTuple[m.Infra.CodegenStagedFile],
+    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
+        """Return the plan-time sources with this transaction's own config writes.
+
+        Returns:
+            The expected sources, ordered by path like the snapshot.
+
+        """
+        own = {
+            item.before.path: item
+            for item in published
+            if u.Infra.direct_config_source(project.layout.root, item.before.path)
+        }
+        kept = (item for item in project.config.sources if item.path not in own)
+        landed = (
+            item.replacement.model_copy(
+                update={
+                    "path": item.before.path,
+                    "parent_device": item.before.parent_device,
+                    "parent_inode": item.before.parent_inode,
+                },
+            )
+            for item in own.values()
+            if item.replacement is not None
+        )
+        return tuple(sorted((*kept, *landed), key=lambda item: item.path))
 
     @classmethod
     def destinations(cls, plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
@@ -319,14 +352,20 @@ class FlextInfraMiseArtifactsVerification(
         owner: p.Infra.MiseArtifactsOwner,
         plan: m.Infra.MiseToolchainWorkspacePlan,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile] | None = None,
+        *,
+        published: t.VariadicTuple[m.Infra.CodegenStagedFile] = (),
     ) -> p.Result[bool]:
         """Exercise every real Mise consumer while guarding sources and live bytes.
+
+        ``publications`` are the staged Mise artifacts the consumers read;
+        ``published`` is everything this transaction published, whose config
+        sources the source guard expects.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        source_before = cls.sources(plan)
+        source_before = cls.sources(plan, published)
         if source_before.failure:
             return source_before
         staged = cls._staged_replacements(publications or ())
@@ -335,7 +374,7 @@ class FlextInfraMiseArtifactsVerification(
         stable = cls._stable_artifact_snapshot(plan, staged.value, owner)
         if stable.failure:
             return r[bool].from_failure(stable)
-        source_after = cls.sources(plan)
+        source_after = cls.sources(plan, published)
         if source_after.failure:
             return source_after
         return r[bool].ok(value=True)

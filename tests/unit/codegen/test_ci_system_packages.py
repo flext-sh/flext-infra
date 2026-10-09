@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, config
 from tests import t, u
 
 
@@ -30,7 +30,9 @@ class TestsFlextInfraCiSystemPackages:
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="develop",
             ci_trigger_branches=("develop", "main"),
-            system_packages=system_packages,
+            overrides=u.CodegenTestSupport.Ci.WorkflowRenderOverrides(
+                system_packages=system_packages,
+            ),
         )
         return tm.ok(u.Cli.template_render(cls.ci_template, spec))
 
@@ -41,10 +43,17 @@ class TestsFlextInfraCiSystemPackages:
         tm.that(rendered.count(self.step_name), eq=1)
         tm.that(
             rendered,
-            has="apt-get install -y -qq --no-install-recommends engine-calc engine-fonts",
+            has=(
+                "apt-get install -y -qq --no-install-recommends "
+                "engine-calc engine-fonts"
+            ),
+        )
+        # The approval steps need the engines installed before the first runs.
+        first_approval = (
+            f"make {config.Infra.codegen.make.approval_verbs[0]} (blocking)"
         )
         tm.that(
-            rendered.index(self.step_name) < rendered.index("setup (blocking)"),
+            rendered.index(self.step_name) < rendered.index(first_approval),
             eq=True,
         )
 

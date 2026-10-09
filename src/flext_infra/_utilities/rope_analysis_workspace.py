@@ -290,10 +290,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 if member.is_dir() and (member / "src").is_dir()
             ),
         ]
-        with FlextInfraUtilitiesRopeCore.open_project(
-            workspace_root,
-            project_roots=project_roots,
-        ) as project:
+        with (
+            FlextInfraUtilitiesRopeCore.open_project(
+                workspace_root,
+                project_roots=project_roots,
+            ) as project,
+            project.frozen_layout(),
+        ):
             return FlextInfraUtilitiesRopeSourceBases.runtime_bases(
                 project,
                 sources,
@@ -486,8 +489,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             Python and stub sources in the canonical declared source scope.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
-
         rope_root = Path(rope_project.address).resolve()
         governed_roots = cls._governed_roots(resolved_root)
         source_paths = (

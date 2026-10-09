@@ -135,8 +135,15 @@ class FlextInfraProtocolsBase(Protocol):
         def __call__(
             self,
             root: Path,
+            *,
+            initial_workspace: m.Infra.WorkspaceSpec | None,
         ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
-            """Read the request's physical topology without acquiring a lease."""
+            """Read the request's physical topology without acquiring a lease.
+
+            ``initial_workspace`` is the declared topology of a scaffold whose
+            own workspace configuration is not rendered yet; ``None`` reads
+            the repository's committed declaration.
+            """
             ...
 
     @runtime_checkable

@@ -322,6 +322,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_path_cutover import (
         FlextInfraUtilitiesCodegenPathCutover,
     )
+    from flext_infra._utilities.codemod_binding_chain import (
+        FlextInfraUtilitiesCodemodBindingChain,
+    )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
     from flext_infra._utilities.compatibility_alias_validation import (
@@ -354,6 +357,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.gitignore import FlextInfraUtilitiesGitignore
+    from flext_infra._utilities.import_layers import FlextInfraUtilitiesImportLayers
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.iteration_directory import (
         FlextInfraUtilitiesIterationDirectory,
@@ -488,6 +492,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
+    "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -557,6 +562,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
     "FlextInfraUtilitiesGitignore",
+    "FlextInfraUtilitiesImportLayers",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -689,6 +695,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
+        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
@@ -766,6 +773,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitWorktreeRootsMixin": "._git.worktree_roots",
         "FlextInfraUtilitiesGitWorktreeStatusMixin": "._git.worktree_status",
         "FlextInfraUtilitiesGitignore": ".gitignore",
+        "FlextInfraUtilitiesImportLayers": ".import_layers",
         "FlextInfraUtilitiesIteration": ".iteration",
         "FlextInfraUtilitiesIterationDirectory": ".iteration_directory",
         "FlextInfraUtilitiesIterationMatching": ".iteration_matching",
