@@ -116,6 +116,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             "[tool.uv.workspace]\nmembers = ['flext-core']\n",
             encoding="utf-8",
         )
+        u.Tests.copy_tracked_mise_seeds(source)
         u.Tests.initialize_git_repo(source)
         tm.ok(
             u.Cli.run_checked(
@@ -173,10 +174,22 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test generated setup orders submodules before first uv."""
-        rendered = self._render_repository_root_makefile(tmp_path)
+        """Outside CI, setup initializes the gitlinks before the first uv call.
 
-        tm.that(rendered, has="_builtin_setup_environment: _builtin_setup_submodules")
+        In CI the checkout action already materialized the gitlinks, so the
+        environment recipe gains the submodule prerequisite only when the
+        config-owned CI switch is off.
+        """
+        rendered = self._render_repository_root_makefile(tmp_path)
+        ci = config.Infra.codegen.make.ci
+
+        tm.that(
+            rendered,
+            has=(
+                "_builtin_setup_environment: "
+                f"$(if $(filter {ci.value},$({ci.variable})),,_builtin_setup_submodules)"
+            ),
+        )
         # uv syncs the runtime root's project (UV_PROJECT := RUNTIME_ROOT).
         tm.that(rendered, has='$(UV) sync --project "$(UV_PROJECT)"')
         tm.that(rendered, lacks="submodule update --init --recursive")
@@ -445,14 +458,17 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         self,
         tmp_path: Path,
     ) -> None:
-        """Setup provisions governed gitlinks, then never creates a missing lock.
+        """Setup provisions governed gitlinks, then the environment, lock-free.
 
         The workspace projections derive from the member checkouts, so a
         member-less CI checkout renders a different workspace and breaks the
-        gen fixed point (flext-gdm8w). The fixture commits no uv.lock: the
-        lock law (operator 2026-10-03, only `make upg` writes uv.lock) makes
-        the environment recipe stop there, name the right path, and leave the
-        workspace without a lock instead of deriving one.
+        gen fixed point (flext-gdm8w). The fixture commits no uv.lock: setup
+        still provisions the environment from the manifests
+        (operator-ruling-2026-10-09-setup-resilient) and never derives a lock;
+        only `make upg` writes uv.lock. The fixture manifest declares no
+        flext-infra, so the recipe's next stage (`workspace sync-environment`,
+        owned by the flext-infra every governed project declares) cannot run
+        here; the full lockless setup is proven by the make-environment suite.
         """
         rendered = self._render_repository_root_makefile(tmp_path)
         tm.that(rendered, has="MAKE_PROFILE := workspace")
@@ -475,9 +491,15 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         gitlink = self._git_stdout(workspace, "rev-parse", "HEAD:flext-core")
         tm.that(self._git_state(workspace / "flext-core"), eq=("", gitlink))
-        tm.that(process.outcome.raw_return_code, ne=0)
-        tm.that(process.stderr, has=["ERROR[setup] uv.lock is missing", "make upg"])
+        output = process.stdout + process.stderr
+        tm.that(output, has=["+ flext==", "+ flext-core=="], msg=output)
+        tm.that(output, has="No module named flext_infra", msg=output)
+        tm.that(output, lacks=["uv.lock", "WARN"])
         tm.that((workspace / "uv.lock").exists(), eq=False)
+        tm.that(
+            (u.Infra.runtime_environment_dir(workspace) / "pyvenv.cfg").is_file(),
+            eq=True,
+        )
 
     def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:
         """A Git probe error is never reclassified as a missing remote ref."""
