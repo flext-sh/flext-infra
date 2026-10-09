@@ -375,7 +375,16 @@ _bootstrap_setup_tools:
 		printf 'ERROR: mise is not installed; install it (https://mise.run) and retry\n' >&2; \
 		exit 2; \
 	fi; \
-	mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
+	mise_pin=; \
+	mise_lock_resolved=0; \
+	if [ -f "$(PROJECT_ROOT)/mise.lock" ]; then \
+		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
+	fi; \
+	if [ -z "$$mise_pin" ] && [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		mise -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
+		mise_lock_resolved=1; \
+		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
+	fi; \
 	if [ -z "$$mise_pin" ]; then \
 		printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2; \
 		exit 2; \
@@ -424,7 +433,7 @@ _bootstrap_setup_tools:
 		printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
 		exit 2; \
 	fi; \
-	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_lock_resolved" = "0" ]; then \
 		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
 	fi; \
 	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "kubectl" "helm" "kind" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "kubeconform" "node" "go" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"; \
