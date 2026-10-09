@@ -25,33 +25,18 @@ from tests import u
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
-    def test_approval_recipe_keeps_one_fail_closed_shell(self, tmp_path: Path) -> None:
-        """Configured approval stages share their error policy and cleanup trap."""
+    def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
+        """The pre-commit hook verb runs one check over the fast external gates."""
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        section = rendered.split("\npre-commit:", 1)[1].split(
-            "\n_builtin-pre-commit:",
-            1,
-        )[0]
-        lines = section.splitlines()
-        indices = tuple(
-            index for index, line in enumerate(lines) if line.startswith("\t")
-        )
-        recipe = lines[indices[0] : indices[-1] + 1]
-        tm.that(
-            all(line.startswith("\t") for line in recipe),
-            eq=True,
-            msg="\n".join(recipe),
-        )
-        tm.that(all(line.endswith("\\") for line in recipe[:-1]), eq=True)
-        tm.that(recipe[-1].endswith("\\"), eq=False)
-        tm.that(section.count("set -eu;"), eq=1)
-        tm.that(section.count("' EXIT;"), eq=1)
-        for verb in config.Infra.codegen.make.approval_verbs:
-            tm.that(section.count(f"approval: {verb} START"), eq=1)
-            tm.that(section.count(f"approval: {verb} COMPLETE"), eq=1)
+        recipe = rendered.split("\n_builtin-pre-commit:", 1)[1].split("\n\n", 1)[0]
+        commands = [line for line in recipe.splitlines() if line.startswith("\t")]
+        gates = ",".join(config.Infra.codegen.make.check_gates_pre_commit)
+        tm.that(len(commands), eq=1)
+        tm.that(commands[0], has=["check run", f'--gates "{gates}"'])
+        tm.that(recipe, lacks=["setup", " test", "audit"])
         tm.that(rendered, lacks=["DEBUG1 scratch=", "DEBUG2 scratch="])
 
     def test_verify_clean_projection_uses_the_public_git_service(
