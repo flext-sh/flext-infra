@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m, t
@@ -133,7 +134,7 @@ class FlextInfraModelsMiseToolchain:
                     "identity"
                 ),
             ),
-        ] = m.Field(default_factory=dict[str, str])
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
 
         @m.model_validator(mode="after")
         def _validate_pattern(self) -> Self:
