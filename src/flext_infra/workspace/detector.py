@@ -56,19 +56,13 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[t.Pair[m.Infra.BeadsProjectSpec | None, bool]]:
         """Resolve the declared Beads ledger under the repository policy.
 
-        A repository selects Beads only through its own ``.beads/`` boundary;
-        without it no Beads configuration is read or required. With the
-        boundary, the repository policy may still opt out.
-
         Returns:
             The resulting workspace Beads specification with a presence flag
-            (False when the boundary is absent or the policy opts out).
+            (False when the repository policy opts out).
 
         """
         result_type = r[t.Pair[m.Infra.BeadsProjectSpec | None, bool]]
-        beads_enabled = (resolved_root / c.Infra.BEADS_DIRNAME).is_dir() and (
-            overlay is None or overlay.beads_enabled
-        )
+        beads_enabled = overlay is None or overlay.beads_enabled
         if not beads_enabled:
             if overlay is not None and overlay.gascity_enabled:
                 return result_type.fail(
