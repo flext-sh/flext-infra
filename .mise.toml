@@ -55,6 +55,8 @@ taplo = "latest"
 gitleaks = "latest"
 "aqua:boyter/scc" = "latest"
 node = "latest"
+make = "latest"
+go = "latest"
 [tools."github:qltysh/qlty"]
 version = "0.645.0"
 [tools."github:kucherenko/jscpd"]
