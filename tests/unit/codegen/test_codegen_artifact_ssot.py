@@ -228,7 +228,12 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
-        """Hook stages share validation but never repeat mutating steps."""
+        """Pre-commit runs the fast gates only; pre-push adds the heavy ones.
+
+        Pre-commit never runs tests (rules/workflow/canonical-commands.md, Test
+        verbs); pre-push runs ``make test``. Both reach the same validation
+        verb, so pre-commit is a strict subset of pre-push.
+        """
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
@@ -238,7 +243,9 @@ class TestsFlextInfraCodegenArtifactSsot:
         commit_verbs = {step.verb for step in pre_commit}
         push_verbs = {step.verb for step in pre_push}
         tm.that(bool(commit_verbs & push_verbs), eq=True)
-        tm.that(bool(commit_verbs - push_verbs), eq=True)
+        tm.that(commit_verbs < push_verbs, eq=True)
+        tm.that("test" in commit_verbs, eq=False)
+        tm.that("test" in push_verbs, eq=True)
         shared_steps = tuple(
             step
             for step in workflow
