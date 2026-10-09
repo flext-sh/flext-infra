@@ -85,8 +85,9 @@ class TestsFlextInfraValidateCli:
             '"""Namespace contract fixture."""\n\n'
             "from __future__ import annotations\n\nVALUE = 1\n",
         )
-        # The consumer cannot select a Mise shim; resolution belongs to Make.
-        tm.that((project / c.Infra.MISE_TOML_FILENAME).exists(), eq=False)
+        # The rule engine runs ast-grep through the project's own declared
+        # Mise toolchain, which every governed project carries.
+        tm.that((project / c.Infra.MISE_TOML_FILENAME).is_file(), eq=True)
 
         exit_code = main([
             "validate",
