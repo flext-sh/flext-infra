@@ -45,9 +45,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
-    FlextInfraUtilitiesDeclarationPayload,
-)
 
 _RESOLVED_SYMBOL_OPERAND_COUNT = 2
 
@@ -660,11 +657,13 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
             return cls._unreferenced_import_holds(tree, capture.text)
         with FlextInfraUtilitiesRopeCore.open_project(root) as live:
             project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                live, sources, captured=snapshot
+                live,
+                sources,
+                captured=snapshot,
             )
             try:
                 resource = project.get_resource(
-                    source.relative_to(root.resolve()).as_posix()
+                    source.relative_to(root.resolve()).as_posix(),
                 )
                 module = project.get_pymodule(resource)
                 scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
@@ -674,7 +673,11 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
                     c.Infra.CodemodContextPredicate.SAME_BINDING,
                     c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 } and not cls._subscript_bindings_stable(
-                    project, module, text, (start, end), sources
+                    project,
+                    module,
+                    text,
+                    (start, end),
+                    sources,
                 ):
                     return False
                 if (
@@ -729,11 +732,12 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
         """
         declarations = ast.parse(capture_text).body
         if len(declarations) != 1 or not isinstance(
-            declarations[0], ast.Import | ast.ImportFrom
+            declarations[0],
+            ast.Import | ast.ImportFrom,
         ):
             return False
         names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-            declarations[0]
+            declarations[0],
         )
         return not any(
             isinstance(node, ast.Name)
@@ -785,7 +789,8 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
                 continue
             left, right = (
                 FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_range(
-                    text, node
+                    text,
+                    node,
                 )
             )
             if left <= start < end <= right and not cls._stable_binding_chain(
@@ -933,7 +938,11 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
         """
         project, module, scope = frame
         binding = cls._chain_base_binding(
-            frame, expression, offset, sources, visited=visited
+            frame,
+            expression,
+            offset,
+            sources,
+            visited=visited,
         )
         if binding is None:
             return False
@@ -942,20 +951,32 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
             return False
         path, text = chain
         routes = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
-            module.get_name(), path, text
+            module.get_name(),
+            path,
+            text,
         )
         if not cls._single_reaching_binding(text, scope, expression, offset, routes):
             return False
         if not cls._chain_alias_and_assignment_proven(
-            project, binding, expression, routes
+            project,
+            binding,
+            expression,
+            routes,
         ):
             return False
         if isinstance(binding, p.Infra.RopeImportedName):
             return cls._chain_imported_binding(
-                project, binding, sources, visited=visited
+                project,
+                binding,
+                sources,
+                visited=visited,
             )
         return cls._chain_declaration_stable(
-            project, binding, expression, sources, visited=visited
+            project,
+            binding,
+            expression,
+            sources,
+            visited=visited,
         )
 
     @classmethod
@@ -978,7 +999,11 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
         scope = frame[2]
         if isinstance(expression, ast.Attribute):
             if not cls._stable_binding_chain(
-                frame, expression.value, offset, sources, visited=visited
+                frame,
+                expression.value,
+                offset,
+                sources,
+                visited=visited,
             ):
                 return None
         elif not isinstance(expression, ast.Name):
@@ -1031,7 +1056,8 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
             route = project.get_module(routes[expression.id])
             target = route.get_attribute(expression.id)
             if not FlextInfraUtilitiesRopeRuntimeModules.same_name(
-                target, binding
+                target,
+                binding,
             ) and (
                 not FlextInfraUtilitiesRopeRuntime.abstract_class(target.get_object())
                 or target.get_object() is not binding.get_object()
@@ -1227,7 +1253,9 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
             The resulting ``bool``.
         """
         declarations = FlextInfraUtilitiesCodemodProject._single_reaching_declarations(
-            source, scope, expression
+            source,
+            scope,
+            expression,
         )
         if isinstance(expression, ast.Attribute):
             return not declarations
@@ -1240,7 +1268,10 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
         if start >= offset:
             return False
         return FlextInfraUtilitiesCodemodProject._declaration_reaches_unconditionally(
-            source, declaration, expression, declared_routes
+            source,
+            declaration,
+            expression,
+            declared_routes,
         )
 
     @staticmethod
@@ -1273,7 +1304,8 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
         for node in ast.walk(tree):
             names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(node)
             attribute = isinstance(node, ast.Attribute) and isinstance(
-                node.ctx, ast.Store | ast.Del
+                node.ctx,
+                ast.Store | ast.Del,
             )
             if spelling not in names and not (
                 attribute and ast.unparse(node) == spelling
@@ -1318,7 +1350,8 @@ class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodRules):
         parent = parents.get(declaration)
         while parent is not None and not isinstance(parent, frames):
             conditional = isinstance(
-                parent, ast.If | ast.Try | ast.For | ast.While | ast.With
+                parent,
+                ast.If | ast.Try | ast.For | ast.While | ast.With,
             )
             if conditional and not (
                 isinstance(parent, ast.If)
