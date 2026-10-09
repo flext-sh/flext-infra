@@ -47,7 +47,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
         if mypy_table is None:
             return None
-        exclude = mypy_table.get("exclude")
+        exclude = u.Cli.toml_value(mypy_table, "exclude")
         if not isinstance(exclude, str) or not exclude:
             return None
         return re.compile(exclude)
