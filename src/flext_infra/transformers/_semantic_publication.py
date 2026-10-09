@@ -10,21 +10,22 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraSemanticPublication:
     """Publish semantic file plans through the recoverable codegen transaction."""
 
-    @staticmethod
+    @classmethod
     def publish_semantic_file_plans(
+        cls,
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         *,
         repository_root: Path,
@@ -40,49 +41,28 @@ class FlextInfraSemanticPublication:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        files: list[m.Infra.CodegenFilePlan] = []
-        template_sources = u.Infra.codegen_template_sources(
-            config.Infra.codegen if codegen is None else codegen,
-        )
-        for plan in plans:
-            if plan.desired_content is None:
-                continue
-            if plan.desired_mode is None:
-                return r[tuple[Path, ...]].fail(
-                    f"semantic desired mode is absent: {plan.path}",
-                )
-            if (
-                plan.path.resolve() not in template_sources
-                and plan.before.content is not None
-                and plan.before.content.decode(c.Cli.ENCODING_DEFAULT).startswith(
-                    c.Infra.AUTOGEN_HEADERS,
-                )
-            ):
-                return r[tuple[Path, ...]].fail(
-                    "generated findings require canonical generator repair: "
-                    f"{plan.path}",
-                )
-            files.append(
-                m.Infra.CodegenFilePlan(
-                    project=plan.project,
-                    path=plan.path,
-                    before=plan.before,
-                    desired_content=plan.desired_content,
-                    desired_mode=plan.desired_mode,
-                    source_states=(plan.before,),
-                    owner="semantic",
-                ),
-            )
-        if not files:
+        files = cls._concrete_file_plans(plans, codegen)
+        if files.failure:
+            return r[tuple[Path, ...]].from_failure(files)
+        if not files.value:
             return r[tuple[Path, ...]].ok(())
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        for plan in plans:
+            for state in (plan.before, *plan.source_states):
+                if inputs.setdefault(state.path, state) != state:
+                    return r[tuple[Path, ...]].fail(
+                        f"semantic input snapshots disagree: {state.path}",
+                    )
         analysis = m.Infra.CodegenPhaseAnalysis(
-            phase="semantic",
-            files=tuple(files),
-            inputs=tuple(plan.before for plan in plans),
+            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            files=tuple(files.value),
+            inputs=tuple(inputs.values()),
         )
         roots = {
             f"@semantic-{index}": project
-            for index, project in enumerate(sorted({plan.project for plan in files}))
+            for index, project in enumerate(
+                sorted({plan.project for plan in files.value}),
+            )
         }
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
@@ -114,6 +94,56 @@ class FlextInfraSemanticPublication:
             return transaction.publish_prepared_locked(started.value, apply)
 
         return transaction.run_files_locked(roots, publish)
+
+    @staticmethod
+    def _concrete_file_plans(
+        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+        codegen: m.Infra.CodegenConfigSpec | None,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Convert every changed semantic plan into one owned codegen file plan.
+
+        ``None`` content means no semantic change, never deletion. A generated
+        source outside the declared template inventory requires canonical
+        generator repair and is rejected here.
+
+        Returns:
+            The resulting concrete codegen file plans.
+
+        """
+        files: list[m.Infra.CodegenFilePlan] = []
+        template_sources = u.Infra.codegen_template_sources(
+            config.Infra.codegen if codegen is None else codegen,
+        )
+        for plan in plans:
+            if plan.desired_content is None:
+                continue
+            if plan.desired_mode is None:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"semantic desired mode is absent: {plan.path}",
+                )
+            if (
+                plan.path.resolve() not in template_sources
+                and plan.before.content is not None
+                and plan.before.content.decode(c.Cli.ENCODING_DEFAULT).startswith(
+                    c.Infra.AUTOGEN_HEADERS,
+                )
+            ):
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    "generated findings require canonical generator repair: "
+                    f"{plan.path}",
+                )
+            files.append(
+                m.Infra.CodegenFilePlan(
+                    project=plan.project,
+                    path=plan.path,
+                    before=plan.before,
+                    desired_content=plan.desired_content,
+                    desired_mode=plan.desired_mode,
+                    source_states=(plan.before, *plan.source_states),
+                    owner="semantic",
+                ),
+            )
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(files)
 
 
 __all__: list[str] = ["FlextInfraSemanticPublication"]

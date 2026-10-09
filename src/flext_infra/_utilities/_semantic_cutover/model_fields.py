@@ -13,7 +13,6 @@ import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
-from flext_infra import m, t
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
@@ -24,7 +23,7 @@ from flext_infra._utilities._semantic_cutover.model_fields_bindings import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
+    from flext_infra import m, p, t
 
 
 class FlextInfraUtilitiesSemanticCutoverModelFields(
@@ -54,86 +53,9 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         for function in ast.walk(tree):
             if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
-            untrusted = {
-                arg.arg
-                for arg in (
-                    *function.args.posonlyargs,
-                    *function.args.args,
-                    *function.args.kwonlyargs,
-                )
-                if isinstance(arg.annotation, ast.Name)
-                and arg.annotation.id == "object"
-            }
-            for index, statement in enumerate(function.body):
-                receiver = cls._field_receiver(statement)
-                if receiver not in untrusted or not isinstance(statement, ast.Assign):
-                    continue
-                guard = (
-                    function.body[index + 1] if index + 1 < len(function.body) else None
-                )
-                target = statement.targets[0]
-                if not isinstance(target, ast.Name):
-                    continue
-                if not cls._rejecting_guard(guard, target.id):
-                    msg = (
-                        f"untrusted model_fields access lacks a rejecting "
-                        f"guard in {path}:{statement.lineno}"
-                    )
-                    raise ValueError(msg)
-                if not isinstance(guard, ast.If):
-                    msg = "model field rejection must be an if statement"
-                    raise TypeError(msg)
-                uses = {
-                    node
-                    for node in ast.walk(function)
-                    if isinstance(node, ast.Name) and node.id == target.id
-                }
-                guarded_uses = {
-                    node
-                    for node in ast.walk(guard.test)
-                    if isinstance(node, ast.Name) and node.id == target.id
-                }
-                if uses != guarded_uses | {target}:
-                    msg = (
-                        f"model_fields local has additional uses "
-                        f"in {path}:{statement.lineno}"
-                    )
-                    raise ValueError(msg)
-                if statement.end_lineno is None or guard.test.end_lineno is None:
-                    msg = "model field boundary has no complete source span"
-                    raise ValueError(msg)
-                if (
-                    statement.end_lineno >= guard.lineno
-                    or guard.body[0].lineno <= guard.test.end_lineno
-                ):
-                    msg = (
-                        f"model field boundary requires separate indented "
-                        f"statements in {path}:{statement.lineno}"
-                    )
-                    raise ValueError(msg)
-                if any(
-                    receiver in cls._bound_identifiers(node)
-                    for body in function.body
-                    for node in ast.walk(body)
-                ):
-                    msg = (
-                        f"model field receiver is rebound in {path}:{statement.lineno}"
-                    )
-                    raise ValueError(msg)
-                indent = lines[statement.lineno - 1][: statement.col_offset]
-                comments = "".join(lines[statement.end_lineno : guard.lineno - 1])
-                condition = (
-                    f"{indent}if (\n"
-                    f"{indent}    not isinstance({receiver}, type)\n"
-                    f"{indent}    or not u.model_type({receiver})\n"
-                    f"{indent}    or not {receiver}.model_fields\n"
-                    f"{indent}):\n"
-                )
-                replacements.append((
-                    statement.lineno - 1,
-                    guard.test.end_lineno,
-                    comments + condition,
-                ))
+            replacements.extend(
+                cls._function_field_replacements(path, function, lines),
+            )
         if not replacements:
             return source, ()
         cls._require_unshadowed_guard(tree)
@@ -145,6 +67,135 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             cst.parse_module("".join(lines)).visit(AddImportsVisitor(context)).code
         )
         return updated, ("narrowed untrusted model-class boundaries",)
+
+    @classmethod
+    def _function_field_replacements(
+        cls,
+        path: Path,
+        function: ast.FunctionDef | ast.AsyncFunctionDef,
+        lines: t.SequenceOf[str],
+    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+        """Plan the narrowed model-fields boundary of one function body.
+
+        Returns:
+            The resulting ``t.SequenceOf[t.Triple[int, int, str]]``.
+
+        Raises:
+            ValueError: If a model field guard has no complete source span.
+
+        """
+        untrusted = {
+            arg.arg
+            for arg in (
+                *function.args.posonlyargs,
+                *function.args.args,
+                *function.args.kwonlyargs,
+            )
+            if isinstance(arg.annotation, ast.Name) and arg.annotation.id == "object"
+        }
+        replacements: list[t.Triple[int, int, str]] = []
+        for index, statement in enumerate(function.body):
+            receiver = cls._field_receiver(statement)
+            if receiver not in untrusted or not isinstance(statement, ast.Assign):
+                continue
+            guard = function.body[index + 1] if index + 1 < len(function.body) else None
+            target = statement.targets[0]
+            if not isinstance(target, ast.Name):
+                continue
+            guard = cls._validated_field_boundary(
+                path,
+                function,
+                statement,
+                guard,
+                target,
+            )
+            indent = lines[statement.lineno - 1][: statement.col_offset]
+            comments = "".join(lines[statement.end_lineno : guard.lineno - 1])
+            condition = (
+                f"{indent}if (\n"
+                f"{indent}    not isinstance({receiver}, type)\n"
+                f"{indent}    or not u.model_type({receiver})\n"
+                f"{indent}    or not {receiver}.model_fields\n"
+                f"{indent}):\n"
+            )
+            test_end = guard.test.end_lineno
+            if test_end is None:
+                msg = (
+                    f"model field guard has no complete source span in "
+                    f"{path}:{statement.lineno}"
+                )
+                raise ValueError(msg)
+            replacements.append((
+                statement.lineno - 1,
+                test_end,
+                comments + condition,
+            ))
+        return replacements
+
+    @classmethod
+    def _validated_field_boundary(
+        cls,
+        path: Path,
+        function: ast.FunctionDef | ast.AsyncFunctionDef,
+        statement: ast.Assign,
+        guard: ast.stmt | None,
+        target: ast.Name,
+    ) -> ast.If:
+        """Require one complete, guarded, singly used model-fields boundary.
+
+        Returns:
+            The validated rejecting guard statement.
+
+        Raises:
+            TypeError: If the model field rejection is not an if statement.
+            ValueError: If the boundary lacks a rejecting guard, carries
+                additional uses, spans invalid source, or rebinds the
+                receiver.
+
+        """
+        if not cls._rejecting_guard(guard, target.id):
+            msg = (
+                f"untrusted model_fields access lacks a rejecting "
+                f"guard in {path}:{statement.lineno}"
+            )
+            raise ValueError(msg)
+        if not isinstance(guard, ast.If):
+            msg = "model field rejection must be an if statement"
+            raise TypeError(msg)
+        uses = {
+            node
+            for node in ast.walk(function)
+            if isinstance(node, ast.Name) and node.id == target.id
+        }
+        guarded_uses = {
+            node
+            for node in ast.walk(guard.test)
+            if isinstance(node, ast.Name) and node.id == target.id
+        }
+        if uses != guarded_uses | {target}:
+            msg = f"model_fields local has additional uses in {path}:{statement.lineno}"
+            raise ValueError(msg)
+        if statement.end_lineno is None or guard.test.end_lineno is None:
+            msg = "model field boundary has no complete source span"
+            raise ValueError(msg)
+        if (
+            statement.end_lineno >= guard.lineno
+            or guard.body[0].lineno <= guard.test.end_lineno
+        ):
+            msg = (
+                f"model field boundary requires separate indented "
+                f"statements in {path}:{statement.lineno}"
+            )
+            raise ValueError(msg)
+        receiver = cls._field_receiver(statement)
+        if any(
+            receiver in cls._bound_identifiers(node)
+            for body in function.body
+            for node in ast.walk(body)
+        ):
+            msg = f"model field receiver is rebound in {path}:{statement.lineno}"
+            raise ValueError(msg)
+        return guard
 
     @staticmethod
     def _field_receiver(statement: ast.stmt) -> str | None:
@@ -163,6 +214,18 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             return None
         if not isinstance(value.func, ast.Name) or value.func.id != "getattr":
             return None
+        return FlextInfraUtilitiesSemanticCutoverModelFields._getattr_fields_receiver(
+            value,
+        )
+
+    @staticmethod
+    def _getattr_fields_receiver(value: ast.Call) -> str | None:
+        """Return the receiver of a ``getattr(x, "model_fields", ...)`` call.
+
+        Returns:
+            The resulting ``str | None``.
+
+        """
         match value.args:
             case [ast.Name(id=receiver), ast.Constant(value="model_fields")]:
                 return receiver
