@@ -187,7 +187,7 @@ class FlextInfraUtilitiesLintRecipes:
             The resulting ``(sections, summaries, wants notice)`` triple.
 
         Raises:
-            ValueError: If a whole-module recipe requires the Ruff lint gate.
+            ValueError: If a whole-module recipe reaches the edit planner.
 
         """
         sections: MutableMapping[
@@ -229,9 +229,11 @@ class FlextInfraUtilitiesLintRecipes:
                     c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
                     | c.Infra.LintFixRecipe.WRAP_LONG_LINE
                 ):
+                    # The ruff-lint gate applies both as whole-module rewrites
+                    # before planning; reaching the planner breaks that contract.
                     msg = (
-                        f"{path}: lint recipe {recipe.value} for {issue.code} "
-                        "requires the Ruff lint gate"
+                        f"{path}: lint finding {issue.code} is a whole-module "
+                        "recipe and never reaches the edit planner"
                     )
                     raise ValueError(msg)
         return sections, summaries, wants_notice

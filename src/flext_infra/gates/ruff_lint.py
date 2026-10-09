@@ -183,6 +183,15 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
+            import_graph = (
+                u.Infra.project_import_graph(project_dir)[0]
+                if any(
+                    recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                    for issues in by_file.values()
+                    for issue in issues
+                )
+                else {}
+            )
             # A module the recipes cannot place stops the phase with nothing
             # written.
             planned: t.MutableSequenceOf[t.Pair[m.Cli.AtomicFileState, str]] = []
@@ -198,6 +207,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     source,
                     issues,
                     recipes,
+                    import_graph=import_graph,
                 )
                 if repaired != source:
                     planned.append((before, repaired))
@@ -211,6 +221,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         source: str,
         issues: t.SequenceOf[m.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        *,
+        import_graph: t.MappingKV[str, frozenset[str]],
     ) -> str:
         """Apply one module's recipes: whole-module rewrites, then planned edits.
 
@@ -229,6 +241,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     project_root=project_dir,
                     file_path=path,
                     source=source,
+                    import_graph=import_graph,
                 )
                 or source
             )

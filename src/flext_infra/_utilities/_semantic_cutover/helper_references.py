@@ -16,7 +16,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticNestingTypes
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticNestingTypes,
+)
 
 
 class FlextInfraUtilitiesSemanticHelperReferences(

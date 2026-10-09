@@ -515,7 +515,12 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
                     or "generation publication identity changed",
                 ),
             )
-        live = verify.live(self._owner, plan, mise_publications)
+        live = verify.live(
+            self._owner,
+            plan,
+            mise_publications,
+            published=publications,
+        )
         if live.failure:
             return r[t.VariadicTuple[Path]].from_failure(
                 self._recover_failure(

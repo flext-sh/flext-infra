@@ -77,8 +77,8 @@ class TestsFlextInfraGateRegistry:
         Runtime contract: verbs own tools by intent. `fmt` owns formatting
         (ruff format plus the fmt_gates writers such as markdown-format),
         `fix` repairs findings (markdown, markdown-code, smells), `check` is
-        read-only. `format` therefore appears in NO check vocabulary: not in
-        ALLOWED (check never mutates) and not in FIXABLE (fix never formats).
+        read-only: it runs every gate's read-only side, including ``format
+        --check``, and `format` stays out of FIXABLE (fix never formats).
         """
         registry = FlextInfraGateRegistry.default()
         mutating = {
@@ -97,7 +97,7 @@ class TestsFlextInfraGateRegistry:
             if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
         }
         tm.that(fmt_owned <= registered_mutating, eq=True)
-        # `format` belongs to `make fmt` alone: absent from the read-only
-        # check vocabulary AND from the fix vocabulary.
+        # `format` applies only through `make fmt`; check runs its read-only
+        # side, and fix never formats.
         tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)
-        tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_GATE_IDS, eq=True)
+        tm.that(c.Infra.FORMAT in c.Infra.CANONICAL_GATE_IDS, eq=True)

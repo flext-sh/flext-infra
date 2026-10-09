@@ -10,9 +10,9 @@ import os
 import tempfile
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraUtilitiesWorkspaceEnvMixin:

@@ -13,8 +13,12 @@ import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverEdits
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverModelFieldsBindings
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverEdits,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -185,7 +189,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             raise ValueError(msg)
         receiver = cls._field_receiver(statement)
         if any(
-            receiver in cls._bound_identifiers(node)
+            receiver in cls.bound_identifiers(node)
             for body in function.body
             for node in ast.walk(body)
         ):

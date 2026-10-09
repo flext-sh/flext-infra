@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import importlib
 import sys
+import tempfile
 from collections.abc import Iterator
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -26,24 +28,8 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
     / c.Infra.CODEGEN_CONFIG_DIR
     / c.Infra.CODEGEN_CONFIG_FILENAME
 )
-
-
-def pytest_addoption(parser: pytest.Parser) -> None:
-    """Register the slow-timeout ini option consumed by the test suite.
-
-    Why (root cause, rc0 plugin gap): the pyproject ``[tool.pytest.ini_options]``
-    declares ``flext_slow_timeout_seconds`` (consumed by ``flext_tests``) and
-    ``tests/unit/deps/test_modernizer_pytest`` reads it back through
-    ``config.getini``. The installed ``flext-tests 0.12.0rc0`` entry-point does
-    not register the option, so pytest aborts collection with
-    ``Unknown config option`` before any test runs. This conftest owns its ini
-    surface and declares the option here; a real plugin re-registering the same
-    name is a no-op merge.
-    """
-    parser.addini(
-        "flext_slow_timeout_seconds",
-        help="Seconds after which a test is flagged slow (flext-tests option)",
-    )
+_SESSION_ISOLATION = pytest.StashKey[ExitStack]()
+_TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 
 
 @pytest.fixture
@@ -58,32 +44,15 @@ def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
         yield workspace
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _isolated_cache_home(
-    tmp_path_factory: pytest.TempPathFactory,
-) -> Iterator[None]:
-    """Keep every declared FLEXT cache of the suite inside fixture storage.
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Isolate the suite's FLEXT caches and snapshot the tracked codegen config.
 
     Gates resolve their persistent caches (codemod rule catalogs, Mypy) below
-    ``XDG_CACHE_HOME``; a unit test writes only inside fixture-owned storage,
-    so the session scopes that home to one directory per worker and restores
-    the environment on exit. Preserve the native UV source cache selected before
-    that isolation so hermetic Git fixtures can read provisioned objects.
-    """
-    spec = config.Infra.codegen.make.codemod_rules_cache
-    uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
-    with u.Tests.env_vars_context({
-        "UV_CACHE_DIR": uv_cache,
-        spec.data_home_environment_variable: str(
-            tmp_path_factory.mktemp("xdg-cache"),
-        ),
-    }):
-        yield
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _guard_tracked_codegen_config_untouched() -> Iterator[None]:
-    """Fail loud if the suite writes to the real, tracked ``config/codegen.yaml``.
+    ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
+    so the session scopes that home to one temporary directory per worker and
+    restores the environment on exit. The native UV source cache selected
+    before that isolation is preserved, so hermetic Git fixtures can read the
+    provisioned objects.
 
     Root cause (flext-eles2): dependency-floor rewrite tests exercised the
     public ``--rewrite-constraints`` entry point through workspaces that never
@@ -92,19 +61,79 @@ def _guard_tracked_codegen_config_untouched() -> Iterator[None]:
     in an editable install — and silently flipped floors in the real tracked
     file. The floor writer now resolves its target from the modernizer's own
     ``repository_root`` and every workspace fixture declares its own isolated
-    ``config/codegen.yaml``; this session-wide guard proves the real file
-    stays untouched by the whole suite, current and future.
+    ``config/codegen.yaml``; the session snapshot lets
+    ``pytest_sessionfinish`` prove the real file stays untouched by the whole
+    suite, current and future.
     """
-    before = _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
-    yield
-    after = _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
-    if after != before:
-        pytest.fail(
+    spec = config.Infra.codegen.make.codemod_rules_cache
+    uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
+    isolation = ExitStack()
+    cache_home = isolation.enter_context(
+        tempfile.TemporaryDirectory(prefix="xdg-cache-"),
+    )
+    isolation.enter_context(
+        u.Tests.env_vars_context({
+            "UV_CACHE_DIR": uv_cache,
+            spec.data_home_environment_variable: cache_home,
+        }),
+    )
+    session.stash[_SESSION_ISOLATION] = isolation
+    session.stash[_TRACKED_CODEGEN_CONFIG_BYTES] = (
+        _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
+    )
+
+
+def pytest_sessionfinish(session: pytest.Session) -> None:
+    """Restore the cache environment and fail loud on a tracked config write."""
+    session.stash[_SESSION_ISOLATION].close()
+    if (
+        _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
+        != session.stash[_TRACKED_CODEGEN_CONFIG_BYTES]
+    ):
+        pytest.exit(
             "test suite modified the tracked repository file "
             f"{_TRACKED_CODEGEN_CONFIG_PATH}; dependency-floor and codegen "
             "writers must target an isolated workspace, never the real "
             "checkout (flext-eles2)",
+            returncode=pytest.ExitCode.TESTS_FAILED,
         )
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Resolve native-engine and provisioning applicability before fixtures execute.
+
+    Raises:
+        ValueError: If requires_engine arguments must be canonical engine names.
+    """
+    policy = config.Infra.codegen.make.ci
+    if u.Infra.env_value(policy.variable).strip() != policy.value:
+        return
+    excluded_fixtures = frozenset(
+        config.Infra.tooling.tools.pytest.ci_excluded_fixtures,
+    )
+    excluded_engines = frozenset(policy.local_check_gates)
+    selected: list[pytest.Item] = []
+    deselected: list[pytest.Item] = []
+    for item in items:
+        engines = tuple(
+            engine
+            for marker in item.iter_markers("requires_engine")
+            for engine in marker.args
+        )
+        if any(not isinstance(engine, str) for engine in engines):
+            msg = "requires_engine arguments must be canonical engine names"
+            raise ValueError(msg)
+        fixtures = tuple(item.fixturenames) if isinstance(item, pytest.Function) else ()
+        target = (
+            deselected
+            if excluded_engines.intersection(engines)
+            or excluded_fixtures.intersection(fixtures)
+            else selected
+        )
+        target.append(item)
+    if deselected:
+        deselected[0].config.hook.pytest_deselected(items=deselected)
+    items[:] = selected
 
 
 @pytest.fixture
@@ -263,8 +292,12 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    # The governed tree above the clone carries the committed Taplo pin.
-    u.Tests.seed_locked_taplo(infra_test_workspace.parent)
+    # The governed tree above the clone carries the committed Mise
+    # declaration and lock that activate its locked tools.
+    u.Tests.copy_tracked_mise_seeds(infra_test_workspace.parent)
+    # The repository carries its own committed lock: the declaration the
+    # conform publishes into it resolves only against its sibling mise.lock.
+    u.Tests.seed_locked_taplo(repo)
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
     u.Tests.write_project_beads_config(repo, config.Infra.name)

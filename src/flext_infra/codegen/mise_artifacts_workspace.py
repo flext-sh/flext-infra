@@ -103,8 +103,14 @@ class FlextInfraMiseWorkspacePlanner:
         scope_root: Path | None = None,
         *,
         transaction_id: str | None = None,
+        initial_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held.
+
+        A scaffold (``codegen new``) declares its workspace before rendering
+        any of its own configuration, so ``initial_workspace`` is the topology
+        authority until the generated repository carries its declaration;
+        ``None`` reads the committed declaration of the coordination root.
 
         Returns:
             The resulting ``p.Result[m.Infra.MiseToolchainWorkspaceLayout]``.
@@ -117,7 +123,11 @@ class FlextInfraMiseWorkspacePlanner:
         if resolved_scope.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(resolved_scope)
         scope_root = resolved_scope.value
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
+        workspace = (
+            FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
+            if initial_workspace is None
+            else r[m.Infra.WorkspaceSpec].ok(initial_workspace)
+        )
         if workspace.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(

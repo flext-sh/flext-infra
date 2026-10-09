@@ -137,6 +137,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
         return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(sources))
 
+    @staticmethod
+    def direct_config_source(project_dir: Path, path: Path) -> bool:
+        """Whether ``path`` is one direct ``config/*.yaml`` source of the project.
+
+        Returns:
+            True for a direct YAML child of the project's config directory.
+
+        """
+        return path.parent == project_dir / c.CONFIG_DIR_NAME and path.suffix == ".yaml"
+
     @classmethod
     def snapshot_config_sources(
         cls,
@@ -236,7 +246,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     ) -> p.Result[t.VariadicTuple[Path]]:
         try:
             paths = tuple(
-                sorted(path for path in config_dir.iterdir() if path.suffix == ".yaml"),
+                sorted(
+                    path
+                    for path in config_dir.iterdir()
+                    if cls.direct_config_source(config_dir.parent, path)
+                ),
             )
         except OSError as exc:
             return r[t.VariadicTuple[Path]].fail_op(

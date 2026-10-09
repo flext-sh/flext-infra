@@ -10,9 +10,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_cli import t
-
-from flext_infra import m, u
+from flext_cli import m, t, u
 
 
 class FlextInfraTypesAdapters:

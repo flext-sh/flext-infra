@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 import shutil
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from functools import cache, lru_cache
 from pathlib import Path
 
@@ -25,16 +24,17 @@ class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
-    def managed_mise_binary(
-        name: str,
-        owner_root: Path,
-        *,
-        timeout_seconds: int = c.Infra.TIMEOUT_SHORT,
-    ) -> p.Result[Path]:
-        """Resolve a locked managed executable before entering a consumer cwd.
+    def managed_mise_binary(name: str, owner_root: Path) -> p.Result[Path]:
+        """Resolve one declared tool's executable through Mise in ``owner_root``.
+
+        Mise resolves the release the committed mise.lock pins wherever it pins
+        one and the declared selector otherwise, so a stale or incomplete lock
+        never stops a verb (operator-ruling-2026-10-09-setup-resilient);
+        ``make audit`` (codegen mise-proof) proves the pins.
 
         Returns:
-            An authenticated absolute binary, never a PATH shim or global default.
+            The absolute executable inside the tool's install root, never a
+            PATH shim.
         """
         tool = next(
             (
@@ -46,58 +46,116 @@ class FlextInfraUtilitiesPyproject:
         )
         if tool is None:
             return r[Path].fail(f"tool is not declared by the toolchain owner: {name}")
-        pinned = FlextInfraUtilitiesPyproject._locked_mise_version(
+        reader = shutil.which(c.Infra.MISE)
+        if reader is None:
+            return r[Path].fail("Mise executable is absent; run make setup")
+        return FlextInfraUtilitiesPyproject._managed_mise_path(
+            tool.version_probe.binary,
             owner_root,
-            tool.selector or tool.name,
-            config.Infra.codegen.toolchain.tool_versions[name],
-        )
-        if pinned.failure:
-            return r[Path].from_failure(pinned)
-        reader = FlextInfraUtilitiesPyproject.managed_mise_self(owner_root)
-        if reader.failure:
-            return reader
-        located = FlextInfraUtilitiesPyproject._managed_mise_path(
-            tool.version_probe.binary, owner_root, reader.value
-        )
-        if located.failure:
-            return located
-        return FlextInfraUtilitiesPyproject._managed_binary_identity(
-            located.value,
-            pinned.value,
-            owner_root,
-            tool.version_probe,
-            timeout_seconds,
+            Path(reader),
         )
 
     @staticmethod
     def managed_mise_self(owner_root: Path) -> p.Result[Path]:
         """Qualify the physical Mise reader before it loads project locks.
 
+        The reader is the release the committed tree pins: the self-managed
+        entry its ``.mise.toml`` declares, authenticated by the ``mise.lock``
+        beside it. The generator's own target release never qualifies the
+        reader: ``make upg`` runs this generator while the tree still declares
+        the previous release, or none before self-management, and only the
+        upgrade renders and locks the new one (C19). A committed manifest that
+        declares no self-managed entry reads its locks with the host Mise.
+
         Returns:
             The installed self-managed executable, never a tool shim.
         """
-        toolchain = config.Infra.codegen.toolchain
-        pinned = FlextInfraUtilitiesPyproject._locked_mise_version(
-            owner_root, toolchain.mise_selector, toolchain.mise_version
-        )
-        if pinned.failure:
-            return r[Path].from_failure(pinned)
         selected = shutil.which(c.Infra.MISE)
         if selected is None:
             return r[Path].fail("Mise executable is absent; run make setup")
-        reader = FlextInfraUtilitiesPyproject._mise_self_identity(
-            Path(selected), pinned.value, owner_root
+        reader = Path(selected)
+        return FlextInfraUtilitiesPyproject._committed_mise_self_release(
+            owner_root,
+        ).flat_map(
+            lambda declared: FlextInfraUtilitiesPyproject._qualified_mise_reader(
+                reader,
+                owner_root,
+                declared,
+            ),
         )
-        if reader.failure:
-            return reader
-        installed = FlextInfraUtilitiesPyproject._managed_mise_path(
-            c.Infra.MISE, owner_root, reader.value
+
+    @staticmethod
+    def _qualified_mise_reader(
+        reader: Path,
+        owner_root: Path,
+        declared: str | None,
+    ) -> p.Result[Path]:
+        """Authenticate the reader and its installed release against the lock pin.
+
+        Returns:
+            The installed self-managed executable, or the physical reader when
+            the committed manifest declares no self-managed release.
+        """
+        if declared is None:
+            return r[Path].ok(reader.resolve(strict=True))
+        return FlextInfraUtilitiesPyproject._locked_mise_version(
+            owner_root,
+            config.Infra.codegen.toolchain.mise_selector,
+            declared,
+        ).flat_map(
+            lambda pinned: (
+                FlextInfraUtilitiesPyproject
+                ._mise_self_identity(reader, pinned, owner_root)
+                .flat_map(
+                    lambda qualified: FlextInfraUtilitiesPyproject._managed_mise_path(
+                        c.Infra.MISE,
+                        owner_root,
+                        qualified,
+                    ),
+                )
+                .flat_map(
+                    lambda installed: FlextInfraUtilitiesPyproject._mise_self_identity(
+                        installed,
+                        pinned,
+                        owner_root,
+                    ),
+                )
+            ),
         )
-        if installed.failure:
-            return installed
-        return FlextInfraUtilitiesPyproject._mise_self_identity(
-            installed.value, pinned.value, owner_root
+
+    @staticmethod
+    def _committed_mise_self_release(owner_root: Path) -> p.Result[str | None]:
+        """Return the self-managed Mise release the committed manifest declares.
+
+        The manifest is the ``.mise.toml`` beside the nearest ``mise.lock``.
+        A tree without that lock and manifest pair, or whose manifest declares
+        no self-managed entry, pins no reader release (typed absence).
+
+        Returns:
+            The declared release, or None when the tree declares none.
+        """
+        lock_path = FlextInfraUtilitiesPyproject._mise_lock_path(owner_root)
+        manifest = (
+            None if lock_path is None else lock_path.parent / c.Infra.MISE_TOML_FILENAME
         )
+        if manifest is None or not manifest.is_file():
+            return r[str | None].ok(None)
+        payload = u.Cli.toml_mapping_from_text(
+            manifest.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+        )
+        if payload is None:
+            return r[str | None].fail(f"{manifest} is not valid TOML")
+        tools = payload.get("tools", {})
+        if not isinstance(tools, Mapping):
+            return r[str | None].fail(f"{manifest} has a malformed [tools] table")
+        release = tools.get(config.Infra.codegen.toolchain.mise_selector)
+        if release is None:
+            return r[str | None].ok(None)
+        if not isinstance(release, str) or not release:
+            return r[str | None].fail(
+                f"{manifest} declares a malformed self-managed Mise entry: {release!r}",
+            )
+        return r[str | None].ok(release)
 
     @staticmethod
     def _mise_self_identity(
@@ -113,6 +171,7 @@ class FlextInfraUtilitiesPyproject:
             (str(binary), "--version"),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(env=c.Infra.MISE_IDENTITY_PROBE_ENVIRONMENT),
         )
         if identity.failure:
             return r[Path].from_failure(identity)
@@ -144,36 +203,6 @@ class FlextInfraUtilitiesPyproject:
         if not binary.is_absolute() or not binary.is_file():
             return r[Path].fail(f"managed executable is not an absolute file: {binary}")
         return r[Path].ok(binary.resolve(strict=True))
-
-    @staticmethod
-    def _managed_binary_identity(
-        binary: Path,
-        pinned: str,
-        owner_root: Path,
-        probe: m.Infra.MiseToolVersionProbe,
-        timeout_seconds: int,
-    ) -> p.Result[Path]:
-        identified = u.Cli.run_raw(
-            (str(binary), *probe.arguments),
-            cwd=owner_root,
-            timeout=timeout_seconds,
-        )
-        if identified.failure:
-            return r[Path].from_failure(identified)
-        if (
-            not u.Cli.process_succeeded(identified.value.outcome)
-            or identified.value.stderr.strip()
-        ):
-            return r[Path].fail(identified.value.stderr or identified.value.stdout)
-        pattern = probe.pattern.replace(
-            c.Infra.MISE_VERSION_PLACEHOLDER, re.escape(pinned)
-        )
-        if re.search(pattern, identified.value.stdout, re.MULTILINE) is None:
-            return r[Path].fail(
-                f"managed executable differs from lock: expected={pinned} "
-                f"observed={identified.value.stdout.strip()}",
-            )
-        return r[Path].ok(binary)
 
     @staticmethod
     def recover_live_pyproject_text(raw: str) -> p.Result[str]:
@@ -294,10 +323,9 @@ class FlextInfraUtilitiesPyproject:
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain.
 
-        ``taplo_version`` is the declared selector; the one mise.lock owner
-        (``_locked_mise_version``, nearest lock at or above the execution root)
-        resolves it before any shim runs, so generation formats with the locked
-        release and never asks a tool manager to resolve a version mid-run.
+        ``taplo_version`` is the declared selector and keys the format cache;
+        Mise resolves the executable, through the committed mise.lock wherever
+        it pins Taplo (``managed_mise_binary``).
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -328,53 +356,6 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
-    def _locked_taplo_version(toolchain_root: Path, *, declared: str) -> p.Result[str]:
-        """Return the exact Taplo release the committed lock pins.
-
-        The configuration declares the moving selector; only ``make upg``
-        resolves it, into ``mise.lock``. Generation therefore reads the pinned
-        release and passes it on, and an absent lock entry fails loud instead
-        of silently accepting whatever binary the host happens to expose.
-
-        Returns:
-            The exact Taplo release the committed lock pins.
-
-        """
-        if declared != c.Infra.MISE_MOVING_SELECTOR:
-            return r[str].ok(declared)
-        return FlextInfraUtilitiesPyproject._locked_tool_version(
-            toolchain_root,
-            c.Infra.TAPLO_MISE_TOOL_NAME,
-        )
-
-    @staticmethod
-    def _locked_tool_version(toolchain_root: Path, tool_name: str) -> p.Result[str]:
-        """Return one tool's pinned version from ``mise.lock`` at the root.
-
-        Returns:
-            One tool's pinned version from ``mise.lock`` at the root.
-
-        """
-        lock_path = toolchain_root / c.Infra.MISE_LOCK_FILENAME
-        source = u.Cli.files_read_text(lock_path)
-        if source.failure:
-            return r[str].from_failure(source)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            return r[str].fail(f"invalid TOML in {lock_path.name}")
-        raw_tools = payload.get("tools")
-        raw_entry = raw_tools.get(tool_name) if isinstance(raw_tools, Mapping) else None
-        if isinstance(raw_entry, Sequence) and not isinstance(raw_entry, str):
-            raw_entry = raw_entry[0] if raw_entry else None
-        version = raw_entry.get("version") if isinstance(raw_entry, Mapping) else None
-        if not isinstance(version, str) or not version.strip():
-            return r[str].fail(
-                f"{lock_path.name} pins no version for {tool_name}: "
-                "run make upg to resolve the lock",
-            )
-        return r[str].ok(version.strip())
-
-    @staticmethod
     @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
     def _format_toml_source_cached(
         source: str,
@@ -384,7 +365,7 @@ class FlextInfraUtilitiesPyproject:
         taplo: t.Triple[str, int, Path],
     ) -> p.Result[str]:
 
-        taplo_result = FlextInfraUtilitiesPyproject._taplo_binary(*taplo)
+        taplo_result = FlextInfraUtilitiesPyproject._taplo_binary(taplo[2])
         if taplo_result.failure:
             return r[str].from_failure(taplo_result)
         config_path, _config_digest = config
@@ -549,33 +530,16 @@ class FlextInfraUtilitiesPyproject:
         return pinned, specifiers
 
     @staticmethod
-    def _taplo_binary(
-        taplo_version: str,
-        process_timeout_seconds: int,
-        execution_root: Path,
-    ) -> p.Result[Path]:
-        """Resolve and authenticate Make's config-versioned Taplo executable.
-
-        ``taplo_version`` is the release selector the workspace declares; the
-        version that authenticates is the one the committed mise.lock pins for
-        it, so no shim run ever resolves a moving selector over the network.
+    def _taplo_binary(execution_root: Path) -> p.Result[Path]:
+        """Resolve Make's declared Taplo executable through Mise.
 
         Returns:
             The resulting ``p.Result[Path]``.
 
         """
-        pinned = FlextInfraUtilitiesPyproject._locked_mise_version(
-            execution_root,
-            c.Infra.TAPLO_MISE_TOOL_NAME,
-            taplo_version,
-        )
-        if pinned.failure:
-            return r[Path].from_failure(pinned)
-        u.Cli.info(f"pyproject-tooling: resolve taplo={pinned.value} (mise.lock)")
         return FlextInfraUtilitiesPyproject.managed_mise_binary(
             c.Infra.TAPLO_MISE_TOOL_NAME,
             execution_root,
-            timeout_seconds=process_timeout_seconds,
         )
 
     @staticmethod

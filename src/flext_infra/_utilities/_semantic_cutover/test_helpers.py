@@ -19,7 +19,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticHelperReferences
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticHelperReferences,
+)
 
 
 class FlextInfraUtilitiesSemanticTestHelpers(

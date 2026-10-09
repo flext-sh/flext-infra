@@ -258,11 +258,9 @@ class FlextInfraModelsWorkspace:
     class FleetRepoGaps(m.ContractModel):
         """One repository's row of the workspace fleet-gaps report.
 
-        Every count column reads that repository's own published reports and
-        degrades to zero when the artifact is absent; the standards columns
-        report presence facts only. Probes that cannot run (a missing
-        checkout, an unreachable provider) degrade to their empty value so
-        one repository never blocks the fleet's picture.
+        Quality counts come only from explicitly selected, project-bound check
+        invocations. None means unknown/not executed, never PASS. Other hygiene
+        probes retain their independent presence and empty-value contracts.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
@@ -289,14 +287,14 @@ class FlextInfraModelsWorkspace:
             t.NonNegativeInt | None,
             m.Field(
                 description="Executed eligible lint findings; null is unknown/not "
-                            "executed",
+                "executed",
             ),
         ]
         pyrefly_findings: Annotated[
             t.NonNegativeInt | None,
             m.Field(
                 description="Executed eligible Pyrefly findings; null is unknown/not "
-                            "executed",
+                "executed",
             ),
         ]
         codemod_findings: Annotated[

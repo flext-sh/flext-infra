@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -97,6 +99,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         __module__: str
         __qualname__: str
+
         @property
         def __base__(
             self,
@@ -106,6 +109,16 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def __bases__(
             self,
         ) -> tuple[FlextInfraProtocolsRopeRuntime.NativeClassMetadata, ...]: ...
+
+    @runtime_checkable
+    class RopeRuntimeSequence(Protocol):
+        """Inspectable SDK tuple/list elements before boundary validation."""
+
+        def __len__(self) -> int: ...
+
+        def __getitem__(self, index: int, /) -> p.AttributeProbe: ...
+
+        def __iter__(self) -> Iterator[p.AttributeProbe]: ...
 
     @runtime_checkable
     class RopeBuiltinClass(Protocol):
@@ -284,6 +297,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> None: ...
 
         def close(self) -> None: ...
+
+        def frozen_layout(
+            self,
+        ) -> AbstractContextManager[FlextInfraProtocolsRopeRuntime.RopeProject]: ...
 
     @runtime_checkable
     class RopeLocation(Protocol):

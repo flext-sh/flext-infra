@@ -13,7 +13,9 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverEdits
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverEdits,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

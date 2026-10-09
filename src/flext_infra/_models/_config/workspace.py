@@ -24,6 +24,10 @@ class FlextInfraConfigModelsWorkspace:
     class CandidateBootstrapTargetSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared worktree and canonical conform surface."""
 
+        # The planner's surface contract takes the enum member, so the
+        # contract base's value coercion is switched off here.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         path: Annotated[Path, m.Field(description="Relative candidate worktree path")]
         what: Annotated[
             c.Infra.CodegenConformSurface,

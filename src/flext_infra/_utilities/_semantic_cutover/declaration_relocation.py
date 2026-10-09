@@ -23,7 +23,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverNestingCst,
     FlextInfraUtilitiesSemanticNestingTypes,
 )
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesDeclarationPayload
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+)
 from flext_infra._utilities import FlextInfraUtilitiesCodemodProject
 
 

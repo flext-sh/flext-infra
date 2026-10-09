@@ -290,10 +290,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 if member.is_dir() and (member / "src").is_dir()
             ),
         ]
-        with FlextInfraUtilitiesRopeCore.open_project(
-            workspace_root,
-            project_roots=project_roots,
-        ) as project:
+        with (
+            FlextInfraUtilitiesRopeCore.open_project(
+                workspace_root,
+                project_roots=project_roots,
+            ) as project,
+            project.frozen_layout(),
+        ):
             return FlextInfraUtilitiesRopeSourceBases.runtime_bases(
                 project,
                 sources,

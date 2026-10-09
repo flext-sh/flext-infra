@@ -140,8 +140,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
         if contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
             return self._plan_existing_bootstrap(target, workspace, codegen)
-        if contract.destinations == frozenset({c.PYPROJECT_FILENAME}):
-            return self._plan_existing_pyproject_bootstrap(target.root)
         return None
 
     def _plan_existing_managed(
@@ -279,47 +277,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 ),
             ),
         )
-
-    def _plan_existing_pyproject_bootstrap(
-        self,
-        root: Path,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Project owned policy before consumers require a valid physical TOML file.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
-        """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        live = u.Infra.live_pyproject_text(
-            root / c.PYPROJECT_FILENAME,
-            regenerate_managed_tools=True,
-        )
-        if live.failure:
-            return result_type.from_failure(live)
-        spec = u.Infra.pyproject_managed_file()
-        if spec.failure:
-            return result_type.from_failure(spec)
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=root,
-            skip_check=True,
-        )
-        conformed = modernizer.conform_source(
-            live.value,
-            path=root / c.PYPROJECT_FILENAME,
-            format_source=False,
-            topology=m.Infra.PyprojectDeclaredTopology(),
-        )
-        if conformed.failure:
-            return result_type.from_failure(conformed)
-        planned = self.file_plan(
-            root,
-            c.PYPROJECT_FILENAME,
-            conformed.value,
-            mode=spec.value.mode,
-        )
-        if planned.failure:
-            return result_type.from_failure(planned)
-        return result_type.ok((planned.value,))
 
     def _plan_existing_bootstrap(
         self,

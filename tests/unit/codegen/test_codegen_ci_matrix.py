@@ -51,11 +51,12 @@ class TestsFlextInfraCodegenCiMatrix:
             The resulting ``Path``.
 
         """
-        # The governed tree carries the committed Taplo pin generation formats
-        # through; a fresh scaffold never resolves a moving selector. The pin
-        # lands in the output root before the scaffold renders into it.
+        # The scaffold lands inside a governed tree: generation formats through
+        # the committed Mise declaration and lock, never a moving selector.
+        # They land in the output root before the scaffold renders into it;
+        # resolution in a root outside any governed tree is flext-pvhid.
         root.mkdir(parents=True, exist_ok=True)
-        u.Tests.seed_locked_taplo(root)
+        u.Tests.copy_tracked_mise_seeds(root)
         service = FlextInfraCodegenProjectNew(
             flext_source=u.Tests.flext_source(),
             name="flext-demo",
@@ -242,21 +243,51 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(jobs, has="Block WIP heads from protected integration branches")
 
     @staticmethod
+    def test_every_approval_verb_blocks_on_push_and_pull_request(
+        rendered_project: Path,
+    ) -> None:
+        """CI runs each approval verb as its own blocking step on every event.
+
+        The former single ``make pre-commit`` step failed unattended runs
+        because setup refused a stale lock; setup now provisions whatever the
+        locks state (operator-ruling-2026-10-09-setup-resilient), so the gates
+        run on push and pull request instead of only on manual dispatch. After
+        setup, every verb reports even when an earlier one is red.
+        """
+        workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8",
+        )
+        verbs = config.Infra.codegen.make.approval_verbs
+        for index, verb in enumerate(verbs):
+            block = workflow.split(f"- name: make {verb} (blocking)", maxsplit=1)[1]
+            block = block.split("\n      - name:", maxsplit=1)[0]
+            tm.that(block, lacks="workflow_dispatch")
+            tm.that(block, has=f"make {verb}")
+            if index:
+                tm.that(
+                    block,
+                    has=f"steps.approval-{verbs[0]}.outcome == 'success'",
+                )
+        tm.that(workflow, lacks="- name: Approval (blocking)")
+
+    @staticmethod
     def test_ci_runs_make_test_through_the_persistent_testmon_database(
         rendered_project: Path,
     ) -> None:
         """CI selects through testmon and hands its database to the next run.
 
-        The database directory is restored before ``make test`` and saved on
-        every outcome after it; the full verb never renders into CI.
+        The database directory is restored before the ``make test`` approval
+        step and saved on every outcome after it; the full verb never renders
+        into CI.
         """
         workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
         )
         make = config.Infra.codegen.make
         cache = make.testmon_cache
-        test_run = f"run: {make.ci.variable}={make.ci.value} make test\n"
+        test_run = f"run: {make.ci.variable}={make.ci.value} make {c.Infra.VERB_TEST}\n"
         tm.that(workflow, has=test_run)
+        tm.that(c.Infra.VERB_TEST in make.approval_verbs, eq=True)
         tm.that(workflow, lacks="make test-full")
         path = (
             f"path: ~/{cache.home_cache_directory}/{cache.external_storage_directory}"
@@ -432,8 +463,8 @@ class TestsFlextInfraCodegenCiMatrix:
             workflow,
             lacks=(
                 'rm -f "$key_path"\n\n\n'
-                "      # Why: GitHub runners expose umask 002, so git checkout "
-                "materializes"
+                "      # Why: GitHub runners expose umask 002, "
+                "so git checkout materializes"
             ),
         )
         # Included fragments start on their own line: a rationale comment is
@@ -552,8 +583,10 @@ class TestsFlextInfraCodegenCiMatrix:
             ci_trigger_branches=u.CodegenTestSupport.Ci.ci_trigger_branches(
                 "develop",
             ),
-            has_devcontainer=True,
-            cooldown_excluded_dependencies=excluded,
+            overrides=u.CodegenTestSupport.Ci.WorkflowRenderOverrides(
+                has_devcontainer=True,
+                cooldown_excluded_dependencies=excluded,
+            ),
         )
         days = config.Infra.codegen.toolchain.dependency_cooldown_days
         template = (
@@ -802,13 +835,7 @@ class TestsFlextInfraCodegenCiMatrix:
     def test_docs_failure_upload_keeps_audit_failure_and_scopes_hidden_reports(
         rendered_project: Path,
     ) -> None:
-        """A generated Docs job fails on audit findings and retains safe reports.
-
-        Raises:
-            TypeError: If Docs workflow steps must be a sequence; or if Docs report
-                paths must be text.
-
-        """
+        """A generated Docs job fails on audit findings and retains safe reports."""
         workflow = u.Cli.yaml_load_mapping(
             rendered_project / ".github" / "workflows" / "docs.yml",
         )
@@ -1014,7 +1041,7 @@ class TestsFlextInfraCodegenCiMatrix:
 
     @staticmethod
     def test_root_dockerignore_reincludes_bootstrap_surface() -> None:
-        """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
+        """Hand-maintained root .dockerignore admits clean-machine bootstrap files."""
         root = Path(__file__).resolve().parents[3]
         dockerignore = root / ".dockerignore"
         tm.that(dockerignore.is_file(), eq=True)

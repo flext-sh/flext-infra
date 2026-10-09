@@ -12,8 +12,8 @@ from flext_infra import config, main, u
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
+from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 
 
 class TestsFlextInfraUtilitiesReleaseMixin:
@@ -59,8 +59,9 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        # The governed tree above the workspace carries the committed Taplo pin.
-        TestsFlextInfraUtilitiesTomlMixin.seed_locked_taplo(root)
+        # The governed tree above the workspace carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             workspace,
             "workspace",
@@ -157,10 +158,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 "MIT License\n\nCopyright (c) FLEXT Tests\n",
                 encoding="utf-8",
             )
-            src_dir = project / "src" / package_name
-            src_dir.mkdir(parents=True, exist_ok=True)
-            (src_dir / "__init__.py").write_text("", encoding="utf-8")
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_member_package(
                 project,
                 name,
             )

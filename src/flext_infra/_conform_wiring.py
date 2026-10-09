@@ -28,6 +28,8 @@ class FlextInfraConformWiring:
     @staticmethod
     def generation_participant_policy(
         root: Path,
+        *,
+        initial_workspace: m.Infra.WorkspaceSpec | None,
     ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
         """Authorize the actual physical coordination root and declared members.
 
@@ -36,7 +38,7 @@ class FlextInfraConformWiring:
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
-        ).participant_policy()
+        ).participant_policy(initial_workspace=initial_workspace)
 
     @staticmethod
     def codegen_footprint(

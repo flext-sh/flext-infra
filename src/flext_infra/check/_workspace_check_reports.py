@@ -106,6 +106,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     )
                     sarif_results.append(cls._sarif_issue(issue, rule_id))
         return m.Infra.SarifReport(
+            properties=summary,
             runs=(
                 m.Infra.SarifRun(
                     tool_name="flext-infra-check",
@@ -114,7 +115,6 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     results=tuple(sarif_results),
                 ),
             ),
-            properties=summary,
         )
 
     @staticmethod

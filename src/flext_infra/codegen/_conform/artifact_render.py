@@ -143,9 +143,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         live_path = repository_root / c.PYPROJECT_FILENAME
         live: str | None = None
         if live_path.is_file():
-            # Overlay reads the live text (managed merge conflicts
-            # resolved) and never writes it.
-            recovered_live = u.Infra.live_pyproject_text(live_path)
+            # Overlay reads the live text (managed merge conflicts resolved)
+            # with every owned tool table removed: those tables regenerate
+            # from the owner, so a corrupt owned table never blocks the
+            # render. The live file is never written here.
+            recovered_live = u.Infra.live_pyproject_text(
+                live_path,
+                regenerate_managed_tools=True,
+            )
             if recovered_live.failure:
                 return result_type.from_failure(recovered_live)
             live = recovered_live.value

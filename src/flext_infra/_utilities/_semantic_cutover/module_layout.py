@@ -14,7 +14,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesRopeSource,
 )
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverEdits
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverEdits,
+)
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

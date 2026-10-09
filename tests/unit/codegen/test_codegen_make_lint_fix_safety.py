@@ -5,7 +5,7 @@ destroy information remain governed by the tooling owner's ``unfixable`` policy,
 which the generator must preserve without inventing a different consumer policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: MIT.
 """
 
 from __future__ import annotations
@@ -23,12 +23,13 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraCodegenMakeLintFixSafety:
-    """The lint repair contract and its projection preserve information."""
+    """The mandatory unsafe lint-repair contract and its projection."""
 
     @staticmethod
     def test_lint_fix_requires_the_confirmed_unsafe_channel() -> None:
         """The declared baseline cannot silently disable its repair channel."""
         ruff = config.Infra.codegen.make.ruff
+        tm.that(c.Infra.RUFF_UNSAFE_FIXES_FLAG in ruff.lint_fix, eq=True)
         payload = ruff.model_dump()
         payload["lint_fix"] = tuple(
             flag for flag in ruff.lint_fix if flag != c.Infra.RUFF_UNSAFE_FIXES_FLAG
@@ -38,6 +39,13 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             _ = m.Infra.MakeRuffSpec.model_validate(payload)
 
         tm.that(str(failure.value), has=c.Infra.RUFF_UNSAFE_FIXES_FLAG)
+        tm.that(str(failure.value), has="operator law 2026-10-05")
+
+    @staticmethod
+    def test_ssot_lint_fix_carries_the_mandatory_channel() -> None:
+        """The config SSOT itself runs the mandatory unsafe repair surface."""
+        ruff = config.Infra.codegen.make.ruff
+        tm.that(list(ruff.lint_fix), eq=["--preview", "--fix", "--unsafe-fixes"])
 
     @staticmethod
     @pytest.mark.slow

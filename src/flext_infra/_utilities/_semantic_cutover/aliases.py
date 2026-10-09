@@ -12,8 +12,12 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCompatibilityAliasValidation
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverAliasCst
-from flext_infra._utilities._semantic_cutover import FlextInfraUtilitiesSemanticCutoverEdits
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverAliasCst,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverEdits,
+)
 
 
 class FlextInfraUtilitiesSemanticCutoverAliases(
