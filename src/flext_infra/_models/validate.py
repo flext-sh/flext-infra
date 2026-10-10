@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
-from typing_extensions import TypeForm
 
 from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
@@ -152,13 +152,21 @@ class FlextInfraModelsCore:
 
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
             m.Field(
-                default_factory=list["FlextInfraModelsCore.PytestMarkdownOrigin"],
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownOrigin"]
+                    ),
+                ),
                 description="Independently parsed origins",
             )
         )
         collected: t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"] = (
             m.Field(
-                default_factory=u.empty(TypeForm(t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"])),
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                    )
+                ),
                 description="Observed pre-selection items",
             )
         )
@@ -503,7 +511,9 @@ class FlextInfraModelsCore:
         """
 
         reported_phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, t.MutableStrMapping])),
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.MutableStrMapping])
+            ),
             description="Runtest phase outcomes keyed by TestReport node ID",
         )
         connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
@@ -513,14 +523,20 @@ class FlextInfraModelsCore:
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"])),
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
+                )
+            ),
             description="Call-phase attempt observations",
         )
-        markdown_items: t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"] = (
-            m.Field(
-                default_factory=u.empty(TypeForm(t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"])),
-                description="Call-phase origin observations",
-            )
+        markdown_items: t.MutableSequenceOf[
+            "FlextInfraModelsCore.PytestMarkdownItem"
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"])
+            ),
+            description="Call-phase origin observations",
         )
         collection_failed_cases: t.MutableSequenceOf[str] = m.Field(
             default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])),

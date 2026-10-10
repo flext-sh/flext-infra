@@ -66,6 +66,23 @@ directory; the aggregate includes fixture setup, test calls, and teardown. A fai
 interrupted profiled run remains RED with its original process outcome. The profile is
 diagnostic evidence, not a substitute for a complete test result.
 
+For a focused diagnostic, run the same verb from the workspace root:
+
+```bash
+make profile-test FILE=flext-tests/tests/unit/test_capability_collection.py
+make profile-test-report
+```
+
+`FILE` uses the same repository-relative validation as `test-file`. Profiling runs
+one incremental operation, not the two-operation `test-file` lifecycle, with the
+same persistent Testmon database and deadline. The entry activates cProfile before
+importing the runner. The canonical child launcher installs run-owned stdlib startup
+instrumentation for Python descendants, including pytester subprocesses, preserving
+the inherited plugin set, Python path, and existing site customization. Completed
+descendants publish PID-separated profiles bound by digest to the same run receipt;
+the report renders them separately alongside the suite and collection profiles.
+Abruptly terminated processes may leave no profile and are never reported as completed.
+
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound
 derive from that policy. Use the profile and complete run receipts to repair

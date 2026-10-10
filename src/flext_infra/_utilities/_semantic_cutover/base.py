@@ -94,8 +94,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModScanFinding] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        supported = isinstance(phase, c.Infra.SemanticCutoverPhase)
-        if not supported:
+        if not phase:
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
         root = rope_workspace.repository_root

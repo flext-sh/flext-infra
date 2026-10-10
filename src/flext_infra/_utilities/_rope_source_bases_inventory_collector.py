@@ -419,7 +419,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
-            node, targets, visible,
+            node,
+            targets,
+            visible,
         ):
             return False
         target = targets[0]

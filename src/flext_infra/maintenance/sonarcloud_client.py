@@ -9,13 +9,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, s, settings, t, u
+from flext_core import t
+
+from flext_infra import c, m, r, s, settings, u
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraSonarcloudClient[TResult](s[TResult]):
+class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
     """Derive one project identity and authenticate without persisting secrets."""
 
     @staticmethod

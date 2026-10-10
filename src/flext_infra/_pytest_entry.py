@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import cProfile
 import importlib
 import sys
 import time
@@ -40,20 +41,25 @@ class FlextInfraPytestEntry:
         """
         # Deliberately deferred past the pre-import clock snapshot: the
         # module contract keeps every FLEXT import inside the budgeted window.
-        profile_module = importlib.import_module("flext_infra._pytest_profile")
-        runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
-
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
         if mode == "profile":
-            profile = profile_module.FlextInfraPytestProfile(Path(sys.argv[2]))
-            status = profile.run_parent(
-                started_at_monotonic=cls._STARTED_AT_MONOTONIC,
-            )
+            profiler = cProfile.Profile()
+            profiler.enable()
+            try:
+                profile_module = importlib.import_module("flext_infra._pytest_profile")
+                profile = profile_module.FlextInfraPytestProfile(Path(sys.argv[2]))
+                status = profile.run_parent(
+                    started_at_monotonic=cls._STARTED_AT_MONOTONIC,
+                    profile=profiler,
+                )
+            finally:
+                profiler.disable()
             if isinstance(status, int):
                 return status
             msg = f"pytest profile returned a non-integer process status: {status!r}"
             raise TypeError(msg)
 
+        runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=mode == "slow",

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import infra
@@ -20,6 +21,111 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "upstream_import",
+        [
+            "from flext_core import c as core_c",
+            "from flext_core.constants import FlextConstants as core_c",
+        ],
+    )
+    def test_constant_consumers_resolve_upstream_binding_without_shadow_rewrites(
+        tmp_path: Path,
+        upstream_import: str,
+    ) -> None:
+        """Inherited constants use the existing facade and reach a fixed point."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
+        path = package / "consumer.py"
+        shadowed = "def local(core_c):\n    return core_c.PRIMITIVES_TYPES\n"
+        sources = {
+            package / c.Infra.CONSTANTS_PY: (
+                "from flext_cli import c\n"
+                f"class {owner}(c):\n    pass\n"
+                f"c = {owner}\n"
+                f'__all__ = ["{owner}", "c"]\n'
+            ),
+            package / c.Infra.INIT_PY: 'from .constants import c\n__all__ = ["c"]\n',
+            path: (
+                f"{upstream_import}\n"
+                f"from {package.name} import c\n"
+                "upstream = core_c.PRIMITIVES_TYPES\n"
+                "downstream = c.PRIMITIVES_TYPES\n\n"
+                f"{shadowed}"
+            ),
+        }
+        for source_path, source in sources.items():
+            source_path.write_text(source, encoding="utf-8")
+        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                phase,
+                rope_workspace=rope,
+                sources=sources,
+            )
+            tm.ok(planned)
+            tm.that(tuple(edit.file_path for edit in planned.value), eq=(path,))
+            updated = planned.value[0].updated_source
+            tm.that(updated, has="upstream = c.PRIMITIVES_TYPES")
+            tm.that(updated, has="downstream = c.PRIMITIVES_TYPES")
+            tm.that(updated, has=shadowed)
+            tm.that(updated.count(f"from {package.name} import c"), eq=1)
+            tm.that(upstream_import in updated, eq=False)
+            remaining = u.Infra.plan_semantic_cutover(
+                phase,
+                rope_workspace=rope,
+                sources={**sources, path: updated},
+            )
+        tm.ok(remaining)
+        tm.that(remaining.value, empty=True)
+        for source_path, source in sources.items():
+            tm.that(source_path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("case", ["ambiguous", "cyclic"])
+    def test_constant_consumers_reject_unproven_upstream_bindings(
+        tmp_path: Path,
+        case: str,
+    ) -> None:
+        """Competing terminal identities and export cycles never yield edits."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        upstream = package.parent / "flext_upstream"
+        upstream.mkdir()
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
+        sources = {
+            package / c.Infra.CONSTANTS_PY: (
+                f"class {owner}:\n    pass\nc = {owner}\n"
+                f'__all__ = ["{owner}", "c"]\n'
+            ),
+            package / "consumer.py": (
+                "from flext_upstream import c as core_c\n"
+                f"from {package.name} import c\n"
+                "value = core_c.PRIMITIVES_TYPES\n"
+            ),
+            upstream / c.Infra.INIT_PY: (
+                "from .left import Left as c\nfrom .right import Right as c\n"
+                if case == "ambiguous"
+                else "from .loop import c\n"
+            ),
+            upstream / "left.py": "class Left:\n    pass\n",
+            upstream / "right.py": "class Right:\n    pass\n",
+            upstream / "loop.py": "from . import c\n",
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        tm.fail(planned, has=case)
+        tm.that(planned.error, has="flext_upstream.c")
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
     def test_annotations_and_nesting_complete_in_one_atomic_cutover(

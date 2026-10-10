@@ -9,12 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
-from flext_core import FlextService
-from flext_infra import c, m, p, r, settings, t, u
+from flext_core import FlextService, t
+from flext_infra import c, m, p, r, settings, u
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 
 
-class FlextInfraServiceBase[TDomainResult](
+class FlextInfraServiceBase[TDomainResult: t.JsonPayload](
     FlextService[TDomainResult],
     FlextInfraCommandPayloadMixin,
 ):

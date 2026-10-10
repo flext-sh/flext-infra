@@ -1,4 +1,4 @@
-"""Cold-start pytest execution adapter; runtime imports here are stdlib only.
+"""Pytest execution adapter imported after the entry activates cold-start profiling.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,8 +23,10 @@ class FlextInfraPytestProfile:
         self.output = output
         self.context: m.Infra.PytestRunContext | None = None
 
-    def run_parent(self, *, started_at_monotonic: float) -> int:
-        """Start profiling before importing the runner or any FLEXT service.
+    def run_parent(
+        self, *, started_at_monotonic: float, profile: cProfile.Profile
+    ) -> int:
+        """Retain the entry's profiler, including the adapter's own imports.
 
         Returns:
             The resulting ``int``.
@@ -42,7 +44,6 @@ class FlextInfraPytestProfile:
         self.output.parent.mkdir(parents=True, exist_ok=True)
         self.context = None
         self.output.with_suffix(".pstats.json").unlink(missing_ok=True)
-        profile = cProfile.Profile()
         try:
             return profile.runcall(self._run_parent, started_at_monotonic)
         finally:
@@ -53,8 +54,7 @@ class FlextInfraPytestProfile:
         self.context = context
 
     def _run_parent(self, started_at_monotonic: float) -> int:
-        # Deliberately deferred: this adapter profiles the runner import chain,
-        # so the module surface stays stdlib-only per its cold-start contract.
+        # The entry has already started profiling before importing this adapter.
         runner_cls = importlib.import_module(
             "flext_infra.validate.pytest_runner",
         ).FlextInfraPytestRunner
@@ -91,6 +91,11 @@ class FlextInfraPytestProfile:
                     ),
                 )
 
+        directory_env = c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV
+        previous = os.environ.get(directory_env)
+        os.environ[directory_env] = (
+            config.Infra.tooling.tools.pytest.profile_process_directory
+        )
         try:
             outcome = runner.execute().unwrap()
         except BaseException as failure:
@@ -102,6 +107,11 @@ class FlextInfraPytestProfile:
             else:
                 bind(owned)
             raise
+        finally:
+            if previous is None:
+                os.environ.pop(directory_env, None)
+            else:
+                os.environ[directory_env] = previous
         owned = owned_receipts()
         if len(owned) > 1:
             msg = f"profiled run published more than one run context: {owned}"
@@ -124,6 +134,21 @@ class FlextInfraPytestProfile:
                 self.output,
             )
         if self.context is not None:
+            directory = self.context.report_directory
+            if directory is not None:
+                children = directory / policy.profile_process_directory
+                profiles = sorted(children.glob("*.pstats"))
+                suite = directory / policy.profile_suite_filename
+                if suite.is_file():
+                    profiles.append(suite)
+                for child in profiles:
+                    child_receipt = self.context.model_copy(
+                        update={"profile_sha256": u.Cli.sha256_bytes(child.read_bytes())},
+                    )
+                    u.Cli.atomic_write_text_file(
+                        child.with_suffix(".pstats.json"),
+                        child_receipt.model_dump_json(indent=2) + "\n",
+                    ).unwrap()
             receipt = self.context.model_copy(
                 update={"profile_sha256": u.Cli.sha256_bytes(self.output.read_bytes())},
             )

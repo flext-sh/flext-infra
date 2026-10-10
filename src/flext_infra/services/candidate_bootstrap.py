@@ -117,11 +117,12 @@ class FlextInfraCandidateBootstrapService:
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
             for file in planned.value.files:
-                foreign_owner = file.project != root or not file.path.is_relative_to(root)
+                foreign_owner = file.project != root or not file.path.is_relative_to(
+                    root
+                )
                 outside_surface = (
                     not foreign_owner
-                    and
-                    contract.destinations is not None
+                    and contract.destinations is not None
                     and file.path.relative_to(root).as_posix()
                     not in contract.destinations
                 )

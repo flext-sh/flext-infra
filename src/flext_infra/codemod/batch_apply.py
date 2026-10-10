@@ -111,10 +111,15 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             self.repository_root,
             rules,
         ).unwrap()
+        self.progress.emit("mod: apply declared consumer text cutovers")
+        self._apply_text_phase(
+            self.repository_root,
+            text_precondition_pending=True,
+        ).unwrap()
         self.progress.emit("mod: apply the workspace constants census")
         census = FlextInfraRefactorCensus(
             repository_root=self.repository_root,
-            apply=True,
+            apply_changes=True,
             families=("c",),
             rules=(
                 c.Infra.CensusRule.CONSTANT_CONSUMERS,
@@ -130,7 +135,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"rewritten_files={census.constant_consumer_files} "
             f"rewritten_bindings={census.constant_consumer_bindings}",
         )
-        return self._execute_apply_cycle()
+        return self._execute_apply_cycle(text_precondition_pending=False)
 
     @staticmethod
     def _apply_text_phase(
@@ -337,7 +342,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
         return None
 
-    def _execute_apply_cycle(self) -> p.Result[t.Cli.ResultValue]:
+    def _execute_apply_cycle(
+        self,
+        *,
+        text_precondition_pending: bool,
+    ) -> p.Result[t.Cli.ResultValue]:
         """Converge every mod phase, publishing nothing when the run fails.
 
         Returns:
@@ -350,13 +359,19 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             root,
             current,
             FlextInfraModTextGateEngine.source_paths(root).unwrap(),
-            lambda: self._converge(root, current),
+            lambda: self._converge(
+                root,
+                current,
+                text_precondition_pending=text_precondition_pending,
+            ),
         )
 
     def _converge(
         self,
         root: Path,
         current: m.Infra.ModScanReport,
+        *,
+        text_precondition_pending: bool,
     ) -> p.Result[t.Cli.ResultValue]:
         """Converge every mod phase through one shared Rope workspace.
 
@@ -369,7 +384,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
         seen: MutableMapping[t.VariadicTuple[t.Pair[str, str]], int] = {}
         iteration = 0
-        text_precondition_pending = True
         while True:
             iteration += 1
             before = fingerprint(root, current)

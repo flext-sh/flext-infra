@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, m, main
+from flext_infra import c, config, m, main, s
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
@@ -147,6 +147,67 @@ class TestsFlextInfraTypeGates:
             ),
             eq=True,
         )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        ("module", "service"),
+        [
+            ("flext_infra", "FlextInfraServiceBase"),
+            ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
+            ("flext_infra.codegen", "FlextInfraCodegenExecutionBase"),
+            ("flext_infra", "FlextInfraSonarcloudClient"),
+        ],
+    )
+    def test_mypy_public_service_payload_bound(
+        checker_context: m.Infra.GateContext,
+        module: str,
+        service: str,
+    ) -> None:
+        """The mandatory plugin accepts payloads and reports native bound errors."""
+        project = checker_context.repository_root
+        pyproject = project / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8").replace(
+                "[tool.mypy]\n",
+                "[tool.mypy]\n"
+                f"plugins = {list(config.Infra.tooling.tools.mypy.plugins)!r}\n",
+            ),
+            encoding="utf-8",
+        )
+        tm.that(s[str](repository_root=project).root, eq=project.resolve())
+        source = project / "src" / "test_pkg" / "payload_bound.py"
+        valid_source = (
+            f"from {module} import {service}\n\n"
+            f"def consume(value: {service}[str]) -> None:\n"
+            "    pass\n"
+        )
+        source.write_text(valid_source, encoding="utf-8")
+        gate = FlextInfraMypyGate(project)
+
+        accepted = gate.check(project, checker_context)
+
+        assert accepted.result.passed, accepted.raw_output
+        assert not accepted.issues, accepted.raw_output
+        source.write_text(
+            valid_source.replace(f"{service}[str]", f"{service}[set[int]]"),
+            encoding="utf-8",
+        )
+
+        rejected = gate.check(project, checker_context)
+
+        assert not rejected.result.passed, rejected.raw_output
+        assert rejected.issues, rejected.raw_output
+        assert all(
+            issue.code != c.Infra.ToolOutcome.ERROR for issue in rejected.issues
+        ), rejected.raw_output
+        assert all(issue.code == "type-var" for issue in rejected.issues), (
+            rejected.raw_output
+        )
+        assert any(
+            issue.file.endswith(source.name) and service in issue.message
+            for issue in rejected.issues
+        ), rejected.raw_output
 
     @staticmethod
     @pytest.mark.slow

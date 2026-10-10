@@ -28,11 +28,43 @@ class FlextInfraConstantsCheck:
     PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
     """pytest-timeout's documented ``--timeout`` value that disables the limit."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
+    PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
+        "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
+    )
+    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
+    PYTEST_PROFILE_STARTUP: ClassVar[str] = (
+        "import atexit, cProfile, os, sys\n"
+        "from pathlib import Path\n"
+        "from importlib.machinery import PathFinder\n"
+        "from importlib.util import module_from_spec\n"
+        "profile = cProfile.Profile()\n"
+        "profile.enable()\n"
+        f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
+        "atexit.register(profile.dump_stats, str(output / f'{os.getpid()}.pstats'))\n"
+        "startup = str(Path(__file__).parent)\n"
+        "original = PathFinder.find_spec('sitecustomize', "
+        "[path for path in sys.path if path != startup])\n"
+        "if original is not None and original.loader is not None:\n"
+        "    module = module_from_spec(original)\n"
+        "    sys.modules['sitecustomize'] = module\n"
+        "    original.loader.exec_module(module)\n"
+    )
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
-        "import cProfile, runpy, sys\n"
+        "import cProfile, os, runpy, sys\n"
+        "from pathlib import Path\n"
         "output = sys.argv.pop(1)\n"
         "profile = cProfile.Profile()\n"
         "try:\n"
+        f"    directory = os.environ.get({PYTEST_PROFILE_PROCESS_DIRECTORY_ENV!r})\n"
+        "    if directory is not None:\n"
+        "        children = Path(output).resolve().parent / directory\n"
+        "        startup = children / 'startup'\n"
+        "        startup.mkdir(parents=True, exist_ok=True)\n"
+        f"        (startup / 'sitecustomize.py').write_text({PYTEST_PROFILE_STARTUP!r}, encoding='utf-8')\n"
+        f"        os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}] = str(children)\n"
+        "        inherited = os.environ.get('PYTHONPATH', '')\n"
+        "        os.environ['PYTHONPATH'] = str(startup) + "
+        "(os.pathsep + inherited if inherited else '')\n"
         "    profile.runcall(\n"
         "        runpy.run_module, 'pytest', run_name='__main__', alter_sys=True\n"
         "    )\n"
@@ -41,6 +73,8 @@ class FlextInfraConstantsCheck:
     )
     """``python -c`` profiled pytest child: ``<output.pstats> <pytest args...>``.
 
+    The profile entry enables run-owned startup instrumentation for descendants,
+    including pytester children. Existing site customization is still executed.
     Stdlib only, so pytest installs assertion rewriting before any plugin
     package (``flext_infra`` included) is imported; pytest's ``SystemExit``
     still sets the exit status, unlike ``python -m cProfile``.
