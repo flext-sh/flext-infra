@@ -241,25 +241,31 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(result.error, has="is undeclared by this checkout")
 
     @staticmethod
-    def test_bootstrap_toolchain_tracks_latest_mise_release(
+    def test_bootstrap_recovers_exactly_the_locked_mise_release(
         tmp_path: Path,
     ) -> None:
-        """The rendered bootstrap launches the tracked Mise and records its receipt."""
+        """The bootstrap recovers only the mise.lock pin and proves its receipt.
+
+        A missing pinned Mise is fetched once from the release asset that
+        mise.lock records (https GitHub release URL plus sha256), verified
+        against that checksum, and its ``--version`` receipt must equal the
+        pin. Nothing resolves a "latest" release and no failed fetch repeats.
+        """
         makefile = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.Infra.MAKEFILE_FILENAME,
         )
-        tm.that(makefile, lacks="latest_release_url")
-        tm.that(makefile, lacks="curl ")
-        tm.that(makefile, lacks="--windows --version")
-        tm.that(makefile, lacks="mise_install_path=")
-        tm.that(makefile, has='pinned_mise="$$mise"')
-        tm.that(makefile, has="mise_receipt runtime-version")
+        tm.that(makefile, lacks=["latest_release_url", "--retry", "mise_install_path="])
+        tm.that(makefile, has="https://github.com/*/releases/download/*\\|sha256:*")
+        tm.that(makefile, has="curl --proto '=https' --tlsv1.2 -fsSL -o")
+        tm.that(makefile, has="| sha256sum -c -")
+        tm.that(makefile, has='if [ "$$mise_receipt" != "$$mise_pin" ]; then')
         mise_toml = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.Infra.MISE_TOML_FILENAME,
         )
-        tm.that(mise_toml, lacks="jdx/mise")
+        # The pin the bootstrap recovers is the manifest's own declaration.
+        tm.that(mise_toml, has='"github:jdx/mise" = "')
 
     @staticmethod
     def test_setup_provisions_only_and_gen_owns_conformance(
@@ -271,10 +277,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(content, lacks="_builtin_setup_conform")
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that(setup_env.split("\n\n", 1)[0], lacks="codegen conform")
-        tm.that(
-            content,
-            has='"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow',
-        )
         toolchain = config.Infra.codegen.toolchain
         mise = tm.not_none(u.Tests.planned_text(plan, c.Infra.MISE_TOML_FILENAME))
         tm.that(mise, has=f'python = "{toolchain.python_version}"')
@@ -293,7 +295,12 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(content, lacks="_builtin_gen_check:")
         tm.that(content, lacks="_builtin_gen_apply:")
         tm.that(content, has="_builtin_gen_all:")
-        tm.that(content, lacks="GH_CONFIG_DIR")
+        # The gh configuration is the operator's: auth diagnostics may read it,
+        # the Makefile never assigns or exports it.
+        tm.that(
+            content,
+            lacks=["export GH_CONFIG_DIR", "GH_CONFIG_DIR :=", "GH_CONFIG_DIR ="],
+        )
         tm.that(content, lacks="self-update")
         tm.that(content, lacks="mise launcher version mismatch")
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}

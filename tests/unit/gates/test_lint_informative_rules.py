@@ -1,8 +1,8 @@
-"""Informative lint rules report as warnings and never fail the lint gate.
+"""The complexity rule family reports at warning severity and still blocks.
 
-Operator ruling 2026-10-05: rules the operator never authorized as blocking
-are informative only. The declared rule family keeps flowing through Ruff
-and every report surface while the gate verdict ignores it.
+The declared family keeps its warning label on every report surface, while
+the gate verdict retains every finding: no advisory class survives the 0.12
+gate baseline (tracker key operator-ruling-2026-10-09-gate-baseline-0122).
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,7 +16,7 @@ from flext_infra import c, config, m, u
 
 
 class TestsFlextInfraLintInformativeRules:
-    """The declared family is advisory end to end: config, severity, verdict."""
+    """The declared family is labeled a warning and blocks like every finding."""
 
     @staticmethod
     def test_ssot_declares_the_complexity_family() -> None:
@@ -56,41 +56,27 @@ class TestsFlextInfraLintInformativeRules:
         )
 
     @staticmethod
-    def test_warning_findings_never_block_the_verdict() -> None:
-        """Test warning findings never block the verdict."""
+    def test_warning_findings_block_the_verdict() -> None:
+        """A warning-labeled finding blocks exactly like an error finding."""
         advisory = config.Infra.tooling.tools.ruff.informative_rules
-        warning_only = u.Infra.blocking_gate_findings(
-            (
-                m.Infra.Issue(
-                    file="src/sample.py",
-                    line=1,
-                    column=1,
-                    code=next(iter(advisory)),
-                    message="advisory finding",
-                    severity=c.Infra.GateSeverity.WARNING.value,
-                ),
-            ),
+        warning = m.Infra.Issue(
+            file="src/sample.py",
+            line=1,
+            column=1,
+            code=next(iter(advisory)),
+            message="advisory finding",
+            severity=c.Infra.GateSeverity.WARNING.value,
         )
-        tm.that(warning_only, eq=())
-        mixed = u.Infra.blocking_gate_findings(
-            (
-                m.Infra.Issue(
-                    file="src/sample.py",
-                    line=1,
-                    column=1,
-                    code=next(iter(advisory)),
-                    message="advisory finding",
-                    severity=c.Infra.GateSeverity.WARNING.value,
-                ),
-                m.Infra.Issue(
-                    file="src/sample.py",
-                    line=2,
-                    column=1,
-                    code="undefined-name",
-                    message="blocking finding",
-                    severity=c.Infra.GateSeverity.ERROR.value,
-                ),
-            ),
+        error = m.Infra.Issue(
+            file="src/sample.py",
+            line=2,
+            column=1,
+            code="undefined-name",
+            message="blocking finding",
+            severity=c.Infra.GateSeverity.ERROR.value,
         )
-        assert len(mixed) == 1
-        assert mixed[0].code == "undefined-name"
+        tm.that(u.Infra.blocking_gate_findings((warning,)), eq=(warning,))
+        tm.that(
+            u.Infra.blocking_gate_findings((warning, error)),
+            eq=(warning, error),
+        )
