@@ -245,7 +245,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         self,
         tmp_path: Path,
     ) -> None:
-        """A repair run completes; what it cannot repair stays for check."""
+        """A repair run completes; what it cannot repair keeps the verb red."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 
@@ -264,8 +264,9 @@ class TestsFlextInfraWorkspaceCheckCli:
         ])
 
         # Ruff completes and reports the syntax error as a finding of the
-        # code: the verb does not break, and the module is never rewritten.
-        tm.that(exit_code, eq=0)
+        # code: the module is never rewritten, and the residual finding
+        # keeps the repair verb red instead of being accepted.
+        tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -275,7 +276,11 @@ class TestsFlextInfraWorkspaceCheckCli:
     def test_run_cli_fix_declares_static_methods_beside_an_unparsable_module(
         tmp_path: Path,
     ) -> None:
-        """A no-self-use repair completes when another module cannot parse."""
+        """A no-self-use repair applies beside a module that cannot parse.
+
+        The repair lands in the parsable module; the unparsable one stays
+        untouched and its residual finding keeps the verb red.
+        """
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
         broken = TestsFlextInfraWorkspaceCheckCli._write_module(
             workspace,
@@ -310,7 +315,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=0)
+        tm.that(exit_code, eq=1)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",
