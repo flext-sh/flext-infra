@@ -192,6 +192,18 @@ class TestsFlextInfraLaneOwnsIsolatedEnvironment:
             eq=False,
         )
 
+    def test_existing_lane_environment_is_preserved(self, tmp_path: Path) -> None:
+        """An existing lane environment keeps its content across lane setup."""
+        repository = self._repository(tmp_path)
+        lane = self._lane(repository, "feature/preserve-lane")
+        sentinel = u.Infra.runtime_environment_dir(lane) / "sentinel"
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        sentinel.write_text("lane\n", encoding="utf-8")
+
+        tm.ok(FlextInfraWorktreeService.setup_lane(lane))
+
+        assert sentinel.read_text(encoding="utf-8") == "lane\n"
+
     def test_add_only_creates_git_lane_without_setup(self, tmp_path: Path) -> None:
         """Adding a lane creates the Git lane without provisioning anything."""
         repository = self._repository(tmp_path)

@@ -13,10 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
+from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_verification import (
     FlextInfraMiseArtifactsVerification as verify,
 )
 

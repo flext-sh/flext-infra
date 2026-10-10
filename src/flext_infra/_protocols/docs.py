@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import p as cli_p
 
 if TYPE_CHECKING:
-    from flext_core import t
+    from flext_infra import t
 
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror

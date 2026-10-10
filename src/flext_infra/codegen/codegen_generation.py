@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.codegen._codegen_generation_file import (
-    FlextInfraCodegenGenerationFileMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenGenerationFileMixin
 
 
 class FlextInfraCodegenGeneration(FlextInfraCodegenGenerationFileMixin):

@@ -9,21 +9,25 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from flext_infra import c, m, p, t, u
-from flext_infra.api import infra
-from flext_infra.git import FlextInfraGitService
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
-from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
-from flext_infra.workspace.environment_provenance import (
+from flext_infra import (
+    FlextInfraCliRouteBase,
+    FlextInfraFlextBindingService,
+    FlextInfraGitService,
+    FlextInfraRefactorRoutes,
+    FlextInfraReleaseOrchestrator,
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraWorkspaceEnvironmentProvenance,
+    FlextInfraWorkspaceFleetGaps,
+    FlextInfraWorkspaceLifecycle,
+    FlextInfraWorkspacePropagation,
+    c,
+    infra,
+    m,
+    p,
+    t,
+    u,
 )
-from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
-from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
-from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
-from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
 
 
 class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):

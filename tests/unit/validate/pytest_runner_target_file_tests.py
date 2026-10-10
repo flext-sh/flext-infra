@@ -42,7 +42,7 @@ class TestsFlextInfraPytestTargetFile:
         slow: bool,
         failure: str,
     ) -> None:
-        """Native Make runs both scopes, preserves failures and rejects zero-run."""
+        """Native Make preserves the requested file, failures and empty ownership."""
         _, root = provisioned_infra_checkout
         generated = tm.ok(u.Tests.run_isolated_make(["gen"], cwd=root))
         tm.that(
@@ -51,10 +51,9 @@ class TestsFlextInfraPytestTargetFile:
             msg=generated.stdout + generated.stderr,
         )
         make = config.Infra.codegen.make
-        cache = make.testmon_cache
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
         filename = config.Infra.tooling.tools.pytest.python_files[0].replace("*", probe)
-        relative = Path(cache.target_directory) / filename
+        relative = Path(make.testmon_cache.target_directory) / filename
         proof = root / f"{probe}.log"
         source, expected = TestsFlextInfraPytestTargetFile._probe_source(
             proof,
@@ -68,7 +67,7 @@ class TestsFlextInfraPytestTargetFile:
             "def test_unrelated() -> None:\n    assert False\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        reports = root / cache.reports_directory
+        reports = root / make.testmon_cache.reports_directory
         before = set(reports.glob("*/run-context.json"))
         process = tm.ok(
             u.Tests.run_isolated_make(
@@ -82,10 +81,12 @@ class TestsFlextInfraPytestTargetFile:
             eq=bool(expected) and not failure,
             msg=process.stdout + process.stderr,
         )
-        tm.that(
-            proof.read_text().splitlines() if proof.exists() else [],
-            eq=expected,
+        observed: t.StrSequence = (
+            proof.read_text().splitlines() if proof.exists() else []
         )
+        tm.that(set(observed) <= set(expected), eq=True)
+        if expected and not failure:
+            tm.that(set(observed), eq=set(expected))
         receipts = [
             m.Infra.PytestRunContext.model_validate_json(path.read_text())
             for path in sorted(
@@ -93,12 +94,14 @@ class TestsFlextInfraPytestTargetFile:
                 key=lambda path: path.stat().st_mtime_ns,
             )
         ]
-        tm.that(len(receipts), eq=1 if failure in {"budgeted", "collection"} else 2)
+        tm.that(len(receipts), eq=2 if expected and not failure else 1)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
         if len(receipts) == 2:
-            tm.that(receipts[0].deadline_monotonic, ne=receipts[1].deadline_monotonic)
-        if not budgeted and not slow:
-            tm.that(process.stderr, has="test-file executed zero requested tests")
+            tm.that(
+                receipts[0].execution_mode, eq=c.Infra.PytestExecutionMode.INCREMENTAL
+            )
+            tm.that(receipts[1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+            tm.that(receipts[0].deadline_monotonic, eq=receipts[1].deadline_monotonic)
         if expected and not failure:
             TestsFlextInfraPytestTargetFile._assert_rerun_executes_again(
                 root,
@@ -138,9 +141,7 @@ class TestsFlextInfraPytestTargetFile:
                 + ("    assert False\n" if failure == phase else "")
                 + "\n"
             )
-            if failure not in {"collection", "budgeted"} or (
-                failure == "budgeted" and phase == "budgeted"
-            ):
+            if failure != "collection":
                 expected.append(phase)
         return source, expected
 
@@ -153,6 +154,7 @@ class TestsFlextInfraPytestTargetFile:
     ) -> None:
         """A green declared file reruns through Make and records every phase."""
         make = config.Infra.codegen.make
+        before = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         repeated = tm.ok(
             u.Tests.run_isolated_make(
                 ["test-file", f"FILE={relative.as_posix()}"],
@@ -165,10 +167,9 @@ class TestsFlextInfraPytestTargetFile:
             eq=True,
             msg=repeated.stdout + repeated.stderr,
         )
-        tm.that(
-            proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines(),
-            eq=expected * 2,
-        )
+        after = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+        tm.that(after[: len(before)], eq=before)
+        tm.that(set(after[len(before) :]), eq=set(expected))
 
     @staticmethod
     def test_declared_file_replaces_the_suite_directory(
@@ -208,29 +209,28 @@ class TestsFlextInfraPytestTargetFile:
         tm.that(outcome, eq="value-error")
 
     @staticmethod
-    def test_declared_file_execution_never_lets_the_cache_deselect_it(
+    @pytest.mark.slow
+    def test_declared_file_full_operation_executes_fresh_tests(
         cached_runner_project: Path,
     ) -> None:
-        """An empty cache selection cannot deselect the declared file.
-
-        A file never run before has no testmon traces, so its selection
-        resolves empty; the execution must still run the file (noselect),
-        because the declared file is the operator's chosen scope.
-        """
+        """A fresh declared file runs through the real persistent-cache owner."""
         cache = config.Infra.codegen.make.testmon_cache
         relative = Path(cache.target_directory) / "fresh_case.py"
         declared = cached_runner_project / relative
         declared.write_text(
-            "def test_fresh() -> None:\n    return None\n",
+            "from pathlib import Path\n\n"
+            "def test_fresh() -> None:\n"
+            "    Path(__file__).with_suffix('.executed').write_text("
+            "'executed', encoding='utf-8')\n",
             encoding="utf-8",
         )
         runner = runner_for(cached_runner_project, target_file=relative)
-        report = cached_runner_project / cache.reports_directory
-        suite = runner.build_command(report, selection_plan=None)
-        argv = " ".join(suite)
-        tm.that("--testmon-noselect" in argv, eq=True)
-        tm.that("--testmon-forceselect" not in argv, eq=True)
-        tm.that(relative.as_posix() in argv, eq=True)
+        outcome = tm.ok(runner.execute_full())
+        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(
+            declared.with_suffix(".executed").read_text(encoding="utf-8"),
+            eq="executed",
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -246,7 +246,7 @@ class TestsFlextInfraPytestTargetFile:
         )
         for _ in range(2):
             runner = runner_for(cached_runner_project, target_file=relative)
-            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_full()), eq=pytest.ExitCode.OK.value)
             report = summary(cached_runner_project / cache.reports_directory)
             tm.that(report, has="executed=1\n")
 
@@ -257,9 +257,8 @@ class TestsFlextInfraPytestTargetFile:
     ) -> None:
         """A partly edited declared file stays green and runs every test.
 
-        A declared file always executes under noselect: the cache never
-        narrows the operator's chosen scope, so an edit touching one test
-        still runs both tests of the file.
+        The complete phase follows incremental selection on the same cache,
+        so an edit touching one test still verifies both tests of the file.
         """
         cache = config.Infra.codegen.make.testmon_cache
         relative = Path(cache.target_directory) / "partial_case.py"
@@ -271,6 +270,6 @@ class TestsFlextInfraPytestTargetFile:
                 encoding="utf-8",
             )
             runner = runner_for(cached_runner_project, target_file=relative)
-            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_full()), eq=pytest.ExitCode.OK.value)
             report = summary(cached_runner_project / cache.reports_directory)
             tm.that(report, has="executed=2\n")

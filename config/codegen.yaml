@@ -554,7 +554,7 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # local_value: check selects the active local partition.
+        # local_value: check retains the complete active gate set.
         # Other pre-push verbs use this token to preserve local test behavior;
         # pre-push check unsets CI so it runs every active check gate.
         local_value: N
@@ -576,11 +576,14 @@ Infra:
         # and the project-owned tools.mypy.timeout_seconds budget.
         # direnv proves the developer's own activation, so it is local-only.
         local_check_gates: [ mypy, pyright, codemod, smells, direnv ]
+        # Fast-hook scope is declared here, independently of a tool's kind.
+        # Heavy checks remain mandatory in CI and the complete local check.
+        pre_commit_check_gates: [ format, lint, markdown, conflict-markers ]
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # An absent CI uses testmon for incremental developer runs.
-      # The pre-commit hook runs only the fast external gates the gate
-      # registry declares (MakeSpec.check_gates_pre_commit) and no tests
+      # The pre-commit hook runs only its declared fast gate scope
+      # (MakeSpec.check_gates_pre_commit) and no tests
       # (tracker memory operator-ruling-2026-10-01-testmon-make-test-only);
       # the pre-push hook runs every pre_push row below. make setup installs
       # both hooks locally with prek and installs none under CI=Y.

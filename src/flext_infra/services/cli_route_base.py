@@ -15,7 +15,7 @@ class FlextInfraCliRouteBase:
     """Provide the common result-value widening contract for route handlers."""
 
     @staticmethod
-    def as_route_value[TResult: t.Cli.ResultValue](value: TResult) -> TResult:
+    def as_route_value(value: t.Cli.ResultValue) -> t.Cli.ResultValue:
         """Widen a concrete result payload to the CLI route contract value.
 
         Returns:

@@ -123,6 +123,8 @@ class FlextInfraConstantsCheck:
     "Gate id whose census rule families no other gate owns."
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     "Gate id of the fresh-process import proof over the provisioned runtime."
+    CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
+    "Gate id of unresolved Git merge-control lines in repository-owned files."
     GATE_TOOLS_BY_KIND: ClassVar[t.MappingKV[GateKind, t.MappingKV[str, t.StrPair]]] = (
         MappingProxyType({
             GateKind.EXTERNAL: MappingProxyType({
@@ -140,6 +142,10 @@ class FlextInfraConstantsCheck:
                 "pyright": ("Pyright", "https://github.com/microsoft/pyright"),
             }),
             GateKind.INFRA: MappingProxyType({
+                CONFLICT_MARKERS: (
+                    "Git Conflict Markers",
+                    "internal://flext-infra/conflict-markers",
+                ),
                 "loc-cap": ("scc", "https://github.com/boyter/scc"),
                 "runtime-census": (
                     "Flext Runtime Enforcement Census",

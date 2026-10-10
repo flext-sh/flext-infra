@@ -118,11 +118,9 @@ with the interpreter hosting the tool. Without a declaration, the owner derives 
 checkout's Git root; a declaration without an interpreter fails.
 
 The environment belongs to the `RUNTIME_ROOT`. A member attached as a submodule uses
-its containing Git superproject's environment. A primary standalone checkout keeps
-`<RUNTIME_ROOT>/.venv`. A linked Git worktree must use the sibling environment at
-`<RUNTIME_ROOT>/../.venv>`.
-The directory component is declared in `config/codegen.yaml`; Git's distinct worktree
-and common directories identify the linked checkout. The generated Makefile, generated
+its containing Git superproject's environment. A standalone checkout or linked Git
+worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environment
+from the primary checkout or Git common directory. The generated Makefile, generated
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
@@ -270,21 +268,24 @@ contains no projects or when a selected project has no `pyproject.toml`; no proj
 skipped silently.
 
 Local runs, CI, and hooks derive their gates from the same active set: `CI=N make check`
-runs the intersection with `make.ci.local_check_gates`, `CI=Y make check` runs the
-complement (Pyrefly included), and `make check` without `CI` runs the union. The
+and `make check` without `CI` run the complete active set. `CI=Y make check` excludes
+only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
 configuration keeps Mypy, Pyright, codemod and smells out of CI. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate, so Mypy and Pyright
-block at pre-push. The pre-commit hook runs only the fast external gates the registry
-declares (`make.check_gates_pre_commit`) and no tests.
+block at pre-push. The pre-commit hook runs only the ordered scope declared by
+`make.ci.pre_commit_check_gates` and no tests. Tool kind does not redefine that scope.
+Conflict detection uses the canonical Git inventory, including unpublished files,
+and the shared merge-control classifier. It reads literal source-link targets without
+following them. Every finding, including a native warning, blocks approval while its
+original severity remains in the receipt.
 
-Every workspace and standalone projection exposes `make pre-commit`. CI and the
-generated pre-commit hook invoke that same approval owner. Its typed workflow is
-`setup -> audit -> check -> test`, with the configured CI token enforced before
-topology or activation, even when the caller supplied a local token. Help, dry-run,
-question, touch and custom approval replacements cannot yield an approval receipt.
-Audit is read-only conformance and installed-lock provenance, not generation or a
-dirty-tree check; legitimate staged changes are not rejected simply for being staged.
+Every workspace and standalone projection exposes `make pre-commit` for the fast hook
+workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
+declared order, and closes with `verify-clean`; it never substitutes the fast hook for
+approval. The configured CI token selects the blocking CI gate partition. Audit is
+read-only conformance and installed-lock provenance, not generation or a dirty-tree
+check; legitimate staged changes are not rejected simply for being staged.
 
 CI setup always reconciles the owned physical environment through locked,
 noneditable installation, including an existing venv. It does not initialize,
@@ -295,6 +296,10 @@ without retrying under a different lock mode.
 
 Normal test verbs remain incremental testmon only and omit the configured slow
 markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
+The explicit single-file operation runs incremental selection followed by complete
+execution of that file, including its declared slow tests, on the same database.
+No empty marker phase is invoked or converted to success. Zero execution is accepted
+only as an integrity-checked cache hit with complete inventory/deselection accounting.
 Actions restores only that project database and saves only on an allowed integration
 push with a fresh completed-run path/digest/saveability receipt. The SQLite owner
 checkpoints and checks integrity before the runner releases its lease and exports

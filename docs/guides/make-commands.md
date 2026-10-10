@@ -94,16 +94,28 @@ installed package with the same top-level name. Only cross-owner imports require
 installed public-facade discovery; invalid relative imports in that dependency remain
 errors.
 
+Root-alias normalization retains external providers in declaration families and in
+modules that construct their own facade. This boundary derives from the project's
+runtime import graph and lazy export providers, not a filename exception. A helper
+must not import the facade that is loading that helper.
+
+Functional generic bounds retain their typed payload contract. Class-bound lazy alias
+deferral is a detection-only repair at the canonical typings owner, never an automatic
+deletion of constraints.
+
 ## Verb single-pass contract
 
 Each mutating verb owns exactly one operation per tool, and `make check` is strictly
 read-only — no verb repeats another verb's work across the canonical sequence
-`make fix && make fmt && make check`:
+`make fix && make fmt && make check`. Gates execute serially in their declared order,
+including whole-program type checkers. Read-only checks preserve every executed
+verdict; fail-fast checks and mutating operations stop at their first failed gate.
+Unexecuted gates never acquire a passing receipt:
 
 | Gate / tool                       | `make check` (read-only)           | `make fmt` (formatters) | `make fix` (one mutation)                  |
 | --------------------------------- | ---------------------------------- | ----------------------- | ------------------------------------------ |
 | `lint` — ruff                     | read-only `ruff` verdict           | —                       | one `ruff` repair pass                     |
-| `format` — ruff                   | — (mutating)                       | `ruff` format pass      | —                                          |
+| `format` — ruff                   | read-only `ruff format --check`    | `ruff` format pass      | —                                          |
 | `markdown` — rumdl                | `rumdl check`                      | —                       | `rumdl check --fix`                        |
 | `markdown-format` — prettier      | `prettier --check`                 | `prettier --write`      | —                                          |
 | `markdown-code` — ruff (embedded) | format verdict on parseable blocks | —                       | one format pass, clean round-trips spliced |
