@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.validate._pytest_runner.execution import (
-    FlextInfraPytestRunnerExecution,
-)
+from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerExecution
 
 if TYPE_CHECKING:
     from flext_infra import t

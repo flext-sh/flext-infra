@@ -17,9 +17,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import r, u
+from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,

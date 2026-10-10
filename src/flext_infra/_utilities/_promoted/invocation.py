@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._promoted.workspace import (
-    FlextInfraUtilitiesPromotedWorkspace,
-)
+from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import p, t

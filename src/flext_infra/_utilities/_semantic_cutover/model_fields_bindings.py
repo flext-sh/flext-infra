@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 
-from flext_infra._utilities._semantic_cutover.bindings import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
 

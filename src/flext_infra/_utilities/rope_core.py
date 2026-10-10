@@ -14,13 +14,9 @@ from pathlib import Path
 from flext_infra import config, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeRuntime,
-)
-from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
-from flext_infra._utilities._rope_core_resources import (
     FlextInfraUtilitiesRopeCoreResourcesMixin,
+    FlextInfraUtilitiesRopeRuntime,
 )
 
 

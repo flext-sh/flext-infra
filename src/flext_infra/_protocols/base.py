@@ -22,6 +22,23 @@ class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
+    class SupervisedProcess(Protocol):
+        """Process lifecycle consumed by the infrastructure resource supervisor."""
+
+        @property
+        def pid(self) -> int:
+            """Native process identifier."""
+            ...
+
+        def poll(self) -> int | None:
+            """Return the native exit code once the process has ended."""
+            ...
+
+        def wait(self) -> p.Result[int]:
+            """Reap the process and preserve its native result."""
+            ...
+
+    @runtime_checkable
     class RenameCampaignRunner(Protocol):
         """Apply or inspect one validated CSV rename campaign."""
 

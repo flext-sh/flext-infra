@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.deps._floor_profile_writer import FlextInfraDepsFloorProfileWriter
+from flext_infra.deps import FlextInfraDepsFloorProfileWriter
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

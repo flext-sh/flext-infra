@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m, p, r, u
-from flext_infra.refactor._accessor_rewrite import (
-    FlextInfraAccessorMigrationRewriteMixin,
-)
+from flext_infra.refactor import FlextInfraAccessorMigrationRewriteMixin
 
 
 class FlextInfraAccessorRenamePhase(FlextInfraAccessorMigrationRewriteMixin):

@@ -11,9 +11,7 @@ from pathlib import Path
 
 from flext_infra import m, t
 from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git.state_snapshot import (
-    FlextInfraUtilitiesGitStateSnapshotMixin,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateSnapshotMixin
 
 
 class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotMixin):

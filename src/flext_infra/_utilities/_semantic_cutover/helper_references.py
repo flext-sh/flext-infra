@@ -16,7 +16,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._semantic_cutover.nesting_types import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticNestingTypes,
 )
 

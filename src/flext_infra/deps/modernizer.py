@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.deps._modernizer.base import FlextInfraPyprojectModernizerBase
+from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerBase
 
 
 class FlextInfraPyprojectModernizer(FlextInfraPyprojectModernizerBase):

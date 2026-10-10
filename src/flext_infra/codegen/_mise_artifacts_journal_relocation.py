@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m, p, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 
 
 class FlextInfraMiseArtifactsJournalRelocation:

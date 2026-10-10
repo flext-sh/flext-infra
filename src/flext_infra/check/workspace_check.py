@@ -10,13 +10,19 @@ import shlex
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.check._workspace_check_reports import (
-    FlextInfraWorkspaceCheckReportsMixin,
+from flext_infra import (
+    FlextInfraGateRegistry,
+    FlextInfraServiceBase,
+    FlextInfraWorkspaceCheckGatesMixin,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
 )
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.check.workspace_check_gates import FlextInfraWorkspaceCheckGatesMixin
+from flext_infra.check import FlextInfraWorkspaceCheckReportsMixin
 
 
 class FlextInfraWorkspaceChecker(
@@ -363,6 +369,8 @@ class FlextInfraWorkspaceChecker(
         dir_ensure = u.Cli.ensure_dir(reports_root)
         if dir_ensure.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
+        # One invocation owns one report leaf: concurrent checks never
+        # overwrite each other's receipt.
         report_base = reports_root / u.generate_id()
         report_base.mkdir(exist_ok=False)
         effective_ctx = ctx or m.Infra.GateContext(

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.protocols import FlextInfraProtocols
+from flext_infra import FlextInfraProtocols
 
 p = FlextInfraProtocols
 
