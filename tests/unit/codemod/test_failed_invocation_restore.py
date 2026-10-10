@@ -22,8 +22,12 @@ if TYPE_CHECKING:
 class TestsFlextInfraFailedInvocationRestore:
     """Record governed sources first; restore them when the run fails."""
 
-    ORIGINAL = '"""Probe module."""\n\nfrom __future__ import annotations\n\nLIMIT = 3\n'
-    REWRITTEN = '"""Probe module."""\n\nfrom __future__ import annotations\n\nLIMIT = (\n'
+    ORIGINAL = (
+        '"""Probe module."""\n\nfrom __future__ import annotations\n\nLIMIT = 3\n'
+    )
+    REWRITTEN = (
+        '"""Probe module."""\n\nfrom __future__ import annotations\n\nLIMIT = (\n'
+    )
     EMPTY_REPORT = m.Infra.ModScanReport(
         findings=0,
         actionable=0,

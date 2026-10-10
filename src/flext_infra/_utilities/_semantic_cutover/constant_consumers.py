@@ -7,13 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import cProfile
-import pstats
 from pathlib import Path
 
 from flext_cli import cli
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
@@ -43,33 +41,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
-        """
-        profile_path = (
-            rope_workspace.repository_root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
-        ).with_name(f"{c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS}.pstats")
-        profile_path.parent.mkdir(parents=True, exist_ok=True)
-        profiler = cProfile.Profile()
-        profiler.enable()
-        try:
-            return cls._profiled_constant_consumers(rope_workspace, sources)
-        finally:
-            profiler.disable()
-            profiler.dump_stats(profile_path)
-            policy = config.Infra.tooling.tools.pytest
-            pstats.Stats(profiler).sort_stats(policy.profile_sort).print_stats(
-                policy.profile_limit,
-            )
-
-    @classmethod
-    def _profiled_constant_consumers(
-        cls,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Profile the actual bulk census pipeline through its public owner.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
         """
         facade_owner = FlextInfraUtilitiesPrivateImportFacades
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
@@ -118,6 +89,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         ))
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+            # Declaration parts compose c; importing that still-assembling
+            # facade inside its own parts is a dependency cycle.
+            if family_modules.intersection(
+                path.relative_to(rope_workspace.repository_root).parts
+            ):
+                return source, ()
             if not any(
                 imported.name in constant_names
                 and not (imported.name == "c" and imported.asname is None)
