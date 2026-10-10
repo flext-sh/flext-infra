@@ -236,16 +236,17 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for alias in statement.names:
                 if alias.name == "*":
                     continue
+                context = (
+                    project,
+                    statement,
+                    alias,
+                    namespace,
+                    runtime,
+                    root,
+                    sources,
+                )
                 resolved = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_settings_export(
-                    (
-                        project,
-                        statement,
-                        alias,
-                        namespace,
-                        runtime,
-                        root,
-                        sources,
-                    ),
+                    context
                 )
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]

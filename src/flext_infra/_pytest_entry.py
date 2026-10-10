@@ -44,6 +44,7 @@ class FlextInfraPytestEntry:
         runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
 
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
+        slow_phase = mode == "full-slow"
         if mode == "profile":
             profile = profile_module.FlextInfraPytestProfile(Path(sys.argv[2]))
             status = profile.run_parent(

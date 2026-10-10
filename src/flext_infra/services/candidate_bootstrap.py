@@ -117,27 +117,11 @@ class FlextInfraCandidateBootstrapService:
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
             for file in planned.value.files:
-                if file.project != root or not file.path.is_relative_to(root):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"candidate bootstrap destination has a foreign owner: "
-                        f"{file.path}",
-                    )
-                if (
-                    contract.destinations is not None
-                    and file.path.relative_to(root).as_posix()
-                    not in contract.destinations
-                ):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"candidate bootstrap destination is outside its surface: "
-                        f"{file.path}",
-                    )
+                failure = self._planned_file_failure(root, file, contract, inputs)
+                if failure is not None:
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(failure)
                 files.append(file)
                 for state in file.source_states:
-                    previous = inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        return r[m.Infra.CodegenPhaseAnalysis].fail(
-                            f"candidate bootstrap observed two states for {state.path}",
-                        )
                     inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
@@ -146,6 +130,34 @@ class FlextInfraCandidateBootstrapService:
                 inputs=tuple(inputs.values()),
             ),
         )
+
+    @staticmethod
+    def _planned_file_failure(
+        root: str,
+        file: m.Infra.CodegenFilePlan,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
+    ) -> str | None:
+        """Name the first bootstrap violation of one planned file.
+
+        Returns:
+            The failure message, or ``None`` when the file is planable.
+
+        """
+        if file.project != root or not file.path.is_relative_to(root):
+            return f"candidate bootstrap destination has a foreign owner: {file.path}"
+        if (
+            contract.destinations is not None
+            and file.path.relative_to(root).as_posix() not in contract.destinations
+        ):
+            return (
+                f"candidate bootstrap destination is outside its surface: {file.path}"
+            )
+        for state in file.source_states:
+            previous = inputs.get(state.path)
+            if previous is not None and previous != state:
+                return f"candidate bootstrap observed two states for {state.path}"
+        return None
 
     def _verify(
         self,
