@@ -197,7 +197,8 @@ class TestsFlextInfraCodegenCatalogExtensions:
             f'{source.distribution}.git@{branch}"]\n'
         )
         conflict = (
-            "            "=======\nprobe = 'incoming'\n>>>>>>> incoming\n"
+            "<<<<<<< HEAD\nprobe = 'current'\n"
+            "=======\nprobe = 'incoming'\n>>>>>>> incoming\n"
         )
         content = (
             declaration + f"[{section}.identity_probe]\n" + conflict
@@ -278,7 +279,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         mise = tm.not_none(u.Tests.planned_text(plan, c.Infra.MISE_TOML_FILENAME))
         tm.that(mise, has=f'python = "{toolchain.python_version}"')
         tm.that(mise, has=f'direnv = "{toolchain.tool_versions["direnv"]}"')
-<<<<<<< HEAD
         # operator-ruling-2026-10-10-make-system-go-per-project: make is
         # system-owned and go is a per-project addition, never a fleet tool.
         tm.that(mise, lacks="\nmake = ")
