@@ -448,12 +448,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return True
         if not isinstance(value, ast.Name) or value.id not in visible:
             return False
-        definition = spec.definitions[owner.target]
-        spec.definitions[owner.target] = definition.model_copy(
+        owner_target, attribute, member = resolved
+        definition = spec.definitions[owner_target]
+        spec.definitions[owner_target] = definition.model_copy(
             update={
                 "members": {
                     **definition.members,
-                    target.attr: visible[value.id],
+                    attribute: member,
                 },
             },
         )
@@ -497,6 +498,34 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 },
             )
         return current if current.target in definitions else None
+
+    @classmethod
+    def _inventoried_receiver_update(
+        cls,
+        spec: m.Infra.SourceBindingCollectorSpec,
+        node: ast.Assign | ast.AnnAssign,
+        targets: t.SequenceOf[ast.expr],
+        visible: MutableMapping[str, m.Infra.SourceClassReference | None],
+        module: str,
+    ) -> tuple[str, str, m.Infra.SourceClassReference | None] | None:
+        """Resolve one inventoried receiver update, or ``None`` when inapplicable.
+
+        Returns:
+            The ``(owner target, attribute, member)`` update, or ``None``.
+
+        """
+        target = targets[0]
+        value = node.value
+        if not isinstance(target, ast.Attribute):
+            return None
+        owner = cls._reference(target.value, visible, module)
+        if owner.target not in spec.definitions or owner.attributes:
+            return None
+        if isinstance(value, ast.Call):
+            return owner.target, target.attr, None
+        if isinstance(value, ast.Name) and value.id in visible:
+            return owner.target, target.attr, visible[value.id]
+        return None
 
     @classmethod
     def _name_assignment(
