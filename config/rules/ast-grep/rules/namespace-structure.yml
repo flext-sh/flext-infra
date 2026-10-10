@@ -543,19 +543,37 @@ message: >-
 # Annotations use the typed vocabulary: no Any, Optional, object or bare dict.
 # Names inside a call (a field factory such as `default_factory=dict`) are
 # values, not annotations.
+#
+# Named owners declare the vocabulary itself and are out of scope: the typings
+# SSOT files define the canonical alias spellings (`type JsonDict =
+# dict[str, ...]`) every consumer must reference — flagging the definition
+# site would ban the vocabulary. Dunder comparison/equality methods keep
+# their LSP-required `object` parameter (mypy rejects the narrowed @override
+# signature), so parameter annotations of those dunders are exempt too.
 id: ban-broad-annotation
 language: python
 severity: error
 files:
   - "**/*.py"
+ignores:
+  - "**/flext_core/_typings/base.py"
+  - "**/flext_core/typings.py"
 rule:
   kind: identifier
   regex: "^(?:Any|Optional|object|dict)$"
   not:
-    inside:
-      kind: call
-      stopBy:
-        kind: type
+    any:
+      - inside:
+          kind: call
+          stopBy:
+            kind: type
+      - inside:
+          kind: parameters
+          inside:
+            kind: function_definition
+            has:
+              field: name
+              regex: "^__(?:eq|ne|hash|contains|lt|le|gt|ge)__$"
   inside:
     kind: type
     stopBy: end

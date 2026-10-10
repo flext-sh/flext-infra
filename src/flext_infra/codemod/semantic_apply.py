@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -57,12 +58,30 @@ class FlextInfraCodemodSemanticApply:
 
         def verify() -> p.Result[bool]:
             rope_workspace.refresh()
-            return cls._check_residue(
+            fixed_point = cls._check_residue(
                 phase,
                 u.Infra.plan_semantic_cutover(
                     phase,
                     rope_workspace=rope_workspace,
                     sources=cls._source_inventory(root, inventory),
+                ),
+            )
+            if fixed_point.failure:
+                return fixed_point
+            projects = tuple(
+                sorted({
+                    project.relative_to(root).as_posix()
+                    for path in changed
+                    if (project := u.Infra.project_root(path)) is not None
+                })
+            )
+            return FlextInfraWorkspaceChecker(
+                repository_root=root,
+            ).execute_payload(
+                m.Infra.RunCommand(
+                    repository_root=root,
+                    projects=projects,
+                    gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
 

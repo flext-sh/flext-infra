@@ -850,7 +850,8 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If make project_check_gates must be unique; or if make
-                    project_check_gates shadow built-in gates.
+                    project_check_gates shadow built-in gates; or if make
+                    opt_in_check_gates name unknown gates.
 
             """
             if len(set(self.project_check_gates)) != len(self.project_check_gates):

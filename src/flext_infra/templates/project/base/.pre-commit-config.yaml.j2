@@ -2,8 +2,12 @@
 repos:
   - repo: local
     hooks:
+<<<<<<< HEAD
     # pre-commit: the fast external gates only (make pre-commit); pre-push:
     # every pre_push workflow row. CI runs the ci workflow rows itself.
+=======
+    # Mandatory approval has one owner, shared with native CI.
+>>>>>>> recover/redo-d0560ba3c-merge-20261009
       - id: flext-pre-commit
         name: make pre-commit
         language: system
