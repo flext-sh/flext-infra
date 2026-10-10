@@ -77,7 +77,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         config_file = root / "mypy.ini"
         # The workload checks through the governed checker settings, so its
         # crash reporting (show_traceback) matches every managed project.
-        config_source = "[mypy]\n" + "".join(
+        # Each workload owns its cache inside its root: mypy's default
+        # .mypy_cache is relative to the process cwd, which concurrent workers
+        # share, and its SQLite metastore then fails with "database is locked".
+        config_source = f"[mypy]\ncache_dir = {root / '.mypy_cache'}\n" + "".join(
             f"{key} = {value}\n"
             for key, value in config.Infra.tooling.tools.mypy.boolean_settings.items()
         )
