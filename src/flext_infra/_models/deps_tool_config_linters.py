@@ -143,20 +143,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
-    class RuffPylintConfig(m.ArbitraryTypesModel):
-        """Ruff Pylint policy for operator-approved native type descriptors."""
-
-        allow_dunder_method_names: Annotated[
-            t.SequenceOf[Literal["__base__", "__bases__"]],
-            m.Field(
-                alias="allow-dunder-method-names",
-                description=(
-                    "Only Python type.__base__ and type.__bases__ read-only "
-                    "protocol properties are authorized by the operator."
-                ),
-            ),
-        ]
-
     class RuffAuthorizedException(m.ArbitraryTypesModel):
         """One operator-authorized Ruff exception, recorded with its authority.
 

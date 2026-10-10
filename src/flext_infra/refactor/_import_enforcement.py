@@ -84,6 +84,8 @@ class FlextInfraImportNormalization(
             The rewritten source, or ``None`` when the module is out of scope
             or already canonical.
 
+        Raises:
+            ValueError: If ``root_exports is None``.
         """
         if file_path.name == c.Infra.INIT_PY:
             return None

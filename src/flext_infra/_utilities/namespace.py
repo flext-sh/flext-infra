@@ -16,9 +16,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-import flext_core
 from flext_cli import u
 
+import flext_core
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
@@ -265,7 +265,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 all((isinstance(item, str) for item in literal))``; or if a
                 ``(ValueError, SyntaxError)`` is caught; or if ``source_name not in
                 assignments``.
-
+            TypeError: If ``not isinstance(literal, (list, tuple))``.
         """
         assignments: MutableMapping[str, ast.expr] = {}
         for node in tree.body:
@@ -301,7 +301,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             raise ValueError(msg) from exc
         if not isinstance(literal, (list, tuple)):
             msg = f"{file_path}: __all__ must contain only strings"
-            raise ValueError(msg)
+            raise TypeError(msg)
         names = tuple(item for item in literal if isinstance(item, str))
         if len(names) != len(literal):
             msg = f"{file_path}: __all__ must contain only strings"
