@@ -714,7 +714,15 @@ class FlextInfraConfigModelsMake(
         ]
         submodule_timeout_seconds: Annotated[
             int,
-            m.Field(gt=0, le=600, description="Governed submodule setup deadline"),
+            m.Field(
+                gt=0,
+                le=600,
+                description="Deadline per wave of concurrent submodule clones",
+            ),
+        ]
+        submodule_jobs: Annotated[
+            int,
+            m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
             FlextInfraConfigModelsMake.MakeRuffSpec,

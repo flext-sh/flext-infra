@@ -21,6 +21,67 @@ class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
+    def census_constants(
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        apply: bool,
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan or publish constant consumers from the complete census scope.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+
+        """
+        inventory = m.Infra.ModScanReport(
+            findings=0,
+            actionable=0,
+            detection_only=0,
+            non_actionable_with_fix=0,
+            files=frozenset(),
+            entries=(),
+        )
+        original = cls._source_inventory(root, inventory)
+        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+        planned = u.Infra.plan_semantic_cutover(
+            phase,
+            rope_workspace=rope_workspace,
+            sources=original,
+        )
+        if planned.failure or not apply or not planned.value:
+            return planned
+        working = dict(original)
+        changed: set[Path] = set()
+        cls._apply_plan(working, planned.value, changed)
+
+        def verify() -> p.Result[bool]:
+            rope_workspace.refresh()
+            return cls._check_residue(
+                phase,
+                u.Infra.plan_semantic_cutover(
+                    phase,
+                    rope_workspace=rope_workspace,
+                    sources=cls._source_inventory(root, inventory),
+                ),
+            )
+
+        return (
+            cls
+            ._check_definition_time(original, working, changed)
+            .flat_map(
+                lambda _: cls._publish(
+                    root,
+                    original,
+                    working,
+                    changed,
+                    validator=verify,
+                ),
+            )
+            .map(lambda _: planned.value)
+        )
+
+    @classmethod
     def source_fingerprint(
         cls,
         root: Path,
@@ -36,6 +97,122 @@ class FlextInfraCodemodSemanticApply:
             (path.as_posix(), u.Cli.sha256_bytes(source.encode(c.Cli.ENCODING_DEFAULT)))
             for path, source in sorted(cls._source_inventory(root, preflight).items())
         )
+
+    @classmethod
+    def source_paths(
+        cls,
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+    ) -> frozenset[Path]:
+        """Return every governed source a semantic or AST rewrite may publish to.
+
+        Returns:
+            The resolved governed source paths of the mod inventory.
+
+        """
+        return frozenset(
+            path.resolve() for path in cls._source_inventory(root, preflight)
+        )
+
+    @classmethod
+    def run_restoring(
+        cls,
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        extra_paths: t.SequenceOf[Path],
+        operation: Callable[[], p.Result[t.Cli.ResultValue]],
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Run one rewriting invocation that publishes nothing when it fails.
+
+        The state of every source the invocation may rewrite (the governed
+        inventory plus ``extra_paths``) is recorded before its first effect.
+        A failed result or a raised exception restores the sources this
+        invocation changed through the journaled publication; a restore
+        failure is attached to the original failure, which stays the one
+        reported or raised.
+
+        Returns:
+            The operation result, or its failure after the restore.
+
+        """
+        paths = set(cls.source_paths(root, preflight))
+        paths.update(path.resolve() for path in extra_paths)
+        recorded = {
+            path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            for path in sorted(paths)
+        }
+        try:
+            outcome = operation()
+        except BaseException as error:
+            try:
+                restored = cls._restore_invocation(root, preflight, recorded)
+            except c.EXC_BROAD_RUNTIME as restore_error:
+                # Rollback evidence only: the original failure stays raised.
+                error.add_note(f"restore raised: {restore_error!r}")
+            else:
+                if restored.failure:
+                    error.add_note(f"restore failed: {restored.error}")
+            raise
+        if outcome.success:
+            return outcome
+        restored = cls._restore_invocation(root, preflight, recorded)
+        if restored.failure:
+            return r[t.Cli.ResultValue].fail(
+                f"{outcome.error}; restore failed: {restored.error}",
+            )
+        return r[t.Cli.ResultValue].fail(
+            f"{outcome.error}; restored {restored.value} rewritten source(s), "
+            "nothing of this run is published",
+        )
+
+    @classmethod
+    def _restore_invocation(
+        cls,
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        recorded: t.MappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[int]:
+        """Publish the recorded bytes of every source the invocation changed.
+
+        Only sources whose bytes or mode differ from the recorded state are
+        rewritten; a source the invocation created has no recorded state to
+        restore and fails the restore by name.
+
+        Returns:
+            The number of restored sources.
+
+        """
+        created = sorted(cls.source_paths(root, preflight) - recorded.keys())
+        if created:
+            return r[int].fail(
+                "invocation created source(s) outside its recorded state: "
+                + ", ".join(path.as_posix() for path in created),
+            )
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for path, before in recorded.items():
+            current = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=False,
+            ).unwrap()
+            if (current.content, current.mode) == (before.content, before.mode):
+                continue
+            project = u.Infra.project_root(path) or root
+            plans.append(
+                m.Infra.SemanticFilePlan(
+                    project=project.resolve(),
+                    path=path,
+                    before=current,
+                    desired_content=before.content,
+                    desired_mode=before.mode,
+                    changes=("failed invocation restore",),
+                ),
+            )
+        if not plans:
+            return r[int].ok(0)
+        return FlextInfraSemanticPublication.publish_semantic_file_plans(
+            plans,
+            repository_root=root,
+        ).map(len)
 
     @classmethod
     def relocation_findings(

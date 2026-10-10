@@ -39,6 +39,9 @@ class FlextInfraImportNormalization(
        external providers, and settings/config modules keep their own law.
     4. A concrete object binds through the nearest package ``__init__`` that
        publishes it lazily.
+    5. A root alias the module reads but binds nowhere is imported from its
+       namespace root; an alias imported from the module's own root that the
+       module also defines is dropped.
 
     ``make mod`` runs it over every governed file; the ``make fix`` lint
     recipe ``normalize-imports`` runs it over each file Ruff reports for
@@ -84,6 +87,8 @@ class FlextInfraImportNormalization(
             The rewritten source, or ``None`` when the module is out of scope
             or already canonical.
 
+        Raises:
+            ValueError: If ``root_exports is None``.
         """
         if file_path.name == c.Infra.INIT_PY:
             return None
@@ -91,7 +96,10 @@ class FlextInfraImportNormalization(
         if located is None:
             return None
         namespace_dir, module = located
-        root_exports = u.Infra.import_lazy_exports(namespace_dir, namespace_dir.name)
+        root_exports = u.Infra.import_lazy_exports(project_root, namespace_dir.name)
+        if root_exports is None:
+            msg = f"{namespace_dir} is a namespace without an owned package init"
+            raise ValueError(msg)
         if import_graph is None:
             import_graph, _modules = u.Infra.project_import_graph(project_root)
         facade_dependencies = u.Infra.import_facade_dependencies(
@@ -148,6 +156,7 @@ class FlextInfraImportNormalization(
             lambda: cls._guard_edits(state.tree, lines),
             lambda: cls._placement_edits(state, lines),
             lambda: cls._route_edits(state, lines),
+            lambda: cls._root_alias_binding_edits(state, lines),
         )
         for build in builders:
             edits = build()

@@ -22,6 +22,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraRefactorCensusCollectHelpersMixin,
     FlextInfraRefactorCensusCollectMixin,
@@ -154,6 +155,22 @@ class FlextInfraRefactorCensus(
             self.root,
             rope_repository_root=self._rope_root_for_selection(),
         ) as rope:
+            constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
+            if (
+                self.rule_names is not None
+                and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in self.rule_names
+            ):
+                constant_edits = FlextInfraCodemodSemanticApply.census_constants(
+                    self.root,
+                    rope,
+                    apply=self.apply_changes and not self.effective_dry_run,
+                ).unwrap()
+                cli.display_text(
+                    "census: constant-consumers "
+                    f"files={len(constant_edits)} "
+                    f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
+                    f"applied={self.apply_changes and not self.effective_dry_run}",
+                )
             impact_report = self._collect_report(rope)
             report = impact_report
             if (
@@ -163,7 +180,13 @@ class FlextInfraRefactorCensus(
             ):
                 report = self._collect_report(rope)
         finalized = report.model_copy(
-            update={"scan_duration_seconds": time.monotonic() - started},
+            update={
+                "scan_duration_seconds": time.monotonic() - started,
+                "constant_consumer_files": len(constant_edits),
+                "constant_consumer_bindings": sum(
+                    len(edit.changes) for edit in constant_edits
+                ),
+            },
         )
         return finalized, impact_report
 

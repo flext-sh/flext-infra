@@ -98,6 +98,11 @@ class FlextInfraCandidateBootstrapService:
             manifest_state.path: manifest_state,
         }
         for root, target in zip(roots.values(), targets, strict=True):
+            contract = self._planner.surface_contract(target.what)
+            if contract.complete_governed:
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"candidate bootstrap requires one declared surface: {root}",
+                )
             request = m.Infra.CodegenConformRequest(
                 root=root,
                 what=target.what,
@@ -107,12 +112,25 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planner.plan(request)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            destinations = self._planner.surface_contract(target.what).destinations
-            if not destinations:
+            if not contract.destinations and not planned.value.files:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
             for file in planned.value.files:
+                if file.project != root or not file.path.is_relative_to(root):
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"candidate bootstrap destination has a foreign owner: "
+                        f"{file.path}",
+                    )
+                if (
+                    contract.destinations is not None
+                    and file.path.relative_to(root).as_posix()
+                    not in contract.destinations
+                ):
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"candidate bootstrap destination is outside its surface: "
+                        f"{file.path}",
+                    )
                 files.append(file)
                 for state in file.source_states:
                     previous = inputs.get(state.path)

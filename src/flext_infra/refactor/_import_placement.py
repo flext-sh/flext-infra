@@ -201,12 +201,9 @@ class FlextInfraImportNormalizationPlacementMixin(
             target = state.root_exports.get(alias.name, scope.namespace)
         else:
             target = node.module or ""
-            package_dir = u.Infra.import_package_dir(scope.project_root, target)
-            if package_dir is not None:
-                target = u.Infra.import_lazy_exports(package_dir, target).get(
-                    alias.name,
-                    target,
-                )
+            exports = u.Infra.import_lazy_exports(scope.project_root, target)
+            if exports is not None:
+                target = exports.get(alias.name, target)
         if target.split(".")[0] != scope.namespace:
             return False
         return u.Infra.module_import_layer(target) > scope.layer
@@ -227,7 +224,9 @@ class FlextInfraImportNormalizationPlacementMixin(
             case ast.Import(names=names), ast.Import():
                 pass
             case ast.ImportFrom(
-                names=names, module=module, level=level
+                names=names,
+                module=module,
+                level=level,
             ), ast.ImportFrom(
                 module=node_module,
                 level=node_level,

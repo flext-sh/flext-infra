@@ -39,13 +39,6 @@ class FlextInfraConfigModelsWorkspace:
             if self.path.is_absolute() or not self.path.parts:
                 msg = "candidate bootstrap path must be relative"
                 raise ValueError(msg)
-            if self.what not in {
-                c.Infra.CodegenConformSurface.MAKEFILE,
-                c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                c.Infra.CodegenConformSurface.PYPROJECT,
-            }:
-                msg = "candidate bootstrap owns only declared recovery surfaces"
-                raise ValueError(msg)
             return self
 
     class DependencyCommitSourceSpec(FlextInfraConfigModelsContract.ConfigContract):

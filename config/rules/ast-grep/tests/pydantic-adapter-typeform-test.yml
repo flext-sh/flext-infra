@@ -1,0 +1,15 @@
+id: pydantic-adapter-typeform
+# `valid` MUST NOT match: an already converted contract, a real class reached
+# through the models facade, a builtin, or a second (config) argument.
+valid:
+  - adapter = u.type_adapter(TypeForm(t.JsonMapping))
+  - adapter = u.type_adapter(m.Payload)
+  - adapter = TypeAdapter(bool)
+  - adapter = TypeAdapter(list[str])
+  - adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt), config=cfg)
+# `invalid` MUST match: a class-scoped typings alias passed bare.
+invalid:
+  - adapter = u.type_adapter(t.JsonMapping)
+  - adapter = m.type_adapter(t.SequenceOf[str])
+  - adapter = TypeAdapter(FlextTypesPydantic.StrictInt)
+  - adapter = TypeAdapter(FlextTypingBase.Scalar, config=cfg)

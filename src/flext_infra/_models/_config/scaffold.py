@@ -10,9 +10,8 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsCodegenProject
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra import c, t
+from flext_infra._models._config import FlextInfraConfigModelsContract
 
 
 class FlextInfraConfigModelsScaffold:
@@ -153,7 +152,7 @@ class FlextInfraConfigModelsScaffold:
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraConstantsCodegenProject.MakeProfile],
+            t.VariadicTuple[c.Infra.MakeProfile],
             m.Field(
                 description=(
                     "Make profiles this section applies to; empty means every "

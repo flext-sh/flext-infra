@@ -230,6 +230,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             error_count=len(diag.error_cases),
             warning_count=len(diag.warning_lines),
             skipped_count=len(diag.skip_cases),
+            connectivity_skip_cases=tuple(diag.connectivity_skip_cases),
             collection_failed_count=len(diag.collection_failed_cases),
             collection_skipped_count=len(diag.collection_skip_cases),
             collection_failed_cases=tuple(diag.collection_failed_cases),

@@ -33,7 +33,8 @@ from pytest_markdown_docs.plugin import (
 )
 from xdist.dsession import DSession
 
-from flext_infra._constants import FlextInfraConstantsCheck, FlextInfraConstantsMake
+from flext_infra import c
+from flext_infra._constants import FlextInfraConstantsMake
 from flext_infra._models import FlextInfraModelsCore
 
 
@@ -218,17 +219,17 @@ class FlextInfraPytestCollection:
     def pytest_addoption(parser: pytest.Parser) -> None:
         """Require explicit activation by the canonical runner."""
         parser.addoption(
-            FlextInfraConstantsCheck.PYTEST_SELECTED_COLLECTION_OPTION,
+            c.Infra.PYTEST_SELECTED_COLLECTION_OPTION,
             default=None,
             help="Manifest whose ordered node-ID selection every worker enforces.",
         )
         parser.addoption(
-            FlextInfraConstantsCheck.PYTEST_COLLECTION_MANIFEST_OPTION,
+            c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION,
             default=None,
             help="Path where a collect-only session publishes its final items.",
         )
         parser.addoption(
-            FlextInfraConstantsCheck.PYTEST_SUITE_STOP_OPTION,
+            c.Infra.PYTEST_SUITE_STOP_OPTION,
             type=float,
             default=None,
             help="Monotonic instant after which the session stops gracefully.",
@@ -245,7 +246,7 @@ class FlextInfraPytestCollection:
             config.pluginmanager.register(
                 FlextInfraPytestCollection.WarningAccounting(Path(report_log)),
             )
-        stop_at = config.getoption(FlextInfraConstantsCheck.PYTEST_SUITE_STOP_OPTION)
+        stop_at = config.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION)
         if stop_at is not None and not hasattr(config, "workerinput"):
             config.pluginmanager.register(
                 FlextInfraPytestCollection.SuiteStop(stop_at_monotonic=stop_at),
@@ -267,7 +268,7 @@ class FlextInfraPytestCollection:
 
         """
         selected: str | None = session.config.getoption(
-            FlextInfraConstantsCheck.PYTEST_SELECTED_COLLECTION_OPTION,
+            c.Infra.PYTEST_SELECTED_COLLECTION_OPTION,
         )
         if selected is not None:
             manifest = (
@@ -293,7 +294,7 @@ class FlextInfraPytestCollection:
             session.items.sort(key=lambda item: order[item.nodeid])
         yield
         target: str | None = session.config.getoption(
-            FlextInfraConstantsCheck.PYTEST_COLLECTION_MANIFEST_OPTION,
+            c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION,
         )
         if target is not None and session.config.getoption("collectonly"):
             FlextInfraPytestCollection._write_collection_manifest(session, Path(target))

@@ -145,6 +145,19 @@ class FlextInfraTypesBase:
         t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
     ]
     "Resolved private-import specs, declared re-export targets, and facade owners."
+    type ConstantFacadeIndex = tuple[
+        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+        t.MappingKV[str, set[str]],
+        t.MappingKV[str, t.VariadicTuple[str]],
+    ]
+    "Live constants facades, export identities, and declared class ancestry."
+    type ConstantConsumerContext = t.Quad[
+        _ast.Module,
+        str,
+        ConstantFacadeIndex,
+        t.MutableMappingKV[t.Pair[str, str], str | None],
+    ]
+    "One module's constants facade selection and shared identity cache."
     type EditResult = tuple[bool, t.StrSequence]
     "Validated edit outcome: (success, report_lines)."
     type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]

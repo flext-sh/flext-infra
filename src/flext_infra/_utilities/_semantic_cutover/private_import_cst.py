@@ -82,7 +82,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             return cst.FlattenSentinel(statements)
 
     @classmethod
-    def _relocate_declared_exports(
+    def relocate_declared_exports(
         cls,
         source: str,
         exports: t.MappingKV[str, t.Pair[str, str]],

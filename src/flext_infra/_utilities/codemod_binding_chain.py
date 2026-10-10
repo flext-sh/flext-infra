@@ -474,7 +474,10 @@ class FlextInfraUtilitiesCodemodBindingChain(FlextInfraUtilitiesCodemodRules):
         imported = binding.imported_module.get_object()
         if not isinstance(imported, p.Infra.RopePyModule):
             return False
-        key = (imported.get_name(), binding.imported_name)
+        key = (
+            binding.imported_module.importing_module.get_name(),
+            binding.imported_name,
+        )
         if key in visited:
             return False
         imported_scope = imported.get_scope()

@@ -202,6 +202,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
 
         tm.that(result.result.passed, eq=True)
+        tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
+        tm.that(result.issues, empty=True)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED)
 
     def test_code_gate_fix_splices_block_after_fragment(self, tmp_path: Path) -> None:
@@ -267,6 +269,45 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issue.message,
             has=FlextInfraMarkdownCodeSources.source_name("README.md", 1),
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("unformatted", [False, True])
+    def test_code_gate_fix_preserves_docstring_findings(
+        tmp_path: Path,
+        *,
+        unformatted: bool,
+    ) -> None:
+        """A completed formatter reports docstrings it cannot write back for check."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix-docstring")
+        source_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
+        source_dir.mkdir()
+        source = source_dir / "widget.py"
+        example = "x=1" if unformatted else "x = 1"
+        original = f'"""Widget.\n\n>>> {example}\n\n"""'
+        source.write_text(original, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
+        result = FlextInfraMarkdownCodeGate(tmp_path).fix(
+            project_dir,
+            m.Infra.GateContext(
+                repository_root=tmp_path,
+                reports_dir=tmp_path,
+                apply_fixes=True,
+            ),
+        )
+        # The repair completes (FINDINGS never breaks it); the unwritable
+        # docstring stays a finding that check enforces.
+        tm.that(result.result.passed, eq=True)
+        tm.that(
+            result.outcome,
+            eq=(
+                c.Infra.ToolOutcome.FINDINGS
+                if unformatted
+                else c.Infra.ToolOutcome.CLEAN
+            ),
+        )
+        tm.that(result.finding_count > 0, eq=unformatted)
+        tm.that(result.raw_output.strip() != "", eq=unformatted)
+        tm.that(source.read_text(encoding="utf-8"), eq=original)
 
     @staticmethod
     def test_code_gate_reports_unformatted_docstring_example(

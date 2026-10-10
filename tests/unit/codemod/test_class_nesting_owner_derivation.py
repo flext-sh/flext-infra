@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
+import flext_core
 from flext_infra import infra
 from tests import c, t, u
 
@@ -152,6 +153,10 @@ __all__: list[str] = ["LIMIT", "write"]
 
         source = updated[module.resolve()]
         tm.that(self._top_level(source), eq=(owner, "__all__"))
+        tm.that(
+            source,
+            has=f'class {owner}:\n    """Loose helpers of one family module."""',
+        )
         tm.that(source, has=f'__all__: list[str] = ["{owner}"]')
         tm.that(source, has="    @staticmethod\n    def write(")
         tm.that(source, has="    @staticmethod\n    def _helper(")
@@ -256,6 +261,46 @@ __all__: list[str] = ["LIMIT", "write"]
         tm.that(self._top_level(nested), eq=(owner, "__all__"))
         tm.that(nested, has=f"    class {helper}:")
         tm.that(residue, eq={})
+
+    def test_family_suffix_excludes_the_shared_core_stem(self) -> None:
+        """Every family suffix follows one shared, non-empty core class stem.
+
+        A suffix spanning the whole core facade name doubles the stem in every
+        derived owner (``<Project>FlextUtilities<Module>``).
+        """
+        stems = {
+            getattr(flext_core, letter).__name__.removesuffix(family.suffix)
+            for letter, family in u.Infra.facade_families().items()
+        }
+        tm.that(len(stems), eq=1)
+        tm.that(stems.pop(), ne="")
+
+    def test_declared_owner_absorbs_loose_functions(self, tmp_path: Path) -> None:
+        """Loose helpers beside the declared owner nest into it, no new owner."""
+        root, module = self._family_module(tmp_path, "step_helpers", "")
+        owner = self._derived_owner(root, "step_helpers")
+        source = (
+            '"""Declared owner and loose helpers."""\n\n'
+            "from __future__ import annotations\n\n\n"
+            "def _strip(value: str) -> str:\n    return value.strip()\n\n\n"
+            f"class {owner}:\n"
+            '    """Step helpers."""\n\n'
+            "    @staticmethod\n"
+            "    def clean(value: str) -> str:\n"
+            '        """Return the stripped value."""\n'
+            "        return _strip(value)\n\n\n"
+            f'__all__: list[str] = ["{owner}"]\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        updated, residue = self._plan(root, {module: source})
+
+        nested = updated[module.resolve()]
+        tm.that(self._top_level(nested), eq=(owner, "__all__"))
+        tm.that(nested, has="    @staticmethod\n    def _strip(")
+        tm.that(nested, lacks="Canonical namespace owner")
+        tm.that(residue, eq={})
+        compile(nested, str(module), "exec")
 
     def test_rival_stem_classes_fail_naming_the_module(self, tmp_path: Path) -> None:
         """Two classes carrying the project stem leave the owner undecidable."""

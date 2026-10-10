@@ -19,28 +19,30 @@ from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
-    def _provisioned_activation_env() -> dict[str, str]:
-        """Expose this checkout's locked direnv the way ``make setup`` provisions it.
+    def _recorded_activation_env(tmp_path: Path) -> t.Pair[dict[str, str], Path]:
+        """Record the local-context activation instead of entering a host shell.
 
-        Test bodies run in the local context (``runner_ci_context_cleared``), so
-        the upg lifecycle activates through ``direnv exec``. A fixture outside the
-        checkout cannot resolve a Mise shim, so the activation receives the
-        absolute executable the toolchain owner pins for this checkout.
+        ``make upg`` is a local verb (CI forbids resolution), so its lifecycle
+        activates through ``direnv exec``. A dry run still executes that ``+``
+        line; real direnv would load the fixture's ``.envrc`` and resolve tools
+        through host Mise shims. The recorded invocation proves the activation
+        contract (``direnv exec <root> ... _activated-<verb>``) without
+        depending on host state.
 
         Returns:
-            The PATH overlay whose first entry holds the managed direnv.
+            The PATH overlay and the invocation log of the recorded direnv.
 
         """
-        owner = Path(__file__).resolve().parents[3]
-        direnv = tm.ok(u.Infra.managed_mise_binary(c.Infra.CLI_DIRENV, owner))
-        return {"PATH": f"{direnv.parent}{os.pathsep}{os.environ['PATH']}"}
+        bin_dir = tmp_path / "recorded-bin"
+        log = u.Tests.cli_shim(bin_dir, c.Infra.CLI_DIRENV)
+        return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}, log
 
     def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
         """The pre-commit hook verb runs one check over the fast external gates."""
@@ -206,15 +208,16 @@ class TestsFlextInfraCodegenRepositoryRootScope:
 
         ``upg`` bootstraps Mise (network) and then dispatches its lifecycle; the
         dry run enters that lifecycle directly, and its recursive ``+``
-        activation follows the same context rule as every public verb.
+        activation re-enters the checkout through ``direnv exec``.
         """
         repository_root = self._render_root_makefile(tmp_path)
+        env, activations = self._recorded_activation_env(tmp_path)
 
         execution = tm.ok(
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                env=self._provisioned_activation_env(),
+                env=env,
             ),
         )
 
@@ -228,6 +231,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(rendered, has="--apply --rewrite-constraints")
         tm.that(rendered, has="lock --project")
         tm.that(rendered, has="--upgrade --refresh")
+        tm.that(
+            activations.read_text(encoding="utf-8"),
+            has=f"exec {repository_root} ",
+        )
 
     def test_repository_root_upg_locks_tools_from_the_rendered_manifest(
         self,
@@ -242,12 +249,17 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         uv.lock before post-upg.
         """
         repository_root = self._render_root_makefile(tmp_path)
+        env, activations = self._recorded_activation_env(tmp_path)
         execution = tm.ok(
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                env=self._provisioned_activation_env(),
+                env=env,
             ),
+        )
+        tm.that(
+            activations.read_text(encoding="utf-8"),
+            has=["_activated-gen", "_upg_activated"],
         )
         tm.that(
             u.Cli.process_succeeded(execution.outcome),

@@ -1,0 +1,23 @@
+id: rewire-cli-encoding-to-core
+snapshots:
+  'encoding: str = c.Cli.ENCODING_DEFAULT':
+    fixed: 'encoding: str = c.DEFAULT_ENCODING'
+    labels:
+    - source: c.Cli.ENCODING_DEFAULT
+      style: primary
+      start: 16
+      end: 38
+  path.read_text(encoding=c.Cli.ENCODING_DEFAULT):
+    fixed: path.read_text(encoding=c.DEFAULT_ENCODING)
+    labels:
+    - source: c.Cli.ENCODING_DEFAULT
+      style: primary
+      start: 24
+      end: 46
+  payload.decode(c.Cli.ENCODING_DEFAULT):
+    fixed: payload.decode(c.DEFAULT_ENCODING)
+    labels:
+    - source: c.Cli.ENCODING_DEFAULT
+      style: primary
+      start: 15
+      end: 37
