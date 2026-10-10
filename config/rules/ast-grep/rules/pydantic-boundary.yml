@@ -177,13 +177,8 @@ message: >-
 # only while every input carries the field: the first document that omits it
 # crashes the model. Observed: a consumer codegen overlay without
 # ``make.standalone_check_gates`` stopped ``deps modernize`` during
-# ``make upg``. A proxy default is also unserializable: pydantic never validates
-# a default, so ``model_dump_json()`` raises "Unable to serialize unknown type:
-# mappingproxy" on every instance that kept it, while a validated input of the
-# same ``Mapping`` contract is a plain ``dict``. The default therefore becomes a
-# ``default_factory`` building that same ``dict`` from the literal, fresh per
-# instance; an empty literal then converges on the canonical
-# ``empty(TypeForm(...))`` default through pydantic-empty-default.
+# ``make upg``. A ``default_factory`` builds a fresh proxy per instance and is
+# never copied, the form the catalog's models already use.
 #
 # Only annotated pydantic fields match: the ``Annotated[`` constraint keeps
 # ``ClassVar`` constants and module-level proxies, which pydantic never copies,
@@ -206,8 +201,7 @@ rule:
 constraints:
   TYPE:
     regex: "^Annotated\\["
-fix: "$NAME: $TYPE = m.Field(default_factory=lambda: dict($ARG))"
+fix: "$NAME: $TYPE = m.Field(default_factory=lambda: MappingProxyType($ARG))"
 message: >-
-  A pydantic field default must be deep-copyable and serializable. Build the
-  mapping default through `m.Field(default_factory=lambda: dict(...))`; an
-  empty mapping uses `m.empty(TypeForm(<contract>))`.
+  A pydantic field default must be deep-copyable. Build a MappingProxyType
+  default through `m.Field(default_factory=lambda: MappingProxyType(...))`.
