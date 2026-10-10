@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, u
-from flext_infra.deps._detector_runtime_steps import (
-    FlextInfraDependencyDetectorRuntimeSteps,
-)
+from flext_infra.deps import FlextInfraDependencyDetectorRuntimeSteps
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping

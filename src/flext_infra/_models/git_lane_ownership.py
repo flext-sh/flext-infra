@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models.git_lane_inputs import FlextInfraModelsGitLaneInputs
+from flext_infra._models import FlextInfraModelsGitLaneInputs
 
 
 class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):

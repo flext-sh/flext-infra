@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_infra import m, t
+from flext_infra import FlextInfraServiceBase, m, t
 from flext_infra._base_projects import FlextInfraProjectSelectionMixin
-from flext_infra.base import FlextInfraServiceBase
 
 
 class FlextInfraProjectSelectionServiceBase[TDomainResult](
@@ -21,9 +20,7 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult](
 
     selected_projects: Annotated[
         t.StrSequence | None,
-        m.BeforeValidator(
-            lambda value: (value,) if isinstance(value, str) else value
-        ),
+        m.BeforeValidator(lambda value: (value,) if isinstance(value, str) else value),
         m.Field(
             default=None,
             alias="projects",

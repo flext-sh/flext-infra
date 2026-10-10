@@ -11,9 +11,7 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.codegen._codegen_generation_paths import (
-    FlextInfraCodegenGenerationPathsMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenGenerationPathsMixin
 
 if TYPE_CHECKING:
     from flext_infra import t

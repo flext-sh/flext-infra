@@ -11,9 +11,8 @@ from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, m, r, u
-from flext_infra.validate._pytest_runner.base import FlextInfraPytestRunnerBase
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra import FlextInfraPytestDiagExtractor, c, m, r, u
+from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 
 if TYPE_CHECKING:
     from flext_infra import p, t

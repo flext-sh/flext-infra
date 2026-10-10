@@ -11,8 +11,7 @@ import tomllib
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, p, r, t
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase, c, p, r, t
 
 
 class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):

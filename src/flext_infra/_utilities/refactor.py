@@ -12,9 +12,9 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_cli import r, u
+from flext_cli import u
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesRefactor:

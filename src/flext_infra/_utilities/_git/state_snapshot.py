@@ -14,7 +14,7 @@ from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):

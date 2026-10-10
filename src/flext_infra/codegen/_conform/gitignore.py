@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, u
-from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
+from flext_infra.codegen._conform import FlextInfraCodegenConformBootstrap
 
 
 class FlextInfraCodegenConformGitignore(FlextInfraCodegenConformBootstrap):

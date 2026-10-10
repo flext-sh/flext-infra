@@ -1,4 +1,4 @@
-"""The Make check partition derives from the gate kind in the registry.
+"""CI follows its declared partition; local checks retain every active gate.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,7 +19,7 @@ from tests.unit.codegen.test_ci_integration_branch_triggers import (
 
 
 class TestsFlextInfraCodegenMakeCheckPartition:
-    """CI runs the complement of the declared local partition."""
+    """Keep CI, local checks and the fast hook on their declared boundaries."""
 
     @staticmethod
     def test_registry_declares_one_kind_per_gate() -> None:
@@ -40,18 +40,18 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
     @staticmethod
-    def test_partitions_derive_from_the_declared_local_set() -> None:
-        """CI=N is the declared local set; CI=Y is its strict complement."""
+    def test_ci_excludes_only_declared_local_only_gates() -> None:
+        """Local checks cover every active gate; CI excludes its declared set."""
         make = config.Infra.codegen.make
-        declared = set(make.ci.local_check_gates)
+        local = frozenset(make.ci.local_check_gates)
         tm.that(
-            make.check_gates_local,
-            eq=tuple(gate for gate in make.check_gates_default if gate in declared),
+            make.check_gates_ci,
+            eq=tuple(gate for gate in make.check_gates_default if gate not in local),
         )
-        tm.that(set(make.check_gates_ci).isdisjoint(make.check_gates_local), eq=True)
+        tm.that(make.check_gates_local, eq=make.check_gates_default)
         tm.that(
-            set(make.check_gates_ci) | set(make.check_gates_local),
-            eq=set(make.check_gates_default),
+            set(make.check_gates_ci) <= set(make.check_gates_local),
+            eq=True,
         )
 
     @staticmethod
@@ -87,7 +87,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
         tm.that(active.check_gates_default, has="fixture-project-gate")
         tm.that(active.check_gates_ci, has="fixture-project-gate")
-        tm.that("fixture-project-gate" in active.check_gates_local, eq=False)
+        tm.that(active.check_gates_local, has="fixture-project-gate")
 
     @staticmethod
     def test_ci_workflow_runs_only_the_ci_partition() -> None:
@@ -113,18 +113,32 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.that(any("make pre-commit" in command for command in commands), eq=False)
 
     @staticmethod
-    def test_pre_commit_runs_only_fast_external_gates() -> None:
-        """The pre-commit gate set is the registry's external gates, nothing else."""
+    def test_pre_commit_runs_only_the_declared_fast_scope() -> None:
+        """The hook consumes its declared scope, not every external tool."""
         make = config.Infra.codegen.make
         tm.that(bool(make.check_gates_pre_commit), eq=True)
         tm.that(
-            {c.Infra.GATE_KINDS[gate] for gate in make.check_gates_pre_commit},
-            eq={c.Infra.GateKind.EXTERNAL},
+            make.check_gates_pre_commit,
+            eq=tuple(
+                gate
+                for gate in make.ci.pre_commit_check_gates
+                if gate in make.check_gates_default
+            ),
         )
         tm.that(
             set(make.check_gates_pre_commit) <= set(make.check_gates_default),
             eq=True,
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("checker", sorted(c.Infra.TYPE_CHECKER_GATES))
+    def test_fast_hook_refuses_whole_program_type_checkers(checker: str) -> None:
+        """An expensive type-check route cannot replace the fast hook contract."""
+        make = config.Infra.codegen.make
+        payload = make.ci.model_dump(exclude_computed_fields=True)
+        payload["pre_commit_check_gates"] = (checker,)
+        with pytest.raises(e.PydanticValidationError, match="whole-program"):
+            m.Infra.MakeCiSpec.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize("verb", ["setup", "audit", "test"])

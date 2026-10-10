@@ -21,9 +21,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
 )
-from flext_infra._utilities._git.semantic_lane import (
-    FlextInfraUtilitiesGitSemanticLaneMixin,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticLaneMixin
 
 
 class FlextInfraUtilitiesGitSemanticIdentityMixin(
