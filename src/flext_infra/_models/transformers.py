@@ -87,6 +87,26 @@ class FlextInfraModelsTransformers:
             m.Field(description="Recorded migration operations"),
         ] = ()
 
+    class DeclarationRelocationFinding(m.ContractModel):
+        """One payload declaration whose relocation owner cannot be resolved."""
+
+        file_path: Annotated[
+            Path,
+            m.Field(description="Source file declaring the unrelocated payload"),
+        ]
+        declaration: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Qualified ``Outer.Payload`` declaration name"),
+        ]
+        expected_owner: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Owner the relocation expected to resolve"),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Why that owner did not resolve"),
+        ]
+
     class CompatibilityAliasRewritePlan(m.ArbitraryTypesModel):
         """Binding-proven rewrites planned for one compatibility-alias cutover file."""
 
