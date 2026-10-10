@@ -44,6 +44,11 @@ Infra:
 
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # Independent read-only per-repository work of one fleet run (generation
+    # planning, lazy-init analysis) runs in this many worker processes; every
+    # publication stays serial inside the single generation lease. Measured
+    # with `make profile-gen`: planning is CPU-bound (one core per repository).
+    fleet_workers: 6
 
     # Per-module scc code-LOC ceiling, enforced by the loc-cap gate. This key
     # is its only declaration; guidance references the key, never its value.

@@ -18,10 +18,12 @@ from typing import override
 from flext_cli import cli
 
 from flext_infra import (
+    FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
     FlextInfraModTextGateEngine,
     FlextInfraServiceBase,
     c,
+    m,
     p,
     r,
     t,
@@ -110,7 +112,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         root: Path,
         rules: t.SequenceOf[Path],
     ) -> p.Result[t.Cli.ResultValue]:
-        """Drive both mechanical cascades to a fixed point, retaining failures.
+        """Drive both mechanical cascades, publishing nothing when the run fails.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
@@ -119,6 +121,24 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        return FlextInfraCodemodSemanticApply.run_restoring(
+            root,
+            current,
+            FlextInfraModTextGateEngine.source_paths(root).unwrap(),
+            lambda: cls._converge(root, current),
+        )
+
+    @staticmethod
+    def _converge(
+        root: Path,
+        current: m.Infra.ModScanReport,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Drive both mechanical cascades to a verified fixed point.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        """
         seen: set[t.VariadicTuple[t.Quad[str, str, str, str | None]]] = set()
         iteration = 0
         while current.actionable:
@@ -137,8 +157,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             if fingerprint in seen:
                 return r[t.Cli.ResultValue].fail(
-                    f"ast apply iteration {iteration} made no progress; "
-                    "changes retained for mandatory owner repair",
+                    f"ast apply iteration {iteration} made no progress",
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
