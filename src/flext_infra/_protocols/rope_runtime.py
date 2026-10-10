@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     # This boundary also supplies t.Infra's aliases, so it cannot depend on them.
-    from flext_core import p, t
+    from flext_core import p
+    from flext_infra import t
 
 
 @runtime_checkable

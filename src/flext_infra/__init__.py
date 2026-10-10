@@ -124,6 +124,7 @@ if TYPE_CHECKING:
     from flext_infra.docs.validator import FlextInfraDocValidator
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates.conflict_markers import FlextInfraConflictMarkersGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
@@ -259,6 +260,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodSnapshotRefresh",
     "FlextInfraConfig",
     "FlextInfraConfigFixer",
+    "FlextInfraConflictMarkersGate",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
     "FlextInfraDependencyDetectionAnalysis",
@@ -445,6 +447,7 @@ install_lazy_exports(
         "FlextInfraCodemodSnapshotRefresh": ".codemod.snapshot_refresh",
         "FlextInfraConfig": "._config",
         "FlextInfraConfigFixer": ".deps.fix_pyrefly_config",
+        "FlextInfraConflictMarkersGate": ".gates.conflict_markers",
         "FlextInfraConsolidateGroupsPhase": ".deps.phases.consolidate_groups",
         "FlextInfraConstants": ".constants",
         "FlextInfraDependencyDetectionAnalysis": ".deps.detection_analysis",

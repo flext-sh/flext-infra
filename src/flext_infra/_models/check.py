@@ -10,7 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m, u
+from flext_cli import m, u
+
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
@@ -380,12 +381,14 @@ class FlextInfraModelsCheck:
             Returns:
                 The resulting ``bool``.
             """
-            return all(v.result.passed for v in self.gates.values())
+            return bool(self.gates) and all(
+                v.result.passed for v in self.gates.values()
+            )
 
         @m.computed_field
         @property
         def total_findings(self) -> int:
-            """Total native findings across all gates, including informative ones.
+            """Total native findings across every executed gate.
 
             Returns:
                 The resulting ``int``.

@@ -10,11 +10,10 @@ import hashlib
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
 from flext_infra.release import FlextInfraReleaseBuildMixin
-from tests import c, m, p, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraReleaseHelpers:

@@ -190,7 +190,7 @@ class FlextInfraUtilitiesDocsBuild:
             FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build"),
         )
         site_dir.parent.mkdir(parents=True, exist_ok=True)
-        logger = logging.getLogger("mkdocs")
+        logger = logging.getLogger(c.Infra.MKDOCS_LOGGER_NAME)
         diagnostics = logging.StreamHandler()
         diagnostics.setLevel(logging.WARNING)
         logger.addHandler(diagnostics)

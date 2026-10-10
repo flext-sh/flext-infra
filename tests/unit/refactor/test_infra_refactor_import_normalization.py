@@ -6,10 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
+from flext_infra import m
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import t, u
 
@@ -19,6 +22,97 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
+
+    @classmethod
+    def test_facade_dependency_retains_its_external_provider(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """The facade still loads a provider imported by one of its MRO parts."""
+        project, package = cls._project(tmp_path)
+        module = package / "provider_boundary.py"
+        source = (
+            "from flext_cli import u\n\n"
+            "class Provider:\n"
+            "    ADAPTER = u.type_adapter(str)\n"
+        )
+        module.write_text(source, encoding="utf-8")
+        (package / "utilities.py").write_text(
+            "from demo_pkg.provider_boundary import Provider\n\n"
+            "class DemoUtilities(Provider):\n"
+            "    pass\n\n"
+            "u = DemoUtilities\n"
+            "__all__ = ['u']\n",
+            encoding="utf-8",
+        )
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source,
+            encoding="utf-8",
+        )
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg import u\nassert u.ADAPTER.validate_python('x') == "
+                        "'x'"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @classmethod
+    @pytest.mark.parametrize(
+        "directory",
+        tuple(family.directory for family in u.Infra.facade_families().values()),
+    )
+    def test_family_retains_external_model_and_utility_providers(
+        cls,
+        tmp_path: Path,
+        directory: str,
+    ) -> None:
+        """The rewritten family still imports and validates with its real provider."""
+        project, package = cls._project(tmp_path)
+        family = package / directory
+        family.mkdir(exist_ok=True)
+        (family / "__init__.py").touch(exist_ok=True)
+        module = family / "provider_boundary.py"
+        source = (
+            "from flext_cli import m, u\n\n"
+            "ADAPTER: m.TypeAdapter[str] = u.type_adapter(str)\n"
+        )
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source, encoding="utf-8"
+        )
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from demo_pkg.{directory}.provider_boundary import ADAPTER; "
+                        "assert ADAPTER.validate_python('native-value') == 'native-value'"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
     def _lazy_init(package_dir: Path, exports: t.StrMapping) -> None:

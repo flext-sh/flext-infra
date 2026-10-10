@@ -14,9 +14,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, config, m, u
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import (
+    FlextInfraCodegenFileLeases,
+    FlextInfraWorkspaceDetector,
+    c,
+    config,
+    m,
+    u,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -448,14 +453,15 @@ class FlextInfraGate:
         project_dir: Path,
         *,
         verdict: bool,
+        outcome: c.Infra.ToolOutcome,
         issues: t.SequenceOf[m.Infra.Issue],
         raw_output: str,
         started: float,
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution whose verdict the caller already decided.
 
-        Fix paths use it directly: reported issues are the residue a fixer
-        could not repair and do not decide acceptance.
+        Native outcome and acceptance are separate: residual findings block
+        acceptance without being relabeled as machinery failures.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -470,13 +476,7 @@ class FlextInfraGate:
             ),
             issues=tuple(issues),
             raw_output=raw_output,
-            outcome=(
-                c.Infra.ToolOutcome.ERROR
-                if not verdict
-                else c.Infra.ToolOutcome.FINDINGS
-                if issues
-                else c.Infra.ToolOutcome.CLEAN
-            ),
+            outcome=outcome,
         )
 
     def _build_check_gate_execution(
@@ -490,12 +490,9 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
-        Every parsed finding blocks the gate except the ones a gate reports
-        as ``warning`` severity: a warning finding stays in the gate log, the
-        summary and the SARIF reports while never failing the run (operator
-        ruling 2026-10-05: rules the operator never authorized as blocking
-        are informative only). A blocking verdict still requires the tool
-        run itself to have succeeded.
+        Every parsed finding blocks, preserving its native severity in the
+        log and SARIF. Warnings are never converted into approval. A clean
+        verdict also requires the tool run itself to have succeeded.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -789,10 +786,8 @@ class FlextInfraGate:
         cmd = self._build_fix_command(project_dir, ctx, targets)
         with self._mutation_lease(project_dir):
             result = self._run(cmd, project_dir)
-        # A fixer repairs what it can. The run's outcome decides the verdict:
-        # the findings it reports stay for ``check``, and only an error (a
-        # status the tool does not declare, a timeout, a signal, a findings
-        # status with nothing reported) breaks the verb with its cause.
+        # Repairs retain every native finding. Completing a mutation does not
+        # turn residual findings into acceptance; only a clean outcome passes.
         _, issues = self._parse_check_output(result, project_dir, ctx)
         errors = [issue for issue in issues if issue.code == c.Infra.ToolOutcome.ERROR]
         outcome = u.Infra.tool_outcome(
@@ -813,7 +808,8 @@ class FlextInfraGate:
             )
         return self._build_gate_execution(
             project_dir,
-            verdict=outcome is not c.Infra.ToolOutcome.ERROR,
+            verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
+            outcome=outcome,
             issues=issues,
             raw_output=self._raw_output(result),
             started=started,

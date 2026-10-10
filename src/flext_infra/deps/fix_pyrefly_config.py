@@ -10,9 +10,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra.deps import FlextInfraConfigFixerSteps
 
 
 class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bool]):

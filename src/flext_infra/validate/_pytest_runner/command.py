@@ -14,7 +14,7 @@ from typing import ClassVar
 
 from flext_infra import c, config, m, t, u
 from flext_infra._pytest_collection import FlextInfraPytestCollection
-from flext_infra.validate._pytest_runner.base import FlextInfraPytestRunnerBase
+from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 
 
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
@@ -76,7 +76,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``bool``.
 
         """
-        return self.slow_phase or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+        return (
+            self.slow_phase
+            or self.target_file is not None
+            or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+        )
 
     def suite_stop_monotonic(
         self,
@@ -189,6 +193,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The native pytest marker expression of one execution scope.
 
         """
+        if self.target_file is not None:
+            return ""
         pytest = config.Infra.tooling.tools.pytest
         excluded = tuple(
             dict.fromkeys((
@@ -382,16 +388,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     else ()
                 ),
                 "--testmon",
-                # Why: a declared single-file target is the operator's chosen
-                # scope; the cache must never deselect it (a file never run
-                # before has no traces, so testmon selection resolves empty
-                # and the phase would pass with zero tests). The execution
-                # still feeds the persistent database for future runs.
-                *(
-                    ("--testmon-noselect",)
-                    if (selection or self.target_file is not None)
-                    else ("--testmon-forceselect",)
-                ),
+                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
                 "--testmon-env",
                 f"'{self.testmon_environment(execution_mode)}'",
                 *self._NO_COVERAGE,

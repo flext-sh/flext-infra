@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import FlextCli
 
-from flext_infra import c, m, t, u
-from flext_infra.services.cli_routes import FlextInfraCliRouteService
+from flext_infra import FlextInfraCliRouteService, c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -79,6 +79,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results.
 
+        ``summary`` carries the invocation's typed targets and executions into
+        the report ``properties`` so a consumer proves what the receipt covers.
+
         Returns:
             The resulting ``m.Infra.SarifReport``.
 
@@ -178,7 +181,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         )
         if sarif_write_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(
-                sarif_write_result
+                sarif_write_result,
             )
         total_findings = sum(project.total_findings for project in results)
         success = len(results) - outcome.failed

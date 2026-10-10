@@ -1,0 +1,30 @@
+id: class-alias-generic-bound
+snapshots:
+  ? |
+    from flext_infra import t
+
+    class Service[TResult: t.Cli.ResultValue](Base):
+        """Resolve this class-bound alias without deleting the contract."""
+  : labels:
+    - source: 'TResult: t.Cli.ResultValue'
+      style: primary
+      start: 41
+      end: 67
+    - source: t.Cli.ResultValue
+      style: secondary
+      start: 50
+      end: 67
+    - source: t.Cli.ResultValue
+      style: secondary
+      start: 50
+      end: 67
+    - source: |-
+        class Service[TResult: t.Cli.ResultValue](Base):
+            """Resolve this class-bound alias without deleting the contract."""
+      style: secondary
+      start: 27
+      end: 147
+    - source: '[TResult: t.Cli.ResultValue]'
+      style: secondary
+      start: 40
+      end: 68
