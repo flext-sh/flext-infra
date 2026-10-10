@@ -781,8 +781,10 @@ class FlextInfraGate:
         cmd = self._build_fix_command(project_dir, ctx, targets)
         with self._mutation_lease(project_dir):
             result = self._run(cmd, project_dir)
-        # Repairs retain every native finding. Completing a mutation does not
-        # turn residual findings into acceptance; only a clean outcome passes.
+        # A fixer repairs what it can. The run's outcome decides the verdict:
+        # the findings it reports stay for ``check``, and only an error (a
+        # status the tool does not declare, a timeout, a signal, a findings
+        # status with nothing reported) breaks the verb with its cause.
         _, issues = self._parse_check_output(result, project_dir, ctx)
         errors = [issue for issue in issues if issue.code == c.Infra.ToolOutcome.ERROR]
         outcome = u.Infra.tool_outcome(

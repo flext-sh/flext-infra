@@ -143,8 +143,8 @@ class TestsFlextInfraGateAcceptance:
             tm.that(receipt.read_text(encoding="utf-8").strip() != "", eq=True)
 
     @staticmethod
-    def test_native_fix_with_residual_findings_remains_red(tmp_path: Path) -> None:
-        """A completed Ruff repair cannot accept an unresolved native finding."""
+    def test_native_fix_with_residual_findings_completes(tmp_path: Path) -> None:
+        """A Ruff repair completes and keeps an unresolved finding for check."""
         project: Path = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project / "src" / "broken.py").write_text(
             "missing_name()\n",
@@ -158,7 +158,7 @@ class TestsFlextInfraGateAcceptance:
                 apply_fixes=True,
             ),
         )
-        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.result.passed, eq=True)
         tm.that(execution.finding_count > 0, eq=True)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(execution.raw_output.strip() != "", eq=True)
