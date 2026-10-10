@@ -109,6 +109,85 @@ message: >-
   collection constructor leaves its type parameters Unknown to type checkers
   and diverges from the value pydantic validates for the field contract.
 ---
+# The same root cause at the adapter constructor: a class-scoped PEP 695 alias
+# (``t.JsonMapping``, ``FlextTypesPydantic.StrictInt``, ``t.SequenceOf[str]``)
+# passed where pydantic expects ``TypeForm[T]`` is read by pyright as a runtime
+# ``TypeAliasType``/``GenericAlias`` value, so the adapter becomes
+# ``TypeAdapter[Unknown]`` (Pylance reportUnknownVariableType). The explicit PEP
+# 747 conversion ``TypeForm(<alias>)`` types the adapter exactly in pyright, mypy
+# and pyrefly. The ``Annotated[<alias>, None]`` workaround that also silences
+# pyright is the same conversion done by accident and is rewritten to it.
+id: pydantic-adapter-typeform
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+utils:
+  typings-alias-attribute:
+    kind: attribute
+    has:
+      field: object
+      regex: "^(?:t|Flext\\w*Typ\\w*)$"
+rule:
+  pattern: $CONTRACT
+  nthChild: 1
+  any:
+    - matches: typings-alias-attribute
+    - all:
+        - kind: subscript
+        - has:
+            field: value
+            matches: typings-alias-attribute
+  inside:
+    kind: argument_list
+    inside:
+      kind: call
+      has:
+        field: function
+        regex: "^(?:TypeAdapter|[um]\\.type_adapter)$"
+fix: TypeForm($CONTRACT)
+message: >-
+  Pass a class-scoped type alias to an adapter through the PEP 747 conversion
+  `TypeForm(<alias>)`; the bare alias leaves the adapter `TypeAdapter[Unknown]`.
+---
+# The ``Annotated[<alias>, None]`` adapter argument is the accidental form of the
+# same conversion: it is rewritten to ``TypeForm(<alias>)``.
+id: pydantic-adapter-typeform-annotated-none
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  pattern: Annotated[$CONTRACT, None]
+  nthChild: 1
+  inside:
+    kind: argument_list
+    inside:
+      kind: call
+      has:
+        field: function
+        regex: "^(?:TypeAdapter|[um]\\.type_adapter)$"
+fix: TypeForm($CONTRACT)
+message: >-
+  `Annotated[<alias>, None]` only hides the alias from pyright; pass it through
+  the PEP 747 conversion `TypeForm(<alias>)` instead.
+---
 # ``TypeForm`` (PEP 747) is the explicit conversion every checker needs to read a
 # class-scoped ``t.*`` alias as a type expression. Every FLEXT module starts with
 # ``from __future__ import annotations``; the import is added right after it and
@@ -134,7 +213,7 @@ rule:
       - has:
           stopBy: end
           kind: call
-          regex: "^[um]\\.empty\\(\\s*TypeForm\\("
+          regex: "^TypeForm\\("
       - not:
           has:
             stopBy: end
@@ -145,7 +224,7 @@ fix: |-
 
   from typing_extensions import TypeForm
 message: >-
-  `<facade>.empty(TypeForm(...))` needs `from typing_extensions import TypeForm`.
+  A `TypeForm(...)` conversion needs `from typing_extensions import TypeForm`.
 ---
 # Detection-only residual: a raw empty collection factory on a field specifier
 # that the fixable rules cannot rewrite -- a top-level union or ``Optional``
