@@ -239,7 +239,8 @@ class FlextInfraUtilitiesLintRecipes:
                     # before planning; reaching the planner breaks that contract.
                     msg = (
                         f"{path}: lint recipe {recipe.value} for {issue.code} is a "
-                        "whole-module recipe and never reaches the edit planner"
+                        "whole-module recipe and requires the Ruff lint gate; it "
+                        "never reaches the edit planner"
                     )
                     raise ValueError(msg)
         return sections, summaries, wants_notice
