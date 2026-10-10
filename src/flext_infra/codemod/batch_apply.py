@@ -319,9 +319,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         # cycles is an acceptance condition, and cycles the tree already
         # had stay check's existing verdict.
         if any(state != before for state in phase_states):
-            return (
-                "mod cross-phase cycle returned to its starting source state"
-            )
+            return "mod cross-phase cycle returned to its starting source state"
         if current.actionable or current_text.actionable:
             return (
                 "mod made no progress with "
@@ -334,9 +332,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             cycle for cycle in converged_cycles if cycle not in baseline_cycles
         ]
         if new_cycles:
-            return (
-                "mod introduced new runtime import cycle(s): "
-                + "; ".join(" -> ".join(sorted(cycle)) for cycle in new_cycles)
+            return "mod introduced new runtime import cycle(s): " + "; ".join(
+                " -> ".join(sorted(cycle)) for cycle in new_cycles
             )
         return None
 
