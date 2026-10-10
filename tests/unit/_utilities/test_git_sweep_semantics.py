@@ -20,38 +20,34 @@ class TestsFlextInfraGitSweepSemantics:
 
     @staticmethod
     def _published(tmp_path: Path) -> tuple[Path, str]:
-        """Seed a repository whose integration branch is published to a bare origin.
+        """Seed a member whose superproject declares its published integration.
+
+        The integration line is the ``branch`` the composing superproject's
+        ``.gitmodules`` declares for the member (operator ruling
+        2026-10-08-exterminate-workspace-yaml; bead flext-o2wbm).
 
         Returns:
-            The repository root and its integration branch.
+            The member repository root and its integration branch.
 
         """
-        repository = u.Tests.git_repository(tmp_path)
-        _ = u.Tests.configure_local_origin(repository, tmp_path / "remote")
+        superproject = u.Tests.git_repository(tmp_path, "superproject")
+        repository = u.Tests.git_repository(superproject, "member")
+        remote = u.Tests.configure_local_origin(repository, tmp_path / "remote")
         integration = u.Tests.integration_branch(repository)
         _ = u.Tests.git_run(repository, "switch", integration)
-        manifest = tm.ok(
-            u.Infra.load_workspace_manifest(
-                Path(__file__).resolve().parents[3],
-            )
-        )[0]
-        declared = manifest.model_copy(
-            update={
-                "integration": m.Infra.WorkspaceIntegrationSpec(
-                    provider=manifest.repository.provider,
-                    branch=integration,
-                ),
-            }
-        )
-        u.Infra.workspace_manifest_path(repository).parent.mkdir(exist_ok=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                u.Infra.workspace_manifest_path(repository),
-                declared.model_dump(mode="json"),
-            )
-        )
-        u.Tests.commit_git_changes(repository, "declare fixture integration")
         u.Tests.git_run(repository, "push", c.Infra.GIT_ORIGIN, integration)
+        u.Tests.git_run(
+            superproject,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-b",
+            integration,
+            str(remote),
+            repository.name,
+        )
+        u.Tests.git_run(superproject, "commit", "-m", "test: declare member line")
         return repository, integration
 
     @staticmethod

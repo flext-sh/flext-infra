@@ -23,6 +23,10 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
     FlextInfraUtilitiesGitWorktreeMixin,
 )
+from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra._utilities._git.worktree_discovery import (
+    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+)
 
 
 class FlextInfraUtilitiesGit(

@@ -45,15 +45,17 @@ class FlextInfraUtilitiesCodemodRules:
         if project.failure:
             return r[m.Infra.CodemodRulePlan].from_failure(project)
         root_name, direct_runtime = project.value
-        indexed = cls.codemod_distributions()
+        paths = cls._import_paths()
+        indexed = cls._indexed_distributions(paths)
+        discovered = cls._indexed_provider_configs(paths)
         runtime_closure = cls.codemod_runtime_closure(direct_runtime, indexed)
         universal = cls._providers(
-            indexed,
+            discovered,
             scope=c.Infra.CODEMOD_SCOPE_UNIVERSAL,
             selected=frozenset(indexed).difference({root_name}),
         )
         runtime = cls._providers(
-            indexed,
+            discovered,
             scope=c.Infra.CODEMOD_SCOPE_RUNTIME,
             selected=runtime_closure.difference({root_name}),
         )
@@ -152,11 +154,44 @@ class FlextInfraUtilitiesCodemodRules:
             Canonical distribution name to its installed distribution.
 
         """
-        # Import search paths may repeat the same physical directory. Query each
-        # directory once; distinct installations with the same name still fail.
         return FlextInfraUtilitiesCodemodRules._indexed_distributions(
-            tuple(dict.fromkeys(str(Path(path).resolve()) for path in sys.path)),
+            FlextInfraUtilitiesCodemodRules._import_paths(),
         )
+
+    @staticmethod
+    def _import_paths() -> t.VariadicTuple[str]:
+        """Return the physical import search path that keys environment facts.
+
+        Import search paths may repeat the same physical directory. Query each
+        directory once; distinct installations with the same name still fail.
+
+        Returns:
+            The de-duplicated resolved ``sys.path`` entries, in order.
+
+        """
+        return tuple(dict.fromkeys(str(Path(path).resolve()) for path in sys.path))
+
+    @staticmethod
+    @lru_cache(maxsize=8)
+    def _indexed_provider_configs(
+        paths: t.VariadicTuple[str],
+    ) -> t.MappingKV[str, Path]:
+        """Locate every installed distribution's codemod config exactly once.
+
+        Where a distribution's package lives is a fact of the same import path
+        that keys the distribution index, so discovery is reused by every rule
+        plan of the invocation. The configs' contents are still read per plan.
+
+        Returns:
+            A read-only canonical-name index of the discovered provider configs.
+
+        """
+        configs: MutableMapping[str, Path] = {}
+        for name in FlextInfraUtilitiesCodemodRules._indexed_distributions(paths):
+            provider_config = FlextInfraUtilitiesCodemodRules._provider_config(name)
+            if provider_config is not None:
+                configs[name] = provider_config
+        return MappingProxyType(configs)
 
     @staticmethod
     @lru_cache(maxsize=8)
@@ -221,7 +256,7 @@ class FlextInfraUtilitiesCodemodRules:
     @classmethod
     def _providers(
         cls,
-        indexed: t.MappingKV[str, Distribution],
+        discovered: t.MappingKV[str, Path],
         *,
         scope: str,
         selected: frozenset[str],
@@ -229,15 +264,9 @@ class FlextInfraUtilitiesCodemodRules:
 
         providers: MutableMapping[str, Path] = {}
         for name in sorted(selected):
-            installed = indexed.get(name)
-            if installed is None:
+            provider_config = discovered.get(name)
+            if provider_config is None:
                 continue
-            configs = cls._provider_configs(installed)
-            if configs.failure:
-                raise ValueError(configs.error or f"resolve codemod provider: {name}")
-            if not configs.value:
-                continue
-            provider_config = configs.value[0]
             declared_scope = cls._config_scope(provider_config)
             if declared_scope.failure:
                 raise ValueError(
@@ -276,18 +305,25 @@ class FlextInfraUtilitiesCodemodRules:
         return r[t.StrSequence].ok(ordered)
 
     @staticmethod
-    def _provider_configs(installed: Distribution) -> p.Result[t.SequenceOf[Path]]:
-        raw_name = installed.metadata.get("Name")
-        if not isinstance(raw_name, str) or not raw_name.strip():
-            return r[t.SequenceOf[Path]].fail(
-                "codemod provider distribution has no canonical name",
-            )
-        package_name = canonicalize_name(raw_name).replace("-", "_")
+    def _provider_config(name: str) -> Path | None:
+        """Locate one indexed distribution's codemod config, if it ships one.
+
+        ``name`` is the distribution index's canonical name, so the installed
+        metadata is never re-read here.
+
+        Returns:
+            The distribution's single codemod config, or ``None`` without one.
+
+        Raises:
+            ValueError: If the distribution exports more than one codemod config.
+
+        """
+        package_name = name.replace("-", "_")
         if not package_name.isidentifier():
-            return r[t.SequenceOf[Path]].ok(())
+            return None
         spec = find_spec(package_name)
         if spec is None:
-            return r[t.SequenceOf[Path]].ok(())
+            return None
         roots = tuple(Path(path) for path in spec.submodule_search_locations or ())
         if not roots and spec.origin is not None:
             roots = (Path(spec.origin).parent,)
@@ -301,10 +337,9 @@ class FlextInfraUtilitiesCodemodRules:
             if (base / c.Infra.CODEMOD_CONFIG_RELPATH).is_file()
         }
         if len(configs) > 1:
-            return r[t.SequenceOf[Path]].fail(
-                f"distribution exports multiple codemod configs: {raw_name}",
-            )
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(configs)))
+            msg = f"distribution exports multiple codemod configs: {name}"
+            raise ValueError(msg)
+        return next(iter(configs), None)
 
     @staticmethod
     def _config_scope(config: Path) -> p.Result[str]:

@@ -337,6 +337,8 @@ Infra:
           # exception of their own. TC001-TC004 are disabled on every file by
           # the single unscoped entry below (flext-p7bxt; TC004 additionally
           # operator-ruling-2026-10-08-tc004-never): Ruff never executes them.
+          # Runtime-evaluated bases remain a derived declaration contract;
+          # they do not authorize re-enabling the prohibited rules.
           authorized-exceptions:
             - rules: [missing-trailing-comma]
               authority: operator-file-gate-verdict-mandate-2026-10-08
