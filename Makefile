@@ -1367,7 +1367,9 @@ _builtin-help:
 # An absent gitlink is cloned at depth 1, the same flag private submodule
 # init uses. Setup's contract is the recorded commit, and a full history
 # cannot finish inside submodule_timeout_seconds when the object database
-# is large.
+# is large. Absent gitlinks clone submodule_jobs at a time; the deadline is
+# one submodule_timeout_seconds per wave of concurrent clones, so a fresh
+# checkout of the whole fleet gets the same per-clone budget as one member.
 # Derive the physical index from its Git directory: --git-path resolves
 # a final symlink and cannot prove that the index entry itself is absent.
 _builtin_setup_submodules:
@@ -1463,10 +1465,12 @@ _builtin_setup_submodules:
 	done; \
 	if [ -n "$$absent" ]; then \
 		credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$$GITHUB_TOKEN"; fi; }; f'; \
-		GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=5s "120s" \
+		absent_count=$$(printf '%s\n' $$absent | wc -l); \
+		clone_waves=$$(( (absent_count + 8 - 1) / 8 )); \
+		GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=5s "$$(( clone_waves * 120 ))s" \
 			git -C "$$root" -c credential.helper= \
 			-c "credential.https://$${GH_HOST:-github.com}.helper=$$credential_helper" \
-			submodule update --init --checkout --depth 1 --jobs "$${FLEXT_SUBMODULE_JOBS:-8}" -- $$absent; \
+			submodule update --init --checkout --depth 1 --jobs "8" -- $$absent; \
 	fi; \
 	validate_submodule() { \
 		superproject="$$1"; \

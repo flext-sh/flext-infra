@@ -112,14 +112,22 @@ class FlextInfraEnsureRuffConfigPhase:
         # the namespace-packages contract only holds for roots on disk. The
         # declared lists stay the SSOT; existence filters the projection, with
         # roots the active plan is materializing accepted as present (the
-        # extra-paths manager owns that declared set).
+        # extra-paths manager owns that declared set). In a Git checkout a root
+        # is present only when Git tracks it: an ignored or untracked local
+        # tree (a scratch scripts/ dir) must not change the projection, or the
+        # local and CI renders of the same commit diverge.
         generated_roots = FlextInfraExtraPathsManager(
             repository_root=path.parent,
             generated_python_roots=facts.generated_python_roots,
         ).generated_python_roots
+        tracked_roots = u.Infra.git_tracked_top_level_dir_names(path.parent)
 
         def _present(directory: str) -> bool:
-            return (path.parent / directory).is_dir() or (directory in generated_roots)
+            if directory in generated_roots:
+                return True
+            if tracked_roots is not None:
+                return directory in tracked_roots
+            return (path.parent / directory).is_dir()
 
         existing_root = tuple(d for d in ruff_cfg.src if _present(d))
         excluded_roots = self._analysis_exclusion_root_set(path.parent)

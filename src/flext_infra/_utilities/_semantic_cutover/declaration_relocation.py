@@ -174,7 +174,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 continue
             namespace, _module = located
             if not any(
-                part.removesuffix(".py").lstrip("_").startswith(
+                part
+                .removesuffix(".py")
+                .lstrip("_")
+                .startswith(
                     tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS),
                 )
                 for part in path.relative_to(namespace).parts
@@ -214,10 +217,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                                 provider_path,
                             )
                         )
-                        aliases = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
-                            provider_name,
-                            provider_path,
-                            sources.get(provider_path, provider_file.read()),
+                        aliases = (
+                            FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+                                provider_name,
+                                provider_path,
+                                sources.get(provider_path, provider_file.read()),
+                            )
                         )
                         route = aliases.get(alias.name)
                         if route is None:
@@ -247,8 +252,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                         )
             if exports:
                 proposed[path] = (
-                    FlextInfraUtilitiesSemanticCutoverPrivateImportCst
-                    ._relocate_declared_exports(source, exports)
+                    FlextInfraUtilitiesSemanticCutoverPrivateImportCst._relocate_declared_exports(
+                        source, exports
+                    )
                 )
         return proposed
 
