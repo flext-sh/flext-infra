@@ -198,10 +198,18 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         removals: t.MutableMappingKV[str, set[str]] = {}
         replacements: t.MutableStrMapping = {}
         for node in ast.walk(tree):
-            if not isinstance(node, ast.ImportFrom) or not node.module or node.level:
+            if (
+                not isinstance(node, ast.ImportFrom)
+                or not node.module
+                or node.level
+                or not node.module.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+            ):
                 continue
             for imported in node.names:
                 if imported.name == "c" and imported.asname is None:
+                    continue
+                local_name = imported.asname or imported.name
+                if cls._is_composition_base(tree, local_name):
                     continue
                 qualified = f"{node.module}.{imported.name}"
                 key = package, qualified
@@ -215,9 +223,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     )
                 reference = references[key]
                 if reference is None:
-                    continue
-                local_name = imported.asname or imported.name
-                if cls._is_composition_base(tree, local_name):
                     continue
                 removals.setdefault(node.module, set()).add(imported.name)
                 replacements[qualified] = reference

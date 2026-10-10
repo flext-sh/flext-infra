@@ -318,7 +318,9 @@ class FlextInfraRopeWorkspace(
             rope_project=self.rope_project,
             rel_path=resolved_rel_path,
             current_pkg=current_pkg,
-            project_layout=self.layout(project_root) if project_root is not None else None,
+            project_layout=self.layout(project_root)
+            if project_root is not None
+            else None,
         )
         self._module_policy_cache[cache_key] = policy
         return policy

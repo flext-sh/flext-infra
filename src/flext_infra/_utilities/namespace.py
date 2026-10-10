@@ -770,7 +770,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         # A stub is never a facade source (Rope loads only Python sources).
         if project_root is None or file_path.suffix != c.Infra.EXT_PYTHON:
             return policy
-        layout = project_layout if project_layout is not None else cls.layout(project_root)
+        layout = (
+            project_layout if project_layout is not None else cls.layout(project_root)
+        )
         if file_path.parent.parent != project_root and (
             layout is None or file_path.parent != layout.package_dir
         ):
