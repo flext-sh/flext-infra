@@ -385,7 +385,7 @@ class FlextInfraUtilitiesRopeInventory:
             )
             for argument in declared:
                 if argument.arg == name:
-                    return argument.lineno
+                    return int(argument.lineno)
         return def_line
 
     @staticmethod
