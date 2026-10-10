@@ -188,6 +188,17 @@ class FlextInfraConfigModelsArtifact:
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
         ]
+        fleet_workers: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=32,
+                description=(
+                    "Worker processes for independent read-only per-repository "
+                    "work of one fleet run"
+                ),
+            ),
+        ]
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
@@ -810,6 +821,55 @@ class FlextInfraConfigModelsArtifact:
                 )
                 raise ValueError(msg)
             return self
+
+    class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
+        """One repository's read-only planning inputs sent to a fleet worker."""
+
+        root: Annotated[Path, m.Field(description="Generation scope root")]
+        workspace: Annotated[
+            FlextInfraConfigModelsWorkspace.WorkspaceSpec,
+            m.Field(description="Workspace governing the selection"),
+        ]
+        initial_workspace: Annotated[
+            FlextInfraConfigModelsWorkspace.WorkspaceSpec | None,
+            m.Field(description="Validated scaffold specification, when any"),
+        ] = None
+        current_target: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryConformTarget,
+            m.Field(description="Conform target of the invoking repository"),
+        ]
+        repository: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryRef,
+            m.Field(description="Repository this task plans"),
+        ]
+        contract: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConformSurfaceContract,
+            m.Field(description="Surface contract of the selected scope"),
+        ]
+
+    class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
+        """One repository's planned files and environment, or its failure."""
+
+        repository: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Planned repository name"),
+        ]
+        files: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
+            m.Field(description="Governed and retired file plans"),
+        ] = ()
+        environment: Annotated[
+            FlextInfraConfigModelsRelease.UvEnvironmentPlan | None,
+            m.Field(description="uv environment plan of the repository"),
+        ] = None
+        error: Annotated[
+            str,
+            m.Field(description="Planning failure, empty on success"),
+        ] = ""
+        elapsed: Annotated[
+            float,
+            m.Field(ge=0, description="Planning wall seconds"),
+        ] = 0.0
 
     class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""
