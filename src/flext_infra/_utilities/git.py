@@ -20,6 +20,7 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
     FlextInfraUtilitiesGitStateCaptureMixin,
+    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
     FlextInfraUtilitiesGitWorktreeMixin,
 )
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
