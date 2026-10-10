@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from flext_tests import tm
@@ -23,6 +24,23 @@ from tests import u
 
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
+
+    @staticmethod
+    def _provisioned_activation_env() -> dict[str, str]:
+        """Expose this checkout's locked direnv the way ``make setup`` provisions it.
+
+        Test bodies run in the local context (``runner_ci_context_cleared``), so
+        the upg lifecycle activates through ``direnv exec``. A fixture outside the
+        checkout cannot resolve a Mise shim, so the activation receives the
+        absolute executable the toolchain owner pins for this checkout.
+
+        Returns:
+            The PATH overlay whose first entry holds the managed direnv.
+
+        """
+        owner = Path(__file__).resolve().parents[3]
+        direnv = tm.ok(u.Infra.managed_mise_binary(c.Infra.CLI_DIRENV, owner))
+        return {"PATH": f"{direnv.parent}{os.pathsep}{os.environ['PATH']}"}
 
     def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
         """The pre-commit hook verb runs one check over the fast external gates."""
@@ -196,6 +214,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
+                env=self._provisioned_activation_env(),
             ),
         )
 
@@ -227,6 +246,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
+                env=self._provisioned_activation_env(),
             ),
         )
         tm.that(
