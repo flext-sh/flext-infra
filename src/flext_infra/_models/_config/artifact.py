@@ -188,6 +188,14 @@ class FlextInfraConfigModelsArtifact:
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
         ]
+        lint_snapshot_workers: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=16,
+                description="Concurrent protected-edit lint snapshot threads",
+            ),
+        ]
         fleet_workers: Annotated[
             int,
             m.Field(

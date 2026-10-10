@@ -90,13 +90,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             True when every member propagated, else the first failure.
 
         """
-        members = tuple(
-            member
-            for member in workspace.subprojects
-            if member.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
-            and member.codegen is not c.Infra.CodegenKind.NONE
-            and not member.read_only
-        )
+        members = u.Infra.mutable_flext_members(workspace)
         for member in members:
             owned = FlextInfraCodegenConform.require_own_lock(self.root / member.path)
             if owned.failure:

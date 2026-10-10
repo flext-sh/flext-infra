@@ -474,9 +474,10 @@ _builtin_require_network_auth:
 		fi; \
 	fi
 
-# Every repository evaluates only itself, locally exactly as in CI: a workspace
-# root consumes its members as installed libraries and never fans a verb out
-# across them; each member runs its own lifecycle in its own repository.
+# Every repository evaluates only itself: a workspace root consumes its members
+# as installed libraries and each member runs its own lifecycle in its own
+# repository. Locally, the mutating verbs fmt/fix/mod then carry that same
+# member-own verb to every governed member (fleet_fanout); CI never fans out.
 # Provisioning is declared once and shared by every profile. Dev environments
 # consume present members as LIVE editable installs natively (operator law
 # 2026-10-06: a commit never influences dev behavior — the worktree is the

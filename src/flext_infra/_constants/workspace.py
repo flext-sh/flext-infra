@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_infra._constants import (
-    FlextInfraConstantsBase as cb,
+    FlextInfraConstantsBase,
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsSharedInfra,
 )
@@ -148,6 +148,21 @@ print(json.dumps({
 
     FLEET_GAPS_ROUTE_NAME: ClassVar[str] = "fleet-gaps"
     "Canonical workspace CLI verb that reports per-repository fleet gaps."
+
+    @unique
+    class FleetVerb(StrEnum):
+        """Mutating verbs a local workspace run carries to every governed member."""
+
+        MOD = "mod"
+        FIX = "fix"
+        FMT = "fmt"
+
+    FLEET_ROUTE_NAME: ClassVar[str] = "fleet"
+    "Canonical workspace CLI verb that runs one verb in every governed member."
+    FLEET_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "fleet-verb.json"
+    )
+    "Typed receipts of the latest fleet verb run, one per governed member."
     LIFECYCLE_VERBS: ClassVar[t.StrSequence] = (
         "setup",
         "gen",
@@ -158,11 +173,11 @@ print(json.dumps({
     )
     "Fixed serial lifecycle, including the post-upgrade generation fixed point."
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(cb.REPORTS_DIR_NAME) / "validate-lifecycle.json"
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "validate-lifecycle.json"
     )
     "Typed receipts for the invoking workspace root and governed members."
     FLEET_GAPS_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(cb.REPORTS_DIR_NAME) / "fleet-gaps.json"
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "fleet-gaps.json"
     )
     "Canonical single-file receipt for the latest fleet-gaps report."
     FLEET_GAPS_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
