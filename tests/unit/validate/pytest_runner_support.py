@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 from flext_tests import tm
@@ -29,6 +30,30 @@ def runner_for(  # ruff: ignore[too-many-arguments]
         The resulting ``FlextInfraPytestRunner``.
 
     """
+    cache = config.Infra.codegen.make.testmon_cache
+    testmon_db = (
+        cached_runner_project.parent
+        / ".testmon-cache"
+        / cached_runner_project.name
+        / cache.database_filename
+    )
+    testmon_db.parent.mkdir(parents=True, exist_ok=True)
+    return FlextInfraPytestRunner(
+        repository_root=cached_runner_project,
+        ci_context=ci_context,
+        collection_command_prefix=(
+            (sys.executable, "-c", c.Infra.PYTEST_PROFILE_LAUNCHER)
+            if profile_collection
+            else ()
+        ),
+        started_at_monotonic=time.monotonic(),
+        target=cache.target_directory,
+        target_file=target_file,
+        reports=cache.reports_directory,
+        testmon_db=testmon_db,
+        slow_phase=slow_phase,
+        unbounded=unbounded,
+    )
 
 
 def declared_project_runner(project_root: Path, name: str) -> FlextInfraPytestRunner:
