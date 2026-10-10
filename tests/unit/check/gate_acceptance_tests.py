@@ -13,10 +13,12 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraGateRegistry,
+    FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
     FlextInfraWorkspaceChecker,
     c,
     m,
+    p,
 )
 from tests import u
 
@@ -26,6 +28,82 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraGateAcceptance:
     """Observe acceptance through real checker and Ruff public boundaries."""
+
+    @staticmethod
+    @pytest.mark.parametrize("verdict", [False, True])
+    def test_execution_params_round_trip_preserves_independent_verdict(
+        tmp_path: Path,
+        *,
+        verdict: bool,
+    ) -> None:
+        """The facade model validates and implements the structural boundary."""
+        params = m.Infra.GateExecutionParams(
+            project_dir=tmp_path,
+            verdict=verdict,
+            outcome=c.Infra.ToolOutcome.FINDINGS,
+            issues=(),
+            raw_output="native diagnostic\n",
+            started=1.0,
+        )
+        restored = m.Infra.GateExecutionParams.model_validate_json(
+            params.model_dump_json(),
+        )
+        boundary: p.Infra.GateExecutionParams = restored
+        tm.that(isinstance(restored, p.Infra.GateExecutionParams), eq=True)
+        tm.that(boundary.verdict, eq=verdict)
+        tm.that(boundary.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(boundary.raw_output, eq=params.raw_output)
+        tm.that(boundary.project_dir, eq=tmp_path)
+        tm.that(boundary.started, eq=params.started)
+        tm.that(tuple(boundary.issues), eq=params.issues)
+
+    @staticmethod
+    def test_execution_params_rejects_invalid_native_outcome(tmp_path: Path) -> None:
+        """An unknown native outcome cannot cross the validated model boundary."""
+        with pytest.raises(ValueError, match="outcome"):
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": tmp_path,
+                "verdict": True,
+                "outcome": "not-a-native-outcome",
+                "issues": (),
+                "raw_output": "",
+                "started": 1.0,
+            })
+
+    @staticmethod
+    @pytest.mark.parametrize("broken", [False, True])
+    def test_generic_fix_preserves_native_clean_or_error(
+        tmp_path: Path,
+        *,
+        broken: bool,
+    ) -> None:
+        """Real Ruff formatting exercises the shared assembly contract."""
+        project = u.Tests.mk_project(tmp_path, "format-contract", with_src=True)
+        source = project / "src" / "sample.py"
+        source.write_text(
+            "def broken(:\n" if broken else "value=1\n",
+            encoding="utf-8",
+        )
+        u.Tests.initialize_git_repo(project)
+        execution = FlextInfraRuffFormatGate(tmp_path).fix(
+            project,
+            m.Infra.GateContext(
+                repository_root=tmp_path,
+                reports_dir=tmp_path / "reports",
+                apply_fixes=True,
+            ),
+        )
+        tm.that(execution.result.passed, eq=not broken)
+        tm.that(
+            execution.outcome,
+            eq=c.Infra.ToolOutcome.ERROR if broken else c.Infra.ToolOutcome.CLEAN,
+        )
+        tm.that(bool(execution.issues), eq=broken)
+        tm.that(execution.raw_output.strip() != "", eq=True)
+        tm.that(
+            source.read_text(encoding="utf-8"),
+            eq="def broken(:\n" if broken else "value = 1\n",
+        )
 
     @staticmethod
     @pytest.mark.parametrize("fail_fast", [False, True])
