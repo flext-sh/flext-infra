@@ -57,6 +57,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def real_path(self) -> str: ...
 
+        def is_folder(self) -> bool:
+            """Report whether the resource is a folder in the project tree."""
+            ...
+
         @property
         def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 

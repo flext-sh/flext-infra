@@ -133,7 +133,7 @@ class FlextInfraCandidateBootstrapService:
 
     @staticmethod
     def _planned_file_failure(
-        root: str,
+        root: Path,
         file: m.Infra.CodegenFilePlan,
         contract: m.Infra.CodegenConformSurfaceContract,
         inputs: t.MappingKV[Path, m.Cli.AtomicFileState],

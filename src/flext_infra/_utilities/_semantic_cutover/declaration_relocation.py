@@ -204,8 +204,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     @staticmethod
     def _is_import_law_singleton(
         path: Path,
-        namespace: p.Infra.RopeNamespace,
-        singletons: t.Sequence[str],
+        namespace: Path,
+        singletons: frozenset[str],
     ) -> bool:
         return any(
             part.removesuffix(".py").lstrip("_").startswith(tuple(singletons))
@@ -214,10 +214,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
     @staticmethod
     def _collect_settings_exports(
-        context: t.Tuple[
+        context: tuple[
             p.Infra.RopeProject,
             str,
-            p.Infra.RopeNamespace,
+            Path,
             type[FlextInfraUtilitiesRopeRuntimeModules],
             Path,
             t.MappingKV[Path, str],
@@ -226,17 +226,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         project, source, namespace, runtime, root, sources = context
         exports: dict[str, t.Pair[str, str]] = {}
         for statement in ast.parse(source).body:
-            if (
-                not isinstance(statement, ast.ImportFrom)
-                or statement.level
-                or statement.module is None
-                or statement.module.split(".")[0] != namespace.name
-            ):
+            if not isinstance(statement, ast.ImportFrom) or statement.level:
+                continue
+            module_name = statement.module
+            if module_name is None or module_name.split(".")[0] != namespace.name:
                 continue
             for alias in statement.names:
                 if alias.name == "*":
                     continue
-                context = (
+                alias_context = (
                     project,
                     statement,
                     alias,
@@ -246,7 +244,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     sources,
                 )
                 resolved = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_settings_export(
-                    context
+                    alias_context
                 )
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]
@@ -254,20 +252,23 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
     @staticmethod
     def _resolve_settings_export(
-        context: t.Tuple[
+        context: tuple[
             p.Infra.RopeProject,
             ast.ImportFrom,
             ast.alias,
-            p.Infra.RopeNamespace,
+            Path,
             type[FlextInfraUtilitiesRopeRuntimeModules],
             Path,
             t.MappingKV[Path, str],
         ],
-    ) -> t.Pair[str, str] | None:
+    ) -> t.Pair[str, t.Pair[str, str]] | None:
         project, statement, alias, namespace, runtime, root, sources = context
+        module_name = statement.module
+        if module_name is None:
+            return None
         binding = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_binding(
             project,
-            statement.module,
+            module_name,
             alias.name,
             root,
             sources,
@@ -289,11 +290,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if (
             declared is None
             or not runtime.same_name(binding, declared)
-            or destination_name == statement.module
+            or destination_name == module_name
         ):
             return None
         return (
-            f"{statement.module}.{alias.name}",
+            f"{module_name}.{alias.name}",
             (destination_name, alias.name),
         )
 

@@ -423,7 +423,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         targets: t.SequenceOf[ast.expr],
         visible: MutableMapping[str, m.Infra.SourceClassReference | None],
         module: str,
-    ) -> t.Tuple[str, str, m.Infra.SourceClassReference | None] | None:
+    ) -> tuple[str, str, m.Infra.SourceClassReference | None] | None:
         """Resolve one inventoried receiver update, or ``None`` when inapplicable.
 
         Returns:
