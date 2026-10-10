@@ -1101,7 +1101,5 @@ class FlextInfraUtilitiesCodegenNamespace:
             content_hash=u.Cli.sha256_content(context),
         )
 
-    # -- import law: namespace, layer and lazy-export facts --------------------------
 
-
-__all__ = ["FlextInfraUtilitiesCodegenNamespace"]
+__all__: list[str] = ["FlextInfraUtilitiesCodegenNamespace"]

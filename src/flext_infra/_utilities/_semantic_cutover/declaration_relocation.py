@@ -16,7 +16,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodProject,
-    FlextInfraUtilitiesImportLayers,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -168,7 +168,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             existing, permitted declaration.
 
         """
-        layers = FlextInfraUtilitiesImportLayers
+        layers = FlextInfraUtilitiesImportLaw
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         proposed = dict(sources)
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         target = Path(resource.real_path).resolve()
         if target not in sources or not target.is_relative_to(namespace):
             return None
-        if not FlextInfraUtilitiesImportLayers.import_direct_module(namespace, target):
+        if not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target):
             return None
         destination = project.get_pymodule(resource)
         declared = destination.get_attributes().get(alias.name)
