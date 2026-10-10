@@ -1,0 +1,30 @@
+# The ``default_factory=<raw empty collection>`` keyword of a FLEXT field
+# specifier call (``u.Field``, ``m.Field``, ``u.PrivateAttr``,
+# ``m.PrivateAttr``): a collection constructor, bare or specialized
+# (``dict``, ``list``, ``set``, ``frozenset``, ``tuple``, ``list[str]``...), or a
+# lambda returning an empty collection (``lambda: {}``, ``lambda: []``,
+# ``lambda: dict()``, ``lambda: dict({})``, ``lambda: MappingProxyType({})``...).
+# Only the facade specifiers match; the raw pydantic ``Field`` exists solely in
+# flext-core's bootstrap layer, below the facade that owns the canonical empty
+# default.
+#
+# Shared by the pydantic-empty-default rules: one audited definition of the raw
+# empty factory, referenced with ``matches:``.
+id: raw-empty-collection-factory
+language: python
+rule:
+  kind: keyword_argument
+  all:
+    - has:
+        field: name
+        regex: "^default_factory$"
+    - has:
+        field: value
+        regex: "^(?:(?:dict|list|set|frozenset|tuple)(?:\\[[\\s\\S]*\\])?|lambda:\\s*(?:\\{\\s*\\}|\\[\\s*\\]|\\(\\s*\\)|(?:dict|list|set|frozenset|tuple)(?:\\[[\\s\\S]*\\])?\\(\\s*(?:\\{\\s*\\}|\\[\\s*\\]|\\(\\s*\\))?\\s*\\)|MappingProxyType(?:\\[[\\s\\S]*\\])?\\(\\s*(?:\\{\\s*\\}|dict(?:\\[[\\s\\S]*\\])?\\(\\s*\\))?\\s*\\)))$"
+    - inside:
+        stopBy:
+          kind: call
+        kind: call
+        has:
+          field: function
+          regex: "^(?:u|m)\\.(?:Field|PrivateAttr)$"

@@ -1,0 +1,30 @@
+id: pydantic-empty-default-residual
+# `valid` MUST NOT match: sites the fixable rules rewrite, the canonical
+# default, and the raw pydantic Field of flext-core's bootstrap layer.
+valid:
+  - |
+    class Spec(m.BaseModel):
+        items: t.JsonMapping = u.Field(default_factory=dict)
+  - |
+    class Spec(m.BaseModel):
+        items: Annotated[t.JsonMapping, u.Field(description="d")] = u.Field(default_factory=dict)
+  - |
+    class Spec(m.BaseModel):
+        items: t.JsonMapping = u.Field(default_factory=u.empty(TypeForm(t.JsonMapping)))
+  - |
+    class Spec(BaseModel):
+        cache: dict[str, int] = Field(default_factory=dict)
+# `invalid` MUST match: a raw empty collection default no canonical rewrite
+# applies to.
+invalid:
+  - |
+    class Spec(m.BaseModel):
+        items: list[str] | None = u.Field(default_factory=list)
+  - |
+    class Spec(m.BaseModel):
+        items: Optional[list[str]] = u.Field(default_factory=list)
+  - |
+    class Spec(m.BaseModel):
+        items: Annotated[list[str] | None, u.Field(description="d")] = u.Field(default_factory=list)
+  - |
+    payload = u.Field(default_factory=list)
