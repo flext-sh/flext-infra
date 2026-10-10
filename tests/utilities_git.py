@@ -248,17 +248,14 @@ class TestsFlextInfraUtilitiesGitMixin:
             bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, declared_origin))
         bootstrap(repo_root, ("add", "-A"))
         bootstrap(repo_root, ("commit", "--allow-empty", "-m", "init"))
-        # A clone tracks the branch its origin's HEAD declares (``main`` here)
-        # beside the provider baseline, as a real fetch would.
-        for branch in dict.fromkeys((c.Infra.GIT_MAIN, baseline_branch)):
-            bootstrap(
-                repo_root,
-                (
-                    "update-ref",
-                    f"refs/remotes/{c.Infra.GIT_ORIGIN}/{branch}",
-                    c.Infra.GIT_HEAD,
-                ),
-            )
+        bootstrap(
+            repo_root,
+            (
+                "update-ref",
+                f"refs/remotes/{c.Infra.GIT_ORIGIN}/{baseline_branch}",
+                c.Infra.GIT_HEAD,
+            ),
+        )
 
     @staticmethod
     def git_repository(parent: Path, name: str = "repository") -> Path:
