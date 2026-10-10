@@ -857,12 +857,6 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(shadowed)}"
                 )
                 raise ValueError(msg)
-            unknown = sorted(set(self.opt_in_check_gates) - builtin)
-            if unknown:
-                msg = (
-                    f"make opt_in_check_gates name unknown gates: {', '.join(unknown)}"
-                )
-                raise ValueError(msg)
             return self
 
         @m.model_validator(mode="after")
