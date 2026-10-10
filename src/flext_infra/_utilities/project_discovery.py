@@ -20,6 +20,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     FlextInfraUtilitiesWorkspaceManifest,
 )
+from flext_infra._utilities._project_discovery_candidates import (
+    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
+)
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -306,6 +312,28 @@ class FlextInfraUtilitiesProjectDiscovery(
                 resolved_root / target, resolved_root, nonparticipants
             )
         )
+
+    @staticmethod
+    def _collect_scan_dir_targets(
+        scan_dir: Path,
+        pattern: str,
+        resolved_root: Path,
+        targets: set[str],
+    ) -> None:
+        """Add every Python file under one configured scan directory.
+
+        Trees the codegen artifact SSOT ignores for source scans (generated
+        sources included) are outside the inventory the semantic phases
+        index, so they never become scan or rewrite targets either.
+        """
+        if not scan_dir.exists():
+            return
+        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
+        for target in scan_dir.rglob(pattern):
+            if target.is_file() and not ignored.intersection(
+                target.relative_to(scan_dir).parts,
+            ):
+                targets.add(target.relative_to(resolved_root).as_posix())
 
     @staticmethod
     def _collect_scan_dir_targets(

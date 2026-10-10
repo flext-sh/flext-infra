@@ -52,6 +52,8 @@ class TestsFlextInfraCiSystemPackages:
         first_approval = (
             f"make {config.Infra.codegen.make.approval_verbs[0]} (blocking)"
         )
+        # The single blocking approval step (setup -> audit -> check -> test)
+        # needs the engines installed before it runs.
         tm.that(
             rendered.index(self.step_name) < rendered.index(first_approval),
             eq=True,

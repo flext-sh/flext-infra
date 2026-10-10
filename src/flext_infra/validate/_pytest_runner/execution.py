@@ -103,6 +103,7 @@ class FlextInfraPytestRunnerExecution(
                 inventory.
 
         """
+        complete = complete or self.target_file is not None
         selection = self._collect_selection(
             report_dir,
             complete=complete,
@@ -726,6 +727,8 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
+        # A declared file always executes under noselect, so an empty testmon
+        # selection over a restored cache is never a cache hit for it.
         cache_hit = (
             not complete
             and not selection_plan.owns_no_tests

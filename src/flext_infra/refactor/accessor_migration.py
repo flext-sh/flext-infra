@@ -17,6 +17,10 @@ from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraImportNormalization,
 )
+from flext_infra.refactor._import_enforcement import FlextInfraImportNormalization
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 if TYPE_CHECKING:
     from pathlib import Path

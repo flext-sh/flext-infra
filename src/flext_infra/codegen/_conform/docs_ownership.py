@@ -14,6 +14,9 @@ from flext_infra.codegen._conform import FlextInfraCodegenConformGitignore
 if TYPE_CHECKING:
     from flext_infra import m, t
 
+if TYPE_CHECKING:
+    from flext_infra import m, t
+
 
 class FlextInfraCodegenConformDocsOwnership(FlextInfraCodegenConformGitignore):
     """Docs publication ownership scoped to the invoked repository."""
