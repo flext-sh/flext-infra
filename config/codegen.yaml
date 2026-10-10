@@ -470,7 +470,10 @@ Infra:
 
     make:
       examples_timeout_seconds: 120
+      # Setup clones absent gitlinks submodule_jobs at a time and gives each
+      # wave of concurrent clones submodule_timeout_seconds.
       submodule_timeout_seconds: 120
+      submodule_jobs: 8
       # Ruff is the formatting and autofix rule. Every ruff invocation uses
       # --preview (tracker memory
       # operator-ruling-2026-10-09-authority-confirmation-0122, item 1).
