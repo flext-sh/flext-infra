@@ -87,6 +87,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         ))
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+            if (
+                path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
+                and (path.parent / c.Infra.CONSTANTS_PY).is_file()
+            ):
+                return source, ()
             # Declaration parts compose c; importing that still-assembling
             # facade inside its own parts is a dependency cycle.
             if family_modules.intersection(

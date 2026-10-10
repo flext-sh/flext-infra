@@ -117,17 +117,22 @@ class FlextInfraCandidateBootstrapService:
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
             for file in planned.value.files:
-                if file.project != root or not file.path.is_relative_to(root):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"candidate bootstrap destination has a foreign owner: {file.path}",
-                    )
-                if (
+                foreign_owner = file.project != root or not file.path.is_relative_to(root)
+                outside_surface = (
+                    not foreign_owner
+                    and
                     contract.destinations is not None
                     and file.path.relative_to(root).as_posix()
                     not in contract.destinations
-                ):
+                )
+                if foreign_owner or outside_surface:
+                    detail = (
+                        "candidate bootstrap destination has a foreign owner"
+                        if foreign_owner
+                        else "candidate bootstrap destination is outside its surface"
+                    )
                     return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"candidate bootstrap destination is outside its surface: {file.path}",
+                        f"{detail}: {file.path}",
                     )
                 files.append(file)
                 for state in file.source_states:

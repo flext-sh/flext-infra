@@ -17,6 +17,30 @@
 #     expected: 3                  # optional exact finding count receipt
 
 rules:
+  - id: ldif-test-case-attribute-data-consumers
+    distributions: [flext-ldif]
+    description: Materialize attribute case models through the test utility owner.
+    include: ["tests/unit/servers/*.py"]
+    find: 'c\.Tests\.APACHE_ATTRIBUTE_TEST_CASES'
+    replace: 'u.Tests.attribute_test_cases(c.Tests.APACHE_ATTRIBUTE_CASE_ROWS)'
+  - id: ldif-test-case-server-attribute-data-consumers
+    distributions: [flext-ldif]
+    description: Select dialect attribute cases from the single constant row table.
+    include: ["tests/unit/servers/*.py"]
+    find: 'c\.Tests\.(?P<server>DS389|NOVELL)_ATTRIBUTE_TEST_CASES'
+    replace: 'u.Tests.server_attribute_test_cases(c.Tests.\g<server>)'
+  - id: ldif-test-case-objectclass-data-consumers
+    distributions: [flext-ldif]
+    description: Materialize objectClass case models from immutable constant rows.
+    include: ["tests/unit/servers/*.py"]
+    find: 'c\.Tests\.(?P<server>[A-Z][A-Z0-9_]*)_OBJECTCLASS_TEST_CASES'
+    replace: 'u.Tests.objectclass_test_cases(c.Tests.\g<server>_OBJECTCLASS_CASE_ROWS)'
+  - id: ldif-test-case-entry-data-consumers
+    distributions: [flext-ldif]
+    description: Give each entry case fresh protocol attributes without mutable constants.
+    include: ["tests/unit/servers/*.py"]
+    find: 'c\.Tests\.(?P<server>[A-Z][A-Z0-9_]*)_ENTRY_TEST_CASES'
+    replace: 'u.Tests.entry_test_cases(c.Tests.\g<server>_ENTRY_CASE_ROWS)'
   - id: codegen-main-fixture-declare-infra-provenance
     distributions: [flext-infra]
     description: Derive the synthetic consumer's Infra Git source from the repository and branch policy.

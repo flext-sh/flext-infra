@@ -16,6 +16,13 @@ class FlextInfraConstantsNamespace:
         "settings.py",
         "_settings.py",
     })
+    NAMESPACE_CONFIG_FILE_NAMES: ClassVar[frozenset[str]] = frozenset({
+        "config.py",
+        "_config.py",
+    })
+    NAMESPACE_DEFAULT_OWNER_FILE_NAMES: ClassVar[frozenset[str]] = (
+        NAMESPACE_SETTINGS_FILE_NAMES | NAMESPACE_CONFIG_FILE_NAMES
+    )
     NAMESPACE_PROTECTED_FILES: ClassVar[frozenset[str]] = frozenset({
         "settings.py",
         "_settings.py",
