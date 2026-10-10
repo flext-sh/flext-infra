@@ -23,5 +23,16 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult](
         description="Projects to process",
     )
 
+    @m.field_validator("selected_projects", mode="before")
+    @classmethod
+    def _wrap_single_project(cls, value: object) -> object:
+        """Coerce one bare project name (a CLI ``--projects .``) to a sequence.
+
+        Returns:
+            The canonical sequence value for the field.
+
+        """
+        return (value,) if isinstance(value, str) else value
+
 
 __all__: list[str] = ["FlextInfraProjectSelectionServiceBase"]

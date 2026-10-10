@@ -279,8 +279,10 @@ class TestsFlextInfraCodegenCatalogExtensions:
         mise = tm.not_none(u.Tests.planned_text(plan, c.Infra.MISE_TOML_FILENAME))
         tm.that(mise, has=f'python = "{toolchain.python_version}"')
         tm.that(mise, has=f'direnv = "{toolchain.tool_versions["direnv"]}"')
-        tm.that(mise, has=f'go = "{toolchain.tool_versions["go"]}"')
-        tm.that(mise, has=f'make = "{toolchain.tool_versions["make"]}"')
+        # operator-ruling-2026-10-10-make-system-go-per-project: make is
+        # system-owned and go is a per-project addition, never a fleet tool.
+        tm.that(mise, lacks="\nmake = ")
+        tm.that(mise, lacks="\ngo = ")
         tm.that(mise, lacks="credential_command")
         tm.that(
             mise,

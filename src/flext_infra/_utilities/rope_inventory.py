@@ -73,7 +73,9 @@ class FlextInfraUtilitiesRopeInventory:
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"
             )
             raise RuntimeError(msg) from exc
-        source = resource.read()
+        # The text the module snapshot was parsed from: names and offsets must
+        # come from one snapshot even when the file changed on disk since.
+        source = pymodule.source_code
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
