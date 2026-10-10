@@ -241,7 +241,6 @@ class FlextInfraUtilitiesLintRecipes:
                         f"{path}: lint recipe {recipe.value} for {issue.code} is a "
                         "whole-module recipe and never reaches the edit planner"
                     )
-                    )
                     raise ValueError(msg)
         return sections, summaries, wants_notice
 
