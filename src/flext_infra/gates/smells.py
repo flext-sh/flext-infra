@@ -75,12 +75,29 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._scan(project_dir)
         issues = self._scanned_issues(scan, project_dir)
-        return self._build_check_gate_execution(
+        # Operator ruling 2026-10-05 (SSOT informative-rules law): the
+        # complexity families keep reporting in the log, the summary, and the
+        # SARIF, but their findings never fail the run. The duplication
+        # families are non-blocking here because the blocking duplication
+        # gate is their single enforcement owner.
+        blocking = tuple(
+            issue
+            for issue in issues
+            if issue.code not in c.Infra.SMELLS_NON_BLOCKING_FAMILIES
+        )
+        return self._build_gate_execution(
             project_dir,
-            passed=not issues,
-            issues=issues,
-            raw_output=self._raw_output(scan),
-            started=started,
+            verdict=not blocking,
+            run=m.Infra.GateNativeRun(
+                issues=tuple(issues),
+                raw_output=self._raw_output(scan),
+                outcome=(
+                    c.Infra.ToolOutcome.FINDINGS
+                    if issues
+                    else c.Infra.ToolOutcome.CLEAN
+                ),
+                started=started,
+            ),
         )
 
     @override
@@ -120,7 +137,12 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """
         _ = ctx
         issues = self._scanned_issues(result, project_dir)
-        return not issues, issues
+        blocking = tuple(
+            issue
+            for issue in issues
+            if issue.code not in c.Infra.SMELLS_NON_BLOCKING_FAMILIES
+        )
+        return not blocking, issues
 
     def _scan_command(self, binary: str, project_dir: Path) -> t.StrSequence:
         """Name the project's paths explicitly; qlty scans them in full.

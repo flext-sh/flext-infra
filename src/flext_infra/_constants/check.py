@@ -280,6 +280,22 @@ class FlextInfraConstantsCheck:
         "qlty ruleId suffix -> flext-core enforcement tag "
         "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
     )
+    # Operator ruling 2026-10-05 (SSOT informative-rules law): the complexity
+    # families report in every log, summary, and SARIF but never fail a run —
+    # their census is re-measured as the fleet converges. The duplication
+    # families ride the same non-blocking set for a different reason: the
+    # blocking duplication gate is their single enforcement owner, and a
+    # second blocking route for the same census is a duplicate route.
+    SMELLS_NON_BLOCKING_FAMILIES: ClassVar[frozenset[str]] = frozenset((
+        "boolean-logic",
+        "file-complexity",
+        "function-complexity",
+        "function-parameters",
+        "identical-code",
+        "nested-control-flow",
+        "return-statements",
+        "similar-code",
+    ))
 
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
