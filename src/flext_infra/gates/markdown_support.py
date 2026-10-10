@@ -14,7 +14,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import FlextInfraGate, c, config, u
+from flext_infra import c, config, u
+from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import m, t
