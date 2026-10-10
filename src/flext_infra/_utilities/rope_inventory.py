@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from operator import itemgetter
 from pathlib import Path
 
@@ -72,7 +73,9 @@ class FlextInfraUtilitiesRopeInventory:
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"
             )
             raise RuntimeError(msg) from exc
-        source = resource.read()
+        # The text the module snapshot was parsed from: names and offsets must
+        # come from one snapshot even when the file changed on disk since.
+        source = pymodule.source_code
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
@@ -304,6 +307,10 @@ class FlextInfraUtilitiesRopeInventory:
         )
         if kind == "parameter" and options.name in {"self", "cls"}:
             return None
+        if kind == "parameter":
+            # Rope reports a parameter at its function's ``def`` line; in a
+            # multi-line signature the identifier lives on its own line.
+            line = cls._parameter_line(options.source, line, options.name)
         is_facade_member = cls._is_facade_member(
             options.convention,
             name=options.name,
@@ -352,6 +359,34 @@ class FlextInfraUtilitiesRopeInventory:
                 child_scope=options.child_scope,
             ),
         )
+
+    @staticmethod
+    def _parameter_line(source: str, def_line: int, name: str) -> int:
+        """Return the line of parameter ``name`` in the function defined at a line.
+
+        Returns:
+            The parameter's own line, or ``def_line`` when no function defined
+            there declares it.
+
+        """
+        for node in ast.walk(ast.parse(source)):
+            if not (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
+                and node.lineno == def_line
+            ):
+                continue
+            arguments = node.args
+            declared = (
+                *arguments.posonlyargs,
+                *arguments.args,
+                *((arguments.vararg,) if arguments.vararg else ()),
+                *arguments.kwonlyargs,
+                *((arguments.kwarg,) if arguments.kwarg else ()),
+            )
+            for argument in declared:
+                if argument.arg == name:
+                    return argument.lineno
+        return def_line
 
     @staticmethod
     def _definition_line(

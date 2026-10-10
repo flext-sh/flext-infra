@@ -87,6 +87,7 @@ class TestsFlextInfraSymbolicTextCutover:
                         ),
                     ),
                     eq=expected,
+                    msg=f"occurrence at byte {start_byte} expected {expected}",
                 )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
         closed = u.Infra.codemod_binding_snapshot(

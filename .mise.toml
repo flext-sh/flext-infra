@@ -13,7 +13,7 @@
 # declarations remain owned by pyproject.toml. Tools are declared `latest`;
 # only `make upg` resolves them and writes the committed mise.lock. Mise uses
 # the lock wherever it pins a tool; an entry the lock does not carry yet
-# resolves normally instead of failing, so a stale lock never blocks
+# resolves normally instead of failing, so an outdated lock never blocks
 # `mise install`, `mise use`, setup or any verb (no strict locked mode).
 
 # === SECTION: settings (managed) ===
@@ -55,8 +55,6 @@ taplo = "latest"
 gitleaks = "latest"
 "aqua:boyter/scc" = "latest"
 node = "latest"
-make = "latest"
-go = "latest"
 [tools."github:qltysh/qlty"]
 version = "0.645.0"
 [tools."github:kucherenko/jscpd"]
