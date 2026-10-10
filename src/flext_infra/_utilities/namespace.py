@@ -16,6 +16,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
+import flext_core
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
