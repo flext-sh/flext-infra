@@ -1815,19 +1815,21 @@ profile-mypy-report: _builtin_require_environment
 		'import pstats, sys; pstats.Stats(sys.argv[1]).sort_stats("cumtime").print_stats(50)' \
 		"$(PROFILE_REPORTS_DIR)/mypy.pstats"
 
+# Profile the whole read-only generation plan `make gen` executes (every
+# governed repository, lazy-init and docs phases) without publishing.
 .PHONY: profile-gen
 profile-gen: _builtin_require_environment
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
 	@$(RUNTIME_PYTHON) -c \
 		'import cProfile, sys; from flext_infra.cli import main; profile = cProfile.Profile(); status = profile.runcall(main, sys.argv[2:]); profile.dump_stats(sys.argv[1]); raise SystemExit(status)' \
-		"$(PROFILE_REPORTS_DIR)/lazy-init.pstats" codegen lazy-init \
-		--repository-root "$(PROJECT_ROOT)" --module flext_infra --dry-run
+		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen conform \
+		--root "$(PROJECT_ROOT)" --scope all --mode check
 
 .PHONY: profile-gen-report
 profile-gen-report: _builtin_require_environment
 	@$(RUNTIME_PYTHON) -c \
-		'import pstats, sys; pstats.Stats(sys.argv[1]).sort_stats("cumtime").print_stats(50)' \
-		"$(PROFILE_REPORTS_DIR)/lazy-init.pstats"
+		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
+		"$(PROFILE_REPORTS_DIR)/conform.pstats"
 
 # Profile the cold canonical pytest execution through its thin entrypoint
 # for startup diagnosis: the same persistent testmon database
