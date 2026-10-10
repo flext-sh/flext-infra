@@ -556,8 +556,11 @@ define RUN_PUBLIC_PRODUCE
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
 endef
 
+# Activation follows the same context rule as every public verb: CI runs the
+# activated target directly in its provisioned environment; elsewhere direnv
+# activates the checkout first.
 define RUN_PUBLIC_ACTIVATE
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1)
+	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-$(1),direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1))
 endef
 
 define RUN_PUBLIC

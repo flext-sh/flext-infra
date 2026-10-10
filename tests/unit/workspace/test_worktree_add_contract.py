@@ -8,95 +8,82 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService
-from tests import c, m, u
+from tests import c, u
 
 
 class TestsFlextInfraWorktreeAddContract(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
-    def test_invalid_lane_metadata_fails_precisely_and_rolls_back(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """The typed lane ingress rejects a non-string PEP 621 description."""
-        repository = self._repository(tmp_path)
-        branch = "feature/invalid-metadata"
-        lane = self._lane(repository, repository, branch)
-        (repository / "pyproject.toml").write_text(
-            '[project]\nname = "fixture"\nversion = "0.1.0"\n'
-            'description = ["not", "a", "string"]\n',
-            encoding="utf-8",
-        )
-        self._commit_fixture(repository, "test: invalid project metadata")
-
-        result = FlextInfraWorktreeService(
-            repository_root=repository,
-            operation=c.Infra.WorktreeOperation.ADD,
-            branch=branch,
-            base="HEAD",
-            apply_changes=True,
-        ).execute()
-
-        tm.fail(result, has="description")
-        tm.fail(result, has="clean lane rolled back")
-        tm.that(not lane.exists(), where=bool)
-        tm.that(
-            tm.ok(
-                u.Infra.git_ref_exists(
-                    m.Infra.GitRefRequest(
-                        repo_root=repository,
-                        reference=f"refs/heads/{branch}",
-                    ),
+    @pytest.mark.parametrize(
+        ("case", "filename", "content", "committed"),
+        [
+            (
+                "clean-setup-failure",
+                "Makefile",
+                (
+                    ".PHONY: setup\nsetup:\n"
+                    "\t@printf 'visible setup progress\\n'\n\t@exit 17\n"
                 ),
-            ).value,
-            eq=False,
-        )
-
-    def test_private_add_does_not_execute_clean_failing_setup(
+                True,
+            ),
+            (
+                "dirty-setup-failure",
+                "Makefile",
+                (
+                    ".PHONY: setup\nsetup:\n"
+                    "\t@printf 'preserve me\\n' > setup-wip.txt\n\t@exit 19\n"
+                ),
+                True,
+            ),
+            (
+                "invalid-metadata",
+                "pyproject.toml",
+                (
+                    '[project]\nname = "fixture"\nversion = "0.1.0"\n'
+                    'description = ["not", "a", "string"]\n'
+                ),
+                True,
+            ),
+            (
+                "dirty-primary-metadata",
+                "pyproject.toml",
+                '[dependency-groups]\ndescription = "dirty primary WIP"\n',
+                False,
+            ),
+        ],
+    )
+    def test_add_is_refused_before_any_lane_setup_or_metadata_effect(
         self,
         tmp_path: Path,
+        *,
+        case: str,
+        filename: str,
+        content: str,
+        committed: bool,
     ) -> None:
-        """Raw ADD leaves setup execution to the public work-start saga."""
+        """Lane admission refuses ADD before checkout, metadata reads, or setup.
+
+        ``git_verify_lane`` refuses every ``create`` request until authoritative
+        Beads ownership reaches the native admission contract (bead
+        flext-itpd1.3.26), and ``_add`` runs that admission before it resolves
+        the base, reserves the path, reads lane metadata, or could run setup.
+        Whatever the primary checkout holds — a failing or dirtying setup
+        recipe, invalid committed PEP 621 metadata, or uncommitted metadata
+        WIP — no lane, branch, setup artifact, or primary rewrite results.
+        """
         repository = self._repository(tmp_path)
-        branch = "feature/clean-setup-failure"
-        lane = self._lane(repository, repository, branch)
-        (repository / "Makefile").write_text(
-            ".PHONY: setup\nsetup:\n"
-            "\t@printf 'visible setup progress\\n'\n\t@exit 17\n",
-            encoding="utf-8",
-        )
-        self._commit_fixture(repository, "test: clean setup failure")
+        (repository / filename).write_text(content, encoding="utf-8")
+        if committed:
+            self._commit_fixture(repository, f"test: {case}")
 
-        result = self.add_worktree(repository, branch)
+        _ = self.refused_lane(repository, f"feature/{case}")
 
-        tm.that(result, eq=str(lane))
-        tm.that(lane.is_dir(), eq=True)
-
-    def test_private_add_does_not_execute_dirty_failing_setup(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Raw ADD cannot create setup work before saga provisioning."""
-        repository = self._repository(tmp_path)
-        branch = "feature/dirty-setup-failure"
-        lane = self._lane(repository, repository, branch)
-        (repository / "Makefile").write_text(
-            ".PHONY: setup\n"
-            "setup:\n"
-            "\t@printf 'visible setup progress\\n'\n"
-            "\t@printf 'preserve me\\n' > setup-wip.txt\n"
-            "\t@exit 19\n",
-            encoding="utf-8",
-        )
-        self._commit_fixture(repository, "test: dirty setup failure")
-
-        result = self.add_worktree(repository, branch)
-
-        tm.that(result, eq=str(lane))
-        tm.that(not (lane / "setup-wip.txt").exists(), where=bool)
+        tm.that((repository / filename).read_text(encoding="utf-8"), eq=content)
+        tm.that((repository / "setup-wip.txt").exists(), eq=False)
 
     def test_mutation_without_apply_fails_closed(self, tmp_path: Path) -> None:
         """A branch alone never authorizes repository mutation."""

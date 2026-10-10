@@ -390,7 +390,7 @@ _bootstrap_setup_tools:
 			mise_stage="$$mise_bootstrap_root/$$mise_pin/stage"; \
 			rm -rf "$$mise_stage"; \
 			mkdir -p "$$mise_stage" "$$(dirname "$$mise_bootstrap_bin")"; \
-			curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$$mise_stage/archive" "$$mise_url"; \
+			curl --proto '=https' --tlsv1.2 -fsSL -o "$$mise_stage/archive" "$$mise_url"; \
 			if command -v sha256sum >/dev/null 2>&1; then \
 				echo "$$mise_sha256  $$mise_stage/archive" | sha256sum -c -; \
 			else \
@@ -587,8 +587,11 @@ define RUN_PUBLIC_PRODUCE
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
 endef
 
+# Activation follows the same context rule as every public verb: CI runs the
+# activated target directly in its provisioned environment; elsewhere direnv
+# activates the checkout first.
 define RUN_PUBLIC_ACTIVATE
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1)
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$(1),direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1))
 endef
 
 define RUN_PUBLIC
@@ -1106,7 +1109,7 @@ test-full:
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make test-full to execute it.'
 
 test-file:
-	@printf '  %-16s %s\n' 'test-file' 'Run one declared test file through the budgeted and slow phases with the same persistent testmon cache (FILE=<repository-relative path>).'
+	@printf '  %-16s %s\n' 'test-file' 'Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make test-file to execute it.'
 
 file-gate:
@@ -1274,7 +1277,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'test-full' 'Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.';
 
-	@printf '  %-16s %s\n' 'test-file' 'Run one declared test file through the budgeted and slow phases with the same persistent testmon cache (FILE=<repository-relative path>).';
+	@printf '  %-16s %s\n' 'test-file' 'Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).';
 
 	@printf '  %-16s %s\n' 'file-gate' 'Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.';
 
