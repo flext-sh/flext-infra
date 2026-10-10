@@ -128,6 +128,21 @@ class TestsFlextInfraCodegenMakeUpgrade:
             current = header.group(1) if header else None
         return targets
 
+    @staticmethod
+    def _upg_steps(makefile: str) -> t.StrSequence:
+        """Return the upgrade recipe lines: the lifecycle, then its convergence.
+
+        Returns:
+            The ``_upg_lifecycle`` lines followed by the ``_upg_converge`` lines.
+
+        """
+        lifecycle = makefile.split("_upg_lifecycle: _builtin_setup_submodules\n", 1)[1]
+        converge = makefile.split("\n_upg_converge:\n", 1)[1]
+        return [
+            *lifecycle.split("\n\n", 1)[0].splitlines(),
+            *converge.split("\n\n", 1)[0].splitlines(),
+        ]
+
     def test_upg_is_the_only_resolver_and_setup_installs_frozen(
         self,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
@@ -280,7 +295,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 makefile,
                 '$(UV) lock --check --project "$(PROJECT_ROOT)"',
             ),
-            eq={"_upg_lifecycle"},
+            eq={"_upg_converge"},
         )
         tm.that(makefile, lacks="--constraint-policy")
 
@@ -298,12 +313,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
         )
-        steps = (
-            makefile
-            .split("_upg_lifecycle: _builtin_setup_submodules\n", 1)[1]
-            .split("\n\n", 1)[0]
-            .splitlines()
-        )
+        steps = self._upg_steps(makefile)
 
         def after(start: int, needle: str) -> int:
             return next(
@@ -346,12 +356,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 makefile,
                 'codegen conform --root "$(PROJECT_ROOT)" --mode check',
             ),
-            eq={"_upg_lifecycle", "_builtin-verify-clean"},
+            eq={"_upg_converge", "_builtin-verify-clean"},
         )
         tm.that(
-            "_upg_lifecycle"
-            in self._recipe_targets_containing(makefile, "$(SELF_MAKE) check"),
-            eq=False,
+            {"_upg_lifecycle", "_upg_converge"}
+            & self._recipe_targets_containing(makefile, "$(SELF_MAKE) check"),
+            empty=True,
         )
 
     def test_upg_activates_gen_only_after_relocking_the_rendered_manifest(
@@ -371,12 +381,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
         )
-        steps = (
-            makefile
-            .split("_upg_lifecycle: _builtin_setup_submodules\n", 1)[1]
-            .split("\n\n", 1)[0]
-            .splitlines()
-        )
+        steps = self._upg_steps(makefile)
         order = [
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
@@ -459,7 +464,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 r"\$\(UV\) lock --check\b",
                 regex=True,
             ),
-            eq={"_upg_lifecycle", "_builtin-audit"},
+            eq={"_upg_converge", "_builtin-audit"},
         )
         tm.that(
             self._recipe_targets_containing(makefile, "codegen mise-proof"),
