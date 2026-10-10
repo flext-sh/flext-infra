@@ -258,7 +258,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(makefile, lacks=["latest_release_url", "--retry", "mise_install_path="])
         tm.that(makefile, has="https://github.com/*/releases/download/*\\|sha256:*")
         tm.that(makefile, has="curl --proto '=https' --tlsv1.2 -fsSL -o")
-        tm.that(makefile, has='| sha256sum -c -')
+        tm.that(makefile, has="| sha256sum -c -")
         tm.that(makefile, has='if [ "$$mise_receipt" != "$$mise_pin" ]; then')
         mise_toml = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
