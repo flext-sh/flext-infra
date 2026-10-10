@@ -497,7 +497,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
                 all_removals,
             )
         rewritten = cls._rewrite_private_import_source(
-            cls._relocate_declared_exports(source, direct_specs),
+            cls.relocate_declared_exports(source, direct_specs),
             plan,
             runtime_public_imports=cls._runtime_public_aliases(tree, plan),
         )

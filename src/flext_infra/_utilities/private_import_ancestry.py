@@ -13,7 +13,7 @@ from flext_infra import t
 
 
 class FlextInfraUtilitiesPrivateImportAncestry:
-    """Canonical namespace owner."""
+    """Static lexical inheritance discovery for public facade cutover."""
 
     class _ClassBaseCollector:
         """Collect one module's class bases with scope-aware import bindings."""

@@ -1074,6 +1074,16 @@ _builtin-bootstrap-candidate: _builtin_require_environment
 _builtin_mod_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)" --apply
 
+_builtin-census: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
+		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json"
+
+_builtin-census-constants: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
+		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json" --apply
+
 _builtin_mod_text: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod-text --apply
 
