@@ -11,10 +11,12 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, t
 
-from flext_infra._constants import FlextInfraConstantsCodegenProject
-from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra import c
+from flext_infra._models._config import (
+    FlextInfraConfigModelsBeads,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+)
 
 
 class FlextInfraConfigModelsRepository:
@@ -261,13 +263,13 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="POSIX path relative to its workspace root"),
         ]
         role: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Repository role in the declared topology"),
         ]
         state: Annotated[
-            FlextInfraConstantsCodegenProject.RepositoryState,
+            c.Infra.RepositoryState,
             m.Field(description="Repository lifecycle state"),
-        ] = FlextInfraConstantsCodegenProject.RepositoryState.ACTIVE
+        ] = c.Infra.RepositoryState.ACTIVE
         checkout: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -286,7 +288,7 @@ class FlextInfraConfigModelsRepository:
             ),
         ]
         kind: Annotated[
-            FlextInfraConstantsCodegenProject.ProjectKind,
+            c.Infra.ProjectKind,
             m.Field(
                 description=(
                     "Governance kind; only internal_flext repositories are "
@@ -299,9 +301,9 @@ class FlextInfraConfigModelsRepository:
                     "at all -- and a consumer is allowed to lag."
                 ),
             ),
-        ] = FlextInfraConstantsCodegenProject.ProjectKind.INTERNAL_FLEXT
+        ] = c.Infra.ProjectKind.INTERNAL_FLEXT
         codegen: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenKind,
+            c.Infra.CodegenKind,
             m.Field(description="Repository code-generation policy"),
         ]
         package: Annotated[
@@ -378,7 +380,7 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Resolved repository root receiving conformance"),
         ]
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
