@@ -12,8 +12,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import c, m, t
-from flext_infra._config import FlextInfraConfig, config
+from flext_infra import FlextInfraConfig, c, config, m, t
 
 # Concrete-owner imports: this module resolves during the root's lazy ``u``
 # export, when the root namespace is still initializing — a root from-import

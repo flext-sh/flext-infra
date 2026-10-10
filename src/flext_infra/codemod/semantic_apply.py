@@ -13,9 +13,7 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
+from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 

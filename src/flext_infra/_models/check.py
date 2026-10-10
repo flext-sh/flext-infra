@@ -10,7 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m, u
+from flext_cli import m, u
+
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
@@ -380,30 +381,19 @@ class FlextInfraModelsCheck:
             Returns:
                 The resulting ``bool``.
             """
-            return all(v.result.passed for v in self.gates.values())
+            return bool(self.gates) and all(
+                v.result.passed for v in self.gates.values()
+            )
 
         @m.computed_field
         @property
         def total_findings(self) -> int:
-            """Total native findings across all gates, including informative ones.
+            """Total native findings across every executed gate.
 
             Returns:
                 The resulting ``int``.
             """
             return sum(v.finding_count for v in self.gates.values())
-
-    class CheckReportSummary(m.ContractModel):
-        """Invocation-owned execution facts retained by the published SARIF."""
-
-        targets: t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget] = m.Field(
-            description="Canonical project roots selected for this invocation",
-        )
-        results: t.VariadicTuple[FlextInfraModelsCheck.ProjectResult] = m.Field(
-            description="Only executions reached by this invocation",
-        )
-        selected_files: t.VariadicTuple[Path] = m.Field(
-            description="File selection; empty means full-project execution",
-        )
 
     class LoopOutcome(m.ArbitraryTypesModel):
         """Bundled results from the project-checking loop."""

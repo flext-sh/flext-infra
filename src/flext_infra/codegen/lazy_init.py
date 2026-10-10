@@ -13,16 +13,21 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen._lazy_init_generation import (
-    FlextInfraCodegenLazyInitGenerationMixin,
+from flext_infra import (
+    FlextInfraCodegenLazyInitPlanner,
+    FlextInfraRopeWorkspace,
+    c,
+    config,
+    m,
+    r,
+    t,
+    u,
 )
-from flext_infra.codegen._lazy_init_projection_manifest import (
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenLazyInitGenerationMixin,
     FlextInfraCodegenLazyInitProjectionManifest,
 )
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import p

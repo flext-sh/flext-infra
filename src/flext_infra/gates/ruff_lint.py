@@ -10,8 +10,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import FlextInfraGate, c, config, m, u
 from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
@@ -183,6 +182,15 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
+            import_graph = (
+                u.Infra.project_import_graph(project_dir)[0]
+                if any(
+                    recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                    for issues in by_file.values()
+                    for issue in issues
+                )
+                else {}
+            )
             # A module the recipes cannot place stops the phase with nothing
             # written.
             planned: t.MutableSequenceOf[t.Pair[m.Cli.AtomicFileState, str]] = []
@@ -191,15 +199,14 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     path,
                     required=True,
                 ).unwrap()
-                source = (before.content or b"").decode(c.Cli.ENCODING_DEFAULT)
                 repaired = self._repaired_source(
                     project_dir,
-                    path,
-                    source,
+                    before,
                     issues,
                     recipes,
+                    import_graph=import_graph,
                 )
-                if repaired != source:
+                if repaired.encode(c.Cli.ENCODING_DEFAULT) != before.content:
                     planned.append((before, repaired))
             for before, repaired in planned:
                 u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
@@ -207,10 +214,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     @staticmethod
     def _repaired_source(
         project_dir: Path,
-        path: Path,
-        source: str,
+        before: m.Cli.AtomicFileState,
         issues: t.SequenceOf[m.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        *,
+        import_graph: t.MappingKV[str, frozenset[str]],
     ) -> str:
         """Apply one module's recipes: whole-module rewrites, then planned edits.
 
@@ -221,7 +229,13 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         Returns:
             The repaired module source.
 
+        Raises:
+            FileNotFoundError: If ``before.content is None``.
         """
+        if before.content is None:
+            raise FileNotFoundError(before.path)
+        path = before.path
+        source = before.content.decode(c.Cli.ENCODING_DEFAULT)
         owned = {issue.code: recipes[issue.code] for issue in issues}
         if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
             source = (
@@ -229,6 +243,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     project_root=project_dir,
                     file_path=path,
                     source=source,
+                    import_graph=import_graph,
                 )
                 or source
             )

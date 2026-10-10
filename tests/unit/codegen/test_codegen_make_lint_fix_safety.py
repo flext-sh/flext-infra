@@ -1,9 +1,8 @@
-"""make fix always applies the mandatory unsafe repair channel (2026-10-05 law).
+"""The declared Ruff repair channel and rule policy have one generated owner.
 
-The unsafe-fix flag is OBLIGATORY in every lint_fix configuration and must never
-be disabled again: a configuration without it is unrepresentable, the SSOT
-carries it, and every generated pyproject follows the same fix policy as
-``make fix`` for direct or IDE Ruff runs.
+The confirmed baseline enables unsafe fixes in ``make fix``. Rules whose fixes
+destroy information remain governed by the tooling owner's ``unfixable`` policy,
+which the generator must preserve without inventing a different consumer policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT.
@@ -27,8 +26,8 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
     """The mandatory unsafe lint-repair contract and its projection."""
 
     @staticmethod
-    def test_lint_fix_requires_the_unsafe_fix_flag() -> None:
-        """Disabling the mandatory unsafe channel is unrepresentable."""
+    def test_lint_fix_requires_the_confirmed_unsafe_channel() -> None:
+        """The declared baseline cannot silently disable its repair channel."""
         ruff = config.Infra.codegen.make.ruff
         tm.that(c.Infra.RUFF_UNSAFE_FIXES_FLAG in ruff.lint_fix, eq=True)
         payload = ruff.model_dump()

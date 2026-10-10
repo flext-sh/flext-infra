@@ -9,22 +9,23 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m
-from flext_infra.api import infra
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.collector import FlextInfraDocCollector
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.formatter import FlextInfraDocFormatter
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.server import FlextInfraDocServer
-from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.maintenance.clean import FlextInfraCleanService
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_infra.maintenance.sonarcloud import FlextInfraSonarcloudSettingsSync
-from flext_infra.maintenance.sonarcloud_issues import FlextInfraSonarcloudIssues
-from flext_infra.services.cli_routes_validate_commands import (
+from flext_infra import (
+    FlextInfraCleanService,
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocCollector,
+    FlextInfraDocFixer,
+    FlextInfraDocFormatter,
+    FlextInfraDocGenerator,
+    FlextInfraDocServer,
+    FlextInfraDocValidator,
+    FlextInfraPythonVersionEnforcer,
+    FlextInfraSonarcloudIssues,
+    FlextInfraSonarcloudSettingsSync,
     FlextInfraValidationCommandRoutes,
+    c,
+    infra,
+    m,
 )
 
 if TYPE_CHECKING:

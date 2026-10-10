@@ -12,9 +12,7 @@ from pathlib import Path
 from git import Git, GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git.worktree_facts import (
-    FlextInfraUtilitiesGitWorktreeFactsMixin,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFactsMixin
 
 
 class FlextInfraUtilitiesGitWorktreeRootsMixin(

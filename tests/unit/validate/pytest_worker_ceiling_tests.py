@@ -13,9 +13,9 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, config, m
+from flext_infra import FlextInfraPytestRunner, config
+from tests import m, tm
 from tests.unit.validate.pytest_runner_support import (
     declared_project_runner,
     runner_for,

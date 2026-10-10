@@ -1,4 +1,4 @@
-"""Zero-test projects run to a typed green receipt instead of rc=5 (6n6u).
+"""Empty test ownership remains red; only an audited testmon cache hit is green.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,13 +16,7 @@ from flext_infra import FlextInfraPytestRunner, c, config, m, u
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
-    """A project whose config-owned roots own no test module is a receipt, not red.
-
-    The invest workspace shell is the real consumer: its root collects zero
-    tests by declared design, and every fresh checkout used to die with
-    ``pytest executed zero tests`` / ``empty incremental selection`` before
-    the contract existed (bead invest-6n6u).
-    """
+    """Preserve native empty-suite status and its typed accounting."""
 
     @staticmethod
     def _zero_test_project(tmp_path: Path) -> Path:
@@ -130,15 +124,11 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(list(reports_root.glob("*/run-context.json")), eq=[])
 
     @pytest.mark.slow
-    def test_slow_phase_without_slow_items_publishes_receipt(
+    def test_empty_slow_scope_remains_red_with_accounting(
         self,
         tmp_path: Path,
     ) -> None:
-        """A project whose suite has no slow-marked item closes its slow phase green.
-
-        The budgeted phase executes the suite; the slow phase then owns no
-        item in its scope and publishes the typed zero-test receipt.
-        """
+        """A requested empty scope is not a successful test execution."""
         project = self._zero_test_project(tmp_path)
         cache = config.Infra.codegen.make.testmon_cache
         (project / cache.target_directory / "test_budgeted.py").write_text(
@@ -153,7 +143,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         outcome = tm.ok(self._runner(project, tmp_path, slow_phase=True).execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         summary = self._latest_summary(project / cache.reports_directory)
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
@@ -169,13 +159,13 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """Make test on a zero-test project exits 0 with typed accounting."""
+        """Make test retains native empty-suite status with typed accounting."""
         project = self._zero_test_project(tmp_path)
         runner = self._runner(project, tmp_path)
 
         outcome = tm.ok(runner.execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
         summary = self._latest_summary(reports_root)
@@ -193,13 +183,13 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """Make test-full on a zero-test project exits 0 with typed accounting."""
+        """A failed incremental scope cannot be normalized by the full operation."""
         project = self._zero_test_project(tmp_path)
         runner = self._runner(project, tmp_path)
 
         outcome = tm.ok(runner.execute_full())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
         summary = self._latest_summary(reports_root)

@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 from flext_cli import cli
 
 from flext_infra import c, m, r, u
-from flext_infra.refactor._namespace_enforcer_project import (
-    FlextInfraNamespaceEnforcerProjectMixin,
-)
+from flext_infra.refactor import FlextInfraNamespaceEnforcerProjectMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
