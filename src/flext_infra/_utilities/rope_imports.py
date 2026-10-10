@@ -177,6 +177,7 @@ class FlextInfraUtilitiesRopeImports:
         name: str,
         definition_path: Path,
         dependent_import_targets: t.StrSequence = (),
+        include_reexports: bool = False,
     ) -> t.VariadicTuple[t.Infra.RopeResource]:
         """Build the reachability resource set for semantic occurrence searches.
 

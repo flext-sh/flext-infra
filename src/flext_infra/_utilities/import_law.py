@@ -57,8 +57,8 @@ class FlextInfraUtilitiesImportLaw:
             parts = parts[:-1]
         return namespace_dir, ".".join(parts)
 
-    @classmethod
-    def module_import_layer(cls, module: str) -> int:
+    @staticmethod
+    def module_import_layer(module: str) -> int:
         """Return the layer rank of one dotted module of a namespace.
 
         A module's layer is the first path segment, from its namespace

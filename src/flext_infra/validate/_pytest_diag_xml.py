@@ -2,6 +2,8 @@
 
 JUnit-XML parsing cluster for pytest diagnostics, composed
 into ``FlextInfraPytestDiagExtractor`` via FLEXT.
+Connectivity exemptions require the shared owner's sealed setup receipt, including
+the declared capability and the node identity represented by this JUnit testcase.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -97,13 +99,43 @@ class FlextInfraPytestDiagXmlMixin:
                 skipped.attrib.get(c.Infra.RK_MESSAGE) or skipped.text or ""
             ).strip()
             diag.skip_cases.append(f"{label} | {reason}" if reason else label)
-            if any(
-                prop.attrib.get("name") == "flext_connectivity_prerequisite"
-                and prop.attrib.get("value") == reason
-                for prop in case.iter("property")
-            ):
+            if FlextInfraPytestDiagXmlMixin._is_connectivity_skip(case, reason):
                 diag.connectivity_skip_cases.append(label)
         return secs, label
+
+    @staticmethod
+    def _is_connectivity_skip(case: p.Infra.XmlElementLike, reason: str) -> bool:
+        """Require the sealed setup receipt for this exact JUnit testcase.
+
+        Returns:
+            Whether the shared applicability owner emitted complete evidence.
+        """
+        properties = [
+            (prop.attrib.get("name", ""), prop.attrib.get("value", ""))
+            for prop in case.iter("property")
+            if prop.attrib.get("name", "").startswith("flext_connectivity_prerequisite")
+        ]
+        receipt = dict(properties)
+        node = receipt.get("flext_connectivity_prerequisite_node", "")
+        # Pytest's JUnit address conversion preserves parameter IDs verbatim.
+        path, bracket, params = node.partition("[")
+        names = path.split("::")
+        names[0] = names[0].replace("/", ".").removesuffix(".py")
+        names[-1] += bracket + params
+        skipped = case.find("skipped")
+        return (
+            len(properties) == len(receipt) == 4
+            and len(names) > 1
+            and receipt.get("flext_connectivity_prerequisite") == reason
+            and bool(reason)
+            and receipt.get("flext_connectivity_prerequisite_phase") == "setup"
+            and bool(receipt.get("flext_connectivity_prerequisite_capability"))
+            and ".".join(names[:-1]) == case.attrib.get("classname")
+            and names[-1] == case.attrib.get("name")
+            and sum(1 for _ in case.iter("skipped")) == 1
+            and skipped is not None
+            and skipped.attrib.get("type") == "pytest.skip"
+        )
 
     @staticmethod
     def _parse_xml(junit_path: Path, diag: m.Infra.DiagResult) -> None:

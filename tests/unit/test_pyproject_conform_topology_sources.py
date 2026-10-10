@@ -1,6 +1,6 @@
 """Tests for canonical dependency source selection by topology role.
 
-Workspace roots use bare local-member requirements with native uv sources.
+Workspace roots preserve Git requirements and select local paths independently.
 Members keep declared direct Git provenance and render identically attached
 or standalone: only the workspace root redirects fleet members to itself.
 
@@ -78,7 +78,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
             environments=tuple(toolchain.uv_environments),
         )
 
-    def test_root_members_use_native_workspace_sources_of_any_family(self) -> None:
+    def test_root_members_use_local_path_sources_of_any_family(
+        self,
+        tmp_path: Path,
+    ) -> None:
         """Local requirements use the declared workspace independently of family."""
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
@@ -93,6 +96,13 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         infra = u.Tests.repository_ref("flext-infra")
         infra_requirement = self._inline_requirement(infra)
+        for ref in workspace.subprojects:
+            path = tmp_path / ref.path / c.PYPROJECT_FILENAME
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f'[project]\nname = "{ref.distribution}"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
         source = (
             '[project]\nname = "workspace"\nversion = "0.1.0"\n'
             'dependencies = ["acme-charts", "flext-core", '
@@ -107,10 +117,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 uv_resolution=self._toolchain_resolution(),
                 options=u.Infra.PyprojectConformOptions(
                     flext_line=u.Tests.integration(),
+                    repository_root=tmp_path,
                 ),
             ),
         )
-        expected = {ref.distribution for ref in workspace.subprojects} | {
+        expected = {self._inline_requirement(ref) for ref in workspace.subprojects} | {
             infra_requirement,
         }
         tm.that(
@@ -121,10 +132,21 @@ class TestsFlextInfraPyprojectConformTopologySources:
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
         tm.that(
             u.Tests.toml_mapping(uv.get("sources")),
-            eq={ref.distribution: {"workspace": True} for ref in workspace.subprojects},
+            eq={
+                ref.distribution: {
+                    "path": ref.path.as_posix(),
+                    "editable": ref.editable,
+                }
+                for ref in workspace.subprojects
+            },
         )
         groups = u.Tests.toml_mapping(parsed.get("dependency-groups"))
         tm.that("workspace" not in groups, eq=True)
+        tm.that("workspace" not in uv, eq=True)
+        tm.that(
+            set(u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")),
+            eq={self._inline_requirement(ref) for ref in workspace.subprojects},
+        )
         second = tm.ok(
             u.Infra.pyproject_conform(
                 rendered,
@@ -133,10 +155,110 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 uv_resolution=self._toolchain_resolution(),
                 options=u.Infra.PyprojectConformOptions(
                     flext_line=u.Tests.integration(),
+                    repository_root=tmp_path,
                 ),
             ),
         )
         tm.that(second, eq=rendered)
+
+    def test_root_requests_all_extras_groups_and_retains_constraints(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Local source overrides retain explicit bounds, markers and extras."""
+        provider = self._member_ref("acme-engine", "libraries/engine").model_copy(
+            update={"editable": False},
+        )
+        consumer = self._member_ref("acme-driver", "plugins/driver")
+        workspace = self._workspace(provider, consumer)
+        bound = f'{provider.distribution}[feature]>=1; python_version >= "3.13"'
+        provider_path = tmp_path / provider.path / c.PYPROJECT_FILENAME
+        provider_path.parent.mkdir(parents=True)
+        provider_path.write_text(
+            f'[project]\nname = "{provider.distribution}"\nversion = "1.0.0"\n'
+            '[project.optional-dependencies]\nfeature = ["idna>=3"]\n'
+            '[dependency-groups]\nqa = ["pytest>=8"]\n',
+            encoding="utf-8",
+        )
+        consumer_path = tmp_path / consumer.path / c.PYPROJECT_FILENAME
+        consumer_path.parent.mkdir(parents=True)
+        consumer_path.write_text(
+            f'[project]\nname = "{consumer.distribution}"\nversion = "1.0.0"\n'
+            f"dependencies = ['{bound}']\n"
+            '[dependency-groups]\nchecks = ["hypothesis>=6"]\n'
+            'qa = [{include-group = "checks"}]\n',
+            encoding="utf-8",
+        )
+        source = '[project]\nname = "workspace"\nversion = "1.0.0"\ndependencies = ["httpx>=0.27"]\n'
+        options = u.Infra.PyprojectConformOptions(
+            flext_line=u.Tests.integration(),
+            repository_root=tmp_path,
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            )
+        )
+        dev = set(u.Tests.toml_strings_at(first, "dependency-groups", "dev"))
+        tm.that(
+            set(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
+            eq={"pytest>=8", "hypothesis>=6"},
+        )
+        tm.that(
+            f"{provider.distribution}[feature] @ git+{provider.url}@{u.Tests.integration().branch}"
+            in dev,
+            eq=True,
+        )
+        tm.that(
+            u.Tests.toml_strings_at(first, "project", "dependencies"),
+            eq=("httpx>=0.27",),
+        )
+        uv = u.Tests.toml_table_at(first, "tool", "uv")
+        tm.that(
+            bound.replace("[feature]", "")
+            in u.Tests.toml_strings_at(first, "tool", "uv", "constraint-dependencies"),
+            eq=True,
+        )
+        tm.that(
+            f"{provider.distribution}[feature]"
+            in u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
+            eq=True,
+        )
+        tm.that(
+            u.Tests.toml_mapping(uv["sources"])[provider.distribution],
+            eq={"path": provider.path.as_posix(), "editable": provider.editable},
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    first,
+                    workspace=workspace,
+                    required_dev_dependencies=(),
+                    uv_resolution=self._toolchain_resolution(),
+                    options=options,
+                )
+            ),
+            eq=first,
+        )
+
+    def test_root_missing_member_metadata_fails_loud(self, tmp_path: Path) -> None:
+        """A declared package without metadata is not silently omitted."""
+        member = self._member_ref("acme-engine", "libraries/engine")
+        result = u.Infra.pyproject_conform(
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n',
+            workspace=self._workspace(member),
+            required_dev_dependencies=(),
+            uv_resolution=self._toolchain_resolution(),
+            options=u.Infra.PyprojectConformOptions(
+                repository_root=tmp_path,
+                flext_line=u.Tests.integration(),
+            ),
+        )
+        tm.that(result.failure, eq=True)
 
     def test_candidate_commit_is_project_specific_and_reaches_fixed_point(self) -> None:
         """An explicit candidate changes only its declared distribution."""
@@ -335,11 +457,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         consumer = self._member_ref("flext-api", "flext-api")
         standalone = u.Tests.workspace_spec(consumer)
         attached = standalone.model_copy(
-            update={
-                "superproject_members": tuple(
-                    ref.distribution for ref in (consumer, runtime, dev, unused)
-                ),
-            },
+            update={"repository": consumer.model_copy(update={"editable": True})},
         )
         source = (
             f'[project]\nname = "{consumer.distribution}"\nversion = "0.1.0"\n'
