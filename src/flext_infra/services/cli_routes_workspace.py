@@ -19,6 +19,7 @@ from flext_infra import (
     FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraWorkspaceEnvironmentProvenance,
     FlextInfraWorkspaceFleetGaps,
+    FlextInfraWorkspaceFleetVerbs,
     FlextInfraWorkspaceLifecycle,
     FlextInfraWorkspacePropagation,
     c,
@@ -175,6 +176,17 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                         "Sync generated direnv/mise environment files",
                         m.Infra.WorkspaceEnvironmentCliRequest,
                         _sync_environment,
+                    ),
+                    (
+                        c.Infra.FLEET_ROUTE_NAME,
+                        (
+                            "Run one mutating verb in every governed member "
+                            "concurrently and publish its receipts"
+                        ),
+                        FlextInfraWorkspaceFleetVerbs,
+                        FlextInfraCliRouteBase.result_handler(
+                            FlextInfraWorkspaceFleetVerbs.execute_command,
+                        ),
                     ),
                     (
                         c.Infra.FLEET_GAPS_ROUTE_NAME,

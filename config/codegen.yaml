@@ -44,6 +44,10 @@ Infra:
 
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # Protected-edit lint snapshots run their gate subprocesses in this many
+    # threads per level (paths, then gates per path); mypy keeps its own
+    # resource-limited deadline, so the bound caps concurrent type checkers.
+    lint_snapshot_workers: 4
     # Independent read-only per-repository work of one fleet run (generation
     # planning, lazy-init analysis) runs in this many worker processes; every
     # publication stays serial inside the single generation lease. Measured

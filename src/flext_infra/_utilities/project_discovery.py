@@ -345,6 +345,28 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @staticmethod
+    def mutable_flext_members(
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> t.SequenceOf[m.Infra.RepositoryRef]:
+        """Return the declared members a workspace may settle or rewrite.
+
+        A member qualifies by its declaration alone: an internal FLEXT kind,
+        a generated codegen surface, and a writable checkout. Declared order
+        is kept, so every consumer reports members deterministically.
+
+        Returns:
+            The governed mutable members in declared order.
+
+        """
+        return tuple(
+            member
+            for member in workspace.subprojects
+            if member.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            and member.codegen is not c.Infra.CodegenKind.NONE
+            and not member.read_only
+        )
+
+    @staticmethod
     def nearest_project_root(repository_root: Path, path: Path) -> Path | None:
         """Find the nearest manifest owner inside one governed repository.
 

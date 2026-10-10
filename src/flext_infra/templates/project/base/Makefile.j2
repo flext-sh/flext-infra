@@ -33,6 +33,18 @@
 {%- macro fix_body() -%}
 {{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
 {%- endmacro -%}
+{#- A local workspace run carries a mutating verb to every governed member
+    after the root settles itself: flext-infra runs each member's own verb
+    concurrently (operator-ruling-2026-10-10-workspace-verbs-fleet-unit). CI
+    keeps every repository evaluating only itself, so the fan-out never
+    renders a CI step and members render nothing. -#}
+{%- macro fleet_fanout(verb) -%}
+{%- if make_profile == "workspace" %}
+ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
+{{ "\t" }}@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} fleet --repository-root "$(PROJECT_ROOT)" --verb {{ verb }}
+endif
+{%- endif -%}
+{%- endmacro -%}
 {%- macro pytest_testmon_guard() -%}
 set -eu; \
 database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
@@ -443,9 +455,10 @@ _builtin_require_network_auth:
 		fi; \
 	fi
 
-# Every repository evaluates only itself, locally exactly as in CI: a workspace
-# root consumes its members as installed libraries and never fans a verb out
-# across them; each member runs its own lifecycle in its own repository.
+# Every repository evaluates only itself: a workspace root consumes its members
+# as installed libraries and each member runs its own lifecycle in its own
+# repository. Locally, the mutating verbs fmt/fix/mod then carry that same
+# member-own verb to every governed member (fleet_fanout); CI never fans out.
 # Provisioning is declared once and shared by every profile. Dev environments
 # consume present members as LIVE editable installs natively (operator law
 # 2026-10-06: a commit never influences dev behavior — the worktree is the
@@ -1113,8 +1126,8 @@ _builtin-test: _builtin_test_all
 _builtin-test-full: _builtin_test_full_all
 _builtin-test-file: _builtin_test_file_all
 _builtin-file-gate: _builtin_file_gate_all
-_builtin-fmt: _builtin_fmt_all
-_builtin-fix: _builtin_fix_all
+_builtin-fmt: _builtin_fmt_all{{ fleet_fanout("fmt") }}
+_builtin-fix: _builtin_fix_all{{ fleet_fanout("fix") }}
 _builtin-fix-namespace: _builtin_fix_namespace
 _builtin-fix-accessors: _builtin_fix_accessors
 _builtin-audit:
@@ -1145,7 +1158,7 @@ _builtin-release-build: _builtin_release_build
 _builtin-publication: _builtin_release_publish
 _builtin-gen: _builtin_gen_all
 _builtin-initialize: _builtin_gen_init
-_builtin-mod: _builtin_mod_apply
+_builtin-mod: _builtin_mod_apply{{ fleet_fanout("mod") }}
 _builtin-mod-text: _builtin_mod_text
 _builtin-mod-text-candidate: _builtin_mod_text_candidate
 _builtin-mod-snapshots: _builtin_mod_snapshots
