@@ -363,6 +363,8 @@ class FlextInfraWorkspaceChecker(
         dir_ensure = u.Cli.ensure_dir(reports_root)
         if dir_ensure.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
+        # One invocation owns one report leaf: concurrent checks never
+        # overwrite each other's receipt.
         report_base = reports_root / u.generate_id()
         report_base.mkdir(exist_ok=False)
         effective_ctx = ctx or m.Infra.GateContext(

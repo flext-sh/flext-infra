@@ -392,6 +392,19 @@ class FlextInfraModelsCheck:
             """
             return sum(v.finding_count for v in self.gates.values())
 
+    class CheckReportSummary(m.ContractModel):
+        """Invocation-owned execution facts retained by the published SARIF."""
+
+        targets: t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget] = m.Field(
+            description="Canonical project roots selected for this invocation",
+        )
+        results: t.VariadicTuple[FlextInfraModelsCheck.ProjectResult] = m.Field(
+            description="Only executions reached by this invocation",
+        )
+        selected_files: t.VariadicTuple[Path] = m.Field(
+            description="File selection; empty means full-project execution",
+        )
+
     class LoopOutcome(m.ArbitraryTypesModel):
         """Bundled results from the project-checking loop."""
 
