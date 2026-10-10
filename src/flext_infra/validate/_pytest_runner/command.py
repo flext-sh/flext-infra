@@ -308,7 +308,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
-            f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+            (
+                "--timeout=0"
+                if self.unbounded
+                else f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
+            ),
             "-o",
             "filterwarnings=",
             "-p",
@@ -447,10 +451,17 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
-        suite_stop = self.suite_stop_monotonic(
-            serial=workers == "0",
-            execution_mode=execution_mode,
-        )
+        if self.unbounded:
+            timeout_args = ("--timeout=0",)
+        else:
+            suite_stop = self.suite_stop_monotonic(
+                serial=workers == "0",
+                execution_mode=execution_mode,
+            )
+            timeout_args = (
+                f"--timeout={pytest.case_timeout_seconds}",
+                f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
+            )
         return (
             sys.executable,
             *(
@@ -465,8 +476,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *targets,
             *pytest.progress_args,
             *pytest.report_args,
-            f"--timeout={pytest.case_timeout_seconds}",
-            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
+            *timeout_args,
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",
             f"--report-log={report_dir / 'events.jsonl'}",
