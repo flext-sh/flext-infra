@@ -97,8 +97,37 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
         references: t.MutableMappingKV[t.Pair[str, str], str | None] = {}
         cli.display_text(f"census: indexed {len(bases)} class declarations")
+        family_modules = frozenset(
+            name
+            for declarations in owners.values()
+            for _tree, _alias, _root, file_name in declarations
+            for name in (Path(file_name).stem, f"_{Path(file_name).stem}")
+        )
+        constant_names = frozenset((
+            "c",
+            *(
+                root_name
+                for declarations in owners.values()
+                for _tree, _alias, root_name, _file_name in declarations
+            ),
+            *(
+                identity.rsplit(".", 1)[-1]
+                for identity in bases
+                if family_modules.intersection(identity.split("."))
+            ),
+        ))
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+            if not any(
+                imported.name in constant_names
+                and not (imported.name == "c" and imported.asname is None)
+                for node in ast.walk(ast.parse(source, filename=str(path)))
+                if isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+                for imported in node.names
+            ):
+                return source, ()
             return cls._rewrite_constant_consumer(
                 path,
                 source,

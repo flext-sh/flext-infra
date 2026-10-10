@@ -201,8 +201,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg build check smells test test-full test-file file-gate profile-test profile-test-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg build check smells test test-full test-file file-gate profile-test profile-test-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg build check census census-constants smells test test-full test-file file-gate profile-test profile-test-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg build check census census-constants smells test test-full test-file file-gate profile-test profile-test-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -659,6 +659,30 @@ _activated-check: _builtin_require_environment
 
 
 
+census: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-census,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-census)
+
+.PHONY: _activated-census
+_activated-census: _builtin_require_environment
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-census,$(call RUN_PUBLIC,census))
+
+
+
+
+census-constants: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-census-constants,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-census-constants)
+
+.PHONY: _activated-census-constants
+_activated-census-constants: _builtin_require_environment
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-census-constants,$(call RUN_PUBLIC,census-constants))
+
+
+
+
 smells: _builtin_require_workspace
 
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-smells,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-smells)
@@ -1096,6 +1120,14 @@ check:
 	@printf '  %-16s %s\n' 'check' 'Run the configured non-test gates except the dedicated smells audit.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make check to execute it.'
 
+census:
+	@printf '  %-16s %s\n' 'census' 'Inventory constants, duplicate declarations and placement across every declared first-party project.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make census to execute it.'
+
+census-constants:
+	@printf '  %-16s %s\n' 'census-constants' 'Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make census-constants to execute it.'
+
 smells:
 	@printf '  %-16s %s\n' 'smells' 'Run the strict code-smell audit as a dedicated gate.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make smells to execute it.'
@@ -1270,6 +1302,10 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'build' 'Build the project distribution artifacts.';
 
 	@printf '  %-16s %s\n' 'check' 'Run the configured non-test gates except the dedicated smells audit.';
+
+	@printf '  %-16s %s\n' 'census' 'Inventory constants, duplicate declarations and placement across every declared first-party project.';
+
+	@printf '  %-16s %s\n' 'census-constants' 'Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.';
 
 	@printf '  %-16s %s\n' 'smells' 'Run the strict code-smell audit as a dedicated gate.';
 
@@ -1959,6 +1995,16 @@ _builtin-bootstrap-candidate: _builtin_require_environment
 # The current directory defines scope; callers never address tools directly.
 _builtin_mod_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)" --apply
+
+_builtin-census: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
+		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json"
+
+_builtin-census-constants: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
+		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json" --apply
 
 _builtin_mod_text: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod-text --apply
