@@ -273,11 +273,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             The resulting ``t.StrSequence``.
 
         Raises:
-            ValueError: If ``not isinstance(literal, (list, tuple)) or not
-                all((isinstance(item, str) for item in literal))``; or if a
-                ``(ValueError, SyntaxError)`` is caught; or if ``source_name not in
-                assignments``.
-            TypeError: If ``not isinstance(literal, (list, tuple))``.
+            ValueError: If the ``tuple(<name>)`` alias names a missing
+                assignment, the value is not a Python literal, or the literal
+                is not a sequence of strings.
+
         """
         assignments: MutableMapping[str, ast.expr] = {}
         for node in tree.body:
@@ -307,7 +306,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             case _:
                 pass
         try:
-            literal: object = ast.literal_eval(resolved)
+            literal = ast.literal_eval(resolved)
         except (ValueError, SyntaxError) as exc:
             msg = f"{file_path}: invalid __all__: {exc}"
             raise ValueError(msg) from exc
@@ -1068,7 +1067,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         module_path = project_path / module
         if not module_path.is_file():
             return ()
-        return module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
+        return module_path.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
 
     @classmethod
     def _build_violation_key(
