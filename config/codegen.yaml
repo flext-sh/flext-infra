@@ -710,7 +710,7 @@ Infra:
       - name: test
         description: Run incremental tests through the persistent testmon cache.
       - name: test-full
-        description: Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.
+        description: Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.
       - name: test-file
         description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
       - name: file-gate

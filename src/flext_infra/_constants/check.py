@@ -25,6 +25,8 @@ class FlextInfraConstantsCheck:
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
+    PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
+    """pytest-timeout's documented ``--timeout`` value that disables the limit."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
         "import cProfile, runpy, sys\n"
