@@ -39,6 +39,9 @@ class FlextInfraImportNormalization(
        external providers, and settings/config modules keep their own law.
     4. A concrete object binds through the nearest package ``__init__`` that
        publishes it lazily.
+    5. A root alias the module reads but binds nowhere is imported from its
+       namespace root; an alias imported from the module's own root that the
+       module also defines is dropped.
 
     ``make mod`` runs it over every governed file; the ``make fix`` lint
     recipe ``normalize-imports`` runs it over each file Ruff reports for
@@ -148,6 +151,7 @@ class FlextInfraImportNormalization(
             lambda: cls._guard_edits(state.tree, lines),
             lambda: cls._placement_edits(state, lines),
             lambda: cls._route_edits(state, lines),
+            lambda: cls._root_alias_binding_edits(state, lines),
         )
         for build in builders:
             edits = build()

@@ -467,3 +467,82 @@ class TestsFlextInfraRefactorImportNormalization:
         )
 
         tm.that(second, eq=None)
+
+    @classmethod
+    def test_unbound_tier_letters_bind_through_tier_root(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A test module reading unbound tier letters imports them from its root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"c": ".constants", "u": ".utilities"})
+        target = tier / "unit" / "test_demo.py"
+        normalized = cls._normalize(
+            project,
+            target,
+            '"""Demo tests."""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "\n"
+            "def test_demo(value: int) -> None:\n"
+            "    assert u.Demo.run(c.Demo.NAME, value)\n",
+        )
+
+        tm.that(normalized, has="from tests import c, u\n")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=normalized,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    def test_locally_bound_letter_is_not_imported(cls, tmp_path: Path) -> None:
+        """A letter the module binds itself is never imported from its root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"c": ".constants"})
+        result = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=tier / "unit" / "test_demo.py",
+            source=(
+                "from __future__ import annotations\n"
+                "\n"
+                "\n"
+                "def test_demo(c: int) -> None:\n"
+                "    assert c\n"
+            ),
+        )
+
+        tm.that(result, eq=None)
+
+    @classmethod
+    def test_tier_owner_drops_import_of_its_own_definition(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A tier facade module never imports the alias it defines from its root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"c": ".constants", "u": ".utilities"})
+        normalized = cls._normalize(
+            project,
+            tier / "constants.py",
+            "from __future__ import annotations\n"
+            "\n"
+            "from tests import c, u\n"
+            "\n"
+            "\n"
+            "class TestsDemoConstants:\n"
+            "    HELPER = u\n"
+            "\n"
+            "\n"
+            "c = TestsDemoConstants\n",
+        )
+
+        tm.that(normalized, has="from tests import u\n")
+        tm.that(normalized, lacks="from tests import c")
