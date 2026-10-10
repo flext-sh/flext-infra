@@ -24,22 +24,28 @@ class TestsFlextInfraWorktreeAddContract(u.Tests.WorktreeFixture):
             (
                 "clean-setup-failure",
                 "Makefile",
-                ".PHONY: setup\nsetup:\n"
-                "\t@printf 'visible setup progress\\n'\n\t@exit 17\n",
+                (
+                    ".PHONY: setup\nsetup:\n"
+                    "\t@printf 'visible setup progress\\n'\n\t@exit 17\n"
+                ),
                 True,
             ),
             (
                 "dirty-setup-failure",
                 "Makefile",
-                ".PHONY: setup\nsetup:\n"
-                "\t@printf 'preserve me\\n' > setup-wip.txt\n\t@exit 19\n",
+                (
+                    ".PHONY: setup\nsetup:\n"
+                    "\t@printf 'preserve me\\n' > setup-wip.txt\n\t@exit 19\n"
+                ),
                 True,
             ),
             (
                 "invalid-metadata",
                 "pyproject.toml",
-                '[project]\nname = "fixture"\nversion = "0.1.0"\n'
-                'description = ["not", "a", "string"]\n',
+                (
+                    '[project]\nname = "fixture"\nversion = "0.1.0"\n'
+                    'description = ["not", "a", "string"]\n'
+                ),
                 True,
             ),
             (
@@ -53,6 +59,7 @@ class TestsFlextInfraWorktreeAddContract(u.Tests.WorktreeFixture):
     def test_add_is_refused_before_any_lane_setup_or_metadata_effect(
         self,
         tmp_path: Path,
+        *,
         case: str,
         filename: str,
         content: str,
