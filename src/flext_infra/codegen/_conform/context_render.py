@@ -460,7 +460,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # The in-place pyproject edit and this render read the same
                 # fleet exemption map, unchanged for every project.
                 ruff_per_file_ignores=(
-                    config.Infra.tooling.tools.ruff.lint.per_file_ignores
+                    u.Infra.compose_ruff_per_file_ignores(
+                        config.Infra.tooling,
+                        render_inputs.managed_artifacts.resolution.artifacts.Ruff,
+                    )
                 ),
                 ruff_extend_exclude=(
                     *config.Infra.tooling.tools.ruff_extend_exclude,

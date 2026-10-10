@@ -547,7 +547,10 @@ class TestsFlextInfraDepsModernizerToolTables:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload('[project]\nname = "flext-sample"\n'),
         )
-        FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
+        FlextInfraEnsureRuffConfigPhase(
+            config.Infra.tooling,
+            u.Infra.empty_snapshot().resolution.artifacts.Ruff,
+        ).apply_payload(
             payload,
             path=project_dir / "pyproject.toml",
         )

@@ -244,7 +244,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
 
     @staticmethod
     def _module_source(module: p.Infra.RopePyModule) -> str:
-        resource = getattr(module, "resource", None)
+        resource = module.get_resource()
         if resource is not None:
             return resource.read()
         return module.source_code
