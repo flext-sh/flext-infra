@@ -9,7 +9,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+    c,
+    m,
+    r,
+    t,
+    u,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -26,9 +34,6 @@ class FlextInfraDocCollector:
             The resulting ``p.Result[bool]``.
 
         """
-        from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-        from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-
         authenticated = cls._authenticated_configuration(request)
         if authenticated.failure:
             return r[bool].from_failure(authenticated)

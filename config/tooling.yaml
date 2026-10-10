@@ -4,9 +4,24 @@ Infra:
     raw-check-receipt-suffix: .raw.log
     tools:
       bandit:
-        # Populated only by an operator ruling that names a real owner scope;
-        # every other module spawns processes through the u.Cli process family.
-        authorized-exceptions: []
+        # Each exception exists only with the operator ruling that authorized
+        # it and its reason. Bandit reads no per-path exception, so the
+        # security gate audits the files an entry matches in their own
+        # invocation that skips only the entry's tests; every other file keeps
+        # every test. Repositories declare no exception of their own.
+        authorized-exceptions:
+          - tests: [B404, B603]
+            files:
+              - src/flext_cli/_utilities/processes.py
+              - src/flext_cli/_utilities/runtime.py
+              - src/flext_core/**/*.py
+            authority: operator-ruling-2026-10-08-subprocess-test-imports
+            reason: >-
+              Only the u.Cli.run process owner in flext-cli and the flext-core
+              source may import and spawn subprocess; every other module runs
+              processes through u.Cli.run. The codemod rule
+              ban-subprocess-outside-run-owner bans subprocess everywhere
+              else, with the same owner scope.
       codespell:
         check-filenames: true
         ignore-words-list: crate,nd
@@ -186,16 +201,6 @@ Infra:
           - complex-structure
           - suspicious-subprocess-import
           - subprocess-without-shell-equals-true
-          - too-many-arguments
-          - too-many-positional-arguments
-          - too-many-locals
-          - too-many-return-statements
-          - too-many-branches
-          - too-many-public-methods
-          - too-many-statements
-          - complex-structure
-          - suspicious-subprocess-import
-          - subprocess-without-shell-equals-true
         line-length: 88
         preview: true
         respect-gitignore: true
@@ -211,7 +216,6 @@ Infra:
         lint:
           select:
             - ALL
-            - ALL
           # make fix never deletes information. The lint
           # repair applies safe fixes only (make.ruff.lint_fix rejects
           # --unsafe-fixes), and these rules are never auto-fixed at all,
@@ -221,15 +225,6 @@ Infra:
           # script and turned its failures silent). Ruff keeps reporting them;
           # the author decides. Also guards direct and IDE Ruff runs.
           unfixable:
-            - duplicate-value
-            - multi-value-repeated-key-literal
-            - multi-value-repeated-key-variable
-            - outdated-version-block
-            - p-print
-            - print
-            - pytest-duplicate-parametrize-test-cases
-            - redefined-while-unused
-            - unused-variable
             - duplicate-value
             - multi-value-repeated-key-literal
             - multi-value-repeated-key-variable
@@ -250,9 +245,6 @@ Infra:
           # `unfixable` above — that is rule selection, never disabling the
           # mandatory unsafe channel.
           extend-safe-fixes:
-            - relative-imports
-            - typing-only-first-party-import
-            - camelcase-imported-as-lowercase
             - relative-imports
             - typing-only-first-party-import
             - camelcase-imported-as-lowercase
@@ -309,7 +301,6 @@ Infra:
           flake8-type-checking:
             runtime-evaluated-roots:
               - pydantic.BaseModel
-              - pydantic.BaseModel
           # Banned API messages are policy data, never template literals.
           banned-api:
             argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
@@ -330,17 +321,22 @@ Infra:
           # (D203/D211, multi-line-summary-first-line/D213) included, so no run warns about them.
           pydocstyle:
             convention: google
+          # Authority: tracker memory operator-ruling-2026-10-09-ruff-dunder-descriptors.
+          # Python type.__base__ is the native layout base; type.__bases__ is
+          # the tuple of direct bases. Protocols expose both as read-only
+          # properties without changing their signatures or native identity.
+          # https://docs.python.org/3.13/reference/datamodel.html#type.__base__
+          # https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
+          # https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
+          # PLW3201 remains enabled for every other unrecognized dunder name.
+          pylint:
+            allow-dunder-method-names: [__base__, __bases__]
           # Each exception exists only with the operator ruling that authorized
           # it and its reason; Ruff receives the unscoped entries as `ignore`
           # and the scoped ones as `per-file-ignores`. Repositories declare no
-          # exception of their own. Operator order 2026-10-05 (latest, direct,
-          # merge-admin mandate): TC001-TC004 are ALL BLOCKED — enforced by
-          # rule name on every file (the four names live in the select
-          # surface, never in an ignore table; the same-day
-          # tc001-tc004-off-pydantic disable is superseded), and the scoped
-          # lazy-root dunder-init exception below stays the only relief.
-          # Pydantic runtime-evaluation is protected by the
-          # runtime-evaluated-roots projection, not by disabling the rules.
+          # exception of their own. TC001-TC004 are disabled on every file by
+          # the single unscoped entry below (flext-p7bxt; TC004 additionally
+          # operator-ruling-2026-10-08-tc004-never): Ruff never executes them.
           authorized-exceptions:
             - rules: [missing-trailing-comma]
               authority: operator-file-gate-verdict-mandate-2026-10-08
@@ -477,6 +473,8 @@ Infra:
                 module that exists to bind those libraries directly, so its
                 imports are the licensed surface. Every other module stays
                 blocked by the same rule.
+            # The flake8-type-checking family — typing-only-first-party-import,
+            # typing-only-third-party-import, typing-only-standard-library-import,
             # runtime-import-in-type-checking-block — is DISABLED for every
             # file: Ruff must not execute these rules anywhere. Declared by
             # rule name (the fleet's canonical naming format). This supersedes
@@ -705,25 +703,6 @@ Infra:
             - "**/site-packages/**"
             - "**/dist-packages"
             - "**/dist-packages/**"
-            - "**/node_modules"
-            - "**/__pycache__"
-            - "**/__pyrefly_virtual__/**"
-            - "**/.mypy_cache"
-            - "**/.ruff_cache"
-            - "**/.pytest_cache"
-            - "**/.*"
-            - .git
-            - .reports
-            - vendor
-            - .venv
-            - "**/.venv"
-            - "**/.venv/**"
-            - "**/venv"
-            - "**/venv/**"
-            - "**/site-packages"
-            - "**/site-packages/**"
-            - "**/dist-packages"
-            - "**/dist-packages/**"
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []
@@ -740,14 +719,7 @@ Infra:
           - "if _t.TYPE_CHECKING:"
           - "if TYPE_CHECKING:"
           - "if typing.TYPE_CHECKING:"
-          - "if _t.TYPE_CHECKING:"
-          - "if TYPE_CHECKING:"
-          - "if typing.TYPE_CHECKING:"
         omit:
-          - "*/dependency_injector/providers.pyx"
-          # Declaration-layer Protocol facades have no runtime behavior to cover.
-          - "*/protocols.py"
-          - "*/_protocols/*"
           - "*/dependency_injector/providers.pyx"
           # Declaration-layer Protocol facades have no runtime behavior to cover.
           - "*/protocols.py"
@@ -1012,22 +984,6 @@ Infra:
           - "discovery: catalog and stream discovery tests"
           - "singer: Singer protocol contract tests"
           - "requires_engine: native check engine required by this test"
-          - "smoke: public-interface smoke tests"
-          - "unit: unit tests"
-          - "integration: integration tests"
-          - "functional: functional behavior tests"
-          - "performance: performance and benchmark tests"
-          - "slow: slow-running tests"
-          - "docker: tests requiring Docker"
-          - "oracle: tests requiring the shared Oracle database"
-          - "remote: tests requiring remote/external network services"
-          - "e2e: end-to-end integration tests"
-          - "edge_cases: edge case tests"
-          - "stress: stress tests"
-          - "resilience: resilience tests"
-          - "discovery: catalog and stream discovery tests"
-          - "singer: Singer protocol contract tests"
-          - "requires_engine: native check engine required by this test"
         # External-token gates never run inside
         # offline verification (`make test`); the runner records their exclusion.
         # `make test-full` first completes that incremental phase, then executes
@@ -1042,12 +998,6 @@ Infra:
         ci-excluded-fixtures:
           [resolved_make_templates, detector_project, mod_workspace, smells_project, _clear_make_ci_token]
         standard-addopts:
-          - --benchmark-disable
-          - --strict-markers
-          - --markdown-docs
-          - --durations=10
-          # --timeout/--session-timeout are runner-owned and derived
-          # from case-timeout-seconds/run-timeout-seconds; never restate them here.
           - --benchmark-disable
           - --strict-markers
           - --markdown-docs
@@ -1091,17 +1041,6 @@ Infra:
         - m
         - u
         - other
-        - base
-        - services
-        - api
-        - cli
-        - settings
-        - config
-        - c
-        - t
-        - p
-        - m
-        - u
         - base
         - services
         - api

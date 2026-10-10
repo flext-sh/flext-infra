@@ -51,11 +51,12 @@ class TestsFlextInfraCodegenCiMatrix:
             The resulting ``Path``.
 
         """
-        # The governed tree carries the committed Taplo pin generation formats
-        # through; a fresh scaffold never resolves a moving selector. The pin
-        # lands in the output root before the scaffold renders into it.
+        # The scaffold lands inside a governed tree: generation formats through
+        # the committed Mise declaration and lock, never a moving selector.
+        # They land in the output root before the scaffold renders into it;
+        # resolution in a root outside any governed tree is flext-pvhid.
         root.mkdir(parents=True, exist_ok=True)
-        u.Tests.seed_locked_taplo(root)
+        u.Tests.copy_tracked_mise_seeds(root)
         service = FlextInfraCodegenProjectNew(
             flext_source=u.Tests.flext_source(),
             name="flext-demo",
@@ -242,21 +243,49 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(jobs, has="Block WIP heads from protected integration branches")
 
     @staticmethod
+    def test_every_approval_verb_blocks_on_push_and_pull_request(
+        rendered_project: Path,
+    ) -> None:
+        """CI runs each approval verb as its own blocking step on every event.
+
+        The former single ``make pre-commit`` step failed unattended runs
+        because setup refused a stale lock; setup now provisions whatever the
+        locks state (operator-ruling-2026-10-09-setup-resilient), so the gates
+        run on push and pull request instead of only on manual dispatch. After
+        setup, every verb reports even when an earlier one is red.
+        """
+        workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8",
+        )
+        verbs = config.Infra.codegen.make.approval_verbs
+        for index, verb in enumerate(verbs):
+            block = workflow.split(f"- name: make {verb} (blocking)", maxsplit=1)[1]
+            block = block.split("\n      - name:", maxsplit=1)[0]
+            tm.that(block, lacks="workflow_dispatch")
+            tm.that(block, has=f"make {verb}")
+            if index:
+                tm.that(
+                    block,
+                    has=f"steps.approval-{verbs[0]}.outcome == 'success'",
+                )
+        tm.that(workflow, lacks="- name: Approval (blocking)")
+
+    @staticmethod
     def test_ci_runs_make_test_through_the_persistent_testmon_database(
         rendered_project: Path,
     ) -> None:
         """CI selects through testmon and hands its database to the next run.
 
-        The database directory is restored before the approval step (whose
-        test stage is ``make test``) and saved on every outcome after it; the
-        full verb never renders into CI.
+        The database directory is restored before the ``make test`` approval
+        step and saved on every outcome after it; the full verb never renders
+        into CI.
         """
         workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
         )
         make = config.Infra.codegen.make
         cache = make.testmon_cache
-        test_run = f"run: {make.ci.variable}={make.ci.value} make pre-commit\n"
+        test_run = f"run: {make.ci.variable}={make.ci.value} make {c.Infra.VERB_TEST}\n"
         tm.that(workflow, has=test_run)
         tm.that(c.Infra.VERB_TEST in make.approval_verbs, eq=True)
         tm.that(workflow, lacks="make test-full")

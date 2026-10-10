@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
+from flext_infra import FlextInfraWorkspaceDetector, c, config, m, p, r, t, u
+from flext_infra.codegen._conform import FlextInfraCodegenConformPlan
 
 
 class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
@@ -70,8 +70,6 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             marks plan presence (False means no scaffold chain applies).
 
         """
-        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
         result_type = r[
             t.Pair[
                 t.Pair[m.Infra.WorkspaceSpec | None, m.Infra.ProjectSpec | None],

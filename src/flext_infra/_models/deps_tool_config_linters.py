@@ -11,9 +11,7 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models.deps_tool_config_project import (
-    FlextInfraModelsDepsToolConfigProject,
-)
+from flext_infra._models import FlextInfraModelsDepsToolConfigProject
 
 
 class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProject):
@@ -115,6 +113,20 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
+    class RuffPylintConfig(m.ArbitraryTypesModel):
+        """Ruff Pylint policy for operator-approved native type descriptors."""
+
+        allow_dunder_method_names: Annotated[
+            t.SequenceOf[Literal["__base__", "__bases__"]],
+            m.Field(
+                alias="allow-dunder-method-names",
+                description=(
+                    "Only Python type.__base__ and type.__bases__ read-only "
+                    "protocol properties are authorized by the operator."
+                ),
+            ),
+        ]
+
     class RuffTypeCheckingConfig(m.ArbitraryTypesModel):
         """Ruff flake8-type-checking settings loaded from YAML."""
 
@@ -156,6 +168,52 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         reason: Annotated[
             t.NonEmptyStr,
             m.Field(description="Why the rules cannot hold for this scope."),
+        ]
+
+    class BanditAuthorizedException(m.ArbitraryTypesModel):
+        """One operator-authorized Bandit exception, scoped to owner modules.
+
+        Bandit applies a skip to a whole invocation and reads no per-path
+        exception, so the security gate audits the matching files in their own
+        invocation that skips only these tests; every other file keeps every
+        test. An entry missing its authority or reason is refused at load.
+        """
+
+        tests: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(min_length=1, description="Bandit test IDs the owners may raise."),
+        ]
+        files: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Project-relative globs of the owner modules, matched "
+                    "with full-path glob semantics."
+                ),
+            ),
+        ]
+        authority: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Operator ruling that authorized the exception."),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Why the tests cannot hold for these owners."),
+        ]
+
+    class BanditConfig(m.ArbitraryTypesModel):
+        """Bandit security gate settings loaded from YAML."""
+
+        authorized_exceptions: Annotated[
+            tuple[FlextInfraModelsDepsToolConfigLinters.BanditAuthorizedException, ...],
+            m.Field(
+                alias="authorized-exceptions",
+                description=(
+                    "Operator-authorized Bandit exceptions, each audited in "
+                    "its own invocation that skips only its tests."
+                ),
+            ),
         ]
 
     class RuffLintConfig(m.ArbitraryTypesModel):
@@ -242,6 +300,9 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         )
         pydocstyle: FlextInfraModelsDepsToolConfigLinters.RuffPydocstyleConfig = (
             m.Field(description="Ruff pydocstyle configuration")
+        )
+        pylint: FlextInfraModelsDepsToolConfigLinters.RuffPylintConfig = m.Field(
+            description="Ruff Pylint native type descriptor policy",
         )
         flake8_type_checking: Annotated[
             FlextInfraModelsDepsToolConfigLinters.RuffTypeCheckingConfig,

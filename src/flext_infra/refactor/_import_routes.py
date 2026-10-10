@@ -10,7 +10,7 @@ import ast
 from collections.abc import MutableMapping
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor._import_ast import FlextInfraImportNormalizationAstMixin
+from flext_infra.refactor import FlextInfraImportNormalizationAstMixin
 
 
 class FlextInfraImportNormalizationRoutesMixin(
@@ -116,9 +116,8 @@ class FlextInfraImportNormalizationRoutesMixin(
     ) -> str | None:
         """Return the namespace root when one binding is a root alias.
 
-        A facade module keeps the letters it declares and a family package
-        keeps its own letter's upstream source; every other routed module
-        binds a root alias through its own namespace root.
+        Facade declarations and their runtime dependencies retain external
+        providers instead of importing the facade they are constructing.
 
         Returns:
             The namespace root, or ``None`` when the binding is no root alias.
@@ -132,7 +131,19 @@ class FlextInfraImportNormalizationRoutesMixin(
         aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
         if bound not in aliases and published != module:
             return None
-        if bound in scope.own_exports or bound == scope.family_letter:
+        if (
+            bound in scope.own_exports
+            or bound == scope.family_letter
+            or bound in scope.facade_dependencies
+        ):
+            return None
+        if (
+            scope.family_letter is not None
+            and bound in c.Infra.ALIAS_NAMES
+            and not module.startswith(f"{scope.namespace}.")
+        ):
+            # Declaration families must retain an external facade's provider.
+            # Routing its base models/utilities back through self creates a cycle.
             return None
         return scope.namespace
 

@@ -15,8 +15,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from flext_infra import c, config, m, p, r, settings, t, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsVerification,
+)
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
@@ -123,13 +128,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             The destination proof or the first journal authority failure.
         """
-        from flext_infra.codegen._mise_artifacts_verification import (
-            FlextInfraMiseArtifactsVerification,
-        )
-        from flext_infra.codegen.codegen_preconditions import (
-            FlextInfraCodegenPreconditions,
-        )
-
         authority = FlextInfraCodegenPreconditions.unchanged_journal(
             session, "staged view journal authority changed"
         )
@@ -171,10 +169,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             Success only for the matching destination journal entry.
         """
-        from flext_infra.codegen._mise_artifacts_files import (
-            FlextInfraMiseArtifactsFiles,
-        )
-
         original_layout = next(
             (
                 layout
@@ -217,10 +211,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             Success or the first missing, unreadable or changed source authority.
         """
-        from flext_infra.codegen._mise_artifacts_journal import (
-            FlextInfraMiseArtifactsJournal,
-        )
-
         for source in plan.inputs:
             previous = next(
                 (item for item in session.journal.sources if item.path == source.path),
@@ -362,10 +352,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             Success only if the consumer changed none of its authenticated inputs.
         """
-        from flext_infra.codegen.codegen_preconditions import (
-            FlextInfraCodegenPreconditions,
-        )
-
         after = u.Cli.atomic_inventory_physical_tree(view.root)
         if after.failure:
             return r[bool].from_failure(after)
@@ -385,10 +371,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             Success only when source states and every inventory remain pinned.
         """
-        from flext_infra.codegen._mise_artifacts_verification import (
-            FlextInfraMiseArtifactsVerification,
-        )
-
         states = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if states.failure:
             return states

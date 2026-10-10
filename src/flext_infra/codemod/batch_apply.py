@@ -10,8 +10,18 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import (
+    FlextInfraCodemodSemanticApply,
+    FlextInfraModGateEngine,
+    FlextInfraModReplacements,
+    FlextInfraModTextGateEngine,
+    FlextInfraServiceBase,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -52,9 +62,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-        from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
-
         planned = u.Infra.codemod_rule_plan(self.repository_root)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
@@ -97,8 +104,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-
         self.progress.emit("mod: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(
             self.repository_root,
@@ -118,8 +123,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[bool]``.
 
         """
-        from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
-
         current_text = FlextInfraModTextGateEngine.scan(
             root,
             fix=False,
@@ -169,9 +172,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             fixed-point check must observe for cross-phase cycle detection.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-        from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
-
         outcome = r[
             t.Pair[
                 m.Infra.ModScanReport,
@@ -251,8 +251,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         never deadlock). Ruff, Pyrefly and Pyright findings are check's alone.
 
         """
-        from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-
         generated = FlextInfraModReplacements.generator_owned(current.entries)
         if generated:
             self.progress.emit(
@@ -330,10 +328,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-        from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
-        from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
-
         root = self.repository_root
         rope_workspace = self.rope
         baseline_cycles = self._import_cycles(root)
@@ -377,7 +371,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 baseline_cycles,
                 (before, phase_states),
                 (current, current_text),
-            )
+            ) or self._relocation_verdict(root, rope_workspace, current)
             if message is not None:
                 return r[t.Cli.ResultValue].fail(message)
             self.progress.emit(
@@ -385,6 +379,40 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "with zero actionable findings",
             )
             return r[t.Cli.ResultValue].ok(value=True)
+
+    def _relocation_verdict(
+        self,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        current: m.Infra.ModScanReport,
+    ) -> str | None:
+        """Report each unresolved declaration relocation as its own finding.
+
+        Every other rewrite of the run is already published; an unresolved
+        owner is a finding of that declaration, never a plan crash.
+
+        Returns:
+            The failure message naming every unresolved declaration, or
+            ``None`` when every payload declaration has a resolved owner.
+
+        """
+        findings = FlextInfraCodemodSemanticApply.relocation_findings(
+            root,
+            FlextInfraModGateEngine.authored(current),
+            rope_workspace,
+        )
+        for finding in findings:
+            self.progress.emit(
+                "mod: declaration-relocation finding "
+                f"{finding.file_path}:{finding.declaration} "
+                f"expected owner {finding.expected_owner}: {finding.reason}",
+            )
+        if not findings:
+            return None
+        return (
+            f"mod: {len(findings)} declaration-relocation finding(s) remain for "
+            "owner repair; every other rewrite was applied"
+        )
 
     @staticmethod
     def _import_cycles(root: Path) -> t.SequenceOf[frozenset[str]]:
@@ -432,9 +460,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             states the cycle must observe for cross-phase cycle detection.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-        from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
-
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
         outcome = r[
             t.Pair[

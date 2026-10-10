@@ -263,6 +263,65 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="live",
         )
 
+    @pytest.mark.parametrize(
+        ("table_path", "key", "expected"),
+        [
+            (("ruff", "lint"), "select", config.Infra.tooling.tools.ruff.lint.select),
+            (
+                ("ruff", "lint"),
+                "extend-safe-fixes",
+                config.Infra.tooling.tools.ruff.lint.extend_safe_fixes,
+            ),
+            (
+                ("ruff", "lint"),
+                "unfixable",
+                config.Infra.tooling.tools.ruff.lint.unfixable,
+            ),
+            (
+                ("coverage", "report"),
+                "exclude_also",
+                config.Infra.tooling.tools.coverage.exclude_also,
+            ),
+            (("coverage", "run"), "omit", config.Infra.tooling.tools.coverage.omit),
+            (
+                ("pytest", "ini_options"),
+                "addopts",
+                config.Infra.tooling.tools.pytest.standard_addopts,
+            ),
+            (
+                ("pytest", "ini_options"),
+                "markers",
+                config.Infra.tooling.tools.pytest.standard_markers,
+            ),
+        ],
+    )
+    def test_overlay_replaces_duplicated_managed_lists(
+        self,
+        table_path: t.StrSequence,
+        key: str,
+        expected: t.StrSequence,
+    ) -> None:
+        """Replace stale multiplicity without changing SSOT or CUSTOM tables."""
+        header = f'[project]\nname = "workspace"\n[tool.{".".join(table_path)}]\n'
+        rendered = header + f"{key} = {tm.ok(u.Cli.json_dumps(list(expected)))}\n"
+        live = (
+            header
+            + f"{key} = {tm.ok(u.Cli.json_dumps([*expected, *expected]))}\n"
+            + '[tool.recovery_regression]\nvalue = "custom"\n'
+        )
+
+        first = tm.ok(u.Infra.overlay_preserved(rendered, live))
+
+        tm.that(
+            u.Tests.toml_strings_at(first, "tool", *table_path, key),
+            eq=tuple(expected),
+        )
+        tm.that(
+            u.Tests.toml_table_at(first, "tool", "recovery_regression")["value"],
+            eq="custom",
+        )
+        tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
+
     def test_custom_typing_and_feature_extras_survive_conformance(self) -> None:
         """CUSTOM PEP 621 extras survive projection and dependency normalization."""
         live = (

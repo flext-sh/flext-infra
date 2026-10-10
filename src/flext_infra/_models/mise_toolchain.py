@@ -7,9 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_core import m, t
+from flext_core import m
+from flext_infra import t
 
 
 class FlextInfraModelsMiseToolchain:
@@ -124,6 +126,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ]
+        environment: Annotated[
+            t.StrMapping,
+            m.Field(
+                description=(
+                    "Environment overrides the probe process receives; empty "
+                    "for every tool whose version command prints only its "
+                    "identity"
+                ),
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
 
         @m.model_validator(mode="after")
         def _validate_pattern(self) -> Self:
@@ -243,15 +255,6 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ]
-        worktree_environment_directory: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                pattern=r"^\.[A-Za-z][A-Za-z0-9._-]*$",
-                description=(
-                    "Sibling directory for physical linked-worktree environments"
-                ),
-            ),
-        ]
         dependency_cooldown_days: Annotated[
             int,
             m.Field(
@@ -310,17 +313,6 @@ class FlextInfraModelsMiseToolchain:
                     "Keep true: "
                     "make upg writes the committed mise.lock. "
                     "Override toolchain.mise_lockfile; never edit the projection."
-                ),
-            ),
-        ] = True
-        mise_locked: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Rendered as [settings] locked, [tool_config] locked, "
-                    "and bootstrap MISE_LOCKED. "
-                    "Keep true so setup installs only what mise.lock pins. "
-                    "Override toolchain.mise_locked."
                 ),
             ),
         ] = True

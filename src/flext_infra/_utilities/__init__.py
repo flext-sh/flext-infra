@@ -216,8 +216,17 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope_method_order import (
         FlextInfraUtilitiesRopeMethodOrderMixin,
     )
+    from flext_infra._utilities._rope_source_bases_aliases import (
+        FlextInfraUtilitiesRopeSourceBasesAliases,
+    )
+    from flext_infra._utilities._rope_source_bases_inventory import (
+        FlextInfraUtilitiesRopeSourceBasesInventory,
+    )
     from flext_infra._utilities._rope_source_bases_inventory_collector import (
         FlextInfraUtilitiesRopeSourceBindingCollector,
+    )
+    from flext_infra._utilities._rope_source_bases_runtime import (
+        FlextInfraUtilitiesRopeSourceBasesRuntime,
     )
     from flext_infra._utilities._semantic_cutover.alias_cst import (
         FlextInfraUtilitiesSemanticCutoverAliasCst,
@@ -313,6 +322,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_path_cutover import (
         FlextInfraUtilitiesCodegenPathCutover,
     )
+    from flext_infra._utilities.codemod_binding_chain import (
+        FlextInfraUtilitiesCodemodBindingChain,
+    )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
     from flext_infra._utilities.compatibility_alias_validation import (
@@ -345,6 +357,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.gitignore import FlextInfraUtilitiesGitignore
+    from flext_infra._utilities.import_layers import FlextInfraUtilitiesImportLayers
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.iteration_directory import (
         FlextInfraUtilitiesIterationDirectory,
@@ -413,9 +426,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
-    from flext_infra._utilities.requirement_specs import (
-        FlextInfraUtilitiesRequirementSpecs,
-    )
     from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
     from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
     from flext_infra._utilities.rope_analysis_introspection import (
@@ -482,6 +492,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
+    "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -551,6 +562,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
     "FlextInfraUtilitiesGitignore",
+    "FlextInfraUtilitiesImportLayers",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -597,7 +609,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactorNamespaceMoves",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
-    "FlextInfraUtilitiesRequirementSpecs",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
     "FlextInfraUtilitiesRopeAnalysisAstHelpers",
@@ -623,6 +634,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeRuntimeTypes",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeSourceBases",
+    "FlextInfraUtilitiesRopeSourceBasesAliases",
+    "FlextInfraUtilitiesRopeSourceBasesInventory",
+    "FlextInfraUtilitiesRopeSourceBasesRuntime",
     "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSemanticCutover",
@@ -681,6 +695,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
+        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
@@ -758,6 +773,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitWorktreeRootsMixin": "._git.worktree_roots",
         "FlextInfraUtilitiesGitWorktreeStatusMixin": "._git.worktree_status",
         "FlextInfraUtilitiesGitignore": ".gitignore",
+        "FlextInfraUtilitiesImportLayers": ".import_layers",
         "FlextInfraUtilitiesIteration": ".iteration",
         "FlextInfraUtilitiesIterationDirectory": ".iteration_directory",
         "FlextInfraUtilitiesIterationMatching": ".iteration_matching",
@@ -806,7 +822,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesRefactorNamespaceMoves": ".namespace_moves",
         "FlextInfraUtilitiesRelease": ".release",
         "FlextInfraUtilitiesRepository": ".repository",
-        "FlextInfraUtilitiesRequirementSpecs": ".requirement_specs",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
         "FlextInfraUtilitiesRopeAnalysis": ".rope_analysis",
         "FlextInfraUtilitiesRopeAnalysisAstHelpers": "._rope_analysis.asthelpers",
@@ -832,6 +847,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeRuntimeTypes": ".rope_runtime_types",
         "FlextInfraUtilitiesRopeSource": ".rope_source",
         "FlextInfraUtilitiesRopeSourceBases": ".rope_source_bases",
+        "FlextInfraUtilitiesRopeSourceBasesAliases": "._rope_source_bases_aliases",
+        "FlextInfraUtilitiesRopeSourceBasesInventory": "._rope_source_bases_inventory",
+        "FlextInfraUtilitiesRopeSourceBasesRuntime": "._rope_source_bases_runtime",
         "FlextInfraUtilitiesRopeSourceBindingCollector": (
             "._rope_source_bases_inventory_collector"
         ),

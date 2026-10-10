@@ -12,8 +12,8 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._codegen import FlextInfraModelsCodegenScaffoldModels
 
 
 class FlextInfraModelsCodegenFixModels:
@@ -254,31 +254,35 @@ class FlextInfraModelsCodegenFixModels:
         violations_fixed: Annotated[
             t.MutableSequenceOf[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
             m.Field(
-                default_factory=list,
+                default_factory=list[
+                    FlextInfraModelsCodegenScaffoldModels.CensusViolation
+                ],
                 description="List of violations that were fixed",
             ),
         ] = m.Field(
-            default_factory=list,
+            default_factory=list[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
             description="List of violations that were fixed",
         )
         violations_skipped: Annotated[
             t.MutableSequenceOf[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
             m.Field(
-                default_factory=list,
+                default_factory=list[
+                    FlextInfraModelsCodegenScaffoldModels.CensusViolation
+                ],
                 description="List of violations that were skipped",
             ),
         ] = m.Field(
-            default_factory=list,
+            default_factory=list[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
             description="List of violations that were skipped",
         )
         files_modified: Annotated[
             MutableSet[str],
             m.Field(
-                default_factory=set,
+                default_factory=set[str],
                 description="Set of unique modified file paths",
             ),
         ] = m.Field(
-            default_factory=set,
+            default_factory=set[str],
             description="Set of unique modified file paths",
         )
 

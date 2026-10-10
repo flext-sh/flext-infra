@@ -11,8 +11,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from flext_infra import m, r, u
-from flext_infra.base import s
+from flext_infra import m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p

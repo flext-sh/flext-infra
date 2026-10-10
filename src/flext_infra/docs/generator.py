@@ -9,9 +9,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, t, u
-from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
-from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+    FlextInfraDocServiceBase,
+    c,
+    m,
+    r,
+    t,
+    u,
+)
+from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -58,9 +66,6 @@ class FlextInfraDocGenerator(
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
 
         """
-        from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-        from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-
         prepared = self._prepare_request(request)
         if prepared.failure:
             return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(prepared)

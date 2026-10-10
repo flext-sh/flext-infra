@@ -10,10 +10,8 @@ from collections.abc import MutableMapping
 from operator import itemgetter
 from sys import stdlib_module_names
 
-from flext_infra import c, config, m, t, u
-from flext_infra.codegen._codegen_generation_renderers import (
-    FlextInfraCodegenGenerationRenderersMixin,
-)
+from flext_infra import FlextInfraToolTablesPhase, c, config, m, t, u
+from flext_infra.codegen import FlextInfraCodegenGenerationRenderersMixin
 
 
 # Keep lazy loading only at the public package root and
@@ -255,8 +253,6 @@ class FlextInfraCodegenGenerationStandardMixin(
             Validated template data for the generated root initializer.
 
         """
-        from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-
         lazy_map = cls._lazy_export_map(plan)
         current_pkg = plan.context.current_pkg
         public_type_checking_imports = cls._type_checking_filtered(plan)

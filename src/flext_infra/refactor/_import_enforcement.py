@@ -10,10 +10,10 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor._import_placement import (
+from flext_infra.refactor import (
     FlextInfraImportNormalizationPlacementMixin,
+    FlextInfraImportNormalizationRoutesMixin,
 )
-from flext_infra.refactor._import_routes import FlextInfraImportNormalizationRoutesMixin
 
 
 class FlextInfraImportNormalization(
@@ -35,8 +35,8 @@ class FlextInfraImportNormalization(
     3. A root alias (facade and operational letters, ``config``,
        ``settings``, names the namespace root re-exports) binds through the
        module's own namespace root; facade modules keep the letters they
-       declare, family packages keep their own letter's upstream source and
-       settings/config modules keep their own law.
+       declare; family packages and runtime facade dependencies retain their
+       external providers, and settings/config modules keep their own law.
     4. A concrete object binds through the nearest package ``__init__`` that
        publishes it lazily.
 
@@ -54,12 +54,14 @@ class FlextInfraImportNormalization(
 
         """
         changed = False
+        import_graph, _modules = u.Infra.project_import_graph(project_root)
         for file_path in files:
             source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             normalized = cls.normalize_source(
                 project_root=project_root,
                 file_path=file_path,
                 source=source,
+                import_graph=import_graph,
             )
             if normalized is None:
                 continue
@@ -74,6 +76,7 @@ class FlextInfraImportNormalization(
         project_root: Path,
         file_path: Path,
         source: str,
+        import_graph: t.MappingKV[str, frozenset[str]] | None = None,
     ) -> str | None:
         """Return the canonical form of one module, or ``None`` when unchanged.
 
@@ -92,6 +95,13 @@ class FlextInfraImportNormalization(
         if root_exports is None:
             msg = f"{namespace_dir} is a namespace without an owned package init"
             raise ValueError(msg)
+        if import_graph is None:
+            import_graph, _modules = u.Infra.project_import_graph(project_root)
+        facade_dependencies = u.Infra.import_facade_dependencies(
+            module,
+            root_exports,
+            import_graph,
+        )
         current = source
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             tree = ast.parse(current, filename=str(file_path))
@@ -103,6 +113,7 @@ class FlextInfraImportNormalization(
                     module=module,
                     layer=u.Infra.module_import_layer(module),
                     own_exports=cls._declared_exports(tree),
+                    facade_dependencies=facade_dependencies,
                     family_letter=cls._family_letter(namespace_dir, file_path),
                     direct_imports=u.Infra.import_direct_module(
                         namespace_dir,

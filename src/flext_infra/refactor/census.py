@@ -12,18 +12,24 @@ from typing import Annotated, override
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    FlextInfraRopeWorkspace,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 from flext_infra.refactor import (
+    FlextInfraRefactorCensusCollectHelpersMixin,
+    FlextInfraRefactorCensusCollectMixin,
     FlextInfraRefactorCensusFiltersMixin,
     FlextInfraRefactorCensusObjectsMixin,
     FlextInfraRefactorCensusProjectMixin,
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
-)
-from flext_infra.refactor._census_collect import FlextInfraRefactorCensusCollectMixin
-from flext_infra.refactor._census_collect_helpers import (
-    FlextInfraRefactorCensusCollectHelpersMixin,
 )
 
 
@@ -143,8 +149,6 @@ class FlextInfraRefactorCensus(
             The final report and the pre-apply report the impact map reads.
 
         """
-        from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-
         started = time.monotonic()
         with FlextInfraRopeWorkspace.open_workspace(
             self.root,

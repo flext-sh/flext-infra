@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._conform.pyproject_policy import (
-    FlextInfraCodegenConformPyprojectPolicy,
-)
+from flext_infra import FlextInfraEnsurePackagingPhase, c, config, m, p, r, t, u
+from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -145,9 +143,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
-                worktree_environment_directory=(
-                    codegen.toolchain.worktree_environment_directory
-                ),
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
@@ -396,10 +391,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resulting ``p.Result[m.Infra.ProjectRenderContext]``.
 
         """
-        from flext_infra.deps.phases.ensure_packaging import (
-            FlextInfraEnsurePackagingPhase,
-        )
-
         target = render_inputs.target
         workspace = render_inputs.workspace
         codegen = render_inputs.codegen

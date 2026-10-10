@@ -9,17 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
+from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_journal_relocation import (
     FlextInfraMiseArtifactsJournalRelocation,
-)
-from flext_infra.codegen._mise_artifacts_process import (
     FlextInfraMiseArtifactsProcess as process,
-)
-from flext_infra.codegen._mise_artifacts_state import (
     FlextInfraMiseArtifactsState as journal_state,
+    FlextInfraMiseArtifactsVerification,
 )
 
 
@@ -239,10 +234,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[m.Infra.CodegenTransactionJournal]``.
 
         """
-        from flext_infra.codegen._mise_artifacts_verification import (
-            FlextInfraMiseArtifactsVerification,
-        )
-
         finalized: list[m.Infra.CodegenStagingIntent] = []
         for intent in journal.staging_intents:
             observed = files.read_state(intent.before.path, required=False)
@@ -960,10 +951,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[bool]``.
 
         """
-        from flext_infra.codegen._mise_artifacts_verification import (
-            FlextInfraMiseArtifactsVerification,
-        )
-
         return FlextInfraMiseArtifactsVerification.journal_topology(
             plan.layout,
             journal,

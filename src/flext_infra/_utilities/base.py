@@ -14,6 +14,7 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra import c, t
+from flext_infra._settings import FlextInfraSettings
 
 if os.name != "nt":
     import pwd
@@ -41,8 +42,6 @@ class FlextInfraUtilitiesBase:
             One raw environment value through the governed boundary.
 
         """
-        from flext_infra._settings import FlextInfraSettings
-
         return FlextInfraSettings.env_lookup(name)
 
     @staticmethod
@@ -56,8 +55,6 @@ class FlextInfraUtilitiesBase:
             One stripped dynamic environment value, or the stripped default.
 
         """
-        from flext_infra._settings import FlextInfraSettings
-
         value = FlextInfraSettings.env_lookup(name)
         return default.strip() if value is None else value.strip()
 
@@ -180,7 +177,7 @@ class FlextInfraUtilitiesBase:
         )
 
     @staticmethod
-    def merge_conflict_control(line: str) -> str | None:
+    def merge_conflict_control(line: str | bytes) -> str | None:
         """Classify one Git merge-control line from the protocol SSOT.
 
         Returns:
@@ -191,7 +188,11 @@ class FlextInfraUtilitiesBase:
             (
                 kind
                 for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
-                if line.startswith(token)
+                if (
+                    line.startswith(token.encode("ascii"))
+                    if isinstance(line, bytes)
+                    else line.startswith(token)
+                )
             ),
             None,
         )

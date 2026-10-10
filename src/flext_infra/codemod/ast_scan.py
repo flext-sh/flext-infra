@@ -17,9 +17,16 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import c, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
+from flext_infra import (
+    FlextInfraModGateEngine,
+    FlextInfraModTextGateEngine,
+    FlextInfraServiceBase,
+    c,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -109,9 +116,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-        from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
-
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()

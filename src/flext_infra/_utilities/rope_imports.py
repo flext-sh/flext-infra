@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
+from flext_cli import u
 from rope.base import exceptions
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
 
 
@@ -45,8 +48,6 @@ class FlextInfraUtilitiesRopeImports:
             The declared module name, preserving relative import depth.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         import_info = import_statement.import_info
         if not FlextInfraUtilitiesRopeRuntime.from_import_info(import_info):
             return None
@@ -63,8 +64,6 @@ class FlextInfraUtilitiesRopeImports:
             Validated imported-name pairs from one Rope import statement.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         import_info = import_statement.import_info
         if not (
             FlextInfraUtilitiesRopeRuntime.from_import_info(import_info)
@@ -86,8 +85,6 @@ class FlextInfraUtilitiesRopeImports:
             Runtime import targets represented by a Rope module import set.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysis
-
         imported_paths: list[str] = []
         for import_statement in cls.import_statements(module_imports):
             declared_name = (
@@ -133,8 +130,6 @@ class FlextInfraUtilitiesRopeImports:
             RuntimeError: If rope find_occurrences failed for.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         try:
             return FlextInfraUtilitiesRopeRuntime.runtime_find_occurrences(
                 rope_project,
@@ -182,25 +177,20 @@ class FlextInfraUtilitiesRopeImports:
         name: str,
         definition_path: Path,
         dependent_import_targets: t.StrSequence = (),
-        include_reexports: bool = False,
     ) -> t.VariadicTuple[t.Infra.RopeResource]:
-        """Build the minimal Rope resource set for semantic occurrence searches.
+        """Build the reachability resource set for semantic occurrence searches.
 
         The workspace name index already narrows the candidate module set to
         files that contain ``name`` textually. This helper converts that cheap
         index into concrete Rope resources so callers can still rely on Rope's
-        semantic identity checks without scanning the full project.
-        Report-only callers may include package reexports; the default preserves
-        the existing reachability and removal-planning resource set.
+        semantic identity checks without scanning the full project, keeping the
+        removal-planning resource set: package reexports stay excluded and the
+        candidates narrow to the import dependents when targets are given.
 
         Returns:
             The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
 
-        Raises:
-            RuntimeError: If rope search resource unavailable for indexed path.
-
         """
-        occurrences = rope_workspace.name_index().get(name, ())
         resolved_definition = definition_path.resolve()
         dependent_paths: frozenset[str] | None = None
         if dependent_import_targets:
@@ -211,17 +201,78 @@ class FlextInfraUtilitiesRopeImports:
                     for path in rope_workspace.import_dependents(import_target)
                 )
             dependent_paths = frozenset(str(path) for path in dependent_candidates)
-        seen_paths = {str(resolved_definition)}
+
+        def admitted(resolved_path: Path) -> bool:
+            return (
+                resolved_path != resolved_definition
+                and resolved_path.name != c.Infra.INIT_PY
+                and (dependent_paths is None or str(resolved_path) in dependent_paths)
+            )
+
+        return FlextInfraUtilitiesRopeImports._indexed_search_resources(
+            rope_workspace,
+            resource=resource,
+            name=name,
+            definition_path=resolved_definition,
+            occurrence_admitted=admitted,
+        )
+
+    @staticmethod
+    def indexed_surface_search_resources(
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        resource: t.Infra.RopeResource,
+        name: str,
+        definition_path: Path,
+    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+        """Build the report-only resource set that spans package reexports.
+
+        Report-only callers index every surface, so ``__init__`` reexports stay
+        admissible and the candidate set is not narrowed to import dependents.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
+
+        """
+        resolved_definition = definition_path.resolve()
+
+        def admitted(resolved_path: Path) -> bool:
+            return resolved_path != resolved_definition
+
+        return FlextInfraUtilitiesRopeImports._indexed_search_resources(
+            rope_workspace,
+            resource=resource,
+            name=name,
+            definition_path=resolved_definition,
+            occurrence_admitted=admitted,
+        )
+
+    @staticmethod
+    def _indexed_search_resources(
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        resource: t.Infra.RopeResource,
+        name: str,
+        definition_path: Path,
+        occurrence_admitted: Callable[[Path], bool],
+    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+        """Collect deduplicated Rope resources from the workspace name index.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
+
+        Raises:
+            RuntimeError: If rope search resource unavailable for indexed path.
+
+        """
+        occurrences = rope_workspace.name_index().get(name, ())
+        seen_paths = {str(definition_path)}
         resources: list[t.Infra.RopeResource] = [resource]
         for path, _surface, _lines in occurrences:
             resolved_path = path.resolve()
-            if resolved_path == resolved_definition or (
-                not include_reexports and path.name == c.Infra.INIT_PY
-            ):
+            if not occurrence_admitted(resolved_path):
                 continue
             cache_key = str(resolved_path)
-            if dependent_paths is not None and cache_key not in dependent_paths:
-                continue
             if cache_key in seen_paths:
                 continue
             candidate_resource = rope_workspace.resource(resolved_path)
@@ -253,8 +304,6 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``p.Result[bool]``.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         try:
             original_source = resource.read()
             organizer = FlextInfraUtilitiesRopeRuntime.import_organizer(rope_project)
@@ -308,8 +357,6 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``p.Result[bool]``.
 
         """
-        from flext_cli import u
-
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
             return r[bool].ok(value=False)
@@ -366,13 +413,6 @@ class FlextInfraUtilitiesRopeImports:
             ValueError: If ``referenced_result.failure``.
 
         """
-        from flext_cli import u
-
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesRopeCore,
-            FlextInfraUtilitiesRopeRuntime,
-        )
-
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         canonical_modules = frozenset({
             c.Infra.PKG_CORE_UNDERSCORE,
@@ -495,11 +535,6 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``p.Result[bool]``.
 
         """
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesRopeCore,
-            FlextInfraUtilitiesRopeRuntime,
-        )
-
         resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
             rope_project,
             file_path,
@@ -566,8 +601,6 @@ class FlextInfraUtilitiesRopeImports:
             The module name to unaliased imported names.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         current: MutableMapping[str, set[str]] = defaultdict(set)
         for import_stmt in FlextInfraUtilitiesRopeImports.import_statements(
             module_imports,
@@ -595,8 +628,6 @@ class FlextInfraUtilitiesRopeImports:
             True when a matching statement was found and mutated.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         for import_stmt in FlextInfraUtilitiesRopeImports.import_statements(
             module_imports,
         ):
@@ -777,8 +808,6 @@ class FlextInfraUtilitiesRopeImports:
                 t.Infra.StrSet]``.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         target_import_stmt: t.Infra.RopeImportStatement | None = None
         moved_aliases: t.Infra.StrSet = set()
         import_statements = module_imports.imports
@@ -827,8 +856,6 @@ class FlextInfraUtilitiesRopeImports:
             RuntimeError: If rope target import mismatch for.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         sorted_moved = sorted(moved_aliases)
         if target_import_stmt is None:
             module_imports.add_import(
@@ -941,11 +968,6 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``str | None``.
 
         """
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesRopeCore,
-            FlextInfraUtilitiesRopeRuntime,
-        )
-
         module_imports = FlextInfraUtilitiesRopeCore.resolve_module_imports(
             rope_project,
             resource,
@@ -978,11 +1000,6 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``str | None``.
 
         """
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesRopeCore,
-            FlextInfraUtilitiesRopeRuntime,
-        )
-
         names_to_remove = frozenset(names)
         module_imports = FlextInfraUtilitiesRopeCore.resolve_module_imports(
             rope_project,
@@ -1093,10 +1110,6 @@ class FlextInfraUtilitiesRopeImports:
             One file plan when the module's imports change; otherwise None.
 
         """
-        from flext_cli import u
-
-        from flext_infra._utilities import FlextInfraUtilitiesRopeCore
-
         file_path = entry.file_path
         if not file_path.is_file():
             return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok((None, False))
@@ -1151,8 +1164,6 @@ class FlextInfraUtilitiesRopeImports:
             ValueError: If a relative import level escapes the package.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-
         changed = False
         for import_stmt in cls.import_statements(module_imports):
             import_info = import_stmt.import_info

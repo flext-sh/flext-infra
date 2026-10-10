@@ -10,9 +10,10 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m, u
+from flext_cli import m, u
+
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCheck:
@@ -74,7 +75,7 @@ class FlextInfraModelsCheck:
             str,
             m.Field(
                 alias="reports-dir",
-                description="Directory used to write check reports",
+                description="Base directory for unique invocation check reports",
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
         check_only: Annotated[
@@ -104,7 +105,7 @@ class FlextInfraModelsCheck:
 
         @property
         def reports_dir_path(self) -> Path:
-            """Resolved reports directory path."""
+            """Resolve the requested base; the checker owns its unique run leaf."""
             reports_dir = Path(self.reports_dir).expanduser()
             if reports_dir.is_absolute():
                 return reports_dir.resolve()
@@ -179,6 +180,15 @@ class FlextInfraModelsCheck:
         profile_output: Annotated[
             Path | None,
             m.Field(description="Optional cProfile output destination"),
+        ] = None
+        report_file: Annotated[
+            Path | None,
+            m.Field(
+                description=(
+                    "Owned file receiving one JSON diagnostic per line through "
+                    "the machine-channel report runner"
+                ),
+            ),
         ] = None
 
     class FixPyreflyConfigCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
@@ -371,12 +381,14 @@ class FlextInfraModelsCheck:
             Returns:
                 The resulting ``bool``.
             """
-            return all(v.result.passed for v in self.gates.values())
+            return bool(self.gates) and all(
+                v.result.passed for v in self.gates.values()
+            )
 
         @m.computed_field
         @property
         def total_findings(self) -> int:
-            """Total native findings across all gates, including informative ones.
+            """Total native findings across every executed gate.
 
             Returns:
                 The resulting ``int``.
@@ -544,6 +556,22 @@ class FlextInfraModelsCheck:
                 ],
             }
 
+    class CheckReportSummary(m.ContractModel):
+        """Invocation-owned execution facts retained by the published SARIF."""
+
+        targets: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget],
+            m.Field(description="Canonical project roots selected for this invocation"),
+        ]
+        results: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.ProjectResult],
+            m.Field(description="Only executions reached by this invocation"),
+        ]
+        selected_files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="File selection; empty means full-project execution"),
+        ]
+
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report; serializes and validates the same JSON."""
 
@@ -566,6 +594,10 @@ class FlextInfraModelsCheck:
         runs: t.VariadicTuple[FlextInfraModelsCheck.SarifRun] = m.Field(
             default_factory=tuple,
             description="SARIF runs",
+        )
+        properties: FlextInfraModelsCheck.CheckReportSummary | None = m.Field(
+            None,
+            description="Typed invocation targets and executions; absent is unknown",
         )
 
 

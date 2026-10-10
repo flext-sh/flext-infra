@@ -12,9 +12,13 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+from flext_cli import u
+
 from flext_infra import c, config, m
-from flext_infra._utilities._project_discovery_candidates import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
+    FlextInfraUtilitiesWorkspaceManifest,
 )
 
 if TYPE_CHECKING:
@@ -35,10 +39,6 @@ class FlextInfraUtilitiesProjectDiscovery(
             The resulting ``m.Infra.RefactorConfigSpec``.
 
         """
-        from flext_cli import u
-
-        from flext_infra._utilities import FlextInfraUtilitiesWorkspaceManifest
-
         manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root,
         )
@@ -81,10 +81,6 @@ class FlextInfraUtilitiesProjectDiscovery(
             Every manifest-relative path that is not a generation participant.
 
         """
-        from flext_cli import u
-
-        from flext_infra._utilities import FlextInfraUtilitiesWorkspaceManifest
-
         manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root,
         )
@@ -190,17 +186,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             Project roots sorted by their ``.gitmodules`` declaration order.
 
         Raises:
-            ValueError: If ``declared_paths.failure``.
+            ValueError: If ``declared.failure``.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesGit
-
-        declared_paths = FlextInfraUtilitiesGit.git_declared_submodule_paths(
-            repository_root,
-        )
-        if declared_paths.failure:
-            raise ValueError(declared_paths.error or "invalid .gitmodules")
-        configured_projects = tuple(path.as_posix() for path in declared_paths.value)
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
+        if declared.failure:
+            raise ValueError(declared.error or "invalid .gitmodules")
+        configured_projects = tuple(item.path.as_posix() for item in declared.value)
         candidates = cls.discover_project_candidates(
             repository_root,
             scan_dirs=scan_dirs,
@@ -246,16 +238,14 @@ class FlextInfraUtilitiesProjectDiscovery(
             ValueError: If ``declared_paths.failure``.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesGit
-
         resolved_root = repository_root.resolve()
-        declared_paths = FlextInfraUtilitiesGit.git_declared_submodule_paths(
+        declared_paths = FlextInfraUtilitiesGit.git_submodule_declarations(
             resolved_root,
         )
         if declared_paths.failure:
             raise ValueError(declared_paths.error or "invalid .gitmodules")
         submodules = frozenset(
-            (resolved_root / path).resolve() for path in declared_paths.value
+            (resolved_root / item.path).resolve() for item in declared_paths.value
         )
         declared = cls.discover_project_candidates(resolved_root)
         nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
@@ -308,7 +298,14 @@ class FlextInfraUtilitiesProjectDiscovery(
                         resolved_root,
                         targets,
                     )
-        return tuple(sorted(targets))
+        nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
+        return tuple(
+            target
+            for target in sorted(targets)
+            if not cls._is_nonparticipant(
+                resolved_root / target, resolved_root, nonparticipants
+            )
+        )
 
     @staticmethod
     def _collect_scan_dir_targets(
@@ -377,33 +374,20 @@ class FlextInfraUtilitiesProjectDiscovery(
         A declared ``runtime_root`` (the generated Makefile's ``RUNTIME_ROOT``)
         owns the environment. Undeclared, the owner derives it: a subproject
         checked out inside a workspace uses the workspace environment; a
-        standalone checkout owns its local environment. A linked Git worktree
-        owns a physical sibling environment in the declared external directory,
-        exactly as the generated Makefile resolves ``REPOSITORY_ROOT``.
+        standalone checkout or a linked Git worktree owns its own physical
+        environment inside the checkout, exactly as the generated Makefile and
+        ``.envrc`` resolve it. No environment is shared between checkouts.
 
         Returns:
             The resulting ``Path``.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesGit
-
         if runtime_root is None:
             runtime = FlextInfraUtilitiesGit.git_repository_root(
                 m.Infra.GitRepoRequest(repo_root=project_root),
             ).unwrap()
             runtime_root = runtime.repository_root
-        owner = runtime_root.resolve()
-        if (owner / c.Infra.GIT_DIR).is_file():
-            identity = FlextInfraUtilitiesGit.git_identity(
-                m.Infra.GitRepoRequest(repo_root=owner),
-            ).unwrap()
-            if identity.is_worktree:
-                return (
-                    owner.parent
-                    / config.Infra.codegen.toolchain.worktree_environment_directory
-                    / owner.name
-                )
-        return owner / c.Infra.ENVIRONMENT_DIRECTORY
+        return runtime_root.resolve() / c.Infra.ENVIRONMENT_DIRECTORY
 
     @classmethod
     def runtime_python(

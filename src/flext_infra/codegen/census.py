@@ -11,8 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
+from flext_infra import FlextInfraNamespaceValidator, c, m, p, r, s, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,10 +93,6 @@ class FlextInfraCodegenCensus(s[str]):
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CensusReport]]``.
 
         """
-        from flext_infra.validate.namespace_validator import (
-            FlextInfraNamespaceValidator,
-        )
-
         if projects is not None:
             selected_projects = tuple(projects)
         else:

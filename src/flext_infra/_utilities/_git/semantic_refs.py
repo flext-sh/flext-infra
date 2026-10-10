@@ -11,10 +11,7 @@ from pathlib import Path
 from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitWorktreePatchMixin,
-    FlextInfraUtilitiesWorkspaceManifest,
-)
+from flext_infra._utilities import FlextInfraUtilitiesGitWorktreePatchMixin
 
 
 class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatchMixin):
@@ -112,28 +109,66 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         cls,
         request: m.Infra.GitLaneVerificationRequest,
     ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
-        """Resolve the remote branch exclusively from the typed manifest.
+        """Resolve the integration branch the lane's repository declares.
+
+        A member composed by a superproject declares its line in that
+        superproject's ``.gitmodules`` ``branch`` key; an undeclared member or a
+        member that follows the superproject (``.``) fails closed. A standalone
+        checkout declares its line through its forge default branch, read live
+        from the remote's ``HEAD``. No branch is inferred from names or cached
+        refs.
 
         Returns:
             Declared integration query or a missing-authority diagnostic.
 
         """
-        declared = FlextInfraUtilitiesWorkspaceManifest.load_workspace_manifest(
-            request.repo_root,
-        )
-        if declared.failure:
-            return r[m.Infra.GitRemoteBranchRequest].from_failure(declared)
-        if not declared.value or declared.value[0].integration is None:
-            return r[m.Infra.GitRemoteBranchRequest].fail(
-                "lane admission requires typed config/workspace.yaml integration "
-                "declaration; no branch is inferred from names or cached refs",
-            )
-        return r[m.Infra.GitRemoteBranchRequest].ok(
-            m.Infra.GitRemoteBranchRequest(
+        result = r[m.Infra.GitRemoteBranchRequest]
+
+        def declared(branch: str) -> m.Infra.GitRemoteBranchRequest:
+            return m.Infra.GitRemoteBranchRequest(
                 repo_root=request.repo_root,
                 remote=request.remote,
-                branch=declared.value[0].integration.branch,
-            ),
+                branch=branch,
+            )
+
+        def member_line(
+            superproject: Path,
+            primary: Path,
+        ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+            return cls.git_submodule_declaration(
+                m.Infra.GitSubmoduleContractRequest(
+                    repo_root=superproject,
+                    member_path=primary.relative_to(superproject).as_posix(),
+                ),
+            ).flat_map(
+                lambda declaration: (
+                    result.fail(
+                        "lane admission requires a named .gitmodules branch; "
+                        f"{declaration.path} follows its superproject",
+                    )
+                    if declaration.branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH
+                    else result.ok(declared(declaration.branch))
+                ),
+            )
+
+        def integration_line(
+            primary: Path,
+        ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+            return cls._git_repository_root_path(primary).flat_map(
+                lambda superproject: (
+                    cls.git_remote_default_branch(
+                        m.Infra.GitRemoteRequest(
+                            repo_root=request.repo_root,
+                            remote=request.remote,
+                        ),
+                    ).map(lambda default: declared(default.text))
+                    if superproject == primary
+                    else member_line(superproject, primary)
+                ),
+            )
+
+        return cls._git_primary_worktree_root_path(request.repo_root).flat_map(
+            integration_line,
         )
 
     @classmethod
@@ -562,6 +597,46 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         output = text if isinstance(text, str) else str(text)
         return r[m.Infra.GitTextReport].ok(
             m.Infra.GitTextReport(text=output.partition("\t")[0].strip()),
+        )
+
+    @classmethod
+    def git_remote_default_branch(
+        cls,
+        request: m.Infra.GitRemoteRequest,
+    ) -> p.Result[m.Infra.GitTextReport]:
+        """Ask the remote itself which branch its ``HEAD`` declares.
+
+        The forge default branch is the integration declaration of a
+        standalone repository; it is read live, never from a cached
+        ``refs/remotes/<remote>/HEAD``.
+
+        Returns:
+            The declared branch name, or a failure when the remote declares none.
+
+        """
+        try:
+            text = cls._repo(request.repo_root).git.ls_remote(
+                "--symref",
+                request.remote,
+                c.Infra.GIT_HEAD,
+            )
+        except GitCommandError as exc:
+            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to query {request.remote} for its default branch: {exc}",
+                exception=exc,
+            )
+        output = text if isinstance(text, str) else str(text)
+        symref_prefix = f"ref: {c.Infra.GIT_REFS_HEADS}"
+        for line in output.splitlines():
+            target, _, name = line.partition("\t")
+            if name == c.Infra.GIT_HEAD and target.startswith(symref_prefix):
+                return r[m.Infra.GitTextReport].ok(
+                    m.Infra.GitTextReport(text=target.removeprefix(symref_prefix)),
+                )
+        return r[m.Infra.GitTextReport].fail(
+            f"{request.remote} declares no default branch through its HEAD",
         )
 
     @classmethod

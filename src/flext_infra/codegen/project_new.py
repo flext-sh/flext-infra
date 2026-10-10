@@ -9,8 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
+from flext_infra import FlextInfraCodegenConform, c, m, r, u
+from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 # New file per operator live
 # order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
@@ -143,8 +143,6 @@ class FlextInfraCodegenProjectNew(
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        from flext_infra.codegen.conform import FlextInfraCodegenConform
-
         if self.effective_dry_run:
             return r[m.Infra.CodegenResult].fail("codegen new requires apply mode")
         # Every identity fact is an explicit caller declaration: for a

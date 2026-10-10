@@ -21,36 +21,31 @@ class TestsFlextInfraGitFacet:
 
     @staticmethod
     def _lane_repository(tmp_path: Path) -> t.Triple[Path, Path, str]:
-        """Publish a real fixture with a typed, config-derived integration line.
+        """Publish a real member whose superproject declares its integration line.
+
+        The member keeps its own ``.git`` directory inside the superproject, so
+        its index, refs and reflogs stay observable as member bytes.
 
         Returns:
-            Checkout, local bare remote, and the declared integration branch.
+            Member checkout, local bare remote, and the declared integration branch.
 
         """
-        repository = u.Tests.git_repository(tmp_path)
+        superproject = u.Tests.git_repository(tmp_path, "superproject")
+        repository = u.Tests.git_repository(superproject, "member")
         branch = u.Tests.integration_branch(repository)
-        manifest = tm.ok(
-            u.Infra.load_workspace_manifest(Path(__file__).resolve().parents[3]),
-        )[0]
-        declared = manifest.model_copy(
-            update={
-                "integration": m.Infra.WorkspaceIntegrationSpec(
-                    provider=manifest.repository.provider,
-                    branch=branch,
-                ),
-            },
-        )
-        directory = repository / c.CONFIG_DIR_NAME
-        directory.mkdir(exist_ok=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                u.Infra.workspace_manifest_path(repository),
-                declared.model_dump(mode="json"),
-            ),
-        )
-        u.Tests.git_run(repository, "add", "--", directory.name)
-        u.Tests.git_run(repository, "commit", "-m", "test: declare lane integration")
         remote = u.Tests.configure_local_origin(repository, tmp_path / "remote")
+        u.Tests.git_run(
+            superproject,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-b",
+            branch,
+            str(remote),
+            repository.name,
+        )
+        u.Tests.git_run(superproject, "commit", "-m", "test: declare member line")
         return repository, remote, branch
 
     @staticmethod
@@ -320,15 +315,23 @@ class TestsFlextInfraGitFacet:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """A missing typed integration owner is a visible, effect-free refusal."""
+        """A standalone remote that declares no default branch is refused.
+
+        A standalone checkout declares its integration line through its forge
+        default branch (the remote ``HEAD``); an empty remote declares none,
+        and admission refuses visibly without guessing a branch or effects.
+        """
         repository = u.Tests.git_repository(tmp_path)
+        empty_remote = tmp_path / "empty-remote.git"
+        u.Tests.git_run(tmp_path, "init", "--bare", str(empty_remote))
+        u.Tests.git_run(repository, "remote", "set-url", "origin", str(empty_remote))
         before = self._lane_bytes(repository)
         tm.that(
             main(["workspace", "verify-lane", "--repo-root", str(repository)]),
             eq=1,
         )
         output = capsys.readouterr()
-        tm.that(output.out + output.err, has="typed config/workspace.yaml integration")
+        tm.that(output.out + output.err, has="declares no default branch")
         tm.that(self._lane_bytes(repository), eq=before)
 
     @staticmethod
@@ -614,7 +617,7 @@ class TestsFlextInfraGitFacet:
             "-m",
             "recovery index",
         )
-        oids = []
+        oids: list[str] = []
         for entry in range(entries):
             oid = u.Tests.git_capture(
                 real_git_repo,
@@ -809,9 +812,11 @@ class TestsFlextInfraGitFacet:
             ),
         )
 
+        u.Tests.git_run(repository, "fetch", "--quiet", "origin")
+
         tm.fail(
             u.Infra.git_remove_clean_worktree(repository, lane),
-            has="integration declaration",
+            has="retirement refused",
         )
 
         assert lane.is_dir()

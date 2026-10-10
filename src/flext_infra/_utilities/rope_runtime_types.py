@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TypeGuard
 
 from flext_infra import p, t
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         return type(value) is cls.runtime_type("rope.base.pyobjects", "PyObject")
 
     @classmethod
-    def py_class(cls, value: t.Infra.RopePyObject) -> bool:
+    def py_class(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyObject]:
         """Return whether ``value`` is a Rope class declared in Python source.
 
         Builtin classes (``Exception``, ``object``) are abstract classes too,

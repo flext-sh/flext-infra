@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterable
 from pathlib import Path
 
 from flext_infra import c, config, m, p, t
@@ -524,14 +523,16 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             resources=resources,
             in_hierarchy=in_hierarchy,
         )
-        if not isinstance(raw_locations, Iterable):
-            msg = "rope find_occurrences returned non-iterable locations"
+        if not isinstance(raw_locations, p.Infra.RopeRuntimeSequence):
+            msg = "rope find_occurrences returned non-sequence locations"
             raise TypeError(msg)
-        return tuple(
-            location
-            for location in raw_locations
-            if isinstance(location, p.Infra.RopeLocation)
-        )
+        locations: t.MutableSequenceOf[t.Infra.RopeLocation] = []
+        for location in raw_locations:
+            if not isinstance(location, p.Infra.RopeLocation):
+                msg = "rope find_occurrences returned an invalid location"
+                raise TypeError(msg)
+            locations.append(location)
+        return tuple(locations)
 
     @classmethod
     def from_import(

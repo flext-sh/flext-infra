@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_core import e
 from flext_infra import (
     FlextInfraEnsureRuffConfigPhase,
     FlextInfraPyprojectModernizer,
@@ -19,7 +17,7 @@ from flext_infra import (
     config,
 )
 from flext_infra.gates.mypy import FlextInfraMypyGate
-from tests import c, m, t, u
+from tests import c, e, m, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerToolTables:
@@ -410,7 +408,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tmp_path: Path,
     ) -> None:
         """Roots and members converge once and never project a coverage floor."""
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=tmp_path,
             skip_check=True,

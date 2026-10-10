@@ -94,16 +94,28 @@ installed package with the same top-level name. Only cross-owner imports require
 installed public-facade discovery; invalid relative imports in that dependency remain
 errors.
 
+Root-alias normalization retains external providers in declaration families and in
+modules that construct their own facade. This boundary derives from the project's
+runtime import graph and lazy export providers, not a filename exception. A helper
+must not import the facade that is loading that helper.
+
+Functional generic bounds retain their typed payload contract. Class-bound lazy alias
+deferral is a detection-only repair at the canonical typings owner, never an automatic
+deletion of constraints.
+
 ## Verb single-pass contract
 
 Each mutating verb owns exactly one operation per tool, and `make check` is strictly
 read-only — no verb repeats another verb's work across the canonical sequence
-`make fix && make fmt && make check`:
+`make fix && make fmt && make check`. Gates execute serially in their declared order,
+including whole-program type checkers. Read-only checks preserve every executed
+verdict; fail-fast checks and mutating operations stop at their first failed gate.
+Unexecuted gates never acquire a passing receipt:
 
 | Gate / tool                       | `make check` (read-only)           | `make fmt` (formatters) | `make fix` (one mutation)                  |
 | --------------------------------- | ---------------------------------- | ----------------------- | ------------------------------------------ |
 | `lint` — ruff                     | read-only `ruff` verdict           | —                       | one `ruff` repair pass                     |
-| `format` — ruff                   | — (mutating)                       | `ruff` format pass      | —                                          |
+| `format` — ruff                   | read-only `ruff format --check`    | `ruff` format pass      | —                                          |
 | `markdown` — rumdl                | `rumdl check`                      | —                       | `rumdl check --fix`                        |
 | `markdown-format` — prettier      | `prettier --check`                 | `prettier --write`      | —                                          |
 | `markdown-code` — ruff (embedded) | format verdict on parseable blocks | —                       | one format pass, clean round-trips spliced |
@@ -143,11 +155,21 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   members and external consumers and publishes `.reports/fleet-gaps.json`:
   per repository, its porcelain dirty paths, its open pull requests (a
   failing `gh` degrades to an empty list), its local branches not merged into
-  the integration line, the lint, pyrefly and codemod counts its own
-  `.reports` carry (an absent artifact counts zero), and the standards
+  the integration line, explicitly selected lint/Pyrefly execution counts,
+  the codemod count its own `.reports` carries (an absent mod artifact counts
+  zero), and the standards
   presence columns (`AGENTS.md`, `.agents/skills/.flext-stamp.json` with its
   `distribution_version`, `.beads/config.yaml`). The report carries no
   timestamp: an unchanged tree re-publishes a byte-identical receipt.
+  `--quality-receipts path/to/check-report.sarif[,other/check-report.sarif]`
+  selects exact published check invocations, with relative paths resolved from
+  `--repository-root`. Their typed SARIF properties bind execution verdicts to
+  canonical project roots. No selection, missing gates, unreached projects and
+  file-scoped checks yield `null` (unknown/not executed), not zero or PASS.
+  Missing/malformed selected receipts, unrelated roots, native tool errors,
+  missing native output and duplicate full-project repo/gate selections fail
+  before hygiene probes. The auditor never searches by time or combines counts
+  from multiple captures of the same repo/gate.
 - `flext-infra refactor violations-sweep` measures the repository's mod scan
   totals, runs the canonical repair sequence (`make fix`, `make fmt`,
   `make mod`) in order, measures again, and publishes
@@ -181,6 +203,24 @@ and `make gen` renders it into every generated `pyproject.toml`:
 `print(x, file=sys.stderr)`, `print(x, file=sys.stdout)` and a literal `flush` rewritten
 to `cli.display_text(x)` by the codemod rule `rewire-print-to-cli-display-text`. Every
 other form stays a reported T201 finding for its author.
+
+## Native type descriptor policy
+
+Operator approval on 2026-10-09, **"Parametrizar Dois Descritores"**, authorizes only
+`__base__` and `__bases__` through
+`Infra.tooling.tools.ruff.lint.pylint.allow-dunder-method-names` in
+`config/tooling.yaml`. The typed model rejects unrelated names; generation and Ruff
+conformance derive the managed `tool.ruff.lint.pylint` table from that owner.
+
+Python documents [`type.__base__`][python-type-base] as the single base responsible for
+instance memory layout and [`type.__bases__`][python-type-bases] as the tuple of direct
+bases. Protocols retain read-only properties, their signatures, and native identity.
+[Ruff PLW3201][ruff-dunder] supports this exact setting: the rule remains enabled for
+other unrecognized dunders, without `noqa`, per-file ignores, or rule disabling.
+
+[python-type-base]: https://docs.python.org/3.13/reference/datamodel.html#type.__base__
+[python-type-bases]: https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
+[ruff-dunder]: https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
 
 ## Markdown quality pipeline
 

@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._conform.context_render import (
-    FlextInfraCodegenConformContextRender,
-)
+from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
@@ -145,9 +143,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         live_path = repository_root / c.PYPROJECT_FILENAME
         live: str | None = None
         if live_path.is_file():
-            # Overlay reads the live text (managed merge conflicts
-            # resolved) and never writes it.
-            recovered_live = u.Infra.live_pyproject_text(live_path)
+            # Overlay reads the live text (managed merge conflicts resolved)
+            # with every owned tool table removed: those tables regenerate
+            # from the owner, so a corrupt owned table never blocks the
+            # render. The live file is never written here.
+            recovered_live = u.Infra.live_pyproject_text(
+                live_path,
+                regenerate_managed_tools=True,
+            )
             if recovered_live.failure:
                 return result_type.from_failure(recovered_live)
             live = recovered_live.value
@@ -363,9 +366,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # A repository without one must not render ledger activation.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
-                    worktree_environment_directory=(
-                        codegen.toolchain.worktree_environment_directory
-                    ),
                     repository_root_rel=self._repository_root_rel(workspace),
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
@@ -646,9 +646,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
-                worktree_environment_directory=(
-                    codegen.toolchain.worktree_environment_directory
-                ),
                 pytest=pytest,
                 dist=target.repository.distribution,
                 infra_cli=config.Infra.name,

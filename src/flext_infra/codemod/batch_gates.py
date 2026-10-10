@@ -13,9 +13,17 @@ import tempfile
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, settings, t, u
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra import (
+    FlextInfraCodemodSnapshotReconciler,
+    FlextInfraModReplacements,
+    c,
+    m,
+    p,
+    r,
+    settings,
+    t,
+    u,
+)
 
 
 class FlextInfraModGateEngine:
@@ -549,12 +557,14 @@ class FlextInfraModGateEngine:
             else entry
             for entry in report.entries
             if u.Infra.codemod_context_admits(
-                root,
-                rules_by_id[entry.rule_id],
-                entry.file,
-                FlextInfraModGateEngine._captures(entry.payload),
-                facts,
-                snapshot,
+                m.Infra.CodemodAdmission(
+                    root=root,
+                    rule=rules_by_id[entry.rule_id],
+                    file_path=entry.file,
+                    captures=FlextInfraModGateEngine._captures(entry.payload),
+                    facts=facts,
+                    snapshot=snapshot,
+                ),
             )
         )
         if entries == report.entries:

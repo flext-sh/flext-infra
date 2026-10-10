@@ -9,11 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
-from flext_infra.codegen._consolidator_steps import (
-    FlextInfraCodegenConsolidatorStepsMixin,
-)
+from flext_infra import FlextInfraRopeWorkspace, c, m, p, r, s, t, u
+from flext_infra.codegen import FlextInfraCodegenConsolidatorStepsMixin
 
 
 class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMixin):
@@ -32,8 +29,6 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
             The resulting ``p.Result[str]``.
 
         """
-        from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-
         output_lines: t.MutableSequenceOf[str] = (
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )

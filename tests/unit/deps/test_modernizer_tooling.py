@@ -90,6 +90,7 @@ class TestsFlextInfraDepsModernizerTooling:
             tool_config_document,
             project_dir,
             '[lint]\nselect = ["E501"]\n'
+            '[tool.ruff.lint.pylint]\nallow-dunder-method-names = ["__basse__"]\n'
             f'[tool.ruff.lint.per-file-ignores]\n"{stale_pattern}" = ["E402"]\n',
         )
 
@@ -115,6 +116,14 @@ class TestsFlextInfraDepsModernizerTooling:
             eq=ruff_policy.format.docstring_code_format,
         )
         lint = u.Tests.toml_mapping(ruff["lint"])
+        tm.that(
+            list(
+                u.Tests.toml_strings(
+                    u.Tests.toml_mapping(lint["pylint"])["allow-dunder-method-names"],
+                ),
+            ),
+            eq=sorted(ruff_policy.lint.pylint.allow_dunder_method_names),
+        )
         tm.that(
             list(u.Tests.toml_strings(lint["unfixable"])),
             eq=sorted(ruff_policy.lint.unfixable),
@@ -173,29 +182,21 @@ class TestsFlextInfraDepsModernizerTooling:
         """Exclude nonmember consumer namespaces from FLEXT first-party names."""
         repository_root = tmp_path / "workspace"
         project_dir = repository_root / "demo-migration-tool"
-        internal_project = repository_root / "flext-core"
+        _ = u.Tests.WorktreeFixture.governed_workspace_with_member(
+            repository_root,
+            workspace="workspace",
+            member="flext-core",
+        )
         (project_dir / "src" / "demo_migration_tool").mkdir(parents=True)
-        (internal_project / "src" / "flext_core").mkdir(parents=True)
-        for package in (
-            project_dir / "src" / "demo_migration_tool",
-            internal_project / "src" / "flext_core",
-        ):
-            (package / "__init__.py").write_text("", encoding="utf-8")
+        (project_dir / "src" / "demo_migration_tool" / "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
         (project_dir / "pyproject.toml").write_text(
             '[project]\nname = "demo-migration-tool"\nversion = "0.1.0"\n'
             'dependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )
-        (repository_root / "pyproject.toml").write_text(
-            "[project]\nname = 'workspace'\nversion = '0.1.0'\n\n"
-            "[tool.uv.workspace]\nmembers = ['flext-core']\n",
-            encoding="utf-8",
-        )
-        (internal_project / "pyproject.toml").write_text(
-            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
-            encoding="utf-8",
-        )
-
         _, ruff = self._applied(
             tool_config_document,
             repository_root,

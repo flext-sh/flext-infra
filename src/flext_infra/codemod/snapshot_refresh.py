@@ -10,8 +10,7 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraModGateEngine, FlextInfraServiceBase, p, r, t, u
 
 
 class FlextInfraCodemodSnapshotRefresh(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -32,8 +31,6 @@ class FlextInfraCodemodSnapshotRefresh(FlextInfraServiceBase[t.Cli.ResultValue])
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-
         planned = u.Infra.codemod_rule_plan(self.repository_root)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import difflib
 import shutil
 import stat
 from pathlib import Path
@@ -13,7 +14,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, infra, main
+from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services.cli_routes_codegen import FlextInfraCodegenRoutes
 from tests import c, u
@@ -93,8 +94,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
             subprojects=(member,),
         )
         root = tmp_path / "flext"
-        # The governed tree above the workspace carries the committed Taplo pin.
-        u.Tests.seed_locked_taplo(tmp_path)
+        # The governed tree above the workspace carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,
@@ -181,8 +183,12 @@ class TestsFlextInfraCodegenConformPublicSurface:
         status = tm.ok(u.Cli.capture(["git", "status", "--porcelain"], cwd=root))
         tm.that(status, eq="")
 
-    # Why (suite budget): dependencies-only apply+check runs two full conform
-    # cycles on a real git repo; the per-case wall only holds on an idle CPU.
+    # Integration-scale: the seed applies the complete surface on a real git
+    # repository (plan, publication and its fixed-point re-plan; a pyproject
+    # alone is not a fixed point, its [project.scripts] follows src/*/cli.py)
+    # before the dependencies plan, so it runs in the slow phase under its
+    # per-item bound. The public CLI route of the same check is proven by
+    # test_public_cli_routes_check_and_apply_to_one_handler.
     @staticmethod
     @pytest.mark.slow
     def test_dependency_surface_excludes_unowned_managed_files(
@@ -223,17 +229,13 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 for file in planned.value.files
             ),
             eq=(False,),
+            msg="\n".join(
+                difflib.unified_diff(
+                    (root / c.PYPROJECT_FILENAME)
+                    .read_text(encoding="utf-8")
+                    .splitlines(),
+                    u.Tests.codegen_file_text(planned.value.files[0]).splitlines(),
+                    lineterm="",
+                ),
+            ),
         )
-        exit_code = main([
-            "codegen",
-            "conform",
-            "--root",
-            str(root),
-            "--what",
-            "dependencies",
-            "--scope",
-            "self",
-            "--mode",
-            "check",
-        ])
-        tm.that(exit_code, eq=0)

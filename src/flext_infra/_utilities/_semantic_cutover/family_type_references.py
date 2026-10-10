@@ -10,14 +10,17 @@ import ast
 from collections.abc import Iterator
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
 
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     """Select type positions structurally and bind every edit to Rope identity."""
 
     @classmethod
-    def type_expression_ranges(cls, source: str) -> frozenset[t.Pair[int, int]]:
+    def typeexpression_ranges(cls, source: str) -> frozenset[t.Pair[int, int]]:
         """Expose the same structural roots to concrete-syntax consumer adapters.
 
         Returns:
@@ -25,7 +28,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
 
         """
         return frozenset(
-            cls._expression_range(source, expression)
+            cls.expression_range(source, expression)
             for expression, _line in cls._annotation_roots(ast.parse(source))
         )
 
@@ -55,7 +58,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             return frozenset()
         typing = project.get_module("typing")
         for node in nodes:
-            offset, _end = cls._expression_range(source, node)
+            offset, _end = cls.expression_range(source, node)
             scope = runtime.scope_at(module, offset)
             selected = tuple(cls._type_nodes(node, project, scope))
             arguments = (
@@ -64,11 +67,11 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             binding = runtime.resolve_symbol(scope, node.value)
             if runtime.same_name(typing.get_attribute("Literal"), binding):
                 protected.update(
-                    cls._expression_range(source, argument) for argument in arguments
+                    cls.expression_range(source, argument) for argument in arguments
                 )
             elif runtime.same_name(typing.get_attribute("Annotated"), binding):
                 protected.update(
-                    cls._expression_range(source, argument)
+                    cls.expression_range(source, argument)
                     for argument in arguments
                     if argument not in selected
                 )
@@ -83,13 +86,11 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
 
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
-
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = flatten.project.get_pymodule(resource)
         edits: list[m.Infra.SourceRewrite] = []
         for annotation, declaration_line in cls._annotation_roots(ast.parse(source)):
-            start, _end = cls._expression_range(source, annotation)
+            start, _end = cls.expression_range(source, annotation)
             scope = runtime.scope_at(module, start, declaration_line=declaration_line)
             for node in cls._type_nodes(annotation, flatten.project, scope):
                 if not isinstance(node, ast.Constant) or not isinstance(
@@ -106,7 +107,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 if blocked:
                     return (True, ())
                 if updated != node.value:
-                    start, end = cls._expression_range(source, node)
+                    start, end = cls.expression_range(source, node)
                     edits.append(
                         m.Infra.SourceRewrite(start=start, end=end, text=repr(updated)),
                     )
@@ -121,11 +122,6 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, str]:
-
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesRopeRuntimeModules,
-            FlextInfraUtilitiesRopeRuntimeRefactors,
-        )
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         nodes = tuple(
@@ -149,7 +145,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             if edit is not None:
                 edits.append(edit)
         for node in nodes:
-            start, end = cls._expression_range(source, node)
+            start, end = cls.expression_range(source, node)
             if not any(
                 edit.start <= start and end <= edit.end for edit in edits
             ) and runtime.same_name(
@@ -180,11 +176,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             The resulting ``t.Pair[bool, m.Infra.SourceRewrite | None]``.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
-
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         names = flatten.names
-        start, end = cls._expression_range(source, node)
+        start, end = cls.expression_range(source, node)
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             blocked, updated = cls._quoted_type_source(
                 node.value,
@@ -308,8 +302,6 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         scope: p.Infra.RopeScope,
     ) -> Iterator[ast.expr]:
 
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
-
         yield node
         if isinstance(node, ast.Subscript):
             yield from cls._type_nodes(node.value, project, scope)
@@ -335,7 +327,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             yield from cls._type_nodes(node.value, project, scope)
 
     @staticmethod
-    def _expression_range(source: str, expression: ast.expr) -> t.Pair[int, int]:
+    def expression_range(source: str, expression: ast.expr) -> t.Pair[int, int]:
         if expression.end_lineno is None or expression.end_col_offset is None:
             msg = "Parsed type expression has no complete source coordinates"
             raise ValueError(msg)

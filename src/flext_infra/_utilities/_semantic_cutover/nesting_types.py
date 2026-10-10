@@ -12,8 +12,11 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeRefactors
-from flext_infra._utilities._semantic_cutover.family_type_references import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
@@ -77,6 +80,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         *,
         protected: t.Pair[int, int] | None = None,
     ) -> str:
+
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
             source,
@@ -100,8 +104,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         protected: t.Pair[int, int] | None = None,
     ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
 
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
-
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = project.get_pymodule(resource)
         edits: list[m.Infra.SourceRewrite] = []
@@ -111,7 +113,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 and protected[0] <= annotation.lineno <= protected[1]
             ):
                 continue
-            start, _ = cls._expression_range(source, annotation)
+            start, _ = cls.expression_range(source, annotation)
             scope = runtime.scope_at(module, start, declaration_line=declaration_line)
             for node in cls._type_nodes(annotation, project, scope):
                 if not isinstance(node, ast.Constant) or not isinstance(
@@ -127,7 +129,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                     replacement,
                 )
                 if updated != node.value:
-                    start, end = cls._expression_range(source, node)
+                    start, end = cls.expression_range(source, node)
                     edits.append(
                         m.Infra.SourceRewrite(start=start, end=end, text=repr(updated)),
                     )
@@ -143,15 +145,13 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         replacement: Callable[[p.Infra.RopeScope, ast.expr], str | None],
     ) -> str:
 
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeRefactors
-
         edits: list[m.Infra.SourceRewrite] = []
         for node in cls._type_nodes(
             ast.parse(source, mode="eval").body,
             project,
             scope,
         ):
-            start, end = cls._expression_range(source, node)
+            start, end = cls.expression_range(source, node)
             if any(edit.start <= start and end <= edit.end for edit in edits):
                 continue
             text = replacement(scope, node)
@@ -180,8 +180,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         sources: t.MappingKV[Path, str],
         definitions: t.MappingKV[Path, t.StrMapping],
     ) -> t.MappingKV[Path, str]:
-
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
@@ -246,9 +244,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
 
     @staticmethod
     def _module_source(module: p.Infra.RopePyModule) -> str:
-        resource = getattr(module, "resource", None)
-        if resource is not None:
-            return resource.read()
         return module.source_code
 
     @staticmethod
@@ -280,8 +275,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 quoted type destination.
 
         """
-        from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
-
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         node = ast.parse(expression, mode="eval").body
         while isinstance(node, ast.Attribute):

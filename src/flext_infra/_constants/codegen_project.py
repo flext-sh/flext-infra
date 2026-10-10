@@ -20,7 +20,7 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -262,6 +262,17 @@ class FlextInfraConstantsCodegenProject:
     "Selector resolved only by ``make upg`` into the committed ``mise.lock``."
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
+    MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[t.StrMapping] = MappingProxyType({
+        "MISE_DISABLE_UPDATE_WARNING": "1",
+    })
+    """Environment of the mise version-identity probes, and of nothing else.
+
+    ``mise --version`` prints a daily "newer mise available" notice on stderr;
+    mise moves only through ``mise.lock`` under the supply-chain cooldown, so
+    the notice is not actionable and the strict probes would fail on it.
+    Documented mise setting since 2026.9.5 (tracker memory
+    operator-ruling-2026-10-09-mise-update-notice-probes).
+    """
     MISE_LOCK_PLATFORM_KEY: ClassVar[str] = "platforms.{platform}"
     "mise.lock per-platform table key of one locked tool version."
     MISE_PLATFORM_BY_HOST: ClassVar[t.MappingKV[t.StrPair, str]] = MappingProxyType({

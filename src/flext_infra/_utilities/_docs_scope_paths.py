@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core.result import FlextResult as r
-from flext_infra import c, p, t
+from flext_cli import u
+
+from flext_infra import c, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesDocsScopePathsMixin:
@@ -42,8 +44,6 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             ValueError: If ``planned.failure``.
 
         """
-        from flext_cli import u
-
         planned = u.Cli.atomic_plan_directory_chain(path)
         if planned.failure:
             raise ValueError(planned.error or f"docs directory is unsafe: {path}")
@@ -60,8 +60,6 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             ValueError: If ``state.failure``.
 
         """
-        from flext_cli import u
-
         state = u.Cli.atomic_read_binary_file_state(path, required=False)
         if state.failure:
             raise ValueError(state.error or f"docs file is unsafe: {path}")
@@ -152,10 +150,6 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        from flext_cli import u
-
-        from flext_infra._utilities import FlextInfraUtilitiesGit
-
         manifest_path = root / c.Infra.GITMODULES
         manifest_before = u.Cli.atomic_read_binary_file_state(
             manifest_path,
@@ -163,7 +157,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
         )
         if manifest_before.failure:
             return r[t.VariadicTuple[Path]].from_failure(manifest_before)
-        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(root)
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(root)
         if declared.failure:
             return r[t.VariadicTuple[Path]].from_failure(declared)
         manifest_after = u.Cli.atomic_read_binary_file_state(
@@ -176,7 +170,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             return r[t.VariadicTuple[Path]].fail(
                 f"docs repository topology changed during discovery: {manifest_path}",
             )
-        return r[t.VariadicTuple[Path]].ok(tuple(declared.value))
+        return r[t.VariadicTuple[Path]].ok(tuple(item.path for item in declared.value))
 
     @staticmethod
     def _declared_root_candidates(

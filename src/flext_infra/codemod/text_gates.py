@@ -20,7 +20,11 @@ from collections.abc import MutableMapping
 from fnmatch import fnmatch
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import FlextInfraConfig, c, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 
 
 class FlextInfraModTextGateEngine:
@@ -112,7 +116,6 @@ class FlextInfraModTextGateEngine:
         """
         # The packaged rules live at the same sub-path of whichever SSOT
         # config directory is active, including a declared relocation.
-        from flext_infra._config import FlextInfraConfig
 
         provider = FlextInfraConfig.ssot_config_dir() / (
             c.Infra.CODEMOD_TEXT_RULES_RELPATH.relative_to(c.CONFIG_DIR_NAME)
@@ -772,11 +775,6 @@ class FlextInfraModTextGateEngine:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        from flext_infra.codegen import (
-            FlextInfraCodegenMiseArtifacts,
-            FlextInfraCodegenTransaction,
-        )
-
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )

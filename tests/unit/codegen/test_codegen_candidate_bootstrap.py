@@ -49,15 +49,22 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
     @staticmethod
     def test_empty_campaign_fails_loud(tmp_path: Path) -> None:
-        """An empty typed list cannot produce a green no-op bootstrap."""
-        project_root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        manifest = u.Tests.write_workspace_manifest(
+        """An empty typed list cannot produce a green no-op bootstrap.
+
+        The refusal happens before any target is planned, so a governed
+        checkout without a rendered Make environment is the whole fixture.
+        """
+        project_root = tmp_path / "fixture-project"
+        u.Tests.WorktreeFixture.initialize_governed_project(
             project_root,
             "fixture-project",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fixture-project",
+                database="fixture_project",
+                issue_prefix="fixture",
+            ),
         )
+        manifest = u.Infra.workspace_manifest_path(project_root)
         manifest.write_text(
             manifest.read_text(encoding="utf-8")
             + "\ncandidate_bootstrap_targets: []\n",

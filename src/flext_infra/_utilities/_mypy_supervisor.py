@@ -21,10 +21,13 @@ import time
 from types import FrameType
 from typing import TYPE_CHECKING
 
+from flext_cli import u
+
 from flext_infra import c, m, t
+from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
 
 if TYPE_CHECKING:
-    from flext_cli import s
+    from flext_infra import p
 
 
 class FlextInfraMypyDarwinSupervisor:
@@ -61,8 +64,6 @@ class FlextInfraMypyDarwinSupervisor:
     @staticmethod
     def _usage(pid: int) -> t.Pair[int, bool]:
 
-        from flext_cli import u
-
         snapshot = u.Cli.run(
             ("/bin/ps", "-axo", "pgid=,rss=,stat="),
             timeout=c.Infra.MYPY_SUPERVISOR_PS_TIMEOUT,
@@ -78,7 +79,7 @@ class FlextInfraMypyDarwinSupervisor:
 
     @staticmethod
     def _ask_group_exit(
-        child: s.ManagedProcess,
+        child: p.Infra.SupervisedProcess,
         received_signal: int,
         kill_after: int,
     ) -> None:
@@ -96,7 +97,7 @@ class FlextInfraMypyDarwinSupervisor:
             time.sleep(c.Infra.MYPY_SUPERVISOR_SHUTDOWN_POLL_SECONDS)
 
     @classmethod
-    def _kill_group(cls, child: s.ManagedProcess) -> None:
+    def _kill_group(cls, child: p.Infra.SupervisedProcess) -> None:
         """Hard-kill a still-live group and reap the leader."""
         if cls._usage(child.pid)[1]:
             cls._signal_group(child.pid, signal.SIGKILL)
@@ -105,7 +106,7 @@ class FlextInfraMypyDarwinSupervisor:
     @classmethod
     def _supervised_exit_code(
         cls,
-        child: s.ManagedProcess,
+        child: p.Infra.SupervisedProcess,
         deadline: float,
         memory_bytes: int,
         kill_after: int,
@@ -169,10 +170,6 @@ class FlextInfraMypyDarwinSupervisor:
             ValueError: If positive memory, timeout and kill-after are required.
 
         """
-        from flext_cli import u
-
-        from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
-
         if min(memory_bytes, timeout, kill_after) <= 0:
             msg = "positive memory, timeout and kill-after are required"
             raise ValueError(msg)

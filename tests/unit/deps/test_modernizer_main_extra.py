@@ -254,8 +254,9 @@ class TestsFlextInfraDepsModernizerMainExtra:
             ),
         )
         u.Tests.write_project_beads_config(workspace, "flext")
-        # The governed tree above the workspace carries the committed Taplo pin.
-        u.Tests.seed_locked_taplo(tmp_path)
+        # The governed tree above the workspace carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         external = tmp_path / "gruponos-data"
         (external / "src" / "gruponos_data").mkdir(parents=True)
         external_pyproject = external / c.PYPROJECT_FILENAME
@@ -279,11 +280,9 @@ class TestsFlextInfraDepsModernizerMainExtra:
     @staticmethod
     def test_conform_source_preserves_taplo_process_error(tmp_path: Path) -> None:
         """Return the exact formatter process failure from the public conform path."""
-        u.Tests.write_mise_lock(
-            tmp_path,
-            "taplo",
-            u.Tests.pinned_mise_version(u.Tests.repo_mise_lock(), "taplo"),
-        )
+        # A governed tree carries the Mise declaration with its lock; the
+        # formatter resolves through the declared toolchain.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         invalid_glob = "/x/["
         (tmp_path / c.Infra.TAPLO_CONFIG_FILENAME).write_text(
             f'include = ["{invalid_glob}"]\n',

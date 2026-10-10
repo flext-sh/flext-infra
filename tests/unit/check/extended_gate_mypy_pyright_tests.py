@@ -133,9 +133,11 @@ class TestsFlextInfraTypeGates:
             "--reports-dir",
             str(reports),
         ])
-        informative = gate in config.Infra.codegen.make.ci.informative_check_gates
-        tm.that(code, eq=0 if informative else 1)
-        findings = tm.ok(u.Infra.check_report_findings(project, reports_dir=reports))
+        tm.that(code, eq=1)
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
+        findings = tm.ok(
+            u.Infra.check_report_findings(project, reports_dir=report_path.parent),
+        )
         tm.that(findings, empty=False)
         tm.that(
             any(
@@ -205,6 +207,45 @@ class TestsFlextInfraTypeGates:
         tm.that(
             "\n".join(issue.message for issue in result.issues),
             has="native-plugin-output",
+        )
+
+    @staticmethod
+    def test_mypy_deferral_trace_does_not_poison_the_report(
+        checker_context: m.Infra.GateContext,
+    ) -> None:
+        """Mypy's deferral-trace stdout is trace payload; the report still parses.
+
+        A semantic-analysis internal error makes mypy print a "Deferral trace:"
+        header plus indented lines on stdout before (or instead of) the JSON
+        report. The one-JSON-object-per-line contract treats nothing indented
+        as a report line, so the trace must never reach the JSON validator.
+        """
+        project = checker_context.repository_root
+        plugin = project / "plugin.py"
+        plugin.write_text(
+            "from mypy.plugin import Plugin\n"
+            "def plugin(version: str) -> type[Plugin]:\n"
+            "    print('Deferral trace:')\n"
+            "    print('    "
+            "flext_infra._utilities._pyproject._requirements_provenance:13')\n"
+            "    return Plugin\n",
+            encoding="utf-8",
+        )
+        pyproject = project / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8").replace(
+                "[tool.mypy]\n",
+                '[tool.mypy]\nplugins = ["plugin.py"]\n',
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraMypyGate(project).check(project, checker_context)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(
+            "\n".join(issue.message for issue in result.issues),
+            lacks="not a valid structured report",
         )
 
     @staticmethod
@@ -450,7 +491,8 @@ class TestsFlextInfraTypeGates:
         )
 
         tm.that(results[0].gates, empty=True)
-        markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}")
+        markdown = report_path.read_text(
             encoding="utf-8",
         )
         tm.that(markdown, lacks=f"- {FlextInfraPyrightGate.gate_id}:")

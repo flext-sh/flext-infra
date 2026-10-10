@@ -19,7 +19,18 @@
    lock records (the same contract as the CI mise_install fragment), and
    every lock-dependent step below runs under exactly that binary: setup,
    gen and upg recover the environment across lockfile-format and
-   mise-release drift on their own. -#}
+   mise-release drift on their own.
+
+   The locks are used, never obeyed into a stop
+   (operator-ruling-2026-10-09-setup-resilient): the self-managed release is
+   recovered only when mise.lock carries its pin, URL and checksum for this
+   platform (otherwise the host Mise runs); every tool the lock pins installs
+   from it with --locked (a plain install would rewrite an incomplete lock),
+   every tool it does not pin yet installs without reading or writing the
+   lock, and an unreadable lock (merge markers) is ignored for the whole run.
+   Only `make upg` writes mise.lock (an unreadable one is regenerated, never
+   parsed); `make audit` holds the verdict.
+-#}
 {% macro mise_lock_pin_reader(project_root, mise_selector) -%}
 awk 'index($$0, "[[tools.\"{{ mise_selector }}\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "{{ project_root }}/mise.lock"
 {%- endmacro %}
@@ -43,59 +54,97 @@ mise -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ to
 		printf 'ERROR: mise is not installed; install it (https://mise.run) and retry\n' >&2; \
 		exit 2; \
 	fi; \
-	mise_pin="$$( {{ mise_lock_pin_reader(project_root, mise_selector) }} )"; \
-	if [ -z "$$mise_pin" ]; then \
-		printf 'ERROR: mise.lock pins no {{ mise_selector }} release; run make upg\n' >&2; \
-		exit 2; \
+	mise_lock="{{ project_root }}/mise.lock"; \
+	mise_lock_usable=0; \
+	if [ -f "$$mise_lock" ] && ! grep -qE '^(<<<<<<< |=======$$|>>>>>>> )' "$$mise_lock"; then \
+		mise_lock_usable=1; \
 	fi; \
+	mise_pin=; \
+	mise_url=; \
+	mise_checksum=; \
 	case "$$(uname -s)/$$(uname -m)" in \
 		Linux/x86_64) mise_platform=linux-x64 ;; \
 		Linux/aarch64) mise_platform=linux-arm64 ;; \
 		Darwin/arm64) mise_platform=macos-arm64 ;; \
 		Darwin/x86_64) mise_platform=macos-x64 ;; \
-		*) printf 'ERROR: no {{ mise_selector }} lock platform maps to %s/%s; install mise %s (https://mise.run) and retry\n' "$$(uname -s)" "$$(uname -m)" "$$mise_pin" >&2; exit 2 ;; \
+		*) mise_platform= ;; \
 	esac; \
-	mise_key=url; \
-	mise_url="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
-	case "$$mise_url" in \
-		https://github.com/*/releases/download/*) ;; \
-		*) printf 'ERROR: mise.lock has no release URL for {{ mise_selector }} on %s\n' "$$mise_platform" >&2; exit 2 ;; \
-	esac; \
-	mise_key=checksum; \
-	mise_checksum="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
-	case "$$mise_checksum" in \
-		sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
-		*) printf 'ERROR: mise.lock has no sha256 for {{ mise_selector }} on %s\n' "$$mise_platform" >&2; exit 2 ;; \
+	if [ "$$mise_lock_usable" = 1 ] && [ -n "$$mise_platform" ]; then \
+		mise_pin="$$( {{ mise_lock_pin_reader(project_root, mise_selector) }} )"; \
+		mise_key=url; \
+		mise_url="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
+		mise_key=checksum; \
+		mise_checksum="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
+	fi; \
+	case "$$mise_url|$$mise_checksum" in \
+		https://github.com/*/releases/download/*\|sha256:*) ;; \
+		*) mise_pin= ;; \
 	esac; \
 	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
-	mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
-	if [ ! -x "$$mise_bootstrap_bin" ]; then \
-		printf 'setup: recovering {{ mise_selector }} %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
-		mise_stage="$$mise_bootstrap_root/$$mise_pin/stage"; \
-		rm -rf "$$mise_stage"; \
-		mkdir -p "$$mise_stage" "$$(dirname "$$mise_bootstrap_bin")"; \
-		curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$$mise_stage/archive" "$$mise_url"; \
-		if command -v sha256sum >/dev/null 2>&1; then \
-			echo "$$mise_sha256  $$mise_stage/archive" | sha256sum -c -; \
-		else \
-			echo "$$mise_sha256  $$mise_stage/archive" | shasum -a 256 -c -; \
+	if [ -n "$$mise_pin" ]; then \
+		mise_sha256="$${mise_checksum#sha256:}"; \
+		mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
+		if [ ! -x "$$mise_bootstrap_bin" ]; then \
+			printf 'setup: recovering {{ mise_selector }} %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
+			mise_stage="$$mise_bootstrap_root/$$mise_pin/stage"; \
+			rm -rf "$$mise_stage"; \
+			mkdir -p "$$mise_stage" "$$(dirname "$$mise_bootstrap_bin")"; \
+			curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$$mise_stage/archive" "$$mise_url"; \
+			if command -v sha256sum >/dev/null 2>&1; then \
+				echo "$$mise_sha256  $$mise_stage/archive" | sha256sum -c -; \
+			else \
+				echo "$$mise_sha256  $$mise_stage/archive" | shasum -a 256 -c -; \
+			fi; \
+			tar -xf "$$mise_stage/archive" -C "$$mise_stage"; \
+			mv "$$mise_stage/mise/bin/mise" "$$mise_bootstrap_bin"; \
+			chmod +x "$$mise_bootstrap_bin"; \
+			rm -rf "$$mise_stage"; \
 		fi; \
-		tar -xf "$$mise_stage/archive" -C "$$mise_stage"; \
-		mv "$$mise_stage/mise/bin/mise" "$$mise_bootstrap_bin"; \
-		chmod +x "$$mise_bootstrap_bin"; \
-		rm -rf "$$mise_stage"; \
+		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
+		if [ "$$mise_receipt" != "$$mise_pin" ]; then \
+			printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
+			exit 2; \
+		fi; \
+	else \
+		mise_bootstrap_bin="$$(command -v mise)"; \
+		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
 	fi; \
-	mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
-	if [ "$$mise_receipt" != "$$mise_pin" ]; then \
-		printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
-		exit 2; \
-	fi; \
+{#- Project setup never writes the host shim farm: a shim is bound to the mise
+    that wrote it, so every install and reshim the bootstrap and its lifecycle
+    run writes a farm scoped to the running release instead (measured: a
+    cached mise rebound every ~/.local/share/mise/shims entry to itself).
+    Tool installs stay in the shared data directory. #}
+	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
-		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" lock --bump; \
+		if [ "$$mise_lock_usable" = 0 ]; then \
+			rm -f "$$mise_lock"; \
+		fi; \
+		"$$mise_bootstrap_bin" -C "{{ project_root }}" lock --upgrade --bump; \
+		mise_lock_usable=1; \
 	fi; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
+	mise_from_lock=; \
+	mise_without_lock=; \
+	for mise_tool in{% for tool in install_tools %} "{{ tool }}"{% endfor %}; do \
+		if [ "$$mise_tool" = "{{ mise_selector }}" ] && [ -z "$$mise_pin" ]; then \
+			continue; \
+		fi; \
+		if [ "$$mise_lock_usable" = 1 ] && { grep -qxF "[[tools.$$mise_tool]]" "$$mise_lock" || grep -qxF "[[tools.\"$$mise_tool\"]]" "$$mise_lock"; }; then \
+			mise_from_lock="$$mise_from_lock $$mise_tool"; \
+		else \
+			mise_without_lock="$$mise_without_lock $$mise_tool"; \
+		fi; \
+	done; \
+	if [ -n "$$mise_from_lock" ]; then \
+		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --locked --yes $$mise_from_lock; \
+	fi; \
+	if [ -n "$$mise_without_lock" ]; then \
+		MISE_LOCKFILE=false "$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --yes $$mise_without_lock; \
+	fi; \
+	if [ "$$mise_lock_usable" = 0 ]; then \
+		export MISE_LOCKFILE=false; \
+	fi; \
 	"$$mise_bootstrap_bin" reshim; \
-	printf 'setup: mise %s provisioned from mise.lock\n' "$$mise_receipt"; \
+	printf 'setup: mise %s provisioned\n' "$$mise_receipt"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}
+	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${MISE_SHIMS_DIR}:$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}
 {%- endmacro %}

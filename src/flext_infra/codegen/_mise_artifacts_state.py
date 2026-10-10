@@ -13,10 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
+from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_verification import (
     FlextInfraMiseArtifactsVerification as verify,
 )
 
@@ -118,7 +116,7 @@ class FlextInfraMiseArtifactsState:
         )
         temporary = cls.plan_directories(
             layout,
-            phase="transaction",
+            phase=c.Infra.CodegenStagedFilePhase.TRANSACTION,
             requested=tuple(roots),
             disposition="temporary",
         )
@@ -144,7 +142,7 @@ class FlextInfraMiseArtifactsState:
         )
         generated = cls.plan_directories(
             layout,
-            phase="mise",
+            phase=c.Infra.CodegenStagedFilePhase.MISE,
             requested=parents,
             disposition="generated",
         )

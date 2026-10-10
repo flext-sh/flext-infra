@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c
@@ -26,6 +27,7 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
     """Tests for ``FlextInfraCodegenWorkspaceMemberGroup``."""
 
     @staticmethod
+    @pytest.mark.slow
     def test_workspace_root_group_survives_conform_at_a_fixed_point(
         tmp_path: Path,
     ) -> None:

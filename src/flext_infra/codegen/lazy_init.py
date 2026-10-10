@@ -13,12 +13,21 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen._lazy_init_generation import (
-    FlextInfraCodegenLazyInitGenerationMixin,
+from flext_infra import (
+    FlextInfraCodegenLazyInitPlanner,
+    FlextInfraRopeWorkspace,
+    c,
+    config,
+    m,
+    r,
+    t,
+    u,
 )
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenLazyInitGenerationMixin,
+    FlextInfraCodegenLazyInitProjectionManifest,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -138,10 +147,6 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         """
-        from flext_infra.codegen._lazy_init_projection_manifest import (
-            FlextInfraCodegenLazyInitProjectionManifest,
-        )
-
         roots = (
             (self.repository_root.resolve(),)
             if self.project_scope_roots is None
@@ -168,7 +173,7 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(manifests)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase="lazy-init",
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=composed + manifests.value,
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(
@@ -376,10 +381,6 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         """
-        from flext_infra.codegen.lazy_init_planner import (
-            FlextInfraCodegenLazyInitPlanner,
-        )
-
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         planner = FlextInfraCodegenLazyInitPlanner(
             rope_workspace=rope,

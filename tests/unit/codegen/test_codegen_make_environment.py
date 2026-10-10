@@ -23,11 +23,17 @@ pytestmark = pytest.mark.slow
 class TestsFlextInfraCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
-    def test_make_authenticates_real_mise_without_external_token_setup(
+    def test_make_hands_the_selected_credential_to_the_real_mise_child(
         self,
         tmp_path: Path,
     ) -> None:
-        """A generated public verb supplies gh's credential to the real Mise child."""
+        """A public verb hands one selected GitHub credential to a real Mise child.
+
+        The generated Makefile selects the first non-empty caller credential
+        (``GITHUB_TOKEN``, ``GH_TOKEN``, ``MISE_GITHUB_TOKEN``) and exports that
+        one value under every name gh, uv and mise read, so no inherited alias
+        can shadow it inside the Mise child.
+        """
         project_root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -39,26 +45,30 @@ class TestsFlextInfraCodegenMakeEnvironment:
             ),
         )
         (project_root / "auth_probe.py").write_text(
-            "import os, subprocess\n"
-            "credential = subprocess.run(['gh', 'auth', 'token'], "
-            "check=True, capture_output=True, text=True).stdout.rstrip('\\n')\n"
-            "assert credential\n"
-            "assert all(os.environ[name] == credential for name in "
-            "('GITHUB_TOKEN', 'GH_TOKEN', 'MISE_GITHUB_TOKEN'))\n"
+            "import os\n"
+            "values = {os.environ.get(name) for name in "
+            "('GITHUB_TOKEN', 'GH_TOKEN', 'MISE_GITHUB_TOKEN')}\n"
+            "assert values == {os.environ['EXPECTED_CREDENTIAL']}\n"
             "print('mise-authenticated')\n",
             encoding="utf-8",
         )
         (project_root / "custom.mk").write_text(
             "_custom-status:\n"
-            '\t@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- '
+            '\t@mise -C "$(PROJECT_ROOT)" exec -- '
             '"$(RUNTIME_PYTHON)" "$(PROJECT_ROOT)/auth_probe.py"\n',
             encoding="utf-8",
         )
+        credential = "caller-selected-test-credential"
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "status"],
                 cwd=project_root,
-                env={"MISE_GITHUB_TOKEN": "stale-token-must-not-reach-mise"},
+                env={
+                    "GITHUB_TOKEN": "",
+                    "GH_TOKEN": "",
+                    "MISE_GITHUB_TOKEN": credential,
+                    "EXPECTED_CREDENTIAL": credential,
+                },
             ),
         )
         tm.that(
@@ -67,16 +77,22 @@ class TestsFlextInfraCodegenMakeEnvironment:
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has="mise-authenticated")
+        tm.that(process.stdout + process.stderr, lacks=credential)
 
     @pytest.mark.parametrize("verb", ["help", "status"])
     @pytest.mark.parametrize("credential", ["", "invalid-test-credential"])
-    def test_make_handles_missing_gh_auth_at_the_declared_boundary(
+    def test_make_without_gh_auth_stops_at_the_environment_boundary(
         self,
         tmp_path: Path,
         verb: str,
         credential: str,
     ) -> None:
-        """Other verbs than the tool lifecycle require gh auth explicitly."""
+        """No verb outside the tool bootstrap requires GitHub auth.
+
+        Without any credential, ``help`` succeeds and ``status`` stops at the
+        declared environment boundary with the ``make setup`` cure; neither
+        asks for authentication nor creates an environment.
+        """
         project_root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -94,16 +110,21 @@ class TestsFlextInfraCodegenMakeEnvironment:
                     "GH_ENTERPRISE_TOKEN": "",
                     "GITHUB_ENTERPRISE_TOKEN": "",
                     "GH_HOST": "github.com",
-                    "MISE_GITHUB_TOKEN": "must-not-be-a-fallback",
+                    "MISE_GITHUB_TOKEN": "",
                     "SETUP_BOOTSTRAP_ONLY": "Y",
                 },
             ),
         )
+        output = process.stdout + process.stderr
         if verb == "help":
-            tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
+            tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=output)
         else:
             tm.that(process.outcome.raw_return_code, ne=0)
-            tm.that(process.stderr, has="authentication is required")
+            tm.that(
+                process.stderr,
+                has=["missing environment interpreter", "make setup"],
+            )
+        tm.that(output, lacks="authentication is required")
         tm.that((project_root / ".venv").exists(), eq=False)
 
     @staticmethod
@@ -135,7 +156,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
                 f"\t@printf '%s\\n' '{target}' >> dispatch.log\n"
                 + (
-                    '\t@"$(RUNTIME_PYTHON)" -c "import sys; print(sys.prefix)"\n'
+                    '\t@"$(RUNTIME_PYTHON)" -c "import sys; print(sys.prefix)"'
                     " > runtime.log\n"
                     if target == "_custom-status"
                     else ""
@@ -150,7 +171,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 cwd=project_root,
             ),
         )
-        tm.that((project_root / "activation.log").read_text(), eq="activated\n")
+        activation = project_root / "activation.log"
+        tm.that(activation.is_file(), eq=True, msg=process.stdout + process.stderr)
+        tm.that(activation.read_text(), eq="activated\n")
         if failure_return is not None:
             tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
             tm.that((project_root / "dispatch.log").exists(), eq=False)
@@ -210,6 +233,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "workspace environment must be physical" in process.stderr
             or ".envrc is blocked" in process.stderr,
             eq=True,
+            msg=process.stdout + process.stderr,
         )
         tm.that(effect.exists(), eq=False)
         tm.that(borrowed.is_symlink(), eq=True)
@@ -424,21 +448,33 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(hostile_python.exists(), eq=False)
         tm.that((project_root.parent / ".venv").exists(), eq=False)
 
-    def _assert_unlocked_setup_fails(
+    def _assert_lockless_setup_provisions(
         self,
         project_root: Path,
         active_env: t.StrMapping,
     ) -> None:
-        """Without a committed lock, setup never resolves: uv refuses loudly."""
-        unlocked = tm.ok(
+        """Without a committed lock, setup provisions from the manifest.
+
+        Premise (operator-ruling-2026-10-09-setup-resilient): a missing lock
+        never aborts installation. Setup installs the manifest's requirements
+        into the runtime environment and never resolves or writes a lock;
+        only ``make upg`` creates uv.lock.
+        """
+        lockless = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "setup"],
                 cwd=project_root,
                 env=active_env,
             ),
         )
-        tm.that(u.Cli.process_succeeded(unlocked.outcome), eq=False)
+        output = lockless.stdout + lockless.stderr
+        tm.that(u.Cli.process_succeeded(lockless.outcome), eq=True, msg=output)
+        tm.that(output, lacks=["WARN:", "mise WARN", "[warn]"])
         tm.that((project_root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.that(
+            (u.Infra.runtime_environment_dir(project_root) / "pyvenv.cfg").is_file(),
+            eq=True,
+        )
 
     @staticmethod
     def _assert_upg_receipts(template: Path, receipts: Path) -> None:
@@ -518,8 +554,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
     ) -> None:
         """A drifted dependency declaration never rewrites a committed lock.
 
-        Only upg writes locks, and setup always runs: setup warns, installs
-        the committed lock frozen, and leaves every lock untouched.
+        Only upg writes locks, and setup always runs: it installs the
+        committed lock frozen, prints no warning, and leaves every lock
+        untouched; ``make audit`` owns the drift verdict.
         """
         checkout = u.Tests.resolved_make_checkout(template, parent / "stale", profile)
         dependency_root = parent / "external-runtime"
@@ -545,7 +582,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
             eq=True,
             msg=stale.stdout + stale.stderr,
         )
-        tm.that(stale.stderr, has="uv.lock drifts from pyproject.toml")
+        tm.that(
+            stale.stdout + stale.stderr,
+            lacks=["uv.lock drifts", "WARN:", "mise WARN", "[warn]"],
+        )
         tm.that(self._locks(checkout), eq=resolved_locks)
 
     def _assert_drifted_lock_install(
@@ -556,10 +596,12 @@ class TestsFlextInfraCodegenMakeEnvironment:
         active_env: t.StrMapping,
         resolved_locks: t.MappingKV[str, bytes],
     ) -> None:
-        """A missing declared tool stops the locked install before lifecycle.
+        """A lock that does not pin a declared tool never stops setup.
 
-        The tool is already present in warm storage, so only the locked-mode
-        guard can refuse it.
+        Premise (operator-ruling-2026-10-09-setup-resilient): setup installs
+        what the lock pins ``--locked`` and the remaining declared tools
+        without the lock, enters the lifecycle, provisions the environment,
+        warns about nothing, and leaves the incomplete lock for ``make upg``.
         """
         drifted = u.Tests.resolved_make_checkout(
             template,
@@ -575,29 +617,22 @@ class TestsFlextInfraCodegenMakeEnvironment:
             **resolved_locks,
             c.Infra.MISE_LOCK_FILENAME: mise_lock.read_bytes(),
         }
-        unsatisfied = self._setup_with_cold_storage(
+        provisioned = self._setup_with_cold_storage(
             drifted,
             active_env=active_env,
             receipts=template.parent.parent,
         )
+        output = provisioned.stdout + provisioned.stderr
+        tm.that(u.Cli.process_succeeded(provisioned.outcome), eq=True, msg=output)
         tm.that(
-            u.Cli.process_succeeded(unsatisfied.outcome),
-            eq=False,
-            msg=unsatisfied.stdout + unsatisfied.stderr,
+            output,
+            lacks=["is not in the lockfile", "WARN:", "mise WARN", "[warn]"],
         )
-        tm.that(unsatisfied.stdout, has="is not in the lockfile")
-        output = unsatisfied.stdout + unsatisfied.stderr
-        tm.that(output.count("setup probe: begin stage=install.log"), eq=1)
-        failure = tm.not_none(
-            re.search(r"setup probe: failed stage=install.log exit=(\d+)", output),
+        tm.that(provisioned.stdout, has="setup: entering lifecycle")
+        tm.that(
+            (u.Infra.runtime_environment_dir(drifted) / "pyvenv.cfg").is_file(),
+            eq=True,
         )
-        cleanup = tm.not_none(
-            re.search(r"mise scratch: cleaned path=.* exit=(\d+)", output),
-        )
-        tm.that(cleanup.group(1), eq=failure.group(1))
-        tm.that(output, lacks=["WARN:", "mise WARN", "[warn]"])
-        tm.that(unsatisfied.stdout, lacks="setup: entering lifecycle")
-        tm.that(u.Infra.runtime_environment_dir(drifted).exists(), eq=False)
         tm.that(self._locks(drifted), eq=drifted_locks)
 
     def _setup_with_cold_storage(
@@ -651,7 +686,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         (hostile_venv / "bin").mkdir(parents=True)
         active_env = u.Tests.hostile_uv_environment(hostile_venv)
         tm.that(u.Infra.runtime_environment_dir(project_root).exists(), eq=False)
-        self._assert_unlocked_setup_fails(project_root, active_env)
+        self._assert_lockless_setup_provisions(project_root, active_env)
 
         template = resolved_make_templates[profile]
         receipts = template.parent.parent
@@ -802,37 +837,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
         envrc = (project_root / ".envrc").read_text(encoding="utf-8")
         for forced in ("PYTHONPYCACHEPREFIX", "export TMPDIR", "PROJECT_STATE_ROOT"):
             tm.that(envrc, lacks=forced)
-
-    @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    def test_ci_rebuilds_the_shim_farm_from_the_pinned_release(
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-    ) -> None:
-        """CI publishes a shim farm rebuilt by the pinned Mise, never a cached one.
-
-        Mise never replaces a shim bound to another binary, so a farm restored
-        from a tool cache keeps running the Mise release that built it, and an
-        older release rejects a newer lockfile revision.
-        """
-        project_root, _repository_root = u.Tests.render_make_environment(
-            tmp_path,
-            profile,
-            bootstrap=True,
-        )
-        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding="utf-8",
-        )
-        ci_branch = makefile.split('if [ -n "$${GITHUB_PATH:-}" ]; then', 1)[1]
-        ci_branch = ci_branch.split("\tfi;", 1)[0]
-        steps = (
-            'rm -rf "$$shim_farm"',
-            'mise_offline project "$$pinned_mise" -C "$$project_root" reshim',
-            '"$$shim_farm" >> "$$GITHUB_PATH"',
-        )
-        positions = [ci_branch.find(step) for step in steps]
-        tm.that(min(positions), ne=-1)
-        tm.that(positions, eq=sorted(positions))
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))

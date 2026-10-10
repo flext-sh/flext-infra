@@ -11,10 +11,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._semantic_cutover.alias_cst import (
+from flext_infra._utilities import FlextInfraUtilitiesCompatibilityAliasValidation
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverAliasCst,
-)
-from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
@@ -82,10 +81,6 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        from flext_infra._utilities import (
-            FlextInfraUtilitiesCompatibilityAliasValidation,
-        )
-
         specs = cls._api_alias_specs(
             root,
             tuple(
