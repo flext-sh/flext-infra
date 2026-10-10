@@ -265,7 +265,9 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         # Ruff completes and reports the syntax error as a finding of the
         # code: the verb does not break, and the module is never rewritten.
-        tm.that(exit_code, eq=0)
+        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
+        # a fix run that leaves findings exits 1.
+        tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -310,7 +312,9 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=0)
+        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
+        # an unparsable neighbour leaves findings, so the fix run exits 1.
+        tm.that(exit_code, eq=1)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",

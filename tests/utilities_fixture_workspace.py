@@ -19,6 +19,9 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
 from tests import c, m, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
+from tests.utilities_fixture_project import (
+    TestsFlextInfraUtilitiesProjectFixtureMixin,
+)
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -653,6 +656,19 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
                 encoding="utf-8",
             )
+            # Lane admission demands authoritative Beads ownership over a
+            # governed manifest: the fixture declares both, exactly as a real
+            # checkout does.
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
+                repository,
+                "fixture",
+            )
+            TestsFlextInfraUtilitiesWorkspaceFixtureMixin.WorktreeFixture.write_beads_project(
+                repository,
+                workspace="fixture",
+                database="fixture-database",
+                issue_prefix="fixture-prefix",
+            )
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository)
             remote = tmp_path / "integration.git"
             git = TestsFlextInfraUtilitiesGitMixin
@@ -672,6 +688,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     + TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
                 ),
             )
+            git.git_bootstrap(
+                remote,
+                (
+                    "symbolic-ref",
+                    "HEAD",
+                    "refs/heads/"
+                    + TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            )
             return repository
 
         @staticmethod
@@ -679,7 +704,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             """Commit one deliberate fixture mutation."""
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "add", "Makefile", "pyproject.toml"],
+                    [c.Infra.GIT, "add", "Makefile", "pyproject.toml", "config"],
                     cwd=repository,
                 ),
             )
