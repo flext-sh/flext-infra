@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 import ast
+import builtins
 from collections.abc import MutableMapping
 
 from flext_infra import m, t
@@ -151,8 +152,14 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             if alias.name == "*":
                 if spec.allow_conditional:
                     # External/installed modules re-export through star
-                    # imports; the re-exported names resolve in the module's
-                    # own runtime, not statically.
+                    # imports (PyYAML: ``from .reader import *``). A name the
+                    # module never binds explicitly is then bound in the
+                    # module itself; the runtime walk follows its star
+                    # re-exports to the declaring module.
+                    bindings["*"] = m.Infra.SourceClassReference(
+                        target=spec.module,
+                        qualified_base=spec.module,
+                    )
                     continue
                 message = f"Star import has no explicit class binding in {spec.module}"
                 raise ValueError(message)
@@ -670,11 +677,18 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             raise TypeError(message)
         name = expression.id
+        star_module = bindings.get("*")
         if name in bindings:
             binding = bindings[name]
             if binding is None:
                 message = f"Non-class binding used as a base in {module}: {name}"
                 raise ValueError(message)
+        elif star_module is not None and not hasattr(builtins, name):
+            binding = m.Infra.SourceClassReference(
+                target=star_module.target,
+                attributes=(name,),
+                qualified_base=f"{module}.{name}",
+            )
         else:
             binding = m.Infra.SourceClassReference(
                 target="builtins",

@@ -86,53 +86,28 @@ class TestsFlextInfraReleasePublicationLane:
             self.LANE,
         ).strip()
 
-    def test_produced_paths_reach_the_pull_request(self, tmp_path: Path) -> None:
-        """Exactly the produced path is committed, pushed and proposed."""
-        with self._lane(tmp_path) as (repo, request, gh_log):
-            tm.ok(u.Infra.git_publish_lane(request, self._produce(repo)))
-
-            tm.that(
-                u.Tests.git_capture(repo, "branch", "--show-current").strip(),
-                eq=self.LANE,
-            )
-            tm.that(
-                u.Tests.git_capture(repo, "log", "-1", "--format=%s").strip(),
-                eq=self.SUBJECT,
-            )
-            tm.that(
-                u.Tests.git_capture(
-                    repo,
-                    "show",
-                    "--name-only",
-                    "--format=",
-                    "HEAD",
-                ).split(),
-                eq=["produced.txt"],
-            )
-            tm.that(self._published(tmp_path), eq=self.LANE)
-            recorded = gh_log.read_text(encoding="utf-8")
-            tm.that(recorded, has=f"pr create --base {request.base} --head {self.LANE}")
-            tm.that(recorded, has=f"--title {self.SUBJECT}")
-            tm.that(recorded, has=f"--body-file {request.body_file}")
-
-    def test_rerun_continues_the_lane_without_a_second_commit(
+    def test_new_lane_is_refused_without_ownership_evidence(
         self,
         tmp_path: Path,
     ) -> None:
-        """Reproducing identical bytes on the open lane commits nothing."""
-        with self._lane(tmp_path) as (repo, request, _):
-            tm.ok(u.Infra.git_publish_lane(request, self._produce(repo)))
-            tm.that(u.Tests.git_run(repo, "switch", request.base), eq=True)
+        """Lane creation fails closed until admission can prove ownership.
 
-            tm.ok(u.Infra.git_publish_lane(request, self._produce(repo)))
+        The native admission contract (31959fed0; bead flext-itpd1.3.26 owns
+        the Beads-ownership and prior-lane-integration proof) refuses every
+        new lane, so publication creates nothing: no lane branch, no pushed
+        branch, no commit of the produced path, no pull request.
+        """
+        with self._lane(tmp_path) as (repo, request, gh_log):
+            head = u.Tests.git_capture(repo, "rev-parse", "HEAD").strip()
 
-            count = u.Tests.git_capture(
-                repo,
-                "rev-list",
-                "--count",
-                f"{request.base}..{self.LANE}",
-            )
-            tm.that(count.strip(), eq="1")
+            result = u.Infra.git_publish_lane(request, self._produce(repo))
+
+            tm.fail(result)
+            tm.that(result.error or "", has="new lane refused")
+            tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=False)
+            tm.that(self._published(tmp_path), eq="")
+            tm.that(u.Tests.git_capture(repo, "rev-parse", "HEAD").strip(), eq=head)
+            tm.that(gh_log.exists(), eq=False)
 
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A lane never absorbs changes it did not produce."""
@@ -151,7 +126,7 @@ class TestsFlextInfraReleasePublicationLane:
             result = u.Infra.git_publish_lane(request, self._produce(repo))
 
             tm.fail(result)
-            tm.that(result.error or "", has=f"starts from {request.base}")
+            tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=False)
 
     def test_failed_production_publishes_nothing(self, tmp_path: Path) -> None:
         """The first failure of the producing step ends the lane unpushed."""
@@ -165,42 +140,29 @@ class TestsFlextInfraReleasePublicationLane:
             tm.that(self._published(tmp_path), eq="")
             tm.that(gh_log.exists(), eq=False)
 
-    def test_failed_production_preserves_partial_output(self, tmp_path: Path) -> None:
-        """A failed producer retains staged and untracked bytes for recovery."""
+    def test_refused_lane_never_runs_the_producer(self, tmp_path: Path) -> None:
+        """Admission refuses before production: no byte is written or staged."""
         with self._lane(tmp_path) as (repo, request, gh_log):
             original_head = u.Tests.git_capture(repo, "rev-parse", "HEAD").strip()
-            staged = repo / "staged.txt"
-            untracked = repo / "partial.txt"
-            content = "partial production\n"
+            produced = repo / "partial.txt"
+            calls: list[str] = []
 
             def produce() -> p.Result[bool]:
-                tm.ok(u.Cli.files_write_text(staged, content))
-                tm.that(u.Tests.git_run(repo, "add", "--", staged.name), eq=True)
-                tm.ok(u.Cli.files_write_text(untracked, content))
-                return r[bool].fail("production failed")
+                calls.append("produce")
+                return u.Cli.files_write_text(produced, "partial production\n")
 
             result = u.Infra.git_publish_lane(request, produce)
 
             tm.fail(result)
-            tm.that(result.error or "", has="production failed")
-            tm.that(staged.read_text(encoding="utf-8"), eq=content)
-            tm.that(untracked.read_text(encoding="utf-8"), eq=content)
+            tm.that(result.error or "", has="new lane refused")
+            tm.that(calls, eq=[])
+            tm.that(produced.exists(), eq=False)
             tm.that(
-                tm.ok(
-                    u.Cli.run_bytes(
-                        [c.Infra.GIT, "show", f":{staged.name}"],
-                        cwd=repo,
-                    ),
-                ).stdout,
-                eq=content.encode("utf-8"),
+                u.Tests.git_capture(repo, "status", "--porcelain").strip(),
+                eq="",
             )
             tm.that(
                 u.Tests.git_capture(repo, "rev-parse", "HEAD").strip(),
                 eq=original_head,
             )
-            tm.that(
-                u.Tests.git_capture(repo, "branch", "--show-current").strip(),
-                eq=request.branch,
-            )
-            tm.that(self._published(tmp_path), eq="")
             tm.that(gh_log.exists(), eq=False)

@@ -1388,7 +1388,7 @@ Infra:
           runtime:
           - flext-core
           - annotated-types>=0.8.0
-          - beartype>=0.22.9
+          - beartype>=0.22.9,<0.23
           - dependency-injector>=4.49.1
           - packaging>=26.3
           - pydantic>=2.14.0,<3

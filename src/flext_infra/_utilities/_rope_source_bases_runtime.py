@@ -475,6 +475,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 chain = " <- ".join(sorted(visiting))
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
+            if name not in module.get_attributes():
+                reexporter = self._star_reexporter(module, name)
+                if reexporter is not None:
+                    return self._provider_reference(
+                        reexporter,
+                        attributes,
+                        visiting | {target},
+                        depth + 1,
+                    )
             binding = module.get_attribute(name)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
@@ -501,6 +510,53 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
+
+        def _star_reexporter(
+            self,
+            module: t.Infra.RopePyModule,
+            name: str,
+        ) -> t.Infra.RopePyModule | None:
+            """Return the module a provider star re-export binds ``name`` from.
+
+            ``from .reader import *`` binds every public name of ``.reader`` in
+            the provider (PyYAML's ``yaml.loader`` declares
+            ``class SafeLoader(Reader, ...)`` that way). Rope drops such an
+            import when its ``ignore_bad_imports`` preference cannot evaluate
+            the module, so the walk reads the provider's own ``ImportFrom``
+            nodes and resolves each star target itself.
+
+            Returns:
+                The first star-imported module that binds ``name``, or ``None``
+                when no star re-export of the provider binds it.
+
+            """
+            # A native module (no source resource) has no star re-export.
+            resource = module.get_resource()
+            if resource is None or name.startswith("_"):
+                return None
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
+                return None
+            file_name = Path(resource.real_path).name
+            package = (
+                module.get_name()
+                if file_name == c.Infra.INIT_PY or not file_name.endswith(".py")
+                else module.get_name().rpartition(".")[0]
+            )
+            for node in tree.body:
+                if not (
+                    isinstance(node, ast.ImportFrom)
+                    and [alias.name for alias in node.names] == ["*"]
+                ):
+                    continue
+                target = importlib.util.resolve_name(
+                    "." * node.level + (node.module or ""),
+                    package,
+                )
+                provider = self._project.get_module(target)
+                if name in provider.get_attributes():
+                    return provider
+            return None
 
         def _provider_imported_name_reference(
             self,
