@@ -1216,5 +1216,46 @@ class FlextInfraUtilitiesCodegenNamespace:
             for name in names
         }
 
+    @staticmethod
+    def import_package_dir(project_root: Path, package: str) -> Path | None:
+        """Return the directory of one dotted package the project owns.
 
-__all__: list[str] = ["FlextInfraUtilitiesCodegenNamespace"]
+        Returns:
+            The package directory, or ``None`` for a module, a missing path or
+            a package of another project.
+
+        """
+        top, *rest = package.split(".")
+        for base in (project_root / c.Infra.DEFAULT_SRC_DIR, project_root):
+            if not (base / top / c.Infra.INIT_PY).is_file():
+                continue
+            candidate = base.joinpath(top, *rest)
+            return candidate if (candidate / c.Infra.INIT_PY).is_file() else None
+        return None
+
+    @staticmethod
+    def import_facade_dependencies(
+        module: str,
+        root_exports: t.StrMapping,
+        import_graph: t.MappingKV[str, frozenset[str]],
+    ) -> frozenset[str]:
+        """Return facade aliases whose providers depend on the importing module."""
+        dependencies: set[str] = set()
+        for alias in c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS:
+            provider = root_exports.get(alias)
+            if provider is None:
+                continue
+            pending = [provider]
+            visited: set[str] = set()
+            while pending:
+                current = pending.pop()
+                if current == module:
+                    dependencies.add(alias)
+                    break
+                if current not in visited:
+                    visited.add(current)
+                    pending.extend(import_graph.get(current, ()))
+        return frozenset(dependencies)
+
+
+__all__ = ["FlextInfraUtilitiesCodegenNamespace"]
