@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_core import c
 from flext_infra._constants import FlextInfraConstantsBase
+from flext_infra._constants.census import FlextInfraConstantsCensus
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -23,7 +24,9 @@ class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
 
     MOD_SCAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "refactor" / "mod-findings.json"
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        / "refactor"
+        / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
     MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
@@ -31,17 +34,23 @@ class FlextInfraConstantsRefactor:
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."
     ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "refactor" / "accessor-migration.json"
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        / "refactor"
+        / "accessor-migration.json"
     )
     "Canonical single-file evidence snapshot for the latest accessor migration."
     NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "refactor" / "namespace-enforce.json"
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        / "refactor"
+        / "namespace-enforce.json"
     )
     "Canonical single-file evidence snapshot for the latest namespace enforcement."
     VIOLATIONS_SWEEP_ROUTE_NAME: ClassVar[str] = "violations-sweep"
     "Canonical refactor CLI verb that repairs and proves the always-reducing law."
     VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "refactor" / "violations-sweep.json"
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        / "refactor"
+        / "violations-sweep.json"
     )
     "Canonical single-file receipt for the latest violations sweep."
     VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
@@ -228,6 +237,7 @@ class FlextInfraConstantsRefactor:
 
         DECLARATION_RELOCATION = "declaration-relocation"
         CLASS_NESTING = "class-nesting"
+        CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"

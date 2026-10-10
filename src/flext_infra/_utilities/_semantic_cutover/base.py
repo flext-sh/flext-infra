@@ -20,6 +20,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
     FlextInfraUtilitiesSemanticCutoverSelfFacade,
 )
+from flext_infra._utilities._semantic_cutover.constant_consumers import (
+    FlextInfraUtilitiesSemanticConstantConsumers,
+)
 from flext_infra._utilities._semantic_cutover.declaration_relocation import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesSemanticCutoverBase(
     FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
@@ -101,6 +105,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             case (
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
                 | c.Infra.SemanticCutoverPhase.CLASS_NESTING
+                | c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
                 | c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT
                 | c.Infra.SemanticCutoverPhase.FACADE_BASE
@@ -133,27 +138,48 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
-        Raises:
-            ValueError: When the phase is not finding-selected.
-
         """
+        return cls._plan_selected_phase_dispatch(
+            phase, rope_workspace, sources, selected
+        )
+
+    @classmethod
+    def _plan_selected_phase_dispatch(
+        cls,
+        phase: c.Infra.SemanticCutoverPhase,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        selected: t.SequenceOf[m.Infra.ModScanFinding],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         root = rope_workspace.repository_root
-        match phase:
-            case c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION:
-                return cls._plan_declaration_relocation(rope_workspace, sources)
-            case c.Infra.SemanticCutoverPhase.CLASS_NESTING:
-                return cls._plan_class_nesting(rope_workspace, sources)
-            case c.Infra.SemanticCutoverPhase.COMPAT_ALIAS:
-                return cls._plan_api_aliases(root, sources, selected)
-            case c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT:
-                return cls._plan_private_imports(root, sources, selected)
-            case c.Infra.SemanticCutoverPhase.FACADE_BASE:
-                return cls._plan_facade_bases(root, sources, selected)
-            case c.Infra.SemanticCutoverPhase.MODEL_FIELDS:
-                return cls._plan_model_fields(sources)
-            case _:
-                message = f"unsupported semantic cutover phase: {phase}"
-                raise ValueError(message)
+        dispatch = {
+            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION: lambda: (
+                cls._plan_declaration_relocation(rope_workspace, sources)
+            ),
+            c.Infra.SemanticCutoverPhase.CLASS_NESTING: lambda: cls._plan_class_nesting(
+                rope_workspace, sources
+            ),
+            c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS: lambda: (
+                cls._plan_constant_consumers(rope_workspace, sources)
+            ),
+            c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_api_aliases(
+                root, sources, selected
+            ),
+            c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT: lambda: (
+                cls._plan_private_imports(root, sources, selected)
+            ),
+            c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
+                root, sources, selected
+            ),
+            c.Infra.SemanticCutoverPhase.MODEL_FIELDS: lambda: cls._plan_model_fields(
+                sources
+            ),
+        }
+        factory = dispatch.get(phase)
+        if factory is None:
+            message = f"unsupported semantic cutover phase: {phase}"
+            raise ValueError(message)
+        return factory()
 
     @classmethod
     def _plan_ordered_phase(

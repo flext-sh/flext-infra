@@ -148,6 +148,21 @@ print(json.dumps({
 
     FLEET_GAPS_ROUTE_NAME: ClassVar[str] = "fleet-gaps"
     "Canonical workspace CLI verb that reports per-repository fleet gaps."
+
+    @unique
+    class FleetVerb(StrEnum):
+        """Mutating verbs a local workspace run carries to every governed member."""
+
+        MOD = "mod"
+        FIX = "fix"
+        FMT = "fmt"
+
+    FLEET_ROUTE_NAME: ClassVar[str] = "fleet"
+    "Canonical workspace CLI verb that runs one verb in every governed member."
+    FLEET_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "fleet-verb.json"
+    )
+    "Typed receipts of the latest fleet verb run, one per governed member."
     LIFECYCLE_VERBS: ClassVar[t.StrSequence] = (
         "setup",
         "gen",

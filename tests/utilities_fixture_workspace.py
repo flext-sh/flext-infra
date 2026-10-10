@@ -501,15 +501,66 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         """Provide one repository and lane-path contract without collecting tests."""
 
         @staticmethod
-        def add_worktree(repository: Path, branch: str, *, base: str = "HEAD") -> str:
-            """Create one applied worktree and return Git's canonical lane path.
+        def native_lane(
+            repository: Path,
+            branch: str,
+            *,
+            epic_lane: Path | None = None,
+        ) -> Path:
+            """Register ``branch`` as a native linked worktree at its canonical path.
 
-            Like a real lane owner, the fixture fetches the declared remote
-            first: lane admission proves ancestry only against a fresh
-            remote-tracking tip.
+            Lane admission refuses every ``ADD`` until authoritative Beads
+            ownership reaches the native contract (bead flext-itpd1.3.26), so a
+            test whose subject is an existing lane obtains it the way Git
+            itself can: ``git worktree add -b`` at the path the production
+            topology owner reserves for the branch.
 
             Returns:
-                The resulting ``str``.
+                The registered lane path.
+
+            """
+            lane = tm.ok(
+                FlextInfraWorktreeService.canonical_lane_path(
+                    repository,
+                    branch,
+                    epic_lane,
+                ),
+            )
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        c.Infra.GIT,
+                        "worktree",
+                        "add",
+                        "-b",
+                        branch,
+                        str(lane),
+                        c.Infra.GIT_HEAD,
+                    ],
+                    cwd=repository,
+                ),
+            )
+            return lane
+
+        @staticmethod
+        def refused_lane(
+            repository: Path,
+            branch: str,
+            *,
+            base: str = "HEAD",
+            epic_lane: Path | None = None,
+            reason: str = "new lane refused",
+        ) -> Path:
+            """Request ``ADD`` and prove the refusal left Git and disk untouched.
+
+            Like a real lane owner, the fixture fetches the declared remote
+            first, so the refusal is measured against a fresh remote-tracking
+            tip. The refusal must carry ``reason``, the canonical lane path
+            must not exist, and the refs and worktree registry must equal
+            their state before the request.
+
+            Returns:
+                The canonical lane path the refused request would have used.
 
             """
             tm.ok(
@@ -518,15 +569,43 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     cwd=repository,
                 ),
             )
-            return tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=repository,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=branch,
-                    base=base,
-                    apply_changes=True,
-                ).execute(),
+            state = (
+                tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
+                tm.ok(
+                    u.Infra.git_list_worktrees(
+                        m.Infra.GitRepoRequest(repo_root=repository),
+                    ),
+                ).porcelain,
             )
+            result = FlextInfraWorktreeService(
+                repository_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=base,
+                epic_lane=epic_lane,
+                apply_changes=True,
+            ).execute()
+            tm.fail(result, has=reason)
+            lane = tm.ok(
+                FlextInfraWorktreeService.canonical_lane_path(
+                    repository,
+                    branch,
+                    epic_lane,
+                ),
+            )
+            tm.that(lane.exists(), eq=False)
+            tm.that(
+                (
+                    tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
+                    tm.ok(
+                        u.Infra.git_list_worktrees(
+                            m.Infra.GitRepoRequest(repo_root=repository),
+                        ),
+                    ).porcelain,
+                ),
+                eq=state,
+            )
+            return lane
 
         @staticmethod
         def override_repository_manifest(
@@ -626,19 +705,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             return member
 
         @staticmethod
-        def _lane(primary_root: Path, outermost_project: Path, branch: str) -> Path:
-            """Resolve the lane through the production topology owner.
-
-            Returns:
-                The resulting ``Path``.
-
-            """
-            _ = outermost_project
-            return tm.ok(
-                FlextInfraWorktreeService.canonical_lane_path(primary_root, branch),
-            )
-
-        @staticmethod
         def _repository(tmp_path: Path) -> Path:
             repository = tmp_path / "repository"
             repository.mkdir()
@@ -672,7 +738,18 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository)
             remote = tmp_path / "integration.git"
             git = TestsFlextInfraUtilitiesGitMixin
-            git.git_bootstrap(tmp_path, ("init", "--bare", str(remote)))
+            # A forge remote's HEAD declares its default branch; ADD reads it
+            # live through ``ls-remote --symref``.
+            git.git_bootstrap(
+                tmp_path,
+                (
+                    "init",
+                    "--bare",
+                    "-b",
+                    TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                    str(remote),
+                ),
+            )
             policy = config.Infra.codegen.branch_policy
             action = "set-url" if policy.lane_remote == c.Infra.GIT_ORIGIN else "add"
             git.git_bootstrap(

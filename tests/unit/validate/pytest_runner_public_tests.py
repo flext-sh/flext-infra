@@ -582,21 +582,22 @@ class TestsFlextInfraPytestRunner:
     @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("ci_context", [False, True])
-    def test_full_includes_external_and_ci_markers_after_incremental_scope(
+    def test_full_executes_every_marker_once_without_testmon_or_time_limit(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """The real full phase executes harmless consumers of every excluded marker.
+        """The real full operation runs every marker in one unbounded process.
 
-        The budgeted runner never carries slow items, in the incremental and
-        the full operation alike: the slow phase is its own process on its own
-        clock, so slow consumers are absent from both budgeted inventories.
+        Slow, external and CI-excluded consumers all execute in one pytest
+        run whose context carries no testmon database and no deadline; the
+        persistent database is never read, so even a corrupt one is inert.
         """
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
             sorted({*policy.external_gate_markers, *policy.ci_excluded_markers}),
         )
+        tm.that(markers, has=policy.slow_marker)
         marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
         (cached_runner_project / "pyproject.toml").write_text(
             "[tool.pytest.ini_options]\n"
@@ -615,61 +616,89 @@ class TestsFlextInfraPytestRunner:
             source,
             encoding="utf-8",
         )
+        corrupt = b"not a SQLite database"
+        runner.testmon_db.write_bytes(corrupt)
 
         tm.that(tm.ok(runner.execute_full()), eq=0)
 
+        tm.that(runner.testmon_db.read_bytes(), eq=corrupt)
         reports_root = cached_runner_project / runner.reports
-        contexts = sorted(reports_root.glob("*/run-context.json"))
-        tm.that(len(contexts), eq=2)
-        incremental, full = (path.parent for path in contexts)
-        excluded = set(policy.external_gate_markers)
-        if ci_context:
-            excluded.update(policy.ci_excluded_markers)
-        budgeted = set(markers) - {policy.slow_marker}
-        for report_dir, expected in (
-            (incremental, 1 + len(budgeted - excluded)),
-            (full, 1 + len(budgeted)),
-        ):
-            accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-                (report_dir / "run-accounting.json").read_text(),
-            )
-            tm.that(accounting.executed_count, eq=expected)
-            tm.that(accounting.inventory_count, eq=expected)
-            tm.that(accounting.deselected_count, eq=0)
-        full_summary = (full / "summary.txt").read_text().splitlines()
+        (context_path,) = reports_root.glob("*/run-context.json")
+        context = m.Infra.PytestRunContext.model_validate_json(context_path.read_text())
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that(context.testmon_db, none=True)
+        tm.that(context.deadline_monotonic, none=True)
+        report_dir = context_path.parent
+        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+            (report_dir / "run-accounting.json").read_text(),
+        )
+        tm.that(accounting.executed_count, eq=1 + len(markers))
+        tm.that(accounting.reported_count, eq=1 + len(markers))
+        tm.that(accounting.inventory_count, none=True)
+        tm.that(accounting.deselected_count, eq=0)
+        full_summary = (report_dir / "summary.txt").read_text().splitlines()
+        tm.that(full_summary, has=["outcome=executed", "exit=0"])
         tm.that("not_executed_external_gates=" in full_summary, eq=True)
         tm.that("not_executed_ci_markers=" in full_summary, eq=True)
-        for command in (
-            runner.build_selection_command(
-                report_log=full / "testmon-inventory.events.jsonl",
-                manifest_path=full / "testmon-inventory.json",
-                complete=True,
-                execution_mode=c.Infra.PytestExecutionMode.FULL,
-            ),
-            runner.build_command(full, execution_mode=c.Infra.PytestExecutionMode.FULL),
-        ):
-            # The full budgeted phase keeps external and CI markers and leaves
-            # slow items to the full slow phase, which runs on its own clock.
-            marker_index = command.index("-m", 3)
-            tm.that(
-                command[marker_index + 1],
-                eq=f"not ({config.Infra.tooling.tools.pytest.slow_marker})",
-            )
-        slow_full = runner_for(cached_runner_project, slow_phase=True).build_command(
-            full,
-            execution_mode=c.Infra.PytestExecutionMode.FULL,
+        tm.that((report_dir / "selection-plan.json").exists(), eq=False)
+        recorded = (report_dir / "command.txt").read_text()
+        tm.that(recorded, lacks=["--testmon", c.Infra.PYTEST_SUITE_STOP_OPTION])
+        tm.that(recorded, has="--timeout=0")
+
+    @staticmethod
+    @pytest.mark.parametrize("ci_context", [False, True])
+    def test_full_argv_carries_no_testmon_marker_filter_or_time_limit(
+        cached_runner_project: Path,
+        *,
+        ci_context: bool,
+    ) -> None:
+        """The full argv disables the per-case timeout and names no stop instant.
+
+        ``--timeout=0`` is pytest-timeout's documented "no timeout"; the full
+        scope deselects no marker in any context.
+        """
+        runner = runner_for(cached_runner_project, ci_context=ci_context)
+        report = (
+            cached_runner_project
+            / config.Infra.codegen.make.testmon_cache.reports_directory
+        )
+        command = runner.build_full_command(report)
+        tm.that(
+            [token for token in command if token.startswith("--testmon")],
+            eq=[],
         )
         tm.that(
-            slow_full[slow_full.index("-m", 3) + 1],
-            eq=config.Infra.tooling.tools.pytest.slow_marker,
+            [
+                token
+                for token in command
+                if token.startswith(c.Infra.PYTEST_SUITE_STOP_OPTION)
+            ],
+            eq=[],
+        )
+        tm.that(
+            [token for token in command if token.startswith("--timeout=")],
+            eq=["--timeout=0"],
+        )
+        tm.that("-m" in command[3:], eq=False)
+        tm.that(command, has="--no-cov")
+        bounded = runner.build_command(report)
+        tm.that(
+            [token for token in bounded if token.startswith("--timeout=")],
+            eq=[f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"],
+        )
+        tm.that(
+            any(
+                token.startswith(c.Infra.PYTEST_SUITE_STOP_OPTION) for token in bounded
+            ),
+            eq=True,
         )
 
     @staticmethod
     @pytest.mark.slow
-    def test_full_runs_after_warm_cache_and_ignores_node_like_diagnostics(
+    def test_file_runs_after_warm_cache_and_ignores_node_like_diagnostics(
         cached_runner_project: Path,
     ) -> None:
-        """Cold, warm, and full collection use final items and one physical DB."""
+        """Cold, warm, and complete file collection use final items and one DB."""
         (cached_runner_project / "conftest.py").write_text(
             "import sys\n\n"
             "def pytest_collection_finish(session):\n"
@@ -678,13 +707,17 @@ class TestsFlextInfraPytestRunner:
             "        sys.stderr.write('stderr::not-a-node\\n')\n",
             encoding="utf-8",
         )
-        baseline = runner_for(cached_runner_project)
-        tm.that(tm.ok(baseline.execute()), eq=0)
+        declared = (
+            Path(config.Infra.codegen.make.testmon_cache.target_directory)
+            / "test_runtime.py"
+        )
+        baseline = runner_for(cached_runner_project, target_file=declared)
+        tm.that(tm.ok(baseline.execute_file()), eq=0)
         reports_root = cached_runner_project / baseline.reports
         existing = set(reports_root.glob("*/run-context.json"))
-        runner = runner_for(cached_runner_project)
+        runner = runner_for(cached_runner_project, target_file=declared)
 
-        tm.that(tm.ok(runner.execute_full()), eq=0)
+        tm.that(tm.ok(runner.execute_file()), eq=0)
 
         contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
         tm.that(len(contexts), eq=2)
@@ -754,6 +787,30 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @pytest.mark.slow
+    def test_unbounded_full_suite_runs_every_phase_without_deadline(
+        cached_runner_project: Path,
+    ) -> None:
+        """``make test-full`` carries no deadline in any of its phases."""
+        bounded = runner_for(cached_runner_project)
+        reports_root = cached_runner_project / bounded.reports
+        existing = set(reports_root.glob("*/run-context.json"))
+        runner = bounded.model_copy(update={"unbounded": True})
+
+        tm.that(tm.ok(runner.execute_full()), eq=0)
+
+        contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
+        parsed = [
+            m.Infra.PytestRunContext.model_validate_json(path.read_text())
+            for path in contexts
+        ]
+        tm.that(
+            [context.execution_mode for context in parsed],
+            eq=["incremental", "full"],
+        )
+        tm.that([context.deadline_monotonic for context in parsed], eq=[None, None])
+
+    @staticmethod
+    @pytest.mark.slow
     def test_warm_partial_selection_accounts_for_every_stable_test(
         cached_runner_project: Path,
     ) -> None:
@@ -804,17 +861,21 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @pytest.mark.slow
-    def test_full_stops_at_the_first_incremental_failure(
+    def test_file_stops_at_the_first_incremental_failure(
         cached_runner_project: Path,
     ) -> None:
-        """Test full stops at the first incremental failure."""
-        runner = runner_for(cached_runner_project)
-        (cached_runner_project / runner.target / "test_failure.py").write_text(
-            "def test_failure():\n    assert False, 'full must not follow failure'\n",
+        """The complete file phase never follows a failed incremental phase."""
+        declared = (
+            Path(config.Infra.codegen.make.testmon_cache.target_directory)
+            / "test_failure.py"
+        )
+        (cached_runner_project / declared).write_text(
+            "def test_failure():\n    assert False, 'complete must not follow'\n",
             encoding="utf-8",
         )
+        runner = runner_for(cached_runner_project, target_file=declared)
 
-        exit_code = tm.ok(runner.execute_full())
+        exit_code = tm.ok(runner.execute_file())
 
         # Items run in randomized order: a failure that leaves items behind
         # stops xdist through max-failures (INTERRUPTED); a last-item failure
@@ -834,15 +895,19 @@ class TestsFlextInfraPytestRunner:
         tm.that(outcome.raw_return_code, eq=exit_code)
 
     @staticmethod
-    def test_full_preserves_corrupt_database_failure_before_execution(
+    def test_file_preserves_corrupt_database_failure_before_execution(
         cached_runner_project: Path,
     ) -> None:
-        """Test full preserves corrupt database failure before execution."""
-        runner = runner_for(cached_runner_project)
+        """A corrupt testmon database stops the file operation before pytest."""
+        declared = (
+            Path(config.Infra.codegen.make.testmon_cache.target_directory)
+            / "test_runtime.py"
+        )
+        runner = runner_for(cached_runner_project, target_file=declared)
         runner.testmon_db.write_bytes(b"not a SQLite database")
 
         with pytest.raises(sqlite3.DatabaseError):
-            runner.execute_full()
+            runner.execute_file()
 
         tm.that(
             list((cached_runner_project / runner.reports).glob("*/command.txt")),
@@ -851,32 +916,33 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @pytest.mark.slow
-    def test_full_rejects_an_empty_complete_collection(
+    def test_warm_incremental_rejects_an_empty_complete_inventory(
         cached_runner_project: Path,
     ) -> None:
-        """Test full rejects an empty complete collection."""
+        """A whole-suite complete inventory that collects nothing stays red."""
+        baseline = runner_for(cached_runner_project)
+        tm.that(tm.ok(baseline.execute()), eq=0)
         (cached_runner_project / "conftest.py").write_text(
-            "from pathlib import Path\nfrom flext_infra import m\n\n"
+            "from pathlib import Path\n\n"
             "def pytest_collection_modifyitems(config, items):\n"
             "    if config.getoption('collectonly'):\n"
             "        target = Path(config.getoption(\n"
             f"            {c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION!r}))\n"
-            "        context = m.Infra.PytestRunContext.model_validate_json(\n"
-            "            (target.parent / 'run-context.json').read_text())\n"
-            "        if context.execution_mode == 'full':\n            items.clear()\n",
+            "        if target.name == 'testmon-inventory.json':\n"
+            "            items.clear()\n",
             encoding="utf-8",
         )
         runner = runner_for(cached_runner_project)
 
         with pytest.raises(RuntimeError):
-            runner.execute_full()
+            runner.execute()
 
         contexts = sorted(
             (cached_runner_project / runner.reports).glob("*/run-context.json"),
         )
         tm.that(len(contexts), eq=2)
         context = m.Infra.PytestRunContext.model_validate_json(contexts[-1].read_text())
-        tm.that(context.execution_mode, eq="full")
+        tm.that(context.execution_mode, eq="incremental")
         tm.that((contexts[0].parent / "summary.txt").read_text(), has="exit=0")
         incremental_outcome = m.Cli.ProcessOutcome.model_validate_json(
             (contexts[0].parent / "suite-outcome.json").read_text(),

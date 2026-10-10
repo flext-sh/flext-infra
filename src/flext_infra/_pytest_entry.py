@@ -21,12 +21,13 @@ class FlextInfraPytestEntry:
     def main(cls) -> int:
         """Parse the Make boundary and return the exact child process status.
 
-        ``full`` runs incremental then complete testmon execution. ``coverage``
-        selects coverage alone; the default is the incremental operation. The
-        ``slow`` operation runs the incremental phase over the slow marker
-        only, as its own bounded process outside the budgeted clock. The
-        ``file`` runs incremental then complete execution of its declared
-        target, including its slow tests; it requires the Make
+        The default is the incremental testmon operation. ``full`` runs every
+        test once, every marker included, without testmon and without any time
+        limit; it is a local-only operation. ``coverage`` selects coverage
+        alone. The ``slow`` operation runs the incremental phase over the slow
+        marker only, as its own bounded process outside the budgeted clock.
+        The ``file`` runs incremental then complete testmon execution of its
+        declared target, including its slow tests; it requires the Make
         boundary to export the single-file target environment variable.
 
         Returns:
@@ -53,10 +54,10 @@ class FlextInfraPytestEntry:
             msg = f"pytest profile returned a non-integer process status: {status!r}"
             raise TypeError(msg)
 
-        slow_phase = mode in {"slow", "full-slow"}
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,
+            unbounded=mode in {"full", "full-slow"},
         )
         if mode == "file" and runner.target_file is None:
             msg = (
@@ -66,8 +67,10 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode in {"full", "full-slow", "file"}:
+        elif mode == "full":
             status = runner.execute_full().unwrap()
+        elif mode == "file":
+            status = runner.execute_file().unwrap()
         elif mode in {"", "slow"}:
             status = runner.execute().unwrap()
         else:

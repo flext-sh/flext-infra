@@ -450,18 +450,14 @@ class FlextInfraGate:
 
     def _build_gate_execution(
         self,
-        project_dir: Path,
-        *,
-        verdict: bool,
-        outcome: c.Infra.ToolOutcome,
-        issues: t.SequenceOf[m.Infra.Issue],
-        raw_output: str,
-        started: float,
+        params: p.Infra.GateExecutionParams,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution whose verdict the caller already decided.
+        """Assemble a gate execution from its native outcome and findings.
 
-        Native outcome and acceptance are separate: residual findings block
-        acceptance without being relabeled as machinery failures.
+        Native outcome and acceptance are separate. A repair breaks only on an
+        error; the findings it leaves keep the ``FINDINGS`` outcome and stay
+        reported for ``check``, whose verdict enforces them (tracker memory
+        ``operator-ruling-2026-10-10-fix-residual-verdict``).
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -469,14 +465,14 @@ class FlextInfraGate:
         """
         return m.Infra.GateExecution(
             result=self._gate_result(
-                project_dir,
-                passed=verdict,
-                errors=[issue.formatted for issue in issues],
-                started=started,
+                params.project_dir,
+                passed=params.verdict,
+                errors=[issue.formatted for issue in params.issues],
+                started=params.started,
             ),
-            issues=tuple(issues),
-            raw_output=raw_output,
-            outcome=outcome,
+            issues=tuple(params.issues),
+            raw_output=params.raw_output,
+            outcome=params.outcome,
         )
 
     def _build_check_gate_execution(
@@ -786,8 +782,10 @@ class FlextInfraGate:
         cmd = self._build_fix_command(project_dir, ctx, targets)
         with self._mutation_lease(project_dir):
             result = self._run(cmd, project_dir)
-        # Repairs retain every native finding. Completing a mutation does not
-        # turn residual findings into acceptance; only a clean outcome passes.
+        # A fixer repairs what it can. The run's outcome decides the verdict:
+        # the findings it reports stay for ``check``, and only an error (a
+        # status the tool does not declare, a timeout, a signal, a findings
+        # status with nothing reported) breaks the verb with its cause.
         _, issues = self._parse_check_output(result, project_dir, ctx)
         errors = [issue for issue in issues if issue.code == c.Infra.ToolOutcome.ERROR]
         outcome = u.Infra.tool_outcome(
@@ -807,12 +805,14 @@ class FlextInfraGate:
                 ),
             )
         return self._build_gate_execution(
-            project_dir,
-            verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
-            outcome=outcome,
-            issues=issues,
-            raw_output=self._raw_output(result),
-            started=started,
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=outcome is not c.Infra.ToolOutcome.ERROR,
+                outcome=outcome,
+                issues=tuple(issues),
+                raw_output=self._raw_output(result),
+                started=started,
+            ),
         )
 
     @staticmethod

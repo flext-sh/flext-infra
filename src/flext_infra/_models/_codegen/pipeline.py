@@ -11,8 +11,7 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
-from flext_infra._constants import FlextInfraConstantsCodegenProject
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenFixModels,
@@ -68,7 +67,7 @@ class FlextInfraModelsCodegenPipelineModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenStagedFilePhase,
+            c.Infra.CodegenStagedFilePhase,
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[
@@ -105,6 +104,20 @@ class FlextInfraModelsCodegenPipelineModels:
                 msg = "codegen phase receipt input paths must be unique"
                 raise ValueError(msg)
             return self
+
+    class CodegenPhaseOutcome(m.ArbitraryTypesModel):
+        """One fleet worker's phase analysis, or its failure as data."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        analysis: Annotated[
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None,
+            m.Field(description="Phase analysis on success"),
+        ] = None
+        error: Annotated[
+            str,
+            m.Field(description="Phase failure, empty on success"),
+        ] = ""
 
     class CodegenConformPorts(m.ArbitraryTypesModel):
         """Collaborators the complete conform crosses into, wired by the facade.

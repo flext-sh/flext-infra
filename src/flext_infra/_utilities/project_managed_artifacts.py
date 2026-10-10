@@ -20,6 +20,29 @@ from flext_infra._utilities import FlextInfraUtilitiesGit
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
 
+    @staticmethod
+    def compose_ruff_per_file_ignores(
+        tooling: m.Infra.ToolConfigDocument,
+        project: m.Infra.ProjectRuffConfig,
+    ) -> t.Infra.PerFileIgnores:
+        """Compose shared policy with this project's validated Ruff additions.
+
+        Returns:
+            Deterministic scoped rules retaining both owners' declarations.
+
+        """
+        shared = tooling.tools.ruff.lint.per_file_ignores
+        local = project.per_file_ignores
+        return {
+            pattern: tuple(
+                sorted({
+                    *shared.get(pattern, ()),
+                    *local.get(pattern, ()),
+                })
+            )
+            for pattern in sorted(shared.keys() | local.keys())
+        }
+
     @classmethod
     def _validated_config_roots(
         cls,

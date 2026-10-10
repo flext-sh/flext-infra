@@ -282,11 +282,17 @@ class FlextInfraModelsCore:
             description="Canonical test operation for this report directory",
         )
         testmon_db: Path | None = m.Field(
-            description="External pytest-testmon database; absent for coverage",
+            description=(
+                "External pytest-testmon database; absent for the coverage and "
+                "the full operations, which never load testmon"
+            ),
         )
-        deadline_monotonic: float = m.Field(
+        deadline_monotonic: float | None = m.Field(
             gt=0,
-            description="Shared absolute deadline across all execution phases",
+            description=(
+                "Shared absolute deadline across all execution phases; absent "
+                "for the unbounded full operation"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,
@@ -410,6 +416,10 @@ class FlextInfraModelsCore:
             t.NonNegativeInt,
             m.Field(description="Skipped test case count"),
         ]
+        connectivity_skip_cases: t.StrTuple = m.Field(
+            default_factory=tuple,
+            description="Shared-plugin prerequisite skips, not successful connectivity",
+        )
         collection_failed_count: t.NonNegativeInt = m.Field(
             description="Failed collection reports, separate from JUnit cases",
         )
@@ -494,6 +504,10 @@ class FlextInfraModelsCore:
         reported_phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(
             default_factory=dict[str, t.MutableStrMapping],
             description="Runtest phase outcomes keyed by TestReport node ID",
+        )
+        connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list[str],
+            description="Shared-plugin prerequisite skips retained in JUnit",
         )
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt

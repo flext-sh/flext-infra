@@ -295,6 +295,20 @@ class FlextInfraModelsCensus:
     class WorkspaceReport(m.ArbitraryTypesModel):
         """Workspace-wide census summary."""
 
+        constant_consumer_files: Annotated[
+            t.NonNegativeInt,
+            m.Field(
+                description=("Files with identity-proven constant consumer rewrites"),
+            ),
+        ] = 0
+        constant_consumer_bindings: Annotated[
+            t.NonNegativeInt,
+            m.Field(
+                description=(
+                    "Imported bindings rewired to canonical constants facades"
+                ),
+            ),
+        ] = 0
         projects: t.VariadicTuple[FlextInfraModelsCensus.ProjectReport] = m.Field(
             default_factory=tuple,
             description="Per-project reports",

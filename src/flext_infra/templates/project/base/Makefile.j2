@@ -33,6 +33,18 @@
 {%- macro fix_body() -%}
 {{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
 {%- endmacro -%}
+{#- A local workspace run carries a mutating verb to every governed member
+    after the root settles itself: flext-infra runs each member's own verb
+    concurrently (operator-ruling-2026-10-10-workspace-verbs-fleet-unit). CI
+    keeps every repository evaluating only itself, so the fan-out never
+    renders a CI step and members render nothing. -#}
+{%- macro fleet_fanout(verb) -%}
+{%- if make_profile == "workspace" %}
+ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
+{{ "\t" }}@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} fleet --repository-root "$(PROJECT_ROOT)" --verb {{ verb }}
+endif
+{%- endif -%}
+{%- endmacro -%}
 {%- macro pytest_testmon_guard() -%}
 set -eu; \
 database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
@@ -63,16 +75,11 @@ TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
 {%- endmacro -%}
 {#- Normal incremental verbs admit only the bounded phase. Slow-marked items
-    remain owned by the explicitly requested full verb. -#}
+    remain owned by the explicitly requested full verb, which runs locally
+    without testmon and without any time limit, so it is the one runner that
+    is not wrapped in PYTEST_BOUNDED. -#}
 {#- Tests run on the provisioned toolchain: every verb's tools resolve from
     the mise-managed PATH, so a test observes the runtime's tool versions. -#}
-<<<<<<< HEAD
-{%- macro pytest_test_runner(operations=("",)) -%}
-{{ pytest_testmon_guard() }}
-{{ pytest_scratch_root() }}
-{%- for operation in operations %}
-{{ make.testmon_cache.database_environment_variable }}="$$database" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}{% if not loop.last %}; \{% endif %}
-=======
 {%- macro pytest_test_runner(operations=("",), allow_empty_file_phases=false) -%}
 {{ pytest_testmon_guard() }}
 {{ pytest_scratch_root() }}
@@ -81,24 +88,23 @@ file_executed=0; \
 {%- endif %}
 {%- for operation in operations %}
 {% if allow_empty_file_phases %}if {% endif %}{{ make.testmon_cache.database_environment_variable }}="$$database" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}{% if allow_empty_file_phases %}; then file_executed=1; else phase_status=$$?; case "$$phase_status" in 5) printf 'INFO: test-file {{ operation }} NOT EXECUTED: no requested tests in phase\n' ;; *) exit "$$phase_status" ;; esac; fi; \{% elif not loop.last %}; \{% endif %}
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 {%- endfor %}
 {%- if allow_empty_file_phases %}
 if [ "$$file_executed" -eq 0 ]; then printf 'ERROR: test-file executed zero requested tests\n' >&2; exit 5; fi
 {%- endif %}
-{%- endmacro -%}
-<<<<<<< HEAD
-{#- The single-file verb validates its FILE input and runs incremental then
-    complete execution of that file through the same persistent database.
-    No empty marker phase or native exit status is normalized. The variable mirrors
 =======
+{%- macro pytest_test_runner(operation="", bounded=True) -%}
+{{ pytest_testmon_guard() }}
+{{ pytest_scratch_root() }}
+{{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(UV_RUN) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
+>>>>>>> /tmp/at_src_flext_infra_templates_project_base_Makefile.j2
+{%- endmacro -%}
 {#- The single-file verb validates its FILE input and exports the target in
     the same shell as the guarded budgeted and slow phases. It is the sole
     single-file path (local only, never a CI or pre-commit context): each phase
     is its own bounded process on the same persistent database, an empty phase
     is reported NOT EXECUTED, and the verb fails when both phases executed zero
     requested tests. The exported variable name mirrors
->>>>>>> recover/redo-d0560ba3c-merge-20261009
     c.Infra.PYTEST_ENV_TARGET_FILE in flext-infra/_constants/make.py; the entry
     fails loudly on a mismatch. -#}
 {%- macro pytest_test_file_runner() -%}
@@ -106,11 +112,10 @@ if [ -z "$(strip $(FILE))" ]; then printf 'ERROR: test-file requires FILE=<repos
 case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative path: %s\n' "$(FILE)" >&2; exit 2 ;; esac; \
 if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
 export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
-<<<<<<< HEAD
-{{ pytest_test_runner(("file",)) }}
-=======
 {{ pytest_test_runner(("file", "file-slow"), allow_empty_file_phases=true) }}
->>>>>>> recover/redo-d0560ba3c-merge-20261009
+=======
+{{ pytest_test_runner("file") }}
+>>>>>>> /tmp/at_src_flext_infra_templates_project_base_Makefile.j2
 {%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -367,13 +372,8 @@ MYPY_PATHS := $(strip $(foreach d,src tests examples{% if script_dispatch %} scr
 # === SECTION: project tool owner (managed) ===
 # Source: the repository's declared Mise toolchain, provisioned by make setup.
 # Every tool resolves from the mise-managed PATH (direnv activation shims, or
-<<<<<<< HEAD
-# the CI provisioned PATH); mise resolves each tool through the committed
-# mise.lock wherever it pins one, and `make audit` proves the pins.
-=======
 # the CI provisioned PATH); _builtin_require_mise guards the running mise
 # against the committed mise.lock pin.
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 override UV := uv
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
@@ -444,11 +444,6 @@ export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH RUN
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 TOOL_BOOTSTRAP_RESOLVE :=
 {{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", mise_selector, mise_install_tools, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", make) }}
-<<<<<<< HEAD
-# The local structural guard runs before any credential or lock owner.
-_bootstrap_setup_tools: _builtin_require_workspace
-=======
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 _bootstrap_setup_tools: _builtin_require_upg_lock_owner
 _bootstrap_setup_tools: _builtin_require_network_auth
 
@@ -478,9 +473,10 @@ _builtin_require_network_auth:
 		fi; \
 	fi
 
-# Every repository evaluates only itself, locally exactly as in CI: a workspace
-# root consumes its members as installed libraries and never fans a verb out
-# across them; each member runs its own lifecycle in its own repository.
+# Every repository evaluates only itself: a workspace root consumes its members
+# as installed libraries and each member runs its own lifecycle in its own
+# repository. Locally, the mutating verbs fmt/fix/mod then carry that same
+# member-own verb to every governed member (fleet_fanout); CI never fans out.
 # Provisioning is declared once and shared by every profile. Dev environments
 # consume present members as LIVE editable installs natively (operator law
 # 2026-10-06: a commit never influences dev behavior — the worktree is the
@@ -494,20 +490,6 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	if [ -n "$${FLEXT_SETUP_CREDENTIAL_STORE:-}" ]; then \
 		credential_env="env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=store --file=$$FLEXT_SETUP_CREDENTIAL_STORE"; \
 	fi; \
-<<<<<<< HEAD
-	uv_lock_mode=; \
-	if [ -f "$(UV_PROJECT)/uv.lock" ] && ! grep -qE '^(<<<<<<< |=======$$|>>>>>>> )' "$(UV_PROJECT)/uv.lock"; then \
-		uv_lock_mode=--frozen; \
-	fi; \
-	locked_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	if [ -n "$$uv_lock_mode" ]; then \
-		$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$locked_python" $(UV_SYNC_FLAGS) $$uv_lock_mode --link-mode "$(UV_LINK_MODE)"; \
-	else \
-		$(UV) venv --allow-existing --python "$$locked_python" "$(RUNTIME_VENV)"; \
-		uv_groups="$$(awk '/^\[dependency-groups\]/ { inside = 1; next } /^\[/ { inside = 0 } inside && $$2 == "=" { printf " --group $(UV_PROJECT)/pyproject.toml:%s", $$1 }' "$(UV_PROJECT)/pyproject.toml")"; \
-		$$credential_env $(UV) pip install --python "$(RUNTIME_VENV)/bin/python" --link-mode "$(UV_LINK_MODE)" --requirements "$(UV_PROJECT)/pyproject.toml" --all-extras $$uv_groups --editable "$(UV_PROJECT)"$(foreach member,$(WORKSPACE_SUBPROJECTS), --editable "$(PROJECT_ROOT)/$(member)"); \
-	fi; \
-=======
 	if [ ! -f "$(UV_PROJECT)/uv.lock" ]; then \
 		printf 'ERROR[setup] uv.lock is missing: %s/uv.lock\n  Right way: only `make upg` writes uv.lock; setup installs the committed lock and never creates one.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$(PROJECT_ROOT)" >&2; \
 		exit 2; \
@@ -522,7 +504,6 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		uv_lock_mode=--frozen; \
 	fi; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "{{ python_version }}" $(UV_SYNC_FLAGS) $$uv_lock_mode --link-mode "$(UV_LINK_MODE)"; \
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)"; \
 	if [ "$(strip $({{ make.ci.variable }}))" != "{{ make.ci.value }}" ]; then \
 		for member in $(WORKSPACE_SUBPROJECTS); do \
@@ -568,21 +549,11 @@ endif
 override PROJECT_INFRA_RUN = if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON)
 override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
-<<<<<<< HEAD
-# Setup uses the committed uv.lock and never stops on it
-# (operator-ruling-2026-10-09-setup-resilient): a present, readable lock always
-# installs `--frozen` (exactly its pins, current or stale, never rewritten).
-# Without a readable lock (missing, or merge markers uv cannot parse) uv pip
-# installs the project and its declared groups from the manifests into the
-# environment, never reading or writing uv.lock. `make audit` holds the
-# verdict (law 14) and `make upg` cures it.
-=======
 # Lock law (operator 2026-10-03): only `make upg` writes uv.lock. Setup installs
 # the committed lock and never deletes, creates, or relocks it: a matching lock
 # syncs `--locked`; a drifted lock is reported (cause, right way, how) and
 # synced `--frozen` locally, and fails under CI (law 14: red means red); a
 # missing lock fails naming `make upg`.
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 UV_SYNC_FLAGS := --all-extras --all-groups --all-packages
 ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 override UV_SYNC_FLAGS := --all-extras --all-groups --all-packages --no-editable
@@ -599,12 +570,6 @@ export {{ make.ci.variable }}
 override TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 endif
 override SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
-<<<<<<< HEAD
-# Digest of the Makefile this make parsed; `upg` compares it after `gen`
-# publishes to decide whether the remaining recipe may still name its targets.
-override SELF_MAKEFILE_DIGEST := $(shell sha256sum "$(SELF_MAKEFILE)")
-=======
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 
 define RUN_PUBLIC_POST
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
@@ -619,8 +584,11 @@ define RUN_PUBLIC_PRODUCE
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
 endef
 
+# Activation follows the same context rule as every public verb: CI runs the
+# activated target directly in its provisioned environment; elsewhere direnv
+# activates the checkout first.
 define RUN_PUBLIC_ACTIVATE
-	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1)
+	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-$(1),direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1))
 endef
 
 define RUN_PUBLIC
@@ -700,11 +668,7 @@ _activated-{{ verb.name }}: _builtin_require_environment
 # entry, and the promoted dispatcher renders its contract per WHAT.
 VERB_CONTRACT := $(filter {{ ((contract_env_values | list) + (contract_env_values | map("lower") | list) + (contract_env_values | map("capitalize") | list)) | unique(case_sensitive=true) | join(" ") }},$(OPTIONS) $(HELP))
 ifeq ($(VERB_CONTRACT),)
-<<<<<<< HEAD
-{% for verb in profile.verbs if verb.name not in ("setup", "upg") %}
-=======
 {% for verb in profile.verbs if verb.name not in ("setup", "upg", "pre-commit") %}
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 {{ public_verb_entry(verb) }}
 {% endfor %}
 
@@ -713,13 +677,6 @@ ifeq ($(VERB_CONTRACT),)
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
 
-<<<<<<< HEAD
-# The pre-commit hook approval: only the fast external gates the gate
-# registry declares (make.check_gates_pre_commit); no setup, no audit and no
-# tests. CI runs the ci workflow rows as its own steps.
-_builtin-pre-commit: _builtin_require_environment
-	@{{ check_run(gates_csv(make.check_gates_pre_commit)) }}
-=======
 # Provisioning-safe approval: never activate before setup creates the venv.
 pre-commit: _builtin_require_workspace
 	+@set -eu; \
@@ -737,7 +694,6 @@ pre-commit: _builtin_require_workspace
 
 _builtin-pre-commit:
 	+@$(SELF_MAKE) pre-commit
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 
 # `upg` builds the environment from the locks it writes, so like `setup` it
 # must not require an existing environment, and as the only resolver it must
@@ -798,7 +754,7 @@ _builtin-help:
 # reconciler validates every initialized checkout before mutation, initializes
 # only missing modules, and preserves declared branches that fix forward beyond
 # the recorded gitlink.
-{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", timeout_command, timeout_kill_after_seconds, make.submodule_timeout_seconds) }}
+{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", timeout_command, timeout_kill_after_seconds, make.submodule_timeout_seconds, make.submodule_jobs) }}
 
 # A provisioned local setup needs no GitHub credential. Mise and Git receive
 # only the explicit process credential above; an operation that actually needs
@@ -809,9 +765,6 @@ _builtin-help:
 # activation (or the CI-provisioned PATH) resolves `mise` through the
 # mise-managed shims; a stale or absent toolchain fails loud and names the
 # native repair verb.
-<<<<<<< HEAD
-_builtin_require_environment: _builtin_require_workspace
-=======
 .PHONY: _builtin_require_mise
 _builtin_require_mise:
 	@if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
@@ -830,7 +783,6 @@ _builtin_require_mise:
 	fi
 
 _builtin_require_environment: _builtin_require_workspace _builtin_require_mise
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 # Documenting the interface (`make help`) must not require the interpreter it
 # tells the user how to provision. Only `make help` with no other goal
 # skips the check; any combined goal still demands the environment.
@@ -856,26 +808,6 @@ endif
 # members are read as libraries; no verb gates them from here.
 _builtin_setup_environment: $(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),,_builtin_setup_submodules)
 	@$(SETUP_ENVIRONMENT_RECIPE)
-<<<<<<< HEAD
-# End SECTION: setup environment
-
-# `upg` is the only recipe that resolves. Its bootstrap half ran
-# `mise lock --bump` on the manifest the generator was provisioned with. This
-# lifecycle upgrades uv.lock (which carries the generator itself) and
-# provisions the environment frozen from it; then the upgraded generator's
-# Mise manifest is rendered (the mise-config surface renders from the
-# toolchain owner alone, resolving no tool), locked with `mise lock --bump`,
-# installed. That comes before every
-# stage that resolves a managed tool (deps modernize, gen), because each one
-# authenticates the Mise reader against the lock's self pin, which a consumer
-# generated by an earlier generator does not carry yet (C19). One run
-# converges. The floors deps modernize writes land in the codegen SSOT and
-# gen projects them into every pyproject; the upgraded generator may project
-# requirements the first uv resolution never saw, so uv.lock is resolved
-# again from the projected pyproject and the environment reinstalled right
-# after the producer half, before activation. The convergence fixed point
-# must hold before the upgrade publishes.
-=======
 ifeq ($(MAKE_PROFILE),workspace)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 endif
@@ -902,7 +834,6 @@ endif
 # satisfies it (mise has no `lock --check`: the locked install IS the
 # satisfaction check), `_builtin_require_mise` re-proves the pinned release,
 # and the convergence fixed point must hold before the upgrade publishes.
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 # Gates are not part of the upgrade: `make check` stays its own verb. Branch-tracked git dependencies are moving sources by
 # declaration (workspace.yaml owns the branch): --refresh re-reads their
 # metadata so a stale cached requires-dist can never block or skew the
@@ -921,12 +852,6 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
-<<<<<<< HEAD
-	@if [ -f "$(PROJECT_ROOT)/uv.lock" ] && grep -qE '^(<<<<<<< |=======$$|>>>>>>> )' "$(PROJECT_ROOT)/uv.lock"; then \
-		rm -f "$(PROJECT_ROOT)/uv.lock"; \
-	fi
-=======
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
@@ -936,31 +861,12 @@ _upg_lifecycle: _builtin_setup_submodules
 		--apply --rewrite-constraints --projects .
 	@$(SELF_MAKE) _builtin_require_environment
 	$(call RUN_PUBLIC_PRODUCE,gen)
-<<<<<<< HEAD
-	+@set -eu; \
-	published="$$(sha256sum "$(SELF_MAKEFILE)")"; \
-	if [ "$$published" = "$(SELF_MAKEFILE_DIGEST)" ]; then \
-		$(SELF_MAKE) _upg_converge; \
-	elif [ "$(UPG_HANDOFF)" = "Y" ]; then \
-		printf 'ERROR: upg: gen republished %s inside the hand-off; gen is not a fixed point\n' "$(SELF_MAKEFILE)" >&2; \
-		exit 1; \
-	else \
-		printf 'upg: gen published a new %s; handing off to make upg on it\n' "$(SELF_MAKEFILE)"; \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y; \
-	fi
-
-_upg_converge:
-	@$(UV) lock --project "$(PROJECT_ROOT)"
-	@$(UV) lock --check --project "$(PROJECT_ROOT)"
-	@$(SELF_MAKE) _builtin_setup_environment
-=======
 	@$(UV) lock --project "$(PROJECT_ROOT)"
 	@$(UV) lock --check --project "$(PROJECT_ROOT)"
 	@$(SELF_MAKE) _builtin_setup_environment
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(SELF_MAKE) _builtin_require_mise
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 	$(call RUN_PUBLIC_ACTIVATE,gen)
 	@$(SELF_MAKE) gen
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --mode check
@@ -999,7 +905,7 @@ _builtin_test_all: _builtin_require_environment
 
 _builtin_test_full_all: _builtin_require_environment
 {{ test_report_recipe(
-    runner=pytest_test_runner(("full", "full-slow")),
+    runner=pytest_test_runner("full", bounded=False),
 ) }}
 
 _builtin_test_file_all: _builtin_require_environment
@@ -1012,12 +918,6 @@ _builtin_test_file_all: _builtin_require_environment
 export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
 	@{{ check_run("lint,format,pyrefly,mypy,pyright,codemod", ' --file "$$FLEXT_FILE_GATE_FILE"') }}
-
-_builtin_tests_all: _builtin_require_environment
-	+@$(SELF_MAKE) test
-{{ test_report_recipe(
-    runner="$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full",
-) }}
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
@@ -1082,19 +982,21 @@ profile-mypy-report: _builtin_require_environment
 		'import pstats, sys; pstats.Stats(sys.argv[1]).sort_stats("cumtime").print_stats(50)' \
 		"$(PROFILE_REPORTS_DIR)/mypy.pstats"
 
+# Profile the whole read-only generation plan `make gen` executes (every
+# governed repository, lazy-init and docs phases) without publishing.
 .PHONY: profile-gen
 profile-gen: _builtin_require_environment
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
 	@$(RUNTIME_PYTHON) -c \
 		'import cProfile, sys; from flext_infra.cli import main; profile = cProfile.Profile(); status = profile.runcall(main, sys.argv[2:]); profile.dump_stats(sys.argv[1]); raise SystemExit(status)' \
-		"$(PROFILE_REPORTS_DIR)/lazy-init.pstats" codegen lazy-init \
-		--repository-root "$(PROJECT_ROOT)" --module {{ dist | replace('-', '_') }} --dry-run
+		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen conform \
+		--root "$(PROJECT_ROOT)" --scope all --mode check
 
 .PHONY: profile-gen-report
 profile-gen-report: _builtin_require_environment
 	@$(RUNTIME_PYTHON) -c \
-		'import pstats, sys; pstats.Stats(sys.argv[1]).sort_stats("cumtime").print_stats(50)' \
-		"$(PROFILE_REPORTS_DIR)/lazy-init.pstats"
+		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
+		"$(PROFILE_REPORTS_DIR)/conform.pstats"
 
 # Profile the cold canonical pytest execution through its thin entrypoint
 # for startup diagnosis: the same persistent testmon database
@@ -1209,6 +1111,16 @@ _builtin-bootstrap-candidate: _builtin_require_environment
 _builtin_mod_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)" --apply
 
+_builtin-census: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
+		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json"
+
+_builtin-census-constants: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
+		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json" --apply
+
 _builtin_mod_text: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod-text --apply
 
@@ -1251,24 +1163,14 @@ _builtin-test: _builtin_test_all
 _builtin-test-full: _builtin_test_full_all
 _builtin-test-file: _builtin_test_file_all
 _builtin-file-gate: _builtin_file_gate_all
-_builtin-fmt: _builtin_fmt_all
-_builtin-fix: _builtin_fix_all
+_builtin-fmt: _builtin_fmt_all{{ fleet_fanout("fmt") }}
+_builtin-fix: _builtin_fix_all{{ fleet_fanout("fix") }}
 _builtin-fix-namespace: _builtin_fix_namespace
 _builtin-fix-accessors: _builtin_fix_accessors
 _builtin-audit:
 ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-lanes --repo-root "$(PROJECT_ROOT)"
 endif
-<<<<<<< HEAD
-	@set -eu; \
-	if ! uv_lock_report=$$($(UV) lock --check --project "$(UV_PROJECT)" 2>&1); then \
-		printf 'ERROR[audit] uv.lock does not match the manifests of %s:\n%s\n  Right way: only `make upg` writes uv.lock and cures the drift.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
-		exit 2; \
-	fi
-	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(mise which uv)"
-=======
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 	@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(PROJECT_ROOT)",:)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
@@ -1286,7 +1188,7 @@ _builtin-release-build: _builtin_release_build
 _builtin-publication: _builtin_release_publish
 _builtin-gen: _builtin_gen_all
 _builtin-initialize: _builtin_gen_init
-_builtin-mod: _builtin_mod_apply
+_builtin-mod: _builtin_mod_apply{{ fleet_fanout("mod") }}
 _builtin-mod-text: _builtin_mod_text
 _builtin-mod-text-candidate: _builtin_mod_text_candidate
 _builtin-mod-snapshots: _builtin_mod_snapshots

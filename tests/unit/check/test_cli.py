@@ -277,7 +277,11 @@ class TestsFlextInfraWorkspaceCheckCli:
     def test_run_cli_fix_declares_static_methods_beside_an_unparsable_module(
         tmp_path: Path,
     ) -> None:
-        """A no-self-use repair completes when another module cannot parse."""
+        """A no-self-use repair applies beside a module that cannot parse.
+
+        The repair lands in the parsable module; the unparsable one stays
+        untouched and its residual finding stays for check.
+        """
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
         broken = TestsFlextInfraWorkspaceCheckCli._write_module(
             workspace,

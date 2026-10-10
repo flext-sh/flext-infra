@@ -11,12 +11,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import (
-    FlextInfraConstantsCodegenProject,
-    FlextInfraConstantsDocs,
-    FlextInfraConstantsWorkspace,
-)
+from flext_infra import c, t
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
@@ -60,9 +55,9 @@ class FlextInfraConfigModelsRender:
         docs_report_filenames: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Structured docs reports CI dumps and uploads"),
-        ] = FlextInfraConstantsDocs.DOCS_STRUCTURED_REPORT_FILENAMES
+        ] = c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(
                 description=(
                     "Make/codegen profile; ci-matrix projected only for "
@@ -255,7 +250,7 @@ class FlextInfraConfigModelsRender:
         environment_directory: Annotated[
             t.NonEmptyStr,
             m.Field(description="Runtime-root-local development environment"),
-        ] = FlextInfraConstantsWorkspace.ENVIRONMENT_DIRECTORY
+        ] = c.Infra.ENVIRONMENT_DIRECTORY
 
     class SonarcloudIssueExclusionSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One SonarCloud issue exclusion applied as a server-side project setting.

@@ -70,6 +70,21 @@ class FlextInfraModTextGateEngine:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(snapshots)
         return cls._rules_from_states(snapshots.value)
 
+    @classmethod
+    def source_paths(cls, root: Path) -> p.Result[t.VariadicTuple[Path]]:
+        """Return every source a text rewrite of ``root`` may publish to.
+
+        Returns:
+            The Python sources and declared Markdown globs of the elected
+            cascade. Rules outside this root's distribution are not elected,
+            so their Markdown includes never fail the inventory.
+
+        """
+        elected = cls._elected_rules(root.absolute())
+        if elected.failure:
+            return r[t.VariadicTuple[Path]].from_failure(elected)
+        return cls._source_paths(root.absolute(), elected.value[2])
+
     @staticmethod
     def _selected_rules(
         identity: m.Cli.AtomicFileState,

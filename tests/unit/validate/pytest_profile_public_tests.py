@@ -140,9 +140,13 @@ class TestsFlextInfraPytestProfile:
         receipt_path = profile.with_suffix(".pstats.json")
         original = receipt_path.read_text(encoding="utf-8")
         receipt = m.Infra.PytestRunContext.model_validate_json(original)
+        # The profiled incremental operation is bounded, so its receipt names
+        # a deadline.
+        deadline = receipt.deadline_monotonic
+        assert deadline is not None
         receipt_path.write_text(
             receipt.model_copy(
-                update={"deadline_monotonic": receipt.deadline_monotonic + 1},
+                update={"deadline_monotonic": deadline + 1},
             ).model_dump_json(),
             encoding="utf-8",
         )

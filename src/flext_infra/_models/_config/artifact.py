@@ -13,26 +13,24 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import (
-    FlextInfraConstantsCodegenProject,
-    FlextInfraConstantsSharedInfra,
-)
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
-from flext_infra._models.deps_tool_config_project_artifacts import (
+from flext_infra import c, t
+from flext_infra._models import (
+    FlextInfraModelsDepsToolConfig,
     FlextInfraModelsDepsToolConfigProjectArtifacts,
+    FlextInfraModelsLayout,
+    FlextInfraModelsMiseToolchain,
 )
-from flext_infra._models.layout import FlextInfraModelsLayout
-from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
+from flext_infra._models._config import (
+    FlextInfraConfigModelsContexts,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsProvider,
+    FlextInfraConfigModelsRelease,
+    FlextInfraConfigModelsRender,
+    FlextInfraConfigModelsScaffold,
+    FlextInfraConfigModelsTemplates,
+    FlextInfraConfigModelsWorkspace,
+)
 
 
 class FlextInfraConfigModelsArtifact:
@@ -187,6 +185,25 @@ class FlextInfraConfigModelsArtifact:
         fresh_import_workers: Annotated[
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
+        ]
+        lint_snapshot_workers: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=16,
+                description="Concurrent protected-edit lint snapshot threads",
+            ),
+        ]
+        fleet_workers: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=32,
+                description=(
+                    "Worker processes for independent read-only per-repository "
+                    "work of one fleet run"
+                ),
+            ),
         ]
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
@@ -461,14 +478,14 @@ class FlextInfraConfigModelsArtifact:
             if derived:
                 sections.append(
                     FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec(
-                        name=FlextInfraConstantsSharedInfra.GITIGNORE_DERIVED_SECTION_NAME,
+                        name=c.Infra.GITIGNORE_DERIVED_SECTION_NAME,
                         patterns=tuple(derived),
                     ),
                 )
             if managed_allowed:
                 sections.append(
                     FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec(
-                        name=FlextInfraConstantsSharedInfra.GITIGNORE_MANAGED_SECTION_NAME,
+                        name=c.Infra.GITIGNORE_MANAGED_SECTION_NAME,
                         patterns=tuple(managed_allowed),
                     ),
                 )
@@ -554,8 +571,7 @@ class FlextInfraConfigModelsArtifact:
             non_full = sorted(
                 managed.path.as_posix()
                 for managed in github_managed
-                if managed.policy
-                != FlextInfraConstantsSharedInfra.MANAGED_FILE_POLICY_FULL
+                if managed.policy != c.Infra.MANAGED_FILE_POLICY_FULL
             )
             if non_full:
                 msg = f"GitHub artifacts must be full-managed: {non_full}"
@@ -601,17 +617,17 @@ class FlextInfraConfigModelsArtifact:
 
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenConformSurface,
+            c.Infra.CodegenConformSurface,
             m.Field(description="Managed file selection"),
-        ] = FlextInfraConstantsCodegenProject.CodegenConformSurface.ALL
+        ] = c.Infra.CodegenConformSurface.ALL
         scope: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenConformScope,
+            c.Infra.CodegenConformScope,
             m.Field(description="Repository selection scope"),
-        ] = FlextInfraConstantsCodegenProject.CodegenConformScope.SELF
+        ] = c.Infra.CodegenConformScope.SELF
         mode: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenConformMode,
+            c.Infra.CodegenConformMode,
             m.Field(description="Read-only check or atomic apply"),
-        ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
+        ] = c.Infra.CodegenConformMode.CHECK
         module: Annotated[
             str | None,
             m.Field(description="Exact package or module for a file-only surface"),
@@ -629,29 +645,22 @@ class FlextInfraConfigModelsArtifact:
 
             """
             file_only = self.what in {
-                FlextInfraConstantsCodegenProject.CodegenConformSurface.LAZY_INIT,
-                FlextInfraConstantsCodegenProject.CodegenConformSurface.FACADES,
+                c.Infra.CodegenConformSurface.LAZY_INIT,
+                c.Infra.CodegenConformSurface.FACADES,
             }
-            facades = (
-                self.what
-                == FlextInfraConstantsCodegenProject.CodegenConformSurface.FACADES
-            )
+            facades = self.what == c.Infra.CodegenConformSurface.FACADES
             if self.module is not None and not file_only:
                 msg = "--module belongs only to lazy-init or facades"
                 raise ValueError(msg)
             if facades and self.module is None:
                 msg = "facades requires an exact destination --module"
                 raise ValueError(msg)
-            if file_only and (
-                self.scope != FlextInfraConstantsCodegenProject.CodegenConformScope.SELF
-            ):
+            if file_only and (self.scope != c.Infra.CodegenConformScope.SELF):
                 msg = "file-only surfaces require the self repository scope"
                 raise ValueError(msg)
             if (
-                self.what
-                == FlextInfraConstantsCodegenProject.CodegenConformSurface.MISE_CONFIG
-                and self.scope
-                != FlextInfraConstantsCodegenProject.CodegenConformScope.SELF
+                self.what == c.Infra.CodegenConformSurface.MISE_CONFIG
+                and self.scope != c.Infra.CodegenConformScope.SELF
             ):
                 msg = "mise-config requires the self repository scope"
                 raise ValueError(msg)
@@ -810,6 +819,55 @@ class FlextInfraConfigModelsArtifact:
                 )
                 raise ValueError(msg)
             return self
+
+    class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
+        """One repository's read-only planning inputs sent to a fleet worker."""
+
+        root: Annotated[Path, m.Field(description="Generation scope root")]
+        workspace: Annotated[
+            FlextInfraConfigModelsWorkspace.WorkspaceSpec,
+            m.Field(description="Workspace governing the selection"),
+        ]
+        initial_workspace: Annotated[
+            FlextInfraConfigModelsWorkspace.WorkspaceSpec | None,
+            m.Field(description="Validated scaffold specification, when any"),
+        ] = None
+        current_target: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryConformTarget,
+            m.Field(description="Conform target of the invoking repository"),
+        ]
+        repository: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryRef,
+            m.Field(description="Repository this task plans"),
+        ]
+        contract: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConformSurfaceContract,
+            m.Field(description="Surface contract of the selected scope"),
+        ]
+
+    class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
+        """One repository's planned files and environment, or its failure."""
+
+        repository: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Planned repository name"),
+        ]
+        files: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
+            m.Field(description="Governed and retired file plans"),
+        ] = ()
+        environment: Annotated[
+            FlextInfraConfigModelsRelease.UvEnvironmentPlan | None,
+            m.Field(description="uv environment plan of the repository"),
+        ] = None
+        error: Annotated[
+            str,
+            m.Field(description="Planning failure, empty on success"),
+        ] = ""
+        elapsed: Annotated[
+            float,
+            m.Field(ge=0, description="Planning wall seconds"),
+        ] = 0.0
 
     class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""

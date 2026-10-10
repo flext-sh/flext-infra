@@ -21,7 +21,17 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test attached submodule uses one primary local container."""
+        """An attached member is its own primary and owns one lane container.
+
+        ADD on a member whose ``.gitmodules`` entry declares no branch is
+        refused by lane admission (no integration line to bind). The lane is
+        therefore registered natively at the canonical path derived from the
+        member's own primary root. REMOVE resolves that lane from the member's
+        registry, then retirement admission, which inspects the registry from
+        the lane itself, fails closed: from a linked lane Git lists the
+        member's storage directory as the primary row and the primary checkout
+        cannot be proven, so the lane stays on disk.
+        """
         child_source = tmp_path / "child-source"
         child_source.mkdir()
         (child_source / "README.md").write_text("child\n", encoding="utf-8")
@@ -91,28 +101,26 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
             ),
         )
         branch = "feature/attached"
-        primary = tm.ok(
-            u.Infra.git_primary_worktree_root(
-                m.Infra.GitRepoRequest(repo_root=attached),
-            ),
-        ).primary_root
-        expected_lane = self._lane(primary, superproject, branch)
-
-        lane = self.add_worktree(attached, branch)
-        tm.that(lane, eq=str(expected_lane))
+        # The member declares no ``.gitmodules`` branch, so lane admission has
+        # no integration line for it and refuses before any lane effect.
+        _ = self.refused_lane(
+            attached,
+            branch,
+            reason="Git submodule branch is missing: attached",
+        )
+        expected_lane = self.native_lane(attached, branch)
         tm.that(
             f"{c.Infra.WORKTREES_DIRNAME}/{c.Infra.WORKTREES_DIRNAME}"
             not in expected_lane.as_posix(),
-            where=bool,
+            eq=True,
         )
-        tm.that(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=attached,
-                    operation=c.Infra.WorktreeOperation.REMOVE,
-                    branch=branch,
-                    apply_changes=True,
-                ).execute(),
-            ),
-            eq=str(expected_lane),
+        tm.fail(
+            FlextInfraWorktreeService(
+                repository_root=attached,
+                operation=c.Infra.WorktreeOperation.REMOVE,
+                branch=branch,
+                apply_changes=True,
+            ).execute(),
+            has="primary checkout is unproven for storage-only registry row",
         )
+        tm.that(expected_lane.is_dir(), eq=True)

@@ -17,11 +17,123 @@ from flext_tests import tm
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import c, u
+from tests import c, m, u
 
 
 class TestsFlextInfraDeclarationRelocation:
     """Exercise real Rope bindings and preserve the original source inventory."""
+
+    @staticmethod
+    @pytest.mark.parametrize("lazy", [False, True])
+    @pytest.mark.parametrize("consumer_name", ["_config.py", "_settings.py"])
+    def test_settings_imports_resolve_existing_boundary_owners(
+        tmp_path: Path,
+        consumer_name: str,
+        *,
+        lazy: bool,
+    ) -> None:
+        """Reexports bind to legal owners, preserving aliases and runtime identity."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = package / "_models"
+        family.mkdir()
+        consumer = package / consumer_name
+        owner = family / "config.py"
+        base = family / "base.py"
+        sources = {
+            owner: "class ConfigPayload:\n    pass\n",
+            base: "class ModelsBase:\n    pass\n",
+            family / "__init__.py": (
+                "from flext_core import install_lazy_exports\n"
+                "install_lazy_exports(__name__, globals(), {\n"
+                "    'ConfigPayload': '.config', 'ModelsBase': '.base',\n"
+                "})\n"
+                if lazy
+                else f"from {package.name}._models.config import ConfigPayload\n"
+                f"from {package.name}._models.base import ModelsBase\n"
+            ),
+            consumer: (
+                f"from {package.name}._models import ("
+                "ConfigPayload as Payload, ModelsBase)\n"
+                "class Config(ModelsBase):\n    payload = Payload\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            tm.that(len(planned), eq=1)
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in planned})
+            tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
+            tm.that(
+                proposed[consumer],
+                has="._models.config import ConfigPayload as Payload",
+            )
+            tm.that(proposed[consumer], has="._models.base import ModelsBase")
+            repeated = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=proposed,
+                ),
+            )
+            tm.that(repeated, eq=())
+        for path, source in proposed.items():
+            path.write_text(source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.{consumer.stem} import Config; "
+                        f"from {package.name}._models.config import ConfigPayload; "
+                        f"from {package.name}._models.base import ModelsBase; "
+                        "assert Config.payload is ConfigPayload; "
+                        "assert issubclass(Config, ModelsBase)"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    def test_settings_imports_do_not_evade_illegal_declaration_owners(
+        tmp_path: Path,
+    ) -> None:
+        """A non-config model leaf remains a finding, never a direct-import bypass."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = package / "_models"
+        family.mkdir()
+        sources = {
+            family / "payload.py": "class Payload:\n    pass\n",
+            family / "__init__.py": (
+                f"from {package.name}._models.payload import Payload\n"
+            ),
+            package / "_config.py": (
+                f"from {package.name}._models import Payload\n"
+                "class Config:\n    payload = Payload\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            tm.that(planned, eq=())
 
     @staticmethod
     def _seed(

@@ -15,13 +15,14 @@ from flext_tests import tm
 from flext_infra import FlextInfraPytestRunner, c, config, m, p, t, u
 
 
-def runner_for(
+def runner_for(  # ruff: ignore[too-many-arguments]
     cached_runner_project: Path,
     *,
     ci_context: bool = False,
     profile_collection: bool = False,
     slow_phase: bool = False,
     target_file: Path | None = None,
+    unbounded: bool = False,
 ) -> FlextInfraPytestRunner:
     """Bind one runner to the fixture project's canonical cache paths.
 
@@ -51,6 +52,7 @@ def runner_for(
         reports=cache.reports_directory,
         testmon_db=testmon_db,
         slow_phase=slow_phase,
+        unbounded=unbounded,
     )
 
 
