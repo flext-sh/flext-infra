@@ -140,6 +140,7 @@ jobs:
 {%- endif %}
 
 {%- include "_fragments/mise_install.j2" %}
+<<<<<<< HEAD
 {%- for verb in make.approval_verbs %}
       # CI approval, one visible step per ci workflow row ({{ make.approval_verbs | join(" -> ") }}).
       - name: make {{ verb }} (blocking)
@@ -151,6 +152,12 @@ jobs:
 {%- endif %}
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ verb }}
 {%- endfor %}
+=======
+      - name: Approval (blocking)
+        id: approval
+        # One owner for {{ make.approval_verbs | join(" -> ") }} in both profiles.
+        run: {{ make.ci.variable }}={{ make.ci.value }} make pre-commit
+>>>>>>> recover/redo-d0560ba3c-merge-20261009
 {%- if ci_tests.selected %}
 
       - name: Dump reports on failure

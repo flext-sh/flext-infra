@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import shutil
 from collections.abc import Mapping
 from functools import cache, lru_cache
