@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from flext_tests import tm
@@ -187,9 +186,9 @@ class TestsFlextInfraCodegenRepositoryRootScope:
     ) -> None:
         """Generated upg renders the exact lock-upgrade and modernizer invocation.
 
-        ``upg`` bootstraps Mise (network) and then dispatches its lifecycle with
-        the Mise-resolved direnv handoff; the dry run enters that lifecycle with
-        the same handoff contract, so its recursive ``+`` activation still runs.
+        ``upg`` bootstraps Mise (network) and then dispatches its lifecycle; the
+        dry run enters that lifecycle directly, and its recursive ``+``
+        activation follows the same context rule as every public verb.
         """
         repository_root = self._render_root_makefile(tmp_path)
 
@@ -197,10 +196,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                env={
-                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
-                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
-                },
             ),
         )
 
@@ -228,15 +223,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         uv.lock before post-upg.
         """
         repository_root = self._render_root_makefile(tmp_path)
-        handoff = {
-            "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
-            "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
-        }
         execution = tm.ok(
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                env=handoff,
             ),
         )
         tm.that(
@@ -312,10 +302,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=root,
-                env={
-                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
-                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
-                },
             ),
         )
 
@@ -337,10 +323,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle", "UPG_HANDOFF=Y"],
                 cwd=root,
-                env={
-                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
-                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
-                },
             ),
         )
 
