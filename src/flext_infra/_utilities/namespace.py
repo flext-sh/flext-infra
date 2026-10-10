@@ -11,14 +11,13 @@ import operator
 from collections.abc import MutableMapping
 from functools import cache
 from inspect import getfile
-from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
+import flext_core
 from flext_cli import u
 
-import flext_core
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
@@ -68,7 +67,20 @@ class FlextInfraUtilitiesCodegenNamespace:
         if not bound:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} binds no facade family"
             raise ValueError(msg)
-        stem = commonpath([name for _, name in bound.values()])
+        # The stem is the shared leading text of the class names, compared
+        # character by character: ``os.path.commonpath`` compares path
+        # components and yields "" for bare names, leaving full class names
+        # as suffixes (owners such as ``FlextFlextUtilitiesMapper``).
+        names = [name for _, name in bound.values()]
+        shortest = min(names, key=len)
+        stem = next(
+            (
+                shortest[:index]
+                for index, char in enumerate(shortest)
+                if any(name[index] != char for name in names)
+            ),
+            shortest,
+        )
         return MappingProxyType({
             letter: m.Infra.FacadeFamily(
                 letter=letter,
@@ -295,18 +307,18 @@ class FlextInfraUtilitiesCodegenNamespace:
             case _:
                 pass
         try:
-            literal = ast.literal_eval(resolved)
+            literal: object = ast.literal_eval(resolved)
         except (ValueError, SyntaxError) as exc:
             msg = f"{file_path}: invalid __all__: {exc}"
             raise ValueError(msg) from exc
-        if not isinstance(literal, (list, tuple)):
+        # A str sequence contract rejects a bare string, a set or a mapping and
+        # every non-string item, so the literal is typed once at this boundary.
+        try:
+            names = t.Infra.STR_SEQ_ADAPTER.validate_python(literal)
+        except m.ValidationError as exc:
             msg = f"{file_path}: __all__ must contain only strings"
-            raise TypeError(msg)
-        names = tuple(item for item in literal if isinstance(item, str))
-        if len(names) != len(literal):
-            msg = f"{file_path}: __all__ must contain only strings"
-            raise ValueError(msg)
-        return names
+            raise ValueError(msg) from exc
+        return tuple(names)
 
     @classmethod
     def _declared_exports(cls, file_path: Path) -> t.StrSequence:
