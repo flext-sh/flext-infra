@@ -178,21 +178,8 @@ Infra:
           binary: node
           arguments: [ --version ]
           pattern: "^v{version}$"
-      # Make and Go are Mise-managed moving selectors (R1): a host make shim
-      # (stale conda binary) broke setup, so the fleet toolchain owns make,
-      # and the go: backend selectors require the pinable Go runtime.
-      - name: make
-        version: latest
-        version_probe:
-          binary: make
-          arguments: [ --version ]
-          pattern: "GNU Make {version}"
-      - name: go
-        version: latest
-        version_probe:
-          binary: go
-          arguments: [ version ]
-          pattern: "^go version go{version} "
+      # Make, curl and Git remain system-owned. Recursive Make keeps the
+      # physical executable that invoked the generated lifecycle.
       - name: qlty
         selector: github:qltysh/qlty
         version: latest
