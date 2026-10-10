@@ -54,6 +54,7 @@ class FlextInfraPytestEntry:
             msg = f"pytest profile returned a non-integer process status: {status!r}"
             raise TypeError(msg)
 
+        slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,
