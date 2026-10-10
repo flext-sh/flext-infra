@@ -22,9 +22,17 @@ from flext_infra import (
 class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
-        """Store tool configuration used to build canonical Ruff settings."""
+    def __init__(
+        self,
+        tool_config: m.Infra.ToolConfigDocument,
+        project_ruff: m.Infra.ProjectRuffConfig,
+    ) -> None:
+        """Bind shared policy and the current project's validated additions."""
         self._tool_config = tool_config
+        self._per_file_ignores = u.Infra.compose_ruff_per_file_ignores(
+            tool_config,
+            project_ruff,
+        )
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
@@ -311,10 +319,7 @@ class FlextInfraEnsureRuffConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        # One fleet exemption map, declared with its authority at the tooling
-        # owner, reaches every project unchanged.
-
-        effective_ignores = self._tool_config.tools.ruff.lint.per_file_ignores
+        effective_ignores = self._per_file_ignores
         current_ignores = u.Cli.toml_mapping_path(
             payload,
             (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
