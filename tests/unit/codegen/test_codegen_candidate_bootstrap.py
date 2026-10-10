@@ -78,6 +78,79 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         tm.that(result.failure, eq=True)
         tm.that(result.error, has="candidate bootstrap targets are not declared")
 
+    @pytest.mark.slow
+    def test_initializer_surface_recovers_without_touching_module_source(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Dynamic initializer destinations retain source and converge."""
+        source, first, _ = self._campaign(tmp_path)
+        package = first / "src" / "bootstrap_case"
+        package.mkdir(parents=True)
+        module = package / "domain.py"
+        module.write_text(
+            "class FlextBootstrapCase:\n    pass\n__all__ = ['FlextBootstrapCase']\n",
+            encoding="utf-8",
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("# stale initializer\n", encoding="utf-8")
+        manifest = u.Infra.workspace_manifest_path(source)
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").split(
+                "candidate_bootstrap_targets:",
+            )[0]
+            + "candidate_bootstrap_targets:\n"
+            + f"  - path: {Path(os.path.relpath(first, source)).as_posix()}\n"
+            + "    what: lazy-init\n",
+            encoding="utf-8",
+        )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(module, required=True))
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+
+        tm.ok(infra.bootstrap_candidate(command))
+        generated = tm.ok(
+            u.Cli.atomic_read_binary_file_state(initializer, required=True),
+        )
+        tm.that(generated.content, ne=b"# stale initializer\n")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(module, required=True)),
+            eq=before,
+        )
+        tm.ok(infra.bootstrap_candidate(command))
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True)),
+            eq=generated,
+        )
+
+    @pytest.mark.slow
+    def test_complete_generation_is_refused_before_publication(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Bootstrap cannot broaden a recovery target into full generation."""
+        source, first, _ = self._campaign(tmp_path)
+        manifest = u.Infra.workspace_manifest_path(source)
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").replace(
+                "what: makefile",
+                "what: all",
+            ),
+            encoding="utf-8",
+        )
+        makefile = first / c.Infra.MAKEFILE_FILENAME
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(makefile, required=True))
+
+        result = infra.bootstrap_candidate(
+            m.Infra.CandidateBootstrapCommand(repository_root=source),
+        )
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error, has="requires one declared surface")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(makefile, required=True)),
+            eq=before,
+        )
+
     # Real conform transactions over a fixture repository (several full plans
     # per case): integration-scale, so it runs in the slow phase under its
     # per-item bound (rules/workflow/gate-budget.md), never a raised limit.

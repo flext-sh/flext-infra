@@ -24,7 +24,7 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesRopeSourceBasesRuntime:
-    """Canonical namespace owner."""
+    """Qualified runtime-base resolution and linearization."""
 
     class _RuntimeBaseResolver:
         """Resolve owned classes in C3 order and external classes through Rope.

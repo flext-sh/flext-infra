@@ -362,13 +362,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         targets: t.SequenceOf[ast.expr],
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
     ) -> bool:
-        """Recognize a name-valued, non-structural store on a bound receiver.
+        """Recognize a non-structural store on a bound receiver.
 
         Returns:
             True when the target shape permits an exact class-member update.
         """
         value = node.value
-        if len(targets) != 1 or not isinstance(value, ast.Name):
+        if len(targets) != 1 or not isinstance(value, ast.Name | ast.Call):
             return False
         target = targets[0]
         return (
@@ -400,10 +400,23 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return False
         target = targets[0]
         value = node.value
-        if not isinstance(target, ast.Attribute) or not isinstance(value, ast.Name):
+        if not isinstance(target, ast.Attribute):
             return False
         owner = cls._reference(target.value, visible, spec.module)
         if owner.target not in spec.definitions or owner.attributes:
+            return False
+        if isinstance(value, ast.Call):
+            definition = spec.definitions[owner.target]
+            spec.definitions[owner.target] = definition.model_copy(
+                update={
+                    "members": {
+                        **definition.members,
+                        target.attr: None,
+                    },
+                },
+            )
+            return True
+        if not isinstance(value, ast.Name):
             return False
         if value.id not in visible:
             return False
