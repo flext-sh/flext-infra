@@ -68,10 +68,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
 
         `make test` runs in CI and pre-commit, so slow-marked items stay out of
         it (operator 2026-10-01: nothing slow in CI or pre-commit). `test-file`
-        is the sole single-file path and runs only locally, so the declared
-        file passes through its budgeted phase and then its slow phase; a file
-        whose items are all slow-marked never ends the verb with zero executed
-        tests. Neither recipe appends the full suite.
+        is the sole single-file path and runs only locally, so its one ``file``
+        entry runs the declared file incremental then complete, slow items
+        included; a file whose items are all slow-marked never ends the verb
+        with zero executed tests. Neither recipe appends the full suite.
         """
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
@@ -89,24 +89,25 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             has=f'{cache.database_environment_variable}="$$database"',
         )
 
-    def test_file_verb_composes_both_phases_on_one_cache(self, tmp_path: Path) -> None:
-        """Requested files retain one guard and scratch across independent entries."""
+    def test_file_verb_runs_one_entry_on_one_cache(self, tmp_path: Path) -> None:
+        """The requested file runs through one entry on one guard and cache.
+
+        The ``file`` operation of ``flext_infra._pytest_entry`` executes the
+        declared target incremental then complete, slow items included, so the
+        recipe composes exactly one entry and no separate slow phase.
+        """
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[0]
         cache = config.Infra.codegen.make.testmon_cache
-        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=2)
-        tm.that(recipe, has=["_pytest_entry file;", "_pytest_entry file-slow;"])
-        tm.that(
-            recipe.index("_pytest_entry file;")
-            < recipe.index("_pytest_entry file-slow"),
-            eq=True,
-        )
+        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=1)
+        tm.that(recipe.rstrip().endswith("_pytest_entry file"), eq=True)
+        tm.that(recipe, lacks=["file-slow"])
         tm.that(
             recipe.count(f'{cache.database_environment_variable}="$$database"'),
-            eq=2,
+            eq=1,
         )
         tm.that(recipe.count("set -eu;"), eq=1)
         tm.that(recipe.count("' EXIT;"), eq=1)
