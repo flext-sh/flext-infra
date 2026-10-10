@@ -1254,7 +1254,8 @@ Infra:
     #   conflict_sections = MANAGED tables (template wins on make gen)
     #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
     #   [project] keys the template writes that are not in preserve_project_keys
-    #     (dependencies, requires-python) are MANAGED
+    #     (requires-python) are MANAGED; live dependencies stay CUSTOM and
+    #     the profile rows are seeded beside them
     #   [tool.*] absent from conflict_sections (bandit, …) is CUSTOM
     - path: pyproject.toml
       owner: codegen
@@ -1391,7 +1392,7 @@ Infra:
           runtime:
           - flext-core
           - annotated-types>=0.8.0
-          - beartype>=0.22.9
+          - beartype>=0.23.0
           - dependency-injector>=4.49.1
           - packaging>=26.3
           - pydantic>=2.14.0,<3
