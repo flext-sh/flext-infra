@@ -420,7 +420,7 @@ namespace-packages = ["tests", "examples", "scripts"]
 preview = true
 respect-gitignore = true
 show-fixes = true
-src = ["scripts", "src", "tests"]
+src = ["src", "tests"]
 target-version = "py313"
 
 [tool.ruff.format]

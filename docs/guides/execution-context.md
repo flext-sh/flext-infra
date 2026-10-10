@@ -130,8 +130,15 @@ Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_sel
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. One host
 Mise capable of reading the committed lock provisions that entry; setup verifies
 the installed release and enters the recursive Make lifecycle through it. Every
-later `mise` resolved through the shims is the pinned release, and
-`_builtin_require_mise` fails when the running Mise differs from the lock.
+later `mise` resolved through the shims is the pinned release, and `make audit`
+(`codegen mise-proof`) fails when the running Mise differs from the lock.
+
+`make upg` publishes the Makefile through the producer half of `gen`. When that
+publication changes the Makefile, the running recipe stops naming its own
+targets and hands off to a fresh `make upg` on the published file; a second
+change inside the hand-off fails loud as a `gen` fixed-point defect. A
+Makefile committed by an earlier generator still runs its own recipe once, so
+generate it with the current generator (`make gen`) before its first `make upg`.
 Separate `mise.version`, bootstrap launchers and staged lock-convergence scripts
 are not lifecycle owners.
 

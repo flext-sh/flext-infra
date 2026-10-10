@@ -38,6 +38,24 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @classmethod
+    def relocation_findings(
+        cls,
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
+        """Return every payload declaration whose relocation owner is unresolved.
+
+        Returns:
+            One finding per unresolved declaration, naming its expected owner.
+
+        """
+        return u.Infra.declaration_relocation_findings(
+            rope_workspace,
+            cls._source_inventory(root, preflight),
+        )
+
+    @classmethod
     def plan_transaction_paths(
         cls,
         root: Path,

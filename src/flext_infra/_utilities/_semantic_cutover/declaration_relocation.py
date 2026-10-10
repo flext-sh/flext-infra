@@ -41,9 +41,44 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan every resolvable relocation; unresolved owners are findings.
+
+        Returns:
+            The edits of every declaration whose owners resolved.
+
+        """
+        edits, _findings = cls._declaration_relocation_outcome(workspace, sources)
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(edits)
+
+    @classmethod
+    def declaration_relocation_findings(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
+        """Return one finding per payload declaration whose owner is unresolved.
+
+        Returns:
+            The unresolved declarations, each naming the owner it expected.
+
+        """
+        _edits, findings = cls._declaration_relocation_outcome(workspace, sources)
+        return findings
+
+    @classmethod
+    def _declaration_relocation_outcome(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.SemanticMigrationEdit],
+        t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
+    ]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         project = runtime.snapshot_project(workspace.rope_project, sources)
         working = dict(sources)
+        findings: list[m.Infra.DeclarationRelocationFinding] = []
+        unresolved: set[t.Triple[Path, str, str]] = set()
         try:
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -56,40 +91,46 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 if family is None or family == "m" or "tests" in path.parts:
                     continue
                 while True:
-                    candidates = tuple(
-                        (outer, node, binding)
-                        for outer in ast.parse(working[path]).body
-                        if isinstance(outer, ast.ClassDef)
-                        for node in outer.body
-                        if isinstance(node, ast.ClassDef)
-                        if (binding := cls.payload_declaration(project, path, node))
-                        is not None
-                    )
-                    if not candidates:
-                        break
-                    outer, node, binding = candidates[0]
-                    if policy.expected_family != outer.name:
-                        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
-                            "declaration-relocation: unresolved source owner "
-                            f"{path}:{outer.name}",
-                        )
-                    target, owner, exposure = cls._declaration_target(
-                        workspace,
+                    candidate = cls._next_payload(
                         project,
-                        working,
                         path,
+                        working[path],
+                        unresolved,
                     )
+                    if candidate is None:
+                        break
+                    outer, node, binding = candidate
+                    declaration = f"{outer.name}.{node.name}"
+                    resolved = (
+                        cls._declaration_target(
+                            workspace,
+                            project,
+                            working,
+                            (path, declaration),
+                        )
+                        if policy.expected_family == outer.name
+                        else m.Infra.DeclarationRelocationFinding(
+                            file_path=path,
+                            declaration=declaration,
+                            expected_owner=policy.expected_family or "<undeclared>",
+                            reason=f"unresolved source owner {outer.name}",
+                        )
+                    )
+                    if isinstance(resolved, m.Infra.DeclarationRelocationFinding):
+                        findings.append(resolved)
+                        unresolved.add((path, outer.name, node.name))
+                        continue
                     working = cls._relocate_payload(
                         project,
                         working,
                         (path, node, binding),
-                        (target, owner, exposure),
+                        resolved,
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = runtime.snapshot_project(workspace.rope_project, working)
             cls._preflight_declaration_graph(workspace, sources, working)
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            return (
                 tuple(
                     m.Infra.SemanticMigrationEdit(
                         file_path=path,
@@ -100,9 +141,38 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     for path, source in sources.items()
                     if source != working[path]
                 ),
+                tuple(findings),
             )
         finally:
             project.close()
+
+    @classmethod
+    def _next_payload(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+        unresolved: set[t.Triple[Path, str, str]],
+    ) -> t.Triple[ast.ClassDef, ast.ClassDef, p.Infra.RopePyName] | None:
+        """Return the first bound payload declaration not already reported.
+
+        Returns:
+            The outer owner, payload node and its binding, or ``None``.
+
+        """
+        for outer in ast.parse(source).body:
+            if not isinstance(outer, ast.ClassDef):
+                continue
+            for node in outer.body:
+                if (
+                    not isinstance(node, ast.ClassDef)
+                    or (path, outer.name, node.name) in unresolved
+                ):
+                    continue
+                binding = cls.payload_declaration(project, path, node)
+                if binding is not None:
+                    return outer, node, binding
+        return None
 
     @classmethod
     def _declaration_target(
@@ -110,8 +180,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
-        origin: Path,
-    ) -> t.Triple[Path, str, str]:
+        declaration: t.Pair[Path, str],
+    ) -> t.Triple[Path, str, str] | m.Infra.DeclarationRelocationFinding:
+        origin, name = declaration
         root = Path(project.root.real_path)
         packages = tuple(
             parent
@@ -119,10 +190,21 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if (parent / c.Infra.MODELS_PY) in sources
         )
         if len(packages) != 1:
-            msg = f"declaration-relocation: unresolved model facade for {origin}"
-            raise ValueError(msg)
+            return m.Infra.DeclarationRelocationFinding(
+                file_path=origin,
+                declaration=name,
+                expected_owner=f"one package {c.Infra.MODELS_PY} facade",
+                reason=f"unresolved model facade; found {len(packages)}",
+            )
         package = packages[0]
         routes = cls._public_model_routes(project, package)
+        if not routes:
+            return m.Infra.DeclarationRelocationFinding(
+                file_path=origin,
+                declaration=name,
+                expected_owner=f"lazy m export of {package / c.Infra.MODELS_PY}",
+                reason=f"unresolved public lazy model export for {package}",
+            )
         targets: list[t.Triple[Path, str, str]] = []
         for path, source in sources.items():
             if path.parent.parent != package or source.startswith(
@@ -145,11 +227,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 if value in cls._class_ancestry(composed):
                     targets.append((path, owner, route))
         if len(targets) != 1:
-            msg = (
-                "declaration-relocation: expected one authored composed model "
-                f"owner for {origin}; found {targets}"
+            return m.Infra.DeclarationRelocationFinding(
+                file_path=origin,
+                declaration=name,
+                expected_owner=(
+                    "one authored model owner composed into "
+                    f"{package / c.Infra.MODELS_PY}"
+                ),
+                reason=(
+                    "expected one authored composed model owner; found "
+                    f"{[f'{path}:{owner}' for path, owner, _route in targets]}"
+                ),
             )
-            raise ValueError(msg)
         return targets[0]
 
     @staticmethod
@@ -174,11 +263,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             ).read(),
         )
         if exports.get("m") != facade.get_name():
-            msg = (
-                "declaration-relocation: unresolved public lazy model export "
-                f"for {package}"
-            )
-            raise ValueError(msg)
+            return ()
         public = facade.get_attribute("m").get_object()
         routes: list[t.Pair[p.Infra.RopePyObject, str]] = [(public, "m")]
         scope = public.get_scope()
