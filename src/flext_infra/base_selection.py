@@ -20,9 +20,7 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult](
 
     selected_projects: Annotated[
         t.StrSequence | None,
-        m.BeforeValidator(
-            lambda value: (value,) if isinstance(value, str) else value
-        ),
+        m.BeforeValidator(lambda value: (value,) if isinstance(value, str) else value),
         m.Field(
             default=None,
             alias="projects",

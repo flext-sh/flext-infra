@@ -20,11 +20,8 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
     FlextInfraUtilitiesGitStateCaptureMixin,
-    FlextInfraUtilitiesGitWorktreeMixin,
-)
-from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
-from flext_infra._utilities._git.worktree_discovery import (
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+    FlextInfraUtilitiesGitWorktreeMixin,
 )
 
 

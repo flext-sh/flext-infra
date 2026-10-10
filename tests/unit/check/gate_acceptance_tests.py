@@ -35,7 +35,7 @@ class TestsFlextInfraGateAcceptance:
         fail_fast: bool,
     ) -> None:
         """Real Ruff failures remain red without inventing dependent executions."""
-        project = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project: Path = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project / "src" / "broken.py").write_text(
             "missing_name( 1 )\n",
             encoding="utf-8",
@@ -67,7 +67,7 @@ class TestsFlextInfraGateAcceptance:
     @staticmethod
     def test_native_fix_with_residual_findings_remains_red(tmp_path: Path) -> None:
         """A completed Ruff repair cannot accept an unresolved native finding."""
-        project = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project: Path = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project / "src" / "broken.py").write_text(
             "missing_name()\n",
             encoding="utf-8",
@@ -92,8 +92,7 @@ class TestsFlextInfraGateAcceptance:
             gate_id
             for gate_id in c.Infra.TYPE_CHECKER_GATES
             for gate_type in (FlextInfraGateRegistry().get(gate_id),)
-            if gate_type is not None
-            and gate_type.requires_python_targets
+            if gate_type is not None and gate_type.requires_python_targets
         ),
     )
     def test_project_without_an_executed_gate_is_not_accepted(
@@ -101,7 +100,7 @@ class TestsFlextInfraGateAcceptance:
         gate_id: str,
     ) -> None:
         """Content-selected checkers have no execution without Python sources."""
-        project = u.Tests.mk_project(tmp_path, "p1")
+        project: Path = u.Tests.mk_project(tmp_path, "p1")
         results = tm.ok(
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 (project.name,),
