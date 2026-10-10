@@ -9,8 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeAnalysis,
+)
 
 
 class FlextInfraUtilitiesImportLayers:
