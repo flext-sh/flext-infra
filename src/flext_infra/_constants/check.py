@@ -105,12 +105,11 @@ class FlextInfraConstantsCheck:
     class ToolOutcome(StrEnum):
         """How a completed tool run ended, read from its exit and its report.
 
-        ``CLEAN`` and ``FINDINGS`` are runs the tool completed; ``ERROR`` is a
-        status the tool does not declare, a timeout, a signal, or a findings
-        status with nothing reported. The outcome is native, independent of
-        acceptance: only ``CLEAN`` with no finding passes, so residual
-        ``FINDINGS`` after a repair keep the verb red without being relabeled
-        as a machinery ``ERROR``.
+        ``CLEAN`` and ``FINDINGS`` are runs the tool completed; only ``ERROR``
+        (a status the tool does not declare, a timeout, a signal, or a findings
+        status with nothing reported) breaks a repair verb. Findings stay
+        reported and are enforced by ``make check``
+        (operator-rulings-2026-10-01-lint-automation, ruling d).
         """
 
         CLEAN = "clean"
@@ -319,6 +318,22 @@ class FlextInfraConstantsCheck:
         "qlty ruleId suffix -> flext-core enforcement tag "
         "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
     )
+    # Operator ruling 2026-10-05 (SSOT informative-rules law): the complexity
+    # families report in every log, summary, and SARIF but never fail a run —
+    # their census is re-measured as the fleet converges. The duplication
+    # families ride the same non-blocking set for a different reason: the
+    # blocking duplication gate is their single enforcement owner, and a
+    # second blocking route for the same census is a duplicate route.
+    SMELLS_NON_BLOCKING_FAMILIES: ClassVar[frozenset[str]] = frozenset((
+        "boolean-logic",
+        "file-complexity",
+        "function-complexity",
+        "function-parameters",
+        "identical-code",
+        "nested-control-flow",
+        "return-statements",
+        "similar-code",
+    ))
 
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is

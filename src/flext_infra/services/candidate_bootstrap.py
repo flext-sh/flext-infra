@@ -133,7 +133,8 @@ class FlextInfraCandidateBootstrapService:
                         else "candidate bootstrap destination is outside its surface"
                     )
                     return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"{detail}: {file.path}",
+                        f"candidate bootstrap destination is outside its surface: "
+                        f"{file.path}",
                     )
                 files.append(file)
                 for state in file.source_states:
