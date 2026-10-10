@@ -75,15 +75,15 @@ TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
 {%- endmacro -%}
 {#- Normal incremental verbs admit only the bounded phase. Slow-marked items
-    remain owned by the explicitly requested full verb. -#}
+    remain owned by the explicitly requested full verb, which runs locally
+    without testmon and without any time limit, so it is the one runner that
+    is not wrapped in PYTEST_BOUNDED. -#}
 {#- Tests run on the provisioned toolchain: every verb's tools resolve from
     the mise-managed PATH, so a test observes the runtime's tool versions. -#}
-{%- macro pytest_test_runner(operations=("",)) -%}
+{%- macro pytest_test_runner(operation="", bounded=True) -%}
 {{ pytest_testmon_guard() }}
 {{ pytest_scratch_root() }}
-{%- for operation in operations %}
-{{ make.testmon_cache.database_environment_variable }}="$$database" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}{% if not loop.last %}; \{% endif %}
-{%- endfor %}
+{{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(UV_RUN) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
 {%- endmacro -%}
 {#- The single-file verb validates its FILE input and runs incremental then
     complete execution of that file through the same persistent database.
@@ -95,7 +95,7 @@ if [ -z "$(strip $(FILE))" ]; then printf 'ERROR: test-file requires FILE=<repos
 case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative path: %s\n' "$(FILE)" >&2; exit 2 ;; esac; \
 if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
 export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
-{{ pytest_test_runner(("file",)) }}
+{{ pytest_test_runner("file") }}
 {%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -862,7 +862,7 @@ _builtin_test_all: _builtin_require_environment
 
 _builtin_test_full_all: _builtin_require_environment
 {{ test_report_recipe(
-    runner=pytest_test_runner(("full", "full-slow")),
+    runner=pytest_test_runner("full", bounded=False),
 ) }}
 
 _builtin_test_file_all: _builtin_require_environment
@@ -875,12 +875,6 @@ _builtin_test_file_all: _builtin_require_environment
 export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
 	@{{ check_run("lint,format,pyrefly,mypy,pyright,codemod", ' --file "$$FLEXT_FILE_GATE_FILE"') }}
-
-_builtin_tests_all: _builtin_require_environment
-	+@$(SELF_MAKE) test
-{{ test_report_recipe(
-    runner="$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full",
-) }}
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
