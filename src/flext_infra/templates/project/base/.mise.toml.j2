@@ -11,10 +11,15 @@
 # `mise install` provisions it from mise.lock and every later `mise` resolved
 # through the mise-managed shims runs exactly that release. Python dependency
 # declarations remain owned by pyproject.toml. Tools are declared `latest`;
+<<<<<<< HEAD
 # only `make upg` resolves them and writes the committed mise.lock. Mise uses
 # the lock wherever it pins a tool; an entry the lock does not carry yet
 # resolves normally instead of failing, so an outdated lock never blocks
 # `mise install`, `mise use`, setup or any verb (no strict locked mode).
+=======
+# only `make upg` resolves them and writes the committed mise.lock. Setup
+# installs frozen from that lock and never re-resolves.
+>>>>>>> recover/redo-d0560ba3c-merge-20261009
 
 # === SECTION: settings (managed) ===
 # Source: config:codegen.toolchain.mise_lockfile / mise_lockfile_platforms /
@@ -22,9 +27,13 @@
 [settings]
 minimum_release_age = "{{ dependency_cooldown_days }}d"
 lockfile = {{ "true" if mise_lockfile else "false" }}
+<<<<<<< HEAD
 # The mise release moves only through mise.lock (`make upg`); a newer release
 # notice is not actionable here and only adds noise to every command.
 disable_update_warning = true
+=======
+locked = {{ "true" if mise_locked else "false" }}
+>>>>>>> recover/redo-d0560ba3c-merge-20261009
 # Third-party releases in the manifest (jscpd, qlty) publish no SLSA
 # attestations, so strict lock-time provenance verification can never pass
 # for them. API outages degrade to best-effort instead of failing the lock;
@@ -35,6 +44,11 @@ locked_verify_provenance = false
 lockfile_platforms = [{% for platform in mise_lockfile_platforms %}"{{ platform }}"{{ ", " if not loop.last }}{% endfor %}]
 [settings.python]
 compile = {{ "true" if python_compile else "false" }}
+<<<<<<< HEAD
+=======
+[tool_config]
+locked = {{ "true" if mise_locked else "false" }}
+>>>>>>> recover/redo-d0560ba3c-merge-20261009
 # End SECTION: settings
 
 # === SECTION: tools (managed) ===

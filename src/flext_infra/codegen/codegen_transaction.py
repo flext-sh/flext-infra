@@ -46,6 +46,12 @@ class FlextInfraCodegenTransaction(
         identity = self._authorized_run_identity(roots)
         if identity.failure:
             return r[T].from_failure(identity)
+        authorized = self._authorize_roots(tuple(roots.values()))
+        if authorized.failure:
+            return r[T].from_failure(authorized)
+        preflight = self._preflight_journal(identity.value)
+        if preflight.failure:
+            return r[T].from_failure(preflight)
         proposed = self._planner.file_layout(
             identity.value.repo_root,
             roots,
