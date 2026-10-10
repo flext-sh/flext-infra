@@ -91,7 +91,10 @@ class FlextInfraImportNormalization(
         if located is None:
             return None
         namespace_dir, module = located
-        root_exports = u.Infra.import_lazy_exports(namespace_dir, namespace_dir.name)
+        root_exports = u.Infra.import_lazy_exports(project_root, namespace_dir.name)
+        if root_exports is None:
+            msg = f"{namespace_dir} is a namespace without an owned package init"
+            raise ValueError(msg)
         if import_graph is None:
             import_graph, _modules = u.Infra.project_import_graph(project_root)
         facade_dependencies = u.Infra.import_facade_dependencies(
