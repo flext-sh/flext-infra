@@ -401,7 +401,7 @@ class FlextInfraModelsCheck:
         """
 
         gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
-            default_factory=dict,
+            default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
             description="Gate name to execution mapping",
         )
 

@@ -15,7 +15,9 @@ from flext_infra import (
     FlextInfraModGateEngine,
     FlextInfraModReplacements,
     FlextInfraModTextGateEngine,
+    FlextInfraRefactorCensus,
     FlextInfraServiceBase,
+    c,
     m,
     p,
     r,
@@ -109,6 +111,25 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             self.repository_root,
             rules,
         ).unwrap()
+        self.progress.emit("mod: apply the workspace constants census")
+        census = FlextInfraRefactorCensus(
+            repository_root=self.repository_root,
+            apply=True,
+            families=("c",),
+            rules=(
+                c.Infra.CensusRule.CONSTANT_CONSUMERS,
+                c.Infra.CensusRule.DUPLICATE,
+                c.Infra.CensusRule.WRONG_TIER,
+            ),
+        ).build_report()
+        self.progress.emit(
+            "mod: constants census "
+            f"projects={len(census.projects)} "
+            f"objects={census.total_objects} "
+            f"violations={census.total_violations} "
+            f"rewritten_files={census.constant_consumer_files} "
+            f"rewritten_bindings={census.constant_consumer_bindings}",
+        )
         return self._execute_apply_cycle()
 
     @staticmethod

@@ -221,10 +221,9 @@ class FlextInfraUtilitiesProjectDiscovery(
     def discover_rope_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
         """Return every Python project this repository's Rope workspace owns.
 
-        A declared submodule is another repository: it is consumed as an
-        installed library and never indexed from here (every repository
-        evaluates only itself). The raw child scan
-        below is a second enumerator, so it must honour the same manifest
+        A workspace census must index its declared first-party members so
+        Rope resolves references across their public facades. The raw child
+        scan below is a second enumerator, so it must honour the same manifest
         authority as ``discover_project_candidates``. Without that filter every
         direct child holding a ``pyproject.toml`` re-entered the scope the
         manifest had just excluded, and lazy-init planned files for a directory
@@ -244,9 +243,6 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         if declared_paths.failure:
             raise ValueError(declared_paths.error or "invalid .gitmodules")
-        submodules = frozenset(
-            (resolved_root / item.path).resolve() for item in declared_paths.value
-        )
         declared = cls.discover_project_candidates(resolved_root)
         nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
         direct = tuple(
@@ -259,7 +255,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         return tuple(
             sorted(
-                {root for root in (*declared, *direct) if root not in submodules},
+                {*declared, *direct, resolved_root},
                 key=Path.as_posix,
             ),
         )
@@ -333,16 +329,20 @@ class FlextInfraUtilitiesProjectDiscovery(
     def governed_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
         """Return the repositories a verb run at ``repository_root`` governs.
 
-        Every repository evaluates and rewrites only itself: a workspace root
-        consumes its declared members as installed libraries and never scans,
-        checks, or rewrites them; each member runs its own verbs in its own
-        repository.
+        The workspace owns its declared first-party members. A standalone
+        repository has no member declarations and keeps its own root only.
+        Manifest exclusions remain authoritative for both forms.
 
         Returns:
             The repositories a verb run at ``repository_root`` governs.
 
         """
-        return (repository_root.resolve(),)
+        return tuple(
+            dict.fromkeys((
+                repository_root.resolve(),
+                *cls.discover_project_roots(repository_root),
+            )),
+        )
 
     @staticmethod
     def nearest_project_root(repository_root: Path, path: Path) -> Path | None:

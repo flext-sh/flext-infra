@@ -223,13 +223,7 @@ class FlextInfraRopeWorkspace(
         """
         if self._codegen_projects is None:
             projects_result = u.Infra.projects(self.repository_root)
-            if projects_result.failure:
-                self._codegen_projects = ()
-            else:
-                discovered_projects: t.SequenceOf[p.Infra.ProjectInfo] = (
-                    projects_result.unwrap()
-                )
-                self._codegen_projects = tuple(discovered_projects)
+            self._codegen_projects = tuple(projects_result.unwrap())
         return self._codegen_projects
 
     @override
@@ -313,11 +307,18 @@ class FlextInfraRopeWorkspace(
         cached = self._module_policy_cache.get(cache_key)
         if cached is not None:
             return cached
+        module_entry = self.module(resolved_file)
+        project_root = (
+            module_entry.project_root
+            if module_entry is not None and module_entry.project_root is not None
+            else u.Infra.project_root(resolved_file)
+        )
         policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
             resolved_file,
             rope_project=self.rope_project,
             rel_path=resolved_rel_path,
             current_pkg=current_pkg,
+            project_layout=self.layout(project_root) if project_root is not None else None,
         )
         self._module_policy_cache[cache_key] = policy
         return policy

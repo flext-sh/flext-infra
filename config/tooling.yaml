@@ -501,7 +501,7 @@ Infra:
                 No model or import workaround substitutes for this prohibition.
                 Canonical tracking remains flext-p7bxt and flext-4536i.
             - files: "**/tests/**"
-              rules: [ magic-value-comparison, private-member-access, compare-to-empty-string, too-many-public-methods, boolean-positional-value-in-call, pytest-fixture-autouse, mutable-class-default, no-self-use, import-private-name ]
+              rules: [ magic-value-comparison, private-member-access, compare-to-empty-string, too-many-public-methods, boolean-positional-value-in-call, boolean-type-hint-positional-argument, pytest-fixture-autouse, mutable-class-default, no-self-use, import-private-name ]
               authority: operator-ruling-2026-10-07-tests-family-consumption
               reason: >-
                 Test idioms: assertions compare against literal expected values
@@ -600,6 +600,24 @@ Infra:
                 workspace venv exists and cannot import the u.Cli facade; it
                 owns its dev-server process lifecycle by design. Bounded to
                 this single skill script.
+            - files: "src/flext_tests/_utilities/environment.py"
+              rules: [ suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path ]
+              authority: operator-ruling-2026-10-08-subprocess-supersedes-all
+              reason: >-
+                flext-tests owns the shared test-environment prerequisite
+                probe; the git ls-files check runs on a caller-supplied
+                untracked .env path and cannot be routed through u.Cli.run
+                without breaking the workspace-wide collection contract. The
+                command is a fixed ["git", "ls-files", ...] list with no shell
+                expansion; bounded to this module.
+            - files: "tests/unit/test_capability_collection.py"
+              rules: [ missing-copyright-notice, undocumented-public-method, suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path, line-too-long ]
+              authority: operator-ruling-2026-10-10-test-suite-subprocess
+              reason: >-
+                pytester-driven collection tests own their own git init and
+                subprocess invocation on a fixture path; the fixture owns
+                the process lifecycle by design. Bounded to this single test
+                module.
       mypy:
         # Wall-time bound for the bounded Mypy execution (SSOT). A project
         # config/tooling.yaml overlay may only lower it; no environment

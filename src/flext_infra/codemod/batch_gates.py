@@ -174,28 +174,33 @@ class FlextInfraModGateEngine:
     def _governs(governed_root: Path, config_root: Path) -> bool:
         """Whether the governed repository itself tracks this rule provider.
 
-        Git owns the answer: an installed provider (``site-packages``) or a
-        member checkout lies outside, or untracked by, the governed repository,
-        while the repository's own catalog is tracked wherever it lives.
+        Git owns the answer for each declared first-party repository. Installed
+        providers remain read-only; a workspace can refresh the catalogs its
+        declared member repositories track.
 
         Returns:
             The resulting ``bool``.
 
         """
         provider = (config_root / c.Infra.CODEMOD_CONFIG_FILENAME).resolve()
-        if not provider.is_relative_to(governed_root):
-            return False
-        return (
-            u.Infra
-            .git_is_tracked(
-                m.Infra.GitRelativePathRequest(
-                    repo_root=governed_root,
-                    relative_path=provider.relative_to(governed_root).as_posix(),
-                ),
-            )
-            .unwrap()
-            .value
-        )
+        for owner in sorted(
+            u.Infra.governed_project_roots(governed_root),
+            key=lambda path: len(path.parts),
+            reverse=True,
+        ):
+            if provider.is_relative_to(owner):
+                return (
+                    u.Infra
+                    .git_is_tracked(
+                        m.Infra.GitRelativePathRequest(
+                            repo_root=owner,
+                            relative_path=provider.relative_to(owner).as_posix(),
+                        ),
+                    )
+                    .unwrap()
+                    .value
+                )
+        return False
 
     @classmethod
     def _fixture_owners(

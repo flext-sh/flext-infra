@@ -697,6 +697,10 @@ Infra:
         profiles: [ workspace ]
       - name: check
         description: Run the configured non-test gates except the dedicated smells audit.
+      - name: census
+        description: Inventory constants, duplicate declarations and placement across every declared first-party project.
+      - name: census-constants
+        description: Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.
       - name: smells
         description: Run the strict code-smell audit as a dedicated gate.
       - name: test

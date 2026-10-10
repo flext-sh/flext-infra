@@ -1,0 +1,14 @@
+id: ban-infra-utility-module-self-facade-import
+language: python
+severity: error
+files:
+  - "**/src/flext_infra/_utilities/**/*.py"
+rule:
+  all:
+    - kind: import_from_statement
+    - regex: "^from flext_infra import[\\s\\S]*\\bu\\b"
+    - inside:
+        kind: module
+message: >-
+  A utility declaration cannot import its own assembling public facade at
+  module scope. Resolve the dependency through the semantic self-facade phase.

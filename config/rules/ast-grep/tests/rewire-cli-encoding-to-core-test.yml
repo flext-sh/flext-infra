@@ -1,0 +1,10 @@
+id: rewire-cli-encoding-to-core
+valid:
+  - payload.decode(c.DEFAULT_ENCODING)
+  - c.Cli.FORMAT_BY_SUFFIX
+  - settings.Cli.encoding
+  - config.Cli.encoding
+invalid:
+  - payload.decode(c.Cli.ENCODING_DEFAULT)
+  - path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+  - 'encoding: str = c.Cli.ENCODING_DEFAULT'
