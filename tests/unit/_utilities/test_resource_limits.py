@@ -41,6 +41,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     @pytest.mark.requires_engine("mypy")
+    @pytest.mark.slow
     def test_mypy_profile_records_the_real_checker(tmp_path: Path) -> None:
         """Keep the public profiling contract while removing executable selection."""
         project = u.Tests.mypy_workload(tmp_path)
