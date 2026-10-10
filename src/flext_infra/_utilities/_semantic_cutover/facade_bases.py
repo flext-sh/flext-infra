@@ -128,19 +128,26 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             TypeError: If an unsupported facade inheritance identity is encountered.
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
-        pending = [resolved] if resolved is not None else []
-        lineage: list[t.Pair[str, str]] = []
-        while pending:
-            identity = pending.pop(0)
-            if identity in lineage:
-                continue
-            lineage.append(identity)
+        if resolved is None:
+            return ()
+        cache: MutableMapping[t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]] = {}
+
+        def linearize(
+            identity: t.Pair[str, str],
+            visiting: frozenset[t.Pair[str, str]],
+        ) -> t.VariadicTuple[t.Pair[str, str]]:
+            if identity in visiting:
+                msg = f"cyclic facade inheritance identity: {identity}"
+                raise ValueError(msg)
+            if identity in cache:
+                return cache[identity]
             owner_module, owner_name = identity
             declaration = next(
                 node
                 for node in ast.parse(modules[owner_module][0]).body
                 if isinstance(node, ast.ClassDef) and node.name == owner_name
             )
+            bases: list[t.Pair[str, str]] = []
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
                 if not isinstance(expression, ast.Name):
@@ -150,8 +157,31 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     modules, owner_module, expression.id, frozenset()
                 )
                 if inherited is not None:
-                    pending.append(inherited)
-        return tuple(lineage)
+                    bases.append(inherited)
+            sequences = [list(linearize(base, visiting | {identity})) for base in bases]
+            sequences.append(list(bases))
+            lineage = [identity]
+            while any(sequences):
+                chosen = next(
+                    (
+                        sequence[0]
+                        for sequence in sequences
+                        if sequence
+                        and not any(sequence[0] in tail[1:] for tail in sequences)
+                    ),
+                    None,
+                )
+                if chosen is None:
+                    msg = f"inconsistent facade inheritance identity: {identity}"
+                    raise ValueError(msg)
+                lineage.append(chosen)
+                for sequence in sequences:
+                    if sequence and sequence[0] == chosen:
+                        sequence.pop(0)
+            cache[identity] = tuple(lineage)
+            return cache[identity]
+
+        return linearize(resolved, frozenset())
 
     @classmethod
     def _plan_behavior_consumers(
@@ -392,8 +422,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             updated = MetadataWrapper(cst.parse_module(source)).visit(
                 cls._BehaviorReferences(resolve, context)
             )
-            for module, name in obsolete:
-                RemoveImportsVisitor.remove_unused_import(context, module, name)
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ImportFrom) or node.module is None:
+                    continue
+                for alias in node.names:
+                    if (node.module, alias.name) in obsolete:
+                        RemoveImportsVisitor.remove_unused_import(
+                            context, node.module, alias.name, alias.asname
+                        )
             updated = updated.visit(AddImportsVisitor(context))
             updated = updated.visit(RemoveImportsVisitor(context))
             return updated.code, (

@@ -277,7 +277,6 @@ class FlextInfraUtilitiesCodegenNamespace:
                 all((isinstance(item, str) for item in literal))``; or if a
                 ``(ValueError, SyntaxError)`` is caught; or if ``source_name not in
                 assignments``.
-            TypeError: If ``not isinstance(literal, (list, tuple))``.
         """
         assignments: MutableMapping[str, ast.expr] = {}
         for node in tree.body:

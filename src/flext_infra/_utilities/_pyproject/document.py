@@ -130,7 +130,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             str(c.Infra.DEV),
             sorted({*dev, *member_requests}),
         )
-        local_requirements = cls._document_requirement_lines(source)
+        local_requirements = cls.document_requirement_lines(source)
         if local_requirements.failure:
             return r[str].from_failure(local_requirements)
         requirement_sources = cls._declared_requirement_sources(
@@ -170,7 +170,15 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         workspace: m.Infra.WorkspaceSpec,
         options: PyprojectConformOptions,
     ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
-        """Retain all declared member extras and groups in the root environment."""
+        """Retain all declared member extras and groups in the root environment.
+
+        Args:
+            workspace: The workspace specification containing subprojects and integration details.
+            options: The options for pyproject conformity, including repository root and other settings.
+
+        Returns:
+            A result containing a triple of string sequences representing the member environment requirements.
+        """
         result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
         members = (
             tuple(member for member in workspace.subprojects if member.package)
@@ -240,10 +248,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                             return result.fail(
                                 f"invalid member dependency group {name}: {path}",
                             )
-            declared = (
-                FlextInfraUtilitiesPyprojectUvSources._document_requirement_lines(
-                    document.value,
-                )
+            declared = FlextInfraUtilitiesPyprojectUvSources.document_requirement_lines(
+                document.value,
             )
             if declared.failure:
                 return result.from_failure(declared)

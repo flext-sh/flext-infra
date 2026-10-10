@@ -29,7 +29,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     """Render the conform-owned ``[tool.uv]`` keys of one pyproject document."""
 
     @classmethod
-    def _document_requirement_lines(
+    def document_requirement_lines(
         cls,
         document: t.Cli.TomlDocument,
     ) -> p.Result[list[str]]:
@@ -76,7 +76,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         """
         return tuple(
             active
-            for item in cls._document_requirement_lines(document).unwrap()
+            for item in cls.document_requirement_lines(document).unwrap()
             if (
                 active := FlextInfraUtilitiesDependencies.active_requirement(
                     item,
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The resulting ``p.Result[t.VariadicTuple[str]]``.
 
         """
-        lines = cls._document_requirement_lines(document)
+        lines = cls.document_requirement_lines(document)
         if lines.failure:
             return r[t.VariadicTuple[str]].from_failure(lines)
         return r[t.VariadicTuple[str]].ok(

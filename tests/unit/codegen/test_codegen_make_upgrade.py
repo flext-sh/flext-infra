@@ -538,8 +538,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
         text = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
         lifecycle = text.split("_upg_lifecycle:", 1)[1].split("_upg_converge:\n", 1)[0]
         convergence = text.split("_upg_converge:\n", 1)[1].split("\n.PHONY:", 1)[0]
-        alignment = '-C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg UPG_HANDOFF='
-        tm.that(lifecycle.index("_builtin_require_upg_lock_owner") < lifecycle.index("$(UV) lock"), eq=True)
+        alignment = (
+            '-C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg UPG_HANDOFF='
+        )
+        tm.that(
+            lifecycle.index("_builtin_require_upg_lock_owner")
+            < lifecycle.index("$(UV) lock"),
+            eq=True,
+        )
         tm.that(convergence.count(alignment), eq=1)
         tm.that(
             convergence.index("_upg_activated") < convergence.index(alignment),
