@@ -452,10 +452,11 @@ class FlextInfraGate:
         self,
         params: p.Infra.GateExecutionParams,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution whose verdict the caller already decided.
+        """Assemble a gate execution from its native outcome and findings.
 
         Native outcome and acceptance are separate: residual findings block
-        acceptance without being relabeled as machinery failures.
+        acceptance without being relabeled as machinery failures, so only a
+        clean outcome with no finding passes.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
