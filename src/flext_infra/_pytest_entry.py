@@ -21,13 +21,12 @@ class FlextInfraPytestEntry:
     def main(cls) -> int:
         """Parse the Make boundary and return the exact child process status.
 
-        The default is the incremental testmon operation. ``full`` runs every
-        test once, every marker included, without testmon and without any time
-        limit; it is a local-only operation. ``coverage`` selects coverage
-        alone. The ``slow`` operation runs the incremental phase over the slow
-        marker only, as its own bounded process outside the budgeted clock.
-        The ``file`` runs incremental then complete testmon execution of its
-        declared target, including its slow tests; it requires the Make
+        ``full`` runs incremental then complete testmon execution. ``coverage``
+        selects coverage alone; the default is the incremental operation. The
+        ``slow`` operation runs the incremental phase over the slow marker
+        only, as its own bounded process outside the budgeted clock. The
+        ``file`` and ``file-slow`` operations run one declared target file
+        through the same budgeted and slow phases; they require the Make
         boundary to export the single-file target environment variable.
 
         Returns:
@@ -58,9 +57,8 @@ class FlextInfraPytestEntry:
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,
-            unbounded=mode in {"full", "full-slow"},
         )
-        if mode == "file" and runner.target_file is None:
+        if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (
                 f"pytest operation {mode} requires the Make boundary to export "
                 "the single-file target variable"
@@ -68,11 +66,9 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode == "full":
+        elif mode in {"full", "full-slow"}:
             status = runner.execute_full().unwrap()
-        elif mode == "file":
-            status = runner.execute_file().unwrap()
-        elif mode in {"", "slow"}:
+        elif mode in {"", "slow", "file", "file-slow"}:
             status = runner.execute().unwrap()
         else:
             msg = f"unsupported pytest operation: {mode}"
