@@ -277,7 +277,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         *,
         unformatted: bool,
     ) -> None:
-        """A completed formatter keeps docstrings it cannot write back reported."""
+        """A completed formatter reports docstrings it cannot write back for check."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix-docstring")
         source_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
         source_dir.mkdir()
@@ -294,9 +294,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
                 apply_fixes=True,
             ),
         )
-        # The repair completes either way (ruling d of
-        # operator-rulings-2026-10-01-lint-automation); an example it cannot
-        # write back stays a FINDINGS outcome reported for check.
+        # The repair completes (FINDINGS never breaks it); the unwritable
+        # docstring stays a finding that check enforces.
         tm.that(result.result.passed, eq=True)
         tm.that(
             result.outcome,

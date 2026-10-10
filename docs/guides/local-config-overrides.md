@@ -73,6 +73,26 @@ inspection, generation receipt, or merged PR alone is not proof of green deliver
 **exactly once** across the merged list, so never re-declare a name the tracked files
 already carry — declare it in one layer only.
 
+## Repository-owned Ruff additions
+
+Shared Ruff policy belongs to the supplier's `Infra.tooling` declaration.
+Exceptions required by one consumer belong to that consumer's tracked
+`config/*.yaml` under `ManagedArtifacts.Ruff.per_file_ignores`. They do not
+belong in the supplier's shared policy or in a generated `pyproject.toml`.
+
+The managed-artifact loader validates each repository's configuration snapshot
+once. The conform renderer and pyproject modernization phase receive that
+resolution explicitly and compose its Ruff additions with shared policy through
+the same utility. Matching patterns retain both declarations' rules; sorting and
+deduplication make the composition deterministic. A project without additions
+receives shared policy unchanged. A pattern declared in two project configuration
+files fails validation rather than choosing a second owner.
+
+Regenerate with `make gen`. Verify that another project does not inherit the
+consumer's additions and that a repeated generation leaves the candidate
+unchanged. Repository-specific additions remain subject to the project's
+authorization and gate requirements.
+
 ## Example
 
 ```yaml
@@ -114,8 +134,12 @@ that explicit contract, avoiding host-interpreter marker evaluation.
 
 An Infra integration lane can bootstrap declared candidate worktrees with
 `make bootstrap-candidate`. Its handwritten `config/workspace.yaml` lists
-`candidate_bootstrap_targets`, each with a relative `path` and a `what` value of
-`makefile`, `docs-config`, `pyproject`, or `mise-triple`.
+`candidate_bootstrap_targets`, each with a relative `path` and a scoped conform
+surface in `what`, such as `makefile`, `docs-config`, `pyproject`, `mise-config`,
+or `lazy-init`. The planner's typed surface contract owns the selection; bootstrap
+rejects complete generation before planning or publishing. Fixed destination
+sets and dynamically planned initializer paths must remain inside their owning
+worktree.
 The verb uses the current branch-matched Infra generator and validates every target
 as an exact Git worktree root. It plans all declared recovery projections before
 starting one recoverable, multi-root publication, then verifies every target before
@@ -132,11 +156,11 @@ contents never select a table. Normal generation and all gates still run afterwa
 `docs-config` renders only the declared docs policy template when a conflicted
 generated JSON file prevents ordinary generation from parsing it; afterward run
 `make gen` to verify the full projection. Generated targets are never edited
-directly. `mise-triple` restores the complete launcher and version-pin set from
-the provider's validated packaged `make upg` artifacts in one publication when
-a merge conflict prevents the candidate's Makefile from starting. Run `make upg`
-in the candidate afterward to resolve its current release, then `make gen` to
-project its managed files, including CI. The
+directly. Regenerate stale initializers with a `lazy-init` target before requesting
+a `pyproject` target whose type-analysis inventory consumes their export routes.
+This uses the existing initializer planner and transaction, with no alternate
+parser for retired generated shapes. `mise-config` restores the declared tool
+manifest; `make upg` resolves its lock and `make setup` installs it. The
 `makefile` surface reads declared member identity from the workspace manifest even when
 a member checkout has been initialized only partially and still lacks its
 `pyproject.toml`; that is the state the new Make setup must repair. All other conform

@@ -34,7 +34,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticNestingTypes,
     FlextInfraUtilitiesSemanticCutoverNestingCst,
-    FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
 ):
     """Relocate payloads and bind config imports to existing permitted owners."""
 
@@ -165,137 +164,112 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         Such findings require relocation and remain visible to the boundary gate.
 
         Returns:
-            The proposed sources, each settings/config module importing its
-            own namespace through the direct leaf that declares each name.
+            The proposed sources with config imports rebound to their
+            existing, permitted declaration.
 
         """
+        layers = FlextInfraUtilitiesImportLayers
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         proposed = dict(sources)
         for path, source in sources.items():
-            namespace = cls._root_singleton_namespace(root, path, source)
-            if namespace is None:
+            if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
-            exports: dict[str, t.Pair[str, str]] = {}
-            for statement in ast.parse(source).body:
-                if (
-                    not isinstance(statement, ast.ImportFrom)
-                    or statement.level
-                    or statement.module is None
-                    or statement.module.split(".")[0] != namespace.name
-                ):
-                    continue
-                for alias in statement.names:
-                    if alias.name == "*":
-                        continue
-                    destination = cls._declared_leaf_export(
-                        project,
-                        sources,
-                        namespace,
-                        (statement.module, alias.name),
-                    )
-                    if destination is not None:
-                        exports[f"{statement.module}.{alias.name}"] = destination
+            located = layers.import_namespace(root, path)
+            if located is None:
+                continue
+            namespace, _module = located
+            if not cls._is_import_law_singleton(
+                path, namespace, c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+            ):
+                continue
+            exports = cls._collect_settings_exports(
+                (
+                    project,
+                    source,
+                    namespace,
+                    runtime,
+                    root,
+                    sources,
+                ),
+            )
             if exports:
-                proposed[path] = cls._relocate_declared_exports(source, exports)
+                proposed[path] = (
+                    FlextInfraUtilitiesSemanticCutoverPrivateImportCst.relocate_declared_exports(
+                        source, exports
+                    )
+                )
         return proposed
 
     @staticmethod
-    def _root_singleton_namespace(
-        root: Path,
+    def _is_import_law_singleton(
         path: Path,
-        source: str,
-    ) -> Path | None:
-        """Return the namespace of one hand-written settings/config module.
-
-        Returns:
-            The namespace directory, or ``None`` when the module is generated,
-            outside every namespace, or not a settings/config module.
-
-        """
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
-            return None
-        located = FlextInfraUtilitiesImportLayers.import_namespace(root, path)
-        if located is None:
-            return None
-        namespace, _module = located
-        singletons = tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)
-        if any(
-            part.removesuffix(".py").lstrip("_").startswith(singletons)
+        namespace: p.Infra.RopeNamespace,
+        singletons: t.Sequence[str],
+    ) -> bool:
+        return any(
+            part.removesuffix(".py").lstrip("_").startswith(tuple(singletons))
             for part in path.relative_to(namespace).parts
-        ):
-            return namespace
-        return None
+        )
 
     @staticmethod
-    def _lazy_export_provider(
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
-        imported: t.Pair[str, str],
-    ) -> t.Infra.RopePyModule:
-        """Follow lazy ``__init__`` exports of one imported name to its provider.
-
-        Returns:
-            The module that binds the name without a further lazy route.
-
-        Raises:
-            ValueError: If the lazy export chain is cyclic.
-
-        """
-        module, name = imported
-        root = Path(project.root.real_path)
-        provider = project.get_module(module)
-        visited: set[str] = set()
-        while (provider_resource := provider.get_resource()) is not None:
-            provider_name = provider.get_name()
-            if provider_name in visited:
-                msg = f"declaration-relocation: cyclic lazy export {provider_name}"
-                raise ValueError(msg)
-            visited.add(provider_name)
-            provider_path = Path(provider_resource.real_path).resolve()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(
-                provider_resource,
+    def _collect_settings_exports(
+        context: t.Tuple[
+            p.Infra.RopeProject,
+            str,
+            p.Infra.RopeNamespace,
+            type[FlextInfraUtilitiesRopeRuntimeModules],
+            Path,
+            t.MappingKV[Path, str],
+        ],
+    ) -> dict[str, t.Pair[str, str]]:
+        project, source, namespace, runtime, root, sources = context
+        exports: dict[str, t.Pair[str, str]] = {}
+        for statement in ast.parse(source).body:
+            if (
+                not isinstance(statement, ast.ImportFrom)
+                or statement.level
+                or statement.module is None
+                or statement.module.split(".")[0] != namespace.name
             ):
-                provider_path /= c.Infra.INIT_PY
-            provider_file = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                project.get_resource(provider_path.relative_to(root).as_posix()),
-                provider_path,
-            )
-            route = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
-                provider_name,
-                provider_path,
-                sources.get(provider_path, provider_file.read()),
-            ).get(name)
-            if route is None:
-                break
-            provider = project.get_module(route)
-        return provider
+                continue
+            for alias in statement.names:
+                if alias.name == "*":
+                    continue
+                resolved = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_settings_export(
+                    (
+                        project,
+                        statement,
+                        alias,
+                        namespace,
+                        runtime,
+                        root,
+                        sources,
+                    ),
+                )
+                if resolved is not None:
+                    exports[resolved[0]] = resolved[1]
+        return exports
 
-    @classmethod
-    def _declared_leaf_export(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
-        namespace: Path,
-        imported: t.Pair[str, str],
+    @staticmethod
+    def _resolve_settings_export(
+        context: t.Tuple[
+            p.Infra.RopeProject,
+            ast.ImportFrom,
+            ast.alias,
+            p.Infra.RopeNamespace,
+            type[FlextInfraUtilitiesRopeRuntimeModules],
+            Path,
+            t.MappingKV[Path, str],
+        ],
     ) -> t.Pair[str, str] | None:
-        """Return the direct leaf module that declares one imported name.
-
-        Returns:
-            The declaring module and name, or ``None`` when the name is
-            unbound, declared outside the namespace, in a module that is not a
-            direct-import leaf, or already imported from its declaring module.
-
-        """
-        module, name = imported
-        binding = (
-            cls
-            ._lazy_export_provider(
-                project,
-                sources,
-                imported,
-            )
-            .get_attributes()
-            .get(name)
+        project, statement, alias, namespace, runtime, root, sources = context
+        binding = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_binding(
+            project,
+            statement.module,
+            alias.name,
+            root,
+            sources,
         )
         if binding is None:
             return None
@@ -304,26 +278,59 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if resource is None:
             return None
         target = Path(resource.real_path).resolve()
-        if (
-            target not in sources
-            or not target.is_relative_to(namespace)
-            or not FlextInfraUtilitiesImportLayers.import_direct_module(
-                namespace,
-                target,
-            )
-        ):
+        if target not in sources or not target.is_relative_to(namespace):
+            return None
+        if not FlextInfraUtilitiesImportLayers.import_direct_module(namespace, target):
             return None
         destination = project.get_pymodule(resource)
-        declared = destination.get_attributes().get(name)
-        if declared is None or not FlextInfraUtilitiesRopeRuntimeModules.same_name(
-            binding,
-            declared,
+        declared = destination.get_attributes().get(alias.name)
+        destination_name = destination.get_name()
+        if (
+            declared is None
+            or not runtime.same_name(binding, declared)
+            or destination_name == statement.module
         ):
             return None
-        destination_name = destination.get_name()
-        if destination_name == module:
-            return None
-        return destination_name, name
+        return (
+            f"{statement.module}.{alias.name}",
+            (destination_name, alias.name),
+        )
+
+    @staticmethod
+    def _resolve_binding(
+        project: p.Infra.RopeProject,
+        module_name: str,
+        alias_name: str,
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Infra.RopePyName | None:
+        provider = project.get_module(module_name)
+        visited: set[str] = set()
+        while (provider_resource := provider.get_resource()) is not None:
+            provider_name = provider.get_name()
+            if provider_name in visited:
+                msg = f"declaration-relocation: cyclic lazy export {provider_name}"
+                raise ValueError(msg)
+            visited.add(provider_name)
+            provider_path = Path(provider_resource.real_path).resolve()
+            if provider_resource.is_folder():
+                provider_path /= c.Infra.INIT_PY
+            provider_file = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(
+                    provider_path.relative_to(root).as_posix(),
+                ),
+                provider_path,
+            )
+            aliases = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+                provider_name,
+                provider_path,
+                sources.get(provider_path, provider_file.read()),
+            )
+            route = aliases.get(alias_name)
+            if route is None:
+                break
+            provider = project.get_module(route)
+        return provider.get_attributes().get(alias_name)
 
     @classmethod
     def _next_payload(

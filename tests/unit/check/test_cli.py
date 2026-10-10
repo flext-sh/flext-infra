@@ -245,11 +245,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         self,
         tmp_path: Path,
     ) -> None:
-        """A repair run completes; what it cannot repair stays for check.
-
-        Operator ruling operator-rulings-2026-10-01-lint-automation (d): fix
-        never fails on residual violations; only a tool error breaks it.
-        """
+        """A repair run completes; what it cannot repair stays for check."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 
@@ -268,7 +264,8 @@ class TestsFlextInfraWorkspaceCheckCli:
         ])
 
         # Ruff completes and reports the syntax error as a finding of the
-        # code: the verb does not break, and the module is never rewritten.
+        # code: the module is never rewritten, the repair verb completes, and
+        # the residual finding stays for check to enforce.
         tm.that(exit_code, eq=0)
         tm.that(
             module_path.read_text(encoding="utf-8"),
@@ -282,8 +279,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         """A no-self-use repair applies beside a module that cannot parse.
 
         The repair lands in the parsable module; the unparsable one stays
-        untouched, its residual finding stays for check, and the verb
-        completes.
+        untouched and its residual finding stays for check.
         """
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
         broken = TestsFlextInfraWorkspaceCheckCli._write_module(

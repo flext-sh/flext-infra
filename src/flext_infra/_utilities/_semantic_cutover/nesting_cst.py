@@ -158,11 +158,15 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     ) -> t.Pair[cst.Module, t.VariadicTuple[cst.ClassDef]]:
         """Return the module holding its owner class, creating it before the moves.
 
+        A created owner states the module's own responsibility: its docstring
+        is the summary line of the module docstring.
+
         Returns:
             The module and every top-level class named as the owner.
 
         Raises:
-            TypeError: If the owner declaration cannot be built.
+            TypeError: If the module has no docstring summary or the owner
+                declaration cannot be built.
 
         """
         owner_nodes = tuple(
@@ -172,8 +176,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         )
         if owner_nodes:
             return module, owner_nodes
+        docstring = module.get_docstring()
+        summary = docstring.splitlines()[0].strip() if docstring else ""
+        if not summary or '"' in summary or "\\" in summary:
+            msg = (
+                f"class-nesting owner {owner_name} needs a plain module "
+                f"docstring summary line, found {summary!r}"
+            )
+            raise TypeError(msg)
         owner = cst.parse_statement(
-            f'class {owner_name}:\n    """Canonical namespace owner."""\n',
+            f'class {owner_name}:\n    """{summary}"""\n',
         )
         if not isinstance(owner, cst.ClassDef):
             msg = f"class-nesting could not create owner {owner_name}"

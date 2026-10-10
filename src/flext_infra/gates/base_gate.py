@@ -454,10 +454,10 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from its native outcome and findings.
 
-        Native outcome and acceptance are separate: the caller decides the
-        verdict, and the native outcome and every finding are kept unchanged.
-        A repair breaks only on an error; the findings it leaves keep the
-        ``FINDINGS`` outcome and stay reported for ``check``.
+        Native outcome and acceptance are separate. A repair breaks only on an
+        error; the findings it leaves keep the ``FINDINGS`` outcome and stay
+        reported for ``check``, whose verdict enforces them (tracker memory
+        ``operator-ruling-2026-10-10-fix-residual-verdict``).
 
         Returns:
             The resulting ``m.Infra.GateExecution``.

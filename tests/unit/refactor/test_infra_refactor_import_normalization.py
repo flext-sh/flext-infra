@@ -145,7 +145,7 @@ class TestsFlextInfraRefactorImportNormalization:
 
         """
         project = tmp_path / "project"
-        package = u.Tests.src_package(
+        package: Path = u.Tests.src_package(
             project,
             "demo_pkg",
             pyproject="[project]\nname='demo'\n",

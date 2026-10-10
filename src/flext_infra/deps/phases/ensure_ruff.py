@@ -22,9 +22,17 @@ from flext_infra import (
 class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
-        """Store tool configuration used to build canonical Ruff settings."""
+    def __init__(
+        self,
+        tool_config: m.Infra.ToolConfigDocument,
+        project_ruff: m.Infra.ProjectRuffConfig,
+    ) -> None:
+        """Bind shared policy and the current project's validated additions."""
         self._tool_config = tool_config
+        self._per_file_ignores = u.Infra.compose_ruff_per_file_ignores(
+            tool_config,
+            project_ruff,
+        )
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
@@ -112,14 +120,22 @@ class FlextInfraEnsureRuffConfigPhase:
         # the namespace-packages contract only holds for roots on disk. The
         # declared lists stay the SSOT; existence filters the projection, with
         # roots the active plan is materializing accepted as present (the
-        # extra-paths manager owns that declared set).
+        # extra-paths manager owns that declared set). In a Git checkout a root
+        # is present only when Git tracks it: an ignored or untracked local
+        # tree (a scratch scripts/ dir) must not change the projection, or the
+        # local and CI renders of the same commit diverge.
         generated_roots = FlextInfraExtraPathsManager(
             repository_root=path.parent,
             generated_python_roots=facts.generated_python_roots,
         ).generated_python_roots
+        tracked_roots = u.Infra.git_tracked_top_level_dir_names(path.parent)
 
         def _present(directory: str) -> bool:
-            return (path.parent / directory).is_dir() or (directory in generated_roots)
+            if directory in generated_roots:
+                return True
+            if tracked_roots is not None:
+                return directory in tracked_roots
+            return (path.parent / directory).is_dir()
 
         existing_root = tuple(d for d in ruff_cfg.src if _present(d))
         excluded_roots = self._analysis_exclusion_root_set(path.parent)
@@ -311,10 +327,7 @@ class FlextInfraEnsureRuffConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        # One fleet exemption map, declared with its authority at the tooling
-        # owner, reaches every project unchanged.
-
-        effective_ignores = self._tool_config.tools.ruff.lint.per_file_ignores
+        effective_ignores = self._per_file_ignores
         current_ignores = u.Cli.toml_mapping_path(
             payload,
             (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),

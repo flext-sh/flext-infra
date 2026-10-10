@@ -455,9 +455,6 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
-                # A repair breaks only on ERROR; docstring findings it cannot
-                # write back stay reported for check
-                # (operator-rulings-2026-10-01-lint-automation, ruling d).
                 verdict=passed,
                 outcome=(
                     c.Infra.ToolOutcome.ERROR

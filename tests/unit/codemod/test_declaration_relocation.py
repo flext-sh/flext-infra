@@ -52,8 +52,8 @@ class TestsFlextInfraDeclarationRelocation:
                 f"from {package.name}._models.base import ModelsBase\n"
             ),
             consumer: (
-                f"from {package.name}._models import "
-                "ConfigPayload as Payload, ModelsBase\n"
+                f"from {package.name}._models import ("
+                "ConfigPayload as Payload, ModelsBase)\n"
                 "class Config(ModelsBase):\n    payload = Payload\n"
             ),
         }

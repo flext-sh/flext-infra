@@ -134,6 +134,10 @@ surface. Manifest-declared template inputs retain their source identity even whe
 emit a generated-file header; arbitrary files with a template suffix receive no such
 permission. Inventory comes from the existing Git scope owner, including untracked files
 and literal unusual filenames.
+An in-scope symbolic link remains a projection: its real file is the writable
+authority, so a campaign preserves the link and publishes only its elected target.
+A selected symbolic link that escapes the declared scan roots is rejected before
+publication.
 
 Identical duplicate CSV rows coalesce. Conflicting duplicates, identity mappings,
 overlapping source patterns, cycles and cascading destinations are rejected. This

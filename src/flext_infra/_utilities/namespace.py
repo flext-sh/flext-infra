@@ -11,7 +11,6 @@ import operator
 from collections.abc import MutableMapping
 from functools import cache
 from inspect import getfile
-from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
@@ -68,7 +67,20 @@ class FlextInfraUtilitiesCodegenNamespace:
         if not bound:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} binds no facade family"
             raise ValueError(msg)
-        stem = commonpath([name for _, name in bound.values()])
+        # The stem is the shared leading text of the class names, compared
+        # character by character: ``os.path.commonpath`` compares path
+        # components and yields "" for bare names, leaving full class names
+        # as suffixes (owners such as ``FlextFlextUtilitiesMapper``).
+        names = [name for _, name in bound.values()]
+        shortest = min(names, key=len)
+        stem = next(
+            (
+                shortest[:index]
+                for index, char in enumerate(shortest)
+                if any(name[index] != char for name in names)
+            ),
+            shortest,
+        )
         return MappingProxyType({
             letter: m.Infra.FacadeFamily(
                 letter=letter,
@@ -295,18 +307,18 @@ class FlextInfraUtilitiesCodegenNamespace:
             case _:
                 pass
         try:
-            literal = ast.literal_eval(resolved)
+            literal: object = ast.literal_eval(resolved)
         except (ValueError, SyntaxError) as exc:
             msg = f"{file_path}: invalid __all__: {exc}"
             raise ValueError(msg) from exc
-        if not isinstance(literal, (list, tuple)):
+        # A str sequence contract rejects a bare string, a set or a mapping and
+        # every non-string item, so the literal is typed once at this boundary.
+        try:
+            names = t.Infra.STR_SEQ_ADAPTER.validate_python(literal)
+        except m.ValidationError as exc:
             msg = f"{file_path}: __all__ must contain only strings"
-            raise TypeError(msg)
-        names = tuple(item for item in literal if isinstance(item, str))
-        if len(names) != len(literal):
-            msg = f"{file_path}: __all__ must contain only strings"
-            raise ValueError(msg)
-        return names
+            raise ValueError(msg) from exc
+        return tuple(names)
 
     @classmethod
     def _declared_exports(cls, file_path: Path) -> t.StrSequence:
@@ -744,6 +756,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
+        project_layout: m.Infra.RopeProjectLayout | None = None,
     ) -> m.Infra.NamespaceModulePolicy:
         """Enrich publication declarations with repair and inherited-shape evidence.
 
@@ -759,12 +772,19 @@ class FlextInfraUtilitiesCodegenNamespace:
             rope_project=rope_project,
             rel_path=rel_path,
             current_pkg=current_pkg,
+            project_layout=project_layout,
         )
-        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        project_root = (
+            project_layout.project_root
+            if project_layout is not None
+            else FlextInfraUtilitiesDiscovery.project_root(file_path)
+        )
         # A stub is never a facade source (Rope loads only Python sources).
         if project_root is None or file_path.suffix != c.Infra.EXT_PYTHON:
             return policy
-        layout = cls.layout(project_root)
+        layout = (
+            project_layout if project_layout is not None else cls.layout(project_root)
+        )
         if file_path.parent.parent != project_root and (
             layout is None or file_path.parent != layout.package_dir
         ):
