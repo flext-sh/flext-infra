@@ -754,6 +754,29 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @pytest.mark.slow
+    def test_unbounded_full_suite_runs_every_phase_without_deadline(
+        cached_runner_project: Path,
+    ) -> None:
+        """``make test-full`` carries no deadline in any of its phases."""
+        reports_root = cached_runner_project / runner_for(cached_runner_project).reports
+        existing = set(reports_root.glob("*/run-context.json"))
+        runner = runner_for(cached_runner_project, unbounded=True)
+
+        tm.that(tm.ok(runner.execute_full()), eq=0)
+
+        contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
+        parsed = [
+            m.Infra.PytestRunContext.model_validate_json(path.read_text())
+            for path in contexts
+        ]
+        tm.that(
+            [context.execution_mode for context in parsed],
+            eq=["incremental", "full"],
+        )
+        tm.that([context.deadline_monotonic for context in parsed], eq=[None, None])
+
+    @staticmethod
+    @pytest.mark.slow
     def test_warm_partial_selection_accounts_for_every_stable_test(
         cached_runner_project: Path,
     ) -> None:

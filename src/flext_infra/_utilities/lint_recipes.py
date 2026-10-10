@@ -232,9 +232,9 @@ class FlextInfraUtilitiesLintRecipes:
                     # The ruff-lint gate applies both as whole-module rewrites
                     # before planning; reaching the planner breaks that contract.
                     msg = (
-                        f"{path}: lint recipe {recipe.value} for {issue.code} is a "
-                        "whole-module recipe and requires the Ruff lint gate; it "
-                        "never reaches the edit planner"
+                        f"{path}:{issue.line}: : lint recipe {recipe.value} for "
+                        f"{issue.code} is a whole-module recipe and requires the "
+                        "Ruff lint gate; it never reaches the edit planner"
                     )
                     raise ValueError(msg)
         return sections, summaries, wants_notice
