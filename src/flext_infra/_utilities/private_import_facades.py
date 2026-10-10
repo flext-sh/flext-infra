@@ -689,7 +689,13 @@ class FlextInfraUtilitiesPrivateImportFacades:
         ``resolvers`` carries ``(bindings, class_bases, qualified)``.
         """
         bindings, class_bases, qualified = resolvers
-        if any(
+        if cls._inherits_facade(
+            bindings,
+            class_bases,
+            qualified,
+            identity,
+            frozenset(),
+        ) or any(
             cls._inherits_facade(bindings, class_bases, qualified, base, frozenset())
             for base in class_bases[identity]
         ):

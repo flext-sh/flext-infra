@@ -15,9 +15,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-import flext_core
 from flext_cli import u
 
+import flext_core
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
@@ -756,6 +756,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
+        project_layout: m.Infra.RopeProjectLayout | None = None,
     ) -> m.Infra.NamespaceModulePolicy:
         """Enrich publication declarations with repair and inherited-shape evidence.
 
@@ -771,12 +772,19 @@ class FlextInfraUtilitiesCodegenNamespace:
             rope_project=rope_project,
             rel_path=rel_path,
             current_pkg=current_pkg,
+            project_layout=project_layout,
         )
-        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        project_root = (
+            project_layout.project_root
+            if project_layout is not None
+            else FlextInfraUtilitiesDiscovery.project_root(file_path)
+        )
         # A stub is never a facade source (Rope loads only Python sources).
         if project_root is None or file_path.suffix != c.Infra.EXT_PYTHON:
             return policy
-        layout = cls.layout(project_root)
+        layout = (
+            project_layout if project_layout is not None else cls.layout(project_root)
+        )
         if file_path.parent.parent != project_root and (
             layout is None or file_path.parent != layout.package_dir
         ):

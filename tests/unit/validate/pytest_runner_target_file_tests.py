@@ -210,7 +210,7 @@ class TestsFlextInfraPytestTargetFile:
 
     @staticmethod
     @pytest.mark.slow
-    def test_declared_file_full_operation_executes_fresh_tests(
+    def test_declared_file_operation_executes_fresh_tests(
         cached_runner_project: Path,
     ) -> None:
         """A fresh declared file runs through the real persistent-cache owner."""
@@ -225,7 +225,7 @@ class TestsFlextInfraPytestTargetFile:
             encoding="utf-8",
         )
         runner = runner_for(cached_runner_project, target_file=relative)
-        outcome = tm.ok(runner.execute_full())
+        outcome = tm.ok(runner.execute_file())
         tm.that(outcome, eq=pytest.ExitCode.OK.value)
         tm.that(
             declared.with_suffix(".executed").read_text(encoding="utf-8"),
@@ -246,7 +246,7 @@ class TestsFlextInfraPytestTargetFile:
         )
         for _ in range(2):
             runner = runner_for(cached_runner_project, target_file=relative)
-            tm.that(tm.ok(runner.execute_full()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
             report = summary(cached_runner_project / cache.reports_directory)
             tm.that(report, has="executed=1\n")
 
@@ -270,6 +270,6 @@ class TestsFlextInfraPytestTargetFile:
                 encoding="utf-8",
             )
             runner = runner_for(cached_runner_project, target_file=relative)
-            tm.that(tm.ok(runner.execute_full()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
             report = summary(cached_runner_project / cache.reports_directory)
             tm.that(report, has="executed=2\n")

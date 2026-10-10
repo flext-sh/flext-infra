@@ -20,12 +20,16 @@ from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
-    One suite builder owns every flag; the testmon and coverage verbs are two
-    selections over it (testmon 2.x refuses branch coverage through the cov
-    plugin, so the two never share a process).
+    One suite builder owns every flag; the testmon, coverage and full verbs
+    are selections over it (testmon 2.x refuses branch coverage through the
+    cov plugin, so the two never share a process; the full verb loads
+    neither and runs without any time limit).
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
+    _UNBOUNDED_LIMITS: ClassVar[t.VariadicTuple[str]] = (
+        f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
+    )
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -64,13 +68,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     def carries_slow_items(self, execution_mode: c.Infra.PytestExecutionMode) -> bool:
         """Whether this invocation may run slow-marked items.
 
-        The budgeted phase deselects the slow marker and the slow phase
-        selects it, for the incremental and the full operation alike: each
-        phase is its own process on its own clock (gate-budget law), so the
-        full operation runs the whole suite as two complete phases. Coverage
-        runs the whole suite in one process. One predicate drives both the
-        marker expression and the stop reserve, so an in-flight slow item
-        always has its slow drain.
+        The budgeted incremental phase deselects the slow marker and the slow
+        phase selects it: each is its own process on its own clock
+        (gate-budget law). A declared file runs its slow items. The coverage
+        and the full operations run the whole suite in one process, slow items
+        included. One predicate drives both the marker expression and the stop
+        reserve, so an in-flight slow item always has its slow drain.
 
         Returns:
             The resulting ``bool``.
@@ -79,7 +82,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         return (
             self.slow_phase
             or self.target_file is not None
-            or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+            or execution_mode
+            in {c.Infra.PytestExecutionMode.COVERAGE, c.Infra.PytestExecutionMode.FULL}
         )
 
     def suite_stop_monotonic(
@@ -365,7 +369,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             workers = "0"
         return self._suite_argv(
             report_dir,
-            execution_mode=execution_mode,
+            limits=self._bounded_limits(workers, execution_mode=execution_mode),
             targets=(
                 self._node_targets()
                 if (
@@ -415,7 +419,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
         return self._suite_argv(
             report_dir,
-            execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
+            limits=self._bounded_limits(
+                workers,
+                execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
+            ),
             targets=self._node_targets(),
             workers=workers,
             trailing=(
@@ -428,29 +435,80 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             ),
         )
 
-    def _suite_argv(
+    def build_full_command(
         self,
         report_dir: Path,
         *,
-        execution_mode: c.Infra.PytestExecutionMode,
-        targets: t.StrSequence,
-        workers: str,
-        trailing: t.StrSequence,
+        serialize: bool = False,
     ) -> t.VariadicTuple[str]:
-        """Assemble one suite invocation; ``trailing`` owns the plugin split.
+        """Build the unbounded whole-suite argv (never testmon, never coverage).
 
-        A serial dispatch keeps one item in flight, so its drain reserve is
-        the single-item budget instead of the xdist two-deep worst case.
+        The full operation runs locally only: every marker of its scope, no
+        testmon selection, no suite stop instant, and pytest-timeout disabled
+        for every case.
 
         Returns:
             The resulting ``t.VariadicTuple[str]``.
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
+        return self._suite_argv(
+            report_dir,
+            limits=self._UNBOUNDED_LIMITS,
+            targets=self._node_targets(),
+            workers=workers,
+            trailing=(
+                *self._plugin_policy_args(
+                    execution_mode=c.Infra.PytestExecutionMode.FULL,
+                ),
+                *self._NO_COVERAGE,
+            ),
+        )
+
+    def _bounded_limits(
+        self,
+        workers: str,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode,
+    ) -> t.StrTuple:
+        """Return the configured per-case timeout and graceful stop instant.
+
+        A serial dispatch keeps one item in flight, so its drain reserve is
+        the single-item budget instead of the xdist two-deep worst case.
+
+        Returns:
+            The bounded suite's time-limit arguments.
+
+        """
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,
         )
+        return (
+            f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
+        )
+
+    def _suite_argv(
+        self,
+        report_dir: Path,
+        *,
+        limits: t.StrSequence,
+        targets: t.StrSequence,
+        workers: str,
+        trailing: t.StrSequence,
+    ) -> t.VariadicTuple[str]:
+        """Assemble one suite invocation; ``trailing`` owns the plugin split.
+
+        ``limits`` carries the bounded timeout and stop instant, or the
+        unbounded full operation's disabled per-case timeout.
+
+        Returns:
+            The resulting ``t.VariadicTuple[str]``.
+
+        """
+        pytest = config.Infra.tooling.tools.pytest
         return (
             sys.executable,
             *(
@@ -465,8 +523,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *targets,
             *pytest.progress_args,
             *pytest.report_args,
-            f"--timeout={pytest.case_timeout_seconds}",
-            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
+            *limits,
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",
             f"--report-log={report_dir / 'events.jsonl'}",

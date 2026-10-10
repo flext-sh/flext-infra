@@ -27,8 +27,6 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesProtectedEditLinting:
     """Shared linting and path helpers for protected edit workflows."""
 
-    _SNAPSHOT_MAX_WORKERS: ClassVar[int] = 4
-
     @staticmethod
     def unified_diff_lines(
         before: str,
@@ -410,7 +408,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             max(cls._gate_deadline(entry[0]) for entry in selected_tools) + 10
         )
         pool = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, min(cls._SNAPSHOT_MAX_WORKERS, len(selected_tools))),
+            max_workers=max(
+                1, min(config.Infra.codegen.lint_snapshot_workers, len(selected_tools))
+            ),
         )
         futures_by_tool = {
             pool.submit(
@@ -597,7 +597,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         snapshots_by_path: MutableMapping[Path, t.Infra.LintSnapshot] = {}
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, min(cls._SNAPSHOT_MAX_WORKERS, len(ordered_paths))),
+            max_workers=max(
+                1, min(config.Infra.codegen.lint_snapshot_workers, len(ordered_paths))
+            ),
         ) as pool:
             futures_by_path = {
                 pool.submit(cls.lint_snapshot, path, workspace, gates=gates): path

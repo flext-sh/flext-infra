@@ -11,10 +11,11 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsCodegenProject
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra import c, t
+from flext_infra._models._config import (
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsScaffold,
+)
 
 
 class FlextInfraConfigModelsTemplates:
@@ -32,11 +33,11 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Tokenized repository-relative destination"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraConstantsCodegenProject.MakeProfile],
+            t.VariadicTuple[c.Infra.MakeProfile],
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
-            FlextInfraConstantsCodegenProject.TemplateDelegate,
+            c.Infra.TemplateDelegate,
             m.Field(description="Canonical rendering delegate"),
         ]
         requires_release_protocol: Annotated[
@@ -66,10 +67,7 @@ class FlextInfraConfigModelsTemplates:
                     manifest delegate must not declare a template source.
 
             """
-            if (
-                self.delegate
-                == FlextInfraConstantsCodegenProject.TemplateDelegate.RENDER
-            ):
+            if self.delegate == c.Infra.TemplateDelegate.RENDER:
                 if self.source is None:
                     msg = "render delegate requires a template source"
                     raise ValueError(msg)

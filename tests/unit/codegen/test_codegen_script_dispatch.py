@@ -339,13 +339,14 @@ class TestsFlextInfraScriptDispatchMakefile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Both test verbs run on the one persistent testmon database.
+        """The bounded test verb runs on the one persistent testmon database.
 
         The persistent database is keyed by the declared distribution, so
         every checkout of a project shares one testmon history. The full verb
-        runs against that same database (canonical-commands law: incremental
-        first, then the no-selection pass on the same database), never a
-        cache-less bypass.
+        is the one unbounded runner (canonical-commands test-verb law: local
+        only, without testmon and without any time limit): one ``full`` entry
+        outside PYTEST_BOUNDED, whose runner never hands the database to
+        pytest.
         """
         rendered = self._render_root_makefile(
             tmp_path,
@@ -376,13 +377,9 @@ class TestsFlextInfraScriptDispatchMakefile:
                 f'{cache.database_environment_variable}="$$database"',
             ],
         )
-        tm.that(
-            full,
-            has=[
-                "-m flext_infra._pytest_entry full",
-                f'{cache.database_environment_variable}="$$database"',
-            ],
-        )
+        tm.that(full.count("-m flext_infra._pytest_entry"), eq=1)
+        tm.that(full.rstrip().endswith("-m flext_infra._pytest_entry full"), eq=True)
+        tm.that(full, lacks="PYTEST_BOUNDED")
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

@@ -21,6 +21,67 @@ class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
+    def census_constants(
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        apply: bool,
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan or publish constant consumers from the complete census scope.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+
+        """
+        inventory = m.Infra.ModScanReport(
+            findings=0,
+            actionable=0,
+            detection_only=0,
+            non_actionable_with_fix=0,
+            files=frozenset(),
+            entries=(),
+        )
+        original = cls._source_inventory(root, inventory)
+        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+        planned = u.Infra.plan_semantic_cutover(
+            phase,
+            rope_workspace=rope_workspace,
+            sources=original,
+        )
+        if planned.failure or not apply or not planned.value:
+            return planned
+        working = dict(original)
+        changed: set[Path] = set()
+        cls._apply_plan(working, planned.value, changed)
+
+        def verify() -> p.Result[bool]:
+            rope_workspace.refresh()
+            return cls._check_residue(
+                phase,
+                u.Infra.plan_semantic_cutover(
+                    phase,
+                    rope_workspace=rope_workspace,
+                    sources=cls._source_inventory(root, inventory),
+                ),
+            )
+
+        return (
+            cls
+            ._check_definition_time(original, working, changed)
+            .flat_map(
+                lambda _: cls._publish(
+                    root,
+                    original,
+                    working,
+                    changed,
+                    validator=verify,
+                ),
+            )
+            .map(lambda _: planned.value)
+        )
+
+    @classmethod
     def source_fingerprint(
         cls,
         root: Path,

@@ -15,7 +15,9 @@ from flext_infra import (
     FlextInfraModGateEngine,
     FlextInfraModReplacements,
     FlextInfraModTextGateEngine,
+    FlextInfraRefactorCensus,
     FlextInfraServiceBase,
+    c,
     m,
     p,
     r,
@@ -109,6 +111,25 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             self.repository_root,
             rules,
         ).unwrap()
+        self.progress.emit("mod: apply the workspace constants census")
+        census = FlextInfraRefactorCensus(
+            repository_root=self.repository_root,
+            apply=True,
+            families=("c",),
+            rules=(
+                c.Infra.CensusRule.CONSTANT_CONSUMERS,
+                c.Infra.CensusRule.DUPLICATE,
+                c.Infra.CensusRule.WRONG_TIER,
+            ),
+        ).build_report()
+        self.progress.emit(
+            "mod: constants census "
+            f"projects={len(census.projects)} "
+            f"objects={census.total_objects} "
+            f"violations={census.total_violations} "
+            f"rewritten_files={census.constant_consumer_files} "
+            f"rewritten_bindings={census.constant_consumer_bindings}",
+        )
         return self._execute_apply_cycle()
 
     @staticmethod
@@ -298,9 +319,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         # cycles is an acceptance condition, and cycles the tree already
         # had stay check's existing verdict.
         if any(state != before for state in phase_states):
-            return (
-                "mod cross-phase cycle returned to its starting source state"
-            )
+            return "mod cross-phase cycle returned to its starting source state"
         if current.actionable or current_text.actionable:
             return (
                 "mod made no progress with "
@@ -313,9 +332,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             cycle for cycle in converged_cycles if cycle not in baseline_cycles
         ]
         if new_cycles:
-            return (
-                "mod introduced new runtime import cycle(s): "
-                + "; ".join(" -> ".join(sorted(cycle)) for cycle in new_cycles)
+            return "mod introduced new runtime import cycle(s): " + "; ".join(
+                " -> ".join(sorted(cycle)) for cycle in new_cycles
             )
         return None
 

@@ -12,18 +12,15 @@ from typing import Annotated, Literal
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import (
-    FlextInfraConstantsCodegenProject,
-    FlextInfraConstantsPromoted,
-    FlextInfraConstantsWorkspace,
+from flext_infra import c, t
+from flext_infra._models import FlextInfraModelsDepsToolConfig
+from flext_infra._models._config import (
+    FlextInfraConfigModelsBeads,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsRepository,
+    FlextInfraConfigModelsScaffold,
 )
-from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -43,18 +40,18 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         environment_directory: Annotated[
             t.NonEmptyStr,
             m.Field(description="Runtime-root-local development environment"),
-        ] = FlextInfraConstantsWorkspace.ENVIRONMENT_DIRECTORY
+        ] = c.Infra.ENVIRONMENT_DIRECTORY
         contract_env_values: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
-        ] = tuple(sorted(FlextInfraConstantsPromoted.PROMOTED_ENV_ENABLED_VALUES))
+        ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
 
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
         package: Annotated[
@@ -194,7 +191,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
         repository_root_rel: Annotated[
@@ -565,7 +562,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         """Execution semantics for one generated Make profile."""
 
         name: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Closed Make profile name"),
         ]
         environment_scope: Annotated[

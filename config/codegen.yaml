@@ -44,6 +44,10 @@ Infra:
 
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # Protected-edit lint snapshots run their gate subprocesses in this many
+    # threads per level (paths, then gates per path); mypy keeps its own
+    # resource-limited deadline, so the bound caps concurrent type checkers.
+    lint_snapshot_workers: 4
     # Independent read-only per-repository work of one fleet run (generation
     # planning, lazy-init analysis) runs in this many worker processes; every
     # publication stays serial inside the single generation lease. Measured
@@ -466,7 +470,10 @@ Infra:
 
     make:
       examples_timeout_seconds: 120
+      # Setup clones absent gitlinks submodule_jobs at a time and gives each
+      # wave of concurrent clones submodule_timeout_seconds.
       submodule_timeout_seconds: 120
+      submodule_jobs: 8
       # Ruff is the formatting and autofix rule. Every ruff invocation uses
       # --preview (tracker memory
       # operator-ruling-2026-10-09-authority-confirmation-0122, item 1).
@@ -697,12 +704,16 @@ Infra:
         profiles: [ workspace ]
       - name: check
         description: Run the configured non-test gates except the dedicated smells audit.
+      - name: census
+        description: Inventory constants, duplicate declarations and placement across every declared first-party project.
+      - name: census-constants
+        description: Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.
       - name: smells
         description: Run the strict code-smell audit as a dedicated gate.
       - name: test
         description: Run incremental tests through the persistent testmon cache.
       - name: test-full
-        description: Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.
+        description: Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.
       - name: test-file
         description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
       - name: file-gate

@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_core import c
 from flext_infra._constants import FlextInfraConstantsBase
+from flext_infra._constants.census import FlextInfraConstantsCensus
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -236,6 +237,7 @@ class FlextInfraConstantsRefactor:
 
         DECLARATION_RELOCATION = "declaration-relocation"
         CLASS_NESTING = "class-nesting"
+        CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"
