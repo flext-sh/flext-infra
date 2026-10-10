@@ -282,11 +282,17 @@ class FlextInfraModelsCore:
             description="Canonical test operation for this report directory",
         )
         testmon_db: Path | None = m.Field(
-            description="External pytest-testmon database; absent for coverage",
+            description=(
+                "External pytest-testmon database; absent for the coverage and "
+                "the full operations, which never load testmon"
+            ),
         )
-        deadline_monotonic: float = m.Field(
+        deadline_monotonic: float | None = m.Field(
             gt=0,
-            description="Shared absolute deadline across all execution phases",
+            description=(
+                "Shared absolute deadline across all execution phases; absent "
+                "for the unbounded full operation"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,

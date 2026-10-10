@@ -1105,7 +1105,7 @@ test:
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make test to execute it.'
 
 test-full:
-	@printf '  %-16s %s\n' 'test-full' 'Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.'
+	@printf '  %-16s %s\n' 'test-full' 'Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make test-full to execute it.'
 
 test-file:
@@ -1275,7 +1275,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'test' 'Run incremental tests through the persistent testmon cache.';
 
-	@printf '  %-16s %s\n' 'test-full' 'Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.';
+	@printf '  %-16s %s\n' 'test-full' 'Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.';
 
 	@printf '  %-16s %s\n' 'test-file' 'Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).';
 
@@ -1726,8 +1726,7 @@ mkdir -p "$$scratch/tmp"; \
 scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
 TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
-TESTMON_DATAFILE="$$database" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full; \
-TESTMON_DATAFILE="$$database" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full-slow
+TESTMON_DATAFILE="$$database" $(UV_RUN) python -m flext_infra._pytest_entry full
 
 _builtin_test_file_all: _builtin_require_environment
 	@if [ -z "$(strip $(FILE))" ]; then printf 'ERROR: test-file requires FILE=<repository-relative test file path>\n' >&2; exit 2; fi; \
@@ -1756,10 +1755,6 @@ TESTMON_DATAFILE="$$database" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra.
 export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,format,pyrefly,mypy,pyright,codemod" --file "$$FLEXT_FILE_GATE_FILE"
-
-_builtin_tests_all: _builtin_require_environment
-	+@$(SELF_MAKE) test
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry full
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every

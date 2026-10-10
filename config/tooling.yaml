@@ -881,7 +881,7 @@ Infra:
           # the namespace lifecycle overhead before the measured
           # parallel-worker ceiling lands.
           algar-oud-mig: 300
-          # cosmos-docgen slow phase measured on 2026-10-06: the full-slow
+          # cosmos-docgen slow phase measured on 2026-10-06: the slow-marker
           # selection (~44 real-work cases: isolated-workspace builds, deck
           # and document renders, subprocess resolvers) reaches ~150s wall on
           # a cold testmon database, so the 120s entry clock SIGTERM'd the
@@ -986,13 +986,13 @@ Infra:
           - "requires_engine: native check engine required by this test"
         # External-token gates never run inside
         # offline verification (`make test`); the runner records their exclusion.
-        # `make test-full` first completes that incremental phase, then executes
-        # every marker under the same database and deadline. Existing external
-        # tests retain their declared environment and authentication requirements.
+        # `make test-full` runs locally only and executes every marker once,
+        # without testmon and without any time limit. Existing external tests
+        # retain their declared environment and authentication requirements.
         external-gate-markers: [remote, docker]
         # CI and pre-commit share make.ci.value;
-        # local and pre-push execution retain slow tests. The full phase of
-        # `make test-full` includes these markers in every context.
+        # local and pre-push execution retain slow tests. `make test-full`
+        # includes these markers in every context.
         ci-excluded-markers: [slow]
         # Fixtures declaring local engines or resolution cannot execute in approval.
         ci-excluded-fixtures:
