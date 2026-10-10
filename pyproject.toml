@@ -419,7 +419,7 @@ namespace-packages = ["tests", "examples", "scripts"]
 preview = true
 respect-gitignore = true
 show-fixes = true
-src = ["src", "tests"]
+src = ["scripts", "src", "tests"]
 target-version = "py313"
 
 [tool.ruff.format]
@@ -513,6 +513,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.mixins.FilePathMixin",
   "flext_infra._models.mixins.PositiveLineMixin",
   "flext_infra._models.mixins.ScopeMixin",
+  "flext_infra.base.FlextInfraServiceBase",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",

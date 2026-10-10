@@ -1,0 +1,26 @@
+id: pydantic-typeform-import
+# `valid` MUST NOT match: the module already imports TypeForm, or performs no
+# TypeForm conversion.
+valid:
+  - |
+    from __future__ import annotations
+
+    from typing_extensions import TypeForm
+
+    adapter = u.type_adapter(TypeForm(t.JsonMapping))
+  - |
+    from __future__ import annotations
+
+    adapter = u.type_adapter(m.Payload)
+# `invalid` MUST match: a TypeForm conversion without the TypeForm import.
+invalid:
+  - |
+    from __future__ import annotations
+
+    adapter = u.type_adapter(TypeForm(t.JsonMapping))
+  - |
+    from __future__ import annotations
+
+    from typing_extensions import override
+
+    adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))

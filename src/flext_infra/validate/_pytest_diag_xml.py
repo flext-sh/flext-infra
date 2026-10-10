@@ -97,6 +97,12 @@ class FlextInfraPytestDiagXmlMixin:
                 skipped.attrib.get(c.Infra.RK_MESSAGE) or skipped.text or ""
             ).strip()
             diag.skip_cases.append(f"{label} | {reason}" if reason else label)
+            if any(
+                prop.attrib.get("name") == "flext_connectivity_prerequisite"
+                and prop.attrib.get("value") == reason
+                for prop in case.iter("property")
+            ):
+                diag.connectivity_skip_cases.append(label)
         return secs, label
 
     @staticmethod

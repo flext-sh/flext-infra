@@ -57,6 +57,7 @@ class FlextInfraPytestEntry:
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,
+            unbounded=mode in {"full", "full-slow"},
         )
         if mode == "file" and runner.target_file is None:
             msg = (
