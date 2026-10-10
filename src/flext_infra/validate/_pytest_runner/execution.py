@@ -270,13 +270,19 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline:
+    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
         """Use the entrypoint clock for selection, execution, and cleanup.
 
+        The local full suite (``make test-full``) runs without any time limit
+        (canonical test verb law), so its phases carry no deadline; every
+        other verb keeps the budgeted entrypoint clock.
+
         Returns:
-            The resulting ``p.Cli.ProcessDeadline``.
+            The budgeted deadline, or ``None`` for the unbounded full suite.
 
         """
+        if self.unbounded:
+            return None
         pytest_settings = config.Infra.tooling.tools.pytest
         return m.Cli.ProcessDeadline(
             expires_at_monotonic=self.started_at_monotonic
@@ -602,13 +608,18 @@ class FlextInfraPytestRunnerExecution(
             )
         u.Cli.ensure_dir(self.testmon_db.parent).unwrap()
         # Selection, execution, and integrity inspection share one database.
-        # Serialize competing worktrees within this invocation's typed deadline.
+        # Serialize competing worktrees within this invocation's typed deadline;
+        # the unbounded full suite keeps the lease's own bounded wait.
         deadline = self._process_deadline()
-        wait_seconds = max(
-            0.0,
-            deadline.expires_at_monotonic
-            - deadline.termination_grace_seconds
-            - time.monotonic(),
+        wait_seconds = (
+            c.Infra.JOURNAL_LEASE_WAIT_SECONDS
+            if deadline is None
+            else max(
+                0.0,
+                deadline.expires_at_monotonic
+                - deadline.termination_grace_seconds
+                - time.monotonic(),
+            )
         )
         self._cache_publication = None
         with u.Infra.codegen_transaction_lease(
@@ -668,12 +679,15 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
+        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=execution_mode,
                 testmon_db=self.testmon_db,
-                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+                deadline_monotonic=(
+                    None if deadline is None else deadline.expires_at_monotonic
+                ),
                 report_directory=report_dir,
             ),
         )
@@ -825,12 +839,15 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
+        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
-                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+                deadline_monotonic=(
+                    None if deadline is None else deadline.expires_at_monotonic
+                ),
                 report_directory=report_dir,
             ),
         )

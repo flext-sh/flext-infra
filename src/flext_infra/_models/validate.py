@@ -284,9 +284,11 @@ class FlextInfraModelsCore:
         testmon_db: Path | None = m.Field(
             description="External pytest-testmon database; absent for coverage",
         )
-        deadline_monotonic: float = m.Field(
-            gt=0,
-            description="Shared absolute deadline across all execution phases",
+        deadline_monotonic: Annotated[float, m.Field(gt=0)] | None = m.Field(
+            description=(
+                "Absolute budgeted deadline of the phase; absent for the full "
+                "suite, which runs without any time limit"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,
