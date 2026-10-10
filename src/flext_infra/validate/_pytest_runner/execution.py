@@ -15,11 +15,10 @@ from typing import TYPE_CHECKING, override
 
 import pytest
 
-from flext_infra import FlextInfraTestmonDbInspector, c, config, m, r, t, u
-from flext_infra.validate._pytest_runner import (
-    FlextInfraPytestRunnerCommand,
-    FlextInfraPytestRunnerReports,
-)
+from flext_infra import c, config, m, r, t, u
+from flext_infra.validate._pytest_runner.command import FlextInfraPytestRunnerCommand
+from flext_infra.validate._pytest_runner.reports import FlextInfraPytestRunnerReports
+from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -103,6 +102,7 @@ class FlextInfraPytestRunnerExecution(
                 inventory.
 
         """
+        complete = complete or self.target_file is not None
         selection = self._collect_selection(
             report_dir,
             complete=complete,
@@ -273,12 +273,8 @@ class FlextInfraPytestRunnerExecution(
     def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
         """Use the entrypoint clock for selection, execution, and cleanup.
 
-        The local full suite (``make test-full``) runs without any time limit
-        (canonical test verb law), so its phases carry no deadline; every
-        other verb keeps the budgeted entrypoint clock.
-
         Returns:
-            The budgeted deadline, or ``None`` for the unbounded full suite.
+            The bounded operation's deadline, or no deadline for full execution.
 
         """
         if self.unbounded:
@@ -457,19 +453,32 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.collection_skipped_count,
             not accounting_complete,
             not markdown_complete,
-            not accounting.executed_count and not cache_hit,
         ))
         accepted_cache_hit = cache_hit and not rejected
+        # A file's empty phase retains pytest's native status so Make can
+        # distinguish it from execution and reject an aggregate zero-run.
+        accepted_zero_tests = accounting.owns_no_tests and not rejected
         selected_count = (
             None
             if accounting.inventory_count is None
             else accounting.inventory_count - accounting.deselected_count
         )
-        final_exit = 0 if accepted_cache_hit else raw_return_code or int(rejected)
+        final_exit = (
+            int(pytest.ExitCode.NO_TESTS_COLLECTED)
+            if accepted_zero_tests and self.target_file is not None
+            else 0
+            if accepted_cache_hit or accepted_zero_tests
+            else raw_return_code or int(rejected)
+        )
         # A graceful stop at the suite stop instant publishes the executed
         # prefix and remains red: the unexecuted remainder is the next run's
         # testmon selection.
-        if final_exit and (
+        # A graceful stop at the suite stop instant publishes the executed
+        # prefix and remains red: the unexecuted remainder is the next run's
+        # testmon selection.
+        if accepted_zero_tests and self.target_file is not None:
+            result = "not_executed"
+        elif final_exit and (
             selected_count is not None
             and accounting.executed_count < selected_count
             and not (diagnostics.failed_count or diagnostics.error_count)
@@ -568,14 +577,17 @@ class FlextInfraPytestRunnerExecution(
         return self._execute_testmon(complete=False)
 
     def execute_full(self) -> p.Result[int]:
-        """Run incremental then full under one deadline and persistent database.
+        """Run incremental then full using one persistent database.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
         incremental_exit = self.execute().unwrap()
-        if incremental_exit != pytest.ExitCode.OK:
+        if incremental_exit not in {
+            pytest.ExitCode.OK,
+            pytest.ExitCode.NO_TESTS_COLLECTED,
+        }:
             return r.ok(incremental_exit)
         return self._execute_testmon(complete=True)
 
@@ -608,8 +620,7 @@ class FlextInfraPytestRunnerExecution(
             )
         u.Cli.ensure_dir(self.testmon_db.parent).unwrap()
         # Selection, execution, and integrity inspection share one database.
-        # Serialize competing worktrees within this invocation's typed deadline;
-        # the unbounded full suite keeps the lease's own bounded wait.
+        # Serialize competing worktrees within this invocation's typed deadline.
         deadline = self._process_deadline()
         wait_seconds = (
             c.Infra.JOURNAL_LEASE_WAIT_SECONDS
@@ -741,9 +752,11 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
+        # A declared file always executes under noselect, so an empty testmon
+        # selection over a restored cache is never a cache hit for it.
         cache_hit = (
-            not complete
-            and not selection_plan.owns_no_tests
+            self.target_file is None
+            and not complete
             and outcome.raw_return_code
             in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out

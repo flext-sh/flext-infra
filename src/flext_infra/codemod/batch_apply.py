@@ -15,7 +15,9 @@ from flext_infra import (
     FlextInfraModGateEngine,
     FlextInfraModReplacements,
     FlextInfraModTextGateEngine,
+    FlextInfraRefactorCensus,
     FlextInfraServiceBase,
+    c,
     m,
     p,
     r,
@@ -25,7 +27,7 @@ from flext_infra import (
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
-    """Apply every discovered AST rewrite without destructive rollback."""
+    """Apply every discovered rewrite; a failed invocation restores its sources."""
 
     rename_runner: t.Port[p.Infra.RenameCampaignRunner] = m.Field(
         exclude=True,
@@ -109,6 +111,25 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             self.repository_root,
             rules,
         ).unwrap()
+        self.progress.emit("mod: apply the workspace constants census")
+        census = FlextInfraRefactorCensus(
+            repository_root=self.repository_root,
+            apply=True,
+            families=("c",),
+            rules=(
+                c.Infra.CensusRule.CONSTANT_CONSUMERS,
+                c.Infra.CensusRule.DUPLICATE,
+                c.Infra.CensusRule.WRONG_TIER,
+            ),
+        ).build_report()
+        self.progress.emit(
+            "mod: constants census "
+            f"projects={len(census.projects)} "
+            f"objects={census.total_objects} "
+            f"violations={census.total_violations} "
+            f"rewritten_files={census.constant_consumer_files} "
+            f"rewritten_bindings={census.constant_consumer_bindings}",
+        )
         return self._execute_apply_cycle()
 
     @staticmethod
@@ -298,15 +319,12 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         # cycles is an acceptance condition, and cycles the tree already
         # had stay check's existing verdict.
         if any(state != before for state in phase_states):
-            return (
-                "mod cross-phase cycle returned to its starting source state; "
-                "changes retained for mandatory owner repair"
-            )
+            return "mod cross-phase cycle returned to its starting source state"
         if current.actionable or current_text.actionable:
             return (
                 "mod made no progress with "
                 f"{current.actionable} AST and {current_text.actionable} text "
-                "actionable findings; changes retained for mandatory owner repair"
+                "actionable findings"
             )
         self._emit_residuals(current, current_text)
         converged_cycles = self._import_cycles(root)
@@ -314,24 +332,40 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             cycle for cycle in converged_cycles if cycle not in baseline_cycles
         ]
         if new_cycles:
-            return (
-                "mod introduced new runtime import cycle(s): "
-                + "; ".join(" -> ".join(sorted(cycle)) for cycle in new_cycles)
-                + "; changes retained for mandatory owner repair"
+            return "mod introduced new runtime import cycle(s): " + "; ".join(
+                " -> ".join(sorted(cycle)) for cycle in new_cycles
             )
         return None
 
     def _execute_apply_cycle(self) -> p.Result[t.Cli.ResultValue]:
-        """Converge every mod phase through one shared Rope workspace.
+        """Converge every mod phase, publishing nothing when the run fails.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
         root = self.repository_root
+        current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        return FlextInfraCodemodSemanticApply.run_restoring(
+            root,
+            current,
+            FlextInfraModTextGateEngine.source_paths(root).unwrap(),
+            lambda: self._converge(root, current),
+        )
+
+    def _converge(
+        self,
+        root: Path,
+        current: m.Infra.ModScanReport,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Converge every mod phase through one shared Rope workspace.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        """
         rope_workspace = self.rope
         baseline_cycles = self._import_cycles(root)
-        current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
         seen: MutableMapping[t.VariadicTuple[t.Pair[str, str]], int] = {}
         iteration = 0
@@ -342,8 +376,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             if before in seen:
                 return r[t.Cli.ResultValue].fail(
                     f"mod cross-phase cycle at iteration {iteration}; "
-                    f"source state repeats iteration {seen[before]}; "
-                    "changes retained for mandatory owner repair",
+                    f"source state repeats iteration {seen[before]}",
                 )
             seen[before] = iteration
             self.progress.emit(
@@ -388,8 +421,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> str | None:
         """Report each unresolved declaration relocation as its own finding.
 
-        Every other rewrite of the run is already published; an unresolved
-        owner is a finding of that declaration, never a plan crash.
+        An unresolved owner is a finding of that declaration, never a plan
+        crash; the failed invocation then restores every source it rewrote.
 
         Returns:
             The failure message naming every unresolved declaration, or
@@ -411,7 +444,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return None
         return (
             f"mod: {len(findings)} declaration-relocation finding(s) remain for "
-            "owner repair; every other rewrite was applied"
+            "owner repair"
         )
 
     @staticmethod

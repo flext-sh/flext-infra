@@ -25,6 +25,8 @@ class FlextInfraConstantsCheck:
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
+    PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
+    """pytest-timeout's documented ``--timeout`` value that disables the limit."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
         "import cProfile, runpy, sys\n"
@@ -68,12 +70,11 @@ class FlextInfraConstantsCheck:
     class ToolOutcome(StrEnum):
         """How a completed tool run ended, read from its exit and its report.
 
-        ``CLEAN`` and ``FINDINGS`` are runs the tool completed; ``ERROR`` is a
-        status the tool does not declare, a timeout, a signal, or a findings
-        status with nothing reported. The outcome is native, independent of
-        acceptance: only ``CLEAN`` with no finding passes, so residual
-        ``FINDINGS`` after a repair keep the verb red without being relabeled
-        as a machinery ``ERROR``.
+        ``CLEAN`` and ``FINDINGS`` are runs the tool completed; only ``ERROR``
+        (a status the tool does not declare, a timeout, a signal, or a findings
+        status with nothing reported) breaks a repair verb. Findings stay
+        reported and are enforced by ``make check``
+        (operator-rulings-2026-10-01-lint-automation, ruling d).
         """
 
         CLEAN = "clean"

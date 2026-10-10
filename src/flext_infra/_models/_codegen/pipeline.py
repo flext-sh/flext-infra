@@ -11,8 +11,7 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
-from flext_infra._constants import FlextInfraConstantsCodegenProject
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenFixModels,
@@ -68,7 +67,7 @@ class FlextInfraModelsCodegenPipelineModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenStagedFilePhase,
+            c.Infra.CodegenStagedFilePhase,
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[

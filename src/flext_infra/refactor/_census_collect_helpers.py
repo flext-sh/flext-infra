@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_cli import cli
+
 from flext_infra import config, m
 
 if TYPE_CHECKING:
@@ -143,8 +145,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             include_local_scopes=self.include_local_scopes,
         )
         findings = m.Infra.ScanFindings(project_objects={}, report_projects=set())
+        current_project = None
         for module in rope.modules(project_names=self.project_names):
             if self._is_production_module(module):
+                if current_project != module.project_root:
+                    current_project = module.project_root
+                    cli.display_text(f"census: scan {current_project}")
                 self._scan_module(rope, module, scan_config, findings=findings)
         return self._assemble_report(rope, findings=findings, scan_config=scan_config)
 

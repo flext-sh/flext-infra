@@ -237,11 +237,10 @@ class FlextInfraWorkspaceChecker(
         params: m.Infra.RunCommand,
         selected_files: t.VariadicTuple[Path],
     ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
-        """Resolve the selected projects; an omitted selection is this repository.
+        """Resolve the selected projects from the declared workspace topology.
 
-        Every repository evaluates only itself: an
-        omitted ``--projects`` never widens to the declared members, and a root
-        that is not a project fails loud through the topology owner.
+        An omitted selection covers the root and its first-party members.
+        Standalone repositories resolve their own root through the same owner.
         A literal file selects only its deepest declared project owner.
 
         Returns:
@@ -278,7 +277,7 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        resolved = u.Infra.resolve_projects(params.repository_root, (".",))
+        resolved = u.Infra.resolve_projects(params.repository_root, ())
         if resolved.failure:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(resolved)
         return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(

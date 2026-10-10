@@ -25,8 +25,8 @@ class FlextInfraPytestEntry:
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The
-        ``file`` runs incremental then complete execution of its declared
-        target, including its slow tests; it requires the Make
+        ``file`` and ``file-slow`` operations run one declared target file
+        through the same budgeted and slow phases; they require the Make
         boundary to export the single-file target environment variable.
 
         Returns:
@@ -53,13 +53,13 @@ class FlextInfraPytestEntry:
             msg = f"pytest profile returned a non-integer process status: {status!r}"
             raise TypeError(msg)
 
-        slow_phase = mode in {"slow", "full-slow"}
+        slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,
             unbounded=mode in {"full", "full-slow"},
         )
-        if mode == "file" and runner.target_file is None:
+        if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (
                 f"pytest operation {mode} requires the Make boundary to export "
                 "the single-file target variable"
@@ -67,9 +67,9 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode in {"full", "full-slow", "file"}:
+        elif mode in {"full", "full-slow"}:
             status = runner.execute_full().unwrap()
-        elif mode in {"", "slow"}:
+        elif mode in {"", "slow", "file", "file-slow"}:
             status = runner.execute().unwrap()
         else:
             msg = f"unsupported pytest operation: {mode}"

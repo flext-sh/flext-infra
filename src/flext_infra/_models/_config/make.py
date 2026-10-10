@@ -714,7 +714,15 @@ class FlextInfraConfigModelsMake(
         ]
         submodule_timeout_seconds: Annotated[
             int,
-            m.Field(gt=0, le=600, description="Governed submodule setup deadline"),
+            m.Field(
+                gt=0,
+                le=600,
+                description="Deadline per wave of concurrent submodule clones",
+            ),
+        ]
+        submodule_jobs: Annotated[
+            int,
+            m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
             FlextInfraConfigModelsMake.MakeRuffSpec,
@@ -842,7 +850,8 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If make project_check_gates must be unique; or if make
-                    project_check_gates shadow built-in gates.
+                    project_check_gates shadow built-in gates; or if make
+                    opt_in_check_gates name unknown gates.
 
             """
             if len(set(self.project_check_gates)) != len(self.project_check_gates):

@@ -15,7 +15,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraPytestRunner, c, config, m, p, t, u
 
 
-def runner_for(
+def runner_for(  # ruff: ignore[too-many-arguments]
     cached_runner_project: Path,
     *,
     ci_context: bool = False,
