@@ -453,10 +453,7 @@ class FlextInfraGate:
         project_dir: Path,
         *,
         verdict: bool,
-        outcome: c.Infra.ToolOutcome,
-        issues: t.SequenceOf[m.Infra.Issue],
-        raw_output: str,
-        started: float,
+        run: m.Infra.GateNativeRun,
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution whose verdict the caller already decided.
 
@@ -471,12 +468,12 @@ class FlextInfraGate:
             result=self._gate_result(
                 project_dir,
                 passed=verdict,
-                errors=[issue.formatted for issue in issues],
-                started=started,
+                errors=[issue.formatted for issue in run.issues],
+                started=run.started,
             ),
-            issues=tuple(issues),
-            raw_output=raw_output,
-            outcome=outcome,
+            issues=run.issues,
+            raw_output=run.raw_output,
+            outcome=run.outcome,
         )
 
     def _build_check_gate_execution(
@@ -809,10 +806,12 @@ class FlextInfraGate:
         return self._build_gate_execution(
             project_dir,
             verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
-            outcome=outcome,
-            issues=issues,
-            raw_output=self._raw_output(result),
-            started=started,
+            run=m.Infra.GateNativeRun(
+                issues=tuple(issues),
+                raw_output=self._raw_output(result),
+                outcome=outcome,
+                started=started,
+            ),
         )
 
     @staticmethod
