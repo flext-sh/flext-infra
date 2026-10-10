@@ -145,6 +145,9 @@ class FlextInfraUtilitiesLintRecipes:
         whose declared author signs the notice; the notice is derived only
         when a copyright finding asks for it.
 
+        Whole-module import normalization and line wrapping belong to the Ruff
+        lint gate, which runs them before passing planned edits to this utility.
+
         Returns:
             The repaired module source.
 
@@ -190,6 +193,8 @@ class FlextInfraUtilitiesLintRecipes:
         Raises:
             ValueError: If a whole-module recipe reaches the edit planner.
 
+       
+
         """
         sections: MutableMapping[
             ast.FunctionDef | ast.AsyncFunctionDef,
@@ -201,7 +206,8 @@ class FlextInfraUtilitiesLintRecipes:
         ] = {}
         wants_notice = False
         for issue in issues:
-            match cls._recipe_for(issue, recipes, path):
+            recipe = cls._recipe_for(issue, recipes, path)
+            match recipe:
                 case c.Infra.LintFixRecipe.RETURNS_SECTION:
                     function = cls._documented_at(tree, issue.line, path)
                     sections.setdefault(function, {}).setdefault("Returns", []).append(
@@ -232,8 +238,9 @@ class FlextInfraUtilitiesLintRecipes:
                     # The ruff-lint gate applies both as whole-module rewrites
                     # before planning; reaching the planner breaks that contract.
                     msg = (
-                        f"{path}: lint finding {issue.code} is a whole-module "
-                        "recipe and never reaches the edit planner"
+                        f"{path}: lint recipe {recipe.value} for {issue.code} is a "
+                        "whole-module recipe and never reaches the edit planner"
+                    )
                     )
                     raise ValueError(msg)
         return sections, summaries, wants_notice
