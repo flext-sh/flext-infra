@@ -25,33 +25,18 @@ from tests import u
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
-    def test_approval_recipe_keeps_one_fail_closed_shell(self, tmp_path: Path) -> None:
-        """Configured approval stages share their error policy and cleanup trap."""
+    def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
+        """The pre-commit hook verb runs one check over the fast external gates."""
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        section = rendered.split("\npre-commit:", 1)[1].split(
-            "\n_builtin-pre-commit:",
-            1,
-        )[0]
-        lines = section.splitlines()
-        indices = tuple(
-            index for index, line in enumerate(lines) if line.startswith("\t")
-        )
-        recipe = lines[indices[0] : indices[-1] + 1]
-        tm.that(
-            all(line.startswith("\t") for line in recipe),
-            eq=True,
-            msg="\n".join(recipe),
-        )
-        tm.that(all(line.endswith("\\") for line in recipe[:-1]), eq=True)
-        tm.that(recipe[-1].endswith("\\"), eq=False)
-        tm.that(section.count("set -eu;"), eq=1)
-        tm.that(section.count("' EXIT;"), eq=1)
-        for verb in config.Infra.codegen.make.approval_verbs:
-            tm.that(section.count(f"approval: {verb} START"), eq=1)
-            tm.that(section.count(f"approval: {verb} COMPLETE"), eq=1)
+        recipe = rendered.split("\n_builtin-pre-commit:", 1)[1].split("\n\n", 1)[0]
+        commands = [line for line in recipe.splitlines() if line.startswith("\t")]
+        gates = ",".join(config.Infra.codegen.make.check_gates_pre_commit)
+        tm.that(len(commands), eq=1)
+        tm.that(commands[0], has=["check run", f'--gates "{gates}"'])
+        tm.that(recipe, lacks=["setup", " test", "audit"])
         tm.that(rendered, lacks=["DEBUG1 scratch=", "DEBUG2 scratch="])
 
     def test_verify_clean_projection_uses_the_public_git_service(
@@ -263,10 +248,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
                 "--upgrade --refresh",
-                "deps modernize",
-                "_builtin-gen",
                 "lock --bump",
                 "install --yes",
+                "deps modernize",
+                "_builtin-gen",
                 "_activated-gen",
             )
         ]
@@ -284,8 +269,103 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         rendered = next(i for i, s in enumerate(steps) if "_builtin-gen" in s)
         lock_check = max(i for i, s in enumerate(steps) if "lock --check" in s)
         tool_lock = next(i for i, s in enumerate(steps) if "lock --bump" in s)
-        tm.that(rendered < final_lock < lock_check < tool_lock, eq=True)
+        # C19: the upgraded Mise is relocked and installed before the
+        # resolution renders; the 5kqsx double resolution keeps the upgraded
+        # generator's lock before the render and the final relock after it.
+        tm.that(tool_lock < rendered, eq=True)
+        tm.that(upgrade_lock < rendered < final_lock < lock_check, eq=True)
         tm.that(execution.stdout + execution.stderr, has="_upg_activated")
+
+    @staticmethod
+    def _publish_on_gen(root: Path, published: str) -> None:
+        """Declare a gen producer that publishes *published* as the Makefile.
+
+        The ``+`` prefix runs it under ``--dry-run`` as conform runs for real:
+        the producer half of ``gen`` rewrites the Makefile that ``upg`` parsed.
+        """
+        (root / "published.mk").write_text(published, encoding="utf-8")
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: _custom-gen\n"
+            "_custom-gen:\n"
+            '\t+@cp "$(PROJECT_ROOT)/published.mk" "$(SELF_MAKEFILE)"\n',
+            encoding="utf-8",
+        )
+
+    def test_upg_hands_off_to_the_published_generation(self, tmp_path: Path) -> None:
+        """A Makefile published by gen is finished by a fresh `make upg` on it.
+
+        Premise (F1, ai-hub consumer proof 2026-10-09): an upgrade re-entered
+        `$(SELF_MAKE) _builtin_require_mise` after gen had published a newer
+        Makefile that no longer defined it. The next generation here defines
+        none of this generation's private targets, only the public `upg`.
+        """
+        root = self._render_root_makefile(tmp_path)
+        self._publish_on_gen(
+            root,
+            ".PHONY: upg\n"
+            "upg:\n"
+            "\t+@printf 'next-generation upg handoff=%s\\n' \"$(UPG_HANDOFF)\"\n",
+        )
+
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle"],
+                cwd=root,
+                env={
+                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
+                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
+                },
+            ),
+        )
+
+        output = execution.stdout + execution.stderr
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True, msg=output)
+        tm.that(output, has="next-generation upg handoff=Y")
+        tm.that(output, lacks=["No rule to make target", "_upg_activated"])
+
+    def test_upg_handoff_fails_loud_when_gen_is_not_a_fixed_point(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A second publication inside the hand-off stops instead of recursing."""
+        root = self._render_root_makefile(tmp_path)
+        current = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        self._publish_on_gen(root, current + "\n# republished\n")
+
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle", "UPG_HANDOFF=Y"],
+                cwd=root,
+                env={
+                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
+                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
+                },
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=False)
+        tm.that(execution.stderr, has="gen is not a fixed point")
+
+    def test_upg_names_no_private_target_after_gen_publishes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """After gen publishes, the lifecycle re-enters only `upg` or its converge."""
+        root = self._render_root_makefile(tmp_path)
+        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        lifecycle = rendered.split("\n_upg_lifecycle: _builtin_setup_submodules\n", 1)[
+            1
+        ]
+        after_publish = lifecycle.split("$(call RUN_PUBLIC_PRODUCE,gen)\n", 1)[1]
+        recipe = after_publish.split("\n\n", 1)[0]
+        reentries = {
+            line.split("$(SELF_MAKE)", 1)[1].split()[0].rstrip(";")
+            for line in recipe.splitlines()
+            if "$(SELF_MAKE)" in line
+        }
+        tm.that(reentries, eq={"_upg_converge"})
+        tm.that(recipe, has='-f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y')
+        tm.that(recipe, has='"$(SELF_MAKEFILE_DIGEST)"')
 
     @staticmethod
     def _render_root_makefile(tmp_path: Path) -> Path:

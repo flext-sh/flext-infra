@@ -9,7 +9,7 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git.worktree_materialization import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitWorktreeMaterializationMixin,
 )
 

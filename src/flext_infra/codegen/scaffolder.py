@@ -12,8 +12,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, r, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraMisePublication,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -247,7 +249,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
             )
             written = FlextInfraMisePublication.publish_file_plan(
                 planned,
-                phase="scaffold",
+                phase=c.Infra.CodegenStagedFilePhase.SCAFFOLD,
             )
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"

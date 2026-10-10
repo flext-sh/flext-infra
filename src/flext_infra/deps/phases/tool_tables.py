@@ -13,8 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector, c, config, m, t, u
 
 
 class FlextInfraToolTablesPhase:
@@ -74,6 +73,10 @@ class FlextInfraToolTablesPhase:
 
         """
         if not (project_dir / c.PYPROJECT_FILENAME).is_file():
+            return ()
+        # Topology law: only a repository that declares .gitmodules composes
+        # child projects; a standalone checkout has none to discover.
+        if not (project_dir / c.Infra.GITMODULES).is_file():
             return ()
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             project_dir,

@@ -14,10 +14,8 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsContract,
-    FlextInfraUtilitiesDocsRender,
-)
-from flext_infra._utilities._docs_generate_project import (
     FlextInfraUtilitiesDocsGenerateProjectMixin,
+    FlextInfraUtilitiesDocsRender,
 )
 
 

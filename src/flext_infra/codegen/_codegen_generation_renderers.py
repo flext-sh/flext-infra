@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import u
-from flext_infra.codegen._codegen_generation_lazy_entries import (
-    FlextInfraCodegenGenerationLazyEntriesMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenGenerationLazyEntriesMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

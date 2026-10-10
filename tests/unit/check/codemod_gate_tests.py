@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, main
+from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.cli import main
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 from tests import c, m, t, u
 
@@ -25,11 +26,16 @@ class TestsFlextInfraCodemodGate:
 
     @staticmethod
     def _project(tmp_path: Path, *, severity: str = "error") -> Path:
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
         project = tmp_path / "scanner-contract"
         config_path = project / c.Infra.CODEMOD_CONFIG_RELPATH
         rules = config_path.parent / c.Cli.RULES_DIR_NAME
         rules.mkdir(parents=True)
         (project / "src").mkdir()
+        # A governed repository carries its committed toolchain lock; the
+        # scanner version comes from it, never from a moving selector.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "scanner-contract"\nversion = "1.0.0"\n'
             "dependencies = []\n",
@@ -64,7 +70,7 @@ class TestsFlextInfraCodemodGate:
         policy_findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
-        tm.that(len(policy_findings), eq=1)
+        tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
         finding = policy_findings[0]
         tm.that(finding.file.endswith("src/subject.py"), eq=True)
         tm.that((finding.line, finding.column), eq=(2, 1))
@@ -88,7 +94,7 @@ class TestsFlextInfraCodemodGate:
 
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
 
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
         tm.that(execution.issues, empty=True)
         tm.that(execution.raw_output, has="exit=0")
 
@@ -176,6 +182,38 @@ class TestsFlextInfraCodemodGate:
         tm.that(execution.result.passed, eq=True, msg=str(execution.issues))
         tm.that(execution.issues, empty=True)
 
+    def test_manifest_external_file_does_not_hide_owned_sibling(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Exclude the declared foreign file while enforcing an owned sibling."""
+        project = self._project(tmp_path)
+        manifest = u.Tests.write_standalone_workspace_manifest(
+            project,
+            "scanner-contract",
+        )
+        declared = m.Infra.WorkspaceManifestSpec.model_validate(
+            u.Cli.config_load(manifest, expand_env=False).unwrap().data,
+        ).model_copy(
+            update={
+                "external_dependency_paths": (
+                    (project / "src/vendor.py").relative_to(project),
+                ),
+            }
+        )
+        tm.ok(u.Cli.yaml_dump(manifest, declared.model_dump(mode="json")))
+        (project / "src" / "vendor.py").write_text("second(1)\n", encoding="utf-8")
+        (project / "src" / "owned.py").write_text("second(2)\n", encoding="utf-8")
+
+        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+
+        tm.that(execution.result.passed, eq=False)
+        findings = tuple(
+            issue for issue in execution.issues if issue.code == "contract-second"
+        )
+        tm.that(len(findings), eq=1)
+        tm.that(findings[0].file.endswith("src/owned.py"), eq=True)
+
     def test_check_files_uses_every_rule_and_only_requested_files(
         self,
         tmp_path: Path,
@@ -197,7 +235,7 @@ class TestsFlextInfraCodemodGate:
         policy_findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
-        tm.that(len(policy_findings), eq=1)
+        tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
         tm.that(policy_findings[0].file.endswith("src/selected.py"), eq=True)
 
     def test_missing_requested_file_cannot_be_deselected(self, tmp_path: Path) -> None:
@@ -240,7 +278,11 @@ class TestsFlextInfraCodemodGate:
             str(reports),
         ])
         tm.that(code, eq=1 if finding else 0)
-        findings = tm.ok(u.Infra.check_report_findings(project, reports_dir=reports))
+        # Each invocation owns one report directory below the base.
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
+        findings = tm.ok(
+            u.Infra.check_report_findings(project, reports_dir=report_path.parent),
+        )
         # The bundled policy rules also scan the selected file; the fixture
         # rule proves the scope, because the unselected sibling matches it too.
         tm.that(
@@ -274,6 +316,9 @@ class TestsFlextInfraCodemodGate:
 
         result = results[0]
         tm.that(result.passed, eq=False)
+        receipt = result.gates["codemod"].raw_receipt
+        assert receipt is not None
+        reports = receipt.parent.parent
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",
         )

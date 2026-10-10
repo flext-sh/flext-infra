@@ -1,9 +1,8 @@
-"""make fix always applies the mandatory unsafe repair channel (2026-10-05 law).
+"""The declared Ruff repair channel and rule policy have one generated owner.
 
-The unsafe-fix flag is OBLIGATORY in every lint_fix configuration and must never
-be disabled again: a configuration without it is unrepresentable, the SSOT
-carries it, and every generated pyproject follows the same fix policy as
-``make fix`` for direct or IDE Ruff runs.
+The confirmed baseline enables unsafe fixes in ``make fix``. Rules whose fixes
+destroy information remain governed by the tooling owner's ``unfixable`` policy,
+which the generator must preserve without inventing a different consumer policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT.
@@ -16,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import config
+from flext_infra import FlextInfraRuffLintGate, config
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -27,8 +26,8 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
     """The mandatory unsafe lint-repair contract and its projection."""
 
     @staticmethod
-    def test_lint_fix_requires_the_unsafe_fix_flag() -> None:
-        """Disabling the mandatory unsafe channel is unrepresentable."""
+    def test_lint_fix_requires_the_confirmed_unsafe_channel() -> None:
+        """The declared baseline cannot silently disable its repair channel."""
         ruff = config.Infra.codegen.make.ruff
         tm.that(c.Infra.RUFF_UNSAFE_FIXES_FLAG in ruff.lint_fix, eq=True)
         payload = ruff.model_dump()
@@ -82,3 +81,63 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             list(u.Tests.toml_strings_at(pyproject, "tool", "ruff", "lint", "ignore")),
             eq=list(policy.ignore),
         )
+        tm.that(
+            list(
+                u.Tests.toml_strings_at(
+                    pyproject,
+                    "tool",
+                    "ruff",
+                    "lint",
+                    "pylint",
+                    "allow-dunder-method-names",
+                ),
+            ),
+            eq=sorted(policy.pylint.allow_dunder_method_names),
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_native_descriptor_policy_keeps_misspelled_dunders_visible(
+        tmp_path: Path,
+    ) -> None:
+        """Generated policy permits native properties, not a misspelled dunder."""
+        root = tmp_path / "fixture-project"
+        pyproject = u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME)
+        config_file = root / c.PYPROJECT_FILENAME
+        config_file.write_text(pyproject, encoding="utf-8")
+        module = root / c.Infra.DEFAULT_SRC_DIR / "native_descriptors.py"
+        module.parent.mkdir()
+        properties = "".join(
+            "    @property\n"
+            f"    def {name}(self) -> "
+            f"{'tuple[type, ...]' if name == '__bases__' else 'type | None'}: ...\n"
+            for name in (
+                config.Infra.tooling.tools.ruff.lint.pylint.allow_dunder_method_names
+            )
+        )
+        module.write_text(
+            "from typing import Protocol\n\n"
+            "class NativeType(Protocol):\n"
+            f"{properties}"
+            "    @property\n"
+            "    def __basse__(self) -> type | None: ...\n",
+            encoding="utf-8",
+        )
+        checked = FlextInfraRuffLintGate(root).check(
+            root,
+            m.Infra.GateContext(
+                repository_root=root,
+                reports_dir=root,
+                ruff_args=(
+                    "--select",
+                    "bad-dunder-method-name",
+                    "--config",
+                    str(config_file),
+                ),
+            ),
+        )
+
+        tm.that(checked.result.passed, eq=False)
+        tm.that(len(checked.issues), eq=1)
+        tm.that(checked.issues[0].code, eq="bad-dunder-method-name")
+        tm.that(checked.issues[0].message, has="__basse__")

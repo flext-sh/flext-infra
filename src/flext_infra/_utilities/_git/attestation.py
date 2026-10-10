@@ -16,9 +16,7 @@ from git import GitCommandError
 
 from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGitRemote
-from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
 
 
 class FlextInfraUtilitiesGitAttestationMixin(

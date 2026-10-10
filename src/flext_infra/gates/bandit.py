@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import FlextInfraGate, c, config, m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -300,7 +299,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         """
         return tuple(
             m.Infra.Issue(
-                file=finding.filename,
+                file=PurePosixPath(finding.filename).as_posix(),
                 line=finding.line_number,
                 column=0,
                 code=finding.test_id,

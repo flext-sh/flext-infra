@@ -11,7 +11,6 @@ from collections.abc import MutableMapping
 from importlib.util import resolve_name
 
 from flext_infra import m, t
-from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
     FlextInfraUtilitiesRopeCore,
@@ -51,7 +50,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             else request.module.rpartition(".")[0]
         )
         globals_: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
-        spec = FlextInfraModelsRope.SourceBindingCollectorSpec(
+        spec = m.Infra.SourceBindingCollectorSpec(
             module=request.module,
             package=package,
             required_line=request.required_line,
@@ -70,7 +69,9 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
                 request.source,
             )
         )
-        if references and not request.module.startswith(("tests.", "tests.")):
+        if references and not (
+            request.module == "tests" or request.module.startswith("tests.")
+        ):
             # Test and benchmark modules build installer maps at runtime from
             # the constants they exercise; the declared-mapping invariant
             # gates the production lazy-init modules only.

@@ -20,10 +20,8 @@ from libcst.metadata import (
     QualifiedNameSource,
 )
 
-from flext_infra._utilities._semantic_cutover.bindings import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
-)
-from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
@@ -168,7 +166,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         def rewrite(_path: Path, source: str) -> t.Infra.TransformResult:
             tree = ast.parse(source)
             bindings = Counter(
-                name for node in ast.walk(tree) for name in cls._bound_identifiers(node)
+                name for node in ast.walk(tree) for name in cls.bound_identifiers(node)
             )
             transformer = cls._EnvironmentTransformer(bindings)
             updated = MetadataWrapper(cst.parse_module(source)).visit(transformer)
@@ -180,7 +178,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             package = next(iter(transformer.packages))
             cls._require_settings_owner(package, sources)
             for node in ast.walk(tree):
-                if "settings" in cls._bound_identifiers(node) and not (
+                if "settings" in cls.bound_identifiers(node) and not (
                     isinstance(node, ast.ImportFrom)
                     and node.module == package
                     and not node.level

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 
-from flext_infra._utilities._semantic_cutover.bindings import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
 
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFieldsBindings(
         required = {"u", "isinstance", "type", "getattr", "object", "dict"}
         for node in ast.walk(tree):
             if not isinstance(node, ast.ImportFrom) and required.intersection(
-                cls._bound_identifiers(node),
+                cls.bound_identifiers(node),
             ):
                 msg = "model-class narrowing conflicts with a local binding"
                 raise ValueError(msg)

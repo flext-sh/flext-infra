@@ -12,9 +12,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
-from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
+from flext_infra import FlextInfraGate, FlextInfraRuntimeCensusValidator, c, m
 
 if TYPE_CHECKING:
     from pathlib import Path

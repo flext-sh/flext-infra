@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r
-from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 if TYPE_CHECKING:
     from flext_infra import p, t

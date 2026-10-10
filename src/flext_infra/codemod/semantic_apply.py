@@ -13,9 +13,7 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
+from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 
@@ -37,6 +35,24 @@ class FlextInfraCodemodSemanticApply:
         return tuple(
             (path.as_posix(), u.Cli.sha256_bytes(source.encode(c.Cli.ENCODING_DEFAULT)))
             for path, source in sorted(cls._source_inventory(root, preflight).items())
+        )
+
+    @classmethod
+    def relocation_findings(
+        cls,
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
+        """Return every payload declaration whose relocation owner is unresolved.
+
+        Returns:
+            One finding per unresolved declaration, naming its expected owner.
+
+        """
+        return u.Infra.declaration_relocation_findings(
+            rope_workspace,
+            cls._source_inventory(root, preflight),
         )
 
     @classmethod

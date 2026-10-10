@@ -6,16 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenTransaction
-from flext_infra.codegen._conform.execute_directed import (
-    FlextInfraCodegenConformExecuteDirected,
+from flext_infra import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.codegen import FlextInfraCodegenTransaction
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
@@ -533,6 +540,39 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 return checked
         return u.Infra.codegen_fixed_point(planned.value.files, subject="bootstrap")
 
+    def _seed_declared_beads_identity(self, root: Path) -> p.Result[bool]:
+        """Materialize the scaffold's declared Beads identity before governance.
+
+        The participant-policy snapshot resolves repository governance through
+        the workspace detector, which reads the repository-local Beads
+        identity. A fresh scaffold root has no local history for the detector
+        to read yet, while the declared workspace already carries the derived
+        identity: writing it first makes the repository self-consistent from
+        the first governed effect. The template render of the same identity
+        follows later in the cycle and is byte-identical.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        workspace = self.initial_workspace
+        if workspace is None or workspace.beads is None:
+            return r[bool].ok(value=True)
+        beads = workspace.beads
+        destination = root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
+        if destination.is_file():
+            return r[bool].ok(value=True)
+        payload = (
+            f"version: {beads.version}\n"
+            f"workspace: {json.dumps(beads.workspace)}\n"
+            f"database: {json.dumps(beads.database)}\n"
+            f"issue_prefix: {json.dumps(beads.issue_prefix)}\n"
+        )
+        written = u.Cli.atomic_write_text_file(destination, payload)
+        if written.failure:
+            return r[bool].from_failure(written)
+        return r[bool].ok(value=True)
+
     def _execute_managed(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -550,7 +590,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "ports; run it through FlextInfra.codegen_conform",
             )
         mode = c.Infra.CodegenConformMode(request.mode)
-        policy = ports.participant_policy(request.root)
+        seeded = self._seed_declared_beads_identity(request.root)
+        if seeded.failure:
+            return r[m.Infra.CodegenResult].from_failure(seeded)
+        policy = ports.participant_policy(
+            request.root,
+            initial_workspace=self.initial_workspace,
+        )
         if policy.failure:
             return r[m.Infra.CodegenResult].from_failure(policy)
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
@@ -649,7 +695,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase="lazy-init",
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=tuple(files),
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(publications),
@@ -965,7 +1011,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(docs_plans)
         owned_docs_files = self.owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase="docs",
+            phase=c.Infra.CodegenStagedFilePhase.DOCS,
             files=owned_docs_files,
             inputs=docs_bundle.value.source_states,
         )

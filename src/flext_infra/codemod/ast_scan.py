@@ -17,10 +17,16 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import c, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra import (
+    FlextInfraModGateEngine,
+    FlextInfraModTextGateEngine,
+    FlextInfraServiceBase,
+    c,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -34,7 +40,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-
         # The engines currently own full-corpus inventories and count receipts.
         # Refuse narrower requests before either engine can scan or publish.
         if any(

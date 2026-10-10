@@ -88,10 +88,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    def test_ci_and_hook_share_the_mandatory_public_approval(
+    def test_ci_runs_the_approval_rows_and_the_hook_runs_the_fast_check(
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """Both projected profiles invoke the same typed approval."""
+        """CI runs each approval verb; the pre-commit hook runs only the fast check."""
         codegen = config.Infra.codegen
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="approval-consumer",
@@ -110,11 +110,15 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             ),
         )
         steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
-        approval = tuple(step for step in steps if step.get("id") == "approval")
-        tm.that(approval, len=1)
+        approval = tuple(
+            step for step in steps if str(step.get("id", "")).startswith("approval-")
+        )
         tm.that(
-            approval[0]["run"],
-            eq=f"{codegen.make.ci.variable}={codegen.make.ci.value} make pre-commit",
+            tuple(step["run"] for step in approval),
+            eq=tuple(
+                f"{codegen.make.ci.variable}={codegen.make.ci.value} make {verb}"
+                for verb in codegen.make.approval_verbs
+            ),
         )
         # Quoted diagnostics may recommend a local resolver without executing it.
         for step in steps:
@@ -125,7 +129,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                         command.group("verb") in {"gen", "upg", "dep"},
                         eq=False,
                     )
-        tm.that(rendered, lacks=["Candidate cleanliness", "continue-on-error"])
+        tm.that(rendered, lacks=["continue-on-error", "make pre-commit"])
         hook = tm.ok(
             u.Cli.template_render(
                 root / ".pre-commit-config.yaml.j2",
@@ -135,12 +139,12 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(hook, has="make pre-commit")
         tm.that(hook, lacks=["make fmt", "make fix"])
         tm.that(
-            codegen.make.approval_verbs,
-            eq=tuple(
+            tuple(
                 step.verb
                 for step in codegen.make.workflow
                 if "pre_commit" in step.contexts
             ),
+            eq=(c.Infra.VERB_CHECK,),
         )
 
     @staticmethod

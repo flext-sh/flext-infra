@@ -132,13 +132,13 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_mise, lacks="beads")
         tm.that(rendered_mise, lacks="gascity")
 
-    def test_mise_manifest_provisions_managed_make(self, tmp_path: Path) -> None:
-        """The generated ``.mise.toml`` must declare make as a managed tool.
+    def test_mise_manifest_leaves_make_system_owned(self, tmp_path: Path) -> None:
+        """The generated ``.mise.toml`` never declares make.
 
-        Root cause (R1): when make is absent from [tools], direnv resolves
-        make from the stale host shim (conda-carried) instead of a Mise
-        installation, so ``make setup`` exits 1. The projection must own
-        make so the setup runtime resolves/executes it without conda.
+        Make, curl and Git are system-owned: the generated Makefile resolves the
+        physical make that invoked it before changing PATH, so recursive
+        lifecycle calls keep that invoker instead of a Mise shim (toolchain
+        tools table, config/codegen.yaml).
         """
         root = self._project(
             tmp_path / "project",
@@ -151,10 +151,8 @@ class TestsFlextInfraCodegenBeadsProjection:
 
         if rendered_mise is None:
             pytest.fail("conform must produce the managed .mise.toml")
-        tm.that(
-            rendered_mise,
-            has=f'make = "{config.Infra.codegen.toolchain.tool_versions["make"]}"',
-        )
+        tm.that("make" in config.Infra.codegen.toolchain.tool_versions, eq=False)
+        tm.that(rendered_mise, lacks="\nmake = ")
         tm.that(rendered_mise, lacks="conda")
         tm.that(rendered_mise, lacks="stale")
 

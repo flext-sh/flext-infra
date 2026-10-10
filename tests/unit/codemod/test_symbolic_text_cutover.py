@@ -78,13 +78,16 @@ class TestsFlextInfraSymbolicTextCutover:
             for _ in range(2):
                 tm.that(
                     u.Infra.codemod_context_admits(
-                        mod_workspace,
-                        rule,
-                        consumer,
-                        capture,
-                        facts,
+                        m.Infra.CodemodAdmission(
+                            root=mod_workspace,
+                            rule=rule,
+                            file_path=consumer,
+                            captures=capture,
+                            facts=facts,
+                        ),
                     ),
                     eq=expected,
+                    msg=f"occurrence at byte {start_byte} expected {expected}",
                 )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
         closed = u.Infra.codemod_binding_snapshot(
@@ -111,22 +114,26 @@ class TestsFlextInfraSymbolicTextCutover:
         )
         tm.that(
             u.Infra.codemod_context_admits(
-                mod_workspace,
-                rule,
-                consumer,
-                positive,
-                facts,
-                closed,
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=consumer,
+                    captures=positive,
+                    facts=facts,
+                    snapshot=closed,
+                ),
             ),
             eq=True,
         )
         tm.that(
             u.Infra.codemod_context_admits(
-                mod_workspace,
-                rule,
-                consumer,
-                positive,
-                facts,
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=consumer,
+                    captures=positive,
+                    facts=facts,
+                ),
             ),
             eq=False,
         )
@@ -156,16 +163,18 @@ class TestsFlextInfraSymbolicTextCutover:
         )
         with pytest.raises(ValueError, match="binding capture differs from source"):
             u.Infra.codemod_context_admits(
-                mod_workspace,
-                rule,
-                consumer,
-                {
-                    "OWNER": {
-                        "text": "other",
-                        "range": {"byteOffset": {"start": 0, "end": 5}},
-                    }
-                },
-                u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=consumer,
+                    captures={
+                        "OWNER": {
+                            "text": "other",
+                            "range": {"byteOffset": {"start": 0, "end": 5}},
+                        }
+                    },
+                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                ),
             )
         tm.that(consumer.read_text(encoding="utf-8"), eq="value = 1\n")
 
@@ -259,7 +268,7 @@ class TestsFlextInfraSymbolicTextCutover:
         tm.that(observed[0], eq={"status": "TOOL_ERROR"})
         tm.that(observed[1:3], eq=["owned", "independent"])
         tm.that(observed[3], eq=observed[4])
-        tm.that(observed[5], eq=c.Infra.ToolOutcome.ERROR == "TOOL_ERROR")
+        tm.that(observed[5], eq=str(c.Infra.ToolOutcome.ERROR) == "TOOL_ERROR")
         remaining = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         tm.that(
             tuple(entry for entry in remaining.entries if entry.rule_id in ids),
