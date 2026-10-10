@@ -75,13 +75,15 @@ class FlextInfraModTextGateEngine:
         """Return every source a text rewrite of ``root`` may publish to.
 
         Returns:
-            The Python sources and declared Markdown globs of the cascade.
+            The Python sources and declared Markdown globs of the elected
+            cascade. Rules outside this root's distribution are not elected,
+            so their Markdown includes never fail the inventory.
 
         """
-        rules = cls.load_rules(root)
-        if rules.failure:
-            return r[t.VariadicTuple[Path]].from_failure(rules)
-        return cls._source_paths(root.absolute(), rules.value)
+        elected = cls._elected_rules(root.absolute())
+        if elected.failure:
+            return r[t.VariadicTuple[Path]].from_failure(elected)
+        return cls._source_paths(root.absolute(), elected.value[2])
 
     @staticmethod
     def _selected_rules(
