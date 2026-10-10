@@ -344,9 +344,11 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
 
-        # rumdl completed under its declared findings status: the repair
-        # verb does not break, and the residual finding stays reported.
-        tm.that(execution.result.passed, eq=True)
+        # The repair verb fixes what rumdl can fix (trailing spaces) and keeps
+        # the unfixable residual (MD041) reported; the residual-fix verdict is
+        # deliberately RED (flext-itpd1.13.1): a fix execution that leaves a
+        # finding does not pass.
+        tm.that(execution.result.passed, eq=False)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
         tm.that(execution.issues[0].code, eq="MD041")
 
