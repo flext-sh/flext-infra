@@ -33,6 +33,134 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.slow
+    def test_focused_profile_keeps_one_run_and_excludes_other_files(
+        cached_runner_project: Path,
+    ) -> None:
+        """The fresh entry profiles one declared file on the persistent database."""
+        cache = config.Infra.codegen.make.testmon_cache
+        target = Path(cache.target_directory) / "test_runtime.py"
+        unselected = (
+            cached_runner_project / cache.target_directory / "test_unselected.py"
+        )
+        unselected.write_text(
+            "def test_unselected():\n    raise RuntimeError('unselected file ran')\n",
+            encoding="utf-8",
+        )
+        runner = runner_for(cached_runner_project, target_file=target)
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / config.Infra.tooling.tools.pytest.profile_suite_filename
+        )
+        tm.that(profile_parent(runner, output), eq=pytest.ExitCode.OK)
+        reports = cached_runner_project / runner.reports
+        contexts = list(reports.glob("*/run-context.json"))
+        tm.that(len(contexts), eq=1)
+        context = m.Infra.PytestRunContext.model_validate_json(
+            contexts[0].read_text(encoding="utf-8"),
+        )
+        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(context.deadline_monotonic is not None, eq=True)
+        command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")
+        tm.that(command, has=str(target))
+        tm.that(command, lacks="test_unselected.py")
+        tm.that(runner.testmon_db.is_file(), eq=True)
+        stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
+        tm.that(FlextInfraPytestRunner.__name__ in stats, eq=True)
+        tm.that("FlextInfraPytestProfile" in stats, eq=True)
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("target_file", [Path("../outside.py"), Path("missing.py")])
+    def test_profile_entry_rejects_invalid_focused_targets(
+        cached_runner_project: Path,
+        target_file: Path,
+    ) -> None:
+        """Invalid input fails through the real entry before publishing a run."""
+        runner = runner_for(cached_runner_project)
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / config.Infra.tooling.tools.pytest.profile_suite_filename
+        )
+        with pytest.raises(RuntimeError, match="target_file|test target file"):
+            profile_parent(runner, output, target_file=target_file)
+        tm.that(
+            list((cached_runner_project / runner.reports).glob("*/run-context.json")),
+            eq=[],
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_pytester_children_profile_startup_and_preserve_native_exits(
+        cached_runner_project: Path,
+    ) -> None:
+        """Real pytester children retain imports, site customization and exits."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        customization = (
+            cached_runner_project / c.Infra.DEFAULT_SRC_DIR / "sitecustomize.py"
+        )
+        customization.write_text(
+            "class ProfiledSiteCustomization:\n    pass\n",
+            encoding="utf-8",
+        )
+        target = Path(cache.target_directory) / "test_runtime.py"
+        (cached_runner_project / target).write_text(
+            "import pytest\n"
+            "pytest_plugins = ['pytester']\n"
+            "@pytest.mark.slow\n"
+            "def test_runtime(pytester):\n"
+            "    result = pytester.runpytest_subprocess('--version')\n"
+            "    assert result.ret == pytest.ExitCode.OK\n"
+            "    result = pytester.runpytest_subprocess('--invalid-profile-probe')\n"
+            "    assert result.ret == pytest.ExitCode.USAGE_ERROR\n",
+            encoding="utf-8",
+        )
+        runner = runner_for(cached_runner_project, target_file=target)
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        tm.that(profile_parent(runner, output), eq=pytest.ExitCode.OK)
+        receipt = m.Infra.PytestRunContext.model_validate_json(
+            output.with_suffix(".pstats.json").read_text(encoding="utf-8"),
+        )
+        directory = receipt.report_directory
+        if directory is None:
+            pytest.fail("profile did not bind its run directory")
+        processes = directory / policy.profile_process_directory
+        profiles = list(processes.glob("*.pstats"))
+        tm.that(len(profiles) >= 2, eq=True)
+        for child in profiles:
+            functions = pstats.Stats(str(child)).get_stats_profile().func_profiles
+            tm.that("ProfiledSiteCustomization" in functions, eq=True)
+            tm.that(
+                any("_pytest" in function.file_name for function in functions.values()),
+                eq=True,
+            )
+        report = FlextInfraCProfileReport(
+            repository_root=cached_runner_project,
+            profile=output,
+            output=output.with_suffix(".txt"),
+            run_receipt=output.with_suffix(".pstats.json"),
+            sort=policy.profile_sort,
+            limit=policy.profile_limit,
+        )
+        tm.ok(report.execute())
+        text = report.output.read_text(encoding="utf-8")
+        for child in profiles:
+            tm.that(text, has=str(child))
+        child = profiles[0]
+        child.write_bytes(child.read_bytes() + b"changed")
+        tm.that(report.execute().failure, eq=True)
+
+    @staticmethod
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         ("arguments", "expected_exit"),
         [

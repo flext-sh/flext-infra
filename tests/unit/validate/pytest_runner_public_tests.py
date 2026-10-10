@@ -794,7 +794,15 @@ class TestsFlextInfraPytestRunner:
         bounded = runner_for(cached_runner_project)
         reports_root = cached_runner_project / bounded.reports
         existing = set(reports_root.glob("*/run-context.json"))
-        runner = bounded.model_copy(update={"unbounded": True})
+        runner = runner_for(cached_runner_project, unbounded=True)
+        (cached_runner_project / runner.target / "test_unbounded_policy.py").write_text(
+            "from flext_tests import tm\n\n"
+            "def test_unbounded_policy(pytestconfig):\n"
+            "    tm.that(pytestconfig.getoption('timeout'), eq=0)\n"
+            "    tm.that(pytestconfig.getoption("
+            "'flext_suite_stop_monotonic', default=None), none=True)\n",
+            encoding="utf-8",
+        )
 
         tm.that(tm.ok(runner.execute_full()), eq=0)
 
@@ -808,6 +816,10 @@ class TestsFlextInfraPytestRunner:
             eq=["incremental", "full"],
         )
         tm.that([context.deadline_monotonic for context in parsed], eq=[None, None])
+        tm.that(
+            {context.testmon_db for context in parsed},
+            eq={runner.testmon_db},
+        )
 
     @staticmethod
     @pytest.mark.slow

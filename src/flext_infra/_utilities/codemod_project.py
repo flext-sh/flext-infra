@@ -43,11 +43,13 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBases,
 )
 from flext_infra._utilities.codemod_binding_chain import (
-    FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraFlextUtilitiesCodemodBindingChain,
 )
 
 
-class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodBindingChain):
+class FlextInfraUtilitiesCodemodProject(
+    FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+):
     """Evaluate rule context over project facts: packages, layers, graphs."""
 
     @classmethod

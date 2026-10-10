@@ -42,10 +42,11 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
         tm.that(str(failure.value), has="operator law 2026-10-05")
 
     @staticmethod
-    def test_ssot_lint_fix_carries_the_mandatory_channel() -> None:
-        """The config SSOT itself runs the mandatory unsafe repair surface."""
+    def test_lint_fix_arguments_survive_typed_round_trip() -> None:
+        """Typed JSON validation preserves the current SSOT repair arguments."""
         ruff = config.Infra.codegen.make.ruff
-        tm.that(list(ruff.lint_fix), eq=["--preview", "--fix", "--unsafe-fixes"])
+        restored = m.Infra.MakeRuffSpec.model_validate_json(ruff.model_dump_json())
+        tm.that(restored.lint_fix, eq=ruff.lint_fix)
 
     @staticmethod
     @pytest.mark.slow

@@ -5,8 +5,16 @@
 # (`make fix` recipe normalize-imports, `make mod` import normalization), so this
 # rule detects only the dynamic form Ruff cannot see.
 #
-# Package initialisers and the lazy-export owner (`flext_core/lazy.py`) load
-# modules by design and are out of scope.
+# The named owners below load modules by design and are out of scope, each with
+# its own justification:
+# - package initialisers and the lazy-export owner (`flext_core/lazy.py` plus
+#   its `_lazy_parts/` engine) are the loader itself;
+# - the beartype bootstrap and engine helpers install/patch before any facade
+#   import can run (`_beartype_bootstrap.py`, `_beartype/**`);
+# - ADR-005 lazy singletons resolve cross-package services at runtime to break
+#   construction cycles a module-level import would re-create;
+# - the lazy-export and enforcement-provenance contract tests exercise exactly
+#   the dynamic-loading contract, with data-driven module names.
 id: ban-dynamic-import
 language: python
 severity: error
@@ -15,7 +23,22 @@ files:
 ignores:
   - "**/__init__.py"
   - "**/flext_core/lazy.py"
+  - "**/_lazy_parts/**"
   - "**/beartype/**"
+  - "**/_beartype/**"
+  - "**/_beartype_bootstrap.py"
+  - "**/flext_core/_utilities/model.py"
+  - "**/flext_core/_utilities/model_runtime.py"
+  - "**/flext_core/_utilities/generators.py"
+  - "**/flext_core/_utilities/family_surface.py"
+  - "**/tests/unit/test_lazy_exports.py"
+  - "**/tests/unit/test_lazy_relative_packages.py"
+  - "**/tests/unit/test_enforcement_catalog.py"
+  - "**/tests/unit/test_enforcement_import_provenance.py"
+  - "**/tests/unit/test_enforcement_integration.py"
+  - "**/tests/unit/test_enforcement_namespace.py"
+  - "**/tests/unit/test_beartype_engine_import_hooks.py"
+  - "**/tests/unit/test_config_user_preferences.py"
 rule:
   matches: dynamic-import
 message: >-

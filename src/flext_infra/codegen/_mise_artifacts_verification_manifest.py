@@ -16,7 +16,7 @@ from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 if TYPE_CHECKING:
     from flext_infra import p
 
-type _JournalFileRole = Literal["desired", "backup", "rollback"]
+type _JournalFileRole = Literal["desired", "backup", "rollback", "restore"]
 
 
 class FlextInfraMiseArtifactsVerificationManifest:
@@ -261,7 +261,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         consumable = {
             path
             for path, (role, _entry) in file_specs.value.items()
-            if role in {"desired", "rollback"}
+            if role in {"desired", "rollback", "restore"}
         }
         expected_check = cls._verified_expected_entries(expected, current, consumable)
         if expected_check.failure:
@@ -505,6 +505,16 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 ("desired", entry.desired_staging),
                 ("backup", entry.original_backup),
                 ("rollback", entry.rollback_staging),
+                (
+                    "restore",
+                    (
+                        Path(entry.original_backup).with_suffix(".restore").as_posix()
+                        if entry.original_backup is not None
+                        and entry.rollback_staging is None
+                        and journal.state in {"prepared", "recovering"}
+                        else None
+                    ),
+                ),
             )
             for role, selector in selectors:
                 if selector is None:
@@ -556,7 +566,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         else:
             expected = (
                 entry.original_sha256,
-                c.Infra.JOURNAL_MODE,
+                entry.original_mode if role == "restore" else c.Infra.JOURNAL_MODE,
                 observed.device,
                 observed.inode,
                 1,

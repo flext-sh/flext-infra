@@ -1,4 +1,4 @@
-"""Import-layer facts the import enforcement reads: namespaces, layers, lazy exports.
+"""Import-law facts: namespaces, layers, lazy exports and facade routes.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,12 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeAnalysis,
+)
 
 
-class FlextInfraUtilitiesImportLayers:
-    """Locate a module's namespace, layer and lazy exports for import law."""
+class FlextInfraUtilitiesImportLaw:
+    """Single owner of the import-law facts the enforcement routes read."""
 
     @classmethod
     def import_namespace(
@@ -70,8 +72,12 @@ class FlextInfraUtilitiesImportLayers:
 
         """
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
-        declared = FlextInfraUtilitiesCodegenNamespace.facade_families()
-        families = {family.module: letter for letter, family in declared.items()}
+        families = {
+            family.module: letter
+            for letter, family in (
+                FlextInfraUtilitiesCodegenNamespace.facade_families().items()
+            )
+        }
         for part in module.split(".")[1:]:
             stem = part.lstrip("_")
             layer = families.get(stem, stem)
@@ -136,7 +142,7 @@ class FlextInfraUtilitiesImportLayers:
             return None
         targets, references = (
             FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                init.read_text(encoding=c.DEFAULT_ENCODING),
+                init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
             )
         )
         if references:
@@ -147,6 +153,23 @@ class FlextInfraUtilitiesImportLayers:
             for module, names in targets
             for name in names
         }
+
+    @staticmethod
+    def import_package_dir(project_root: Path, package: str) -> Path | None:
+        """Return the directory of one dotted package the project owns.
+
+        Returns:
+            The package directory, or ``None`` for a module, a missing path or
+            a package of another project.
+
+        """
+        top, *rest = package.split(".")
+        for base in (project_root / c.Infra.DEFAULT_SRC_DIR, project_root):
+            if not (base / top / c.Infra.INIT_PY).is_file():
+                continue
+            candidate = base.joinpath(top, *rest)
+            return candidate if (candidate / c.Infra.INIT_PY).is_file() else None
+        return None
 
     @staticmethod
     def import_facade_dependencies(
@@ -173,4 +196,4 @@ class FlextInfraUtilitiesImportLayers:
         return frozenset(dependencies)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesImportLayers"]
+__all__: list[str] = ["FlextInfraUtilitiesImportLaw"]

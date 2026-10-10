@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 import time
+import time
 from pathlib import Path
 
 from flext_tests import tm
@@ -15,14 +16,13 @@ from flext_tests import tm
 from flext_infra import FlextInfraPytestRunner, c, config, m, p, t, u
 
 
-def runner_for(  # ruff: ignore[too-many-arguments]
+def runner_for(
     cached_runner_project: Path,
     *,
     ci_context: bool = False,
     profile_collection: bool = False,
     slow_phase: bool = False,
     target_file: Path | None = None,
-    unbounded: bool = False,
 ) -> FlextInfraPytestRunner:
     """Bind one runner to the fixture project's canonical cache paths.
 
@@ -101,7 +101,12 @@ def declare_parallel_project(project_root: Path) -> None:
     tm.that(runner_for(project_root).parallel_worker_budget(policy) > 1, eq=True)
 
 
-def profile_parent(runner: FlextInfraPytestRunner, output: Path) -> int:
+def profile_parent(
+    runner: FlextInfraPytestRunner,
+    output: Path,
+    *,
+    target_file: Path | None = None,
+) -> int:
     """Exercise the real -m entry in a fresh process with the Make-owned inputs.
 
     Returns:
@@ -124,7 +129,11 @@ def profile_parent(runner: FlextInfraPytestRunner, output: Path) -> int:
                 env=u.Cli.process_env(
                     overrides={
                         c.Infra.PYTEST_ENV_TARGET: str(runner.target),
-                        c.Infra.PYTEST_ENV_TARGET_FILE: str(runner.target_file or ""),
+                        c.Infra.PYTEST_ENV_TARGET_FILE: str(
+                            target_file
+                            if target_file is not None
+                            else runner.target_file or "",
+                        ),
                         c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
                         cache.database_environment_variable: str(runner.testmon_db),
                     },

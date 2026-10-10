@@ -385,7 +385,8 @@ class FlextInfraUtilitiesRopeInventory:
             )
             for argument in declared:
                 if argument.arg == name:
-                    return argument.lineno
+                    line: int = argument.lineno
+                    return line
         return def_line
 
     @staticmethod
@@ -986,13 +987,13 @@ class FlextInfraUtilitiesRopeInventory:
             The expected tier for a module convention.
 
         """
-        expected: str = convention.module_policy.expected_family or ""
-        if expected:
-            return expected
         if kind == "constant":
             return FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.CONSTANTS_PY,
             ).suffix
+        expected: str = convention.module_policy.expected_family or ""
+        if expected:
+            return expected
         return FlextInfraUtilitiesRopeInventory._actual_tier(convention)
 
     @staticmethod
