@@ -30,17 +30,23 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
 
         tm.that(listed, has=f"worktree {repository}")
 
-    def test_add_and_remove_use_the_isolated_lane_path(self, tmp_path: Path) -> None:
-        """A valid PEP 621 string survives typed setup in the isolated lane."""
+    def test_remove_keeps_the_isolated_lane_while_retirement_is_closed(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """REMOVE resolves the isolated lane and fails closed at retirement.
+
+        The lane is registered natively because admission refuses every ADD
+        (bead flext-itpd1.3.26). REMOVE resolves it from Git's registry and
+        proves integration ancestry, then the native retirement contract
+        refuses: ancestry alone never authorizes removal, so actually removing
+        the checkout is unreachable until retirement admission opens.
+        """
         repository = self._repository(tmp_path)
         branch = "feature/example"
-        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
+        lane = self.native_lane(repository, branch)
 
-        added = self.add_worktree(repository, branch)
-
-        tm.that(added, eq=str(lane))
-        tm.that(lane.is_dir(), where=bool)
-        tm.that(not lane.is_relative_to(repository), where=bool)
+        tm.that(lane.is_relative_to(repository), eq=False)
         tm.that(
             tm.ok(
                 u.Infra.git_list_worktrees(
@@ -50,45 +56,21 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
             has=f"worktree {lane}",
         )
 
-        removed = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.REMOVE,
-                branch=branch,
-                apply_changes=True,
-            ).execute(),
-        )
+        refused = FlextInfraWorktreeService(
+            repository_root=repository,
+            operation=c.Infra.WorktreeOperation.REMOVE,
+            branch=branch,
+            apply_changes=True,
+        ).execute()
 
-        tm.that(removed, eq=str(lane))
-        tm.that(not lane.exists(), where=bool)
+        tm.fail(refused, has="retirement refused")
+        tm.that(lane.is_dir(), eq=True)
 
-    def test_add_reads_the_lane_instead_of_dirty_primary_metadata(
+    def test_lane_path_escapes_a_dirty_outer_project_ancestor(
         self,
         tmp_path: Path,
     ) -> None:
-        """Setup never inherits the primary checkout as its workspace owner."""
-        repository = self._repository(tmp_path)
-        branch = "feature/isolated-metadata"
-        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
-        (repository / "pyproject.toml").write_text(
-            '[dependency-groups]\ndescription = "dirty primary WIP"\n',
-            encoding="utf-8",
-        )
-
-        added = self.add_worktree(repository, branch)
-
-        tm.that(added, eq=str(lane))
-        tm.that(
-            (repository / "pyproject.toml").read_text(encoding="utf-8"),
-            eq='[dependency-groups]\ndescription = "dirty primary WIP"\n',
-        )
-        tm.that(
-            (lane / "pyproject.toml").read_text(encoding="utf-8"),
-            has='description = "A standard PEP 621 description string"',
-        )
-
-    def test_add_escapes_a_dirty_outer_project_ancestor(self, tmp_path: Path) -> None:
-        """The lane container sits outside every project uv could discover."""
+        """The reserved lane container sits outside every project uv could discover."""
         outer_project = tmp_path / "outer"
         outer_project.mkdir()
         (outer_project / "pyproject.toml").write_text(
@@ -98,13 +80,11 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         nested = outer_project / "nested"
         nested.mkdir()
         repository = self._repository(nested)
-        branch = "feature/outer-isolation"
-        lane = self._lane(repository, outer_project, branch)
 
-        added = self.add_worktree(repository, branch)
+        lane = self.native_lane(repository, "feature/outer-isolation")
 
-        tm.that(added, eq=str(lane))
-        tm.that(not lane.is_relative_to(outer_project), where=bool)
+        tm.that(lane.is_dir(), eq=True)
+        tm.that(lane.is_relative_to(outer_project), eq=False)
         tm.that(
             (outer_project / "pyproject.toml").read_text(encoding="utf-8"),
             eq='[dependency-groups]\ndescription = "dirty outer WIP"\n',
@@ -129,33 +109,9 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         second = self._repository(second_parent)
         branch = "feature/same-name"
 
-        first_lane = self._lane(first, outer_project, branch)
-        tm.that(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=first,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute(),
-            ),
-            eq=str(first_lane),
-        )
-        second_lane = self._lane(second, outer_project, branch)
-        tm.that(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=second,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute(),
-            ),
-            eq=str(second_lane),
-        )
+        first_lane = self.native_lane(first, branch)
+        second_lane = self.native_lane(second, branch)
 
         tm.that(first.name, eq=second.name)
-        tm.that(first_lane != second_lane, where=bool)
-        tm.that(first_lane.parent.parent != second_lane.parent.parent, where=bool)
+        tm.that(first_lane != second_lane, eq=True)
+        tm.that(first_lane.parent.parent != second_lane.parent.parent, eq=True)
