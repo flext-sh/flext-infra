@@ -350,7 +350,7 @@ class FlextInfraModelsWorkspace:
         ]
 
     class ProjectInfo(
-        FlextInfraModelsMixins.ProjectEntryNameMixin,
+        mm.ProjectEntryNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Discovered project metadata for workspace operations."""
