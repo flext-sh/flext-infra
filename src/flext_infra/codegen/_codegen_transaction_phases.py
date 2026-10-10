@@ -10,27 +10,18 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, t, u
-from flext_infra.codegen._codegen_staging import FlextInfraCodegenStaging
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenStaging,
+    FlextInfraMiseArtifactsFiles as files,
+    FlextInfraMiseArtifactsJournal as journal_io,
+    FlextInfraMiseArtifactsProcess as process,
+    FlextInfraMiseArtifactsState as state,
+    FlextInfraMiseArtifactsVerification as verify,
+    FlextInfraMisePublication,
+)
 from flext_infra.codegen._codegen_transaction_recovery import (
     FlextInfraCodegenTransactionRecovery,
-)
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_journal import (
-    FlextInfraMiseArtifactsJournal as journal_io,
-)
-from flext_infra.codegen._mise_artifacts_process import (
-    FlextInfraMiseArtifactsProcess as process,
-)
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
-from flext_infra.codegen._mise_artifacts_state import (
-    FlextInfraMiseArtifactsState as state,
-)
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification as verify,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 

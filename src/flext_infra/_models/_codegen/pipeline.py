@@ -13,11 +13,13 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._constants import FlextInfraConstantsCodegenProject
-from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
-from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenLazyInitModels,
+    FlextInfraModelsCodegenScaffoldModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -103,6 +105,20 @@ class FlextInfraModelsCodegenPipelineModels:
                 msg = "codegen phase receipt input paths must be unique"
                 raise ValueError(msg)
             return self
+
+    class CodegenPhaseOutcome(m.ArbitraryTypesModel):
+        """One fleet worker's phase analysis, or its failure as data."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        analysis: Annotated[
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None,
+            m.Field(description="Phase analysis on success"),
+        ] = None
+        error: Annotated[
+            str,
+            m.Field(description="Phase failure, empty on success"),
+        ] = ""
 
     class CodegenConformPorts(m.ArbitraryTypesModel):
         """Collaborators the complete conform crosses into, wired by the facade.

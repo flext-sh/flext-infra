@@ -14,9 +14,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, config, m, u
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import (
+    FlextInfraCodegenFileLeases,
+    FlextInfraWorkspaceDetector,
+    c,
+    config,
+    m,
+    u,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -445,17 +450,13 @@ class FlextInfraGate:
 
     def _build_gate_execution(
         self,
-        project_dir: Path,
-        *,
-        verdict: bool,
-        issues: t.SequenceOf[m.Infra.Issue],
-        raw_output: str,
-        started: float,
+        params: p.Infra.GateExecutionParams,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution whose verdict the caller already decided.
+        """Assemble a gate execution from its native outcome and findings.
 
-        Fix paths use it directly: reported issues are the residue a fixer
-        could not repair and do not decide acceptance.
+        Native outcome and acceptance are separate: residual findings block
+        acceptance without being relabeled as machinery failures, so only a
+        clean outcome with no finding passes.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -463,20 +464,14 @@ class FlextInfraGate:
         """
         return m.Infra.GateExecution(
             result=self._gate_result(
-                project_dir,
-                passed=verdict,
-                errors=[issue.formatted for issue in issues],
-                started=started,
+                params.project_dir,
+                passed=params.verdict,
+                errors=[issue.formatted for issue in params.issues],
+                started=params.started,
             ),
-            issues=tuple(issues),
-            raw_output=raw_output,
-            outcome=(
-                c.Infra.ToolOutcome.ERROR
-                if not verdict
-                else c.Infra.ToolOutcome.FINDINGS
-                if issues
-                else c.Infra.ToolOutcome.CLEAN
-            ),
+            issues=tuple(params.issues),
+            raw_output=params.raw_output,
+            outcome=params.outcome,
         )
 
     def _build_check_gate_execution(
@@ -490,12 +485,9 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
-        Every parsed finding blocks the gate except the ones a gate reports
-        as ``warning`` severity: a warning finding stays in the gate log, the
-        summary and the SARIF reports while never failing the run (operator
-        ruling 2026-10-05: rules the operator never authorized as blocking
-        are informative only). A blocking verdict still requires the tool
-        run itself to have succeeded.
+        Every parsed finding blocks, preserving its native severity in the
+        log and SARIF. Warnings are never converted into approval. A clean
+        verdict also requires the tool run itself to have succeeded.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -812,11 +804,14 @@ class FlextInfraGate:
                 ),
             )
         return self._build_gate_execution(
-            project_dir,
-            verdict=outcome is not c.Infra.ToolOutcome.ERROR,
-            issues=issues,
-            raw_output=self._raw_output(result),
-            started=started,
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
+                outcome=outcome,
+                issues=tuple(issues),
+                raw_output=self._raw_output(result),
+                started=started,
+            ),
         )
 
     @staticmethod

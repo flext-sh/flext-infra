@@ -57,7 +57,8 @@ class FlextInfraModelsTransformers:
             ),
         ]
         changes: Annotated[
-            t.VariadicTuple[str], m.Field(description="Recorded migration operations")
+            t.VariadicTuple[str],
+            m.Field(description="Recorded migration operations"),
         ] = m.Field(default_factory=tuple)
         source_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
@@ -86,6 +87,26 @@ class FlextInfraModelsTransformers:
             t.VariadicTuple[str],
             m.Field(description="Recorded migration operations"),
         ] = ()
+
+    class DeclarationRelocationFinding(m.ContractModel):
+        """One payload declaration whose relocation owner cannot be resolved."""
+
+        file_path: Annotated[
+            Path,
+            m.Field(description="Source file declaring the unrelocated payload"),
+        ]
+        declaration: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Qualified ``Outer.Payload`` declaration name"),
+        ]
+        expected_owner: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Owner the relocation expected to resolve"),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Why that owner did not resolve"),
+        ]
 
     class CompatibilityAliasRewritePlan(m.ArbitraryTypesModel):
         """Binding-proven rewrites planned for one compatibility-alias cutover file."""
@@ -259,7 +280,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Body indent width stripped per line"),
         ]
         docstring_span: Annotated[
-            tuple[int, int] | None, m.Field(description="Wrapper docstring line span")
+            tuple[int, int] | None,
+            m.Field(description="Wrapper docstring line span"),
         ] = None
 
     class HeaderInfo(m.ArbitraryTypesModel):

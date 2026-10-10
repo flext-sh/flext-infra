@@ -9,10 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, u
-from flext_infra.refactor.namespace_relocations import (
-    FlextInfraNamespaceRelocationCascade,
-)
+from flext_infra import FlextInfraNamespaceRelocationCascade, m, r, u
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -164,5 +164,29 @@ class FlextInfraUtilitiesImportLayers:
             for name in names
         }
 
+    @staticmethod
+    def import_facade_dependencies(
+        module: str,
+        root_exports: t.StrMapping,
+        import_graph: t.MappingKV[str, frozenset[str]],
+    ) -> frozenset[str]:
+        """Return facade aliases whose providers depend on the importing module."""
+        dependencies: set[str] = set()
+        for alias in c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS:
+            provider = root_exports.get(alias)
+            if provider is None:
+                continue
+            pending = [provider]
+            visited: set[str] = set()
+            while pending:
+                current = pending.pop()
+                if current == module:
+                    dependencies.add(alias)
+                    break
+                if current not in visited:
+                    visited.add(current)
+                    pending.extend(import_graph.get(current, ()))
+        return frozenset(dependencies)
+
 
 __all__: list[str] = ["FlextInfraUtilitiesImportLayers"]

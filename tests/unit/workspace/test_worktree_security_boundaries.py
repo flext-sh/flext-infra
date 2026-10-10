@@ -73,19 +73,19 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
         )
 
     def test_unresolved_base_fails_before_lane_mutation(self, tmp_path: Path) -> None:
-        """Test unresolved base fails before lane mutation."""
+        """An unresolvable base is refused by admission before any lane effect.
+
+        Admission proves the requested base contains the live integration tip
+        before the service resolves the base itself, so the refusal carries
+        Git's own unresolved-ref diagnostic for the requested name.
+        """
         repository = self._repository(tmp_path)
 
-        result = self._add(repository, "feature/missing-base", "missing/base")
-
-        tm.fail(result, has="cannot resolve worktree base")
-        assert (
-            "feature/missing-base"
-            not in tm.ok(
-                u.Infra.git_list_worktrees(
-                    m.Infra.GitRepoRequest(repo_root=repository),
-                ),
-            ).porcelain
+        _ = u.Tests.WorktreeFixture.refused_lane(
+            repository,
+            "feature/missing-base",
+            base="missing/base",
+            reason="Ref 'missing/base' did not resolve",
         )
 
     @pytest.mark.parametrize("entry", ["epic", "container"])
@@ -94,49 +94,71 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
         tmp_path: Path,
         entry: str,
     ) -> None:
-        """Test symlinked epic topology fails closed."""
+        """A child ADD under a symlinked epic topology never writes outside.
+
+        Admission refuses the child ADD (bead flext-itpd1.3.26) before the
+        symlink checks run; the success path is unreachable until admission
+        opens and the symlink target stays empty either way.
+        """
         repository = self._repository(tmp_path)
-        epic = Path(tm.ok(self._add(repository, "feature/secure-epic")))
+        epic = u.Tests.WorktreeFixture.native_lane(repository, "feature/secure-epic")
         outside = tmp_path / "outside"
         outside.mkdir()
-        target = epic
         if entry == "container":
-            target = epic / c.Infra.WORKTREES_DIRNAME
-            target.symlink_to(outside, target_is_directory=True)
+            (epic / c.Infra.WORKTREES_DIRNAME).symlink_to(
+                outside,
+                target_is_directory=True,
+            )
         else:
-            tm.ok(u.Infra.git_remove_clean_worktree(repository, epic))
+            # Retirement admission is closed, so the epic is unregistered
+            # natively before its path is replaced by a symlink.
+            tm.ok(
+                u.Cli.run_checked(
+                    [c.Infra.GIT, "worktree", "remove", str(epic)],
+                    cwd=repository,
+                ),
+            )
             epic.symlink_to(outside, target_is_directory=True)
 
         try:
-            result = self._add(repository, f"feature/{entry}-child", epic=epic)
+            _ = u.Tests.WorktreeFixture.refused_lane(
+                repository,
+                f"feature/{entry}-child",
+                epic_lane=epic,
+            )
 
-            tm.fail(result, has="symlink")
-            assert list(outside.iterdir()) == []
+            tm.that(list(outside.iterdir()), eq=[])
         finally:
             if epic.is_symlink():
                 epic.unlink()
 
-    def test_epic_path_must_match_git_registry(self, tmp_path: Path) -> None:
-        """Test epic path must match git registry."""
-        repository = self._repository(tmp_path)
-        tm.ok(self._add(repository, "feature/registry-epic"))
-        alias = tmp_path / "unregistered-epic"
-        alias.mkdir()
-
-        result = self._add(repository, "feature/registry-child", epic=alias)
-
-        tm.fail(result, has="registered epic lane")
-
-    def test_same_child_branch_cannot_be_reused_under_another_epic(
+    @pytest.mark.parametrize("epic", ["unregistered", "foreign"])
+    def test_child_add_under_an_unowned_epic_is_refused(
         self,
         tmp_path: Path,
+        epic: str,
     ) -> None:
-        """Test same child branch cannot be reused under another epic."""
+        """A child ADD is refused under an unregistered or a foreign epic lane.
+
+        ``unregistered`` names a real directory Git does not register;
+        ``foreign`` names a registered epic while the child branch is already
+        checked out under another epic. Admission refuses both (bead
+        flext-itpd1.3.26) before the registry checks run, leaving no lane, ref,
+        or registration behind.
+        """
         repository = self._repository(tmp_path)
-        first = Path(tm.ok(self._add(repository, "feature/first-epic")))
-        second = Path(tm.ok(self._add(repository, "feature/second-epic")))
-        tm.ok(self._add(repository, "feature/shared-child", epic=first))
+        native = u.Tests.WorktreeFixture.native_lane
+        epic_lane = tmp_path / "unregistered-epic"
+        child = "feature/registry-child"
+        if epic == "foreign":
+            first = native(repository, "feature/first-epic")
+            epic_lane = native(repository, "feature/second-epic")
+            _ = native(repository, child, epic_lane=first)
+        else:
+            epic_lane.mkdir()
 
-        result = self._add(repository, "feature/shared-child", epic=second)
-
-        tm.fail(result, has="already registered")
+        _ = u.Tests.WorktreeFixture.refused_lane(
+            repository,
+            child,
+            epic_lane=epic_lane,
+        )

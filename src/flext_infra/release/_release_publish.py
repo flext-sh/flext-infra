@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra.release._release_build import FlextInfraReleaseBuildMixin
+from flext_infra.release import FlextInfraReleaseBuildMixin
 
 
 class FlextInfraReleasePublishMixin(FlextInfraReleaseBuildMixin):

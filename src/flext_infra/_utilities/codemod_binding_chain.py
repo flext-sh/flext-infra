@@ -557,7 +557,10 @@ class FlextInfraUtilitiesCodemodBindingChain(FlextInfraUtilitiesCodemodRules):
         value = declaration.value
         if not isinstance(value, ast.Name | ast.Attribute):
             return isinstance(value, ast.Constant)
-        key = (holder.get_name(), name)
+        # The guard keys the link chased next (the assigned value), never the
+        # link already proven: an import hop records (module, name) before this
+        # declaration hop holds that same name, which is one chain, not a cycle.
+        key = (holder.get_name(), ast.unparse(value))
         return key not in visited and cls._stable_binding_chain(
             (project, holder, holder_scope),
             value,

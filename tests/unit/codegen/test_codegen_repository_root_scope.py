@@ -12,18 +12,37 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
+import os
 from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
+
+    @staticmethod
+    def _recorded_activation_env(tmp_path: Path) -> t.Pair[dict[str, str], Path]:
+        """Record the local-context activation instead of entering a host shell.
+
+        ``make upg`` is a local verb (CI forbids resolution), so its lifecycle
+        activates through ``direnv exec``. A dry run still executes that ``+``
+        line; real direnv would load the fixture's ``.envrc`` and resolve tools
+        through host Mise shims. The recorded invocation proves the activation
+        contract (``direnv exec <root> ... _activated-<verb>``) without
+        depending on host state.
+
+        Returns:
+            The PATH overlay and the invocation log of the recorded direnv.
+
+        """
+        bin_dir = tmp_path / "recorded-bin"
+        log = u.Tests.cli_shim(bin_dir, c.Infra.CLI_DIRENV)
+        return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}, log
 
     def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
         """The pre-commit hook verb runs one check over the fast external gates."""
@@ -68,10 +87,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
 
         `make test` runs in CI and pre-commit, so slow-marked items stay out of
         it (operator 2026-10-01: nothing slow in CI or pre-commit). `test-file`
-        is the sole single-file path and runs only locally, so the declared
-        file passes through its budgeted phase and then its slow phase; a file
-        whose items are all slow-marked never ends the verb with zero executed
-        tests. Neither recipe appends the full suite.
+        is the sole single-file path and runs only locally, so its one ``file``
+        entry runs the declared file incremental then complete, slow items
+        included; a file whose items are all slow-marked never ends the verb
+        with zero executed tests. Neither recipe appends the full suite.
         """
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
@@ -89,24 +108,25 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             has=f'{cache.database_environment_variable}="$$database"',
         )
 
-    def test_file_verb_composes_both_phases_on_one_cache(self, tmp_path: Path) -> None:
-        """Requested files retain one guard and scratch across independent entries."""
+    def test_file_verb_runs_one_entry_on_one_cache(self, tmp_path: Path) -> None:
+        """The requested file runs through one entry on one guard and cache.
+
+        The ``file`` operation of ``flext_infra._pytest_entry`` executes the
+        declared target incremental then complete, slow items included, so the
+        recipe composes exactly one entry and no separate slow phase.
+        """
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[0]
         cache = config.Infra.codegen.make.testmon_cache
-        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=2)
-        tm.that(recipe, has=["_pytest_entry file;", "_pytest_entry file-slow;"])
-        tm.that(
-            recipe.index("_pytest_entry file;")
-            < recipe.index("_pytest_entry file-slow"),
-            eq=True,
-        )
+        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=1)
+        tm.that(recipe.rstrip().endswith("_pytest_entry file"), eq=True)
+        tm.that(recipe, lacks=["file-slow"])
         tm.that(
             recipe.count(f'{cache.database_environment_variable}="$$database"'),
-            eq=2,
+            eq=1,
         )
         tm.that(recipe.count("set -eu;"), eq=1)
         tm.that(recipe.count("' EXIT;"), eq=1)
@@ -186,20 +206,18 @@ class TestsFlextInfraCodegenRepositoryRootScope:
     ) -> None:
         """Generated upg renders the exact lock-upgrade and modernizer invocation.
 
-        ``upg`` bootstraps Mise (network) and then dispatches its lifecycle with
-        the Mise-resolved direnv handoff; the dry run enters that lifecycle with
-        the same handoff contract, so its recursive ``+`` activation still runs.
+        ``upg`` bootstraps Mise (network) and then dispatches its lifecycle; the
+        dry run enters that lifecycle directly, and its recursive ``+``
+        activation re-enters the checkout through ``direnv exec``.
         """
         repository_root = self._render_root_makefile(tmp_path)
+        env, activations = self._recorded_activation_env(tmp_path)
 
         execution = tm.ok(
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                env={
-                    "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
-                    "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
-                },
+                env=env,
             ),
         )
 
@@ -213,6 +231,10 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(rendered, has="--apply --rewrite-constraints")
         tm.that(rendered, has="lock --project")
         tm.that(rendered, has="--upgrade --refresh")
+        tm.that(
+            activations.read_text(encoding="utf-8"),
+            has=f"exec {repository_root} ",
+        )
 
     def test_repository_root_upg_locks_tools_from_the_rendered_manifest(
         self,
@@ -227,16 +249,17 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         uv.lock before post-upg.
         """
         repository_root = self._render_root_makefile(tmp_path)
-        handoff = {
-            "SETUP_DIRENV": tm.not_none(shutil.which("direnv")),
-            "SETUP_DIRENV_XDG_DATA_HOME": str(tmp_path / "direnv-data"),
-        }
+        env, activations = self._recorded_activation_env(tmp_path)
         execution = tm.ok(
             u.Tests.run_isolated_make(
                 ["--dry-run", "_upg_lifecycle"],
                 cwd=repository_root,
-                env=handoff,
+                env=env,
             ),
+        )
+        tm.that(
+            activations.read_text(encoding="utf-8"),
+            has=["_activated-gen", "_upg_activated"],
         )
         tm.that(
             u.Cli.process_succeeded(execution.outcome),
@@ -275,6 +298,89 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(tool_lock < rendered, eq=True)
         tm.that(upgrade_lock < rendered < final_lock < lock_check, eq=True)
         tm.that(execution.stdout + execution.stderr, has="_upg_activated")
+
+    @staticmethod
+    def _publish_on_gen(root: Path, published: str) -> None:
+        """Declare a gen producer that publishes *published* as the Makefile.
+
+        The ``+`` prefix runs it under ``--dry-run`` as conform runs for real:
+        the producer half of ``gen`` rewrites the Makefile that ``upg`` parsed.
+        """
+        (root / "published.mk").write_text(published, encoding="utf-8")
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: _custom-gen\n"
+            "_custom-gen:\n"
+            '\t+@cp "$(PROJECT_ROOT)/published.mk" "$(SELF_MAKEFILE)"\n',
+            encoding="utf-8",
+        )
+
+    def test_upg_hands_off_to_the_published_generation(self, tmp_path: Path) -> None:
+        """A Makefile published by gen is finished by a fresh `make upg` on it.
+
+        Premise (F1, ai-hub consumer proof 2026-10-09): an upgrade re-entered
+        `$(SELF_MAKE) _builtin_require_mise` after gen had published a newer
+        Makefile that no longer defined it. The next generation here defines
+        none of this generation's private targets, only the public `upg`.
+        """
+        root = self._render_root_makefile(tmp_path)
+        self._publish_on_gen(
+            root,
+            ".PHONY: upg\n"
+            "upg:\n"
+            "\t+@printf 'next-generation upg handoff=%s\\n' \"$(UPG_HANDOFF)\"\n",
+        )
+
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle"],
+                cwd=root,
+            ),
+        )
+
+        output = execution.stdout + execution.stderr
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True, msg=output)
+        tm.that(output, has="next-generation upg handoff=Y")
+        tm.that(output, lacks=["No rule to make target", "_upg_activated"])
+
+    def test_upg_handoff_fails_loud_when_gen_is_not_a_fixed_point(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A second publication inside the hand-off stops instead of recursing."""
+        root = self._render_root_makefile(tmp_path)
+        current = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        self._publish_on_gen(root, current + "\n# republished\n")
+
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle", "UPG_HANDOFF=Y"],
+                cwd=root,
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=False)
+        tm.that(execution.stderr, has="gen is not a fixed point")
+
+    def test_upg_names_no_private_target_after_gen_publishes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """After gen publishes, the lifecycle re-enters only `upg` or its converge."""
+        root = self._render_root_makefile(tmp_path)
+        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        lifecycle = rendered.split("\n_upg_lifecycle: _builtin_setup_submodules\n", 1)[
+            1
+        ]
+        after_publish = lifecycle.split("$(call RUN_PUBLIC_PRODUCE,gen)\n", 1)[1]
+        recipe = after_publish.split("\n\n", 1)[0]
+        reentries = {
+            line.split("$(SELF_MAKE)", 1)[1].split()[0].rstrip(";")
+            for line in recipe.splitlines()
+            if "$(SELF_MAKE)" in line
+        }
+        tm.that(reentries, eq={"_upg_converge"})
+        tm.that(recipe, has='-f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y')
+        tm.that(recipe, has='"$(SELF_MAKEFILE_DIGEST)"')
 
     @staticmethod
     def _render_root_makefile(tmp_path: Path) -> Path:

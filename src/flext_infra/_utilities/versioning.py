@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import r, u
+from flext_cli import u
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, p, t
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesVersioning:

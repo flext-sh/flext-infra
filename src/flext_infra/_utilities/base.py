@@ -177,7 +177,7 @@ class FlextInfraUtilitiesBase:
         )
 
     @staticmethod
-    def merge_conflict_control(line: str) -> str | None:
+    def merge_conflict_control(line: str | bytes) -> str | None:
         """Classify one Git merge-control line from the protocol SSOT.
 
         Returns:
@@ -188,7 +188,11 @@ class FlextInfraUtilitiesBase:
             (
                 kind
                 for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
-                if line.startswith(token)
+                if (
+                    line.startswith(token.encode("ascii"))
+                    if isinstance(line, bytes)
+                    else line.startswith(token)
+                )
             ),
             None,
         )

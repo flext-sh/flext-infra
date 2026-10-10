@@ -10,7 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m, u
+from flext_cli import m, u
+
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
@@ -323,6 +324,38 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
+    class GateExecutionParams(m.ContractModel):
+        """Validated assembly inputs keeping native outcome apart from acceptance."""
+
+        project_dir: Path = m.Field(description="Project whose gate was executed")
+        verdict: bool = m.Field(description="Acceptance decided by the caller")
+        outcome: c.Infra.ToolOutcome = m.Field(description="Native tool outcome")
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            description="Complete native diagnostics",
+        )
+        raw_output: str = m.Field(description="Unmodified native output")
+        started: float = m.Field(description="Monotonic execution start time")
+
+    class GateNativeRun(m.ArbitraryTypesModel):
+        """Native tool run payload one gate execution assembles from."""
+
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default_factory=tuple,
+            description=(
+                "Complete native gate diagnostics, including informative findings"
+            ),
+        )
+        raw_output: str = m.Field(
+            "",
+            description="Raw tool output",
+        )
+        outcome: c.Infra.ToolOutcome = m.Field(
+            description="Native process/report verdict, independent of findings policy",
+        )
+        started: float = m.Field(
+            description="Monotonic timestamp the gate run started at",
+        )
+
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
@@ -380,12 +413,14 @@ class FlextInfraModelsCheck:
             Returns:
                 The resulting ``bool``.
             """
-            return all(v.result.passed for v in self.gates.values())
+            return bool(self.gates) and all(
+                v.result.passed for v in self.gates.values()
+            )
 
         @m.computed_field
         @property
         def total_findings(self) -> int:
-            """Total native findings across all gates, including informative ones.
+            """Total native findings across every executed gate.
 
             Returns:
                 The resulting ``int``.

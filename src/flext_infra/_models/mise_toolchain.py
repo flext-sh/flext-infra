@@ -10,7 +10,8 @@ import re
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_core import m, t
+from flext_core import m
+from flext_infra import t
 
 
 class FlextInfraModelsMiseToolchain:

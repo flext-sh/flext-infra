@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCore:
@@ -284,9 +284,11 @@ class FlextInfraModelsCore:
         testmon_db: Path | None = m.Field(
             description="External pytest-testmon database; absent for coverage",
         )
-        deadline_monotonic: float = m.Field(
-            gt=0,
-            description="Shared absolute deadline across all execution phases",
+        deadline_monotonic: Annotated[float, m.Field(gt=0)] | None = m.Field(
+            description=(
+                "Absolute budgeted deadline of the phase; absent for the full "
+                "suite, which runs without any time limit"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,
@@ -410,6 +412,10 @@ class FlextInfraModelsCore:
             t.NonNegativeInt,
             m.Field(description="Skipped test case count"),
         ]
+        connectivity_skip_cases: t.StrTuple = m.Field(
+            default_factory=tuple,
+            description="Shared-plugin prerequisite skips, not successful connectivity",
+        )
         collection_failed_count: t.NonNegativeInt = m.Field(
             description="Failed collection reports, separate from JUnit cases",
         )
@@ -494,6 +500,10 @@ class FlextInfraModelsCore:
         reported_phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(
             default_factory=dict[str, t.MutableStrMapping],
             description="Runtest phase outcomes keyed by TestReport node ID",
+        )
+        connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list[str],
+            description="Shared-plugin prerequisite skips retained in JUnit",
         )
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt

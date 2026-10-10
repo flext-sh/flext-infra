@@ -6,17 +6,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenTransaction
-from flext_infra.codegen._conform.execute_directed import (
-    FlextInfraCodegenConformExecuteDirected,
+from flext_infra import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.codegen import FlextInfraCodegenTransaction
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
@@ -195,7 +200,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(planned)
         created = u.Cli.atomic_create_directory_chain_guarded(
             planned.value,
-            permission_mode=0o755,
+            permission_mode=config.Infra.codegen.modes.directory_generated,
         )
         if created.failure:
             return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(created)
@@ -556,11 +561,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         destination = root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
         if destination.is_file():
             return r[bool].ok(value=True)
+        quoted = tuple(
+            u.Cli.json_dumps(value)
+            for value in (beads.workspace, beads.database, beads.issue_prefix)
+        )
+        failed = next((item for item in quoted if item.failure), None)
+        if failed is not None:
+            return r[bool].from_failure(failed)
+        workspace_name, database, issue_prefix = (item.value for item in quoted)
         payload = (
             f"version: {beads.version}\n"
-            f"workspace: {json.dumps(beads.workspace)}\n"
-            f"database: {json.dumps(beads.database)}\n"
-            f"issue_prefix: {json.dumps(beads.issue_prefix)}\n"
+            f"workspace: {workspace_name}\n"
+            f"database: {database}\n"
+            f"issue_prefix: {issue_prefix}\n"
         )
         written = u.Cli.atomic_write_text_file(destination, payload)
         if written.failure:
@@ -647,6 +660,24 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         return result
 
     @staticmethod
+    def lazy_repository_task(root: Path) -> m.Infra.CodegenPhaseOutcome:
+        """Analyze one repository's lazy-init surface in a fleet worker.
+
+        Returns:
+            The repository's lazy-init analysis, or its failure as data.
+
+        """
+        analysis = FlextInfraCodegenLazyInit(
+            repository_root=root,
+            project_scope_roots=(root,),
+        ).plan_files()
+        if analysis.failure:
+            return m.Infra.CodegenPhaseOutcome(
+                error=analysis.error or f"lazy-init analysis failed: {root}",
+            )
+        return m.Infra.CodegenPhaseOutcome(analysis=analysis.value)
+
+    @staticmethod
     def _lazy_phase(
         request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
@@ -667,19 +698,23 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         files: list[m.Infra.CodegenFilePlan] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         publications: list[m.Infra.LazyInitPlan] = []
-        for repository in plan.repositories:
-            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
-                continue
-            root = (request.root / repository.path).resolve()
-            analysis = FlextInfraCodegenLazyInit(
-                repository_root=root,
-                project_scope_roots=(root,),
-            ).plan_files()
-            if analysis.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(analysis)
-            files.extend(analysis.value.files)
-            publications.extend(analysis.value.publications)
-            for state in analysis.value.inputs:
+        roots = tuple(
+            (request.root / repository.path).resolve()
+            for repository in plan.repositories
+            if repository.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+        )
+        # Each repository analyzes through its own Rope boundary, read-only,
+        # so the fleet runs them across worker processes in declaration order.
+        outcomes = u.Infra.fleet_map(
+            FlextInfraCodegenConformExecute.lazy_repository_task,
+            roots,
+        )
+        for outcome in outcomes:
+            if outcome.analysis is None:
+                return r[m.Infra.CodegenPhaseAnalysis].fail(outcome.error)
+            files.extend(outcome.analysis.files)
+            publications.extend(outcome.analysis.publications)
+            for state in outcome.analysis.inputs:
                 existing = inputs.get(state.path)
                 if existing is not None and existing != state:
                     return r[m.Infra.CodegenPhaseAnalysis].fail(

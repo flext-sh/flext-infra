@@ -51,13 +51,11 @@ class TestsVerifyLanes:
         policy = config.Infra.codegen.branch_policy
         remote_action = "set-url" if policy.lane_remote == c.Infra.GIT_ORIGIN else "add"
         u.Tests.git_run(repo, "remote", remote_action, policy.lane_remote, str(remote))
-        u.Tests.git_run(
-            repo,
-            "update-ref",
-            "-d",
-            f"refs/remotes/{c.Infra.GIT_ORIGIN}/{u.Tests.provider_branch()}",
-        )
+        # The fixture clone's tracking refs describe its former origin; prune
+        # them against the re-pointed remote, as a real re-pointed clone would.
+        u.Tests.git_run(repo, "remote", "prune", c.Infra.GIT_ORIGIN)
         u.Tests.git_run(repo, "push", "-u", policy.lane_remote, integration)
+        u.Tests.git_run(remote, "symbolic-ref", "HEAD", f"refs/heads/{integration}")
         u.Tests.git_run(
             repo,
             "symbolic-ref",
@@ -215,7 +213,7 @@ class TestsVerifyLanes:
             base="HEAD",
             apply_changes=True,
         ).execute()
-        tm.fail(rejected, has="forbidden stashes")
+        tm.fail(rejected, has="refuses existing stash state")
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
 
     @classmethod
@@ -311,7 +309,7 @@ class TestsVerifyLanes:
             base=original,
             apply_changes=True,
         ).execute()
-        tm.fail(rejected, has="stale lane base")
+        tm.fail(rejected, has="lane has not absorbed the latest integration tip")
         evidence_file = tm.not_none(request.evidence_file)
         evidence = m.Infra.GitLaneEvidence.model_validate_json(
             evidence_file.read_text(encoding="utf-8"),
@@ -410,7 +408,7 @@ class TestsVerifyLanes:
             base="HEAD",
             apply_changes=True,
         ).execute()
-        tm.fail(rejected, has="existing lane has stale base")
+        tm.fail(rejected, has="continue the existing candidate, not another lane")
         tm.that(lane.exists(), eq=False)
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
 

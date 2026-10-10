@@ -21,11 +21,15 @@ class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
         self,
         tmp_path: Path,
     ) -> None:
-        """Update preserves lane ancestry through the canonical no-ff merge."""
+        """Update preserves lane ancestry through the canonical no-ff merge.
+
+        The lane is registered natively at its canonical path because
+        admission refuses every ADD (bead flext-itpd1.3.26); UPDATE resolves it
+        from Git's registry.
+        """
         repository = self._repository(tmp_path)
         branch = "feature/update"
-        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
-        _ = self.add_worktree(repository, branch)
+        lane = self.native_lane(repository, branch)
         (repository / "owner.txt").write_text("owner\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "owner.txt"], cwd=repository))
         tm.ok(
@@ -71,32 +75,24 @@ class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
         tm.that(parents, has=base)
 
     def test_child_lane_nests_under_its_epic_container(self, tmp_path: Path) -> None:
-        """A child lane is namespaced by the epic lane that owns it."""
+        """A child lane is namespaced by the epic lane that owns it.
+
+        The child path is reserved under the epic's container, but admission
+        refuses the child ADD (bead flext-itpd1.3.26): materializing it there
+        is unreachable until admission opens, and the refusal leaves the
+        reserved path, refs, and registry untouched.
+        """
         repository = self._repository(tmp_path)
         epic_branch = "feature/epic-alpha"
-        epic = Path(self.add_worktree(repository, epic_branch))
-        child_branch = "feature/child-one"
+        epic = self.native_lane(repository, epic_branch)
 
-        child = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=child_branch,
-                base=epic_branch,
-                epic_lane=epic,
-                apply_changes=True,
-            ).execute(),
+        child = self.refused_lane(
+            repository,
+            "feature/child-one",
+            base=epic_branch,
+            epic_lane=epic,
         )
 
-        child_path = child
         container = epic / c.Infra.WORKTREES_DIRNAME
-        tm.that(child, eq=str(container / "child-one"))
-        tm.that(Path(child_path).is_relative_to(container), where=bool)
-        tm.that(
-            tm.ok(
-                u.Infra.git_list_worktrees(
-                    m.Infra.GitRepoRequest(repo_root=repository),
-                ),
-            ).porcelain,
-            has=f"worktree {child_path}",
-        )
+        tm.that(child, eq=container / "child-one")
+        tm.that(container.exists(), eq=False)

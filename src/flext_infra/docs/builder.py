@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, u
-from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra import FlextInfraDocServiceBase, c, u
 
 if TYPE_CHECKING:
     from pathlib import Path

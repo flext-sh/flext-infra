@@ -10,12 +10,18 @@ import time
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._conform.scaffold_plan import (
-    FlextInfraCodegenConformScaffoldPlan,
+from flext_infra import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraWorkspaceDetector,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
@@ -235,7 +241,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         t.Triple[
             Literal["t", "u", "p", "m"],
             list[m.Cli.AtomicFileState],
-            dict[Path, str],
+            t.MappingKV[Path, str],
         ]
     ]:
         """Authenticate owners and consumers before family rendering.
@@ -248,7 +254,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             t.Triple[
                 Literal["t", "u", "p", "m"],
                 list[m.Cli.AtomicFileState],
-                dict[Path, str],
+                t.MappingKV[Path, str],
             ]
         ]
         selected = cls._facade_source_state(root, destination)
@@ -459,65 +465,106 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         result_type = r[
             t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.UvEnvironmentPlan]]
         ]
-        config_spec = config.Infra.codegen
-        files: list[m.Infra.CodegenFilePlan] = []
-        environments: list[m.Infra.UvEnvironmentPlan] = []
-        total_repositories = len(selected)
-        u.Cli.info(f"stage=plan repositories={total_repositories}")
-        for repository_index, repository in enumerate(selected, start=1):
-            repository_started = time.monotonic()
-            u.Cli.progress(
-                repository_index,
-                total_repositories,
-                repository.name,
-                "conform",
-            )
-            u.Cli.info(
-                f"  stage=topology repository={repository.name} "
-                f"role={repository.role.value} kind={repository.kind.value}",
-            )
+        u.Cli.info(f"stage=plan repositories={len(selected)}")
+        tasks: list[m.Infra.CodegenRepositoryPlanTask] = []
+        for repository in selected:
             if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
                 u.Cli.info(
                     f"  stage=skip repository={repository.name} "
                     f"kind={repository.kind.value} is not rewritten by generation",
                 )
                 continue
-            planned_inputs = self._repository_planning_inputs(
-                root,
-                workspace,
-                current_target,
-                repository,
-            )
-            if planned_inputs.failure:
-                return result_type.from_failure(planned_inputs)
-            repository_root, target, local_workspace = planned_inputs.value
-            planned = self._governed_repository_plans(
-                repository,
-                workspace,
-                target,
-                local_workspace,
-                contract,
-            )
-            if planned.failure:
-                return result_type.from_failure(planned)
-            governed_plans, retired_plans = planned.value
-            files.extend(governed_plans)
-            files.extend(retired_plans)
-            environments.append(
-                self.uv_environment_plan(
-                    root=repository_root,
-                    target=target,
-                    workspace=local_workspace,
-                    config=config_spec,
+            tasks.append(
+                m.Infra.CodegenRepositoryPlanTask(
+                    root=root,
+                    workspace=workspace,
+                    initial_workspace=self.initial_workspace,
+                    current_target=current_target,
+                    repository=repository,
+                    contract=contract,
                 ),
             )
+        # Every repository plans independently and read-only, so the fleet
+        # plans them across worker processes; the results keep declaration
+        # order, and publication stays serial under the generation lease.
+        outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
+        files: list[m.Infra.CodegenFilePlan] = []
+        environments: list[m.Infra.UvEnvironmentPlan] = []
+        for index, outcome in enumerate(outcomes, start=1):
+            u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
+            if outcome.error:
+                return result_type.fail(outcome.error)
+            files.extend(outcome.files)
+            if outcome.environment is not None:
+                environments.append(outcome.environment)
             u.Cli.status(
                 "conform",
-                repository.name,
+                outcome.repository,
                 result=True,
-                elapsed=time.monotonic() - repository_started,
+                elapsed=outcome.elapsed,
             )
         return result_type.ok((files, environments))
+
+    @classmethod
+    def plan_repository_task(
+        cls,
+        task: m.Infra.CodegenRepositoryPlanTask,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Plan one repository from a self-contained, picklable task.
+
+        A fleet worker runs this in its own process: it rebuilds the planner
+        from the task, so no parent state, lease, or collaborator crosses the
+        boundary, and returns a failure as data instead of a live result.
+
+        Returns:
+            The repository's file and environment plans, or its failure.
+
+        """
+        started = time.monotonic()
+        repository = task.repository
+        u.Cli.info(
+            f"  stage=topology repository={repository.name} "
+            f"role={repository.role.value} kind={repository.kind.value}",
+        )
+        planner = cls(initial_workspace=task.initial_workspace)
+        planned_inputs = planner._repository_planning_inputs(
+            task.root,
+            task.workspace,
+            task.current_target,
+            repository,
+        )
+        if planned_inputs.failure:
+            return m.Infra.CodegenRepositoryPlanOutcome(
+                repository=repository.name,
+                error=(
+                    planned_inputs.error or f"planning inputs failed: {repository.name}"
+                ),
+            )
+        repository_root, target, local_workspace = planned_inputs.value
+        planned = planner._governed_repository_plans(
+            repository,
+            task.workspace,
+            target,
+            local_workspace,
+            task.contract,
+        )
+        if planned.failure:
+            return m.Infra.CodegenRepositoryPlanOutcome(
+                repository=repository.name,
+                error=planned.error or f"planning failed: {repository.name}",
+            )
+        governed_plans, retired_plans = planned.value
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=repository.name,
+            files=(*governed_plans, *retired_plans),
+            environment=planner.uv_environment_plan(
+                root=repository_root,
+                target=target,
+                workspace=local_workspace,
+                config=config.Infra.codegen,
+            ),
+            elapsed=time.monotonic() - started,
+        )
 
     def _repository_planning_inputs(
         self,

@@ -363,6 +363,8 @@ class FlextInfraWorkspaceChecker(
         dir_ensure = u.Cli.ensure_dir(reports_root)
         if dir_ensure.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
+        # One invocation owns one report leaf: concurrent checks never
+        # overwrite each other's receipt.
         report_base = reports_root / u.generate_id()
         report_base.mkdir(exist_ok=False)
         effective_ctx = ctx or m.Infra.GateContext(
@@ -394,7 +396,9 @@ class FlextInfraWorkspaceChecker(
                     for target in targets
                 ),
                 results=tuple(outcome.results),
-                selected_files=(),
+                # A file-scoped run publishes its selection, so no consumer
+                # reads its counts as whole-project quality.
+                selected_files=tuple(effective_ctx.selected_files),
             ),
         )
 

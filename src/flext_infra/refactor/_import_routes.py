@@ -10,7 +10,7 @@ import ast
 from collections.abc import MutableMapping
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor._import_ast import FlextInfraImportNormalizationAstMixin
+from flext_infra.refactor import FlextInfraImportNormalizationAstMixin
 
 
 class FlextInfraImportNormalizationRoutesMixin(
@@ -108,6 +108,143 @@ class FlextInfraImportNormalizationRoutesMixin(
             )
         return edits
 
+    @classmethod
+    def _root_alias_binding_edits(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        """Bind root aliases a module reads but never binds; drop self-imports.
+
+        A facade letter or root singleton the module reads, binds nowhere and
+        its namespace root publishes is imported from that root; an alias the
+        module imports from its own root while also defining it at module level
+        is dropped, because the module owns it.
+
+        Returns:
+            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+
+        """
+        if state.scope.direct_imports:
+            return ()
+        scope = state.scope
+        defined = frozenset(
+            cls._module_bindings(
+                ast.Module(
+                    body=[
+                        statement
+                        for statement in state.tree.body
+                        if not isinstance(statement, ast.Import | ast.ImportFrom)
+                    ],
+                    type_ignores=[],
+                ),
+            ),
+        )
+        edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
+        for node in state.tree.body:
+            if (
+                not isinstance(node, ast.ImportFrom)
+                or node.level
+                or node.module != scope.namespace
+            ):
+                continue
+            kept = [
+                alias
+                for alias in node.names
+                if (alias.asname or alias.name) not in defined
+            ]
+            if len(kept) == len(node.names):
+                continue
+            indent = cls._line_indent(lines[node.lineno - 1])
+            clauses = ", ".join(cls._clause(alias) for alias in kept)
+            edits.append(
+                (
+                    node.lineno,
+                    cls._end_line(node),
+                    (f"{indent}from {scope.namespace} import {clauses}",)
+                    if kept
+                    else (),
+                ),
+            )
+        missing = sorted(cls._unbound_root_aliases(state))
+        if missing:
+            anchor = cls._import_anchor(state.tree)
+            edits.append(
+                (
+                    anchor + 1,
+                    anchor,
+                    (f"from {scope.namespace} import {', '.join(missing)}",),
+                ),
+            )
+        return edits
+
+    @staticmethod
+    def _unbound_root_aliases(state: m.Infra.ImportLawPass) -> frozenset[str]:
+        """Return root aliases read at module scope or below but bound nowhere.
+
+        Returns:
+            The resulting ``frozenset[str]``.
+
+        """
+        scope = state.scope
+        loaded: set[str] = set()
+        bound: set[str] = set(state.bindings)
+        for node in ast.walk(state.tree):
+            match node:
+                case ast.Name(id=name, ctx=ast.Load()):
+                    loaded.add(name)
+                case ast.Name(id=name):
+                    bound.add(name)
+                case ast.arg(arg=name):
+                    bound.add(name)
+                case (
+                    ast.FunctionDef(name=name)
+                    | ast.AsyncFunctionDef(name=name)
+                    | ast.ClassDef(name=name)
+                ):
+                    bound.add(name)
+                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
+                    bound.update(
+                        alias.asname or alias.name.partition(".")[0]
+                        for alias in aliases
+                    )
+                case _:
+                    pass
+        aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+        return frozenset(
+            name
+            for name in loaded - bound
+            if name in aliases
+            and name in state.root_exports
+            and name not in scope.own_exports
+            and name != scope.family_letter
+            and name not in scope.facade_dependencies
+        )
+
+    @staticmethod
+    def _import_anchor(tree: ast.Module) -> int:
+        """Return the line after which a new module-level import belongs.
+
+        Returns:
+            The last line of the leading docstring and import block.
+
+        """
+        anchor = 0
+        for index, statement in enumerate(tree.body):
+            is_docstring = (
+                index == 0
+                and isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            )
+            if not is_docstring and not isinstance(
+                statement,
+                ast.Import | ast.ImportFrom,
+            ):
+                break
+            anchor = statement.end_lineno or statement.lineno
+        return anchor
+
     @staticmethod
     def _root_alias_source(
         state: m.Infra.ImportLawPass,
@@ -116,9 +253,8 @@ class FlextInfraImportNormalizationRoutesMixin(
     ) -> str | None:
         """Return the namespace root when one binding is a root alias.
 
-        A facade module keeps the letters it declares and a family package
-        keeps its own letter's upstream source; every other routed module
-        binds a root alias through its own namespace root.
+        Facade declarations and their runtime dependencies retain external
+        providers instead of importing the facade they are constructing.
 
         Returns:
             The namespace root, or ``None`` when the binding is no root alias.
@@ -132,7 +268,19 @@ class FlextInfraImportNormalizationRoutesMixin(
         aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
         if bound not in aliases and published != module:
             return None
-        if bound in scope.own_exports or bound == scope.family_letter:
+        if (
+            bound in scope.own_exports
+            or bound == scope.family_letter
+            or bound in scope.facade_dependencies
+        ):
+            return None
+        if (
+            scope.family_letter is not None
+            and bound in c.Infra.ALIAS_NAMES
+            and not module.startswith(f"{scope.namespace}.")
+        ):
+            # Declaration families must retain an external facade's provider.
+            # Routing its base models/utilities back through self creates a cycle.
             return None
         return scope.namespace
 
@@ -149,13 +297,13 @@ class FlextInfraImportNormalizationRoutesMixin(
             binds through a package or no parent publishes the name.
 
         """
-        package, _, leaf = module.rpartition(".")
+        package = module.rpartition(".")[0]
         if not package or module == scope.module:
             return None
-        package_dir = u.Infra.import_package_dir(scope.project_root, package)
-        if package_dir is None or (package_dir / leaf).is_dir():
+        if u.Infra.import_lazy_exports(scope.project_root, module) is not None:
             return None
-        if u.Infra.import_lazy_exports(package_dir, package).get(name) != module:
+        exports = u.Infra.import_lazy_exports(scope.project_root, package)
+        if exports is None or exports.get(name) != module:
             return None
         return package
 

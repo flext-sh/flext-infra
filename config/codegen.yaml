@@ -44,6 +44,11 @@ Infra:
 
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # Independent read-only per-repository work of one fleet run (generation
+    # planning, lazy-init analysis) runs in this many worker processes; every
+    # publication stays serial inside the single generation lease. Measured
+    # with `make profile-gen`: planning is CPU-bound (one core per repository).
+    fleet_workers: 6
 
     # Per-module scc code-LOC ceiling, enforced by the loc-cap gate. This key
     # is its only declaration; guidance references the key, never its value.
@@ -178,21 +183,8 @@ Infra:
           binary: node
           arguments: [ --version ]
           pattern: "^v{version}$"
-      # Make and Go are Mise-managed moving selectors (R1): a host make shim
-      # (stale conda binary) broke setup, so the fleet toolchain owns make,
-      # and the go: backend selectors require the pinable Go runtime.
-      - name: make
-        version: latest
-        version_probe:
-          binary: make
-          arguments: [ --version ]
-          pattern: "GNU Make {version}"
-      - name: go
-        version: latest
-        version_probe:
-          binary: go
-          arguments: [ version ]
-          pattern: "^go version go{version} "
+      # Make, curl and Git remain system-owned. Recursive Make keeps the
+      # physical executable that invoked the generated lifecycle.
       - name: qlty
         selector: github:qltysh/qlty
         version: latest
@@ -567,7 +559,7 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # local_value: check selects the active local partition.
+        # local_value: check retains the complete active gate set.
         # Other pre-push verbs use this token to preserve local test behavior;
         # pre-push check unsets CI so it runs every active check gate.
         local_value: N
@@ -589,11 +581,14 @@ Infra:
         # and the project-owned tools.mypy.timeout_seconds budget.
         # direnv proves the developer's own activation, so it is local-only.
         local_check_gates: [ mypy, pyright, codemod, smells, direnv ]
+        # Fast-hook scope is declared here, independently of a tool's kind.
+        # Heavy checks remain mandatory in CI and the complete local check.
+        pre_commit_check_gates: [ format, lint, markdown, conflict-markers ]
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # An absent CI uses testmon for incremental developer runs.
-      # The pre-commit hook runs only the fast external gates the gate
-      # registry declares (MakeSpec.check_gates_pre_commit) and no tests
+      # The pre-commit hook runs only its declared fast gate scope
+      # (MakeSpec.check_gates_pre_commit) and no tests
       # (tracker memory operator-ruling-2026-10-01-testmon-make-test-only);
       # the pre-push hook runs every pre_push row below. make setup installs
       # both hooks locally with prek and installs none under CI=Y.
@@ -709,7 +704,7 @@ Infra:
       - name: test-full
         description: Run incremental then all tests, including external and CI-excluded markers, through the same persistent testmon cache.
       - name: test-file
-        description: Run one declared test file through the budgeted and slow phases with the same persistent testmon cache (FILE=<repository-relative path>).
+        description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
       - name: file-gate
         description: Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
       - name: profile-test
@@ -1264,7 +1259,8 @@ Infra:
     #   conflict_sections = MANAGED tables (template wins on make gen)
     #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
     #   [project] keys the template writes that are not in preserve_project_keys
-    #     (dependencies, requires-python) are MANAGED
+    #     (requires-python) are MANAGED; live dependencies stay CUSTOM and
+    #     the profile rows are seeded beside them
     #   [tool.*] absent from conflict_sections (bandit, …) is CUSTOM
     - path: pyproject.toml
       owner: codegen
@@ -1401,7 +1397,7 @@ Infra:
           runtime:
           - flext-core
           - annotated-types>=0.8.0
-          - beartype>=0.22.9
+          - beartype>=0.23.0
           - dependency-injector>=4.49.1
           - packaging>=26.3
           - pydantic>=2.14.0,<3

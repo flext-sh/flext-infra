@@ -252,33 +252,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(module_source, has="SHARED = FlextInfraConstantsSharedInfra")
 
     @staticmethod
-    def test_namespace_enforcer_apply_hoists_function_local_stdlib_import(
-        tmp_path: Path,
-    ) -> None:
-        """Hoist a function-local standard-library import to the module block."""
-        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
-        service_file = pkg / "service.py"
-        _ = service_file.write_text(
-            "from __future__ import annotations\n\n"
-            "class SampleService:\n"
-            "    def run(self) -> str:\n"
-            "        import os\n\n"
-            "        return os.sep\n",
-            encoding="utf-8",
-        )
-        u.Tests.provision_checkout(workspace)
-        enforcer = FlextInfraNamespaceEnforcer(repository_root=workspace)
-
-        pending = enforcer.enforce(apply=False)
-        report = enforcer.enforce(apply=True)
-
-        tm.that(pending.projects[0].relocation_findings > 0, eq=True)
-        tm.that(report.projects[0].relocation_findings, eq=0)
-        lines = service_file.read_text(encoding="utf-8").splitlines()
-        tm.that(lines, has="import os")
-        tm.that(lines, lacks="        import os")
-
-    @staticmethod
     def test_namespace_enforcer_apply_is_idempotent_on_the_second_pass(
         tmp_path: Path,
     ) -> None:

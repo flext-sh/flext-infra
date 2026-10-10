@@ -31,8 +31,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector, c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p

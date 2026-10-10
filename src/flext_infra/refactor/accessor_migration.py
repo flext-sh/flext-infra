@@ -11,13 +11,12 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.refactor._accessor_report import FlextInfraAccessorMigrationReportMixin
-from flext_infra.refactor._accessor_rewrite import (
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.refactor import (
+    FlextInfraAccessorMigrationReportMixin,
     FlextInfraAccessorMigrationRewriteMixin,
+    FlextInfraImportNormalization,
 )
-from flext_infra.refactor._import_enforcement import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
     from pathlib import Path

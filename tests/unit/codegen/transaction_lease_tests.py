@@ -45,7 +45,18 @@ class TestsFlextInfraTransactionLease:
         the denial could never reach the lock there. The lease boundary is the
         surface this contract owns.
         """
-        root = u.Tests.git_repository(tmp_path)
+        # Conform resolves governance before it takes the lease, so the
+        # fixture is a governed project, as every real conform root is.
+        root = tmp_path / "repository"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "lease-probe",
+            beads=u.Tests.BeadsIdentity(
+                workspace="lease-probe",
+                database="lease_probe",
+                issue_prefix="lease",
+            ),
+        )
         script = (
             "import errno, sys\n"
             "from pathlib import Path\n"

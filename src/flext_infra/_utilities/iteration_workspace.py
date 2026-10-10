@@ -6,17 +6,44 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import multiprocessing
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from flext_infra import c, config, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitScopeMixin
-from flext_infra._utilities.iteration_directory import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesIterationDirectory,
 )
 
 
 class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
     """Static helpers for discovering Python files across workspace projects."""
+
+    @staticmethod
+    def fleet_map[TPayload, TResult](
+        task: Callable[[TPayload], TResult],
+        payloads: t.SequenceOf[TPayload],
+    ) -> tuple[TResult, ...]:
+        """Run one read-only task per payload across the configured workers.
+
+        ``task`` must be importable by qualified name and every payload and
+        result picklable: workers start from a clean interpreter (forkserver),
+        so no parent lock, thread, or lease crosses the process boundary. The
+        results keep the payload order, and the first worker exception escapes
+        unchanged. One configured worker or one payload runs in this process.
+
+        Returns:
+            The task results in payload order.
+
+        """
+        workers = min(config.Infra.codegen.fleet_workers, len(payloads))
+        if workers <= 1:
+            return tuple(task(payload) for payload in payloads)
+        context = multiprocessing.get_context("forkserver")
+        with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
+            return tuple(pool.map(task, payloads))
 
     @classmethod
     def iter_python_files(

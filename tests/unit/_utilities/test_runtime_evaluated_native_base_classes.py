@@ -112,6 +112,28 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             )
         tm.that(str(failure.value), eq=f"Attribute {name} not found")
 
+    def test_star_imported_provider_base_resolves(self, tmp_path: Path) -> None:
+        """A provider base bound by ``from .x import *`` is a real binding.
+
+        PyYAML declares ``class SafeLoader(Reader, Scanner, ...)`` after
+        ``from .reader import *``; flext-core subclasses ``SafeLoader``
+        (``config_sources.UniqueKeyLoader``), so the lineage walk must follow
+        the star-imported names instead of reporting them as missing exports.
+        """
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    tmp_path / "src" / "yaml_contract" / "models.py": (
+                        "from yaml import SafeLoader\n"
+                        "class UniqueKeyLoader(SafeLoader): pass\n"
+                    ),
+                },
+                u.Tests.runtime_evaluated_roots(),
+            ),
+            eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
+        )
+
     @pytest.mark.parametrize("name", ["ABC", "ABCMeta"])
     def test_native_abc_provider_metadata_preserves_class_bases(
         self,
