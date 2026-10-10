@@ -281,6 +281,11 @@ class FlextInfraPyprojectModernizerDocument:
             ),
         )
         tooling = config.Infra.tooling
+        managed_artifacts = self.managed_artifacts
+        if managed_artifacts is None:
+            managed_artifacts = u.Infra.load_project_managed_artifacts(
+                path.parent,
+            ).unwrap()
         changes: t.MutableSequenceOf[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
@@ -306,7 +311,10 @@ class FlextInfraPyprojectModernizerDocument:
                 ),
                 paths_manager=paths_manager,
             ),
-            *FlextInfraEnsureRuffConfigPhase(tooling).apply_payload(
+            *FlextInfraEnsureRuffConfigPhase(
+                tooling,
+                managed_artifacts.artifacts.Ruff,
+            ).apply_payload(
                 payload,
                 path=path,
                 analysis_exclusions=topology.analysis_exclusions,
