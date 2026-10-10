@@ -68,12 +68,11 @@ class FlextInfraConstantsCheck:
     class ToolOutcome(StrEnum):
         """How a completed tool run ended, read from its exit and its report.
 
-        ``CLEAN`` and ``FINDINGS`` are runs the tool completed; ``ERROR`` is a
-        status the tool does not declare, a timeout, a signal, or a findings
-        status with nothing reported. The outcome is native, independent of
-        acceptance: only ``CLEAN`` with no finding passes, so residual
-        ``FINDINGS`` after a repair keep the verb red without being relabeled
-        as a machinery ``ERROR``.
+        ``CLEAN`` and ``FINDINGS`` are runs the tool completed; only ``ERROR``
+        (a status the tool does not declare, a timeout, a signal, or a findings
+        status with nothing reported) breaks a repair verb. Findings stay
+        reported and are enforced by ``make check``
+        (operator-rulings-2026-10-01-lint-automation, ruling d).
         """
 
         CLEAN = "clean"

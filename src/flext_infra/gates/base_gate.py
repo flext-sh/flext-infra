@@ -454,9 +454,10 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from its native outcome and findings.
 
-        Native outcome and acceptance are separate: residual findings block
-        acceptance without being relabeled as machinery failures, so only a
-        clean outcome with no finding passes.
+        Native outcome and acceptance are separate: the caller decides the
+        verdict, and the native outcome and every finding are kept unchanged.
+        A repair breaks only on an error; the findings it leaves keep the
+        ``FINDINGS`` outcome and stay reported for ``check``.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -806,7 +807,7 @@ class FlextInfraGate:
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
-                verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
+                verdict=outcome is not c.Infra.ToolOutcome.ERROR,
                 outcome=outcome,
                 issues=tuple(issues),
                 raw_output=self._raw_output(result),

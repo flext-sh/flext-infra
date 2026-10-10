@@ -758,9 +758,10 @@ class TestsFlextInfraPytestRunner:
         cached_runner_project: Path,
     ) -> None:
         """``make test-full`` carries no deadline in any of its phases."""
-        reports_root = cached_runner_project / runner_for(cached_runner_project).reports
+        bounded = runner_for(cached_runner_project)
+        reports_root = cached_runner_project / bounded.reports
         existing = set(reports_root.glob("*/run-context.json"))
-        runner = runner_for(cached_runner_project, unbounded=True)
+        runner = bounded.model_copy(update={"unbounded": True})
 
         tm.that(tm.ok(runner.execute_full()), eq=0)
 

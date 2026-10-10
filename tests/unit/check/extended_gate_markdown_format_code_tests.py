@@ -277,13 +277,13 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         *,
         unformatted: bool,
     ) -> None:
-        """A completed formatter does not approve docstrings it cannot write back."""
+        """A completed formatter keeps docstrings it cannot write back reported."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix-docstring")
         source_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
         source_dir.mkdir()
         source = source_dir / "widget.py"
         example = "x=1" if unformatted else "x = 1"
-        original = f'\"\"\"Widget.\n\n>>> {example}\n\n\"\"\"'
+        original = f'"""Widget.\n\n>>> {example}\n\n"""'
         source.write_text(original, encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(
@@ -294,7 +294,10 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
                 apply_fixes=True,
             ),
         )
-        tm.that(result.result.passed, eq=not unformatted)
+        # The repair completes either way (ruling d of
+        # operator-rulings-2026-10-01-lint-automation); an example it cannot
+        # write back stays a FINDINGS outcome reported for check.
+        tm.that(result.result.passed, eq=True)
         tm.that(
             result.outcome,
             eq=(

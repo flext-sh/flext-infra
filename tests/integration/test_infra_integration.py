@@ -345,10 +345,10 @@ class TestsFlextInfraIntegrationInfraIntegration:
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
 
         # rumdl completed under its declared findings status: the repair
-        # verb does not break (FINDINGS, never ERROR), the residual finding
-        # stays reported, and a residual finding never counts as passed.
+        # verb does not break (operator-rulings-2026-10-01-lint-automation
+        # ruling d), and the residual finding stays reported for check.
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.result.passed, eq=True)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
         tm.that(execution.issues[0].code, eq="MD041")
 
