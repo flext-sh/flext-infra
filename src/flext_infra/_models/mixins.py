@@ -46,6 +46,24 @@ class FlextInfraModelsMixins:
                 description="Projects to process; repeat --projects NAME as needed",
             ),
         ] = None
+
+        @m.field_validator("projects", mode="before")
+        @classmethod
+        def _parse_projects(
+            cls, value: str | t.SequenceOf[str] | None
+        ) -> t.StrSequence | None:
+            """Accept one bare name (``--projects .``), a sequence, or None.
+
+            Returns:
+                The resulting ``t.StrSequence | None``.
+
+            """
+            if value is None:
+                return None
+            if isinstance(value, str):
+                return (value,)
+            return value
+
         module: Annotated[
             str | None,
             m.Field(

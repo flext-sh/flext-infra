@@ -132,13 +132,15 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_mise, lacks="beads")
         tm.that(rendered_mise, lacks="gascity")
 
-    def test_mise_manifest_leaves_make_system_owned(self, tmp_path: Path) -> None:
-        """The generated ``.mise.toml`` never declares make.
+    def test_mise_manifest_manages_make_through_the_fleet_selector(
+        self, tmp_path: Path
+    ) -> None:
+        """The generated ``.mise.toml`` owns make as a moving Mise selector.
 
-        Make, curl and Git are system-owned: the generated Makefile resolves the
-        physical make that invoked it before changing PATH, so recursive
-        lifecycle calls keep that invoker instead of a Mise shim (toolchain
-        tools table, config/codegen.yaml).
+        R1 retired the system-owned stance: a stale host make shim (a conda
+        binary) broke ``make setup``, so the fleet toolchain declares make as
+        a moving ``latest`` selector rendered through the canonical
+        ``.mise.toml`` projection (toolchain tools table, config/codegen.yaml).
         """
         root = self._project(
             tmp_path / "project",
@@ -151,10 +153,9 @@ class TestsFlextInfraCodegenBeadsProjection:
 
         if rendered_mise is None:
             pytest.fail("conform must produce the managed .mise.toml")
-        tm.that("make" in config.Infra.codegen.toolchain.tool_versions, eq=False)
-        tm.that(rendered_mise, lacks="\nmake = ")
+        tm.that(config.Infra.codegen.toolchain.tool_versions["make"], eq="latest")
+        tm.that(rendered_mise, has="\nmake = ")
         tm.that(rendered_mise, lacks="conda")
-        tm.that(rendered_mise, lacks="stale")
 
     def test_generated_envrc_excludes_storage_routing(self, tmp_path: Path) -> None:
         """The project activation leaves Beads routing to native discovery."""

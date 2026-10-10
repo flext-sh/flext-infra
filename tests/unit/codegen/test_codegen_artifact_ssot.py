@@ -238,7 +238,10 @@ class TestsFlextInfraCodegenArtifactSsot:
         commit_verbs = {step.verb for step in pre_commit}
         push_verbs = {step.verb for step in pre_push}
         tm.that(bool(commit_verbs & push_verbs), eq=True)
-        tm.that(bool(commit_verbs - push_verbs), eq=True)
+        # C19 baseline: pre-push is the strict superset — it repeats the
+        # validation verbs pre-commit owns and adds verify-clean, so the work
+        # only pre-push owns is the clean-tree closure.
+        tm.that(bool(push_verbs - commit_verbs), eq=True)
         shared_steps = tuple(
             step
             for step in workflow
