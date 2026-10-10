@@ -485,20 +485,6 @@ class FlextInfraConfigModelsWorkspace:
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
-        superproject_members: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Distribution names of the sibling members a superproject's "
-                    "[tool.uv.workspace] declares when this checkout is one of "
-                    "its members; empty for workspace roots and true standalones. "
-                    "Attached manifests redirect sibling dependencies through "
-                    "[tool.uv.sources] workspace = true while retaining inline "
-                    "Git provenance for publication; standalone renders remove "
-                    "the containing workspace source overlay."
-                ),
-            ),
-        ] = ()
         external_dependency_paths: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),

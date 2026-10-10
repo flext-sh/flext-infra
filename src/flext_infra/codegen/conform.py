@@ -90,8 +90,8 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
         return r[Path].fail(
             f"uv resolves {root} as a member of the uv workspace {owner}: "
             f"`uv lock` there rewrites {owner}/uv.lock, never {root}/uv.lock. "
-            f"Lock {root.name} from a linked worktree of it outside {owner}, "
-            "where uv resolves it alone.",
+            "Regenerate the canonical independent-project topology before "
+            f"upgrading {root.name}; do not relock another repository.",
         )
 
     @staticmethod

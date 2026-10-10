@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -829,9 +828,6 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.WorkspaceSpec].from_failure(authenticated)
         identity, declared_manifest = authenticated.value
         manifest = declared_manifest[0] if declared_manifest else None
-        superproject_members = cls._superproject_workspace_members(
-            identity.superproject_root,
-        )
         beads = cls._effective_workspace_beads(resolved_root, identity, manifest)
         if beads.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(beads)
@@ -880,70 +876,8 @@ class FlextInfraWorkspaceDetector(
                 ),
                 subprojects=tuple(subprojects),
                 external_dependency_paths=tuple(external),
-                superproject_members=superproject_members,
             ),
         )
-
-    @classmethod
-    def _superproject_workspace_members(
-        cls,
-        superproject_root: Path | None,
-    ) -> tuple[str, ...]:
-        """Read the sibling member names a superproject's uv workspace declares.
-
-        Single source of truth: the superproject's own committed pyproject
-        ``[tool.uv.workspace]``. Member paths map to distribution names by
-        reading each member's ``[project] name`` (this fleet keeps them equal,
-        and the read never assumes it). Any absence — no superproject, no
-        workspace table, no member manifest — resolves to an empty tuple, the
-        standalone shape.
-
-        Returns:
-            The resulting ``tuple[str, ...]``.
-
-        """
-        if superproject_root is None:
-            return ()
-        workspace_pyproject = superproject_root / c.PYPROJECT_FILENAME
-        if not workspace_pyproject.is_file():
-            return ()
-        document = u.Cli.toml_read_document(workspace_pyproject)
-        if document.failure:
-            return ()
-        payload = u.Cli.toml_as_mapping(document.value)
-        if payload is None:
-            return ()
-        tool = payload.get(c.Infra.TOOL)
-        uv_table = tool.get("uv") if isinstance(tool, Mapping) else None
-        workspace_table = (
-            uv_table.get("workspace") if isinstance(uv_table, Mapping) else None
-        )
-        raw_members = (
-            workspace_table.get("members")
-            if isinstance(workspace_table, Mapping)
-            else None
-        )
-        if not isinstance(raw_members, list):
-            return ()
-        members: list[str] = []
-        for raw_member in raw_members:
-            member_path = superproject_root / str(raw_member)
-            member_pyproject = member_path / c.PYPROJECT_FILENAME
-            if not member_pyproject.is_file():
-                continue
-            member_document = u.Cli.toml_read_document(member_pyproject)
-            if member_document.failure:
-                continue
-            member_payload = u.Cli.toml_as_mapping(member_document.value)
-            project = (
-                member_payload.get(c.Infra.PROJECT)
-                if isinstance(member_payload, Mapping)
-                else None
-            )
-            name = project.get(c.Infra.NAME) if isinstance(project, Mapping) else None
-            if isinstance(name, str) and name.strip():
-                members.append(name.strip().strip('"').strip("'").strip())
-        return tuple(sorted(set(members)))
 
     @classmethod
     def _authenticated_identity(

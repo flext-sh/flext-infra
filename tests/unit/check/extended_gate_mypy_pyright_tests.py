@@ -168,12 +168,12 @@ class TestsFlextInfraTypeGates:
         project = checker_context.repository_root
         pyproject = project / c.PYPROJECT_FILENAME
         pyproject.write_text(
-            pyproject.read_text(encoding="utf-8").replace(
+            pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
                 "[tool.mypy]\n",
                 "[tool.mypy]\n"
                 f"plugins = {list(config.Infra.tooling.tools.mypy.plugins)!r}\n",
             ),
-            encoding="utf-8",
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(s[str](repository_root=project).root, eq=project.resolve())
         source = project / "src" / "test_pkg" / "payload_bound.py"
@@ -182,7 +182,7 @@ class TestsFlextInfraTypeGates:
             f"def consume(value: {service}[str]) -> None:\n"
             "    pass\n"
         )
-        source.write_text(valid_source, encoding="utf-8")
+        source.write_text(valid_source, encoding=c.DEFAULT_ENCODING)
         gate = FlextInfraMypyGate(project)
 
         accepted = gate.check(project, checker_context)
@@ -191,23 +191,22 @@ class TestsFlextInfraTypeGates:
         assert not accepted.issues, accepted.raw_output
         source.write_text(
             valid_source.replace(f"{service}[str]", f"{service}[set[int]]"),
-            encoding="utf-8",
+            encoding=c.DEFAULT_ENCODING,
         )
 
         rejected = gate.check(project, checker_context)
 
         assert not rejected.result.passed, rejected.raw_output
-        assert rejected.issues, rejected.raw_output
-        assert all(
-            issue.code != c.Infra.ToolOutcome.ERROR for issue in rejected.issues
-        ), rejected.raw_output
-        assert all(issue.code == "type-var" for issue in rejected.issues), (
-            rejected.raw_output
-        )
-        assert any(
-            issue.file.endswith(source.name) and service in issue.message
-            for issue in rejected.issues
-        ), rejected.raw_output
+        assert len(rejected.issues) == 1, rejected.raw_output
+        (issue,) = rejected.issues
+        assert issue.code == "type-var", rejected.raw_output
+        assert issue.severity == c.Infra.ERROR, rejected.raw_output
+        diagnostic_path = project / issue.file
+        assert diagnostic_path.resolve() == source.resolve(), rejected.raw_output
+        annotation = valid_source.splitlines()[2]
+        assert issue.line == 3, rejected.raw_output
+        assert issue.column == annotation.index(service), rejected.raw_output
+        assert service in issue.message, rejected.raw_output
 
     @staticmethod
     @pytest.mark.slow

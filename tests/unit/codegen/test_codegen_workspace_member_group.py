@@ -1,11 +1,4 @@
-"""A workspace root keeps every attached member in its native uv workspace.
-
-The root environment serves every attached member: setup syncs the root lock
-with ``--all-packages``, so a conform that drops a member from
-``[tool.uv.workspace]`` (or from its ``workspace = true`` source) makes that
-sync uninstall the member and every later member import fails. The retired
-git-pinned ``workspace`` dependency group never returns: a member declared
-both as a path and as a URL is a uv conflict.
+"""The root dev group provisions declared members without sharing their locks.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -50,7 +43,21 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         )
         sources = u.Tests.toml_table_at(rendered, "tool", "uv", "sources")
         for member in members:
-            tm.that(sources[member.distribution], eq={"workspace": True})
+            tm.that(
+                sources[member.distribution],
+                eq={"path": member.path.as_posix(), "editable": member.editable},
+            )
+            tm.that(
+                member.distribution
+                in {
+                    u.Infra.dep_name(line)
+                    for line in u.Tests.toml_strings_at(
+                        rendered, "dependency-groups", "dev"
+                    )
+                },
+                eq=True,
+            )
+        tm.that("workspace" in u.Tests.toml_table_at(rendered, "tool", "uv"), eq=False)
         tm.that(
             "workspace" in u.Tests.toml_table_at(rendered, c.Infra.DEPENDENCY_GROUPS),
             eq=False,

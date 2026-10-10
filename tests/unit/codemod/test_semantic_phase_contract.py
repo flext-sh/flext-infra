@@ -97,8 +97,7 @@ class TestsFlextInfraSemanticPhaseContract:
         owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
         sources = {
             package / c.Infra.CONSTANTS_PY: (
-                f"class {owner}:\n    pass\nc = {owner}\n"
-                f'__all__ = ["{owner}", "c"]\n'
+                f'class {owner}:\n    pass\nc = {owner}\n__all__ = ["{owner}", "c"]\n'
             ),
             package / "consumer.py": (
                 "from flext_upstream import c as core_c\n"

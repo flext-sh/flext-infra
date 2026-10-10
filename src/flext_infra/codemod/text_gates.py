@@ -324,7 +324,7 @@ class FlextInfraModTextGateEngine:
         raw_captures = entry.get(c.Infra.CODEMOD_TEXT_KEY_CAPTURE_EQUALS, {})
         if not isinstance(raw_captures, dict):
             return FlextInfraModTextGateEngine._captures_failure(source)
-        captures: dict[str, str] = {}
+        captures: t.MutableStrMapping = {}
         for name, value in raw_captures.items():
             if not isinstance(value, str):
                 return FlextInfraModTextGateEngine._captures_failure(source)
@@ -522,11 +522,13 @@ class FlextInfraModTextGateEngine:
             for project in u.Infra.governed_project_roots(root)
             if project != root
         )
-        return r[t.VariadicTuple[Path]].ok(tuple(
-            path
-            for path in sorted(paths)
-            if not any(path.is_relative_to(member) for member in members)
-        ))
+        return r[t.VariadicTuple[Path]].ok(
+            tuple(
+                path
+                for path in sorted(paths)
+                if not any(path.is_relative_to(member) for member in members)
+            )
+        )
 
     @classmethod
     def _elected_rules(
@@ -762,18 +764,21 @@ class FlextInfraModTextGateEngine:
                 previous = inputs.setdefault(state.path, state)
                 if previous != state:
                     return r[m.Infra.ModTextReport].fail(
-                        f"text source identity changed during fleet planning: {state.path}",
+                        "text source identity changed during fleet planning: "
+                        f"{state.path}",
                     )
         if fix and plans:
             published = cls._publish(root, tuple(plans), tuple(inputs.values()))
             if published.failure:
                 return r[m.Infra.ModTextReport].from_failure(published)
-        return r[m.Infra.ModTextReport].ok(m.Infra.ModTextReport(
-            findings=len(entries),
-            actionable=actionable,
-            files=frozenset(files),
-            entries=tuple(entries),
-        ))
+        return r[m.Infra.ModTextReport].ok(
+            m.Infra.ModTextReport(
+                findings=len(entries),
+                actionable=actionable,
+                files=frozenset(files),
+                entries=tuple(entries),
+            )
+        )
 
     @classmethod
     def _scan_project(
@@ -789,7 +794,12 @@ class FlextInfraModTextGateEngine:
             t.VariadicTuple[m.Cli.AtomicFileState],
         ]
     ]:
-        """Plan one member's rules using its authenticated distribution identity."""
+        """Plan one member's rules using its authenticated distribution identity.
+
+        Returns:
+            The report, proposed files, and authenticated inputs without effects.
+
+        """
         context = cls._elected_rules(root)
         if context.failure:
             return r[
@@ -855,7 +865,11 @@ class FlextInfraModTextGateEngine:
             if state.path not in catalogues and state.path not in identities
         }
         if observed != expected:
-            return r[bool].fail("text source inventory changed before publication")
+            return r[bool].fail(
+                "text source inventory changed before publication: "
+                f"missing={sorted(map(str, expected - observed))}, "
+                f"added={sorted(map(str, observed - expected))}",
+            )
         return r[bool].ok(value=True)
 
     @classmethod

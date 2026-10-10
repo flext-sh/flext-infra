@@ -254,6 +254,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         Rebinding shapes that could smuggle a class identity (constant or
         name right-hand sides) still fail loudly below.
 
+        Returns:
+            ``True`` if the mutation is an opaque computed attribute rebind,
+            ``False`` otherwise.
         """
         if not isinstance(node.value, ast.Call):
             return False
@@ -461,7 +464,19 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         reference: m.Infra.SourceClassReference,
         definitions: t.MappingKV[str, m.Infra.SourceClassDefinition],
     ) -> m.Infra.SourceClassReference | None:
-        """Resolve a receiver only through inventoried nested class identities."""
+        """Resolve a receiver only through inventoried nested class identities.
+
+        Args:
+            reference: The initial class reference to resolve.
+            definitions: A mapping of class targets to their definitions.
+
+        Returns:
+            The resolved nested class reference, or None if it cannot be resolved.
+            Returns None if the resolution fails.
+
+        Raises:
+            ValueError: If a cyclic class namespace receiver is detected.
+        """
         current = reference
         visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
         while current.attributes:

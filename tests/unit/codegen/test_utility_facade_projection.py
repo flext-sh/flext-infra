@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, infra, m, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
@@ -24,6 +24,400 @@ class TestsFlextInfraUtilityFacadeProjection:
         """Create one fixture source through the canonical atomic writer."""
         path.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(path, source))
+
+    @staticmethod
+    def _behavior_package(package: Path, value_type: str) -> dict[Path, str]:
+        """Declare a real typed factory and its public facade in one fixture package."""
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        return {
+            package / "__init__.py": (
+                f"from {package.name}.utilities import Utilities, u\n"
+                "class Types:\n    pass\nt = Types\n"
+                "__all__ = ['Types', 't', 'Utilities', 'u']\n"
+            ),
+            package / directory / "__init__.py": "",
+            package / directory / "adapter.py": (
+                "from pydantic import TypeAdapter\n"
+                "class AdapterOwner:\n"
+                "    @staticmethod\n"
+                f"    def value_adapter() -> TypeAdapter[{value_type}]:\n"
+                f"        return TypeAdapter({value_type})\n"
+                "__all__ = ['AdapterOwner']\n"
+            ),
+            package / "utilities.py": (
+                f"from {package.name}.{directory}.adapter import AdapterOwner\n"
+                "class Utilities(AdapterOwner):\n    pass\nu = Utilities\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+
+    @pytest.mark.parametrize("relation", ["isolated", "inherited", "foreign-only"])
+    def test_behavior_owners_follow_the_imported_package_lineage(
+        self,
+        tmp_path: Path,
+        relation: str,
+    ) -> None:
+        """Matching foreign method names neither redirect nor ambiguate a reference."""
+        root, first = u.Tests.create_lazy_init_workspace(tmp_path)
+        second = first.with_name(first.name + "_other")
+        sources = self._behavior_package(first, "int")
+        sources.update(self._behavior_package(second, "str"))
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        if relation != "isolated":
+            del sources[first / directory / "adapter.py"]
+            sources[first / "utilities.py"] = (
+                f"from {second.name} import Utilities as ParentUtilities\n"
+                "class Utilities(ParentUtilities):\n    pass\nu = Utilities\n"
+                "__all__ = ['Utilities', 'u']\n"
+                if relation == "inherited"
+                else "class Utilities:\n    pass\nu = Utilities\n"
+                "__all__ = ['Utilities', 'u']\n"
+            )
+            if relation == "inherited":
+                third = first.with_name(first.name + "_leaf")
+                sources.update(self._behavior_package(third, "str"))
+                del sources[second / directory / "adapter.py"]
+                sources[second / "__init__.py"] = (
+                    f"from {third.name} import Types as ParentTypes\n"
+                    f"from {second.name}.utilities import Utilities, u\n"
+                    "class Types(ParentTypes):\n    pass\nt = Types\n"
+                    "__all__ = ['Types', 't', 'Utilities', 'u']\n"
+                )
+                sources[second / "utilities.py"] = (
+                    f"from {third.name} import Utilities as ParentUtilities\n"
+                    "class Utilities(ParentUtilities):\n    pass\nu = Utilities\n"
+                    "__all__ = ['Utilities', 'u']\n"
+                )
+                typings = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY).directory
+                sources[first / typings / "eager.py"] = (
+                    f"from {second.name} import Types as ImportedTypes\n"
+                    "class Eager:\n    adapter = ImportedTypes.value_adapter()\n"
+                    "__all__ = ['Eager']\n"
+                )
+                sources[first / "__init__.py"] = (
+                    f"from {second.name} import Types as ParentTypes\n"
+                    f"from {first.name}.utilities import Utilities, u\n"
+                    "class Types(ParentTypes):\n    pass\nt = Types\n"
+                    f"from {first.name}.{typings}.eager import Eager\n"
+                    "__all__ = ['Types', 't', 'Utilities', 'u', 'Eager']\n"
+                )
+        consumer = root / "consumer.py"
+        sources[consumer] = (
+            "def first_call():\n"
+            f"    from {first.name} import t as shared\n"
+            "    return shared.value_adapter().validate_python('7')\n"
+            "def second_call():\n"
+            f"    from {second.name} import t as shared\n"
+            "    return shared.value_adapter().validate_python('7')\n"
+        )
+        for path, source in sources.items():
+            self._write(path, source)
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            ))
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            if relation == "foreign-only":
+                tm.that(proposed[consumer], has="return shared.value_adapter()")
+            else:
+                tm.that(proposed[consumer], has=f"{first.name}.u.value_adapter()")
+            if relation == "inherited":
+                tm.that(
+                    proposed[first / typings / "eager.py"],
+                    has=f"{second.name}.u.value_adapter()",
+                )
+            tm.that(proposed[consumer], has=f"{second.name}.u.value_adapter()")
+            tm.that(tm.ok(u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=proposed,
+            )), empty=True)
+        for path, source in proposed.items():
+            self._write(path, source)
+        first_contract = (
+            "try:\n    consumer.first_call()\n"
+            "except AttributeError:\n    print('unavailable')\n"
+            "else:\n    raise AssertionError('foreign behavior adopted')\n"
+            if relation == "foreign-only"
+            else f"assert consumer.first_call() == {'7' if relation == 'isolated' else repr('7')}\n"
+        )
+        output = tm.ok(u.Cli.run_raw(
+            (sys.executable, "-c", "import consumer\n" + first_contract
+             + "assert consumer.second_call() == '7'\n"
+             + (
+                 f"from {first.name} import Eager\nassert Eager.adapter.validate_python('9') == '9'\n"
+                 if relation == "inherited" else ""
+             ) + "print('scoped')\n"),
+            cwd=root,
+            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(first.parent)}),
+        ))
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout, has="scoped")
+
+    def test_shadowed_t_with_competing_owners_is_not_a_migration(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Ownership decisions do not run for a lexical parameter named t."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = self._behavior_package(package, "int")
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        sources[package / directory / "duplicate.py"] = (
+            "class Duplicate:\n    @staticmethod\n"
+            "    def value_adapter() -> int:\n        return 1\n"
+            "__all__ = ['Duplicate']\n"
+        )
+        consumer = root / "consumer.py"
+        sources[consumer] = (
+            f"from {package.name} import t\n"
+            "def consumer(t):\n    return t.value_adapter()\n"
+        )
+        for path, source in sources.items():
+            self._write(path, source)
+        with infra.rope_workspace(root) as rope:
+            tm.that(tm.ok(u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )), empty=True)
+        tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
+
+    def test_existing_contextual_u_call_keeps_facade_dispatch(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A valid class-context-dependent utility remains outside this migration."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = self._behavior_package(package, "int")
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        sources[package / directory / "adapter.py"] = (
+            "class AdapterOwner:\n    marker = 'leaf'\n"
+            "    @classmethod\n    def bind_context(cls) -> str:\n"
+            "        return cls.marker\n__all__ = ['AdapterOwner']\n"
+        )
+        sources[package / "utilities.py"] = (
+            f"from {package.name}.{directory}.adapter import AdapterOwner\n"
+            "class Utilities(AdapterOwner):\n    marker = 'facade'\nu = Utilities\n"
+            "__all__ = ['Utilities', 'u']\n"
+        )
+        caller = package / "_decorators" / "consumer.py"
+        sources[caller] = (
+            f"from {package.name} import u\n"
+            "def consume() -> str:\n    return u.bind_context()\n"
+        )
+        for path, source in sources.items():
+            self._write(path, source)
+        with infra.rope_workspace(root) as rope:
+            tm.that(tm.ok(u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )), empty=True)
+        output = tm.ok(u.Cli.run_raw(
+            (sys.executable, "-c", f"from {package.name}._decorators.consumer import consume; assert consume() == 'facade'"),
+            cwd=root,
+            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+        ))
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+
+    def test_relocated_behavior_roundtrip_keeps_bootstrap_lower_dependency(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A real consumer imports the projected facade without a reverse cycle."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owners = (
+            package / u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        )
+        typings = (
+            package / u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY).directory
+        )
+        owner = owners / "adapter.py"
+        runtime = package / "runtime.py"
+        facade = package / "utilities.py"
+        consumer = root / "consumer.py"
+        sources = {
+            package / "__init__.py": (
+                f"from {package.name}.typings import t\n"
+                f"from {package.name}.utilities import u\n"
+            ),
+            package / "typings.py": (
+                f"from {package.name}.{typings.name}.base import Types\n"
+                "t = Types\n__all__ = ['Types', 't']\n"
+            ),
+            typings / "__init__.py": "",
+            typings / "base.py": "class Types:\n    pass\n__all__ = ['Types']\n",
+            owners / "__init__.py": "",
+            owner: (
+                "from pydantic import TypeAdapter\n"
+                "class AdapterOwner:\n"
+                "    @staticmethod\n"
+                "    def value_adapter() -> TypeAdapter[int]:\n"
+                "        return TypeAdapter(int)\n"
+                "__all__ = ['AdapterOwner']\n"
+            ),
+            runtime: (
+                f"from {package.name} import t\n"
+                f"from {package.name}.{typings.name}.retired import Retired\n"
+                "class Runtime:\n"
+                "    @staticmethod\n"
+                "    def parse(value):\n"
+                "        first = t.value_adapter().validate_python(value)\n"
+                "        return Retired.value_adapter().validate_python(first)\n"
+                "def shadowed(t):\n    return t.value_adapter()\n"
+            ),
+            facade: (
+                f"from {package.name}.runtime import Runtime\n"
+                "class Utilities(Runtime):\n    pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+            consumer: (
+                f"from {package.name} import t\n"
+                "assert t.value_adapter().validate_python('7') == 7\n"
+            ),
+        }
+        for path, source in sources.items():
+            self._write(path, source)
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            tm.that(
+                proposed[runtime],
+                has=f"from {package.name}.{owners.name}.adapter import AdapterOwner",
+            )
+            tm.that(proposed[runtime], has="return t.value_adapter()")
+            tm.that("retired import" not in proposed[runtime], eq=True)
+            tm.that(proposed[consumer], has=f"import {package.name}")
+            tm.that(proposed[consumer], has=f"{package.name}.u.value_adapter()")
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=proposed,
+                    )
+                ),
+                empty=True,
+            )
+        for path, source in proposed.items():
+            self._write(path, source)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u; "
+                        f"import runpy; runpy.run_path({str(consumer)!r}); "
+                        "from pydantic import ValidationError; "
+                        "assert u.parse('7') == 7; "
+                        "assert u.value_adapter().validate_python('8') == 8\n"
+                        "try:\n    u.parse([])\n"
+                        "except ValidationError:\n    print('rejected')\n"
+                        "else:\n    raise AssertionError('invalid payload accepted')\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout, has="rejected")
+
+    def test_nested_facade_projects_direct_lower_owner_runtime_calls(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Direct leaf calls select the nested public namespace without a cycle."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = self._behavior_package(package, "int")
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        sources[package / "runtime.py"] = (
+            f"from {package.name}.{directory}.adapter import AdapterOwner\n"
+            "class Runtime:\n    @staticmethod\n    def parse(value):\n"
+            "        return AdapterOwner.value_adapter().validate_python(value)\n"
+        )
+        facade = package / "utilities.py"
+        sources[facade] = (
+            f"from {package.name}.runtime import Runtime\n"
+            "class Utilities:\n    class Domain(Runtime):\n        pass\n"
+            "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+        )
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        output = tm.ok(u.Cli.run_raw(
+            (sys.executable, "-c", (
+                f"from {package.name} import u; "
+                "assert u.Domain.parse('7') == 7; "
+                "assert u.Domain.value_adapter().validate_python('8') == 8; "
+                "print('nested')"
+            )),
+            cwd=root,
+            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+        ))
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout, has="nested")
+
+    @pytest.mark.parametrize("conflict", ["ownership", "shadowing"])
+    def test_behavior_cutover_rejects_ambiguity_without_mutation(
+        self,
+        tmp_path: Path,
+        conflict: str,
+    ) -> None:
+        """Neither competing owners nor a shadowed destination permits a cutover."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = (
+            package / u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        )
+        consumer = root / "consumer.py"
+        source = (
+            f"from {package.name} import t\n"
+            f"def consume({package.name}):\n    return t.value_adapter()\n"
+            if conflict == "shadowing"
+            else f"from {package.name} import t\nvalue = t.value_adapter()\n"
+        )
+        sources = {
+            consumer: source,
+            package / "__init__.py": (
+                "class Types:\n    pass\n"
+                "t = Types\n__all__ = ['Types', 't']\n"
+            ),
+        }
+        for name in ("First", "Second") if conflict == "ownership" else ("First",):
+            sources[family / f"{name.lower()}.py"] = (
+                f"class {name}:\n"
+                "    @staticmethod\n"
+                "    def value_adapter() -> int:\n        return 7\n"
+                f"__all__ = ['{name}']\n"
+            )
+        for path, content in sources.items():
+            self._write(path, content)
+        with infra.rope_workspace(root) as rope:
+            result = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        tm.fail(result, has="ambiguous" if conflict == "ownership" else "shadowed")
+        tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @pytest.mark.parametrize(
         ("import_statement", "consumer_name"),

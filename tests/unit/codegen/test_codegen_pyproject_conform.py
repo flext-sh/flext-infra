@@ -365,11 +365,10 @@ class TestsFlextInfraCodegenPyprojectConform:
     )
     def test_generated_dev_floors_follow_publication_topology(
         self,
+        tmp_path: Path,
         role: c.Infra.MakeProfile,
-        *,
-        attached: bool,
     ) -> None:
-        """Members publish inline sources; only the root keeps bare local floors."""
+        """All profiles retain Git floors; only the root selects local paths."""
         provider = u.Tests.provider()
         branch = u.Tests.provider_branch()
         floors = tuple(config.Infra.codegen.scaffold.project.dev)
@@ -395,7 +394,14 @@ class TestsFlextInfraCodegenPyprojectConform:
                 if is_root
                 else ()
             ),
-        ).model_copy(update={"superproject_members": internal if attached else ()})
+        )
+        for member in workspace.subprojects:
+            path = tmp_path / member.path / c.PYPROJECT_FILENAME
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f'[project]\nname = "{member.distribution}"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
         dependency_source = m.Infra.WorkspaceIntegrationSpec(
             provider=provider.name,
             branch=branch,
@@ -409,6 +415,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
                 options=u.Infra.PyprojectConformOptions(
                     flext_line=dependency_source,
+                    repository_root=tmp_path,
                 ),
             ),
         )
@@ -421,17 +428,19 @@ class TestsFlextInfraCodegenPyprojectConform:
         # it installs from a clone. Only the workspace root redirects members.
         for name in internal:
             expected = (
-                name
-                if is_root
-                else (
-                    f"{name} @ git+{dependency_source.base_url}/{name}.git"
-                    f"@{dependency_source.branch}"
-                )
+                f"{name} @ git+{dependency_source.base_url}/{name}.git"
+                f"@{dependency_source.branch}"
             )
             tm.that(expected in dev, eq=True)
             tm.that(name in sources, eq=is_root)
             if is_root:
-                tm.that(sources[name], eq={"workspace": True})
+                member = next(
+                    ref for ref in workspace.subprojects if ref.distribution == name
+                )
+                tm.that(
+                    sources[name],
+                    eq={"path": member.path.as_posix(), "editable": member.editable},
+                )
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
@@ -440,6 +449,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
                 options=u.Infra.PyprojectConformOptions(
                     flext_line=dependency_source,
+                    repository_root=tmp_path,
                 ),
             ),
         )

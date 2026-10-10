@@ -23,12 +23,12 @@ class TestsFlextInfraConstantsCensusOwnership:
 
     @pytest.mark.parametrize(
         "relative_module",
-        (
+        [
             "_utilities/base.py",
             "_protocols/base.py",
             "_models/base.py",
             "service.py",
-        ),
+        ],
     )
     def test_constant_is_owned_by_constants_in_every_source_family(
         self,
@@ -55,7 +55,7 @@ class TestsFlextInfraConstantsCensusOwnership:
                 item
                 for item in workspace.objects(
                     path,
-                    include_local_scopes=False,
+                    include_local_scopes=True,
                     include_references=False,
                 )
                 if item.name == "PROTOCOL_TOKEN"

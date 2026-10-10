@@ -143,7 +143,9 @@ class FlextInfraPytestProfile:
                     profiles.append(suite)
                 for child in profiles:
                     child_receipt = self.context.model_copy(
-                        update={"profile_sha256": u.Cli.sha256_bytes(child.read_bytes())},
+                        update={
+                            "profile_sha256": u.Cli.sha256_bytes(child.read_bytes())
+                        },
                     )
                     u.Cli.atomic_write_text_file(
                         child.with_suffix(".pstats.json"),

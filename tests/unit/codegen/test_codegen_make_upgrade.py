@@ -479,16 +479,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
         [c.Infra.MakeProfile.STANDALONE],
         indirect=True,
     )
-    def test_attached_member_upg_stops_before_any_lock(
+    @pytest.mark.remote
+    @pytest.mark.slow
+    def test_native_shared_workspace_guard_stops_before_uv_lock(
         self,
         tmp_path: Path,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
-        """`make upg` in an attached member fails loud and writes no lock.
-
-        Inside a workspace the member resolves the workspace runtime, where
-        `uv lock` rewrites the workspace lock and never the member's own.
-        """
+        """A remaining native shared-lock declaration still fails before UV writes."""
         _profile, template = generated_make_template
         workspace = tmp_path / "workspace"
         member = workspace / "member"
@@ -510,10 +508,17 @@ class TestsFlextInfraCodegenMakeUpgrade:
             f"160000,{head.strip()},member",
         )
         u.Tests.commit_git_changes(workspace, "attach member")
+        (workspace / c.PYPROJECT_FILENAME).write_text(
+            '[tool.uv.workspace]\nmembers = ["member"]\n',
+            encoding="utf-8",
+        )
         previous = {lock.name: lock.read_bytes() for lock in member.glob("*.lock")}
 
         upgraded = tm.ok(
-            u.Tests.run_isolated_make(["--no-print-directory", "upg"], cwd=member),
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "_builtin_require_upg_lock_owner"],
+                cwd=member,
+            ),
         )
 
         tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
@@ -523,3 +528,29 @@ class TestsFlextInfraCodegenMakeUpgrade:
             eq=previous,
         )
         tm.that(workspace_lock.exists(), eq=False)
+
+    def test_member_alignment_is_one_way_after_complete_convergence(
+        self,
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """The real recipe aligns the containing root once, after all member gates."""
+        _profile, root = generated_make_template
+        text = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        lifecycle = text.split("_upg_lifecycle:", 1)[1].split("_upg_converge:\n", 1)[0]
+        convergence = text.split("_upg_converge:\n", 1)[1].split("\n.PHONY:", 1)[0]
+        alignment = '-C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg UPG_HANDOFF='
+        tm.that(lifecycle.index("_builtin_require_upg_lock_owner") < lifecycle.index("$(UV) lock"), eq=True)
+        tm.that(convergence.count(alignment), eq=1)
+        tm.that(
+            convergence.index("_upg_activated") < convergence.index(alignment),
+            eq=True,
+        )
+        tm.that(
+            convergence,
+            has='if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then',
+        )
+        tm.that(
+            self._recipe_targets_containing(text, alignment),
+            eq={"_upg_converge"},
+        )
+        tm.that(text, lacks=["--no-workspace", "--all-packages"])

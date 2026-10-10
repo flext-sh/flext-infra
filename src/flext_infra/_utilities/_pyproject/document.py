@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated
 
 from flext_cli import u
@@ -28,6 +29,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 description="Detected provider and branch for internal requirements",
             ),
         ] = None
+        repository_root: Annotated[
+            Path | None,
+            m.Field(description="Canonical root for declared member metadata"),
+        ] = None
+        codegen_dependencies: Annotated[
+            t.StrSequence,
+            m.Field(description="Codegen floors from the canonical rendered profile"),
+        ] = ()
 
     @classmethod
     def _parsed_pyproject(
@@ -88,23 +97,42 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[str].from_failure(parsed)
         source, project_name = parsed.value
         provenance = options if options is not None else cls.PyprojectConformOptions()
-        # Only the workspace root normalizes member requirements to bare names.
-        # Attached members retain inline Git provenance for published metadata;
-        # their containing workspace identity is applied separately to uv sources.
-        workspace_members = (
-            tuple(
-                member.distribution
-                for member in workspace.subprojects
-                if member.package
+        environment = cls._member_environment_requirements(workspace, provenance)
+        if environment.failure:
+            return r[str].from_failure(environment)
+        member_requests, member_groups, member_requirements = environment.value
+        if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
+            payload = u.Cli.toml_as_mapping(source)
+            if payload is None:
+                return r[str].fail("root metadata is not a TOML mapping")
+            groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
+            u.Cli.toml_sync_string_list(
+                groups,
+                str(c.Infra.DEV),
+                cls._custom_dev_additions(payload),
             )
-            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
-            else ()
-        )
+            # Codegen is already a managed group, unlike CUSTOM dev additions.
+            u.Cli.toml_sync_string_list(
+                groups,
+                "codegen",
+                sorted({*provenance.codegen_dependencies, *member_groups}),
+            )
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
             required_dev_dependencies=required_dev_dependencies,
         )
+        groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
+        dev = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV)))
+        # Exact requirements retain marker variants and intersecting bounds.
+        u.Cli.toml_sync_string_list(
+            groups,
+            str(c.Infra.DEV),
+            sorted({*dev, *member_requests}),
+        )
+        local_requirements = cls._document_requirement_lines(source)
+        if local_requirements.failure:
+            return r[str].from_failure(local_requirements)
         requirement_sources = cls._declared_requirement_sources(
             source,
             project_name=project_name,
@@ -122,7 +150,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             family_line=(
                 None if provenance.flext_line is None else provenance.flext_line.branch
             ),
-            workspace_members=workspace_members,
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
@@ -131,12 +158,97 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             source,
             uv_resolution=uv_resolution,
             candidate_sources=candidate_sources,
-            workspace_members=workspace_members or workspace.superproject_members,
+            local_requirements=(*local_requirements.value, *member_requirements),
             workspace=workspace,
         )
         if synced.failure:
             return r[str].from_failure(synced)
         return cls._render_pyproject(source)
+
+    @staticmethod
+    def _member_environment_requirements(
+        workspace: m.Infra.WorkspaceSpec,
+        options: PyprojectConformOptions,
+    ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
+        """Retain all declared member extras and groups in the root environment."""
+        result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
+        members = (
+            tuple(member for member in workspace.subprojects if member.package)
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            else ()
+        )
+        if not members:
+            return result.ok(((), (), ()))
+        if options.repository_root is None or workspace.integration is None:
+            return result.fail(
+                "member provisioning requires repository root and integration",
+            )
+        requests: list[str] = []
+        groups: list[str] = []
+        requirements: list[str] = []
+        for member in members:
+            path = options.repository_root / member.path / c.PYPROJECT_FILENAME
+            document = u.Cli.toml_read_document(path)
+            if document.failure:
+                return result.from_failure(document)
+            payload = u.Cli.toml_as_mapping(document.value)
+            if payload is None:
+                return result.fail(f"member metadata is not a TOML mapping: {path}")
+            project = payload.get(c.Infra.PROJECT)
+            if (
+                not isinstance(project, Mapping)
+                or project.get(c.Infra.NAME) != member.distribution
+            ):
+                return result.fail(
+                    f"member metadata identity differs from declaration: {path}",
+                )
+            optional = project.get(c.Infra.OPTIONAL_DEPENDENCIES, {})
+            if not isinstance(optional, Mapping):
+                return result.fail(
+                    f"member optional dependencies must be a table: {path}"
+                )
+            for raw in (project.get(c.Infra.DEPENDENCIES, ()), *optional.values()):
+                validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, raw)
+                if validated.failure:
+                    return result.from_failure(validated)
+            extras = f"[{','.join(sorted(optional))}]" if optional else ""
+            requests.append(
+                f"{member.distribution}{extras} @ git+{member.url}@{workspace.integration.branch}",
+            )
+            declared_groups = payload.get(c.Infra.DEPENDENCY_GROUPS, {})
+            if not isinstance(declared_groups, Mapping):
+                return result.fail(f"member dependency groups must be a table: {path}")
+            if declared_groups:
+                for name in declared_groups:
+                    entries = declared_groups[name]
+                    if not isinstance(entries, list):
+                        return result.fail(
+                            f"member dependency group {name} must be an array: {path}",
+                        )
+                    for entry in entries:
+                        if isinstance(entry, str):
+                            groups.append(entry)
+                        elif (
+                            isinstance(entry, Mapping)
+                            and tuple(entry) == ("include-group",)
+                            and isinstance(entry["include-group"], str)
+                            and entry["include-group"] in declared_groups
+                        ):
+                            # All groups are requested, including this target.
+                            continue
+                        else:
+                            return result.fail(
+                                f"invalid member dependency group {name}: {path}",
+                            )
+            declared = (
+                FlextInfraUtilitiesPyprojectUvSources._document_requirement_lines(
+                    document.value,
+                )
+            )
+            if declared.failure:
+                return result.from_failure(declared)
+            requirements.extend(declared.value)
+        return result.ok((tuple(requests), tuple(groups), tuple(requirements)))
 
     @staticmethod
     def _declared_floor_sources(
@@ -245,7 +357,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         *,
         uv_resolution: m.Infra.UvResolutionSpec,
         candidate_sources: t.StrMapping,
-        workspace_members: t.StrSequence,
+        local_requirements: t.StrSequence,
         workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[bool]:
         """Sync the canonical typecheck, namespace, uv, and provenance tables.
@@ -269,10 +381,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             source,
             resolution=uv_resolution,
             candidate_sources=candidate_sources,
-            workspace_members=workspace_members,
-            owns_workspace_table=(
-                workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
-            ),
+            workspace=workspace,
+            local_requirements=local_requirements,
         )
         if sources_result.failure:
             return r[bool].from_failure(sources_result)

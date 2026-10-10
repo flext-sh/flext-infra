@@ -82,7 +82,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(stat.S_IMODE(destination.stat().st_mode), eq=desired_mode)
 
     @staticmethod
-    def test_workspace_uv_plan_owns_root_environment_and_native_member_sources(
+    def test_workspace_uv_plan_owns_root_environment_and_local_member_sources(
         tmp_path: Path,
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
@@ -94,6 +94,12 @@ class TestsFlextInfraCodegenConformPublicSurface:
             subprojects=(member,),
         )
         root = tmp_path / "flext"
+        member_root = root / member.path
+        member_root.mkdir(parents=True)
+        (member_root / c.PYPROJECT_FILENAME).write_text(
+            f'[project]\nname = "{member.distribution}"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
         # The governed tree above the workspace carries the committed Mise
         # declaration and lock that activate its locked tools.
         u.Tests.copy_tracked_mise_seeds(tmp_path)
@@ -125,7 +131,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(
             u.Tests.toml_table_at(pyproject, "tool", "uv", "sources"),
             eq={
-                repository.distribution: {"workspace": True}
+                repository.distribution: {
+                    "path": repository.path.as_posix(),
+                    "editable": repository.editable,
+                }
                 for repository in workspace.subprojects
                 if repository.package
             },

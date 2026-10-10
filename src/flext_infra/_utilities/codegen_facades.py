@@ -339,17 +339,18 @@ class FlextInfraUtilitiesCodegenFacades:
                     if not isinstance(reference, ast.Attribute):
                         continue
                     receiver = reference.value
-                    if nested_namespace and (
-                        not isinstance(receiver, ast.Attribute)
-                        or receiver.attr != namespace
-                    ):
-                        continue
+                    public_receiver = not nested_namespace or (
+                        isinstance(receiver, ast.Attribute)
+                        and receiver.attr == namespace
+                    )
                     receiver = (
                         receiver.value
-                        if nested_namespace and isinstance(receiver, ast.Attribute)
+                        if nested_namespace
+                        and public_receiver
+                        and isinstance(receiver, ast.Attribute)
                         else receiver
                     )
-                    if not isinstance(receiver, ast.Name) or receiver.id != family:
+                    if not isinstance(receiver, ast.Name):
                         continue
                     if pymodule is None:
                         resource = project.get_resource(
@@ -368,17 +369,29 @@ class FlextInfraUtilitiesCodegenFacades:
                         pymodule,
                         offset,
                     )
-                    if binding is None or binding.imported_name != family:
+                    if binding is None:
                         continue
                     declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
                         project,
                         binding,
                     )
-                    if declared not in {
-                        pkg_dir,
-                        pkg_dir / c.Infra.INIT_PY,
-                        facade_path,
-                    }:
+                    lower_owner = family == "u" and declared.is_relative_to(
+                        pkg_dir
+                        / FlextInfraUtilitiesCodegenNamespace.facade_families()[
+                            family
+                        ].directory
+                    )
+                    if not lower_owner and (
+                        not public_receiver
+                        or receiver.id != family
+                        or binding.imported_name != family
+                        or declared
+                        not in {
+                            pkg_dir,
+                            pkg_dir / c.Infra.INIT_PY,
+                            facade_path,
+                        }
+                    ):
                         continue
                     methods.add(reference.attr)
         return frozenset(method for method in methods if not method.startswith("_"))

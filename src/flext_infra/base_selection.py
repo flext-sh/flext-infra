@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_core import t
-
 from flext_infra import FlextInfraServiceBase, m
 from flext_infra._base_projects import FlextInfraProjectSelectionMixin
 
