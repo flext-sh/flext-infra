@@ -548,6 +548,9 @@ export {{ make.ci.variable }}
 override TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 endif
 override SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
+# Digest of the Makefile this make parsed; `upg` compares it after `gen`
+# publishes to decide whether the remaining recipe may still name its targets.
+override SELF_MAKEFILE_DIGEST := $(shell sha256sum "$(SELF_MAKEFILE)")
 
 define RUN_PUBLIC_POST
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
@@ -773,7 +776,14 @@ _builtin_setup_environment: $(if $(filter {{ make.ci.value }},$({{ make.ci.varia
 # metadata so a stale cached requires-dist can never block or skew the
 # resolution. Like `setup`, it runs the declared pre-/post-upg lifecycle
 # hooks, post-upg inside the activated environment.
-.PHONY: _upg_lifecycle
+# The producer half of `gen` publishes this Makefile. A recipe never names a
+# target after that point from a file it did not parse: when publication
+# changed the Makefile, the upgrade hands off to a fresh `make upg` that
+# parses the new file and converges there (its own producer half is then a
+# fixed point); otherwise `_upg_converge`, defined by this same file,
+# finishes it. A second change inside the hand-off is a gen fixed-point
+# defect and fails loud.
+.PHONY: _upg_lifecycle _upg_converge
 _upg_lifecycle: _builtin_setup_submodules
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
@@ -791,6 +801,19 @@ _upg_lifecycle: _builtin_setup_submodules
 		--apply --rewrite-constraints --projects .
 	@$(SELF_MAKE) _builtin_require_environment
 	$(call RUN_PUBLIC_PRODUCE,gen)
+	+@set -eu; \
+	published="$$(sha256sum "$(SELF_MAKEFILE)")"; \
+	if [ "$$published" = "$(SELF_MAKEFILE_DIGEST)" ]; then \
+		$(SELF_MAKE) _upg_converge; \
+	elif [ "$(UPG_HANDOFF)" = "Y" ]; then \
+		printf 'ERROR: upg: gen republished %s inside the hand-off; gen is not a fixed point\n' "$(SELF_MAKEFILE)" >&2; \
+		exit 1; \
+	else \
+		printf 'upg: gen published a new %s; handing off to make upg on it\n' "$(SELF_MAKEFILE)"; \
+		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y; \
+	fi
+
+_upg_converge:
 	@$(UV) lock --project "$(PROJECT_ROOT)"
 	@$(UV) lock --check --project "$(PROJECT_ROOT)"
 	@$(SELF_MAKE) _builtin_setup_environment
