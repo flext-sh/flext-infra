@@ -193,7 +193,7 @@ class FlextInfraUtilitiesLintRecipes:
         Raises:
             ValueError: If a whole-module recipe reaches the edit planner.
 
-       
+
 
         """
         sections: MutableMapping[
