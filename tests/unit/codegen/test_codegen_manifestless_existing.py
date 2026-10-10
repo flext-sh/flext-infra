@@ -34,7 +34,10 @@ class TestsFlextInfraCodegenManifestlessExisting:
 
         """
         pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
-        custom_dev_requirement = 'flext-custom-tests>=0.1; python_version < "3.0"'
+        # An external CUSTOM requirement: a FLEXT-family name without a direct
+        # Git source is a source-less internal dependency, which conform
+        # refuses loudly by design.
+        custom_dev_requirement = 'custom-dev-tool>=0.1; python_version < "3.0"'
         pyproject_payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(pyproject_source),
         )
@@ -251,7 +254,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
             f'"{ref.distribution} @ git+{ref.url}@{u.Tests.provider_branch()}"'
             for ref in internal_dev
         )
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         root = tmp_path / distribution
         package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
         package.mkdir(parents=True)

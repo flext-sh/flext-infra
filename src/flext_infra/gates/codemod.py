@@ -14,8 +14,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import FlextInfraGate, c, config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -51,7 +50,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
         )
         if not targets:
             raise FileNotFoundError(project_dir)
-        return self._execute_check_command(project_dir, ctx, targets, time.monotonic())
+        return self._execute_check_command(
+            project_dir,
+            ctx,
+            targets,
+            time.monotonic(),
+            nonparticipants=u.Infra.manifest_nonparticipant_paths(project_dir),
+        )
 
     @override
     def check_files(
@@ -88,6 +93,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
         started: float,
+        *,
+        nonparticipants: frozenset[str] = frozenset(),
     ) -> m.Infra.GateExecution:
         """Keep whole-project and file-scoped scans on the same native contract.
 
@@ -149,7 +156,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         raw_output: list[str] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
-                self._scan_command(ruleset, targets, binary.value),
+                self._scan_command(ruleset, targets, binary.value, nonparticipants),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
@@ -286,6 +293,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         ruleset: m.Infra.CodemodRuleset,
         targets: t.StrSequence,
         binary: Path,
+        nonparticipants: frozenset[str] = frozenset(),
     ) -> t.StrSequence:
         """Canonical ast-grep invocation for one composed provider ruleset.
 
@@ -302,6 +310,14 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 *c.Infra.CHECK_EXCLUDED_DIRS,
                 *config.Infra.codegen.source_scan_ignored,
             })
+        )
+        globs = (
+            *globs,
+            *(
+                glob
+                for path in sorted(nonparticipants)
+                for glob in (f"!/{path}", f"!/{path}/**")
+            ),
         )
         cmd: list[str] = [
             str(binary),

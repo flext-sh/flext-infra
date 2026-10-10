@@ -15,11 +15,11 @@ from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
-from flext_cli import r, u
+from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesResourceLimits,

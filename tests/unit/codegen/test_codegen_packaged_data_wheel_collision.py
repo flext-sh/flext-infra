@@ -563,7 +563,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
     ) -> None:
         """A declared generated manifest is accepted before scaffold effects."""
         root = tmp_path / "scaffold-data"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         repository = u.Tests.repository_ref(
             "scaffold-data",
             role=c.Infra.MakeProfile.STANDALONE,

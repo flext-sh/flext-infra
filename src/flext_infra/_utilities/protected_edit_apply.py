@@ -13,9 +13,7 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities.protected_edit_preview import (
-    FlextInfraUtilitiesProtectedEditPreview,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProtectedEditPreview
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):

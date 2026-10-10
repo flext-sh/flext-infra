@@ -11,9 +11,7 @@ from inspect import getattr_static
 from types import FunctionType
 
 from flext_infra import c, config, m, t
-from flext_infra.codegen._protocol_model_annotations import (
-    FlextInfraCodegenProtocolModelAnnotations,
-)
+from flext_infra.codegen import FlextInfraCodegenProtocolModelAnnotations
 
 
 class FlextInfraCodegenProtocolModelRender:

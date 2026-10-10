@@ -16,8 +16,7 @@ from flext_cli import cli
 from flext_infra import c, config, m, p, r, t, u
 
 if TYPE_CHECKING:
-    from flext_infra.check.gate_registry import FlextInfraGateRegistry
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra import FlextInfraGate, FlextInfraGateRegistry
 
 
 class FlextInfraWorkspaceCheckGatesMixin:
@@ -163,10 +162,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.ProjectResult:
         """Run gates for one project and retain every executed gate in order.
 
-        Fixers mutate shared files, so an ``--apply`` run chains every gate on
-        the previous one. Read-only gates share no mutable state and run as one
-        parallel wave; reporting retains the complete wave, including failures
-        after the first one. Serialized fail-fast runs stop at their failed gate.
+        Every gate runs serially through the public CLI pipeline. Whole-program
+        checkers must not compete for memory, and fixers share mutable files.
+        Read-only checks retain every verdict; fail-fast and mutating runs stop
+        at the first failed gate without fabricating unexecuted results.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
@@ -181,7 +180,6 @@ class FlextInfraWorkspaceCheckGatesMixin:
         executions: MutableMapping[str, m.Infra.GateExecution] = {}
 
         stages: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
-        previous_gate_id: str | None = None
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
@@ -192,11 +190,6 @@ class FlextInfraWorkspaceCheckGatesMixin:
             stages.append(
                 m.Cli.PipelineStageSpec(
                     stage_id=gate_id,
-                    depends_on=(
-                        frozenset({previous_gate_id})
-                        if (ctx.fail_fast or mutating) and previous_gate_id is not None
-                        else frozenset()
-                    ),
                     handler=self._make_gate_handler(
                         gate_instance,
                         project_dir,
@@ -205,15 +198,16 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     ),
                 ),
             )
-            previous_gate_id = gate_id
 
-        cli.pipeline(
-            stages,
-            context=m.Cli.PipelineStageContext(repository_root=project_dir),
-            logger=self._gate_logger,
-        )
         for stage in stages:
+            pipeline_result = cli.pipeline(
+                (stage,),
+                context=m.Cli.PipelineStageContext(repository_root=project_dir),
+                logger=self._gate_logger,
+            )
             execution = executions[stage.stage_id]
+            if execution.result.passed:
+                pipeline_result.unwrap()
             result.gates[stage.stage_id] = execution
             u.Cli.gate_result(
                 stage.stage_id,
@@ -247,7 +241,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         """Build a pipeline stage handler that executes a single gate.
 
         The handler only records the GateExecution into *gates_sink*; reporting
-        happens after the wave, in declared gate order.
+        happens after the individual stage, in declared gate order.
 
         Returns:
             The resulting ``p.Cli.PipelineStage``.

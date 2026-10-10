@@ -10,13 +10,19 @@ import shlex
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.check._workspace_check_reports import (
-    FlextInfraWorkspaceCheckReportsMixin,
+from flext_infra import (
+    FlextInfraGateRegistry,
+    FlextInfraServiceBase,
+    FlextInfraWorkspaceCheckGatesMixin,
+    c,
+    config,
+    m,
+    p,
+    r,
+    t,
+    u,
 )
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.check.workspace_check_gates import FlextInfraWorkspaceCheckGatesMixin
+from flext_infra.check import FlextInfraWorkspaceCheckReportsMixin
 
 
 class FlextInfraWorkspaceChecker(
@@ -396,7 +402,9 @@ class FlextInfraWorkspaceChecker(
                     for target in targets
                 ),
                 results=tuple(outcome.results),
-                selected_files=effective_ctx.selected_files,
+                # A file-scoped run publishes its selection, so no consumer
+                # reads its counts as whole-project quality.
+                selected_files=tuple(effective_ctx.selected_files),
             ),
         )
 

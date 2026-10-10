@@ -10,9 +10,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, t, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
+from flext_infra import FlextInfraMiseWorkspacePlanner, c, m, r, t, u
+from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -9,9 +9,7 @@ from __future__ import annotations
 from git import GitCommandError, Repo
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git.semantic_index import (
-    FlextInfraUtilitiesGitSemanticIndexMixin,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIndexMixin
 
 
 class FlextInfraUtilitiesGitSemanticWorktreeMixin(

@@ -11,7 +11,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.release._release_metadata import FlextInfraReleaseMetadataMixin
+from flext_infra.release import FlextInfraReleaseMetadataMixin
 
 
 class FlextInfraReleaseProjectMixin(FlextInfraReleaseMetadataMixin):

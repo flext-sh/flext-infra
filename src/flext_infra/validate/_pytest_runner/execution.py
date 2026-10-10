@@ -15,10 +15,11 @@ from typing import TYPE_CHECKING, override
 
 import pytest
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.validate._pytest_runner.command import FlextInfraPytestRunnerCommand
-from flext_infra.validate._pytest_runner.reports import FlextInfraPytestRunnerReports
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+from flext_infra import FlextInfraTestmonDbInspector, c, config, m, r, t, u
+from flext_infra.validate._pytest_runner import (
+    FlextInfraPytestRunnerCommand,
+    FlextInfraPytestRunnerReports,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -102,7 +103,6 @@ class FlextInfraPytestRunnerExecution(
                 inventory.
 
         """
-        complete = complete or self.target_file is not None
         selection = self._collect_selection(
             report_dir,
             complete=complete,
@@ -183,7 +183,7 @@ class FlextInfraPytestRunnerExecution(
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
         scope_may_be_empty = self.slow_phase or self.target_file is not None
-        accepted = {pytest.ExitCode.OK} | (
+        accepted: set[pytest.ExitCode] = {pytest.ExitCode.OK} | (
             set()
             if complete and not scope_may_be_empty
             else {pytest.ExitCode.NO_TESTS_COLLECTED}
@@ -451,32 +451,19 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.collection_skipped_count,
             not accounting_complete,
             not markdown_complete,
+            not accounting.executed_count and not cache_hit,
         ))
         accepted_cache_hit = cache_hit and not rejected
-        # A file's empty phase retains pytest's native status so Make can
-        # distinguish it from execution and reject an aggregate zero-run.
-        accepted_zero_tests = accounting.owns_no_tests and not rejected
         selected_count = (
             None
             if accounting.inventory_count is None
             else accounting.inventory_count - accounting.deselected_count
         )
-        final_exit = (
-            int(pytest.ExitCode.NO_TESTS_COLLECTED)
-            if accepted_zero_tests and self.target_file is not None
-            else 0
-            if accepted_cache_hit or accepted_zero_tests
-            else raw_return_code or int(rejected)
-        )
+        final_exit = 0 if accepted_cache_hit else raw_return_code or int(rejected)
         # A graceful stop at the suite stop instant publishes the executed
         # prefix and remains red: the unexecuted remainder is the next run's
         # testmon selection.
-        # A graceful stop at the suite stop instant publishes the executed
-        # prefix and remains red: the unexecuted remainder is the next run's
-        # testmon selection.
-        if accepted_zero_tests and self.target_file is not None:
-            result = "not_executed"
-        elif final_exit and (
+        if final_exit and (
             selected_count is not None
             and accounting.executed_count < selected_count
             and not (diagnostics.failed_count or diagnostics.error_count)
@@ -581,7 +568,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         incremental_exit = self.execute().unwrap()
-        if incremental_exit:
+        if incremental_exit != pytest.ExitCode.OK:
             return r.ok(incremental_exit)
         return self._execute_testmon(complete=True)
 
@@ -739,11 +726,9 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under noselect, so an empty testmon
-        # selection over a restored cache is never a cache hit for it.
         cache_hit = (
-            self.target_file is None
-            and not complete
+            not complete
+            and not selection_plan.owns_no_tests
             and outcome.raw_return_code
             in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out

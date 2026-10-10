@@ -64,9 +64,11 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
     @staticmethod
     def seed_locked_taplo(root: Path) -> None:
-        """Seed the complete committed lock for Taplo and its managed Mise reader.
+        """Seed the complete committed mise.lock into ``root``.
 
-        Preserve native tool identities and metadata without resolving selectors.
+        For a root whose Mise declaration the conform publishes itself: that
+        declaration resolves only against its sibling lock. Native tool
+        identities and metadata are preserved; no selector is resolved.
         """
         tm.ok(
             u.Cli.atomic_write_text_file(

@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, p, r, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraWorkspaceDetector, c, m, p, r, u
 
 
 class FlextInfraWorkspaceLifecycle:

@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import FlextInfraCodegenFileLeases, c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -40,14 +39,18 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
 
-    def participant_policy(self) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+    def participant_policy(
+        self,
+        *,
+        initial_workspace: m.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
         """Snapshot the canonical physical topology without creating state.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
         """
         result_type = r[m.Infra.CodegenParticipantPolicy]
-        layout = self._planner.layout()
+        layout = self._planner.layout(initial_workspace=initial_workspace)
         if layout.failure:
             return result_type.from_failure(layout)
         roots: list[m.Cli.AtomicDirectoryChainPlan] = []

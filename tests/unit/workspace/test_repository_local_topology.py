@@ -250,6 +250,8 @@ class TestsFlextInfraRepositoryLocalTopology:
                 "workspace": "fixture-workspace",
                 "database": "fixture-database",
                 "issue_prefix": "fixture-prefix",
+                "ownership_command_prefix": [],
+                "ownership_command_cwd": None,
                 "custom_issue_types": ["incident"],
             },
         )

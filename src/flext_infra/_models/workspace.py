@@ -12,10 +12,12 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._config import (
+    FlextInfraConfigModels,
+    FlextInfraConfigModelsContexts,
+)
+from flext_infra._models._git import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsWorkspace:
@@ -258,11 +260,9 @@ class FlextInfraModelsWorkspace:
     class FleetRepoGaps(m.ContractModel):
         """One repository's row of the workspace fleet-gaps report.
 
-        Every count column reads that repository's own published reports and
-        degrades to zero when the artifact is absent; the standards columns
-        report presence facts only. Probes that cannot run (a missing
-        checkout, an unreachable provider) degrade to their empty value so
-        one repository never blocks the fleet's picture.
+        Quality counts come only from explicitly selected, project-bound check
+        invocations. None means unknown/not executed, never PASS. Other hygiene
+        probes retain their independent presence and empty-value contracts.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
@@ -288,13 +288,15 @@ class FlextInfraModelsWorkspace:
         lint_findings: Annotated[
             t.NonNegativeInt | None,
             m.Field(
-                description="Executed eligible lint findings; null is unknown/not executed",
+                description="Executed eligible lint findings; null is unknown/not "
+                "executed",
             ),
         ]
         pyrefly_findings: Annotated[
             t.NonNegativeInt | None,
             m.Field(
-                description="Executed eligible Pyrefly findings; null is unknown/not executed",
+                description="Executed eligible Pyrefly findings; null is unknown/not "
+                "executed",
             ),
         ]
         codemod_findings: Annotated[

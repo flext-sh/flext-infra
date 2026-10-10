@@ -64,7 +64,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             ] = {}
             self._namespaces: set[str] = set()
             self._module_aliases: dict[str, str] = {}
-            self._definition_keys: dict[str, str] = {}
             self._external: dict[str, t.Infra.RopePyObject] = {}
             self._linearizations: dict[str, t.StrTuple] = {}
             self._active: set[str] = set()
@@ -101,11 +100,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 for parts in (module.split("."),)
                 for index in range(1, len(parts) + 1)
             }
-            for definition_identity in self._definitions:
-                module_name, qualified, _ = definition_identity.split(":", 2)
-                self._definition_keys[f"{module_name}.{qualified}"] = (
-                    definition_identity
-                )
 
         def _build_module_alias_map(self) -> None:
             """Merge the captured and extra lazy-export alias maps.
@@ -286,6 +280,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> str:
             """Resolve one external class declared in a captured module.
 
+            Rope may read an installed copy of the module; the planned source
+            owns the module, so the declaration's dotted path resolves through
+            the planned bindings, never through the installed copy's lines.
+
             Returns:
                 The resolved declaration identity.
 
@@ -343,7 +341,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     allow_conditional=True,
                     provider=module,
                 )
-                self._register_module_definitions(name)
                 identity = self._declared_identity_at_line(name, line)
             if identity is None:
                 message = f"Missing external class declaration: {name}:{line}"
@@ -367,15 +364,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ),
                 None,
             )
-
-        def _register_module_definitions(self, name: str) -> None:
-            """Register every definition of one module in the key map."""
-            for definition_identity in self._definitions:
-                module_name, qualified, _ = definition_identity.split(":", 2)
-                if module_name == name:
-                    self._definition_keys[f"{module_name}.{qualified}"] = (
-                        definition_identity
-                    )
 
         def _deduplicated_external_identity(self, value: t.Infra.RopePyObject) -> str:
             """Return a stable shared identity for one external runtime object."""
@@ -487,8 +475,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 chain = " <- ".join(sorted(visiting))
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
-            # A provider attribute Rope cannot resolve escapes with Rope's own
-            # failure; it never degrades into a synthetic identity.
+            if name not in module.get_attributes():
+                reexporter = self._star_reexporter(module, name)
+                if reexporter is not None:
+                    return self._provider_reference(
+                        reexporter,
+                        attributes,
+                        visiting | {target},
+                        depth + 1,
+                    )
             binding = module.get_attribute(name)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
@@ -515,6 +510,53 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
+
+        def _star_reexporter(
+            self,
+            module: t.Infra.RopePyModule,
+            name: str,
+        ) -> t.Infra.RopePyModule | None:
+            """Return the module a provider star re-export binds ``name`` from.
+
+            ``from .reader import *`` binds every public name of ``.reader`` in
+            the provider (PyYAML's ``yaml.loader`` declares
+            ``class SafeLoader(Reader, ...)`` that way). Rope drops such an
+            import when its ``ignore_bad_imports`` preference cannot evaluate
+            the module, so the walk reads the provider's own ``ImportFrom``
+            nodes and resolves each star target itself.
+
+            Returns:
+                The first star-imported module that binds ``name``, or ``None``
+                when no star re-export of the provider binds it.
+
+            """
+            # A native module (no source resource) has no star re-export.
+            resource = module.get_resource()
+            if resource is None or name.startswith("_"):
+                return None
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
+                return None
+            file_name = Path(resource.real_path).name
+            package = (
+                module.get_name()
+                if file_name == c.Infra.INIT_PY or not file_name.endswith(".py")
+                else module.get_name().rpartition(".")[0]
+            )
+            for node in tree.body:
+                if not (
+                    isinstance(node, ast.ImportFrom)
+                    and [alias.name for alias in node.names] == ["*"]
+                ):
+                    continue
+                target = importlib.util.resolve_name(
+                    "." * node.level + (node.module or ""),
+                    package,
+                )
+                provider = self._project.get_module(target)
+                if name in provider.get_attributes():
+                    return provider
+            return None
 
         def _provider_imported_name_reference(
             self,
@@ -639,6 +681,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> str:
             """Resolve one source class reference to a declaration identity.
 
+            The dotted path is a binding path: every step reads the current
+            module binding, submodule, or class member, so a rebinding after
+            the declaration (``reflected.Contract = replacement``) replaces
+            the declared lineage instead of being shadowed by it.
+
             Returns:
                 The resolved declaration identity.
 
@@ -660,10 +707,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             memo = self._resolved_memo.get(key)
             if memo is not None:
                 return memo
-            direct = self._definition_keys.get(key)
-            if direct is not None and self._declaration_is_live(direct):
-                self._resolved_memo[key] = direct
-                return direct
             target, attributes = self._unresolved_target(
                 target,
                 list(attributes),
@@ -675,52 +718,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 target = self._member(target, attribute, 0, visiting)
             self._resolved_memo[key] = target
             return target
-
-        def _declaration_is_live(self, identity: str) -> bool:
-            """Return whether a nested declaration still answers its own path.
-
-            A provider may write a different value onto an enclosing class
-            member (``Owner.Name = replacement``); the dotted path then names
-            that member, not the original nested declaration, at every level.
-
-            An explicit package binding wins over a same-named submodule file
-            in the same way (``document = 0`` in the package hides the
-            ``document`` submodule from ``package.document``).
-
-            Returns:
-                False when any enclosing package binding or class member
-                overrides the path.
-
-            """
-            module_name, qualified, _ = identity.split(":", 2)
-            packages = module_name.split(".")
-            for index in range(1, len(packages)):
-                package = ".".join(packages[:index])
-                name = packages[index]
-                package_bindings = self._modules.get(package, {})
-                if name not in package_bindings:
-                    continue
-                binding = package_bindings[name]
-                if (
-                    binding is None
-                    or binding.target != package
-                    or binding.attributes != (name,)
-                ):
-                    return False
-            parts = qualified.split(".")
-            for index in range(1, len(parts)):
-                parent = self._definition_keys.get(
-                    ".".join((module_name, *parts[:index])),
-                )
-                if parent is None:
-                    continue
-                member = self._definitions[parent].members.get(parts[index])
-                child = self._definition_keys.get(
-                    ".".join((module_name, *parts[: index + 1])),
-                )
-                if member is None or member.target != child:
-                    return False
-            return True
 
         def _alias_rewritten_target(
             self,
@@ -791,12 +788,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> t.Pair[str, list[str]]:
             """Resolve a namespace-qualified target through its planned module.
 
+            A name the planned module does not bind continues into the captured
+            submodule of that name, as ``from package import submodule`` does;
+            an explicit package binding (class or value) keeps precedence over
+            the file name.
+
             Returns:
                 The resolved target and its remaining attribute path.
 
             Raises:
-                ValueError: If the namespace has no module binding or the name
-                    is unresolved.
+                ValueError: If a module is used as a class base, the namespace
+                    has no module binding, or the name is unresolved.
 
             """
             index = next(
@@ -806,18 +808,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
             module = ".".join(parts[:index])
             remaining = [*parts[index:], *attributes]
-            # Import-from can bind a captured child module rather than a
-            # package export; an explicit package binding still wins.
-            while (
-                remaining
-                and (module not in self._modules or remaining[0] not in self._modules[module])
-                and f"{module}.{remaining[0]}" in self._namespaces
-            ):
-                module = f"{module}.{remaining.pop(0)}"
-            if not remaining:
-                message = f"Module used as a class base: {module}"
-                raise ValueError(message)
-            name = remaining.pop(0)
+            while True:
+                if not remaining:
+                    message = f"Module used as a class base: {module}"
+                    raise ValueError(message)
+                name = remaining.pop(0)
+                bound = module in self._modules and name in self._modules[module]
+                submodule = f"{module}.{name}"
+                if bound or submodule not in self._namespaces:
+                    break
+                module = submodule
             if module not in self._modules:
                 message = f"Planned namespace has no module binding: {module}.{name}"
                 raise ValueError(message)
@@ -973,8 +973,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if name == "__base__" and identity in self._external:
                 value = self._external[identity]
                 if isinstance(value, p.Infra.RopeBuiltinClass):
-                    # A native class's primary base is its type descriptor,
-                    # never an inherited class member.
                     return self._external_identity(
                         FlextInfraUtilitiesRopeRuntime.native_class_primary_base(
                             value.builtin,
@@ -1033,9 +1031,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             if self._stdlib_backing_cache is None:
                 self._stdlib_backing_cache = {}
-            cached = self._stdlib_backing_cache.get(target, "")
-            if cached:
-                return cached or None
+            if target in self._stdlib_backing_cache:
+                return self._stdlib_backing_cache[target] or None
             backing: str | None = None
             try:
                 runtime = importlib.import_module(target)

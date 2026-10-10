@@ -55,7 +55,7 @@ class TestsFlextInfraCodegenConformHatchHook:
                 m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan]``.
 
         """
-        u.Tests.seed_locked_taplo(root.parent)
+        u.Tests.copy_tracked_mise_seeds(root.parent)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             TestsFlextInfraCodegenConformHatchHook._hook_workspace(hook_path),

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, config
 from tests import t, u
 
 
@@ -48,10 +48,12 @@ class TestsFlextInfraCiSystemPackages:
                 "engine-calc engine-fonts"
             ),
         )
-        # The single blocking approval step (setup -> audit -> check -> test)
-        # needs the engines installed before it runs.
+        # The approval steps need the engines installed before the first runs.
+        first_approval = (
+            f"make {config.Infra.codegen.make.approval_verbs[0]} (blocking)"
+        )
         tm.that(
-            rendered.index(self.step_name) < rendered.index("Approval (blocking)"),
+            rendered.index(self.step_name) < rendered.index(first_approval),
             eq=True,
         )
 

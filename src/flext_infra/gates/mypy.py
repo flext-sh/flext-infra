@@ -11,8 +11,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import FlextInfraGate, c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -47,7 +46,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
         if mypy_table is None:
             return None
-        exclude = mypy_table.get("exclude")
+        exclude = u.Cli.toml_value(mypy_table, "exclude")
         if not isinstance(exclude, str) or not exclude:
             return None
         return re.compile(exclude)
@@ -284,6 +283,12 @@ class FlextInfraMypyGate(FlextInfraGate):
                 # Mypy verbose progress channel (--verbose runs). LOG lines are
                 # the tool's own human stream, never diagnostics; the machine
                 # contract of this gate is one JSON object per line.
+                continue
+            if raw_line.startswith("Deferral trace") or raw_line[0].isspace():
+                # Mypy's deferred-node trace (--verbose runs) precedes the
+                # report: a "Deferral trace:" header plus indented continuation
+                # lines. The one-JSON-object-per-line contract emits nothing
+                # indented, so indented lines are always trace payload.
                 continue
             validated: p.Result[m.Infra.MypyDiagnostic] = u.validate_value(
                 m.Infra.MypyDiagnostic,

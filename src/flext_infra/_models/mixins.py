@@ -42,10 +42,14 @@ class FlextInfraModelsMixins:
         ] = Path()
         projects: Annotated[
             t.StrSequence | None,
+            m.BeforeValidator(
+                lambda value: (value,) if isinstance(value, str) else value
+            ),
             m.Field(
                 description="Projects to process; repeat --projects NAME as needed",
             ),
         ] = None
+
         module: Annotated[
             str | None,
             m.Field(

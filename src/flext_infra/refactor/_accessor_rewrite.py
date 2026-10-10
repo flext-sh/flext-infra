@@ -12,7 +12,7 @@ from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
-from flext_infra.refactor._accessor_origin import FlextInfraAccessorOriginResolver
+from flext_infra.refactor import FlextInfraAccessorOriginResolver
 
 if TYPE_CHECKING:
     from pathlib import Path

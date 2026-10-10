@@ -92,7 +92,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             u.Tests.standalone_workspace(repository, repository.name)
             # Conform formats pyproject through the Taplo release the committed
             # Mise lock pins; generation never resolves a moving selector.
-            u.Tests.seed_locked_taplo(repository)
+            u.Tests.copy_tracked_mise_seeds(repository)
             u.Tests.write_lazy_init_namespace_module(
                 package / "models.py",
                 class_name=u.derive_class_stem(repository.name) + "Models",

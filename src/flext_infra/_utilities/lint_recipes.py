@@ -37,9 +37,8 @@ class FlextInfraUtilitiesLintRecipes:
     def ruff_finding_severity(code: str, advisory: Iterable[str]) -> str:
         """Severity one Ruff finding reports at.
 
-        Rules declared advisory (operator ruling 2026-10-05) report as
-        warnings: they keep flowing to every report surface while the gate
-        verdict ignores them.
+        The declared warning classification is retained in every report.
+        Severity never exempts a finding from the blocking gate verdict.
 
         Returns:
             The resulting ``str``.
@@ -55,16 +54,13 @@ class FlextInfraUtilitiesLintRecipes:
     def blocking_gate_findings(
         issues: t.SequenceOf[m.Infra.Issue],
     ) -> tuple[m.Infra.Issue, ...]:
-        """Findings whose severity still fails a gate verdict.
-
-        Warnings never block (operator ruling 2026-10-05); a tool error
-        arrives as an ``error``-severity issue and keeps blocking.
+        """Retain every finding as blocking under the approved quality baseline.
 
         Returns:
             The resulting ``tuple[m.Infra.Issue, ...]``.
 
         """
-        return tuple(issue for issue in issues if issue.severity.lower() != "warning")
+        return tuple(issues)
 
     @staticmethod
     def copyright_notice(pkg_dir: Path, *, module: Path | None = None) -> str:
@@ -145,6 +141,9 @@ class FlextInfraUtilitiesLintRecipes:
         whose declared author signs the notice; the notice is derived only
         when a copyright finding asks for it.
 
+        Whole-module import normalization and line wrapping belong to the Ruff
+        lint gate, which runs them before passing planned edits to this utility.
+
         Returns:
             The repaired module source.
 
@@ -187,6 +186,9 @@ class FlextInfraUtilitiesLintRecipes:
         Returns:
             The resulting ``(sections, summaries, wants notice)`` triple.
 
+        Raises:
+            ValueError: If a whole-module recipe reaches the edit planner.
+
         """
         sections: MutableMapping[
             ast.FunctionDef | ast.AsyncFunctionDef,
@@ -198,7 +200,8 @@ class FlextInfraUtilitiesLintRecipes:
         ] = {}
         wants_notice = False
         for issue in issues:
-            match cls._recipe_for(issue, recipes, path):
+            recipe = cls._recipe_for(issue, recipes, path)
+            match recipe:
                 case c.Infra.LintFixRecipe.RETURNS_SECTION:
                     function = cls._documented_at(tree, issue.line, path)
                     sections.setdefault(function, {}).setdefault("Returns", []).append(
@@ -222,6 +225,18 @@ class FlextInfraUtilitiesLintRecipes:
                 case c.Infra.LintFixRecipe.STATIC_METHOD:
                     # Planned per method below, after duplicates collapse.
                     continue
+                case (
+                    c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                    | c.Infra.LintFixRecipe.WRAP_LONG_LINE
+                ):
+                    # The ruff-lint gate applies both as whole-module rewrites
+                    # before planning; reaching the planner breaks that contract.
+                    msg = (
+                        f"{path}: lint recipe {recipe.value} for {issue.code} is a "
+                        "whole-module recipe and requires the Ruff lint gate; it "
+                        "never reaches the edit planner"
+                    )
+                    raise ValueError(msg)
         return sections, summaries, wants_notice
 
     @classmethod

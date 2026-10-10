@@ -9,11 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_cli import r
-
-from flext_infra import c, m, p, t, u
-from flext_infra.base import s
-from flext_infra.git_lanes import FlextInfraGitLanes
+from flext_infra import FlextInfraGitLanes, c, m, p, r, s, t, u
 
 
 class FlextInfraWorktreeService(s[str]):
@@ -240,7 +236,7 @@ class FlextInfraWorktreeService(s[str]):
 
     @classmethod
     def setup_lane(cls, lane: Path) -> p.Result[bool]:
-        """Provision one lane in its own exclusive environment.
+        """Provision one lane in its own physical environment inside the lane.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -281,29 +277,34 @@ class FlextInfraWorktreeService(s[str]):
             return r[str].fail("worktree add requires --apply")
         if base.startswith("-"):
             return r[str].fail(f"invalid base commitish: {base}")
-        admitted = u.Infra.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=self.repository_root,
-                operation="create",
-                candidate=base,
-            ),
+        return (
+            u.Infra
+            .git_verify_lane(
+                m.Infra.GitLaneVerificationRequest(
+                    repo_root=self.repository_root,
+                    operation="create",
+                    candidate=base,
+                ),
+            )
+            .flat_map(lambda _admitted: self._resolved_base(primary_root, base))
+            .flat_map(
+                lambda base_oid: (
+                    FlextInfraGitLanes
+                    .admit_lane(primary_root, branch, base_oid)
+                    .flat_map(
+                        lambda _admission: self._new_lane_path(primary_root, branch)
+                    )
+                    .flat_map(
+                        lambda lane: self._create_lane(
+                            primary_root,
+                            lane,
+                            branch,
+                            base_oid,
+                        ),
+                    )
+                ),
+            )
         )
-        if admitted.failure:
-            return r[str].from_failure(admitted)
-        base_oid = self._resolved_base(primary_root, base)
-        if base_oid.failure:
-            return r[str].from_failure(base_oid)
-        admission = FlextInfraGitLanes.admit_lane(
-            primary_root,
-            branch,
-            base_oid.value,
-        )
-        if admission.failure:
-            return r[str].from_failure(admission)
-        lane = self._new_lane_path(primary_root, branch)
-        if lane.failure:
-            return r[str].from_failure(lane)
-        return self._create_lane(primary_root, lane.value, branch, base_oid.value)
 
     @staticmethod
     def _resolved_base(primary_root: Path, base: str) -> p.Result[str]:
