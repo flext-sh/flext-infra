@@ -35,8 +35,26 @@ class TestsFlextInfraPytestRunnerZeroTest:
         package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "zero_sample"
         package_root.mkdir(parents=True)
         (project_root / cache.target_directory).mkdir(exist_ok=True)
+        # The consumer's pytest table carries the SSOT collection patterns and
+        # marker registry exactly as generated projects do, so collection and
+        # the runner's ownership check read the same declarations.
+        pytest_settings = config.Infra.tooling.tools.pytest
         (project_root / "pyproject.toml").write_text(
-            f'[tool.pytest.ini_options]\npythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n',
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({
+                    "tool": {
+                        "pytest": {
+                            "ini_options": {
+                                "pythonpath": [c.Infra.DEFAULT_SRC_DIR],
+                                c.Infra.PYTHON_FILES: list(
+                                    pytest_settings.python_files,
+                                ),
+                                "markers": list(pytest_settings.standard_markers),
+                            },
+                        },
+                    },
+                }),
+            ),
             encoding="utf-8",
         )
         (package_root / "__init__.py").write_text("VALUE = 41\n", encoding="utf-8")

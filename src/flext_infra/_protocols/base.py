@@ -218,6 +218,40 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class GateExecutionParams(Protocol):
+        """Read-only assembly boundary separating acceptance and native outcome."""
+
+        @property
+        def project_dir(self) -> Path:
+            """Project whose gate was executed."""
+            ...
+
+        @property
+        def verdict(self) -> bool:
+            """Acceptance decided by the caller."""
+            ...
+
+        @property
+        def outcome(self) -> c.Infra.ToolOutcome:
+            """Native tool outcome, independent of acceptance."""
+            ...
+
+        @property
+        def issues(self) -> t.SequenceOf[m.Infra.Issue]:
+            """Complete native diagnostics."""
+            ...
+
+        @property
+        def raw_output(self) -> str:
+            """Unmodified native output."""
+            ...
+
+        @property
+        def started(self) -> float:
+            """Monotonic execution start time."""
+            ...
+
+    @runtime_checkable
     class MarkdownFormatGate(Protocol):
         """Markdown formatting gate the docs formatter delegates to."""
 

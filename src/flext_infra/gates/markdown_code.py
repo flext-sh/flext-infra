@@ -262,6 +262,24 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 )
                 if format_ok:
                     self._splice_formatted_blocks(project_dir, sources_dir)
+                    # Docstrings are not written back: staged formatting is
+                    # native success, but their unchanged sources still block.
+                    findings.extend(
+                        m.Infra.Issue(
+                            file=location[0],
+                            line=location[1],
+                            column=1,
+                            code=self.gate_id,
+                            message=(
+                                "docstring example requires formatting; "
+                                "source was not rewritten"
+                            ),
+                        )
+                        for name, (text, location) in embedded.items()
+                        if Path(location[0]).suffix == c.Infra.EXT_PYTHON
+                        and (sources_dir / name).read_text(c.Cli.ENCODING_DEFAULT)
+                        != text
+                    )
             else:
                 findings.extend(
                     self._issues_from_ruff(
@@ -437,16 +455,18 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         return self._build_gate_execution(
             project_dir,
             verdict=passed and not issues,
-            outcome=(
-                c.Infra.ToolOutcome.ERROR
-                if not passed
-                else c.Infra.ToolOutcome.FINDINGS
-                if issues
-                else c.Infra.ToolOutcome.CLEAN
+            run=m.Infra.GateNativeRun(
+                issues=tuple(issues),
+                raw_output="\n".join(issue.formatted for issue in issues),
+                outcome=(
+                    c.Infra.ToolOutcome.ERROR
+                    if not passed
+                    else c.Infra.ToolOutcome.FINDINGS
+                    if issues
+                    else c.Infra.ToolOutcome.CLEAN
+                ),
+                started=started,
             ),
-            issues=issues,
-            raw_output="\n".join(issue.formatted for issue in issues),
-            started=started,
         )
 
 

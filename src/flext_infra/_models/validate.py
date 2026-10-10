@@ -412,6 +412,10 @@ class FlextInfraModelsCore:
             t.NonNegativeInt,
             m.Field(description="Skipped test case count"),
         ]
+        connectivity_skip_cases: t.StrTuple = m.Field(
+            default_factory=tuple,
+            description="Shared-plugin prerequisite skips, not successful connectivity",
+        )
         collection_failed_count: t.NonNegativeInt = m.Field(
             description="Failed collection reports, separate from JUnit cases",
         )
@@ -496,6 +500,10 @@ class FlextInfraModelsCore:
         reported_phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(
             default_factory=dict[str, t.MutableStrMapping],
             description="Runtest phase outcomes keyed by TestReport node ID",
+        )
+        connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list[str],
+            description="Shared-plugin prerequisite skips retained in JUnit",
         )
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt

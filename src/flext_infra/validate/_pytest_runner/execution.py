@@ -452,7 +452,7 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             warnings,
-            diagnostics.skipped_count,
+            diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases),
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             not accounting_complete,
@@ -496,6 +496,7 @@ class FlextInfraPytestRunnerExecution(
             f"warnings={warnings}\n"
             f"{self._phase_warning_lines(phases)}"
             f"skipped={diagnostics.skipped_count}\n"
+            f"connectivity_prerequisite_skips={len(diagnostics.connectivity_skip_cases)}\n"
             f"collection_errors={diagnostics.collection_failed_count}\n"
             f"collection_skips={diagnostics.collection_skipped_count}\n"
             f"exit={final_exit}\n"
