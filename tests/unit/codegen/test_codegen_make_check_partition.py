@@ -119,7 +119,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             step.verb
             for step in make.workflow
             if "ci" in step.contexts
-            and step.verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST)
+            and step.verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
         )
         commit_validation = tuple(
             step.verb for step in make.workflow if "pre_commit" in step.contexts
@@ -142,9 +142,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             }
             for row in payload["workflow"]
         ]
-        with pytest.raises(
-            e.PydanticValidationError, match="pre-commit hook requires"
-        ):
+        with pytest.raises(e.PydanticValidationError, match="pre-commit hook requires"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
