@@ -379,6 +379,11 @@ start, then a nonzero raw status and a diagnostic without a timeout; it never re
 the result into a synthetic `MemoryError` or success. The Darwin supervisor can instead
 terminate a process whose resident memory exceeds its limit.
 
+The Mypy gate validates every nonempty report line as JSON, except native `LOG:`
+progress lines. Indentation and a `Deferral trace` prefix do not exempt plugin
+output from validation. A malformed report remains a failed gate with its original
+stdout, stderr, and exit code retained; it is never evidence that analysis passed.
+
 ## Abstraction-boundary project identity
 
 The boundary gate reads the declared project identity through

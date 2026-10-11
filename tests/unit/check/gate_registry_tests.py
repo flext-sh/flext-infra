@@ -38,7 +38,7 @@ class TestsFlextInfraGateRegistry:
         allowed = frozenset(make.check_gates_allowed)
         tm.that(frozenset(make.check_gates_default) <= allowed, eq=True)
         tm.that(frozenset(make.ci.local_check_gates) <= allowed, eq=True)
-        tm.that(frozenset(make.pre_commit_check_gates) <= allowed, eq=True)
+        tm.that(frozenset(make.check_gates_ci) <= allowed, eq=True)
         tm.that(
             frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS)
             <= frozenset(c.Infra.CANONICAL_GATE_IDS),

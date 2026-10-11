@@ -731,8 +731,11 @@ class FlextInfraConfigModelsMake(
         ] = True
         pre_commit_check_gates: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Canonical check gates required by the commit hook"),
-        ]
+            m.Field(
+                default=tuple(),
+                description="Canonical check gates required by the commit hook",
+            ),
+        ] = tuple()
         pre_push: Annotated[
             bool,
             m.Field(
@@ -847,13 +850,6 @@ class FlextInfraConfigModelsMake(
                 msg = (
                     "make project_check_gates shadow built-in gates: "
                     f"{', '.join(shadowed)}"
-                )
-                raise ValueError(msg)
-            unknown = sorted(set(self.pre_commit_check_gates) - builtin)
-            if unknown:
-                msg = (
-                    "make.pre_commit_check_gates contains unknown gates: "
-                    f"{', '.join(unknown)}"
                 )
                 raise ValueError(msg)
             return self

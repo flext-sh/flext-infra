@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import FlextInfraWorktreeService
 from tests import c, tm, u
 

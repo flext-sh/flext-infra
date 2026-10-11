@@ -206,14 +206,14 @@ class FlextInfraGitLanes:
             )
             if wire.failure:
                 return r[m.Infra.GitLaneEvidence].from_failure(wire)
-            pull_requests = u.TypeAdapter(
+            pull_requests = u.type_adapter(
                 tuple[m.Infra.GitLanePullRequest, ...],
             ).validate_json(wire.value)
         if request.read_beads:
             wire = cls._selected_beads(request.repo_root)
             if wire.failure:
                 return r[m.Infra.GitLaneEvidence].from_failure(wire)
-            beads = u.TypeAdapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
+            beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
         evidence = m.Infra.GitLaneEvidence(

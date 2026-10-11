@@ -325,7 +325,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         modules: t.MappingKV[str, t.Pair[str, bool]],
         utility_directory: str,
-        typing_directory: str,
     ) -> t.Pair[
         t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
         frozenset[t.Quad[str, str, str, str]],
@@ -424,14 +423,18 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         modules: t.MappingKV[str, t.Pair[str, bool]],
         lineage: t.SequenceOf[t.Pair[str, str]],
         member: str,
+        owners: t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
     ) -> bool:
-        """Keep methods still declared on the typing lineage at their owner.
+        """Keep typing-owned bindings, never utility behavior inherited through t.
 
         Returns:
-            Whether any class in the lineage declares the method.
+            Whether the effective binding remains outside the utility owners.
 
         """
-        return cls._behavior_effective_declaration(modules, lineage, member) is not None
+        effective = cls._behavior_effective_declaration(modules, lineage, member)
+        return effective is not None and effective not in owners.get(
+            (effective[0].partition(".")[0], member), ()
+        )
 
     @classmethod
     def _behavior_effective_declaration(
@@ -499,7 +502,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         typing_directory = families["t"].directory
         modules = cls._behavior_source_modules(sources, typing_directory)
         ownership = cls._behavior_utility_owners(
-            modules, families["u"].directory, typing_directory
+            modules, families["u"].directory
         )
         return cls._semantic_edits(
             cls._editable_sources(sources),
@@ -567,6 +570,44 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
 
     @classmethod
+    def _existing_behavior_target(
+        cls,
+        tree: ast.Module,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        target: t.Triple[str, str, str],
+    ) -> t.Triple[str, str, str]:
+        """Reuse an imported utility facade only for the identical effective owner.
+
+        Returns:
+            The existing equivalent import, or the originally elected destination.
+        """
+        module, receiver, member = target
+        if receiver != "u":
+            return target
+        expected = cls._behavior_effective_declaration(
+            modules, cls._behavior_lineage(modules, module, receiver), member
+        )
+        candidates = {
+            node.module
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module
+            and not node.level
+            and any(
+                alias.name == receiver and alias.asname is None for alias in node.names
+            )
+        }
+        if len(candidates) != 1:
+            return target
+        existing = next(iter(candidates))
+        effective = cls._behavior_effective_declaration(
+            modules, cls._behavior_lineage(modules, existing, receiver), member
+        )
+        if expected is not None and effective == expected:
+            return existing, receiver, member
+        return target
+
+    @classmethod
     def _rewrite_behavior_consumer(
         cls,
         path: Path,
@@ -616,7 +657,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 )
             lineage = lineages[imported]
             if cls._behavior_member_declared(
-                modules, lineage, qualified.rpartition(".")[2]
+                modules, lineage, qualified.rpartition(".")[2], ownership[0]
             ):
                 return None
             target = cls._behavior_reference_target(
@@ -624,6 +665,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
             if target is not None:
                 obsolete.add(imported)
+                target = cls._existing_behavior_target(tree, modules, target)
             return target
 
         if not identities:
@@ -662,82 +704,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     RemoveImportsVisitor.remove_unused_import(
                         context, node.module, alias.name, alias.asname
                     )
-
-    @classmethod
-    def _resolve_behavior_reference(
-        cls,
-        state: m.Infra.SemanticBehaviorResolution,
-        qualified: str,
-    ) -> t.Triple[str, str, str] | None:
-        """Resolve one qualified call using its consumer-owned operation state.
-
-        Returns:
-            The canonical module, receiver, and member, or no relocation.
-
-        Raises:
-            ValueError: If the owner is ambiguous or requires facade dispatch.
-        """
-        imported = next(
-            (
-                identity
-                for identity in state.identities
-                if qualified.startswith(".".join(identity) + ".")
-                and qualified.removeprefix(".".join(identity) + ".").count(".") == 0
-            ),
-            None,
-        )
-        if imported is None:
-            return None
-        package = imported[0].split(".")[0]
-        member = qualified.rpartition(".")[2]
-        if imported not in state.lineages:
-            state.lineages[imported] = cls._behavior_import_lineage(
-                imported, state.inventory, state.typing_directory
-            )
-        lineage = state.lineages[imported]
-        if any(
-            isinstance(declaration, ast.ClassDef)
-            and declaration.name == class_name
-            and any(
-                isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
-                and method.name == member
-                for method in declaration.body
-            )
-            for owner_module, class_name in lineage
-            for declaration in ast.parse(state.inventory.modules[owner_module][0]).body
-        ):
-            return None
-        candidates: t.SequenceOf[t.Pair[str, str]] = ()
-        for owner_module, _class in lineage:
-            candidates = state.inventory.owners.get(
-                (owner_module.split(".")[0], member), ()
-            )
-            if candidates:
-                break
-        if not candidates:
-            return None
-        if len(candidates) != 1:
-            message = f"ambiguous relocated behavior owner: {qualified}"
-            raise ValueError(message)
-        owner_module, owner_class = candidates[0]
-        owner_package = owner_module.split(".")[0]
-        internal = (
-            owner_package in state.path.parts
-            and c.Infra.DEFAULT_SRC_DIR in state.path.parts
-        )
-        if (
-            internal
-            and (owner_package, owner_module, owner_class, member)
-            in state.inventory.contextual
-        ):
-            message = f"lower behavior owner requires facade dispatch: {qualified}"
-            raise ValueError(message)
-        state.obsolete.add(imported)
-        return (
-            owner_module if internal else package,
-            owner_class if internal else f"{package}.u",
-            member,
-        )
 
     @classmethod
     def _plan_facade_bases(

@@ -33,6 +33,7 @@ class FlextInfraPytestEntry:
 
         Raises:
             ValueError: If unsupported pytest operation.
+            RuntimeError: If profiling was not activated before runtime imports.
 
         """
         # The clock module captures startup before these runtime imports.

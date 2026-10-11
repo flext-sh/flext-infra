@@ -377,7 +377,11 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    def test_relocated_behavior_runs_through_its_real_consumer(tmp_path: Path) -> None:
+    @pytest.mark.parametrize("inherited_import", [False, True])
+    def test_relocated_behavior_runs_through_its_real_consumer(
+        tmp_path: Path,
+        inherited_import: bool,
+    ) -> None:
         """Typing facade imports are removed while the utility behavior runs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         typing_family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
@@ -420,6 +424,22 @@ class TestsFlextInfraSemanticPhaseContract:
                 "value = 'unchanged'.upper()\n"
             ),
         }
+        if inherited_import:
+            consumer_package = package.with_name(f"{package.name}_consumer")
+            consumer_package.mkdir()
+            consumer_owner = f"{utility_owner}Consumer"
+            sources[consumer_package / c.Infra.INIT_PY] = (
+                f"from {package.name}.utilities import {utility_owner}\n"
+                f"class {consumer_owner}({utility_owner}):\n    pass\n"
+                f"u = {consumer_owner}\n"
+                f'__all__ = ["{consumer_owner}", "u"]\n'
+            )
+            sources[package / "consumer.py"] = (
+                f"from {consumer_package.name} import u\n"
+                f"from {package.name}.typings import {typing_owner}\n"
+                f"value = {typing_owner}.parse('aligned')\n"
+                "existing = u.parse('existing')\n"
+            )
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         tm.that(
