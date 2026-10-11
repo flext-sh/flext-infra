@@ -97,6 +97,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                     "python.analysis.diagnosticSeverityOverrides": {
                         "reportMissingTypeStubs": "error",
                     },
+                    "ruff.nativeServer": True,
                 }),
             ),
             encoding="utf-8",
@@ -110,3 +111,4 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.that("ruff.nativeServer" in doc, eq=False)

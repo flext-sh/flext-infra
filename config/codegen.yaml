@@ -592,16 +592,11 @@ Infra:
         # and the project-owned tools.mypy.timeout_seconds budget.
         # direnv proves the developer's own activation, so it is local-only.
         local_check_gates: [mypy, pyright, codemod, smells, direnv]
-        # Fast-hook scope is declared here, independently of a tool's kind.
-        # Heavy checks remain mandatory in CI and the complete local check.
-        pre_commit_check_gates: [format, lint, markdown, conflict-markers]
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # An absent CI uses testmon for incremental developer runs.
-      # The pre-commit hook runs only its declared fast gate scope
-      # (MakeSpec.check_gates_pre_commit) and no tests
-      # (tracker memory operator-ruling-2026-10-01-testmon-make-test-only);
-      # the pre-push hook runs every pre_push row below. make setup installs
+      # Pre-commit uses the CI gate partition and incremental test operation.
+      # The pre-push hook runs every pre_push row below. make setup installs
       # both hooks locally with prek and installs none under CI=Y.
       pre_commit: true
       pre_push: true
@@ -615,7 +610,7 @@ Infra:
       # CI also runs the incremental suite with the persistent testmon cache.
       # The full suite remains a separate local verb that first runs this
       # incremental phase and then exercises the complete inventory.
-        - {verb: test, contexts: [local, ci, pre_push]}
+        - {verb: test, contexts: [local, ci, pre_push, pre_commit]}
       # The generation fixed point and the clean tree close every CI run and
       # every push: a projection that drifts from its source is red.
         - {verb: verify-clean, contexts: [local, ci, pre_push]}
@@ -690,7 +685,7 @@ Infra:
         - name: setup
           description: Provision the declared environment and hooks.
         - name: pre-commit
-          description: Approve a commit through the fast external gates the gate registry declares; no setup and no tests (the pre-commit hook entry).
+          description: Approve a commit through the CI check partition and incremental tests with the persistent testmon database.
         - name: upg
           description: Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.
         - name: validate-lifecycle
@@ -919,7 +914,6 @@ Infra:
         ruff.format.preview: true
         ruff.importStrategy: fromEnvironment
         ruff.lint.preview: true
-        ruff.nativeServer: on
         pyrefly.lspPath: ${workspaceFolder}/.venv/bin/pyrefly
         markdownlint.configFile: .markdownlint.json
         shellcheck.useWorkspaceRootAsCwd: true
@@ -973,6 +967,8 @@ Infra:
       # settings projection so the file stays green with no warnings.
         - python.analysis.typeCheckingMode
         - python.analysis.diagnosticSeverityOverrides
+        # The current Ruff extension always uses its native server.
+        - ruff.nativeServer
 
     # Declarative project-layout SSOT consumed by
     # the layout engine (codegen/layout.py) and the layout quality gate. Every

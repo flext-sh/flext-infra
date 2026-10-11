@@ -677,7 +677,8 @@ ifeq ($(VERB_CONTRACT),)
 setup: _bootstrap_setup_tools
 
 _builtin-pre-commit: _builtin_require_environment
-	@{{ check_run(gates_csv(make.check_gates_pre_commit)) }}
+	@{{ check_run(gates_csv(make.check_gates_ci)) }}
+	+@{{ make.ci.variable }}={{ make.ci.value }} $(SELF_MAKE) test
 
 # `upg` builds the environment from the locks it writes, so like `setup` it
 # must not require an existing environment, and as the only resolver it must

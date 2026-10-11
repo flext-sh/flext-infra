@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, infra, m
-from tests import tm, t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:

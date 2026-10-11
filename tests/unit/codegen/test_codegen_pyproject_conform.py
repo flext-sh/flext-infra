@@ -44,9 +44,9 @@ class TestsFlextInfraCodegenPyprojectConform:
                 path,
                 '[project]\nname = "fixture-member"\n'
                 'dependencies = ["fixture-runtime>=1"]\n'
-                '[project.optional-dependencies]\n'
+                "[project.optional-dependencies]\n"
                 'feature = ["fixture-extra>=2"]\n'
-                '[dependency-groups]\n'
+                "[dependency-groups]\n"
                 'base = ["fixture-tool>=3"]\n'
                 'dev = [{include-group = "base"}, "fixture-checker>=4"]\n',
             ),
