@@ -125,7 +125,7 @@ class FlextInfraCodegenVersionFile(FlextInfraCodegenExecutionBase[bool]):
             project=project,
             path=target,
             before=before.value,
-            desired_content=content.encode(c.Cli.ENCODING_DEFAULT),
+            desired_content=content.encode(c.DEFAULT_ENCODING),
             desired_mode=0o644,
             owner="codegen",
             policy="full",

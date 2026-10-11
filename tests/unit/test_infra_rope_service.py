@@ -193,7 +193,7 @@ class TestsFlextInfraInfraRopeService:
             "    if result != LIMIT:\n"
             '        msg = "unexpected"\n'
             "        raise RuntimeError(msg)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         rope = FlextInfraRopeWorkspace.open_workspace(repository_root)
@@ -223,7 +223,7 @@ class TestsFlextInfraInfraRopeService:
             'PUBLIC = "public"\n'
             'PRIVATE = "private"\n'
             '__all__ = ("PUBLIC",)\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         exports = self._module_exports(
@@ -247,7 +247,7 @@ class TestsFlextInfraInfraRopeService:
             '    MODE = "typing"\n'
             "else:\n"
             '    MODE = "runtime"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         exports = self._module_exports(
@@ -268,13 +268,13 @@ class TestsFlextInfraInfraRopeService:
         examples_root.mkdir()
         examples_root.joinpath(c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         module_path = examples_root / "demo.py"
         module_path.write_text(
             'class ExamplesDemo:\n    """Example boundary."""\n\n'
             '__all__ = ["ExamplesDemo"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
@@ -619,7 +619,7 @@ class TestsFlextInfraInfraRopeService:
         module_path = package_root / "service.py"
         original_source = "class Original:\n    pass\n"
         changed_source = "class Changed:\n    pass\n"
-        module_path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+        module_path.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             original_semantic = rope.semantic(module_path)
@@ -629,7 +629,7 @@ class TestsFlextInfraInfraRopeService:
                 eq=("Original",),
             )
 
-            module_path.write_text(changed_source, encoding=c.Cli.ENCODING_DEFAULT)
+            module_path.write_text(changed_source, encoding=c.DEFAULT_ENCODING)
             tm.that(rope.source(module_path), eq=changed_source)
             tm.that(
                 tuple(item.name for item in rope.semantic(module_path).class_infos),
@@ -700,7 +700,7 @@ class TestsFlextInfraInfraRopeService:
             package_name="flext_demo",
         )
         module_path = package_root / "service.py"
-        module_path.write_text("def first(:\n", encoding=c.Cli.ENCODING_DEFAULT)
+        module_path.write_text("def first(:\n", encoding=c.DEFAULT_ENCODING)
 
         with (
             flext_infra.infra.rope_workspace(repository_root) as rope,
@@ -727,7 +727,7 @@ class TestsFlextInfraInfraRopeService:
                 "def public() -> int:\n"
                 "    return 1\n"
             ),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
@@ -753,7 +753,7 @@ class TestsFlextInfraInfraRopeService:
                 "def public() -> int:\n"
                 "    return 1\n"
             ),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         consumer_path = package_root / "consumer.py"
         consumer_path.write_text(
@@ -763,7 +763,7 @@ class TestsFlextInfraInfraRopeService:
                 "def consume() -> int:\n"
                 "    return public()\n"
             ),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:

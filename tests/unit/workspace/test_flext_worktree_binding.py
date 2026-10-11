@@ -165,7 +165,7 @@ class TestsFlextInfraWorktreeBinding:
         )
         consumer = self._consumer(tmp_path)
         declaration = consumer / c.PYPROJECT_FILENAME
-        with declaration.open("a", encoding=c.Cli.ENCODING_DEFAULT) as stream:
+        with declaration.open("a", encoding=c.DEFAULT_ENCODING) as stream:
             stream.write(f'[dependency-groups]\ndev = ["{distribution}"]\n')
         before = declaration.read_bytes()
 

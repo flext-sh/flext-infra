@@ -76,11 +76,11 @@ class TestsFlextInfraBindingInstall:
                 'build-backend = "setuptools.build_meta"\n'
                 f'[project]\nname = "{name}"\nversion = "1.0.0"\n{optional}'
                 f'\n[tool.setuptools]\npy-modules = ["{name.replace("-", "_")}"]\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             (root / f"{name.replace('-', '_')}.py").write_text(
                 'VALUE = "installed"\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
 
     @staticmethod
@@ -111,7 +111,7 @@ class TestsFlextInfraBindingInstall:
             '[project]\nname = "binding-consumer"\nversion = "1.0.0"\n'
             f'dependencies = ["Binding_Candidate[feature]>={minimum}{marker}"]\n'
             f"{constraints}",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         return declaration.read_bytes()
 

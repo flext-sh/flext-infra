@@ -81,7 +81,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         for entry in workflows:
             workflow = root / entry.destination
             workflow.parent.mkdir(parents=True, exist_ok=True)
-            workflow.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+            workflow.write_text(content, encoding=c.DEFAULT_ENCODING)
 
         request = u.Tests.conform_request(
             root,
@@ -107,7 +107,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         }
         tm.that(retired, eq=expected)
         for path in workflow_paths:
-            tm.that(path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
 
     @pytest.mark.parametrize("declared_release", [False, True])
     def test_release_workflows_converge_from_scaffold_to_existing_repository(

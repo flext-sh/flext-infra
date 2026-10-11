@@ -514,7 +514,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[m.Cli.AtomicFileState]``.
 
         """
-        content = journal.model_dump_json(indent=2).encode(c.Cli.ENCODING_DEFAULT)
+        content = journal.model_dump_json(indent=2).encode(c.DEFAULT_ENCODING)
         if expected.path != layout.journal_path:
             return r[m.Cli.AtomicFileState].fail(
                 "codegen journal expected state belongs to another path",

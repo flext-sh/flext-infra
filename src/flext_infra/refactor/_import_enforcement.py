@@ -59,7 +59,7 @@ class FlextInfraImportNormalization(
         changed = False
         import_graph, _modules = u.Infra.project_import_graph(project_root)
         for file_path in files:
-            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
             normalized = cls.normalize_source(
                 project_root=project_root,
                 file_path=file_path,
@@ -68,7 +68,7 @@ class FlextInfraImportNormalization(
             )
             if normalized is None:
                 continue
-            file_path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
+            file_path.write_text(normalized, encoding=c.DEFAULT_ENCODING)
             changed = True
         return changed
 

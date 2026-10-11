@@ -67,7 +67,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
                 lifecycle.
 
         """
-        lines = report_log.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
+        lines = report_log.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
         if not lines:
             msg = f"pytest report log contains no events: {report_log}"
             raise ValueError(msg)
@@ -82,7 +82,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             m.Infra.PytestWarningEvent.model_validate_json(line)
             for line in report_log
             .with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
-            .read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            .read_text(encoding=c.DEFAULT_ENCODING)
             .splitlines()
         ]
         for event, identity in zip(warnings, identities, strict=True):
@@ -215,7 +215,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             The resulting ``str``.
 
         """
-        return log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        return log_path.read_text(encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
     def _diagnostics_model(diag: m.Infra.DiagResult) -> m.Infra.PytestDiagnostics:

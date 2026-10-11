@@ -26,7 +26,7 @@ class TestsFlextInfraLazyInitProcessing:
 
         """
         return package_dir.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
     def test_apply_generates_inline_lazy_public_root(self, tmp_path: Path) -> None:
@@ -81,7 +81,7 @@ class TestsFlextInfraLazyInitProcessing:
             package_dir.mkdir()
             package_dir.joinpath(c.Infra.INIT_PY).write_text(
                 "",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         u.Tests.write_lazy_init_namespace_module(
             level_four / "worker.py",
@@ -96,7 +96,7 @@ class TestsFlextInfraLazyInitProcessing:
         )
         before = tuple(path.read_bytes() for path in generated_paths)
         contents = tuple(
-            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in generated_paths
+            path.read_text(encoding=c.DEFAULT_ENCODING) for path in generated_paths
         )
         u.Cli.run_raw(
             [
@@ -153,26 +153,26 @@ class TestsFlextInfraLazyInitProcessing:
         private_dir.mkdir()
         private_dir.joinpath("runtime.py").write_text(
             'class FlextTestsRuntime:\n    """Private runtime owner."""\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         init_path = private_dir / c.Infra.INIT_PY
         init_path.write_text(
             '"""Authored static private facade."""\n\n'
             "from .runtime import FlextTestsRuntime\n\n"
             '__all__ = ["FlextTestsRuntime"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
-        generated = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        generated = init_path.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(generated, has='__all__: tuple[str, ...] = ("FlextTestsRuntime",)')
         tm.that(
             generated,
             has=f"from {package_root.name}._facade.runtime import FlextTestsRuntime",
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        tm.that(init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=generated)
+        tm.that(init_path.read_text(encoding=c.DEFAULT_ENCODING), eq=generated)
 
     @staticmethod
     def test_apply_removes_obsolete_generated_sidecars(tmp_path: Path) -> None:
@@ -186,7 +186,7 @@ class TestsFlextInfraLazyInitProcessing:
         unit_path = package_root / "__unit__.py"
         unit_path.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         result = u.Tests.run_lazy_init(repository_root)

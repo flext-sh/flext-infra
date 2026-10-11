@@ -149,7 +149,7 @@ class TestsFlextInfraFreshImport:
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         initializer = package / c.Infra.INIT_PY
         content = "__all__ = ('missing_export',)\n" if missing_export else ""
-        initializer.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
         analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
         publication = next(
             plan for plan in analysis.publications if plan.context.pkg_dir == package
@@ -164,7 +164,7 @@ class TestsFlextInfraFreshImport:
         )
 
         tm.that(report.passed, eq=not missing_export, msg=str(report.violations))
-        tm.that(initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
         if missing_export:
             tm.that(report.violations[0], has="missing_export")
             tm.that(report.violations[0], has="Traceback")
@@ -180,7 +180,7 @@ class TestsFlextInfraFreshImport:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
         publication = next(
@@ -211,7 +211,7 @@ class TestsFlextInfraFreshImport:
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         (package / c.Infra.INIT_PY).write_text(
             "value = 17\n__all__ = ('value',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         report = tm.ok(
@@ -231,7 +231,7 @@ class TestsFlextInfraFreshImport:
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         (package / c.Infra.INIT_PY).write_text(
             "__all__ = ('missing_export',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         report = tm.ok(
@@ -258,11 +258,11 @@ class TestsFlextInfraFreshImport:
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
         if target_exists:
             (package / "cli.py").write_text(
                 "VALUE = 1\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
@@ -306,10 +306,10 @@ class TestsFlextInfraFreshImport:
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
         (package / "cli.py").write_text(
             "from flext_probe_script import gone\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
@@ -346,7 +346,7 @@ class TestsFlextInfraFreshImport:
         package.mkdir(parents=True)
         (package / c.Infra.INIT_PY).write_text(
             "__all__ = ('missing_export',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
@@ -370,17 +370,17 @@ class TestsFlextInfraFreshImport:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             "__all__ = ()\n" + ("required = 17\n" if dependency_present else ""),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (package / "consumer.py").write_text(
             f"from {package.name} import required\n"
             "def main():\n    raise RuntimeError('entrypoint must not execute')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n'
             f'[project.scripts]\nprobe = "{package.name}.consumer:main"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -420,11 +420,11 @@ class TestsFlextInfraFreshImport:
         initializer.write_text(
             "".join(f"{name} = {index}\n" for index, name in enumerate(exports))
             + f"__all__ = {exports!r}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -460,17 +460,17 @@ class TestsFlextInfraFreshImport:
         foreign.mkdir()
         (foreign / "dependency.py").write_text(
             "value = 17\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             f"__path__ = [{str(foreign)!r}]\n"
             "from .dependency import value\n__all__ = ('value',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -515,18 +515,18 @@ class TestsFlextInfraFreshImport:
         foreign.mkdir()
         (foreign / "dependency.py").write_text(
             "value = 17\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             f"__path__ = [{str(foreign)!r}]\n"
             "from .dependency import value\n"
             "__all__ = ('value', 'phantom_export')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -573,15 +573,15 @@ class TestsFlextInfraFreshImport:
         subpackage.mkdir(parents=True)
         (package / c.Infra.INIT_PY).write_text(
             "value = 17\n__all__ = ('value',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (subpackage / c.Infra.INIT_PY).write_text(
             "leaf = 1\n__all__ = ('leaf',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publications = tuple(
             m.Infra.LazyInitPlan(

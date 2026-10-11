@@ -171,7 +171,7 @@ class FlextInfraUtilitiesCodegenFacades:
             if module.name != c.Infra.INIT_PY
             and family
             in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
-                module.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                module.read_text(encoding=c.DEFAULT_ENCODING),
             )
         )
         if len(owners) > 1:
@@ -232,7 +232,7 @@ class FlextInfraUtilitiesCodegenFacades:
             message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
         owners, ancestors = cls._utility_owners(owners_dir, family=family)
-        source: str = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source: str = facade_path.read_text(encoding=c.DEFAULT_ENCODING)
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
             facade_path,
@@ -322,7 +322,7 @@ class FlextInfraUtilitiesCodegenFacades:
                 for candidate in sorted(pkg_dir.rglob(f"*{c.Infra.EXT_PYTHON}"))
                 if candidate != facade_path
             ):
-                source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                source = path.read_text(encoding=c.DEFAULT_ENCODING)
                 # Generated initializers propagate declarations; they are not
                 # authored consumers and may await replacement in this plan.
                 if path.name == c.Infra.INIT_PY and source.startswith(
@@ -362,9 +362,9 @@ class FlextInfraUtilitiesCodegenFacades:
                             resource,
                         )
                     offset = sum(map(len, lines[: receiver.lineno - 1]))
-                    prefix = lines[receiver.lineno - 1].encode(c.Cli.ENCODING_DEFAULT)
+                    prefix = lines[receiver.lineno - 1].encode(c.DEFAULT_ENCODING)
                     offset += len(
-                        prefix[: receiver.col_offset].decode(c.Cli.ENCODING_DEFAULT),
+                        prefix[: receiver.col_offset].decode(c.DEFAULT_ENCODING),
                     )
                     binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
                         pymodule,
@@ -427,7 +427,7 @@ class FlextInfraUtilitiesCodegenFacades:
             if path.name == c.Infra.INIT_PY:
                 continue
             tree = ast.parse(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                path.read_text(encoding=c.DEFAULT_ENCODING),
                 filename=str(path),
             )
             for node in tree.body:
@@ -546,8 +546,8 @@ class FlextInfraUtilitiesCodegenFacades:
                 == len(
                     source
                     .splitlines()[namespace.lineno - 1]
-                    .encode(c.Cli.ENCODING_DEFAULT)[: namespace.col_offset]
-                    .decode(c.Cli.ENCODING_DEFAULT),
+                    .encode(c.DEFAULT_ENCODING)[: namespace.col_offset]
+                    .decode(c.DEFAULT_ENCODING),
                 )
             )
             if len(owners) != 1:
@@ -571,7 +571,7 @@ class FlextInfraUtilitiesCodegenFacades:
         # A base listed after Protocol has no consistent MRO, so owners
         # projected onto a protocol namespace go before its terminal Protocol.
         precede = cls._base_name(last_base) == c.Infra.PROTOCOL_BASE
-        lines = source.encode(c.Cli.ENCODING_DEFAULT).splitlines(keepends=True)
+        lines = source.encode(c.DEFAULT_ENCODING).splitlines(keepends=True)
         line, column = (
             (last_base.lineno, last_base.col_offset)
             if precede
@@ -589,10 +589,8 @@ class FlextInfraUtilitiesCodegenFacades:
         )
         encoded = b"".join(lines)
         return (
-            encoded[:offset]
-            + inserted.encode(c.Cli.ENCODING_DEFAULT)
-            + encoded[offset:]
-        ).decode(c.Cli.ENCODING_DEFAULT)
+            encoded[:offset] + inserted.encode(c.DEFAULT_ENCODING) + encoded[offset:]
+        ).decode(c.DEFAULT_ENCODING)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodegenFacades"]

@@ -399,10 +399,10 @@ class FlextInfraModGateEngine:
                     if apply:
                         target.unlink()
                     continue
-                content = produced.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                content = produced.read_text(encoding=c.DEFAULT_ENCODING)
                 current = committed.get(name)
                 if current is not None and (
-                    current.read_text(encoding=c.Cli.ENCODING_DEFAULT) == content
+                    current.read_text(encoding=c.DEFAULT_ENCODING) == content
                 ):
                     continue
                 changes.append(
@@ -813,7 +813,7 @@ class FlextInfraModGateEngine:
                 repository=repository,
                 file=file_path,
                 source_owner="generator"
-                if snapshot.content.decode(c.Cli.ENCODING_DEFAULT).startswith(
+                if snapshot.content.decode(c.DEFAULT_ENCODING).startswith(
                     c.Infra.AUTOGEN_HEADERS,
                 )
                 else "authored",

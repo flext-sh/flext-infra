@@ -259,7 +259,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             ) in FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
                 init_module,
                 init_path,
-                init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                init_path.read_text(encoding=c.DEFAULT_ENCODING),
             ).items():
                 extra_module_aliases.setdefault(
                     f"{init_module}.{alias}",
@@ -322,7 +322,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             ).unwrap()
             for file_path in files:
                 source = file_path.read_text(
-                    encoding=c.Cli.ENCODING_DEFAULT,
+                    encoding=c.DEFAULT_ENCODING,
                 )
                 sources[file_path.resolve()] = source
         for file_path, source in planned_sources.items():
@@ -339,7 +339,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         if file_path.name != c.Infra.INIT_PYI:
             return False
-        return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
+        return file_path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
             c.Infra.AUTOGEN_HEADERS,
         )
 

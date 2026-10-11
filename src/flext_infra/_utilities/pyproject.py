@@ -141,7 +141,7 @@ class FlextInfraUtilitiesPyproject:
         if manifest is None or not manifest.is_file():
             return r[str | None].ok(None)
         payload = u.Cli.toml_mapping_from_text(
-            manifest.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            manifest.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
             return r[str | None].fail(f"{manifest} is not valid TOML")
@@ -246,7 +246,7 @@ class FlextInfraUtilitiesPyproject:
         if content is None:
             return r[str].fail(f"pyproject is absent: {pyproject_path}")
         live = FlextInfraUtilitiesPyproject.recover_live_pyproject_text(
-            content.decode(c.Cli.ENCODING_DEFAULT),
+            content.decode(c.DEFAULT_ENCODING),
         )
         if live.failure or not regenerate_managed_tools:
             return live
@@ -384,7 +384,7 @@ class FlextInfraUtilitiesPyproject:
             command,
             cwd=execution_root,
             options=m.Cli.ProcessOptions(
-                input_data=source.encode(c.Cli.ENCODING_DEFAULT),
+                input_data=source.encode(c.DEFAULT_ENCODING),
             ),
             timeout=process_timeout_seconds,
         )
@@ -394,14 +394,14 @@ class FlextInfraUtilitiesPyproject:
         if not u.Cli.process_succeeded(output.outcome):
             detail = (
                 (output.stderr or output.stdout)
-                .decode(c.Cli.ENCODING_DEFAULT, errors="backslashreplace")
+                .decode(c.DEFAULT_ENCODING, errors="backslashreplace")
                 .strip()
             )
             return r[str].fail(
                 f"taplo format failed ({output.outcome.raw_return_code}): {detail}",
             )
         try:
-            formatted = output.stdout.decode(c.Cli.ENCODING_DEFAULT)
+            formatted = output.stdout.decode(c.DEFAULT_ENCODING)
         except UnicodeDecodeError as exc:
             return r[str].fail(
                 f"taplo format returned non-UTF-8 output: {exc}",
@@ -495,7 +495,7 @@ class FlextInfraUtilitiesPyproject:
 
         """
         payload = u.Cli.toml_mapping_from_text(
-            lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            lock_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
             return r[t.SequenceOf[t.JsonValue]].fail(f"{lock_path} is not valid TOML")

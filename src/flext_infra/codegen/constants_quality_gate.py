@@ -403,7 +403,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         json_write = u.Cli.atomic_write_text_file(
             report_json,
             t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
-                c.Cli.ENCODING_DEFAULT,
+                c.DEFAULT_ENCODING,
             ),
         )
         if json_write.failure:

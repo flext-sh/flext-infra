@@ -325,7 +325,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             and plan.desired_content is not None
         )
         planned_sources = {
-            plan.path: plan.desired_content.decode(c.Cli.ENCODING_DEFAULT)
+            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
             for plan in python_plans
             if plan.desired_content is not None
         }

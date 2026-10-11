@@ -675,7 +675,7 @@ class FlextInfraPytestRunnerExecution(
             if any(char in str(publication.database) for char in "\r\n"):
                 msg = "testmon publication path cannot contain output delimiters"
                 raise ValueError(msg)
-            with output.open("a", encoding=c.Cli.ENCODING_DEFAULT) as stream:
+            with output.open("a", encoding=c.DEFAULT_ENCODING) as stream:
                 stream.write(
                     f"testmon_database={publication.database}\n"
                     f"testmon_digest={publication.digest}\n"

@@ -130,7 +130,7 @@ class TestsFlextInfraModTextGateEngine:
         request = m.Infra.ModTextCommand(repository_root=mod_workspace)
         tm.fail(infra.mod_text(request), has="text Markdown include has no source")
 
-        original = document.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        original = document.read_text(encoding=c.DEFAULT_ENCODING)
         changed = original.replace(
             f'name = "{distribution}"',
             f'name = "changed-{distribution}"',

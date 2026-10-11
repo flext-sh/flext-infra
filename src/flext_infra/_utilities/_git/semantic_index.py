@@ -132,15 +132,15 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             "--cached",
             "--others",
             "--exclude-standard",
-        ).encode(c.Cli.ENCODING_DEFAULT)
-        index_z = repo.git.ls_files("--stage", "-z").encode(c.Cli.ENCODING_DEFAULT)
+        ).encode(c.DEFAULT_ENCODING)
+        index_z = repo.git.ls_files("--stage", "-z").encode(c.DEFAULT_ENCODING)
         # An unborn HEAD has no commit; its fingerprint input is the typed
         # unborn marker instead of an oid.
         head = (
             repo.head.commit.hexsha
             if repo.head.is_valid()
             else c.Infra.GIT_UNBORN_HEAD_MARKER
-        ).encode(c.Cli.ENCODING_DEFAULT)
+        ).encode(c.DEFAULT_ENCODING)
         return paths_z, index_z, head
 
     @classmethod

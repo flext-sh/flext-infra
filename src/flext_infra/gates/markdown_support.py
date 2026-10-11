@@ -63,7 +63,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
         if not ignore_path.is_file():
             return ()
         patterns: list[str] = []
-        for line in ignore_path.read_text(c.Cli.ENCODING_DEFAULT).splitlines():
+        for line in ignore_path.read_text(c.DEFAULT_ENCODING).splitlines():
             stripped = line.strip()
             if not stripped or stripped.startswith("#"):
                 continue
