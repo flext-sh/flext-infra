@@ -126,7 +126,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         return r[t.JsonDict].ok(project)
 
     @staticmethod
-    def _custom_dev_additions(
+    def custom_dev_additions(
         live_payload: t.JsonMapping,
         live: str | None,
     ) -> p.Result[t.StrSequence]:
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         )
 
     @staticmethod
-    def _sync_member_dev_provenance(
+    def sync_member_dev_provenance(
         document: t.Cli.TomlDocument,
         *,
         custom: t.StrSequence,
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
     ) -> p.Result[bool]:
         """Preserve the live project dev additions before conformance floors."""
         groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
-        custom = FlextInfraUtilitiesPyprojectOverlay._custom_dev_additions(
+        custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
             live_payload,
             live,
         )

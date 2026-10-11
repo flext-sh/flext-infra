@@ -58,10 +58,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         def __init__(
             self,
-            resolve: Callable[[str], t.Triple[str, str, str] | None],
+            resolve_reference: Callable[[str], t.Triple[str, str, str] | None],
             context: CodemodContext,
         ) -> None:
-            self.resolve = resolve
+            self.resolve_reference = resolve_reference
             self.context = context
 
         @override
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 target
                 for name in names
                 if name.source is QualifiedNameSource.IMPORT
-                and (target := self.resolve(name.name)) is not None
+                and (target := self.resolve_reference(name.name)) is not None
             }
             if not targets:
                 return updated_node
@@ -123,9 +123,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             A tuple of pairs representing the lineage of the behavior, where each pair contains the module and class name.
-
-        Raises:
-            TypeError: If an unsupported facade inheritance identity is encountered.
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:
@@ -430,8 +427,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         RemoveImportsVisitor.remove_unused_import(
                             context, node.module, alias.name, alias.asname
                         )
-            updated = updated.visit(AddImportsVisitor(context))
-            updated = updated.visit(RemoveImportsVisitor(context))
+            updated = AddImportsVisitor(context).transform_module(updated)
+            updated = RemoveImportsVisitor(context).transform_module(updated)
             return updated.code, (
                 "rebound relocated behavior to declared utility owners",
             )

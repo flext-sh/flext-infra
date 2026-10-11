@@ -36,7 +36,11 @@ class TestsFlextInfraConflictMarkerGate:
         root = TestsFlextInfraConflictMarkerGate._root(tmp_path)
         kind, token = control
         source = root / "unpublished.txt"
-        marker = token if kind == "separator" else f"{token}native conflict"
+        marker = (
+            token
+            if kind == c.Infra.MergeConflictControl.SEPARATOR
+            else f"{token}native conflict"
+        )
         content = f"ordinary source\n{marker}\n"
         source.write_text(content, encoding="utf-8")
         gate = tm.not_none(
@@ -60,7 +64,7 @@ class TestsFlextInfraConflictMarkerGate:
         separator = next(
             token
             for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
-            if kind == "separator"
+            if kind == c.Infra.MergeConflictControl.SEPARATOR
         )
         content = f"{separator}=\n{separator} section\n"
         (root / "sections.txt").write_text(content, encoding="utf-8")

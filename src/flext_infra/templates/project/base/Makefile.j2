@@ -474,16 +474,15 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		printf 'ERROR[setup] uv.lock is missing: %s/uv.lock\n  Right way: only `make upg` writes uv.lock; setup installs the committed lock and never creates one.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$(PROJECT_ROOT)" >&2; \
 		exit 2; \
 	fi; \
-	uv_lock_mode=--locked; \
 	if ! uv_lock_report=$$($(UV) lock --check --project "$(UV_PROJECT)" 2>&1); then \
-		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-			printf 'ERROR[setup] uv.lock does not match the manifests of %s:\n%s\n  Right way: CI installs only a lock that satisfies its manifests; a drifted lock is RED, never installed --frozen.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
-			exit 2; \
-		fi; \
-		printf 'WARNING[setup] uv.lock does not match the manifests of %s:\n%s\n  Right way: only `make upg` writes uv.lock; setup installs the committed lock as-is (--frozen) and never relocks.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
-		uv_lock_mode=--frozen; \
+		printf 'ERROR[setup] uv.lock does not match the manifests of %s:\n%s\n  Right way: setup installs only a lock that satisfies its manifests and never relocks.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$$uv_lock_report" "$(PROJECT_ROOT)" >&2; \
+		exit 2; \
 	fi; \
-	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "{{ python_version }}" $(UV_SYNC_FLAGS) $$uv_lock_mode --link-mode "$(UV_LINK_MODE)"; \
+	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only; \
+	for member in $(WORKSPACE_SUBPROJECTS); do \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)/$$member" --config-only; \
+	done; \
+	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "{{ python_version }}" $(UV_SYNC_FLAGS) --locked --link-mode "$(UV_LINK_MODE)"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)"; \
 	if [ "$(strip $({{ make.ci.variable }}))" != "{{ make.ci.value }}" ]; then \
 		for member in $(WORKSPACE_SUBPROJECTS); do \
@@ -531,12 +530,12 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
 # Lock law (operator 2026-10-03): only `make upg` writes uv.lock. Setup installs
 # the committed lock and never deletes, creates, or relocks it: a matching lock
-# syncs `--locked`; a drifted lock is reported (cause, right way, how) and
-# synced `--frozen` locally, and fails under CI (law 14: red means red); a
-# missing lock fails naming `make upg`.
-UV_SYNC_FLAGS := --all-extras --all-groups
+# syncs `--locked`; a drifted or missing lock fails before sync, naming
+# `make upg`. Native workspace selection installs every declared package.
+UV_SYNC_FLAGS := --all-extras --all-groups{% if make_profile == "workspace" %} --all-packages{% endif %}
+
 ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
-override UV_SYNC_FLAGS := --all-extras --all-groups --no-editable
+override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
 ifeq ($(GEN_INIT_ONLY),)

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from flext_infra import config, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeCoreResourcesMixin,
@@ -99,6 +100,35 @@ class FlextInfraUtilitiesRopeCore(
                 ),
             ),
         )
+
+    @staticmethod
+    @contextmanager
+    def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
+        """Resolve imports against the containing declared workspace, if attached.
+
+        Yields:
+            A source-scoped project or its declared workspace import graph.
+
+        Raises:
+            ValueError: If the containing workspace declaration is invalid.
+        """
+        resolved = source_root.resolve()
+        root = resolved
+        roots: t.SequenceOf[Path] = (resolved,)
+        for parent in resolved.parents:
+            declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
+            if declarations.failure:
+                raise ValueError(declarations.error or "invalid .gitmodules")
+            members = tuple(parent / item.path for item in declarations.value)
+            if any(resolved.is_relative_to(member.resolve()) for member in members):
+                root = parent
+                roots = (parent, *members)
+                break
+        with FlextInfraUtilitiesRopeCore.open_project(
+            root,
+            project_roots=roots,
+        ) as project:
+            yield project
 
     @staticmethod
     @contextmanager

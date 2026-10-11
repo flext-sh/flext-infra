@@ -16,7 +16,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectUvSources
 from flext_infra._utilities._pyproject._requirements_provenance import (
-    _RequirementProvenance,
+    FlextInfraUtilitiesPyprojectRequirementsProvenance,
 )
 from flext_infra._utilities._pyproject.overlay import (
     FlextInfraUtilitiesPyprojectOverlay,
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             payload = u.Cli.toml_as_mapping(source)
             if payload is None:
                 return r[str].fail("root metadata is not a TOML mapping")
-            custom = FlextInfraUtilitiesPyprojectOverlay._custom_dev_additions(
+            custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
                 payload,
                 pyproject_content,
             )
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[str].from_failure(normalized)
         if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
             normalized_custom: list[str] = []
-            context = _RequirementProvenance(
+            context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
                 declared_sources=declared_sources,
                 candidate_sources=candidate_sources,
                 family_line=provenance.flext_line.branch
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 if canonical.failure:
                     return r[str].from_failure(canonical)
                 normalized_custom.append(canonical.value)
-            FlextInfraUtilitiesPyprojectOverlay._sync_member_dev_provenance(
+            FlextInfraUtilitiesPyprojectOverlay.sync_member_dev_provenance(
                 source,
                 custom=normalized_custom,
             )

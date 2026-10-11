@@ -201,7 +201,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                     raise ValueError(msg)
             context = CodemodContext()
             AddImportsVisitor.add_needed_import(context, package, "settings")
-            updated = updated.visit(AddImportsVisitor(context))
+            updated = AddImportsVisitor(context).transform_module(updated)
             return updated.code, (
                 "routed config-owned environment keys through settings",
             )

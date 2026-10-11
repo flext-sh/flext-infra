@@ -316,7 +316,7 @@ class FlextInfraUtilitiesCodegenFacades:
     ) -> frozenset[str]:
 
         methods: set[str] = set()
-        with FlextInfraUtilitiesRopeCore.open_project(pkg_dir.parent) as project:
+        with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
             for path in (
                 candidate
                 for candidate in sorted(pkg_dir.rglob(f"*{c.Infra.EXT_PYTHON}"))
@@ -355,7 +355,7 @@ class FlextInfraUtilitiesCodegenFacades:
                         continue
                     if pymodule is None:
                         resource = project.get_resource(
-                            path.relative_to(pkg_dir.parent).as_posix(),
+                            path.relative_to(Path(project.root.real_path)).as_posix(),
                         )
                         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                             project,

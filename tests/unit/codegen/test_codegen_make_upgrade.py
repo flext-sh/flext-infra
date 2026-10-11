@@ -62,6 +62,43 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @staticmethod
     @pytest.mark.remote
     @pytest.mark.slow
+    def test_setup_rejects_invalid_lock_without_syncing_dependencies(
+        tmp_path: Path,
+        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """The real setup refuses invalid lock input without changing packages."""
+        profile = c.Infra.MakeProfile.STANDALONE
+        project_root = u.Tests.resolved_make_checkout(
+            resolved_make_templates[profile],
+            tmp_path / "invalid-setup-lock",
+            profile,
+        )
+        lock = project_root / c.Infra.UV_LOCK_FILENAME
+        lock.write_text('version = "invalid"\n', encoding="utf-8")
+        previous_lock = lock.read_bytes()
+        environment = u.Infra.runtime_environment_dir(project_root)
+        previous_packages = tuple(
+            sorted(environment.glob("lib/python*/site-packages/*.dist-info")),
+        )
+
+        provisioned = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup"],
+                cwd=project_root,
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(provisioned.outcome), eq=False)
+        tm.that(provisioned.stderr, has="ERROR[setup] uv.lock does not match")
+        tm.that(lock.read_bytes(), eq=previous_lock)
+        tm.that(
+            tuple(sorted(environment.glob("lib/python*/site-packages/*.dist-info"))),
+            eq=previous_packages,
+        )
+
+    @staticmethod
+    @pytest.mark.remote
+    @pytest.mark.slow
     def test_failed_native_upg_resolution_preserves_the_previous_lock(
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
@@ -143,7 +180,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             *converge.split("\n\n", 1)[0].splitlines(),
         ]
 
-    def test_upg_is_the_only_resolver_and_setup_installs_frozen(
+    def test_upg_is_the_only_resolver_and_setup_requires_matching_lock(
         self,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -152,8 +189,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         The generated Makefile confines every uv upgrade to the `upg`
         lifecycle and every `mise lock --bump` to that lifecycle or its shared
         bootstrap gated by a switch that only `upg` sets. `setup` installs
-        what the committed locks pin (`--frozen`, `install --locked`) and
-        never stops on a stale lock; `audit` holds the lock verdict.
+        what the committed locks pin (`--locked`, `install --locked`) and
+        rejects a stale UV lock before synchronization.
         """
         _profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
@@ -235,28 +272,47 @@ class TestsFlextInfraCodegenMakeUpgrade:
         sync_flags = re.search(r"^UV_SYNC_FLAGS := (.*)$", makefile, re.MULTILINE)
         assert sync_flags is not None
         tm.that(sync_flags.group(1), lacks="--upgrade")
-        # Setup never resolves, checks or writes uv.lock: a readable lock
-        # installs --frozen, an unreadable one provisions straight from the
-        # manifest, and nothing deletes or re-derives the committed lock.
+        # Setup verifies the committed lock before any dependency sync;
+        # only upg may resolve or write it.
         setup_recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
             "\n\n",
             1,
         )[0]
-        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=[])
-        tm.that(setup_recipe, has=["uv_lock_mode=--frozen", "$$uv_lock_mode"])
+        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=["$(UV) lock"])
         tm.that(
             setup_recipe,
-            has='--requirements "$(UV_PROJECT)/pyproject.toml" --all-extras',
+            has=["lock --check", "$(UV_SYNC_FLAGS) --locked", "ERROR[setup]", "make upg"],
+        )
+        lock_check = setup_recipe.index("lock --check")
+        sync = setup_recipe.index("$(UV) sync")
+        tm.that(lock_check < setup_recipe.index("exit 2;", lock_check) < sync, eq=True)
+        admission = "codegen mise-artifacts"
+        tm.that(setup_recipe.count(admission), eq=2)
+        tm.that(lock_check < setup_recipe.index(admission) < sync, eq=True)
+        tm.that(setup_recipe.rindex(admission) < sync, eq=True)
+        tm.that(
+            setup_recipe,
+            has=[
+                '--repository-root "$(PROJECT_ROOT)" --config-only',
+                "for member in $(WORKSPACE_SUBPROJECTS); do",
+                '--repository-root "$(PROJECT_ROOT)/$$member" --config-only',
+            ],
         )
         tm.that(
             setup_recipe,
             lacks=[
-                "uv_lock_mode=--locked",
+                "--frozen",
+                "WARNING[setup]",
+                "--requirements",
                 'rm -f "$(UV_PROJECT)/uv.lock"',
                 ">/dev/null",
-                "make upg",
             ],
         )
+        tm.that(
+            "--all-packages" in sync_flags.group(1),
+            eq=_profile is c.Infra.MakeProfile.WORKSPACE,
+        )
+        tm.that(makefile, has="override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable")
 
         mise_toml = u.Cli.toml_mapping_from_text(
             (project_root / c.Infra.MISE_TOML_FILENAME).read_text(encoding="utf-8"),
@@ -616,4 +672,4 @@ class TestsFlextInfraCodegenMakeUpgrade:
             self._recipe_targets_containing(text, alignment),
             eq={"_upg_converge"},
         )
-        tm.that(text, lacks=["--no-workspace", "--all-packages"])
+        tm.that(text, lacks="--no-workspace")
