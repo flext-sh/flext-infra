@@ -112,6 +112,24 @@ class TestsFlextInfraPytestProfile:
         parent_profile = project / ".reports" / "profiles" / "pytest.pstats"
         profile = reports_root / latest_name / "testmon-selection.pstats"
         stats = pstats.Stats(str(profile))
+        suite = pstats.Stats(
+            str(
+                reports_root
+                / latest_name
+                / config.Infra.tooling.tools.pytest.profile_suite_filename
+            ),
+        ).get_stats_profile()
+        tm.that(
+            any(
+                name == "test_runtime"
+                and Path(function.file_name)
+                == project
+                / config.Infra.codegen.make.testmon_cache.target_directory
+                / "test_runtime.py"
+                for name, function in suite.func_profiles.items()
+            ),
+            eq=True,
+        )
         assert any(
             "_pytest" in function.file_name
             for function in stats.get_stats_profile().func_profiles.values()

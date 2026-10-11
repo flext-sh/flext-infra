@@ -11,7 +11,7 @@ import pstats
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
-from flext_infra import m, r, s, u
+from flext_infra import config, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -108,14 +108,17 @@ class FlextInfraCProfileReport(s[bool]):
         if plan.manifest_path.parent.resolve() != directory.resolve():
             msg = "profile selection plan does not match its run directory"
             raise ValueError(msg)
-        profiles = (
-            self.profile,
-            directory / "testmon-selection.pstats",
-            *(
-                (directory / "testmon-inventory.pstats",)
-                if plan.inventory_collected
-                else ()
-            ),
+        profiles = tuple(
+            dict.fromkeys((
+                self.profile,
+                directory / config.Infra.tooling.tools.pytest.profile_suite_filename,
+                plan.manifest_path.with_suffix(".pstats"),
+                *(
+                    (directory / "testmon-inventory.pstats",)
+                    if plan.inventory_collected
+                    else ()
+                ),
+            ))
         )
         for profile in profiles:
             receipt = (

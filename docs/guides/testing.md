@@ -61,8 +61,12 @@ make test-full
 Use `make profile-test` before optimizing a slow suite, then `make profile-test-report`
 to render the parent and aggregated child profiles. Profiling uses the same Make runner,
 persistent Testmon database, selection, and deadline as `make test`. Each collection
-process, controller, and worker writes its own cProfile artifact under that run's report
-directory; the aggregate includes fixture setup, test calls, and teardown. A failing or
+process writes its own cProfile artifact under that run's report directory.
+The profiled suite runs serially inside its instrumented interpreter, so the report
+includes fixture setup, test calls, and teardown. Parent, suite, and collection
+profiles are bound to the same run by their receipts and digests. Profiling a declared
+file uses the runner's repository-relative `FLEXT_PYTEST_TARGET_FILE` input.
+A failing or
 interrupted profiled run remains RED with its original process outcome. The profile is
 diagnostic evidence, not a substitute for a complete test result.
 
@@ -72,7 +76,8 @@ derive from that policy. Use the profile and complete run receipts to repair
 a slow owner; an interrupted selection or suite remains a failed invocation.
 
 The runner first completes the incremental operation, then executes the full suite using
-the same database and one monotonic deadline. The first failure stops the sequence. The
+the same database without process, suite, or item time limits. The first failure stops
+the sequence. The
 full phase includes both configured `external-gate-markers` and `ci-excluded-markers` in
 every context. External tests retain their declared services, network access, and
 authentication requirements.

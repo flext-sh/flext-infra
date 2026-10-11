@@ -556,22 +556,26 @@ class FlextInfraModGateEngine:
             if states
             else None
         )
-        entries = tuple(
-            entry.model_copy(update={"binding_states": snapshot.states})
-            if snapshot is not None and entry.rule_id in selected_ids
-            else entry
-            for entry in report.entries
-            if u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=root,
-                    rule=rules_by_id[entry.rule_id],
-                    file_path=entry.file,
-                    captures=FlextInfraModGateEngine._captures(entry.payload),
-                    facts=facts,
-                    snapshot=snapshot,
-                ),
+        closed = snapshot or m.Infra.CodemodBindingSnapshot(states=())
+        with u.Infra.codemod_binding_project(root, closed) as (project, sources):
+            entries = tuple(
+                entry.model_copy(update={"binding_states": snapshot.states})
+                if snapshot is not None and entry.rule_id in selected_ids
+                else entry
+                for entry in report.entries
+                if u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=root,
+                        rule=rules_by_id[entry.rule_id],
+                        file_path=entry.file,
+                        captures=FlextInfraModGateEngine._captures(entry.payload),
+                        facts=facts,
+                        snapshot=snapshot,
+                    ),
+                    project=project,
+                    sources=sources,
+                )
             )
-        )
         if entries == report.entries:
             return report
         return FlextInfraModGateEngine.recounted(entries)

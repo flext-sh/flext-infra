@@ -314,6 +314,11 @@ class FlextInfraPytestRunnerExecution(
             ),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
+        if self.profile_enabled:
+            self._bind_child_profile(
+                report_dir,
+                report_dir / config.Infra.tooling.tools.pytest.profile_suite_filename,
+            )
         return outcome
 
     @staticmethod
@@ -749,6 +754,7 @@ class FlextInfraPytestRunnerExecution(
         command = self.build_command(
             report_dir,
             selection_plan,
+            serialize=self.profile_enabled,
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
@@ -871,7 +877,10 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
             verify_inventory=False,
         )
-        command = self.build_coverage_command(report_dir)
+        command = self.build_coverage_command(
+            report_dir,
+            serialize=self.profile_enabled,
+        )
         outcome = self._run_suite(
             command,
             report_dir,

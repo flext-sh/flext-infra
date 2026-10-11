@@ -16,9 +16,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsState as journal_state,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification,
-)
 
 
 class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):

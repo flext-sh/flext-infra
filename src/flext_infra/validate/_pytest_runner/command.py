@@ -315,7 +315,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             (
                 "--timeout=0"
                 if self.unbounded
-                else f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
+                else "--timeout="
+                f"{config.Infra.tooling.tools.pytest.case_timeout_seconds}"
             ),
             "-o",
             "filterwarnings=",
@@ -436,37 +437,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 f"--cov={self.root / c.Infra.DEFAULT_SRC_DIR}",
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
                 "--no-cov-on-fail",
-            ),
-        )
-
-    def build_full_command(
-        self,
-        report_dir: Path,
-        *,
-        serialize: bool = False,
-    ) -> t.VariadicTuple[str]:
-        """Build the unbounded whole-suite argv (never testmon, never coverage).
-
-        The full operation runs locally only: every marker of its scope, no
-        testmon selection, no suite stop instant, and pytest-timeout disabled
-        for every case.
-
-        Returns:
-            The resulting ``t.VariadicTuple[str]``.
-
-        """
-        pytest = config.Infra.tooling.tools.pytest
-        workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
-        return self._suite_argv(
-            report_dir,
-            limits=self._UNBOUNDED_LIMITS,
-            targets=self._node_targets(),
-            workers=workers,
-            trailing=(
-                *self._plugin_policy_args(
-                    execution_mode=c.Infra.PytestExecutionMode.FULL,
-                ),
-                *self._NO_COVERAGE,
             ),
         )
 

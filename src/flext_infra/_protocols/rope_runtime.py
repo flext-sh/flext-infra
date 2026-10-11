@@ -266,6 +266,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
 
+        def get_python_path_folders(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
         def find_module(
             self,
             modname: str,

@@ -393,10 +393,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         Returns:
             True when the store updated a known definition, otherwise False.
         """
-        if not spec.allow_conditional:
-            return False
         visible = {**spec.lexical, **bindings}
-        if not cls._completes_class_namespace(node, targets, visible):
+        if not spec.allow_conditional or not cls._completes_class_namespace(
+            node, targets, visible
+        ):
             return False
         target = targets[0]
         value = node.value
@@ -416,9 +416,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 },
             )
             return True
-        if not isinstance(value, ast.Name):
-            return False
-        if value.id not in visible:
+        if not isinstance(value, ast.Name) or value.id not in visible:
             return False
         definition = spec.definitions[owner.target]
         spec.definitions[owner.target] = definition.model_copy(
