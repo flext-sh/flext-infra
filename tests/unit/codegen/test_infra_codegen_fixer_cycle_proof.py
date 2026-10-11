@@ -14,11 +14,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import m, u
+from tests import m, tm, u
 
 
 def _reports_import_cycle(result: m.Infra.AutoFixResult) -> bool:

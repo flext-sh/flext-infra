@@ -270,7 +270,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         for facade_alias in sorted(runtime_public_imports):
             package = public_imports[facade_alias]
             AddImportsVisitor.add_needed_import(context, package, facade_alias)
-        rewritten = rewritten.visit(AddImportsVisitor(context))
+        rewritten = AddImportsVisitor(context).transform_module(rewritten)
         type_only_imports = {
             alias: package
             for alias, package in public_imports.items()

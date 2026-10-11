@@ -123,6 +123,20 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             the contract does not select one.
 
         """
+        if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
+            envrc_context = m.Infra.EnvrcRenderSpec(
+                repository_root_rel=self._repository_root_rel(workspace),
+                environment_path_prepends=codegen.toolchain.environment_path_prepends,
+            )
+            planned = self._bootstrap_destination_plan(
+                target,
+                codegen,
+                envrc_context,
+                c.Infra.ENVRC_FILENAME,
+            )
+            if planned.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
         if contract.destinations == frozenset({c.Infra.MISE_TOML_FILENAME}):
             context = m.Infra.ToolchainSpec(**{
                 name: value
@@ -140,7 +154,82 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
         if contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
             return self._plan_existing_bootstrap(target, workspace, codegen)
+        if (
+            contract.destinations == frozenset({c.PYPROJECT_FILENAME})
+            and not contract.templates
+        ):
+            return self._plan_existing_pyproject_bootstrap(target, codegen)
         return None
+
+    @staticmethod
+    def _plan_existing_pyproject_bootstrap(
+        target: m.Infra.RepositoryConformTarget,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Publish owned TOML policy before native semantic consumers open it.
+
+        This recovery surface uses the ordinary dependency conformance phases,
+        not the full template context whose runtime-base discovery opens Rope.
+        Complete generation still derives that context after bootstrap.
+
+        Returns:
+            One authenticated pyproject plan, preserving live unowned content.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        path = target.root / c.PYPROJECT_FILENAME
+        before = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if before.failure:
+            return result_type.from_failure(before)
+        if before.value.content is None:
+            return result_type.fail(f"pyproject is absent: {path}")
+        recovered = u.Infra.recover_live_pyproject_text(
+            before.value.content.decode(c.DEFAULT_ENCODING),
+        )
+        if recovered.failure:
+            return result_type.from_failure(recovered)
+        source = u.Infra.pyproject_regeneration_source(recovered.value)
+        if source.failure:
+            return result_type.from_failure(source)
+        owners = u.Infra.snapshot_config_sources(config.ssot_config_dir().parent)
+        if owners.failure:
+            return result_type.from_failure(owners)
+        artifacts = u.Infra.snapshot_committed_project_managed_artifacts(target.root)
+        if artifacts.failure:
+            return result_type.from_failure(artifacts)
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=target.root,
+            skip_check=True,
+            managed_artifacts=artifacts.value.resolution,
+        )
+        rendered = modernizer.conform_source(
+            source.value,
+            path=path,
+            format_source=False,
+            topology=m.Infra.PyprojectDeclaredTopology(
+                analysis_exclusions=tuple(
+                    item.as_posix() for item in target.external_dependency_paths
+                ),
+            ),
+        )
+        if rendered.failure:
+            return result_type.from_failure(rendered)
+        managed = tuple(
+            item
+            for item in codegen.managed_files
+            if item.path == Path(c.PYPROJECT_FILENAME)
+        )
+        if len(managed) != 1:
+            return result_type.fail("pyproject bootstrap requires one managed owner")
+        planned = m.Infra.CodegenFilePlan(
+            project=target.root,
+            path=path,
+            before=before.value,
+            desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
+            desired_mode=managed[0].mode,
+            source_states=(*owners.value, *artifacts.value.sources),
+        )
+        return result_type.ok((planned,))
 
     def _plan_existing_managed(
         self,
@@ -343,7 +432,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             )
         template = u.Infra.codegen_templates_root(codegen) / entries[0].source
         sources: t.VariadicTuple[m.Cli.AtomicFileState] = ()
-        if destination == c.Infra.MISE_TOML_FILENAME:
+        if destination in {c.Infra.MISE_TOML_FILENAME, c.Infra.ENVRC_FILENAME}:
             owner_sources = u.Infra.snapshot_config_sources(
                 config.ssot_config_dir().parent
             )
@@ -698,8 +787,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """Validate custom Make content and plan utility, protocol and model facades.
 
         Existing handwritten Make content is validated against the selected
-        profile policy. A discovered package layout also contributes ``u``,
-        ``p`` and ``m`` facade plans from consumer-driven owner projection.
+        profile policy. The canonical source inventory contributes declared
+        ``u``, ``p`` and ``m`` facades from every owned package, including
+        auxiliary packages, through consumer-driven owner projection.
         This method returns file plans; it does not publish their contents.
 
         Returns:
@@ -717,18 +807,33 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         make_plan_value, make_plan_present = make_plan.value
         if make_plan_present and make_plan_value is not None:
             plans.append(make_plan_value)
-        layout = u.Infra.layout(root)
-        if layout is not None and layout.class_stem:
+        if root.is_dir():
+            sources = u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(root,)),
+            )
+            if sources.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(sources)
             families: t.VariadicTuple[Literal["u", "p", "m"]] = ("u", "p", "m")
-            for family in families:
-                facade_plan = self._utility_facade_plan(root, layout, family)
-                if facade_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        facade_plan,
-                    )
-                facade_plan_value, facade_plan_present = facade_plan.value
-                if facade_plan_present and facade_plan_value is not None:
-                    plans.append(facade_plan_value)
+            layout = u.Infra.layout(root)
+            package_dirs = {
+                path.parent
+                for path in sources.value
+                if (path.parent / c.Infra.INIT_PY).is_file()
+            }
+            if layout is not None and layout.class_stem:
+                package_dirs.add(layout.package_dir)
+            for package_dir in sorted(package_dirs):
+                for family in families:
+                    if (
+                        layout is None or package_dir != layout.package_dir
+                    ) and u.Infra.facade_module_path(package_dir, family) is None:
+                        continue
+                    facade_plan = self._utility_facade_plan(root, package_dir, family)
+                    if facade_plan.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            facade_plan,
+                        )
+                    plans.extend(facade_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     def _validated_custom_make_plan(
@@ -766,28 +871,26 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _utility_facade_plan(
         self,
         root: Path,
-        layout: m.Infra.RopeProjectLayout,
+        package_dir: Path,
         family: Literal["u", "p", "m"],
-    ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan one projected facade for the discovered package layout.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenFilePlan | None,
-            bool]]`` where the boolean marks plan presence (False: a family
-            with no rendered facade).
+            The owned facade file plan, or no plans for a family with no owners.
 
         Raises:
             ValueError: If a rendered facade has no declaring package module.
 
         """
-        result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         rendered = u.Infra.render_utility_facade(
-            layout.package_dir,
+            package_dir,
             family=family,
         )
         if rendered is None:
-            return result_type.ok((None, False))
-        facade_path = u.Infra.facade_module_path(layout.package_dir, family)
+            return result_type.ok(())
+        facade_path = u.Infra.facade_module_path(package_dir, family)
         if facade_path is None:
             msg = f"rendered {family} facade has no declaring module"
             raise ValueError(msg)
@@ -795,7 +898,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         utility_plan = self.file_plan(root, relative.as_posix(), rendered)
         if utility_plan.failure:
             return result_type.from_failure(utility_plan)
-        return result_type.ok((utility_plan.value, True))
+        return result_type.ok((utility_plan.value,))
 
     @classmethod
     def _complete_governed_plans(

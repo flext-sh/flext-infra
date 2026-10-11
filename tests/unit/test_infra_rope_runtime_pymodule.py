@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraRopeWorkspace, c, t, u
 from flext_infra._utilities import (
@@ -17,6 +16,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

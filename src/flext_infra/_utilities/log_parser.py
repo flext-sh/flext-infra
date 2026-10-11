@@ -37,10 +37,8 @@ class FlextInfraUtilitiesLogParser:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SarifResult]]``.
 
         """
-        report_dir = u.Cli.resolve_report_dir(
-            repository_root,
-            c.Infra.PROJECT,
-            c.Infra.VERB_CHECK,
+        report_dir = (
+            reports_dir if reports_dir.is_absolute() else repository_root / reports_dir
         )
         sarif_path = report_dir / c.Infra.CHECK_REPORT_SARIF_FILENAME
         if not sarif_path.is_file():
@@ -49,7 +47,7 @@ class FlextInfraUtilitiesLogParser:
             )
         return u.validate_value(
             m.Infra.SarifReport,
-            sarif_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            sarif_path.read_text(encoding=c.DEFAULT_ENCODING),
             from_json=True,
         ).map(lambda report: tuple(res for run in report.runs for res in run.results))
 

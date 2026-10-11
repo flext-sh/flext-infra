@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

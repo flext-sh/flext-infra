@@ -12,10 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
@@ -190,8 +188,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
             encoding="utf-8",
         )
         source = (
-            '[project]\nname = "workspace"\nversion = "1.0.0"\ndependencies = '
-            '["httpx>=0.27"]\n'
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            'dependencies = ["httpx>=0.27"]\n'
+            '[dependency-groups]\ncodegen = ["build>=1"]\n'
         )
         options = u.Infra.PyprojectConformOptions(
             flext_line=u.Tests.integration(),
@@ -209,8 +208,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
         dev = set(u.Tests.toml_strings_at(first, "dependency-groups", "dev"))
         tm.that(
             set(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
-            eq={"pytest>=8", "hypothesis>=6"},
+            eq={"build>=1"},
         )
+        tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
         tm.that(
             f"{provider.distribution}[feature] @ "
             f"git+{provider.url}@{u.Tests.integration().branch}" in dev,
@@ -247,6 +247,259 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
             eq=first,
         )
+
+    def test_removed_member_environment_drops_only_owned_dev_entries(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Membership/group removal preserves real CUSTOM constraints and bootstrap."""
+        provider = self._member_ref("acme-engine", "libraries/engine")
+        consumer = self._member_ref("acme-driver", "plugins/driver")
+        workspace = self._workspace(provider, consumer)
+        for member in workspace.subprojects:
+            path = tmp_path / member.path / c.PYPROJECT_FILENAME
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n'
+                '[dependency-groups]\nqa = ["hypothesis>=6"]\n',
+                encoding="utf-8",
+            )
+        custom_member = self._inline_requirement(provider)
+        custom_bound = 'idna>=3; python_version >= "3.13"'
+        source = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            'dependencies = ["httpx>=0.27"]\n'
+            '[dependency-groups]\ncodegen = ["build>=1"]\n'
+            f"dev = [\"{custom_member}\", '{custom_bound}']\n"
+        )
+        options = u.Infra.PyprojectConformOptions(
+            repository_root=tmp_path,
+            flext_line=u.Tests.integration(),
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        (tmp_path / consumer.path / c.PYPROJECT_FILENAME).write_text(
+            f'[project]\nname = "{consumer.distribution}"\nversion = "1.0.0"\n',
+            encoding="utf-8",
+        )
+        remaining = self._workspace(consumer)
+        second = tm.ok(
+            u.Infra.pyproject_conform(
+                first,
+                workspace=remaining,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        dev = set(u.Tests.toml_strings_at(second, "dependency-groups", "dev"))
+        tm.that(custom_member in dev, eq=True)
+        tm.that(custom_bound in dev, eq=True)
+        tm.that("hypothesis>=6" in dev, eq=False)
+        tm.that(self._inline_requirement(consumer) in dev, eq=True)
+        tm.that(
+            u.Tests.toml_strings_at(second, "dependency-groups", "codegen"),
+            eq=("build>=1",),
+        )
+        sources = u.Tests.toml_table_at(second, "tool", "uv", "sources")
+        tm.that(provider.distribution in sources, eq=False)
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    second,
+                    workspace=remaining,
+                    required_dev_dependencies=(),
+                    uv_resolution=self._toolchain_resolution(),
+                    options=options,
+                ),
+            ),
+            eq=second,
+        )
+
+    def test_overlay_preserves_custom_values_and_rederives_owned_members(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The real overlay consumes ownership comments before the next render."""
+        member = self._member_ref("acme-engine", "libraries/engine")
+        path = tmp_path / member.path / c.PYPROJECT_FILENAME
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n',
+            encoding="utf-8",
+        )
+        source = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            '[dependency-groups]\ncodegen = ["build>=1"]\n'
+            'dev = ["hypothesis>=6"]\n'
+        )
+        options = u.Infra.PyprojectConformOptions(
+            repository_root=tmp_path,
+            flext_line=u.Tests.integration(),
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=self._workspace(member),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(source, first))
+        tm.that(
+            u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+        second = tm.ok(
+            u.Infra.pyproject_conform(
+                merged,
+                workspace=self._workspace(member),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        tm.that(second, eq=first)
+        # A later explicit CUSTOM duplicate does not inherit the owned marker.
+        custom_member = self._inline_requirement(member)
+        live = first.replace(
+            "dev = [\n",
+            f'dev = [\n    "{custom_member}",\n',
+            1,
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(source, live))
+        tm.that(
+            set(u.Tests.toml_strings_at(merged, "dependency-groups", "dev")),
+            eq={"hypothesis>=6", custom_member},
+        )
+
+    def test_marked_same_value_outside_dev_preserves_custom_dev(self) -> None:
+        """An ownership-looking comment in QA cannot own a DEV occurrence."""
+        source = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            '[dependency-groups]\ndev = ["hypothesis>=6"]\n'
+            'qa = [\n    "hypothesis>=6", # flext: derived member environment\n]\n'
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=self._workspace(),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+            ),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(source, source))
+        tm.that(
+            u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    first,
+                    workspace=self._workspace(),
+                    required_dev_dependencies=(),
+                    uv_resolution=self._toolchain_resolution(),
+                ),
+            ),
+            eq=first,
+        )
+
+    def test_full_line_comments_do_not_become_owned_dev_items(self) -> None:
+        """Commented-out values and multiple hashes do not enter the item stream."""
+        source = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            "[dependency-groups]\ndev = [\n"
+            '    # "hypothesis>=6", # flext: derived member environment\n'
+            '    # "retired-generated>=1", # flext: derived member environment\n'
+            '    "hypothesis>=6", # note # flext: derived member environment\n'
+            "]\n"
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=self._workspace(),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+            ),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(source, source))
+        tm.that(
+            u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+
+    def test_unmarked_duplicate_survives_direct_overlay_removal_and_fixed_point(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Ownership is per occurrence throughout both generation entry paths."""
+        member = self._member_ref("acme-driver", "plugins/driver")
+        path = tmp_path / member.path / c.PYPROJECT_FILENAME
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n'
+            '[dependency-groups]\nqa = ["hypothesis>=6"]\n',
+            encoding="utf-8",
+        )
+        seed = '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+        options = u.Infra.PyprojectConformOptions(
+            repository_root=tmp_path,
+            flext_line=u.Tests.integration(),
+        )
+        owned = tm.ok(
+            u.Infra.pyproject_conform(
+                seed,
+                workspace=self._workspace(member),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        live = owned.replace("dev = [\n", 'dev = [\n    "hypothesis>=6",\n', 1)
+        for entry in (live, tm.ok(u.Infra.overlay_preserved(seed, live))):
+            first = tm.ok(
+                u.Infra.pyproject_conform(
+                    entry,
+                    workspace=self._workspace(),
+                    required_dev_dependencies=(),
+                    uv_resolution=self._toolchain_resolution(),
+                    options=options,
+                ),
+            )
+            tm.that(
+                u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
+                eq=("hypothesis>=6",),
+            )
+            for repeat in (first, tm.ok(u.Infra.overlay_preserved(seed, first))):
+                tm.that(
+                    tm.ok(
+                        u.Infra.pyproject_conform(
+                            repeat,
+                            workspace=self._workspace(),
+                            required_dev_dependencies=(),
+                            uv_resolution=self._toolchain_resolution(),
+                            options=options,
+                        ),
+                    ),
+                    eq=first,
+                )
 
     def test_root_missing_member_metadata_fails_loud(self, tmp_path: Path) -> None:
         """A declared package without metadata is not silently omitted."""

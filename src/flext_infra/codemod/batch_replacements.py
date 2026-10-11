@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 import libcst as cst
 
 from flext_infra import FlextInfraRuffFormatGate, c, m, r, t, u
-from flext_infra.codemod._batch_dead_scaffold import DeadScaffold
-from flext_infra.codemod._batch_orphan_import import OrphanImport
+from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -178,7 +178,7 @@ class FlextInfraModReplacements:
                 f"ast-grep byte coordinates escape source: {path}",
             )
         if content[matched.start : matched.end] != finding.text.encode(
-            c.Cli.ENCODING_DEFAULT,
+            c.DEFAULT_ENCODING,
         ):
             return r[t.Triple[int, int, bytes]].fail(
                 f"ast-grep match differs from authenticated source: {path}",
@@ -186,7 +186,7 @@ class FlextInfraModReplacements:
         return r[t.Triple[int, int, bytes]].ok((
             offsets.start,
             offsets.end,
-            replacement.encode(c.Cli.ENCODING_DEFAULT),
+            replacement.encode(c.DEFAULT_ENCODING),
         ))
 
     @staticmethod
@@ -257,17 +257,17 @@ class FlextInfraModReplacements:
         for path in paths:
             if not path.is_file():
                 continue
-            before = path.read_text(c.Cli.ENCODING_DEFAULT)
+            before = path.read_text(c.DEFAULT_ENCODING)
             try:
                 module = cst.parse_module(before)
             except cst.ParserSyntaxError:
                 continue
-            stripped = module.visit(DeadScaffold())
+            stripped = module.visit(FlextInfraDeadScaffold())
             if stripped.code.count("TYPE_CHECKING") == 1:
-                stripped = stripped.visit(OrphanImport())
+                stripped = stripped.visit(FlextInfraOrphanImport())
             if stripped.code == before:
                 continue
-            path.write_text(stripped.code, c.Cli.ENCODING_DEFAULT)
+            path.write_text(stripped.code, c.DEFAULT_ENCODING)
             changed = True
         return r[bool].ok(value=changed)
 

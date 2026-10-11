@@ -259,7 +259,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         if not stamp_path.is_file():
             return None
         parsed = u.Cli.json_parse(
-            stamp_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            stamp_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if parsed.failure or not isinstance(parsed.value, dict):
             return None
@@ -428,7 +428,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         if not report_path.is_file():
             return 0
         parsed = u.Cli.json_parse(
-            report_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            report_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if parsed.failure or not isinstance(parsed.value, dict):
             return 0

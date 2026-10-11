@@ -10,9 +10,9 @@ import ast
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, t, u
+from tests import tm
 
 
 class TestsFlextInfraLintRecipes:

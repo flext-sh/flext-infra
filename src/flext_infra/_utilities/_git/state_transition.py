@@ -108,7 +108,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
                         entry.oid,
                     )
                 )
-                os.fsdecode(payload).encode(c.Cli.ENCODING_DEFAULT, errors="strict")
+                os.fsdecode(payload).encode(c.DEFAULT_ENCODING, errors="strict")
 
     @classmethod
     def _state_realized_current(

@@ -10,10 +10,9 @@ import pstats
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraPytestDiagExtractor, c, m
-from tests.unit.validate.pytest_runner_support import profile_parent, runner_for
+from tests import tm, u
 
 
 class TestsFlextInfraPytestCollectionPolicy:
@@ -25,7 +24,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         policy_violation_project: Path,
     ) -> None:
         """A collection-time policy error rejects the run and names the offender."""
-        runner = runner_for(policy_violation_project)
+        runner = u.Tests.PytestRunner.runner_for(policy_violation_project)
 
         with pytest.raises(RuntimeError) as raised:
             runner.execute()
@@ -43,7 +42,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         profile_collection: bool,
     ) -> None:
         """Collect-only warnings, skips and import failures retain native evidence."""
-        runner = runner_for(
+        runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project,
             profile_collection=profile_collection,
         )
@@ -75,7 +74,7 @@ class TestsFlextInfraPytestCollectionPolicy:
 
         def execute_blocking_collection() -> None:
             if profile_collection:
-                profile_parent(
+                u.Tests.PytestRunner.profile_parent(
                     runner,
                     cached_runner_project / ".reports" / "profiles" / "pytest.pstats",
                 )
@@ -118,7 +117,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         homonym: bool,
     ) -> None:
         """Serial collection blocks on every warning, MRO violations included."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         category = c.FlextSmellViolation.__name__ if homonym else "ConsumerNotice"
         declaration = (
             f"class {category}(UserWarning):\n    pass\n"
@@ -165,7 +164,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         cached_runner_project: Path,
     ) -> None:
         """A file omitted by testmon remains covered by complete collection policy."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         target = cached_runner_project / runner.target
         (target / "test_stable.py").write_text(
             "from pathlib import Path\nimport warnings\n\n"
@@ -179,7 +178,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         existing = set(reports_root.glob("*/run-context.json"))
         (target / "emit-warning").touch()
 
-        inventory_runner = runner_for(cached_runner_project)
+        inventory_runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         with pytest.raises(RuntimeError, match="collection contains blocking findings"):
             inventory_runner.execute()
 
@@ -201,7 +200,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         policy_violation_project: Path,
     ) -> None:
         """The coverage inventory rejects the same collection policy violation."""
-        runner = runner_for(policy_violation_project)
+        runner = u.Tests.PytestRunner.runner_for(policy_violation_project)
 
         with pytest.raises(RuntimeError) as raised:
             runner.execute_coverage()

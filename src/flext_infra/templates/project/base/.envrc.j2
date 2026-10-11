@@ -55,24 +55,15 @@ export PYTHONUNBUFFERED=1
 # End SECTION: repository environment
 
 # === SECTION: mise activation (managed) ===
-# Source: native mise activation. mise self-manages through the [tools] entry
-# the committed mise.lock pins: `mise install` provisions the pinned release,
-# and the mise-managed shims directory resolves every declared tool — mise
-# included — to exactly that lock. Activation never installs or resolves.
+# Source: native mise activation. Load the declared tools' real paths,
+# including the self-managed mise release. Activation never installs tools.
 if ! command -v mise >/dev/null 2>&1; then
   log_error "mise is not installed; install it (https://mise.run) and run make setup"
   return 1
 fi
-mise_shims_dir="$(mise shims dir 2>/dev/null || true)"
-if [[ -z "${mise_shims_dir}" ]]; then
-  # mise releases without `mise shims dir` publish shims at their own data
-  # root; the documented default keeps activation native and guarded.
-  mise_shims_dir="${XDG_DATA_HOME:-${HOME}/.local/share}/mise/shims"
-fi
-if [[ ! -d "${mise_shims_dir}" ]]; then
-  log_error "mise has no shims directory (${mise_shims_dir}); run make setup"
-  return 1
-fi
+mise_environment="$(mise env --shell bash)" || return $?
+eval "${mise_environment}"
+unset mise_environment
 # The declared tools lead the PATH: a standalone binary the caller's PATH
 # lists earlier (for example a host ~/.local/bin/uv) never shadows the release
 # mise.lock pins. Prepending in reverse keeps mise's own precedence order.
@@ -86,7 +77,7 @@ mapfile -t mise_bin_paths <<< "${mise_bin_paths_output}"
 for ((mise_index = ${#mise_bin_paths[@]} - 1; mise_index >= 0; mise_index--)); do
   PATH_add "${mise_bin_paths[mise_index]}"
 done
-unset mise_bin_paths_output mise_bin_paths mise_index
+unset mise_bin_paths mise_index mise_bin_paths_output
 {% endraw -%}
 # End SECTION: mise activation
 

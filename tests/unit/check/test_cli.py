@@ -11,11 +11,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

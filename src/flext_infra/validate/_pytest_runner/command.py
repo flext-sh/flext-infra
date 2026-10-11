@@ -245,6 +245,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "no:metadata",
             "-o",
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
+            "-o",
+            (
+                f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}="
+                f"{'' if self.unbounded else pytest.slow_timeout_seconds}"
+            ),
             *(("-m", expression) if expression else ()),
         )
 
@@ -315,7 +320,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             (
                 "--timeout=0"
                 if self.unbounded
-                else f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
+                else "--timeout="
+                f"{config.Infra.tooling.tools.pytest.case_timeout_seconds}"
             ),
             "-o",
             "filterwarnings=",
@@ -439,37 +445,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             ),
         )
 
-    def build_full_command(
-        self,
-        report_dir: Path,
-        *,
-        serialize: bool = False,
-    ) -> t.VariadicTuple[str]:
-        """Build the unbounded whole-suite argv (never testmon, never coverage).
-
-        The full operation runs locally only: every marker of its scope, no
-        testmon selection, no suite stop instant, and pytest-timeout disabled
-        for every case.
-
-        Returns:
-            The resulting ``t.VariadicTuple[str]``.
-
-        """
-        pytest = config.Infra.tooling.tools.pytest
-        workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
-        return self._suite_argv(
-            report_dir,
-            limits=self._UNBOUNDED_LIMITS,
-            targets=self._node_targets(),
-            workers=workers,
-            trailing=(
-                *self._plugin_policy_args(
-                    execution_mode=c.Infra.PytestExecutionMode.FULL,
-                ),
-                *self._NO_COVERAGE,
-            ),
-        )
-
     def _bounded_limits(
         self,
         workers: str,
@@ -485,6 +460,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The bounded suite's time-limit arguments.
 
         """
+        if self.unbounded:
+            return self._UNBOUNDED_LIMITS
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,
@@ -501,6 +478,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         limits: t.StrSequence,
         targets: t.StrSequence,
         workers: str,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.INCREMENTAL
+        ),
         trailing: t.StrSequence,
     ) -> t.VariadicTuple[str]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.
@@ -513,17 +493,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
-        if self.unbounded:
-            timeout_args = ("--timeout=0",)
-        else:
-            suite_stop = self.suite_stop_monotonic(
-                serial=workers == "0",
-                execution_mode=execution_mode,
-            )
-            timeout_args = (
-                f"--timeout={pytest.case_timeout_seconds}",
-                f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
-            )
         return (
             sys.executable,
             *(
@@ -538,7 +507,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *targets,
             *pytest.progress_args,
             *pytest.report_args,
-            *timeout_args,
+            *limits,
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",
             f"--report-log={report_dir / 'events.jsonl'}",

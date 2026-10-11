@@ -71,7 +71,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         elif isinstance(node, ast.AugAssign):
             cls._aug_assign(spec, node, bindings)
         elif isinstance(node, ast.Delete):
-            cls._delete(spec, node, bindings)
+            cls._delete(node, bindings)
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             bindings[node.name] = None
         elif isinstance(node, ast.If):
@@ -422,9 +422,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
-            node,
-            targets,
-            visible,
+            node, targets, visible
         ):
             return False
         target = targets[0]
@@ -448,13 +446,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return True
         if not isinstance(value, ast.Name) or value.id not in visible:
             return False
-        owner_target, attribute, member = resolved
-        definition = spec.definitions[owner_target]
-        spec.definitions[owner_target] = definition.model_copy(
+        definition = spec.definitions[owner.target]
+        spec.definitions[owner.target] = definition.model_copy(
             update={
                 "members": {
                     **definition.members,
-                    attribute: member,
+                    target.attr: visible[value.id],
                 },
             },
         )
@@ -498,34 +495,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 },
             )
         return current if current.target in definitions else None
-
-    @classmethod
-    def _inventoried_receiver_update(
-        cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
-        node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
-        visible: MutableMapping[str, m.Infra.SourceClassReference | None],
-        module: str,
-    ) -> tuple[str, str, m.Infra.SourceClassReference | None] | None:
-        """Resolve one inventoried receiver update, or ``None`` when inapplicable.
-
-        Returns:
-            The ``(owner target, attribute, member)`` update, or ``None``.
-
-        """
-        target = targets[0]
-        value = node.value
-        if not isinstance(target, ast.Attribute):
-            return None
-        owner = cls._reference(target.value, visible, module)
-        if owner.target not in spec.definitions or owner.attributes:
-            return None
-        if isinstance(value, ast.Call):
-            return owner.target, target.attr, None
-        if isinstance(value, ast.Name) and value.id in visible:
-            return owner.target, target.attr, visible[value.id]
-        return None
 
     @classmethod
     def _name_assignment(
@@ -587,7 +556,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _delete(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Delete,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:

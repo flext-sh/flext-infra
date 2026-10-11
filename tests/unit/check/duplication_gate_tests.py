@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
-from tests import m, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraDuplicationGate:

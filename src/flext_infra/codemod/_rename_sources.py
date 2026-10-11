@@ -12,8 +12,7 @@ import re
 import tokenize
 from pathlib import Path
 
-from flext_infra import c, m, t, u
-from flext_infra._config import FlextInfraConfig, config
+from flext_infra import FlextInfraConfig, c, config, m, t, u
 
 
 class FlextInfraRenameSources:
@@ -116,7 +115,7 @@ class FlextInfraRenameSources:
                 if state.content is None:
                     msg = f"rename source disappeared: {path}"
                     raise ValueError(msg)
-                source = state.content.decode(c.Cli.ENCODING_DEFAULT)
+                source = state.content.decode(c.DEFAULT_ENCODING)
                 if (
                     source.startswith(c.Infra.AUTOGEN_HEADERS)
                     and path.resolve() not in templates
@@ -182,16 +181,16 @@ class FlextInfraRenameSources:
             if isinstance(value, ast.Constant) and isinstance(value.value, str):
                 column = len(
                     lines[value.lineno - 1]
-                    .encode(c.Cli.ENCODING_DEFAULT)[: value.col_offset]
-                    .decode(c.Cli.ENCODING_DEFAULT),
+                    .encode(c.DEFAULT_ENCODING)[: value.col_offset]
+                    .decode(c.DEFAULT_ENCODING),
                 )
                 if value.end_lineno is None or value.end_col_offset is None:
                     msg = "Python docstring lacks an authenticated source span"
                     raise ValueError(msg)
                 end_column = len(
                     lines[value.end_lineno - 1]
-                    .encode(c.Cli.ENCODING_DEFAULT)[: value.end_col_offset]
-                    .decode(c.Cli.ENCODING_DEFAULT),
+                    .encode(c.DEFAULT_ENCODING)[: value.end_col_offset]
+                    .decode(c.DEFAULT_ENCODING),
                 )
                 docstrings.append((
                     (value.lineno, column),

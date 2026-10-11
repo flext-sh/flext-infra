@@ -9,11 +9,10 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from flext_tests import tm
 from packaging.utils import canonicalize_name
 
 from flext_infra import config, u
-from tests import c, m, t
+from tests import c, m, t, tm
 
 # Fixture scenario data, declared here and nowhere else: flext-infra ships no
 # provider registry, so a test that needs a provider declares the one it means

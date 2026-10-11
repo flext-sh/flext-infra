@@ -54,6 +54,9 @@ release instead of the project release. Activation does not install tools or
 write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
 `make upg`. A missing pin requires `make upg`; a runtime that is not yet installed
 requires `make setup`, whose provisioning happens before activation.
+Both setup and upgrade resolve the executable through `mise which python` at the
+shared environment-sync boundary and pass that exact path to uv. Recursive Make
+calls do not require a caller-provided `SETUP_PYTHON` environment variable.
 Make and direnv restrict global and system configuration discovery to the
 elected runtime's `.mise` directory; unrelated host tool declarations never
 belong to project provisioning.

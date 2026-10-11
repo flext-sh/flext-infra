@@ -233,7 +233,7 @@ class FlextInfraUtilitiesDocsAudit(
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
                 errors=c.Infra.IGNORE,
             )
             FlextInfraUtilitiesDocsAudit._scan_broken_links(
@@ -271,7 +271,7 @@ class FlextInfraUtilitiesDocsAudit(
                 FlextInfraUtilitiesDocsAudit.docs_generated_api_reference_path(rel)
             )
             text = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
                 errors=c.Infra.IGNORE,
             )
             for token in tokens:

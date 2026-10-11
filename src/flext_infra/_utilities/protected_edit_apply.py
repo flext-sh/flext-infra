@@ -133,7 +133,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             Whether *py_file* defines pytest-collectable tests.
 
         """
-        tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+        tree = ast.parse(py_file.read_text(encoding=c.DEFAULT_ENCODING))
         for node in ast.walk(tree):
             if isinstance(
                 node,
@@ -217,7 +217,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             if request.restore_fn is not None:
                 request.restore_fn()
                 return
-            py_file.write_text(request.before_source, encoding=c.Cli.ENCODING_DEFAULT)
+            py_file.write_text(request.before_source, encoding=c.DEFAULT_ENCODING)
 
         edit_completed = False
         try:
@@ -261,7 +261,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         if not new_errors and not test_fail:
             return (True, [])
 
-        modified = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        modified = py_file.read_text(encoding=c.DEFAULT_ENCODING)
         diff = FlextInfraUtilitiesProtectedEditApply.unified_diff_lines(
             request.before_source,
             modified,
@@ -293,17 +293,17 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             The resulting ``t.Infra.EditResult``.
 
         """
-        original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        original_source = py_file.read_text(encoding=c.DEFAULT_ENCODING)
         if request.updated_source == original_source:
             return (True, [])
 
         def _write_updated() -> None:
             """Write updated."""
-            py_file.write_text(request.updated_source, encoding=c.Cli.ENCODING_DEFAULT)
+            py_file.write_text(request.updated_source, encoding=c.DEFAULT_ENCODING)
 
         def _restore_original() -> None:
             """Restore original."""
-            py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+            py_file.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
         return FlextInfraUtilitiesProtectedEditApply.protected_file_edit(
             py_file,
@@ -340,9 +340,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         }
         for path, expected_source in expected_sources.items():
             current_source = (
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                if path.is_file()
-                else None
+                path.read_text(encoding=c.DEFAULT_ENCODING) if path.is_file() else None
             )
             if current_source != expected_source:
                 return (
@@ -365,7 +363,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         try:
             for path, updated_source in normalized_updates.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
+                path.write_text(updated_source, encoding=c.DEFAULT_ENCODING)
             if request.post_write is not None:
                 request.post_write()
             ok, reports = (

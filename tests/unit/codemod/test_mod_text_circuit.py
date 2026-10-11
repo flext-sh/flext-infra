@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra, m, p, r, u
 from flext_infra.codegen import (
@@ -18,6 +17,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraModTextGateEngine
+from tests import tm
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -130,7 +130,7 @@ class TestsFlextInfraModTextGateEngine:
         request = m.Infra.ModTextCommand(repository_root=mod_workspace)
         tm.fail(infra.mod_text(request), has="text Markdown include has no source")
 
-        original = document.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        original = document.read_text(encoding=c.DEFAULT_ENCODING)
         changed = original.replace(
             f'name = "{distribution}"',
             f'name = "changed-{distribution}"',

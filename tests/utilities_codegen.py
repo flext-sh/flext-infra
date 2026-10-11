@@ -10,13 +10,11 @@ import os
 import sys
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config, r, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import c, m, p, t
+from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -160,6 +158,24 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # A governed repository carries its committed Mise lock; generation
         # formats through the release it pins and never resolves a selector.
         TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
+        for name in members:
+            manifest = root / name / c.PYPROJECT_FILENAME
+            if not manifest.exists():
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                tm.ok(
+                    u.Cli.toml_write_mapping(
+                        manifest,
+                        {
+                            "project": {
+                                "name": name,
+                                "version": tm.ok(
+                                    u.Infra.current_workspace_version(Path.cwd()),
+                                ),
+                                "dependencies": [],
+                            },
+                        },
+                    ),
+                )
         repository = fixture.repository_ref(
             "fixture-project",
             role=(
@@ -257,7 +273,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return (
             None
             if match is None or match.desired_content is None
-            else tm.not_none(match.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+            else tm.not_none(match.desired_content).decode(c.DEFAULT_ENCODING)
         )
 
     @staticmethod

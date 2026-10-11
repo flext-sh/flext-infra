@@ -9,10 +9,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraGitIdentitySubmodules:

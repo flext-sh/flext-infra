@@ -12,11 +12,9 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m, t
 
 from flext_infra import c
-from flext_infra._models._config import (
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-)
+from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
 
 
 class FlextInfraConfigModelsRepository:
@@ -378,6 +376,12 @@ class FlextInfraConfigModelsRepository:
         root: Annotated[
             Path,
             m.Field(description="Resolved repository root receiving conformance"),
+        ]
+        toolchain_root: Annotated[
+            Path,
+            m.Field(
+                description="Composition root owning the active generation toolchain"
+            ),
         ]
         make_profile: Annotated[
             c.Infra.MakeProfile,

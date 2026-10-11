@@ -14,12 +14,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, m, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.mise_toolchain_proof import FlextInfraCodegenMiseToolchainProof
-from tests import c
+from tests import c, tm
 
 
 class TestsFlextInfraMiseToolchainProof:

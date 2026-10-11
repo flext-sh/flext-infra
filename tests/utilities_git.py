@@ -10,10 +10,9 @@ import venv
 from pathlib import Path
 
 from flext_cli import cli as cli_facade
-from flext_tests import tm
 
 from flext_infra import config, u
-from tests import c, m, t
+from tests import c, m, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 
 

@@ -24,8 +24,11 @@ from flext_infra import c
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeSourceBases,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSourceBindingCollector,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 if TYPE_CHECKING:
@@ -38,7 +41,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     """Resolve facade letters to the class their declaring module names."""
 
     @classmethod
-    def facade_classes(cls, package: str) -> t.StrMapping:
+    def facade_classes(
+        cls,
+        package: str,
+        *,
+        source_root: Path | None = None,
+    ) -> t.StrMapping:
         """Map every letter ``package`` publishes to its declared facade class.
 
         Returns:
@@ -48,8 +56,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If facade package is not importable for derivation.
 
         """
+        sources = (
+            {
+                path: path.read_text(encoding=c.DEFAULT_ENCODING)
+                for root in FlextInfraUtilitiesRopeCore.import_project_roots(
+                    source_root
+                )
+                for path in (root / c.Infra.DEFAULT_SRC_DIR / package).rglob("*.py")
+            }
+            if source_root is not None
+            else {}
+        )
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            {},
+            sources,
             (f"from {package} import *",),
         )
         indexed = modules.get(package)
@@ -302,7 +321,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             c.Infra.INIT_PY if is_package else f"{module.rpartition('.')[2]}.py",
         )
         return MappingProxyType(
-            FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+            FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 module,
                 path,
                 source,

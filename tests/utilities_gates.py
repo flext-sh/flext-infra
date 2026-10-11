@@ -10,11 +10,9 @@ import dataclasses
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import c, m, t
+from tests import c, m, t, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 
 if TYPE_CHECKING:

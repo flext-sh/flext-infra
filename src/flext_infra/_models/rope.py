@@ -559,6 +559,10 @@ class FlextInfraModelsRope:
             str,
             m.Field(description="Full source text used to compute fingerprints"),
         ]
+        parameter_lines: Annotated[
+            t.MappingKV[t.Pair[int, str], int],
+            m.Field(description="Parameter positions from the module snapshot"),
+        ]
         name: Annotated[str, m.Field(description="Resolved symbol name being recorded")]
         pyname: Annotated[
             t.Infra.RopePyName,

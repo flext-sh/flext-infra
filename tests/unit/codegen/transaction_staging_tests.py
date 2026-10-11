@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, e, m, p, r
 from flext_infra.codegen import (
@@ -20,7 +19,7 @@ from flext_infra.codegen import (
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraTransactionStaging:

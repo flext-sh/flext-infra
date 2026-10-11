@@ -9,9 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import u
+from tests import tm, u
 
 # Real dependency discovery provisions a consumer from external package sources.
 pytestmark = [pytest.mark.slow, pytest.mark.remote]

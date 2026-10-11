@@ -12,13 +12,9 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, c, config, m, t, u
-from tests.unit.validate.pytest_runner_support import (
-    declare_parallel_project,
-    runner_for,
-)
+from flext_infra import FlextInfraPytestRunner, config
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestRunnerSuiteStop:
@@ -126,9 +122,9 @@ class TestsFlextInfraPytestRunnerSuiteStop:
                 owns_no_tests=False,
             )
 
-        declare_parallel_project(cached_runner_project)
+        u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         multi = [f"tests/test_serial_{'x' * index}.py::test_one" for index in range(4)]
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         multi_plan = dispatch_plan(multi)
         multi_command = runner.build_command(
             cached_runner_project / runner.reports,

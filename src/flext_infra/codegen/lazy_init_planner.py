@@ -154,6 +154,18 @@ class FlextInfraCodegenLazyInitPlanner(
             pkg_dir=context.pkg_dir,
             surface=context.surface,
         )
+        # Inject test runtime aliases (tm, td, tf, tk, etc.) for the tests facade root.
+        # The tests package (e.g., flext_api.tests) is a facade root that should
+        # publish these aliases from flext_tests.
+        is_test_facade_root = (
+            context.current_pkg == c.Infra.DIR_TESTS
+            and context.pkg_dir.name == c.Infra.DIR_TESTS
+            and context.surface == c.Infra.DIR_TESTS
+        )
+        if is_test_facade_root:
+            for alias_name, target in c.Infra.TEST_RUNTIME_ALIAS_TARGETS.items():
+                if alias_name not in lazy_map:
+                    lazy_map[alias_name] = target
         for name in c.Infra.INFRA_ONLY_EXPORTS:
             lazy_map.pop(name, None)
             eager_dunders.pop(name, None)

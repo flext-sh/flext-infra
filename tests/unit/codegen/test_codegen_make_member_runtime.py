@@ -9,9 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
 

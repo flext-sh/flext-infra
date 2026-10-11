@@ -77,7 +77,7 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                 return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(
                     serialized,
                 )
-            content = f"{serialized.value}\n".encode(c.Cli.ENCODING_DEFAULT)
+            content = f"{serialized.value}\n".encode(c.DEFAULT_ENCODING)
             manifest_path = project / ".agents" / c.Infra.MANIFEST_FILENAME
             state = u.Cli.atomic_read_binary_file_state(manifest_path, required=False)
             if state.failure:

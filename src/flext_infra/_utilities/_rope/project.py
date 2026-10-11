@@ -27,10 +27,8 @@ from flext_infra import t
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired."""
 
-    # Rope recomputes both folder lists on every module lookup (it walks the
-    # whole root and resolves every sys.path entry) because a live project
-    # can gain folders while open. A read-only analysis pass cannot, so it
-    # freezes them for its duration; outside one, Rope's behaviour stands.
+    # Import roots are declared by FLEXT; a read-only analysis pass also
+    # freezes their resource identities and the external Python path.
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
 
     class SnapshotFiles:
@@ -102,7 +100,7 @@ class FlextInfraRopeProject(Project):
             This project, its folder layout computed once for the pass.
 
         """
-        source_folders: list[File | Folder] = super().get_source_folders()
+        source_folders = self.get_source_folders()
         python_path_folders: list[File | Folder] = super().get_python_path_folders()
         self._frozen_folders = (source_folders, python_path_folders)
         try:
@@ -112,14 +110,24 @@ class FlextInfraRopeProject(Project):
 
     @override
     def get_source_folders(self) -> list[File | Folder]:
-        """Return the source folders, frozen during a read-only pass.
+        """Return declared import roots, frozen during a read-only pass.
+
+        Package roots also expose their parent so their qualified name resolves.
+        Unrelated workspace resources never participate in source discovery.
 
         Returns:
-            The folders Rope's own contract returns.
+            Declared folders and the import roots of declared packages.
 
         """
         if self._frozen_folders is None:
-            folders: list[File | Folder] = super().get_source_folders()
+            folders: list[File | Folder] = list(self._custom_source_folders)
+            for folder in self._custom_source_folders:
+                if (
+                    folder.is_folder()
+                    and self.pycore._is_package(folder)
+                    and folder.parent not in folders
+                ):
+                    folders.append(folder.parent)
             return folders
         return list(self._frozen_folders[0])
 

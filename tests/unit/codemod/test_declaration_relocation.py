@@ -12,12 +12,11 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDeclarationRelocation:

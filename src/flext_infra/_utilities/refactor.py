@@ -132,7 +132,7 @@ class FlextInfraUtilitiesRefactor:
             entries=report.entries,
         )
         content = (evidence.model_dump_json(indent=2) + "\n").encode(
-            c.Cli.ENCODING_DEFAULT,
+            c.DEFAULT_ENCODING,
         )
         report_path = root.resolve() / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
         published = FlextInfraUtilitiesRefactor._published_mod_scan_bytes(
@@ -254,7 +254,7 @@ class FlextInfraUtilitiesRefactor:
 
         """
         content = (report.model_dump_json(indent=2) + "\n").encode(
-            c.Cli.ENCODING_DEFAULT,
+            c.DEFAULT_ENCODING,
         )
         report_path = root.resolve() / relative_path
         prepared = u.Cli.ensure_dir(report_path.parent)

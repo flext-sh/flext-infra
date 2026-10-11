@@ -28,7 +28,7 @@ class FlextInfraApplyRenames:
 
         inventory = FlextInfraRenameSources.inventory(roots, params)
         sources = {
-            path: state.content.decode(c.Cli.ENCODING_DEFAULT)
+            path: state.content.decode(c.DEFAULT_ENCODING)
             for path, state in inventory.items()
             if state.content is not None
         }
@@ -46,6 +46,7 @@ class FlextInfraApplyRenames:
                 python,
                 pairs,
                 params.bindings,
+                rename_definitions=params.rename_definitions,
             )
             for path, source in sources.items():
                 edits = list(symbols.get(path, ()))
@@ -63,7 +64,7 @@ class FlextInfraApplyRenames:
                     changed = u.Infra.content_change(resource, source, edits)
                     if path in python:
                         ast.parse(changed.new_contents, filename=str(path))
-                    desired = changed.new_contents.encode(c.Cli.ENCODING_DEFAULT)
+                    desired = changed.new_contents.encode(c.DEFAULT_ENCODING)
                 plans.append(
                     m.Infra.SemanticFilePlan(
                         project=root,
@@ -173,7 +174,7 @@ class FlextInfraApplyRenames:
                 f"rename CSV disappeared: {csv_path}",
             )
         pairs = FlextInfraRenameSources.pairs(
-            driver.content.decode(c.Cli.ENCODING_DEFAULT),
+            driver.content.decode(c.DEFAULT_ENCODING),
         )
         plans, pending = cls._plan(params, roots, pairs)
         changed: t.SequenceOf[Path] = ()

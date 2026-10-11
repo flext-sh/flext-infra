@@ -13,8 +13,11 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_core import c
-from flext_infra._constants import FlextInfraConstantsBase
-from flext_infra._constants.census import FlextInfraConstantsCensus
+from flext_infra._constants import (
+    FlextInfraConstantsBase,
+    FlextInfraConstantsCensus,
+    FlextInfraConstantsSourceCode,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -24,7 +27,7 @@ class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
 
     MOD_SCAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "refactor"
         / "mod-findings.json"
     )
@@ -34,13 +37,13 @@ class FlextInfraConstantsRefactor:
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."
     ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "refactor"
         / "accessor-migration.json"
     )
     "Canonical single-file evidence snapshot for the latest accessor migration."
     NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "refactor"
         / "namespace-enforce.json"
     )
@@ -48,7 +51,7 @@ class FlextInfraConstantsRefactor:
     VIOLATIONS_SWEEP_ROUTE_NAME: ClassVar[str] = "violations-sweep"
     "Canonical refactor CLI verb that repairs and proves the always-reducing law."
     VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME)
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "refactor"
         / "violations-sweep.json"
     )
@@ -230,6 +233,18 @@ class FlextInfraConstantsRefactor:
         })
     )
     "Predicates evaluated against the project's runtime dependency closure."
+
+    CODEMOD_PACKAGE_CONTEXT_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
+        frozenset({
+            CodemodContextPredicate.STDLIB_MODULE,
+            CodemodContextPredicate.OWN_PACKAGE,
+            CodemodContextPredicate.RUNTIME_PACKAGE,
+            CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.RUNTIME_ALIAS,
+            CodemodContextPredicate.LOCAL_ALIAS,
+        })
+    )
+    "Package predicates consume one declared namespace per admission pass."
 
     @unique
     class SemanticCutoverPhase(StrEnum):

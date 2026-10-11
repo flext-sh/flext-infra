@@ -14,11 +14,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, m
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -154,10 +153,10 @@ class TestsFlextInfraLocCapGate:
             code_lines=config.Infra.codegen.loc_cap.max_lines + 1,
         )
         module = project / "src" / "demo_project" / "sample.py"
-        source = module.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = module.read_text(encoding=c.DEFAULT_ENCODING)
         module.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n{source}",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         gate = FlextInfraLocCapGate(tmp_path)
 

@@ -116,6 +116,8 @@ Every governed standalone repository keeps referencing its provider by name from
 The explicit `workspace flext-binding` CLI accepts `--repository-root`, `--flext-root`,
 and `--python`. It changes only the provisioned consumer environment; it never edits the
 consumer's dependency declarations. Canonical setup restores the declared resolution.
+Workspace setup installs its declared local editable sources through `uv sync`; it
+does not invoke the external-consumer binding service on itself.
 The interpreter must belong to the consumer's physical environment as determined by the
 workspace topology. A symlinked environment or a foreign interpreter is rejected.
 
@@ -153,6 +155,13 @@ The `pyproject` bootstrap regenerates declared tool tables through the existing
 dependency conformance phases before Rope or uv reads the physical document. Project
 metadata, dependency groups, and unowned tables remain live inputs; multiline string
 contents never select a table. Normal generation and all gates still run afterward.
+The same bounded recovery is available through
+`flext-infra codegen conform --root <checkout> --what pyproject --scope self --mode apply`.
+It authenticates the live destination and configuration sources, parses the journal-owned
+staged replacement before publication, and verifies its fixed point. This prerequisite
+phase does not open Rope or invoke the installed TOML formatter. Run `make gen` afterward
+to render the complete templates, derive runtime-evaluated bases with native Rope, and
+format the final projection; bootstrap alone is not complete generation evidence.
 `docs-config` renders only the declared docs policy template when a conflicted
 generated JSON file prevents ordinary generation from parsing it; afterward run
 `make gen` to verify the full projection. Generated targets are never edited
@@ -174,6 +183,13 @@ lease and validates the journal-owned staged TOML before publication, then verif
 the live declaration and its fixed point. It installs no tools, changes no lockfile,
 and rejects fleet scopes. Run the read-only `codegen mise-proof` for that checkout
 before invoking a lifecycle command that requires its frozen installed toolchain.
+
+The public `codegen conform --what envrc --scope self --mode apply` recovery
+surface renders only the checkout's `.envrc` from its typed activation context and
+the existing template. It reuses the bootstrap file transaction and fixed-point
+verification, without activating direnv, planning dependency projections, changing
+locks, or touching `.envrc.local`. Use the `makefile` surface separately for a
+conflicted generated Makefile; neither recovery requires full generation to start.
 
 A dedicated integration worktree may stage exact supplier commits in its handwritten
 `config/workspace.yaml` under `candidate_dependencies`. Each entry declares the

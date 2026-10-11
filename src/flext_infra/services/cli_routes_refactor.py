@@ -13,7 +13,6 @@ from flext_cli import cli
 from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
     FlextInfraCliModProgress,
-    FlextInfraCliRouteBase,
     FlextInfraCodegenProtocolModels,
     FlextInfraCodemodAstScan,
     FlextInfraCodemodSnapshotRefresh,
@@ -30,7 +29,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraRefactorRoutes(FlextInfraCliRouteBase):
+class FlextInfraRefactorRoutes:
     """Own the complete refactor command tuple."""
 
     @staticmethod
@@ -99,25 +98,19 @@ class FlextInfraRefactorRoutes(FlextInfraCliRouteBase):
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=FlextInfraCliRouteBase.result_handler(
-                FlextInfraNamespaceEnforcer.execute_command,
-            ),
+            handler=FlextInfraNamespaceEnforcer.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
             model_cls=FlextInfraRefactorCensus,
-            handler=FlextInfraCliRouteBase.result_handler(
-                FlextInfraRefactorCensus.execute_command,
-            ),
+            handler=FlextInfraRefactorCensus.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=FlextInfraCliRouteBase.result_handler(
-                FlextInfraAccessorMigrationOrchestrator.execute_payload,
-            ),
+            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",
@@ -185,9 +178,7 @@ class FlextInfraRefactorRoutes(FlextInfraCliRouteBase):
                 "moment any violation total increased"
             ),
             model_cls=FlextInfraRefactorViolationsSweep,
-            handler=FlextInfraCliRouteBase.result_handler(
-                FlextInfraRefactorViolationsSweep.execute_command,
-            ),
+            handler=FlextInfraRefactorViolationsSweep.execute_command,
             success_message="violations sweep reduced or held every total",
         ),
     )

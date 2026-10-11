@@ -15,6 +15,12 @@ from flext_cli import u
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectUvSources
+from flext_infra._utilities._pyproject._requirements_provenance import (
+    FlextInfraUtilitiesPyprojectRequirementsProvenance,
+)
+from flext_infra._utilities._pyproject.overlay import (
+    FlextInfraUtilitiesPyprojectOverlay,
+)
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -33,38 +39,38 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             Path | None,
             m.Field(description="Canonical root for declared member metadata"),
         ] = None
-        codegen_dependencies: Annotated[
-            t.StrSequence,
-            m.Field(description="Codegen floors from the canonical rendered profile"),
-        ] = ()
 
     @classmethod
     def _parsed_pyproject(
         cls,
         pyproject_content: str,
-    ) -> p.Result[t.Pair[t.Cli.TomlDocument, str]]:
-        """Parse one pyproject source and return it with its declared project name.
+    ) -> p.Result[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]:
+        """Parse a source, its distribution identity, and its mapping once.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.Cli.TomlDocument, str]]``.
+            The validated document, project name, and metadata mapping.
 
         """
+        result = r[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]
         source = u.Cli.toml_parse_text(pyproject_content)
         if source is None:
-            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+            return result.fail(
                 "pyproject content is not valid TOML",
             )
         project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
         if project is None:
-            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+            return result.fail(
                 "pyproject content must define [project]",
             )
         project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
-            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+            return result.fail(
                 "[project].name must be a non-empty string",
             )
-        return r[t.Pair[t.Cli.TomlDocument, str]].ok((source, project_name_raw.strip()))
+        payload = u.Cli.toml_as_mapping(source)
+        if payload is None:
+            return result.fail("root metadata is not a TOML mapping")
+        return result.ok((source, project_name_raw.strip(), payload))
 
     @classmethod
     def pyproject_conform(
@@ -95,27 +101,39 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         parsed = cls._parsed_pyproject(pyproject_content)
         if parsed.failure:
             return r[str].from_failure(parsed)
-        source, project_name = parsed.value
+        source, project_name, payload = parsed.value
         provenance = options if options is not None else cls.PyprojectConformOptions()
         environment = cls._member_environment_requirements(workspace, provenance)
         if environment.failure:
             return r[str].from_failure(environment)
         member_requests, member_groups, member_requirements = environment.value
-        if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
+        custom_dev: t.StrSequence = ()
+        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
             payload = u.Cli.toml_as_mapping(source)
             if payload is None:
                 return r[str].fail("root metadata is not a TOML mapping")
+            custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
+                payload,
+                pyproject_content,
+            )
+            if custom.failure:
+                return r[str].from_failure(custom)
+            custom_dev = custom.value
             groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
             u.Cli.toml_sync_string_list(
                 groups,
                 str(c.Infra.DEV),
-                cls._custom_dev_additions(payload),
+                custom.value,
             )
-            # Codegen is already a managed group, unlike CUSTOM dev additions.
             u.Cli.toml_sync_string_list(
                 groups,
-                "codegen",
-                sorted({*provenance.codegen_dependencies, *member_groups}),
+                c.Infra.DependencyGroup.CODEGEN,
+                sorted({
+                    *u.Cli.toml_as_string_list(
+                        u.Cli.toml_value(groups, c.Infra.DependencyGroup.CODEGEN),
+                    ),
+                    *member_groups,
+                }),
             )
         cls._sync_dependency_groups(
             source,
@@ -128,7 +146,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         u.Cli.toml_sync_string_list(
             groups,
             str(c.Infra.DEV),
-            sorted({*dev, *member_requests}),
+            sorted({*dev, *member_requests, *member_groups}),
         )
         local_requirements = cls.document_requirement_lines(source)
         if local_requirements.failure:
@@ -153,6 +171,24 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
+        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
+            normalized_custom: list[str] = []
+            context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
+                declared_sources=declared_sources,
+                candidate_sources=candidate_sources,
+                family_line=provenance.flext_line.branch
+                if provenance.flext_line
+                else None,
+            )
+            for value in custom_dev:
+                canonical = cls._canonical_requirement(value, provenance=context)
+                if canonical.failure:
+                    return r[str].from_failure(canonical)
+                normalized_custom.append(canonical.value)
+            FlextInfraUtilitiesPyprojectOverlay.sync_member_dev_provenance(
+                source,
+                custom=normalized_custom,
+            )
         cls._remove_legacy_tooling(source)
         synced = cls._synced_conform_tables(
             source,
@@ -173,16 +209,16 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """Retain all declared member extras and groups in the root environment.
 
         Args:
-            workspace: The workspace specification containing subprojects and integration details.
-            options: The options for pyproject conformity, including repository root and other settings.
+            workspace: Declared members and their integration contract.
+            options: Canonical repository root and conformance provenance.
 
         Returns:
-            A result containing a triple of string sequences representing the member environment requirements.
+            Member requests, dependency groups, and declared requirements.
         """
         result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
         members = (
             tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         if not members:
@@ -196,66 +232,67 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         requirements: list[str] = []
         for member in members:
             path = options.repository_root / member.path / c.PYPROJECT_FILENAME
-            document = u.Cli.toml_read_document(path)
-            if document.failure:
-                return result.from_failure(document)
-            payload = u.Cli.toml_as_mapping(document.value)
-            if payload is None:
-                return result.fail(f"member metadata is not a TOML mapping: {path}")
-            project = payload.get(c.Infra.PROJECT)
-            if (
-                not isinstance(project, Mapping)
-                or project.get(c.Infra.NAME) != member.distribution
-            ):
-                return result.fail(
-                    f"member metadata identity differs from declaration: {path}",
-                )
-            optional = project.get(c.Infra.OPTIONAL_DEPENDENCIES, {})
-            if not isinstance(optional, Mapping):
-                return result.fail(
-                    f"member optional dependencies must be a table: {path}"
-                )
-            for raw in (project.get(c.Infra.DEPENDENCIES, ()), *optional.values()):
-                validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, raw)
-                if validated.failure:
-                    return result.from_failure(validated)
-            extras = f"[{','.join(sorted(optional))}]" if optional else ""
+            parsed = FlextInfraUtilitiesPyprojectDocument._member_requirements(
+                path, member.distribution
+            )
+            if parsed.failure:
+                return result.from_failure(parsed)
+            metadata, declared = parsed.value
+            extras = (
+                f"[{','.join(sorted(metadata.optional_dependencies))}]"
+                if metadata.optional_dependencies
+                else ""
+            )
             requests.append(
                 f"{member.distribution}{extras} @ "
                 f"git+{member.url}@{workspace.integration.branch}",
             )
-            declared_groups = payload.get(c.Infra.DEPENDENCY_GROUPS, {})
-            if not isinstance(declared_groups, Mapping):
-                return result.fail(f"member dependency groups must be a table: {path}")
-            if declared_groups:
-                for name in declared_groups:
-                    entries = declared_groups[name]
-                    if not isinstance(entries, list):
-                        return result.fail(
-                            f"member dependency group {name} must be an array: {path}",
-                        )
-                    for entry in entries:
-                        if isinstance(entry, str):
-                            groups.append(entry)
-                        elif (
-                            isinstance(entry, Mapping)
-                            and tuple(entry) == ("include-group",)
-                            and isinstance(entry["include-group"], str)
-                            and entry["include-group"] in declared_groups
-                        ):
-                            # All groups are requested, including this target.
-                            continue
-                        else:
-                            return result.fail(
-                                f"invalid member dependency group {name}: {path}",
-                            )
-            declared = FlextInfraUtilitiesPyprojectUvSources.document_requirement_lines(
-                document.value,
-            )
-            if declared.failure:
-                return result.from_failure(declared)
-            requirements.extend(declared.value)
+            for entries in metadata.dependency_groups.values():
+                groups.extend(entry for entry in entries if isinstance(entry, str))
+            requirements.extend(declared)
         return result.ok((tuple(requests), tuple(groups), tuple(requirements)))
+
+    @staticmethod
+    def _member_requirements(
+        path: Path,
+        distribution: str,
+    ) -> p.Result[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]:
+        """Parse a member's dependency declarations once at the TOML boundary.
+
+        Returns:
+            Validated metadata and its complete requirement lines.
+        """
+        result = r[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]
+        document = u.Cli.toml_read_document(path)
+        if document.failure:
+            return result.from_failure(document)
+        payload = u.Cli.toml_as_mapping(document.value)
+        if payload is None:
+            return result.fail(f"member metadata is not a TOML mapping: {path}")
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            return result.fail(
+                f"member metadata identity differs from declaration: {path}",
+            )
+        parsed = u.validate_value(
+            m.Infra.DepsToml.MemberRequirements,
+            {
+                "name": project.get(c.Infra.NAME),
+                "dependencies": project.get(c.Infra.DEPENDENCIES, ()),
+                "optional_dependencies": project.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
+                "dependency_groups": payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
+            },
+        )
+        if parsed.failure:
+            return result.from_failure(parsed)
+        if parsed.value.name != distribution:
+            return result.fail(
+                f"member metadata identity differs from declaration: {path}",
+            )
+        declared = FlextInfraUtilitiesPyprojectUvSources.document_requirement_lines(
+            document.value,
+        ).unwrap()
+        return result.ok((parsed.value, declared))
 
     @staticmethod
     def _declared_floor_sources(
@@ -373,6 +410,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             The resulting ``p.Result[bool]``.
 
         """
+        cls._remove_legacy_tooling(source)
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
             return r[bool].from_failure(typecheck_paths)

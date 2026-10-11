@@ -9,11 +9,10 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, cast
 
-from flext_tests import tm
 from rope.refactor import patchedast
 
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

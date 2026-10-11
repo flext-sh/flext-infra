@@ -240,7 +240,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             ):
                 continue
             content = path.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
                 errors=c.Infra.IGNORE,
             )
             issues.extend(

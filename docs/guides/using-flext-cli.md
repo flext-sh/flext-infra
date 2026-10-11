@@ -123,7 +123,7 @@ handlers return their value but do not automatically print it.
 
 ```python
 from flext_cli import FlextCliCli, c, m
-from flext_tests import tm
+from tests import tm
 
 
 class GreetInput(m.BaseModel):

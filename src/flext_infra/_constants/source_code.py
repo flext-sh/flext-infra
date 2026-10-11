@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
@@ -16,13 +17,31 @@ if TYPE_CHECKING:
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
 
-    MERGE_CONFLICT_CONTROLS: ClassVar[t.VariadicTuple[t.Pair[str, str]]] = (
-        ("current", "<<<<<<< "),
-        ("ancestor", "||||||| "),
-        ("separator", "======="),
-        ("incoming", ">>>>>>> "),
+    class MergeConflictControl(StrEnum):
+        """Closed Git merge-control vocabulary."""
+
+        CURRENT = "current"
+        ANCESTOR = "ancestor"
+        SEPARATOR = "separator"
+        INCOMING = "incoming"
+
+    MERGE_CONFLICT_CONTROLS: ClassVar[
+        t.VariadicTuple[t.Pair[MergeConflictControl, str]]
+    ] = (
+        (MergeConflictControl.CURRENT, "<<<<<<< "),
+        (MergeConflictControl.ANCESTOR, "||||||| "),
+        (MergeConflictControl.SEPARATOR, "======="),
+        (MergeConflictControl.INCOMING, ">>>>>>> "),
     )
     "Git merge-control kinds and their immutable protocol tokens."
+    MERGE_CONFLICT_BRANCH_BOUNDARIES: ClassVar[frozenset[MergeConflictControl]] = (
+        frozenset({MergeConflictControl.ANCESTOR, MergeConflictControl.SEPARATOR})
+    )
+    "Controls separating the current branch from its ancestor or incoming branch."
+    MERGE_CONFLICT_ENCODING: ClassVar[str] = "ascii"
+    "Encoding of Git merge-control protocol tokens."
+    MERGE_CONFLICT_LINE_TERMINATORS: ClassVar[str] = "\r\n"
+    "Line framing accepted around Git merge-control protocol tokens."
     TOML_MULTILINE_QUOTE_LENGTH: ClassVar[int] = 3
     "Length of the multiline string delimiter in the TOML protocol."
     TOML_SECTION_HEADER_RE: ClassVar[t.RegexPattern] = re.compile(

@@ -1140,6 +1140,7 @@ class FlextInfraWorkspaceDetector(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
                 root=resolved_root,
+                toolchain_root=resolved_root,
                 make_profile=workspace.repository.role,
                 beads=workspace.beads,
                 project=workspace.project,

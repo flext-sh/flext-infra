@@ -10,10 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -180,7 +179,7 @@ class TestsFlextInfraModCliRoute:
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(actionable_path, required=True),
             ).content,
-        ).decode(c.Cli.ENCODING_DEFAULT)
+        ).decode(c.DEFAULT_ENCODING)
 
         tm.that(exit_code, eq=0)
         tm.that(updated, has="r[int].ok(1)")
@@ -230,7 +229,7 @@ class TestsFlextInfraModCliRoute:
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(sample_path, required=True),
             ).content,
-        ).decode(c.Cli.ENCODING_DEFAULT)
+        ).decode(c.DEFAULT_ENCODING)
 
         tm.that(exit_code, eq=0)
         # Publication runs the canonical formatter, so the cascade's result is

@@ -206,26 +206,50 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 project_dir,
                 tuple(rules_by_id[finding.rule_id] for finding in report.root),
             )
-            findings.extend(
-                m.Infra.Issue(
-                    file=finding.file,
-                    line=finding.line + 1,
-                    column=finding.column + 1,
-                    code=finding.rule_id,
-                    message=finding.message,
-                    severity=finding.severity,
-                )
-                for finding in report.root
-                if u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=project_dir,
-                        rule=rules_by_id[finding.rule_id],
-                        file_path=Path(finding.file),
-                        captures={**finding.captures, **finding.transformed},
-                        facts=facts,
-                    ),
-                )
+            snapshot = u.Infra.codemod_binding_snapshot(
+                project_dir,
+                tuple(
+                    u.Cli.atomic_read_binary_file_state(
+                        u.Infra.codemod_source_path(project_dir, Path(finding.file)),
+                        required=True,
+                    ).unwrap()
+                    for finding in report.root
+                ),
+                tuple(
+                    condition.arg[0]
+                    for finding in report.root
+                    for condition in rules_by_id[finding.rule_id].context
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+                ),
             )
+            with u.Infra.codemod_binding_project(project_dir, snapshot) as (
+                project,
+                sources,
+            ):
+                findings.extend(
+                    m.Infra.Issue(
+                        file=finding.file,
+                        line=finding.line + 1,
+                        column=finding.column + 1,
+                        code=finding.rule_id,
+                        message=finding.message,
+                        severity=finding.severity,
+                    )
+                    for finding in report.root
+                    if u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=project_dir,
+                            rule=rules_by_id[finding.rule_id],
+                            file_path=Path(finding.file),
+                            captures={**finding.captures, **finding.transformed},
+                            facts=facts,
+                            snapshot=snapshot,
+                        ),
+                        project=project,
+                        sources=sources,
+                    )
+                )
 
         # A completed scan still blocks when elected policy rules find code.
         # Native scanner failures retain their distinct failure diagnostics.

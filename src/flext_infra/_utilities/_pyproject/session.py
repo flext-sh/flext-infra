@@ -45,29 +45,31 @@ class FlextInfraUtilitiesPyprojectSession:
         active = tuple(
             parsed
             for item in requirements
-            if (
-                parsed := FlextInfraUtilitiesDependencies.active_requirement(
+            for parsed in (
+                FlextInfraUtilitiesDependencies.active_requirement(
                     item,
                     environment=environment,
-                )
+                ),
             )
-            is not None
+            if parsed is not None
         )
         explicit = (
-            u.Cli.toml_as_string_list(uv.get("override-dependencies"))
+            u.Cli.toml_as_string_list(
+                u.Cli.toml_item_child(uv, "override-dependencies"),
+            )
             if uv is not None
             else ()
         )
         active_overrides = tuple(
             parsed
             for item in explicit
-            if (
-                parsed := FlextInfraUtilitiesDependencies.active_requirement(
+            for parsed in (
+                FlextInfraUtilitiesDependencies.active_requirement(
                     item,
                     environment=environment,
-                )
+                ),
             )
-            is not None
+            if parsed is not None
         )
         overrides = tuple(
             item
@@ -78,7 +80,9 @@ class FlextInfraUtilitiesPyprojectSession:
             FlextInfraUtilitiesDependencies.dep_name(item) for item in active_overrides
         )
         declared_constraints = (
-            u.Cli.toml_as_string_list(uv.get("constraint-dependencies"))
+            u.Cli.toml_as_string_list(
+                u.Cli.toml_item_child(uv, "constraint-dependencies"),
+            )
             if uv is not None
             else ()
         )
@@ -105,13 +109,13 @@ class FlextInfraUtilitiesPyprojectSession:
                     ),
                     *declared_constraints,
                 )
-                if (
-                    parsed := FlextInfraUtilitiesDependencies.active_requirement(
+                for parsed in (
+                    FlextInfraUtilitiesDependencies.active_requirement(
                         item,
                         environment=environment,
-                    )
+                    ),
                 )
-                is not None
+                if parsed is not None
             ),
         )
         return r[m.Infra.BindingResolution].ok(

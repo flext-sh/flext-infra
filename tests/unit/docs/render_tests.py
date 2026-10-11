@@ -10,12 +10,11 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 from mkdocs.config import load_config
 from mkdocs.structure.files import get_files
 from mkdocs.structure.nav import get_navigation
 
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

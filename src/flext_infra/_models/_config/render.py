@@ -83,6 +83,10 @@ class FlextInfraConfigModelsRender:
             t.NonEmptyStr,
             m.Field(description="Python major.minor line"),
         ]
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Canonical toolchain consumed by CI bootstrap"),
+        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
