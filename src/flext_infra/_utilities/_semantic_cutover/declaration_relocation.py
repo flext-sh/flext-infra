@@ -20,10 +20,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeSourceBases,
     FlextInfraUtilitiesSemanticCutoverNestingCst,
     FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
     FlextInfraUtilitiesSemanticNestingTypes,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -324,7 +326,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 ),
                 provider_path,
             )
-            aliases = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+            aliases = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 provider_name,
                 provider_path,
                 sources.get(provider_path, provider_file.read()),
@@ -443,7 +445,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         initializer = package / c.Infra.INIT_PY
         resource = project.get_resource(initializer.relative_to(root).as_posix())
-        exports = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+        exports = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
             project.get_pymodule(resource).get_name(),
             initializer,
             FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(

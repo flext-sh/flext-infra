@@ -109,10 +109,12 @@ class FlextInfraUtilitiesCodemodProject(
             )
             # Requesting a lazy export loads its elected provider module. Merely
             # installing the map does not load every provider in the package.
-            provider_aliases = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
-                name,
-                path,
-                resource.read(),
+            provider_aliases = (
+                FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                    name,
+                    path,
+                    resource.read(),
+                )
             )
             aliases.update({
                 f"{name}.{export}": provider

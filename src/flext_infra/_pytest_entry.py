@@ -40,6 +40,8 @@ class FlextInfraPytestEntry:
         """
         # Resolve public lazy exports after taking the entry clock.
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
+        slow_phase = mode == "full-slow"
+        runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
         if mode == "profile":
             profiler = cProfile.Profile()
             profiler.enable()

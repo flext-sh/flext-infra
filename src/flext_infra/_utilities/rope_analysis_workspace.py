@@ -17,7 +17,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSourceBases,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 
@@ -256,7 +261,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             for (
                 alias,
                 absolute,
-            ) in FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+            ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 init_module,
                 init_path,
                 init_path.read_text(encoding=c.DEFAULT_ENCODING),
@@ -297,7 +302,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             ) as project,
             project.frozen_layout(),
         ):
-            return FlextInfraUtilitiesRopeSourceBases.runtime_bases(
+            return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
                 project,
                 sources,
                 roots,

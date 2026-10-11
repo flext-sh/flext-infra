@@ -422,31 +422,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
-            node,
-            targets,
-            visible,
+            node, targets, visible
         ):
             return False
-        target = targets[0]
-        value = node.value
-        if not isinstance(target, ast.Attribute):
-            return False
-        owner = cls._reference(target.value, visible, spec.module)
-        owner = cls._nested_class_receiver(owner, spec.definitions)
-        if owner is None:
-            return False
-        if isinstance(value, ast.Call):
-            definition = spec.definitions[owner.target]
-            spec.definitions[owner.target] = definition.model_copy(
-                update={
-                    "members": {
-                        **definition.members,
-                        target.attr: None,
-                    },
-                },
-            )
-            return True
-        if not isinstance(value, ast.Name) or value.id not in visible:
+        resolved = cls._inventoried_receiver_update(
+            spec, node, targets, visible, spec.module
+        )
+        if resolved is None:
             return False
         definition = spec.definitions[owner.target]
         spec.definitions[owner.target] = definition.model_copy(
