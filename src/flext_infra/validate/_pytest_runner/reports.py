@@ -224,8 +224,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         msg = self._failure_detail("pytest executed zero tests", log)
         raise RuntimeError(msg)
 
+    @staticmethod
     def _selected_inventory(
-        self,
         log: Path,
         context: m.Infra.PytestRunContext,
         selection_plan: m.Infra.PytestSelectionPlan | None,

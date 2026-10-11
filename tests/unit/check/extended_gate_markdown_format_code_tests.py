@@ -283,7 +283,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         source_dir.mkdir()
         source = source_dir / "widget.py"
         example = "x=1" if unformatted else "x = 1"
-        original = f'\"\"\"Widget.\n\n>>> {example}\n\n\"\"\"'
+        original = f'"""Widget.\n\n>>> {example}\n\n"""'
         source.write_text(original, encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(

@@ -15,9 +15,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-import flext_core
 from flext_cli import u
 
+import flext_core
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
@@ -273,11 +273,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             The resulting ``t.StrSequence``.
 
         Raises:
-            ValueError: If ``not isinstance(literal, (list, tuple)) or not
-                all((isinstance(item, str) for item in literal))``; or if a
-                ``(ValueError, SyntaxError)`` is caught; or if ``source_name not in
-                assignments``.
-            TypeError: If ``not isinstance(literal, (list, tuple))``.
+            ValueError: If the alias source is missing, the value is not a
+                literal, or it is not a sequence of strings.
+
         """
         assignments: MutableMapping[str, ast.expr] = {}
         for node in tree.body:

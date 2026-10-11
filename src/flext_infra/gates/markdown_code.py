@@ -453,9 +453,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         if not ran:
             return self._skip_result(project_dir, started)
         return self._build_gate_execution(
-            project_dir,
-            verdict=passed and not issues,
-            run=m.Infra.GateNativeRun(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=passed and not issues,
                 issues=tuple(issues),
                 raw_output="\n".join(issue.formatted for issue in issues),
                 outcome=(

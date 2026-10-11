@@ -336,26 +336,6 @@ class FlextInfraModelsCheck:
         raw_output: str = m.Field(description="Unmodified native output")
         started: float = m.Field(description="Monotonic execution start time")
 
-    class GateNativeRun(m.ArbitraryTypesModel):
-        """Native tool run payload one gate execution assembles from."""
-
-        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
-            default_factory=tuple,
-            description=(
-                "Complete native gate diagnostics, including informative findings"
-            ),
-        )
-        raw_output: str = m.Field(
-            "",
-            description="Raw tool output",
-        )
-        outcome: c.Infra.ToolOutcome = m.Field(
-            description="Native process/report verdict, independent of findings policy",
-        )
-        started: float = m.Field(
-            description="Monotonic timestamp the gate run started at",
-        )
-
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 

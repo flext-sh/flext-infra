@@ -52,7 +52,8 @@ class TestsFlextInfraDeclarationRelocation:
                 f"from {package.name}._models.base import ModelsBase\n"
             ),
             consumer: (
-                f"from {package.name}._models import ConfigPayload as Payload, ModelsBase\n"
+                f"from {package.name}._models import ConfigPayload as Payload, "
+                f"ModelsBase\n"
                 "class Config(ModelsBase):\n    payload = Payload\n"
             ),
         }
@@ -90,11 +91,11 @@ class TestsFlextInfraDeclarationRelocation:
                 (
                     sys.executable,
                     "-c",
-                    f"from {package.name}.{consumer.stem} import Config; "
+                    (f"from {package.name}.{consumer.stem} import Config; "
                     f"from {package.name}._models.config import ConfigPayload; "
                     f"from {package.name}._models.base import ModelsBase; "
                     "assert Config.payload is ConfigPayload; "
-                    "assert issubclass(Config, ModelsBase)",
+                    "assert issubclass(Config, ModelsBase)"),
                 ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
