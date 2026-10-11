@@ -191,3 +191,7 @@ Scaffold fixtures materialize each declared member's manifest before planning a
 workspace. Existing member manifests remain the fixture's inputs; newly seeded
 members read their version from the current repository. Tests that exercise only
 root policy declare no unmaterialized members.
+
+Pytest diagnostics require `junit`, `log_path`, and `report_log` at their public
+request boundary. The runner constructs that same request, and extraction preserves
+the original file, parser, and event-validation failures.
