@@ -160,6 +160,24 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # A governed repository carries its committed Mise lock; generation
         # formats through the release it pins and never resolves a selector.
         TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
+        for name in members:
+            manifest = root / name / c.PYPROJECT_FILENAME
+            if not manifest.exists():
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                tm.ok(
+                    u.Cli.toml_write_mapping(
+                        manifest,
+                        {
+                            "project": {
+                                "name": name,
+                                "version": tm.ok(
+                                    u.Infra.current_workspace_version(Path.cwd()),
+                                ),
+                                "dependencies": [],
+                            },
+                        },
+                    ),
+                )
         repository = fixture.repository_ref(
             "fixture-project",
             role=(

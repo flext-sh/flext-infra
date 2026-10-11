@@ -186,3 +186,8 @@ Import normalization preserves the declared provider of a generic parameter boun
 Its regression test imports the rewritten consumer in a fresh interpreter and checks
 the resolved bound against that provider's public type. Rebinding a bound to an
 unrelated local facade changes the consumer contract and can create a checker cycle.
+
+Scaffold fixtures materialize each declared member's manifest before planning a
+workspace. Existing member manifests remain the fixture's inputs; newly seeded
+members read their version from the current repository. Tests that exercise only
+root policy declare no unmaterialized members.
