@@ -39,17 +39,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         log = u.Tests.cli_shim(bin_dir, c.Infra.CLI_DIRENV)
         return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}, log
 
-<<<<<<< Updated upstream
-    def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
-<<<<<<< HEAD
-        """The pre-commit hook verb runs one check over the fast external gates."""
-=======
     def test_pre_commit_displays_the_canonical_contract(self, tmp_path: Path) -> None:
         """The real Make consumer exposes the configured CI validation contract."""
->>>>>>> Stashed changes
-=======
-        """The pre-commit hook verb runs one check over the declared fast gates."""
->>>>>>> upload-20261007
         root = self._render_root_makefile(tmp_path)
         result = tm.ok(
             u.Cli.run(

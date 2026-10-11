@@ -6,20 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-<<<<<<< HEAD
-=======
-import cProfile
->>>>>>> upload-20261007
 import sys
 from pathlib import Path
 
-<<<<<<< HEAD
-from flext_infra._pytest_clock import FlextInfraPytestClock
-from flext_infra._pytest_profile import FlextInfraPytestProfile
-from flext_infra.validate import FlextInfraPytestRunner
-=======
 import flext_infra
->>>>>>> upload-20261007
+from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
 class FlextInfraPytestEntry:
@@ -44,11 +35,7 @@ class FlextInfraPytestEntry:
             ValueError: If unsupported pytest operation.
 
         """
-<<<<<<< HEAD
         # The clock module captures startup before these runtime imports.
-=======
-        # Resolve public lazy exports after taking the entry clock.
->>>>>>> upload-20261007
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
         if mode == "profile":
             profiler = FlextInfraPytestClock.profiler
@@ -56,11 +43,7 @@ class FlextInfraPytestEntry:
                 msg = "pytest profile requires its pre-import profiler"
                 raise RuntimeError(msg)
             try:
-<<<<<<< HEAD
-                profile = FlextInfraPytestProfile(Path(sys.argv[2]))
-=======
                 profile = flext_infra.FlextInfraPytestProfile(Path(sys.argv[2]))
->>>>>>> upload-20261007
                 status = profile.run_parent(
                     started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
                     profile=profiler,
@@ -70,13 +53,8 @@ class FlextInfraPytestEntry:
             return status
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
-<<<<<<< HEAD
-        runner = FlextInfraPytestRunner.from_environment(
-            started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
-=======
         runner = flext_infra.FlextInfraPytestRunner.from_environment(
-            started_at_monotonic=cls._STARTED_AT_MONOTONIC,
->>>>>>> upload-20261007
+            started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             slow_phase=slow_phase,
             unbounded=mode in {"full", "full-slow"},
         )

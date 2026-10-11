@@ -76,10 +76,7 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ]
-<<<<<<< HEAD
 
-=======
->>>>>>> upload-20261007
         @m.model_validator(mode="after")
         def _validate_local_check_gates(self) -> Self:
             """Every locally owned gate must be in the allowed check vocabulary.
@@ -845,18 +842,18 @@ class FlextInfraConfigModelsMake(
                 msg = "make project_check_gates must be unique"
                 raise ValueError(msg)
             builtin = set(c.Infra.CANONICAL_GATE_IDS)
-            unknown = sorted(set(self.pre_commit_check_gates) - builtin)
-            if unknown:
-                msg = (
-                    "make.pre_commit_check_gates contains unknown gates: "
-                    f"{', '.join(unknown)}"
-                )
-                raise ValueError(msg)
             shadowed = sorted(set(self.project_check_gates) & builtin)
             if shadowed:
                 msg = (
                     "make project_check_gates shadow built-in gates: "
                     f"{', '.join(shadowed)}"
+                )
+                raise ValueError(msg)
+            unknown = sorted(set(self.pre_commit_check_gates) - builtin)
+            if unknown:
+                msg = (
+                    "make.pre_commit_check_gates contains unknown gates: "
+                    f"{', '.join(unknown)}"
                 )
                 raise ValueError(msg)
             return self
@@ -1020,17 +1017,9 @@ class FlextInfraConfigModelsMake(
             if hook != tuple(
                 verb
                 for verb in approval
-<<<<<<< HEAD
                 if verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
             ):
                 msg = "the pre-commit hook requires the CI check and test workflow"
-=======
-                if verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST)
-            ):
-                msg = (
-                    "the pre-commit hook requires the CI check and test workflow"
-                )
->>>>>>> upload-20261007
                 raise ValueError(msg)
             if "pre-commit" not in declared:
                 msg = "make pre-commit must be declared in every profile"
