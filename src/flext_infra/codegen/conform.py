@@ -25,13 +25,13 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
                 return m.Infra.CodegenConformSurfaceContract(complete_governed=True)
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
                 return m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
+                    destinations=frozenset({c.PYPROJECT_FILENAME}),
                     delegates=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 return m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
+                    destinations=frozenset({c.PYPROJECT_FILENAME}),
                     delegates=False,
                     custom=False,
                 )

@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodegenPathCutover,
     FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeferredSelfReferenceRewrite,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
@@ -76,7 +77,6 @@ from flext_infra._utilities import (
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
 )
-from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 
 
 class FlextInfraUtilities(FlextCliUtilities):

@@ -181,3 +181,8 @@ Private attribute usage is enforced by Pyright's resolved owner and export seman
 source, tests, examples, and scripts according to the typed path policy. The
 `ban-test-private-access` ast-grep rule retains only dynamic private-module imports; it
 does not duplicate semantic attribute detection or require deleting test scenarios.
+
+Import normalization preserves the declared provider of a generic parameter bound.
+Its regression test imports the rewritten consumer in a fresh interpreter and checks
+the resolved bound against that provider's public type. Rebinding a bound to an
+unrelated local facade changes the consumer contract and can create a checker cycle.

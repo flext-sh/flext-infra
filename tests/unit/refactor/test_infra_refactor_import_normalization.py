@@ -24,6 +24,47 @@ class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
 
     @classmethod
+    def test_generic_bound_retains_its_declared_provider(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A generic bound resolves through its original public type provider."""
+        project, package = cls._project(tmp_path)
+        module = package / "generic_boundary.py"
+        source = (
+            "from flext_core import t\n\nclass Generic[T: t.JsonPayload]:\n    pass\n"
+        )
+        (package / "typings.py").write_text(
+            "class LocalTypes:\n    type JsonPayload = str\n\nt = LocalTypes\n",
+            encoding="utf-8",
+        )
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source,
+            encoding="utf-8",
+        )
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from flext_core import t; "
+                        "from demo_pkg.generic_boundary import Generic; "
+                        "assert Generic.__type_params__[0].__bound__ is t.JsonPayload"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @classmethod
     def test_facade_dependency_retains_its_external_provider(
         cls,
         tmp_path: Path,

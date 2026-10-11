@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from types import FrameType
 
-from flext_infra.cli import main
+from flext_infra import main
 
 
 class FlextInfraProfileEntry:
