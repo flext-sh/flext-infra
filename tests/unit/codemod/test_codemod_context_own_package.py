@@ -82,7 +82,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
     @staticmethod
     @pytest.mark.parametrize("reexport", [False, True])
     def test_occurrence_identity_is_lexical_and_immutable(
-        mod_workspace: Path, *, reexport: bool
+        mod_workspace: Path, binding_probe_rule: m.Infra.CodemodRule, *, reexport: bool
     ) -> None:
         """Identical spelling in another scope never borrows a module binding."""
         module_name = "definer"
@@ -110,26 +110,23 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "    return conditional\n"
         )
         consumer.write_text(source, encoding="utf-8")
-        rule = m.Infra.CodemodRule(
-            id="binding-probe",
-            digest="probe",
-            provider="probe",
-            resource=Path("probe.yml"),
-            fixable=True,
-            context=(
-                m.Infra.CodemodContextCondition(
-                    variable="OWNER",
-                    predicate=c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                    arg=(module_name, "Public"),
-                    holds=True,
+        rule = binding_probe_rule.model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="OWNER",
+                        predicate=c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                        arg=(module_name, "Public"),
+                        holds=True,
+                    ),
+                    m.Infra.CodemodContextCondition(
+                        variable="OWNER",
+                        predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
+                        arg=("u",),
+                        holds=True,
+                    ),
                 ),
-                m.Infra.CodemodContextCondition(
-                    variable="OWNER",
-                    predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    arg=("u",),
-                    holds=True,
-                ),
-            ),
+            }
         )
         facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
         closed = u.Infra.codemod_binding_snapshot(

@@ -24,6 +24,22 @@ _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.fixture
+def binding_probe_rule() -> m.Infra.CodemodRule:
+    """Supply one validated metadata owner for semantic binding probes.
+
+    Returns:
+        The probe rule whose consumer supplies its context conditions.
+    """
+    return m.Infra.CodemodRule(
+        id="binding-probe",
+        digest="probe",
+        provider="probe",
+        resource=Path("probe.yml"),
+        fixable=True,
+    )
+
+
 def _read_fixture(*parts: str) -> str:
     return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
 

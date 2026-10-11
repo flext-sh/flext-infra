@@ -122,24 +122,22 @@ class TestsFlextInfraSymbolicTextCutover:
     @staticmethod
     def test_binding_receipt_cannot_resolve_another_occurrence(
         mod_workspace: Path,
+        binding_probe_rule: m.Infra.CodemodRule,
     ) -> None:
         """A stale span is rejected instead of falling back to another same name."""
         consumer = mod_workspace / "consumer.py"
         consumer.write_text("value = 1\n", encoding="utf-8")
-        rule = m.Infra.CodemodRule(
-            id="binding-probe",
-            digest="probe",
-            provider="probe",
-            resource=Path("probe.yml"),
-            fixable=True,
-            context=(
-                m.Infra.CodemodContextCondition(
-                    variable="OWNER",
-                    predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    arg=("value",),
-                    holds=True,
+        rule = binding_probe_rule.model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="OWNER",
+                        predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
+                        arg=("value",),
+                        holds=True,
+                    ),
                 ),
-            ),
+            }
         )
         snapshot = u.Infra.codemod_binding_snapshot(
             mod_workspace,
