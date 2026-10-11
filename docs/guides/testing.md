@@ -195,3 +195,7 @@ root policy declare no unmaterialized members.
 Pytest diagnostics require `junit`, `log_path`, and `report_log` at their public
 request boundary. The runner constructs that same request, and extraction preserves
 the original file, parser, and event-validation failures.
+
+Conform projects declared utility, protocol, and model facades across the canonical
+Python inventory, including auxiliary packages. Facade tests generate the package
+initializers before exercising the composed public surface in a fresh interpreter.
