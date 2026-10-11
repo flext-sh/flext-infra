@@ -9,11 +9,9 @@ from __future__ import annotations
 from difflib import unified_diff
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraConformSupport:
@@ -35,6 +33,7 @@ class TestsFlextInfraConformSupport:
         return m.Infra.RepositoryConformTarget(
             repository=repository,
             root=root,
+            toolchain_root=root,
             make_profile=make_profile,
             beads=u.Tests.beads_project(repository.name),
             canonical_project_name=repository.distribution,

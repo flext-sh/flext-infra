@@ -22,6 +22,12 @@ class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
+    class PytestStopController(Protocol):
+        """Native distributed controller's mutable stop request."""
+
+        shouldstop: bool | str
+
+    @runtime_checkable
     class SupervisedProcess(Protocol):
         """Process lifecycle consumed by the infrastructure resource supervisor."""
 

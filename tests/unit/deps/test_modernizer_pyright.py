@@ -9,15 +9,13 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import (
     FlextInfraEnsurePyrightConfigPhase,
     FlextInfraPyprojectModernizer,
     FlextInfraWorkspaceDetector,
     config,
 )
-from tests import m, t, u
+from tests import m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

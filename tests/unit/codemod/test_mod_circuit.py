@@ -10,10 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -142,22 +141,17 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, lacks=first_digest)
 
     @staticmethod
-    def test_apply_reports_detection_only_residue_and_still_succeeds(
+    def test_apply_preserves_generated_artifacts_and_rejects_missing_runtime(
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Repair applies every rewrite, reports what it cannot act on, exits zero.
-
-        A detection-only rule carries no ``fix``: no iteration of the apply loop
-        can ever consume its finding. Failing the repair verb on it returned the
-        verdict verb's answer and stalled the canonical chain on a defect the
-        verb was never able to repair. The residue is reported by rule id and
-        the verdict stays with ``check``.
-        """
+        """A real rewrite never turns an unprovisioned runtime into acceptance."""
         actionable_path = mod_workspace / "actionable.py"
         generated_path = mod_workspace / "generated.py"
         generated_source = (
-            f"{c.Infra.AUTOGEN_HEADER}\nlock.serialization_lock_execute()\n"
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            "from __future__ import annotations\n\n"
+            "from flext_core import r\npublication = r[int].ok(1)\n"
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -167,13 +161,14 @@ class TestsFlextInfraModCliRoute:
         )
         tm.ok(u.Cli.atomic_write_text_file(generated_path, generated_source))
 
-        exit_code = main([
-            "refactor",
-            "mod",
-            "--repository-root",
-            str(mod_workspace),
-            "--apply",
-        ])
+        with pytest.raises(RuntimeError, match="quality checks failed"):
+            _ = main([
+                "refactor",
+                "mod",
+                "--repository-root",
+                str(mod_workspace),
+                "--apply",
+            ])
         console_capture = capsys.readouterr()
         console = console_capture.out + console_capture.err
         updated = tm.not_none(
@@ -182,19 +177,19 @@ class TestsFlextInfraModCliRoute:
             ).content,
         ).decode(c.DEFAULT_ENCODING)
 
-        tm.that(exit_code, eq=0)
         tm.that(updated, has="r[int].ok(1)")
         tm.that(updated, lacks="p.Result[int].ok(1)")
         tm.that(generated_path.read_text(encoding="utf-8"), eq=generated_source)
-        tm.that(console, has="detection-only")
-        tm.that(console, has="owner repair")
-        tm.that(console, has="ban-make-serialization")
+        tm.that(console, has="fresh-import target interpreter is missing")
+        tm.that(console, lacks="Could not find name `lock`")
 
     @staticmethod
     def test_apply_repeats_new_actionable_rule_cascades_until_fixed_point(
         mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Carry findings exposed by one rewrite into the next apply iteration."""
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
         u.Tests.declare_codemod_rules(
             mod_workspace,
             {
@@ -226,6 +221,8 @@ class TestsFlextInfraModCliRoute:
             str(mod_workspace),
             "--apply",
         ])
+        captured = capsys.readouterr()
+        console = captured.out + captured.err
         updated = tm.not_none(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(sample_path, required=True),
@@ -233,6 +230,8 @@ class TestsFlextInfraModCliRoute:
         ).decode(c.DEFAULT_ENCODING)
 
         tm.that(exit_code, eq=0)
+        tm.that(console, has="detection-only")
+        tm.that(console, has="owner repair")
         # Publication runs the canonical formatter, so the cascade's result is
         # already normalized: the rewrite landed and the module is formatted,
         # rather than leaving whitespace for a human to repair afterwards.
@@ -514,3 +513,64 @@ class TestsFlextInfraModCliRoute:
         }
 
         tm.that(flagged, eq={"tests/bare.py", "examples/helper.py"})
+
+    @staticmethod
+    def test_member_class_stems_match_root_and_local_scans(
+        mod_workspace: Path,
+    ) -> None:
+        """Nested test and source ownership keeps both positive and negative cases."""
+        name = "sample-member"
+        member = u.Tests.mk_project(
+            mod_workspace,
+            name,
+            pyproject=(
+                f'[project]\nname = "{name}"\nversion = "1.0.0"\ndependencies = []\n'
+            ),
+            with_src=True,
+        )
+        u.Tests.initialize_git_repo(member)
+        u.Tests.write_workspace_manifest(
+            mod_workspace,
+            mod_workspace.name.replace("_", "-"),
+            role=c.Infra.MakeProfile.WORKSPACE,
+        )
+        u.Tests.write_workspace_manifest(member, name)
+        u.Tests.declare_workspace_projects(mod_workspace, (name,))
+        stem = u.derive_class_stem(name)
+        package = name.replace("-", "_")
+        modules = {
+            "tests/valid.py": f"Tests{stem}Valid",
+            "tests/bare.py": f"{stem}Bare",
+            f"src/{package}/valid.py": f"{stem}Valid",
+            f"src/{package}/wrong.py": "Foreign",
+        }
+        for relative, class_name in modules.items():
+            path = member / relative
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path,
+                    '"""Public class-stem scan input."""\n\n'
+                    f"class {class_name}:\n"
+                    '    """Namespace analyzed by the real scanner."""\n',
+                )
+            )
+        expected = {"tests/bare.py", f"src/{package}/wrong.py"}
+        for root in (mod_workspace, member):
+            _ = main(["refactor", "mod", "--repository-root", str(root)])
+            state = tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
+                    required=True,
+                )
+            )
+            evidence = m.Infra.ModScanEvidence.model_validate_json(
+                tm.not_none(state.content),
+            )
+            flagged = {
+                (root / entry.file).relative_to(member).as_posix()
+                for entry in evidence.entries
+                if entry.rule_id == "require-project-class-stem"
+                and (root / entry.file).is_relative_to(member)
+            }
+            tm.that(flagged, eq=expected)

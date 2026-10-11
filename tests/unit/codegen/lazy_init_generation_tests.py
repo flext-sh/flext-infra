@@ -11,13 +11,12 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from flext_tests import tm
 
 import flext_core
 from flext_infra import config
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenGeneration:
@@ -467,7 +466,7 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from flext_tests import tm")
+        tm.that(init_content, contains="from tests import tm")
         tm.that(init_content, contains='"c": ".constants",')
         tm.that(init_content, contains='"u": ".utilities",')
         import_block = init_content.split(
@@ -481,7 +480,7 @@ class TestsFlextInfraCodegenGeneration:
         module_offsets = tuple(
             import_block.index(module)
             for module in (
-                "from flext_tests import tm",
+                "from tests import tm",
                 "from tests.base import",
                 "from tests.constants import",
                 "from tests.models import",
@@ -492,7 +491,7 @@ class TestsFlextInfraCodegenGeneration:
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(import_block, contains="from flext_tests import tm\n")
+        tm.that(import_block, contains="from tests import tm\n")
         tm.that(init_content, contains="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
         tm.that(init_content, lacks="TestsDemoCase")

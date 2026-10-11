@@ -142,6 +142,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 tooling_runtime=render_inputs.tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
+                examples_module=repository.examples_module,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.
@@ -498,7 +499,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 upstream=project.upstream,
                 # Scaffolded facades extend the class each upstream letter names
                 # in the __all__ that declares it, never the letter itself.
-                upstream_facades=u.Infra.facade_classes(project.upstream),
+                upstream_facades=u.Infra.facade_classes(
+                    project.upstream,
+                    source_root=repository_root,
+                ),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
                 repository_namespace_packages=project.repository_namespace_packages,

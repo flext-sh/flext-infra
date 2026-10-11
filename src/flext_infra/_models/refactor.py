@@ -331,6 +331,11 @@ class FlextInfraModelsRefactor(
     class ApplyRenamesInput(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Validated CLI request for CSV-driven symbol renames."""
 
+        rename_definitions: Annotated[
+            bool,
+            m.Field(description="Atomically rename owned declarations and references"),
+        ] = False
+
         csv: Annotated[
             t.NonEmptyStr,
             m.Field(description="Path to the old,new rename-list CSV"),

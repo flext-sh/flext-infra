@@ -29,7 +29,7 @@ class FlextInfraCodemodSemanticApply:
         *,
         apply: bool,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan or publish constant consumers from the complete census scope.
+        """Compose declaration and constant consumers before census acceptance.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
@@ -44,37 +44,62 @@ class FlextInfraCodemodSemanticApply:
             entries=(),
         )
         original = cls._source_inventory(root, inventory)
-        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
-        planned = u.Infra.plan_semantic_cutover(
-            phase,
-            rope_workspace=rope_workspace,
-            sources=original,
+        phases = (
+            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+            c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
         )
-        if planned.failure or not apply or not planned.value:
-            return planned
         working = dict(original)
         changed: set[Path] = set()
-        cls._apply_plan(working, planned.value, changed)
+        constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
+        for phase in phases:
+            planned = u.Infra.plan_semantic_cutover(
+                phase,
+                rope_workspace=rope_workspace,
+                sources=working,
+            )
+            if planned.failure:
+                return planned
+            cls._apply_plan(working, planned.value, changed)
+            if phase is c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS:
+                constant_edits = planned.value
+
+        verified = cls._verify_census_phases(working, rope_workspace, phases)
+        if verified.failure:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                verified,
+            )
+        u.Infra.preflight_semantic_import_graph(rope_workspace, original, working)
+        definition_time = cls._check_definition_time(original, working, changed)
+        if definition_time.failure:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                definition_time,
+            )
+        if not apply:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(constant_edits)
+        # A no-op candidate still verifies its planned inventory. A nonempty
+        # candidate keeps the exact union, even when normalization writes no bytes.
+        project_roots = {u.Infra.project_root(path) for path in changed or original}
+        if not project_roots or None in project_roots:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
+                "census corrective candidate has no complete governed project scope",
+            )
+        projects = tuple(
+            sorted(
+                project.relative_to(root).as_posix()
+                for project in project_roots
+                if project is not None
+            ),
+        )
 
         def verify() -> p.Result[bool]:
             rope_workspace.refresh()
-            fixed_point = cls._check_residue(
-                phase,
-                u.Infra.plan_semantic_cutover(
-                    phase,
-                    rope_workspace=rope_workspace,
-                    sources=cls._source_inventory(root, inventory),
-                ),
+            fixed_point = cls._verify_census_phases(
+                cls._source_inventory(root, inventory),
+                rope_workspace,
+                phases,
             )
             if fixed_point.failure:
                 return fixed_point
-            projects = tuple(
-                sorted({
-                    project.relative_to(root).as_posix()
-                    for path in changed
-                    if (project := u.Infra.project_root(path)) is not None
-                })
-            )
             return FlextInfraWorkspaceChecker(
                 repository_root=root,
             ).execute_payload(
@@ -85,20 +110,38 @@ class FlextInfraCodemodSemanticApply:
                 ),
             )
 
-        return (
-            cls
-            ._check_definition_time(original, working, changed)
-            .flat_map(
-                lambda _: cls._publish(
-                    root,
-                    original,
-                    working,
-                    changed,
-                    validator=verify,
+        return cls._publish(
+            root,
+            original,
+            working,
+            changed,
+            validator=verify,
+        ).map(lambda _: constant_edits)
+
+    @classmethod
+    def _verify_census_phases(
+        cls,
+        sources: t.MappingKV[Path, str],
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        phases: t.SequenceOf[c.Infra.SemanticCutoverPhase],
+    ) -> p.Result[bool]:
+        """Verify both corrective phases against one proposed or published state.
+
+        Returns:
+            The first phase failure or the verified joint fixed point.
+        """
+        for phase in phases:
+            fixed_point = cls._check_residue(
+                phase,
+                u.Infra.plan_semantic_cutover(
+                    phase,
+                    rope_workspace=rope_workspace,
+                    sources=sources,
                 ),
             )
-            .map(lambda _: planned.value)
-        )
+            if fixed_point.failure:
+                return fixed_point
+        return r[bool].ok(value=True)
 
     @classmethod
     def source_fingerprint(

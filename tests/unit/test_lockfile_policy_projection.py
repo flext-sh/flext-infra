@@ -7,11 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraLockfilePolicyProjection:

@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, infra, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
+from flext_infra import config, infra
+from flext_infra.codegen import FlextInfraCodegenConform
+from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -256,7 +255,9 @@ class TestsFlextInfraCodegenCatalogExtensions:
             c.Infra.MAKEFILE_FILENAME,
         )
         tm.that(makefile, lacks=["latest_release_url", "--retry", "mise_install_path="])
-        tm.that(makefile, has="https://github.com/*/releases/download/*\\|sha256:*")
+        tm.that(
+            makefile, has=["https://github.com/*/releases/download/*)", "sha256:*)"]
+        )
         tm.that(makefile, has="curl --proto '=https' --tlsv1.2 -fsSL -o")
         tm.that(makefile, has="| sha256sum -c -")
         tm.that(makefile, has='if [ "$$mise_receipt" != "$$mise_pin" ]; then')
@@ -265,7 +266,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             c.Infra.MISE_TOML_FILENAME,
         )
         # The pin the bootstrap recovers is the manifest's own declaration.
-        tm.that(mise_toml, has='"github:jdx/mise" = "')
+        tm.that(mise_toml, has=f'"{config.Infra.codegen.toolchain.mise_selector}" = "')
 
     @staticmethod
     def test_setup_provisions_only_and_gen_owns_conformance(

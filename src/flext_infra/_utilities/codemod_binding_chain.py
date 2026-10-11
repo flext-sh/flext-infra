@@ -32,9 +32,11 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeSourceBases,
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 

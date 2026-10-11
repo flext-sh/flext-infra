@@ -139,15 +139,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
         manifest owns this temporary pin; the committed lock owns normal
         resolutions when no candidate is declared (flext-oe420).
         """
+        dependency_extras = FlextInfraUtilitiesDependencies.dependency_extras
         overrides = [
-            f"{name}"
-            f"{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)}"
+            f"{name}{dependency_extras(requirements, name)}"
             for name in sorted(local_members)
         ]
         overrides.extend(
-            f"{name}"
-            f"{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)}"
-            f" @ {source}"
+            f"{name}{dependency_extras(requirements, name)} @ {source}"
             for name, source in sorted(candidate_sources.items())
         )
         if overrides:
@@ -266,7 +264,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv = cls._resolved_uv_table(document)
         members = (
             tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         local_names = tuple(member.distribution for member in members)
@@ -306,7 +304,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv: t.Cli.TomlTable,
         members: t.SequenceOf[m.Infra.RepositoryRef],
     ) -> None:
-        """Replace native workspace identity with the declared root path overlay."""
+        """Replace native workspace identity with the declared root path overlay.
+
+        Raises:
+            TypeError: If the UV sources table is not a TOML mapping.
+        """
         u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:
@@ -334,7 +336,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 member.distribution,
                 {"path": member.path.as_posix(), "editable": member.editable},
             )
-        if not tuple(sources):
+        if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")
 
 

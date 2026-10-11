@@ -91,7 +91,6 @@ from flext_infra._utilities._rope_source_bases_inventory_collector import (
 from flext_infra._utilities._rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.compatibility_alias_validation import (
     FlextInfraUtilitiesCompatibilityAliasValidation,
 )

@@ -801,6 +801,7 @@ class FlextInfraWorkspaceDetector(
         return result_type.ok(
             repository.model_copy(
                 update={
+                    "examples_module": commands.examples_module,
                     "extra_verbs": commands.extra_verbs,
                     "script_dispatch": commands.script_dispatch,
                 },
@@ -1140,6 +1141,7 @@ class FlextInfraWorkspaceDetector(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
                 root=resolved_root,
+                toolchain_root=resolved_root,
                 make_profile=workspace.repository.role,
                 beads=workspace.beads,
                 project=workspace.project,

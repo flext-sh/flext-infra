@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from tests import c, t, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraGitSubmoduleComposition:

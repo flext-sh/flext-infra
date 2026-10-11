@@ -24,6 +24,7 @@ from flext_infra import c
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
@@ -40,7 +41,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     """Resolve facade letters to the class their declaring module names."""
 
     @classmethod
-    def facade_classes(cls, package: str) -> t.StrMapping:
+    def facade_classes(
+        cls,
+        package: str,
+        *,
+        source_root: Path | None = None,
+    ) -> t.StrMapping:
         """Map every letter ``package`` publishes to its declared facade class.
 
         Returns:
@@ -50,8 +56,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If facade package is not importable for derivation.
 
         """
+        sources = (
+            {
+                path: path.read_text(encoding=c.DEFAULT_ENCODING)
+                for root in FlextInfraUtilitiesRopeCore.import_project_roots(
+                    source_root
+                )
+                for path in (root / c.Infra.DEFAULT_SRC_DIR / package).rglob("*.py")
+            }
+            if source_root is not None
+            else {}
+        )
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            {},
+            sources,
             (f"from {package} import *",),
         )
         indexed = modules.get(package)
@@ -83,7 +100,22 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If ``owner is None``.
 
         """
-        owner = cls._facade_letter_class(modules, module, letter)
+        resolved = cls._facade_declared_class(modules, module, letter, frozenset())
+        if resolved is not None and resolved[1] == letter:
+            owner_module, owner_name = resolved
+            exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                modules[module][0],
+            )
+            exported_owner = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                modules[owner_module][0],
+            )
+            owner = (
+                owner_name
+                if owner_name in exported_here and owner_name in exported_owner
+                else None
+            )
+        else:
+            owner = cls._facade_letter_class(modules, module, letter)
         if owner is None:
             msg = (
                 f"{module}.{letter} is not declared with its facade class in the "

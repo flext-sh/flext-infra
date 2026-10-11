@@ -10,11 +10,10 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraRepositoryLocalTopology:

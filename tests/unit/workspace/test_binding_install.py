@@ -11,10 +11,9 @@ import sysconfig
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config
-from tests import m, t, u
+from flext_infra import config
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraBindingInstall:
@@ -70,10 +69,17 @@ class TestsFlextInfraBindingInstall:
                 ),
             ),
         ):
+            dependencies = (
+                f'dependencies = ["binding-candidate @ '
+                f'{(workspace / "unavailable-candidate").as_uri()}"]\n'
+                if scenario == "transitive-source" and root == extra
+                else ""
+            )
             (root / c.PYPROJECT_FILENAME).write_text(
                 '[build-system]\nrequires = ["setuptools"]\n'
                 'build-backend = "setuptools.build_meta"\n'
-                f'[project]\nname = "{name}"\nversion = "1.0.0"\n{optional}'
+                f'[project]\nname = "{name}"\nversion = "1.0.0"\n'
+                f"{dependencies}{optional}"
                 f'\n[tool.setuptools]\npy-modules = ["{name.replace("-", "_")}"]\n',
                 encoding=c.DEFAULT_ENCODING,
             )
@@ -92,13 +98,24 @@ class TestsFlextInfraBindingInstall:
         """
         inactive = "; python_version < '0'"
         marker = inactive if scenario == "inactive" else ""
-        policy: t.MutableSequenceOf[str] = []
-        if scenario in {"override", "override-constraint"}:
-            policy.append('override-dependencies = ["binding-candidate==1"]')
-        if scenario == "inactive-override":
-            policy.append(f'override-dependencies = ["binding-candidate==1{inactive}"]')
-        if scenario in {"constraint", "override-constraint"}:
-            policy.append('constraint-dependencies = ["binding-candidate>=2"]')
+        policy = tuple(
+            declaration
+            for enabled, declaration in (
+                (
+                    scenario in {"override", "override-constraint"},
+                    'override-dependencies = ["binding-candidate==1"]',
+                ),
+                (
+                    scenario == "inactive-override",
+                    f'override-dependencies = ["binding-candidate==1{inactive}"]',
+                ),
+                (
+                    scenario in {"constraint", "override-constraint"},
+                    'constraint-dependencies = ["binding-candidate>=2"]',
+                ),
+            )
+            if enabled
+        )
         constraints = "\n[tool.uv]\n" + "\n".join(policy) if policy else ""
         minimum = (
             "2"
@@ -159,6 +176,7 @@ class TestsFlextInfraBindingInstall:
         "scenario",
         [
             "extras",
+            "transitive-source",
             "constraint",
             "inactive",
             "borrowed",
@@ -227,7 +245,7 @@ class TestsFlextInfraBindingInstall:
         )
         output = f"{outcome.stdout}{outcome.stderr}"
         tm.that(declaration.read_bytes(), eq=original)
-        if scenario not in {"extras", "override"}:
+        if scenario not in {"extras", "override", "transitive-source"}:
             tm.that(outcome.outcome.raw_return_code != 0, eq=True, msg=output)
             if scenario == "inactive":
                 tm.that(output, has="no active declared dependency")
@@ -248,3 +266,15 @@ class TestsFlextInfraBindingInstall:
             )),
         )
         tm.that(installed.stdout.strip(), eq="installed installed")
+        (supplier / "binding_candidate.py").write_text(
+            'VALUE = "current-worktree"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        rebound = tm.ok(
+            u.Cli.run((
+                str(python),
+                "-c",
+                "import binding_candidate; print(binding_candidate.VALUE)",
+            )),
+        )
+        tm.that(rebound.stdout.strip(), eq="current-worktree")

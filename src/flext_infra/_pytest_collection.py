@@ -23,6 +23,7 @@ from typing import ClassVar
 from warnings import WarningMessage
 
 import pytest
+from flext_cli import u
 from pytest_markdown_docs.definitions import FenceTestDefinition
 from pytest_markdown_docs.plugin import (
     FenceSyntax,
@@ -30,9 +31,8 @@ from pytest_markdown_docs.plugin import (
     MarkdownTextFile,
     extract_fence_tests,
 )
-from xdist.dsession import DSession
 
-from flext_infra import c, u
+from flext_infra import c, p
 from flext_infra._models import FlextInfraModelsCore
 
 
@@ -325,14 +325,11 @@ class FlextInfraPytestCollection:
         def __init__(self, *, stop_at_monotonic: float) -> None:
             self.stop_at_monotonic = stop_at_monotonic
             self.session: pytest.Session | None = None
-            self.controller: DSession | None = None
             self.completed_items: set[str] = set()
 
         def pytest_sessionstart(self, session: pytest.Session) -> None:
             """Bind the controller session that owns the stop decision."""
             self.session = session
-            controller = session.config.pluginmanager.getplugin("dsession")
-            self.controller = controller if isinstance(controller, DSession) else None
 
         def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
             """Request the stop once a completed item crosses the instant.
@@ -340,17 +337,20 @@ class FlextInfraPytestCollection:
             The request is suppressed when this item was the last one still
             pending: a suite that already finished must end green instead of
             being interrupted after its own final result.
+
+            Raises:
+                TypeError: If the native distributed controller has no stop port.
             """
             session = self.session
             if session is None or report.when != "teardown":
                 return
+            self.completed_items.add(report.nodeid)
             # The instant is computed in the runner parent and handed to this
             # process as a CLI option; a clock skew between the two (or a
             # stale parent clock) must never stop a suite whose deadline has
             # not actually passed on this process's own monotonic clock.
             if time.monotonic() < self.stop_at_monotonic:
                 return
-            self.completed_items.add(report.nodeid)
             total_items = len(session.items)
             if total_items and len(self.completed_items) >= total_items:
                 return
@@ -360,12 +360,20 @@ class FlextInfraPytestCollection:
             if not getattr(report, "nodes_files_lines", None):
                 return
             reason = f"suite stop instant {self.stop_at_monotonic:.3f} reached"
-            controller = self.controller
-            if isinstance(controller, DSession):
-                if not controller.shouldstop:
-                    controller.shouldstop = reason
-            elif not session.shouldstop:
-                session.shouldstop = reason
+            controller = session.config.pluginmanager.getplugin("dsession")
+            if controller is None:
+                if not session.shouldstop:
+                    session.shouldstop = reason
+                return
+            if not isinstance(controller, p.Infra.PytestStopController):
+                msg = "native distributed pytest controller has no stop port"
+                raise TypeError(msg)
+            shouldstop = u.type_adapter(bool | str).validate_python(
+                controller.shouldstop,
+                strict=True,
+            )
+            if not shouldstop:
+                controller.shouldstop = reason
 
     class WarningAccounting:
         """Preserve the real class identity of every recorded warning."""

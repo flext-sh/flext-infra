@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCodemodContextOwnPackage:
@@ -34,6 +33,68 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 ),
             ),
         )
+
+    @pytest.mark.parametrize(
+        ("module", "admitted"),
+        [
+            ("demo._support", False),
+            ("tests.unit._support", False),
+            ("workspace._support", True),
+            ("other_package._support", True),
+        ],
+    )
+    def test_member_ownership_matches_workspace_and_local_admission(
+        self,
+        tmp_path: Path,
+        module: str,
+        *,
+        admitted: bool,
+    ) -> None:
+        """Only the member namespace and its internal tiers share the owner."""
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject='[project]\nname = "workspace"\nversion = "1.0.0"\n',
+            with_src=True,
+        )
+        member = u.Tests.mk_project(
+            workspace,
+            "demo",
+            pyproject='[project]\nname = "demo"\nversion = "1.0.0"\n',
+            with_src=True,
+        )
+        for root in (workspace, member):
+            u.Tests.initialize_git_repo(root)
+            u.Tests.write_workspace_manifest(
+                root,
+                root.name,
+                role=(
+                    c.Infra.MakeProfile.WORKSPACE
+                    if root == workspace
+                    else c.Infra.MakeProfile.STANDALONE
+                ),
+            )
+        u.Tests.declare_workspace_projects(workspace, (member.name,))
+        consumer = member / "tests" / "unit" / "consumer_tests.py"
+        consumer.parent.mkdir(parents=True)
+        consumer.write_text(f"from {module} import Helper\n", encoding="utf-8")
+        rule = self._private_import_rule()
+        for root in (workspace, member):
+            with u.Infra.codemod_binding_project(
+                root, m.Infra.CodemodBindingSnapshot(states=())
+            ) as (project, sources):
+                verdict = u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=root,
+                        rule=rule,
+                        file_path=consumer,
+                        captures={"MOD": {"text": module}},
+                        facts=u.Infra.codemod_project_facts(root, (rule,)),
+                    ),
+                    project=project,
+                    sources=sources,
+                )
+            tm.that(verdict, eq=admitted)
 
     @pytest.mark.parametrize(
         ("module", "admitted"),
@@ -136,21 +197,23 @@ class TestsFlextInfraCodemodContextOwnPackage:
         mod_workspace: Path, binding_probe_rule: m.Infra.CodemodRule, *, reexport: bool
     ) -> None:
         """Identical spelling in another scope never borrows a module binding."""
-        module_name = "definer"
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package_root = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        module_name = f"{namespace}.definer"
         if reexport:
-            package = mod_workspace / module_name
+            package = package_root / "definer"
             package.mkdir()
             (package / c.Infra.INIT_PY).write_text(
                 "from .utilities import Public, u\n", encoding="utf-8"
             )
             owner = package / "utilities.py"
-            module_name = "definer.utilities"
+            module_name = f"{namespace}.definer.utilities"
         else:
-            owner = mod_workspace / "definer.py"
+            owner = package_root / "definer.py"
         owner.write_text("class Public:\n    pass\nu = Public\n", encoding="utf-8")
         consumer = mod_workspace / "consumer.py"
         source = (
-            "from definer import Public, u\n"
+            f"from {namespace}.definer import Public, u\n"
             "note = '\u00e9'\n"
             "value = Public\n"
             "def independent(Public):\n"

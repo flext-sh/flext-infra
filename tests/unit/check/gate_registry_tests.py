@@ -9,11 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
-from tests import c
+from tests import c, tm
 
 
 class TestsFlextInfraGateRegistry:
@@ -40,6 +38,7 @@ class TestsFlextInfraGateRegistry:
         allowed = frozenset(make.check_gates_allowed)
         tm.that(frozenset(make.check_gates_default) <= allowed, eq=True)
         tm.that(frozenset(make.ci.local_check_gates) <= allowed, eq=True)
+        tm.that(frozenset(make.check_gates_ci) <= allowed, eq=True)
         tm.that(
             frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS)
             <= frozenset(c.Infra.CANONICAL_GATE_IDS),

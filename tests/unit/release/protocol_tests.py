@@ -16,9 +16,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import cli
-from flext_tests import tm
 
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator

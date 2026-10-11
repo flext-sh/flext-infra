@@ -229,7 +229,7 @@ class FlextInfraUtilitiesManagedConflicts:
                 recovered.append(line)
                 index += 1
                 continue
-            if control != "current":
+            if control != c.Infra.MergeConflictControl.CURRENT:
                 return r[str].fail("orphan TOML merge-control marker")
             if not FlextInfraUtilitiesManagedConflicts.toml_section_is_owned(
                 section,
@@ -282,7 +282,7 @@ class FlextInfraUtilitiesManagedConflicts:
         """
         while index < len(lines):
             control = FlextInfraUtilitiesBase.merge_conflict_control(lines[index])
-            if control == "separator":
+            if control == c.Infra.MergeConflictControl.SEPARATOR:
                 return r[int].ok(index)
             if control is not None:
                 return r[int].fail("nested or malformed TOML merge conflict")
@@ -305,7 +305,7 @@ class FlextInfraUtilitiesManagedConflicts:
         control = ""
         while index < len(lines):
             control = FlextInfraUtilitiesBase.merge_conflict_control(lines[index])
-            if control in {"ancestor", "separator"}:
+            if control in c.Infra.MERGE_CONFLICT_BRANCH_BOUNDARIES:
                 break
             if control is not None:
                 return pair.fail("nested or malformed TOML merge conflict")
@@ -313,7 +313,7 @@ class FlextInfraUtilitiesManagedConflicts:
             index += 1
         if index >= len(lines):
             return pair.fail("TOML merge conflict has no separator")
-        if control == "ancestor":
+        if control == c.Infra.MergeConflictControl.ANCESTOR:
             skipped = FlextInfraUtilitiesManagedConflicts._skipped_ancestor_side(
                 lines,
                 index + 1,
@@ -340,7 +340,7 @@ class FlextInfraUtilitiesManagedConflicts:
         """
         while index < len(lines):
             control = FlextInfraUtilitiesBase.merge_conflict_control(lines[index])
-            if control == "incoming":
+            if control == c.Infra.MergeConflictControl.INCOMING:
                 return r[int].ok(index)
             if control is not None:
                 return r[int].fail("nested or malformed TOML merge conflict")

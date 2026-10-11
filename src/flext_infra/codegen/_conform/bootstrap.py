@@ -15,9 +15,6 @@ from flext_infra import c, m, s, t
 if TYPE_CHECKING:
     from flext_infra import p
 
-if TYPE_CHECKING:
-    from flext_infra import p
-
 
 class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     """Root of the conform chain: request state and toolchain policy projections.
@@ -157,10 +154,14 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                     templates=False,
                     custom=False,
                 )
-            case (
-                c.Infra.CodegenConformSurface.DEPENDENCIES
-                | c.Infra.CodegenConformSurface.PYPROJECT
-            ):
+            case c.Infra.CodegenConformSurface.PYPROJECT:
+                return m.Infra.CodegenConformSurfaceContract(
+                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    delegates=False,
+                    templates=False,
+                    custom=False,
+                )
+            case c.Infra.CodegenConformSurface.DEPENDENCIES:
                 return m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.PYPROJECT_FILENAME}),
                     delegates=False,
@@ -180,6 +181,13 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 ).as_posix()
                 return m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({destination}),
+                    pyproject=False,
+                    custom=False,
+                )
+            case c.Infra.CodegenConformSurface.ENVRC:
+                return m.Infra.CodegenConformSurfaceContract(
+                    destinations=frozenset({c.Infra.ENVRC_FILENAME}),
+                    delegates=False,
                     pyproject=False,
                     custom=False,
                 )

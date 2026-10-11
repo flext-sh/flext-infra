@@ -124,6 +124,14 @@ class FlextInfraPytestProfile:
             if directory is not None:
                 children = directory / policy.profile_process_directory
                 profiles = sorted(children.glob("*.pstats"))
+                profiles.extend(
+                    artifact
+                    for artifact in (
+                        directory / c.Infra.PYTEST_SELECTION_PROFILE_FILENAME,
+                        directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,
+                    )
+                    if artifact.is_file()
+                )
                 suite = directory / policy.profile_suite_filename
                 if suite.is_file():
                     profiles.append(suite)

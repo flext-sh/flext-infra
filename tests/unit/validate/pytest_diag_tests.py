@@ -10,10 +10,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 from defusedxml import ElementTree as DefusedET
-from flext_tests import tm
 
 from flext_infra import FlextInfraPytestDiagExtractor, c, t
-from tests import m
+from tests import m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -10,22 +10,9 @@ import pstats
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraCProfileReport,
-    FlextInfraPytestRunner,
-    c,
-    config,
-    m,
-    t,
-    u,
-)
-from tests.unit.validate.pytest_runner_support import (
-    profile_collection,
-    profile_parent,
-    runner_for,
-)
+from flext_infra import FlextInfraCProfileReport, FlextInfraPytestRunner, config
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestProfile:
@@ -46,14 +33,18 @@ class TestsFlextInfraPytestProfile:
             "def test_unselected():\n    raise RuntimeError('unselected file ran')\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, target_file=target)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=target
+        )
         output = (
             cached_runner_project
             / ".reports"
             / "profiles"
             / config.Infra.tooling.tools.pytest.profile_suite_filename
         )
-        tm.that(profile_parent(runner, output), eq=pytest.ExitCode.OK)
+        tm.that(
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+        )
         reports = cached_runner_project / runner.reports
         contexts = list(reports.glob("*/run-context.json"))
         tm.that(len(contexts), eq=1)
@@ -78,7 +69,7 @@ class TestsFlextInfraPytestProfile:
         target_file: Path,
     ) -> None:
         """Invalid input fails through the real entry before publishing a run."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         output = (
             cached_runner_project
             / ".reports"
@@ -86,7 +77,7 @@ class TestsFlextInfraPytestProfile:
             / config.Infra.tooling.tools.pytest.profile_suite_filename
         )
         with pytest.raises(RuntimeError, match=r"target_file|test target file"):
-            profile_parent(runner, output, target_file=target_file)
+            u.Tests.PytestRunner.profile_parent(runner, output, target_file=target_file)
         tm.that(
             list((cached_runner_project / runner.reports).glob("*/run-context.json")),
             eq=[],
@@ -119,14 +110,18 @@ class TestsFlextInfraPytestProfile:
             "    assert result.ret == pytest.ExitCode.USAGE_ERROR\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, target_file=target)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=target
+        )
         output = (
             cached_runner_project
             / ".reports"
             / "profiles"
             / policy.profile_suite_filename
         )
-        tm.that(profile_parent(runner, output), eq=pytest.ExitCode.OK)
+        tm.that(
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+        )
         receipt = m.Infra.PytestRunContext.model_validate_json(
             output.with_suffix(".pstats.json").read_text(encoding="utf-8"),
         )
@@ -184,7 +179,7 @@ class TestsFlextInfraPytestProfile:
     ) -> None:
         """The real pytest module exits natively and leaves its raw profile."""
         profile = tmp_path / "collection.pstats"
-        result = profile_collection(profile, arguments)
+        result = u.Tests.PytestRunner.profile_collection(profile, arguments)
         assert result.outcome.raw_return_code == expected_exit
         assert not result.outcome.timed_out
         assert result.outcome.forwarded_signal is None
@@ -198,7 +193,7 @@ class TestsFlextInfraPytestProfile:
         """A real profile I/O failure remains visible rather than becoming success."""
         output = tmp_path / "collection.pstats"
         output.mkdir()
-        result = profile_collection(output, ("--version",))
+        result = u.Tests.PytestRunner.profile_collection(output, ("--version",))
         assert result.outcome.raw_return_code != 0
         assert not result.outcome.timed_out
         assert result.outcome.forwarded_signal is None
@@ -212,8 +207,10 @@ class TestsFlextInfraPytestProfile:
         complete: bool,
     ) -> None:
         """Only the interpreter prefix changes; suite execution is not profiled."""
-        plain = runner_for(cached_runner_project)
-        profiled = runner_for(cached_runner_project, profile_collection=True)
+        plain = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        profiled = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, profile_collection=True
+        )
         report = cached_runner_project / plain.reports
         manifest = report / "collection.json"
         plain_command = plain.build_selection_command(
@@ -340,7 +337,7 @@ class TestsFlextInfraPytestProfile:
                 pyproject.read_text(encoding="utf-8") + 'addopts = "-p flext_infra"\n',
                 encoding="utf-8",
             )
-        runner = runner_for(
+        runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project,
             profile_collection=profile_collection,
         )
@@ -350,7 +347,7 @@ class TestsFlextInfraPytestProfile:
             cached_runner_project / ".reports" / "profiles" / "pytest.pstats"
         )
         exit_code = (
-            profile_parent(runner, parent_profile)
+            u.Tests.PytestRunner.profile_parent(runner, parent_profile)
             if profile_collection
             else tm.ok(runner.execute())
         )

@@ -9,13 +9,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import c
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

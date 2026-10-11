@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class FlextInfraRequirementProvenance:
+class FlextInfraUtilitiesPyprojectRequirementsProvenance:
     """Workspace provenance consulted while canonicalizing requirement lines."""
 
     declared_sources: t.StrMapping

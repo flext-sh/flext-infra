@@ -13,12 +13,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspacePropagation
-from tests import c, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraWorkspaceMemberLockOwnership:

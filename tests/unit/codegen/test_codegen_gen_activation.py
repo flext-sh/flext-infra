@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, t, u
+from tests import c, t, tm, u
 
 # Each scenario's candidate checkout is set up from its committed locks before
 # any item starts. Make test-full owns the native installer and conform boundary.

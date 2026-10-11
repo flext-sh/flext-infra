@@ -16,6 +16,7 @@ from libcst import Arg, ClassDef, Module, Name, parse_module
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
+from rope.base import exceptions
 
 from flext_infra import c, t
 from flext_infra._utilities import (
@@ -315,9 +316,13 @@ class FlextInfraUtilitiesCodegenFacades:
         namespace: str,
         family: Literal["u", "p", "m"],
     ) -> frozenset[str]:
+        """Collect consumed members through their actual imported Rope identities.
 
+        Returns:
+            The required public members; invalid source positions fail at Rope.
+        """
         methods: set[str] = set()
-        with FlextInfraUtilitiesRopeCore.open_project(pkg_dir.parent) as project:
+        with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
             for path in (
                 candidate
                 for candidate in sorted(pkg_dir.rglob(f"*{c.Infra.EXT_PYTHON}"))
@@ -331,6 +336,12 @@ class FlextInfraUtilitiesCodegenFacades:
                 ):
                     continue
                 tree = ast.parse(source, filename=str(path))
+                imported_receivers = {
+                    alias.asname or alias.name.split(".", 1)[0]
+                    for node in ast.walk(tree)
+                    if isinstance(node, (ast.Import, ast.ImportFrom))
+                    for alias in node.names
+                }
                 pymodule: t.Infra.RopePyModule | None = None
                 lines = source.splitlines(keepends=True)
                 for reference in (
@@ -352,25 +363,32 @@ class FlextInfraUtilitiesCodegenFacades:
                         and isinstance(receiver, ast.Attribute)
                         else receiver
                     )
-                    if not isinstance(receiver, ast.Name):
+                    if (
+                        not isinstance(receiver, ast.Name)
+                        or receiver.id not in imported_receivers
+                    ):
                         continue
                     if pymodule is None:
                         resource = project.get_resource(
-                            path.relative_to(pkg_dir.parent).as_posix(),
+                            path.relative_to(Path(project.root.real_path)).as_posix(),
                         )
                         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                             project,
                             resource,
                         )
                     offset = sum(map(len, lines[: receiver.lineno - 1]))
-                    prefix = lines[receiver.lineno - 1].encode(c.DEFAULT_ENCODING)
                     offset += len(
-                        prefix[: receiver.col_offset].decode(c.DEFAULT_ENCODING),
+                        lines[receiver.lineno - 1]
+                        .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
+                        .decode(c.DEFAULT_ENCODING),
                     )
-                    binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
-                        pymodule,
-                        offset,
-                    )
+                    try:
+                        binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
+                            pymodule,
+                            offset,
+                        )
+                    except exceptions.BadIdentifierError:
+                        continue
                     if binding is None:
                         continue
                     imported = binding.imported_module
@@ -463,6 +481,14 @@ class FlextInfraUtilitiesCodegenFacades:
         tree: ast.Module,
         path: Path,
     ) -> t.Pair[ast.ClassDef, ast.ClassDef]:
+        """Resolve one facade and its single declared utility namespace.
+
+        Returns:
+            The facade and its namespace, or the facade when no namespace exists.
+
+        Raises:
+            ValueError: If the facade or its namespace identity is ambiguous.
+        """
         facades = tuple(node for node in tree.body if isinstance(node, ast.ClassDef))
         if len(facades) != 1:
             message = f"expected one utility facade class in {path}"
@@ -471,8 +497,7 @@ class FlextInfraUtilitiesCodegenFacades:
             node for node in facades[0].body if isinstance(node, ast.ClassDef)
         )
         if len(nested) > 1:
-            message = f"expected at most one utility namespace class in {path}"
-            raise ValueError(message)
+            return facades[0], facades[0]
         return facades[0], nested[0] if nested else facades[0]
 
     @classmethod

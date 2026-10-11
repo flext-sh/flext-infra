@@ -15,11 +15,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraPytestRunner, config
-from tests import m, tm
-from tests.unit.validate.pytest_runner_support import (
-    declared_project_runner,
-    runner_for,
-)
+from tests import m, tm, u
 
 
 @pytest.mark.unit
@@ -103,7 +99,7 @@ class TestsFlextInfraPytestWorkerCeiling:
     ) -> None:
         """A tree without ``[project].name`` takes the fleet-wide ceiling."""
         policy = config.Infra.tooling.tools.pytest
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         assert runner.parallel_worker_budget(policy) == policy.parallel_workers
 
     @staticmethod
@@ -114,7 +110,9 @@ class TestsFlextInfraPytestWorkerCeiling:
         policy = config.Infra.tooling.tools.pytest
         assert policy.parallel_worker_overrides
         declared_name = next(iter(policy.parallel_worker_overrides))
-        runner = declared_project_runner(cached_runner_project, declared_name)
+        runner = u.Tests.PytestRunner.declared_project_runner(
+            cached_runner_project, declared_name
+        )
         report = (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory

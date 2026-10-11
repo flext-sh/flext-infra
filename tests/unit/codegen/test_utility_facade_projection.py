@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
@@ -596,6 +595,73 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
+    @pytest.mark.parametrize("member_path", ["provider", "libraries/provider"])
+    def test_declared_workspace_import_resolves_without_adopting_foreign_owner(
+        self,
+        tmp_path: Path,
+        member_path: str,
+    ) -> None:
+        """Sibling facade calls resolve from declarations, not ambient installs."""
+        package = tmp_path / "receiver" / "src" / "flext_sample"
+        foreign = tmp_path / member_path / "src" / "foreign_facade"
+        self._write(
+            tmp_path / ".gitmodules",
+            '[submodule "receiver"]\n\tpath = receiver\n'
+            f'[submodule "provider"]\n\tpath = {member_path}\n',
+        )
+        for directory, distribution in (
+            (package.parent.parent, "receiver"),
+            (foreign.parent.parent, "provider"),
+        ):
+            self._write(
+                directory / "pyproject.toml",
+                f'[project]\nname = "{distribution}"\nversion = "1.0.0"\n'
+                + (
+                    'dependencies = ["provider"]\n'
+                    if distribution == "receiver"
+                    else ""
+                ),
+            )
+        self._write(package / "__init__.py", "")
+        self._write(foreign / "__init__.py", "from .utilities import u\n")
+        self._write(
+            foreign / "utilities.py",
+            "class Foreign:\n    class Sample:\n"
+            "        @staticmethod\n        def foreign_only() -> str:\n"
+            "            return 'foreign'\nu = Foreign\n",
+        )
+        self._write(
+            package / "foreign_consumer.py",
+            "from foreign_facade import u\nu.Sample.foreign_only()\n",
+        )
+        self._write(
+            package / "consumer.py",
+            "from flext_sample import u\nu.Sample.required()\n",
+        )
+        self._write(
+            package / "_utilities" / "owner.py",
+            "class Owner:\n    @staticmethod\n"
+            "    def required() -> str:\n        return 'local'\n",
+        )
+        self._write(
+            package / "_utilities" / "foreign.py",
+            "class ForeignOwner:\n    @staticmethod\n"
+            "    def foreign_only() -> str:\n        return 'wrong'\n",
+        )
+        facade = package / "utilities.py"
+        original = (
+            "class Facade:\n    class Sample:\n        pass\n"
+            "u = Facade\n__all__ = ['Facade', 'u']\n"
+        )
+        self._write(facade, original)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        tm.that(rendered, has="from flext_sample._utilities.owner import (")
+        tm.that("ForeignOwner" in rendered, eq=False)
+        tm.that(facade.read_text(), eq=original)
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+
     def test_unresolved_consumer_import_fails_before_projection(
         self,
         tmp_path: Path,
@@ -693,6 +759,26 @@ class TestsFlextInfraUtilityFacadeProjection:
         with pytest.raises(ValueError, match=r"ambiguous u\.Sample owner"):
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(), eq=original)
+
+    def test_rejects_multiple_namespace_declarations(self, tmp_path: Path) -> None:
+        """Reject an ambiguous facade without dropping either declaration body."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        facade = package / c.Infra.UTILITIES_PY
+        source = (
+            "from flext_cli import u\n"
+            "class FlextSampleUtilities(u):\n"
+            "    class Sample:\n        declaration = 'first'\n"
+            "    class Extra:\n        declaration = 'second'\n"
+            "u = FlextSampleUtilities\n"
+            '__all__ = ["FlextSampleUtilities", "u"]\n'
+        )
+        self._write(facade, source)
+        (package / family.directory).mkdir()
+
+        with pytest.raises(ValueError, match="at most one utility namespace"):
+            u.Infra.render_utility_facade(package)
+        tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     def test_rejects_owners_without_a_public_facade(self, tmp_path: Path) -> None:
         """Utility owners without a facade have no public surface at all."""

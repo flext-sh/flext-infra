@@ -12,10 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from tests import m

@@ -408,6 +408,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     in {
                         c.Infra.CodegenConformSurface.MAKEFILE,
                         c.Infra.CodegenConformSurface.DOCS_CONFIG,
+                        c.Infra.CodegenConformSurface.ENVRC,
                         c.Infra.CodegenConformSurface.PYPROJECT,
                         c.Infra.CodegenConformSurface.MISE_CONFIG,
                     }
@@ -419,6 +420,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         current_repository = workspace.repository
         if self.initial_workspace is None and request.what not in {
             c.Infra.CodegenConformSurface.MAKEFILE,
+            c.Infra.CodegenConformSurface.ENVRC,
             c.Infra.CodegenConformSurface.PYPROJECT,
             c.Infra.CodegenConformSurface.MISE_CONFIG,
         }:
@@ -434,6 +436,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
+                toolchain_root=root,
                 make_profile=current_repository.role,
                 beads=workspace.beads,
                 project=workspace.project,
@@ -617,7 +620,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         if target_result.failure:
             return result_type.from_failure(target_result)
-        target = target_result.value
+        target = target_result.value.model_copy(
+            update={"toolchain_root": current_target.toolchain_root},
+        )
         if repository.path != Path():
             target = target.model_copy(update={"repository": repository})
         return result_type.ok((repository_root, target, local_workspace))

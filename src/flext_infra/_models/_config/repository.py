@@ -345,6 +345,16 @@ class FlextInfraConfigModelsRepository:
                 ),
             ),
         ] = ()
+        examples_module: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
+                description=(
+                    "Explicit dotted examples module with a repository-relative "
+                    "Python source file; absence does not select an entrypoint"
+                ),
+            ),
+        ] = None
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(
@@ -376,6 +386,12 @@ class FlextInfraConfigModelsRepository:
         root: Annotated[
             Path,
             m.Field(description="Resolved repository root receiving conformance"),
+        ]
+        toolchain_root: Annotated[
+            Path,
+            m.Field(
+                description="Composition root owning the active generation toolchain"
+            ),
         ]
         make_profile: Annotated[
             c.Infra.MakeProfile,

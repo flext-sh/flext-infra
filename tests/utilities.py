@@ -33,7 +33,6 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 
 
-
 class TestsFlextInfraUtilitiesCodegenTestSupport:
     """Own shared typed construction for codegen test contracts."""
 
@@ -121,6 +120,7 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
                 packages_read=overrides.packages_read,
                 python_version=codegen.toolchain.python_version,
                 github_actions=codegen.github_actions,
+                toolchain=codegen.toolchain,
                 make=codegen.make,
                 workspace_repositories=overrides.workspace_repositories,
                 checkout_submodules=codegen.checkout_submodules,
@@ -158,9 +158,12 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
             return tuple(
                 t.Cli.JSON_MAPPING_ADAPTER.validate_python(step) for step in steps
             )
+
+
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
+    CodegenTestSupport = TestsFlextInfraUtilitiesCodegenTestSupport
 
     CodegenTestSupport = TestsFlextInfraUtilitiesCodegenTestSupport
     class Tests(
@@ -236,6 +239,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             """Repository-shape knobs for the generated Make fixture."""
 
             package: bool = True
+            examples_module: str | None = None
             extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
             script_dispatch: m.Infra.ScriptDispatchSpec | None = None
 
@@ -262,6 +266,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 update={
                     "editable": True,
                     "package": shape.package,
+                    "examples_module": shape.examples_module,
                     "extra_verbs": shape.extra_verbs,
                     "script_dispatch": shape.script_dispatch,
                 },

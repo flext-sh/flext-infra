@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
-from tests import m, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraCodegenArtifactSsot:
@@ -228,12 +227,7 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
-        """Pre-commit runs the fast gates only; pre-push adds the heavy ones.
-
-        Pre-commit never runs tests (rules/workflow/canonical-commands.md, Test
-        verbs); pre-push runs ``make test``. Both reach the same validation
-        verb, so pre-commit is a strict subset of pre-push.
-        """
+        """Both hooks run incremental tests; pre-push adds full local checks."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
@@ -244,7 +238,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         push_verbs = {step.verb for step in pre_push}
         tm.that(bool(commit_verbs & push_verbs), eq=True)
         tm.that(commit_verbs < push_verbs, eq=True)
-        tm.that("test" in commit_verbs, eq=False)
+        tm.that(c.Infra.VERB_TEST in commit_verbs, eq=True)
         tm.that("test" in push_verbs, eq=True)
         shared_steps = tuple(
             step

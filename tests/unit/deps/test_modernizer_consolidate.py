@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import FlextInfraConsolidateGroupsPhase, c
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraDepsModernizerConsolidate:

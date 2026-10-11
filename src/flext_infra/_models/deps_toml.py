@@ -54,6 +54,28 @@ class FlextInfraModelsDepsToml:
                 m.Field(description="PEP 735 requirement and inclusion entries"),
             ]
 
+            @m.field_validator(
+                "dependencies",
+                "optional_dependencies",
+                "dependency_groups",
+                mode="before",
+            )
+            @classmethod
+            def toml_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+                """Freeze TOML arrays before validating their strict element types.
+
+                Returns:
+                    The same declarations with array containers converted to tuples.
+                """
+                if isinstance(value, list):
+                    return tuple(value)
+                if isinstance(value, dict):
+                    return {
+                        name: tuple(entries) if isinstance(entries, list) else entries
+                        for name, entries in value.items()
+                    }
+                return value
+
             @m.field_validator("dependency_groups")
             @classmethod
             def declared_group_references(

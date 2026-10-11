@@ -12,10 +12,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from tests import m

@@ -11,15 +11,9 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, m, t, u
-from tests.unit.validate.pytest_runner_support import (
-    declare_parallel_project,
-    declared_project_runner,
-    runner_for,
-    summary,
-)
+from flext_infra import config
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestRunner:
@@ -33,7 +27,9 @@ class TestsFlextInfraPytestRunner:
         ci_context: bool,
     ) -> None:
         """CI/pre-commit omit slow cases; local/pre-push keep them selectable."""
-        runner = runner_for(cached_runner_project, ci_context=ci_context)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, ci_context=ci_context
+        )
         report = (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory
@@ -85,7 +81,7 @@ class TestsFlextInfraPytestRunner:
         cached_runner_project: Path,
     ) -> None:
         """Every testmon argv names one stable toolchain-fingerprinted env."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         report = (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory
@@ -115,7 +111,9 @@ class TestsFlextInfraPytestRunner:
         # Each marker scope owns its environment: the slow phase never shares
         # the budgeted phase's records.
         tm.that(
-            runner_for(cached_runner_project, slow_phase=True).testmon_environment(
+            u.Tests.PytestRunner.runner_for(
+                cached_runner_project, slow_phase=True
+            ).testmon_environment(
                 c.Infra.PytestExecutionMode.INCREMENTAL,
             ),
             ne=name,
@@ -147,14 +145,14 @@ class TestsFlextInfraPytestRunner:
             "    assert payload.data['value']\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         database = runner.testmon_db
         assert tm.ok(runner.execute()) == 0
         reports = cached_runner_project / runner.reports
-        assert "executed=1" in summary(reports)
-        warm = runner_for(cached_runner_project)
+        assert "executed=1" in u.Tests.PytestRunner.summary(reports)
+        warm = u.Tests.PytestRunner.runner_for(cached_runner_project)
         assert tm.ok(warm.execute()) == 0
-        assert "outcome=cache_hit" in summary(reports)
+        assert "outcome=cache_hit" in u.Tests.PytestRunner.summary(reports)
         warm_latest = (reports / "latest.txt").read_text().strip()
         warm_accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (reports / warm_latest / "run-accounting.json").read_text(),
@@ -163,10 +161,10 @@ class TestsFlextInfraPytestRunner:
         assert warm_accounting.executed_count == 0
         assert warm_accounting.deselected_count == warm_accounting.inventory_count
         source.write_text("value: changed\n", encoding="utf-8")
-        changed = runner_for(cached_runner_project)
+        changed = u.Tests.PytestRunner.runner_for(cached_runner_project)
         assert changed.testmon_db == database
         assert tm.ok(changed.execute()) == 0
-        assert "executed=1" in summary(reports)
+        assert "executed=1" in u.Tests.PytestRunner.summary(reports)
         latest = (reports / "latest.txt").read_text().strip()
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (reports / latest / "run-accounting.json").read_text(),
@@ -184,14 +182,16 @@ class TestsFlextInfraPytestRunner:
         """The suite argv and process policy share one declared project budget."""
         policy = config.Infra.tooling.tools.pytest
         # A tree without ``[project].name`` takes the fleet-wide run wall.
-        undeclared = runner_for(cached_runner_project)
+        undeclared = u.Tests.PytestRunner.runner_for(cached_runner_project)
         assert undeclared.run_timeout_seconds(policy) == policy.run_timeout_seconds
         declared_name = next(iter(policy.run_timeout_overrides), config.Infra.name)
         expected = policy.run_timeout_overrides.get(
             declared_name,
             policy.run_timeout_seconds,
         )
-        runner = declared_project_runner(cached_runner_project, declared_name)
+        runner = u.Tests.PytestRunner.declared_project_runner(
+            cached_runner_project, declared_name
+        )
         report = (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory
@@ -221,7 +221,10 @@ class TestsFlextInfraPytestRunner:
             The resulting ``Path``.
 
         """
-        tm.that(tm.ok(runner_for(cached_runner_project).execute()), eq=0)
+        tm.that(
+            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
+            eq=0,
+        )
         return (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory
@@ -239,13 +242,13 @@ class TestsFlextInfraPytestRunner:
         reports_root = self._seed_cache(cached_runner_project)
 
         second_exit = tm.ok(
-            runner_for(
+            u.Tests.PytestRunner.runner_for(
                 cached_runner_project,
                 profile_collection=profile_collection,
             ).execute(),
         )
         tm.that(second_exit, eq=0)
-        second_summary = summary(reports_root)
+        second_summary = u.Tests.PytestRunner.summary(reports_root)
         tm.that(
             second_summary,
             has=["executed=0", "deselected=1", "cache_restored=True", "exit=0"],
@@ -274,10 +277,12 @@ class TestsFlextInfraPytestRunner:
             "def test_added_after_cache_seed():\n    assert True\n",
             encoding="utf-8",
         )
-        added_exit = tm.ok(runner_for(cached_runner_project).execute())
+        added_exit = tm.ok(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+        )
         tm.that(added_exit, eq=0)
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=["executed=1", "failed=0", "errors=0", "exit=0"],
         )
 
@@ -292,7 +297,7 @@ class TestsFlextInfraPytestRunner:
         budgeted phase's sync delete the slow failure, after which the slow
         phase deselected its file as stable and passed without running it.
         """
-        declare_parallel_project(cached_runner_project)
+        u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         policy = config.Infra.tooling.tools.pytest
         cache = config.Infra.codegen.make.testmon_cache
         (cached_runner_project / cache.target_directory / "test_phases.py").write_text(
@@ -307,16 +312,30 @@ class TestsFlextInfraPytestRunner:
         )
         source = cached_runner_project / "src" / "runner_sample" / "__init__.py"
 
-        tm.that(tm.ok(runner_for(cached_runner_project).execute()), eq=0)
         tm.that(
-            tm.ok(runner_for(cached_runner_project, slow_phase=True).execute()),
+            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
+            eq=0,
+        )
+        tm.that(
+            tm.ok(
+                u.Tests.PytestRunner.runner_for(
+                    cached_runner_project, slow_phase=True
+                ).execute()
+            ),
             ne=0,
         )
         source.write_text("def answer() -> int:\n    return 41 + 1\n", encoding="utf-8")
-        tm.that(tm.ok(runner_for(cached_runner_project).execute()), eq=0)
+        tm.that(
+            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
+            eq=0,
+        )
 
         tm.that(
-            tm.ok(runner_for(cached_runner_project, slow_phase=True).execute()),
+            tm.ok(
+                u.Tests.PytestRunner.runner_for(
+                    cached_runner_project, slow_phase=True
+                ).execute()
+            ),
             ne=0,
         )
 
@@ -338,7 +357,9 @@ class TestsFlextInfraPytestRunner:
             "def test_third():\n    assert isinstance(answer(), int)\n",
             encoding="utf-8",
         )
-        assert tm.ok(runner_for(cached_runner_project).execute()) == 0
+        assert (
+            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()) == 0
+        )
         worker_action = (
             "    items.pop()\n"
             if omit_case
@@ -357,7 +378,9 @@ class TestsFlextInfraPytestRunner:
             encoding="utf-8",
         )
 
-        exit_code = tm.ok(runner_for(cached_runner_project).execute())
+        exit_code = tm.ok(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+        )
         reports_root = cached_runner_project / cache.reports_directory
         if omit_case:
             assert exit_code != 0
@@ -368,7 +391,7 @@ class TestsFlextInfraPytestRunner:
             return
         assert exit_code == 0
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=["executed=3", "cache_restored=True", "errors=0", "exit=0"],
         )
 
@@ -383,7 +406,7 @@ class TestsFlextInfraPytestRunner:
         in-flight item completes, so a run surfaces at most one failure per
         worker and never executes the rest of the selection.
         """
-        declare_parallel_project(cached_runner_project)
+        u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         cache = config.Infra.codegen.make.testmon_cache
         (
             cached_runner_project / cache.target_directory / "test_failures.py"
@@ -394,7 +417,7 @@ class TestsFlextInfraPytestRunner:
             "    assert False, 'second failure evidence'\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         workers = runner.parallel_worker_budget(config.Infra.tooling.tools.pytest)
 
         exit_code = tm.ok(runner.execute())
@@ -418,7 +441,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(outcome.raw_return_code, eq=exit_code)
         tm.that(outcome.timed_out, eq=False)
         tm.that(outcome.forwarded_signal, none=True)
-        tm.that(summary(reports_root), has=f"failed={failed}")
+        tm.that(u.Tests.PytestRunner.summary(reports_root), has=f"failed={failed}")
 
     @staticmethod
     @pytest.mark.slow
@@ -469,13 +492,15 @@ class TestsFlextInfraPytestRunner:
             cached_runner_project / cache.target_directory / "test_findings.py"
         ).write_text(source, encoding="utf-8")
 
-        exit_code = tm.ok(runner_for(cached_runner_project).execute())
+        exit_code = tm.ok(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+        )
 
         warnings_count = 0 if finding == "skip" else 2
         tm.that(exit_code, eq=1)
         reports_root = cached_runner_project / cache.reports_directory
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=[
                 "executed=2",
                 f"warnings={warnings_count}",
@@ -495,7 +520,7 @@ class TestsFlextInfraPytestRunner:
         cached_runner_project: Path,
     ) -> None:
         """A failed fixture is one complete lifecycle: setup and teardown, no call."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         (cached_runner_project / runner.target / "test_setup.py").write_text(
             "import pytest\n\n@pytest.fixture\ndef broken():\n"
             "    raise RuntimeError('setup failure evidence')\n\n"
@@ -512,7 +537,7 @@ class TestsFlextInfraPytestRunner:
             has="setup failure evidence",
         )
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=["executed=2", "errors=1", "accounting_complete=True"],
         )
 
@@ -549,13 +574,15 @@ class TestsFlextInfraPytestRunner:
             encoding="utf-8",
         )
 
-        exit_code = tm.ok(runner_for(cached_runner_project).execute())
+        exit_code = tm.ok(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+        )
 
         tm.that(exit_code, eq=0)
         reports_root = cached_runner_project / cache.reports_directory
         latest_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=[
                 "executed=1",
                 f"not_executed_external_gates={','.join(markers)}",
@@ -594,9 +621,9 @@ class TestsFlextInfraPytestRunner:
             f"markers = [\n{marker_lines}]\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, ci_context=ci_context).model_copy(
-            update={"unbounded": True}
-        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, ci_context=ci_context
+        ).model_copy(update={"unbounded": True})
         source = "import pytest\nfrom runner_sample import answer\n\n"
         for index, marker in enumerate(markers):
             source += (
@@ -653,7 +680,9 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """A real slow case exceeds the configured budget and completes in full."""
         policy = config.Infra.tooling.tools.pytest
-        runner = runner_for(cached_runner_project, ci_context=ci_context).model_copy(
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, ci_context=ci_context
+        ).model_copy(
             update={"unbounded": True},
         )
         (cached_runner_project / runner.target / "test_outlives_budget.py").write_text(
@@ -666,7 +695,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(tm.ok(runner.execute_full()), eq=0)
         reports = cached_runner_project / runner.reports
         tm.that(
-            summary(reports),
+            u.Tests.PytestRunner.summary(reports),
             has=["executed=2", "failed=0", "errors=0", "exit=0"],
         )
         latest = (reports / "latest.txt").read_text().strip()
@@ -695,13 +724,17 @@ class TestsFlextInfraPytestRunner:
             Path(config.Infra.codegen.make.testmon_cache.target_directory)
             / "test_runtime.py"
         )
-        baseline = runner_for(cached_runner_project, target_file=declared)
-        tm.that(tm.ok(baseline.execute()), eq=0)
+        baseline = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=declared
+        )
+        tm.that(tm.ok(baseline.execute_full()), eq=0)
         reports_root = cached_runner_project / baseline.reports
         existing = set(reports_root.glob("*/run-context.json"))
-        runner = runner_for(cached_runner_project, target_file=declared)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=declared
+        )
 
-        tm.that(tm.ok(runner.execute()), eq=0)
+        tm.that(tm.ok(runner.execute_full()), eq=0)
 
         contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
         tm.that(len(contexts), eq=1)
@@ -766,12 +799,12 @@ class TestsFlextInfraPytestRunner:
         cached_runner_project: Path,
     ) -> None:
         """``make test-full`` carries no deadline in any of its phases."""
-        bounded = runner_for(cached_runner_project)
+        bounded = u.Tests.PytestRunner.runner_for(cached_runner_project)
         reports_root = cached_runner_project / bounded.reports
         existing = set(reports_root.glob("*/run-context.json"))
         runner = bounded.model_copy(update={"unbounded": True})
         (cached_runner_project / runner.target / "test_unbounded_policy.py").write_text(
-            "from flext_tests import tm\n\n"
+            "from tests import tm\n\n"
             "def test_unbounded_policy(pytestconfig):\n"
             "    tm.that(pytestconfig.getoption('timeout'), eq=0)\n"
             "    tm.that(pytestconfig.getoption("
@@ -802,7 +835,7 @@ class TestsFlextInfraPytestRunner:
         cached_runner_project: Path,
     ) -> None:
         """A changed dependency executes its consumer and accounts for stable IDs."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         (cached_runner_project / runner.target / "test_stable.py").write_text(
             "def test_stable():\n    assert 17 == 17\n",
             encoding="utf-8",
@@ -818,7 +851,10 @@ class TestsFlextInfraPytestRunner:
             encoding="utf-8",
         )
 
-        tm.that(tm.ok(runner_for(cached_runner_project).execute()), eq=0)
+        tm.that(
+            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
+            eq=0,
+        )
 
         reports_root = cached_runner_project / runner.reports
         report_dir = reports_root / (reports_root / "latest.txt").read_text().strip()
@@ -842,7 +878,7 @@ class TestsFlextInfraPytestRunner:
             eq=len(inventory.node_ids) - len(selection.node_ids),
         )
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=["outcome=executed", "executed=1", "deselected=1", "inventory=2"],
         )
 
@@ -860,7 +896,9 @@ class TestsFlextInfraPytestRunner:
             "def test_failure():\n    assert False, 'file failure must escape'\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, target_file=declared)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=declared
+        )
 
         exit_code = tm.ok(runner.execute())
 
@@ -890,7 +928,9 @@ class TestsFlextInfraPytestRunner:
             Path(config.Infra.codegen.make.testmon_cache.target_directory)
             / "test_runtime.py"
         )
-        runner = runner_for(cached_runner_project, target_file=declared)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=declared
+        )
         runner.testmon_db.write_bytes(b"not a SQLite database")
 
         with pytest.raises(sqlite3.DatabaseError):
@@ -907,7 +947,7 @@ class TestsFlextInfraPytestRunner:
         cached_runner_project: Path,
     ) -> None:
         """A whole-suite complete inventory that collects nothing stays red."""
-        baseline = runner_for(cached_runner_project)
+        baseline = u.Tests.PytestRunner.runner_for(cached_runner_project)
         tm.that(tm.ok(baseline.execute()), eq=0)
         (cached_runner_project / "conftest.py").write_text(
             "from pathlib import Path\n\n"
@@ -919,7 +959,7 @@ class TestsFlextInfraPytestRunner:
             "            items.clear()\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
         with pytest.raises(RuntimeError):
             runner.execute()

@@ -206,6 +206,8 @@ class FlextInfraRenameSymbols:
         sources: t.MappingKV[Path, str],
         pairs: t.SequenceOf[t.Pair[str, str]],
         bindings: t.MappingKV[str, t.StrSequence],
+        *,
+        rename_definitions: bool = False,
     ) -> t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]:
         """Merge non-overlapping Rope previews against one immutable snapshot.
 
@@ -236,6 +238,7 @@ class FlextInfraRenameSymbols:
                 (sources, members),
                 (ordered_paths, resources),
                 planned,
+                rename_definitions=rename_definitions,
             )
             if bindings and not accepted:
                 msg = f"CSV destination has no declared current public owner: {new}"
@@ -282,6 +285,8 @@ class FlextInfraRenameSymbols:
         ],
         inventory: t.Pair[t.SequenceOf[Path], t.MappingKV[Path, t.Infra.RopeResource]],
         planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+        *,
+        rename_definitions: bool = False,
     ) -> bool:
         """Plan one old-to-new pair against every declared owner binding.
 
@@ -319,6 +324,59 @@ class FlextInfraRenameSymbols:
                 if member_path in members[path]
             )
             for owner in owners:
+                if rename_definitions:
+                    expected = cls.resolve_member(project, owner, old_suffix)
+                    destination = cls.resolve_member(project, owner, new_suffix)
+                    if expected is None:
+                        accepted = accepted or destination is not None
+                        continue
+                    if destination is not None or not new_suffix.isidentifier():
+                        msg = (
+                            f"declaration rename destination is occupied: "
+                            f"{owner}.{new_suffix}"
+                        )
+                        raise ValueError(msg)
+                    module, line = expected.get_definition_location()
+                    resource = module.get_resource() if module is not None else None
+                    if resource is None or line is None:
+                        msg = f"declaration rename has no source: {owner}.{old_suffix}"
+                        raise ValueError(msg)
+                    path = Path(resource.real_path)
+                    if path not in sources:
+                        msg = (
+                            f"declaration rename escapes authenticated inventory: "
+                            f"{path}"
+                        )
+                        raise ValueError(msg)
+                    offset = u.Infra.find_identifier_offset_in_lines(
+                        sources[path].splitlines(keepends=True),
+                        line=line,
+                        symbol=old_suffix.split(".")[-1],
+                    )
+                    if offset is None:
+                        msg = (
+                            f"declaration rename has no identifier: "
+                            f"{owner}.{old_suffix}"
+                        )
+                        raise ValueError(msg)
+                    changes = u.Infra.rename_changes(
+                        project,
+                        resource,
+                        offset,
+                        new_suffix,
+                        resources=tuple(resources.values()),
+                    )
+                    for change in changes.changes:
+                        cls._record_campaign_change(
+                            change,
+                            project=project,
+                            sources=sources,
+                            identity=(owner, old_suffix, new_suffix),
+                            planned=planned,
+                            rename_definitions=True,
+                        )
+                    accepted = True
+                    continue
                 if cls.resolve_member(project, owner, new_suffix) is None:
                     continue
                 accepted = True
@@ -350,6 +408,7 @@ class FlextInfraRenameSymbols:
         sources: t.MappingKV[Path, str],
         identity: t.StrSequence,
         planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+        rename_definitions: bool = False,
     ) -> None:
         """Validate and record one Rope content change from a CSV campaign.
 
@@ -380,6 +439,10 @@ class FlextInfraRenameSymbols:
             for kind, start, end, updated_start, updated_end in matcher
             if kind != "equal"
         )
+        if rename_definitions:
+            edits = planned.setdefault(path, [])
+            edits.extend(edit for edit in rewrites if edit not in edits)
+            return
         owner, old_suffix, new_suffix = identity
         spans = cls._eligible_spans(
             project,

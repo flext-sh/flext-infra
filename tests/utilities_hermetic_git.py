@@ -17,10 +17,8 @@ import os
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from flext_tests import tm
-
 from flext_infra import config, u
-from tests import c, t
+from tests import c, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 

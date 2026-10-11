@@ -263,7 +263,17 @@ class FlextInfraFlextBindingService:
             arguments: list[str] = []
             for (option, filename), lines in zip(
                 c.Infra.BINDING_RESOLUTION_FILES,
-                (resolution.value.overrides, resolution.value.constraints),
+                (
+                    (
+                        *resolution.value.overrides,
+                        *(
+                            f"{name}{u.Infra.dependency_extras(requirements, name)}"
+                            f" @ {path.as_uri()}"
+                            for name, path in paths.items()
+                        ),
+                    ),
+                    resolution.value.constraints,
+                ),
                 strict=True,
             ):
                 if lines:
@@ -290,6 +300,22 @@ class FlextInfraFlextBindingService:
             )
             if installed.failure:
                 return r[int].from_failure(installed)
+        # Resolve the consumer contract first; directory overrides are not editable.
+        # Bind the sources without resolving that already-validated closure again.
+        u.Cli.run_checked(
+            (
+                c.Infra.UV,
+                "pip",
+                "install",
+                "--no-config",
+                "--no-deps",
+                "--reinstall",
+                "--python",
+                str(python),
+                *editables,
+            ),
+            cwd=consumer_root,
+        ).unwrap()
         u.Cli.info(
             f"flext binding: {len(paths)} package(s) bound to {flext_root} "
             f"({', '.join(paths)}); consumer_python={python}",

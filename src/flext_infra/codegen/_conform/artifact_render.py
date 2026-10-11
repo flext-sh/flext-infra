@@ -169,7 +169,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         formatted = u.Infra.format_toml_source(
             composed_rendered,
             path=live_path,
-            toolchain_root=repository_root,
+            toolchain_root=(
+                repository_root
+                if render_inputs is None
+                else render_inputs.target.toolchain_root
+            ),
             taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
         )
         if formatted.failure:
@@ -531,9 +535,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return r[p.Model].ok(
             m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
-                owns_workspace_manifest=(
-                    repository_root / "config/workspace.yaml"
-                ).is_file(),
                 make_profile=target.make_profile,
                 gascity_enabled=target.gascity_enabled,
                 repository_branch=branch,
@@ -545,6 +546,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 python_version=codegen.toolchain.python_version,
                 github_actions=codegen.github_actions,
+                toolchain=codegen.toolchain,
                 make=codegen.make,
                 workspace_repositories=workspace_repositories,
                 # Why: dependabot.yml.j2 branches on this and the model
@@ -649,6 +651,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 pytest=pytest,
                 dist=target.repository.distribution,
                 infra_cli=config.Infra.name,
+                examples_module=target.repository.examples_module,
                 make_profile=target.make_profile,
                 package=target.repository.package,
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
@@ -661,6 +664,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
                 mise_install_tools=codegen.toolchain.mise_install_keys,
+                toolchain=codegen.toolchain,
                 python_version=codegen.toolchain.python_version,
                 make=codegen.make,
                 extra_verbs=(

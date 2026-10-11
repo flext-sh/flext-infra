@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, main
-from tests import c, u
+from tests import c, tm, u
 
 # The fixture resolves and installs a real consumer environment from Git/index
 # sources; this is an external integration boundary owned by ``test-full``.

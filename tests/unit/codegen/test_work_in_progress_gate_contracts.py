@@ -21,10 +21,8 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config, p
-from tests import u
+from tests import tm, u
 
 _TEMPLATES = (
     Path(__file__).resolve().parents[3]

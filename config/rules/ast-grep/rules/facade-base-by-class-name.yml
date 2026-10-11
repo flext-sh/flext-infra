@@ -13,7 +13,9 @@
 # to Unknown. The same defect hides behind a private import alias with an
 # annotated rebind (`from flext_cli import m as _cli_m` ...
 # `m: type[FlextInfraModels] = FlextInfraModels`): the annotation declares a
-# variable. The canonical shape imports the parent class and rebinds the letter
+# variable. Importing the named parent as the rebound letter has the same
+# identity collision (`from flext_core import FlextConstants as c`).
+# The canonical shape imports the parent class and rebinds the letter
 # as a plain alias:
 #
 #     from flext_cli import FlextCliModels
@@ -77,6 +79,13 @@ rule:
                   - has:
                       field: alias
                       pattern: $B
+              - all:
+                  - kind: aliased_import
+                  - has:
+                      field: alias
+                      all:
+                        - pattern: $L
+                        - pattern: $B
     - inside:
         kind: module
         stopBy: end

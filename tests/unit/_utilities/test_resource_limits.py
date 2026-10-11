@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraUtilitiesResourceLimits:

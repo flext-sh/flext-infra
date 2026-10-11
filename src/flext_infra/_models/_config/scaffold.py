@@ -101,6 +101,12 @@ class FlextInfraConfigModelsScaffold:
                 description="Canonical development and validation requirements",
             ),
         ]
+        retired_dev: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description="Development distributions retired from managed groups"
+            ),
+        ] = ()
         dependency_profiles: Annotated[
             t.VariadicTuple[
                 FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec

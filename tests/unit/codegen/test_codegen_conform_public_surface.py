@@ -12,19 +12,67 @@ import stat
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.services.cli_routes_codegen import FlextInfraCodegenRoutes
-from tests import c, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+from flext_infra.services import FlextInfraCodegenRoutes
+from tests import c, tm, u
+from tests.unit.codegen import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
 
 
 class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
+
+    @staticmethod
+    @pytest.mark.parametrize("marker", ["<<<<<<< HEAD", "=======", ">>>>>>> incoming"])
+    def test_envrc_bootstrap_preserves_other_surfaces_and_converges(
+        infra_git_repo: Path,
+        marker: str,
+    ) -> None:
+        """Recover activation without parsing dependencies or touching local inputs."""
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        destination = root / c.Infra.ENVRC_FILENAME
+        tm.ok(u.Cli.atomic_write_text_file(destination, f"{marker}\n"))
+        local = root / ".envrc.local"
+        tm.ok(u.Cli.atomic_write_text_file(local, "export BOOTSTRAP_PROBE=preserved\n"))
+        before = TestsFlextInfraConformSupport.project_tree(root)
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.ENVRC,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        result = tm.ok(infra.codegen_conform(request))
+        tm.that(result.written_files, eq=(destination,))
+        tm.ok(u.Cli.run_checked(["bash", "-n", str(destination)], cwd=root))
+        after = TestsFlextInfraConformSupport.project_tree(root)
+        tm.that(
+            tuple(item for item in after if item[0] != destination.name),
+            eq=tuple(item for item in before if item[0] != destination.name),
+        )
+        tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "scope",
+        [c.Infra.CodegenConformScope.DECLARED, c.Infra.CodegenConformScope.ALL],
+    )
+    def test_envrc_bootstrap_rejects_fleet_scope(
+        scope: c.Infra.CodegenConformScope,
+    ) -> None:
+        """Recovery cannot widen activation publication to another checkout."""
+        with pytest.raises(
+            ValueError, match="envrc requires the self repository scope"
+        ):
+            u.Tests.conform_request(
+                Path.cwd(),
+                what=c.Infra.CodegenConformSurface.ENVRC,
+                scope=scope,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
 
     @staticmethod
     @pytest.mark.parametrize("initial_state", ["invalid", "absent", "wrong-mode"])

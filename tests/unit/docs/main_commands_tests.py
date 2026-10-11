@@ -9,15 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 from mkdocs.exceptions import Abort, ConfigurationError
 
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
-from tests import c, m, u
+from flext_infra.docs import (
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocFixer,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+)
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDocsMainCommands:

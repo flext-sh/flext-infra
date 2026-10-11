@@ -36,6 +36,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -44,7 +45,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeSourceBases,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 
@@ -848,6 +851,14 @@ class FlextInfraUtilitiesCodemodProject(
                 if own is None:
                     message = "package predicates require the admission namespace"
                     raise ValueError(message)
+                if predicate is c.Infra.CodemodContextPredicate.OWN_PACKAGE:
+                    owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                        root, file_path
+                    )
+                    if owner is None:
+                        message = f"project owner is unresolved: {file_path}"
+                        raise ValueError(message)
+                    own = FlextInfraUtilitiesPyproject.project_package_name(owner)
                 return cls._context_package_holds(
                     root,
                     predicate,
@@ -1209,15 +1220,21 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If project layout is unresolved.
 
         """
-        layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            root, file_path
+        )
+        if owner is None:
+            msg = f"project owner is unresolved: {file_path}"
+            raise ValueError(msg)
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(owner)
         if layout is None:
-            msg = f"project layout is unresolved: {root}"
+            msg = f"project layout is unresolved: {owner}"
             raise ValueError(msg)
         prefix = FlextInfraUtilitiesCodegenNamespace.project_prefix(
             file_path,
             project_layout=layout,
         )
-        if file_path.is_relative_to(root / c.Infra.DIR_TESTS):
+        if file_path.is_relative_to(owner / c.Infra.DIR_TESTS):
             return name.startswith(prefix)
         return name.startswith((prefix, layout.class_stem))
 

@@ -10,10 +10,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, m, u
-from tests.unit.validate.pytest_runner_support import runner_for
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPytestCollectionManifest:
@@ -150,7 +148,7 @@ class TestsFlextInfraPytestCollectionManifest:
         )
         source = (
             cached_runner_project
-            / runner_for(cached_runner_project).target
+            / u.Tests.PytestRunner.runner_for(cached_runner_project).target
             / "sample.md"
         )
         source.write_text(
@@ -161,7 +159,7 @@ class TestsFlextInfraPytestCollectionManifest:
             "    raise TypeError('original first-attempt failure')\n```\n",
             encoding="utf-8",
         )
-        runner = runner_for(
+        runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project,
             target_file=source.relative_to(cached_runner_project),
         )
@@ -186,7 +184,7 @@ class TestsFlextInfraPytestCollectionManifest:
         )
         tm.that(bool(receipt.violations), eq=True)
         source.write_text("```python\nassert 1 == 1\n```\n", encoding="utf-8")
-        warm = runner_for(
+        warm = u.Tests.PytestRunner.runner_for(
             cached_runner_project,
             target_file=source.relative_to(cached_runner_project),
         )
@@ -222,7 +220,7 @@ class TestsFlextInfraPytestCollectionManifest:
             "    if target:\n        Path(target).unlink()\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
         with pytest.raises(FileNotFoundError, match=r"testmon-selection\.json"):
             runner.execute()

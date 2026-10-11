@@ -12,10 +12,9 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, p, t, u
+from tests import c, m, p, t, tm, u
 
 pytestmark = pytest.mark.slow
 
