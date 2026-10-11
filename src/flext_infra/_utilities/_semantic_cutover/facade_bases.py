@@ -429,8 +429,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         RemoveImportsVisitor.remove_unused_import(
                             context, node.module, alias.name, alias.asname
                         )
-            updated = updated.visit(AddImportsVisitor(context))
-            updated = updated.visit(RemoveImportsVisitor(context))
+            updated = AddImportsVisitor(context).transform_module(updated)
+            updated = RemoveImportsVisitor(context).transform_module(updated)
             return updated.code, (
                 "rebound relocated behavior to declared utility owners",
             )
