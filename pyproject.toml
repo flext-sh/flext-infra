@@ -470,6 +470,7 @@ runtime-evaluated-base-classes = [
   "flext_cli.m.BaseSettings",
   "flext_cli.m.ContractModel",
   "flext_cli.m.FlexibleModel",
+  "flext_cli.m.ImmutableValueModel",
   "flext_cli.m.RootModel",
   "flext_cli.m.Value",
   "flext_core.FlextService",

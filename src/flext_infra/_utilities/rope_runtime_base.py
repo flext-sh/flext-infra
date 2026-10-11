@@ -32,7 +32,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return candidate
 
     @classmethod
-    def _runtime_callable(
+    def runtime_callable(
         cls,
         module_name: str,
         attribute: str,
