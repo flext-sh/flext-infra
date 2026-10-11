@@ -371,10 +371,15 @@ class FlextInfraUtilitiesCodegenFacades:
                     )
                     if binding is None:
                         continue
-                    declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
-                        project,
-                        binding,
-                    )
+                    try:
+                        declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
+                            project,
+                            binding,
+                        )
+                    except ValueError:
+                        # Stdlib and external imports name no project module:
+                        # the facade law only governs project-owned targets.
+                        continue
                     lower_owner = family == "u" and declared.is_relative_to(
                         pkg_dir
                         / FlextInfraUtilitiesCodegenNamespace.facade_families()[

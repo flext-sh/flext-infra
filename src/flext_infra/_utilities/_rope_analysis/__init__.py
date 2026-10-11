@@ -13,9 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._utilities._rope_analysis._exports_binding_inventory import (
-        ExportBindingInventory,
-    )
     from flext_infra._utilities._rope_analysis.asthelpers import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
     )
@@ -46,7 +43,6 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "ExportBindingInventory": "._exports_binding_inventory",
         "FlextInfraUtilitiesRopeAnalysisAstHelpers": ".asthelpers",
         "FlextInfraUtilitiesRopeAnalysisBase": ".base",
         "FlextInfraUtilitiesRopeAnalysisExports": ".exports",
