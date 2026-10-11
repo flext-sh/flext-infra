@@ -105,6 +105,9 @@ identify the expensive owner and do not replace the required quality gates.
 Codemod admission resolves the declared package namespace once in the typed facts
 of each pass. Findings consume that snapshot; a later pass reads the current
 manifest again. No process-global namespace cache carries identity across passes.
+Behavior relocation builds CST metadata only for files whose attribute names occur
+in the declared utility inventory. Import visitors run only after an actual
+relocation; consumers without one retain their source.
 
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound

@@ -61,6 +61,11 @@ class TestsFlextInfraSemanticPhaseContract:
                 f"from {package.name}.typings import {typing_owner}\n"
                 f"value = {typing_owner}.parse('aligned')\n"
             ),
+            package / "unrelated.py": (
+                f"from {package.name}.typings import {typing_owner}\n"
+                f"owner = {typing_owner}.__name__\n"
+                "value = 'unchanged'.upper()\n"
+            ),
         }
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
@@ -86,7 +91,12 @@ class TestsFlextInfraSemanticPhaseContract:
                 [
                     sys.executable,
                     "-c",
-                    f"from {package.name}.consumer import value; print(value)",
+                    (
+                        f"from {package.name}.consumer import value; "
+                        f"from {package.name}.unrelated import "
+                        "owner, value as unrelated; "
+                        "print(value, unrelated, owner)"
+                    ),
                 ],
                 cwd=root,
                 options=m.Cli.ProcessOptions(
@@ -98,7 +108,7 @@ class TestsFlextInfraSemanticPhaseContract:
                 ),
             ),
         )
-        tm.that(result.stdout.strip(), eq="ALIGNED")
+        tm.that(result.stdout.strip(), eq=f"ALIGNED UNCHANGED {typing_owner}")
 
     @staticmethod
     @pytest.mark.parametrize(

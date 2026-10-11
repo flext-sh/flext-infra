@@ -385,9 +385,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         typing_directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             "t"
         ].directory
+        member_names = frozenset(member for _package, member in inventory.owners)
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             tree = ast.parse(source)
+            if not any(
+                isinstance(node, ast.Attribute) and node.attr in member_names
+                for node in ast.walk(tree)
+            ):
+                return source, ()
             identities = {
                 (node.module, alias.name)
                 for node in ast.walk(tree)
@@ -421,6 +427,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     context,
                 )
             )
+            if not state.obsolete:
+                return source, ()
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ImportFrom) or node.module is None:
                     continue
