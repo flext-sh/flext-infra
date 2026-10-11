@@ -167,6 +167,22 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 workspace,
                 project_names,
             )
+        locked = m.Infra.LockedEnvironment(
+            package=tuple(
+                m.Infra.LockedPackage(
+                    name=path.name,
+                    version=u.Infra.current_workspace_version(path).unwrap(),
+                    source=m.Infra.LockedPackageSource(
+                        editable=path.relative_to(workspace).as_posix(),
+                    ),
+                )
+                for path in (workspace, *(workspace / name for name in project_names))
+            ),
+        )
+        u.Cli.toml_write_mapping(
+            workspace / c.Infra.UV_LOCK_FILENAME,
+            locked.model_dump(mode="json", exclude_none=True),
+        ).unwrap()
         if initialize_root_git:
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace)
         else:
