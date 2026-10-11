@@ -25,9 +25,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeSourceBases,
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 
@@ -371,7 +373,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             if chain is None:
                 return False
             path, text = chain
-            routes = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+            routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 module.get_name(), path, text
             )
             if not cls._single_reaching_binding(
