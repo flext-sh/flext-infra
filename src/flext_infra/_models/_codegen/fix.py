@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableSet, Sequence
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m
+from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
@@ -25,13 +26,29 @@ class FlextInfraModelsCodegenFixModels:
         violations_fixed: Annotated[
             t.MutableSequenceOf[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
             m.Field(description="Fixed violations"),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf[
+                        FlextInfraModelsCodegenScaffoldModels.CensusViolation
+                    ]
+                )
+            )
+        )
         violations_skipped: Annotated[
             t.MutableSequenceOf[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
             m.Field(
                 description="Skipped violations (not auto-fixable)",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf[
+                        FlextInfraModelsCodegenScaffoldModels.CensusViolation
+                    ]
+                )
+            )
+        )
         files_modified: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Modified file paths",
