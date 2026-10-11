@@ -22,6 +22,7 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import (
     Assignment,
+    GlobalScope,
     MetadataWrapper,
     QualifiedNameProvider,
     QualifiedNameSource,
@@ -93,14 +94,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if len(targets) != 1 or (target := targets.pop()) is None:
                 msg = "behavior reference has ambiguous imported identity"
                 raise ValueError(msg)
-            module, receiver, member = target
-            module_import = "." in receiver
-            bound_name = receiver.split(".")[0]
-            imported_identity = module if module_import else f"{module}.{receiver}"
             scope = self.get_metadata(ScopeProvider, original_node)
             if not isinstance(scope, Scope):
                 msg = "behavior reference has no lexical scope"
                 raise TypeError(msg)
+            target = self._scoped_target(original_node, scope, target)
+            module, receiver, member = target
+            module_import = "." in receiver
+            bound_name = receiver.split(".")[0]
+            imported_identity = module if module_import else f"{module}.{receiver}"
             assignments = scope[bound_name]
             for assignment in assignments:
                 qualified = assignment.get_qualified_names_for(bound_name)
@@ -129,6 +131,32 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     self.context, module, None if module_import else receiver
                 )
             return cst.Attribute(cst.parse_expression(receiver), cst.Name(member))
+
+        @staticmethod
+        def _scoped_target(
+            node: cst.Attribute,
+            scope: Scope,
+            target: t.Triple[str, str, str],
+        ) -> t.Triple[str, str, str]:
+            """Qualify missing utility imports originating in local scopes.
+
+            Returns:
+                A distinct public module receiver, or the existing target.
+            """
+            module, receiver, member = target
+            if (
+                receiver != c.Infra.FacadeFamily.U
+                or not isinstance(node.value, cst.Name)
+                or scope[receiver]
+            ):
+                return target
+            assignments = scope[node.value.value]
+            if assignments and all(
+                not isinstance(assignment.scope, GlobalScope)
+                for assignment in assignments
+            ):
+                return module, f"{module}.{receiver}", member
+            return target
 
         def _reserve_destination(self, bound_name: str, identity: str) -> None:
             """Reserve module-global imports across all lexical consumer scopes.

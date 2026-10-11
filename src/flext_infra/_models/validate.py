@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from typing_extensions import TypeForm
 from flext_cli import m
+from typing_extensions import TypeForm
 
-from flext_core import m, u
+from flext_core import u
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
@@ -153,13 +153,21 @@ class FlextInfraModelsCore:
 
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
             m.Field(
-                default_factory=list,
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownOrigin"]
+                    )
+                ),
                 description="Independently parsed origins",
             )
         )
         collected: t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"] = (
             m.Field(
-                default_factory=list,
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                    )
+                ),
                 description="Observed pre-selection items",
             )
         )
@@ -514,13 +522,19 @@ class FlextInfraModelsCore:
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
-            default_factory=list,
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
+                )
+            ),
             description="Call-phase attempt observations",
         )
         markdown_items: t.MutableSequenceOf[
             "FlextInfraModelsCore.PytestMarkdownItem"
         ] = m.Field(
-            default_factory=list,
+            default_factory=u.empty(
+                TypeForm(t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"])
+            ),
             description="Call-phase origin observations",
         )
         collection_failed_cases: t.MutableSequenceOf[str] = m.Field(

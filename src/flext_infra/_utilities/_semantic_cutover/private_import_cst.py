@@ -302,7 +302,9 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                             pending.extend(line.leading_lines)
                             if line.trailing_whitespace.comment is not None:
                                 pending.append(
-                                    cst.EmptyLine(comment=line.trailing_whitespace.comment)
+                                    cst.EmptyLine(
+                                        comment=line.trailing_whitespace.comment
+                                    )
                                 )
                     pending.extend(statement.body.footer)
                     continue
@@ -324,14 +326,18 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             self, original_node: cst.Module, updated_node: cst.Module
         ) -> cst.Module:
             body, footer = self._prune(updated_node.body)
-            return updated_node.with_changes(body=body, footer=footer + updated_node.footer)
+            return updated_node.with_changes(
+                body=body, footer=footer + updated_node.footer
+            )
 
         @override
         def leave_IndentedBlock(
             self, original_node: cst.IndentedBlock, updated_node: cst.IndentedBlock
         ) -> cst.IndentedBlock:
             body, footer = self._prune(updated_node.body)
-            return updated_node.with_changes(body=body, footer=footer + updated_node.footer)
+            return updated_node.with_changes(
+                body=body, footer=footer + updated_node.footer
+            )
 
     @classmethod
     def _rewrite_private_import_source(
@@ -373,7 +379,9 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         cleanup = cls._EmptyTypeChecking()
         rewritten = MetadataWrapper(rewritten).visit(cleanup)
         if cleanup.removed:
-            RemoveImportsVisitor.remove_unused_import(context, "typing", "TYPE_CHECKING")
+            RemoveImportsVisitor.remove_unused_import(
+                context, "typing", "TYPE_CHECKING"
+            )
             rewritten = RemoveImportsVisitor(context).transform_module(rewritten)
         return rewritten.code
 

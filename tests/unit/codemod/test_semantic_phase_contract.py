@@ -88,7 +88,9 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(tuple(edit.file_path for edit in edits), eq=tuple(consumers))
         for edit in edits:
             tm.that(edit.updated_source, has="u.json_dict_adapter()")
-            tm.that(edit.file_path.read_text(encoding="utf-8"), eq=sources[edit.file_path])
+            tm.that(
+                edit.file_path.read_text(encoding="utf-8"), eq=sources[edit.file_path]
+            )
 
     @staticmethod
     def test_local_utility_binding_preserves_global_cli_runtime(tmp_path: Path) -> None:

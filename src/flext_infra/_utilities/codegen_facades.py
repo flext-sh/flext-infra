@@ -24,6 +24,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
 )
+from rope.base import exceptions
 
 
 class FlextInfraUtilitiesCodegenFacades:
@@ -381,10 +382,13 @@ class FlextInfraUtilitiesCodegenFacades:
                         .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
                         .decode(c.DEFAULT_ENCODING),
                     )
-                    binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
-                        pymodule,
-                        offset,
-                    )
+                    try:
+                        binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
+                            pymodule,
+                            offset,
+                        )
+                    except exceptions.BadIdentifierError:
+                        continue
                     if binding is None:
                         continue
                     imported = binding.imported_module
