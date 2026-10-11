@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Literal
 
 from libcst import Arg, ClassDef, Module, Name, parse_module
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, t
@@ -294,7 +296,6 @@ class FlextInfraUtilitiesCodegenFacades:
             return source
         source = cls._insert_imports(
             source,
-            facade,
             additions,
             package=pkg_dir.name,
             family=family,
@@ -514,7 +515,6 @@ class FlextInfraUtilitiesCodegenFacades:
     @staticmethod
     def _insert_imports(
         source: str,
-        facade: ast.ClassDef,
         additions: t.SequenceOf[t.Pair[str, str]],
         *,
         package: str,
@@ -524,16 +524,18 @@ class FlextInfraUtilitiesCodegenFacades:
         # instead made every generated consumer facade import from flext-infra,
         # a module that does not exist in the consumer's own distribution.
 
-        lines = source.splitlines(keepends=True)
         directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             family
         ].directory
-        rendered = [
-            f"from {package}.{directory}.{module} import (\n    {class_name},\n)\n"
-            for module, class_name in additions
-        ]
-        lines[facade.lineno - 1 : facade.lineno - 1] = [*rendered, "\n"]
-        return "".join(lines)
+        context = CodemodContext()
+        for module, class_name in additions:
+            owner = f"{package}.{directory}.{module}"
+            AddImportsVisitor.add_needed_import(
+                context,
+                owner.rpartition(".")[0],
+                class_name,
+            )
+        return AddImportsVisitor(context).transform_module(parse_module(source)).code
 
     @classmethod
     def _insert_bases(

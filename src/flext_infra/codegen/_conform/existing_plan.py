@@ -787,8 +787,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """Validate custom Make content and plan utility, protocol and model facades.
 
         Existing handwritten Make content is validated against the selected
-        profile policy. A discovered package layout also contributes ``u``,
-        ``p`` and ``m`` facade plans from consumer-driven owner projection.
+        profile policy. The canonical source inventory contributes declared
+        ``u``, ``p`` and ``m`` facades from every owned package, including
+        auxiliary packages, through consumer-driven owner projection.
         This method returns file plans; it does not publish their contents.
 
         Returns:
@@ -806,18 +807,33 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         make_plan_value, make_plan_present = make_plan.value
         if make_plan_present and make_plan_value is not None:
             plans.append(make_plan_value)
-        layout = u.Infra.layout(root)
-        if layout is not None and layout.class_stem:
+        if root.is_dir():
+            sources = u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(root,)),
+            )
+            if sources.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(sources)
             families: t.VariadicTuple[Literal["u", "p", "m"]] = ("u", "p", "m")
-            for family in families:
-                facade_plan = self._utility_facade_plan(root, layout, family)
-                if facade_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        facade_plan,
-                    )
-                facade_plan_value, facade_plan_present = facade_plan.value
-                if facade_plan_present and facade_plan_value is not None:
-                    plans.append(facade_plan_value)
+            layout = u.Infra.layout(root)
+            package_dirs = {
+                path.parent
+                for path in sources.value
+                if (path.parent / c.Infra.INIT_PY).is_file()
+            }
+            if layout is not None and layout.class_stem:
+                package_dirs.add(layout.package_dir)
+            for package_dir in sorted(package_dirs):
+                for family in families:
+                    if (
+                        layout is None or package_dir != layout.package_dir
+                    ) and u.Infra.facade_module_path(package_dir, family) is None:
+                        continue
+                    facade_plan = self._utility_facade_plan(root, package_dir, family)
+                    if facade_plan.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            facade_plan,
+                        )
+                    plans.extend(facade_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     def _validated_custom_make_plan(
@@ -855,28 +871,26 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _utility_facade_plan(
         self,
         root: Path,
-        layout: m.Infra.RopeProjectLayout,
+        package_dir: Path,
         family: Literal["u", "p", "m"],
-    ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan one projected facade for the discovered package layout.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenFilePlan | None,
-            bool]]`` where the boolean marks plan presence (False: a family
-            with no rendered facade).
+            The owned facade file plan, or no plans for a family with no owners.
 
         Raises:
             ValueError: If a rendered facade has no declaring package module.
 
         """
-        result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         rendered = u.Infra.render_utility_facade(
-            layout.package_dir,
+            package_dir,
             family=family,
         )
         if rendered is None:
-            return result_type.ok((None, False))
-        facade_path = u.Infra.facade_module_path(layout.package_dir, family)
+            return result_type.ok(())
+        facade_path = u.Infra.facade_module_path(package_dir, family)
         if facade_path is None:
             msg = f"rendered {family} facade has no declaring module"
             raise ValueError(msg)
@@ -884,7 +898,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         utility_plan = self.file_plan(root, relative.as_posix(), rendered)
         if utility_plan.failure:
             return result_type.from_failure(utility_plan)
-        return result_type.ok((utility_plan.value, True))
+        return result_type.ok((utility_plan.value,))
 
     @classmethod
     def _complete_governed_plans(
