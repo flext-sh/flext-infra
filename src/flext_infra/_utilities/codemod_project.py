@@ -263,7 +263,7 @@ class FlextInfraUtilitiesCodemodProject(
         for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
             if module.name == c.Infra.INIT_PY:
                 continue
-            source = module.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            source = module.read_text(encoding=c.DEFAULT_ENCODING)
             declared = frozenset(
                 FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
                     source,
@@ -299,7 +299,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         tree = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(
-            facade_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            facade_file.read_text(encoding=c.DEFAULT_ENCODING),
         ).get_ast()
         for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(tree):
             if (
@@ -697,7 +697,11 @@ class FlextInfraUtilitiesCodemodProject(
             )
         )
         modules_by_name[key] = None
-        for folder in folders:
+        for folder in (
+            candidate
+            for candidate in folders
+            if isinstance(candidate, p.Infra.RopeRoot)
+        ):
             parent_key = (parent_name, folder.real_path, level or 1)
             if parent_key not in modules_by_name:
                 modules_by_name[parent_key] = project.find_relative_module(
@@ -1090,7 +1094,7 @@ class FlextInfraUtilitiesCodemodProject(
         """
         return frozenset(
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                file_path.read_text(encoding=c.DEFAULT_ENCODING),
             ),
         )
 
@@ -1268,7 +1272,7 @@ class FlextInfraUtilitiesCodemodProject(
             part.removeprefix("_").removesuffix(c.Infra.EXT_PYTHON)
             for part in (path.name, *(parent.name for parent in path.parents))
         }
-        families = cls._file_families(path) if path.is_file() else frozenset()
+        families = cls._file_families(path) if path.is_file() else frozenset[str]()
         return families | (order & stems)
 
     @staticmethod
