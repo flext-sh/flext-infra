@@ -86,16 +86,16 @@ class FlextInfraSmellsGate(FlextInfraGate):
             if issue.code not in c.Infra.SMELLS_NON_BLOCKING_FAMILIES
         )
         return self._build_gate_execution(
-            project_dir,
-            verdict=not blocking,
-            run=m.Infra.GateNativeRun(
-                issues=tuple(issues),
-                raw_output=self._raw_output(scan),
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=not blocking,
                 outcome=(
                     c.Infra.ToolOutcome.FINDINGS
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),
+                issues=tuple(issues),
+                raw_output=self._raw_output(scan),
                 started=started,
             ),
         )

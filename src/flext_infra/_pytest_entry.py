@@ -41,6 +41,7 @@ class FlextInfraPytestEntry:
         # Deliberately deferred past the pre-import clock snapshot: the
         # module contract keeps every FLEXT import inside the budgeted window.
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
+        slow_phase = mode == "full-slow"
         if mode == "profile":
             profiler = cProfile.Profile()
             profiler.enable()
