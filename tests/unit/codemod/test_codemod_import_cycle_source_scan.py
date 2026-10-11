@@ -51,6 +51,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
 
         """
         return m.Infra.CodemodProjectFacts(
+            own_package=None,
             predicates=frozenset({c.Infra.CodemodContextPredicate.IMPORT_CYCLE}),
             import_graph={},
             import_modules={},

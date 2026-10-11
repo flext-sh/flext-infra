@@ -79,6 +79,57 @@ class TestsFlextInfraCodemodContextOwnPackage:
 
         tm.that(verdict, eq=admitted)
 
+    def test_new_pass_reads_the_changed_declared_namespace(
+        self, tmp_path: Path
+    ) -> None:
+        """Each admission pass consumes the current declared namespace."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "demo",
+            pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        original = u.Infra.project_package_name(project)
+        consumer = project / "consumer.py"
+        consumer.write_text(
+            f"from {original}._support import Helper\n", encoding=c.DEFAULT_ENCODING
+        )
+        rule = self._private_import_rule()
+        outcomes: t.MutableSequenceOf[bool] = []
+        renamed = f"{original}_renamed"
+        for namespace in (original, renamed):
+            if namespace == renamed:
+                (project / c.Infra.DEFAULT_SRC_DIR / original).rename(
+                    project / c.Infra.DEFAULT_SRC_DIR / renamed
+                )
+            tm.ok(
+                u.Cli.toml_write_mapping(
+                    project / c.PYPROJECT_FILENAME,
+                    {
+                        "project": {"name": "demo", "version": "0.1.0"},
+                        "tool": {"flext": {"docs": {"package_name": namespace}}},
+                    },
+                )
+            )
+            facts = u.Infra.codemod_project_facts(project, (rule,))
+            with u.Infra.codemod_binding_project(
+                project, m.Infra.CodemodBindingSnapshot(states=())
+            ) as (rope_project, sources):
+                outcomes.append(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=project,
+                            rule=rule,
+                            file_path=consumer,
+                            captures={"MOD": {"text": f"{original}._support"}},
+                            facts=facts,
+                        ),
+                        project=rope_project,
+                        sources=sources,
+                    )
+                )
+        tm.that(outcomes, eq=[False, True])
+
     @staticmethod
     @pytest.mark.parametrize("reexport", [False, True])
     def test_occurrence_identity_is_lexical_and_immutable(

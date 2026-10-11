@@ -102,6 +102,10 @@ mutating codemod lifecycle. The profile is written to the generated Make
 the CLI raises. A failed profiling invocation remains RED; its statistics
 identify the expensive owner and do not replace the required quality gates.
 
+Codemod admission resolves the declared package namespace once in the typed facts
+of each pass. Findings consume that snapshot; a later pass reads the current
+manifest again. No process-global namespace cache carries identity across passes.
+
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound
 derive from that policy. Use the profile and complete run receipts to repair

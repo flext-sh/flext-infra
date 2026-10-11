@@ -234,6 +234,18 @@ class FlextInfraConstantsRefactor:
     )
     "Predicates evaluated against the project's runtime dependency closure."
 
+    CODEMOD_PACKAGE_CONTEXT_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
+        frozenset({
+            CodemodContextPredicate.STDLIB_MODULE,
+            CodemodContextPredicate.OWN_PACKAGE,
+            CodemodContextPredicate.RUNTIME_PACKAGE,
+            CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.RUNTIME_ALIAS,
+            CodemodContextPredicate.LOCAL_ALIAS,
+        })
+    )
+    "Package predicates consume one declared namespace per admission pass."
+
     @unique
     class SemanticCutoverPhase(StrEnum):
         """Semantic ``make mod`` cutovers planned by ``u.Infra``."""

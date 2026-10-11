@@ -344,6 +344,11 @@ class FlextInfraUtilitiesCodemodProject(
         if c.Infra.CodemodContextPredicate.IMPORT_CYCLE in predicates:
             graph, modules = cls.project_import_graph(resolved)
         return m.Infra.CodemodProjectFacts(
+            own_package=(
+                FlextInfraUtilitiesPyproject.project_package_name(resolved)
+                if predicates & c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES
+                else None
+            ),
             predicates=predicates,
             import_graph=graph,
             import_modules=modules,
@@ -813,7 +818,6 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         predicate = condition.predicate
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
             case c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION:
                 with FlextInfraUtilitiesRopeCore.open_project(root) as project:
@@ -837,14 +841,11 @@ class FlextInfraUtilitiesCodemodProject(
                         )
                         is not None
                     )
-            case (
-                c.Infra.CodemodContextPredicate.STDLIB_MODULE
-                | c.Infra.CodemodContextPredicate.OWN_PACKAGE
-                | c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE
-                | c.Infra.CodemodContextPredicate.FACADE_PACKAGE
-                | c.Infra.CodemodContextPredicate.RUNTIME_ALIAS
-                | c.Infra.CodemodContextPredicate.LOCAL_ALIAS
-            ):
+            case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:
+                own = facts.own_package
+                if own is None:
+                    message = "package predicates require the admission namespace"
+                    raise ValueError(message)
                 return cls._context_package_holds(
                     root,
                     predicate,
@@ -893,6 +894,9 @@ class FlextInfraUtilitiesCodemodProject(
                     f"never the project-fact evaluator: {predicate}"
                 )
                 raise ValueError(msg)
+            case _:
+                message = f"predicate is not registered in project facts: {predicate}"
+                raise ValueError(message)
 
     @classmethod
     def _context_package_holds(
