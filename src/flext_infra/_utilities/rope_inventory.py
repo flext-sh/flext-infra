@@ -800,12 +800,10 @@ class FlextInfraUtilitiesRopeInventory:
                         )
                         is not None
                     )
-                    if reachability_resources is not None
-                    else None
                 ),
             )
         )
-        if not skipped_definition and definition_path is not None:
+        if not skipped_definition:
             FlextInfraUtilitiesRopeInventory._discard_unreferenced_definition(
                 runtime_sites,
                 script_sites,

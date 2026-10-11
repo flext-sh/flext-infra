@@ -11,7 +11,7 @@ from typing import override
 import libcst as cst
 
 
-class _OrphanImport(cst.CSTTransformer):
+class OrphanImport(cst.CSTTransformer):
     """Drop the ``TYPE_CHECKING`` name once its block is gone."""
 
     @override

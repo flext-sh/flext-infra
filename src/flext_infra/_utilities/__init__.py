@@ -192,6 +192,9 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope_analysis._exports_binding_inventory import (
+        ExportBindingInventory,
+    )
     from flext_infra._utilities._rope_analysis.asthelpers import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
     )
@@ -486,6 +489,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "ExportBindingInventory",
     "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraMypyDarwinSupervisor",
     "FlextInfraMypyProfiler",
@@ -690,6 +694,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "ExportBindingInventory": "._rope_analysis._exports_binding_inventory",
         "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraMypyDarwinSupervisor": "._mypy_supervisor",
         "FlextInfraMypyProfiler": "._mypy_profile",

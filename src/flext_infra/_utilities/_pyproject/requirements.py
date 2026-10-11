@@ -17,7 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._pyproject._requirements_provenance import (
-    _RequirementProvenance,
+    RequirementProvenance,
 )
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = _RequirementProvenance(
+        provenance = RequirementProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        provenance: _RequirementProvenance,
+        provenance: RequirementProvenance,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         requirement: str,
         *,
-        provenance: _RequirementProvenance,
+        provenance: RequirementProvenance,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
@@ -252,7 +252,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         parsed: t.Pair[str, str],
         line: str | None,
-        provenance: _RequirementProvenance,
+        provenance: RequirementProvenance,
     ) -> p.Result[t.Pair[t.Pair[str, str], str | None]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 

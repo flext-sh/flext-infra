@@ -209,11 +209,7 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         if admitted.failure:
             return r[m.Infra.GitBoolReport].from_failure(admitted)
         ref = f"refs/heads/{request.branch}"
-        lease = (
-            (f"--force-with-lease={ref}:{request.expected_oid}",)
-            if request.expected_oid is not None
-            else ()
-        )
+        lease = (f"--force-with-lease={ref}:{request.expected_oid}",)
         try:
             repo = cls._repo(request.repo_root)
             repo.git.push(*lease, request.remote, f":{ref}")

@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         if not isinstance(native, type):
             msg = "Rope native class input is not a class"
             raise TypeError(msg)
-        wrapped = cls._runtime_callable("rope.base.builtins", "BuiltinClass")(
+        wrapped = cls.runtime_callable("rope.base.builtins", "BuiltinClass")(
             native,
             {},
         )
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             TypeError: If rope parser returned an invalid module node.
 
         """
-        parsed = cls._runtime_callable("rope.base.ast", "parse")(
+        parsed = cls.runtime_callable("rope.base.ast", "parse")(
             source,
             filename=filename,
         )
@@ -180,7 +180,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             The resulting ``p.Infra.RopeImportedName | None``.
 
         """
-        resolver = cls._runtime_callable("rope.base.evaluate", "eval_location")
+        resolver = cls.runtime_callable("rope.base.evaluate", "eval_location")
         result = resolver(pymodule, offset)
         return result if isinstance(result, p.Infra.RopeImportedName) else None
 
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             The resulting ``str | None``.
 
         """
-        resolver = cls._runtime_callable("rope.base.evaluate", "eval_location")
+        resolver = cls.runtime_callable("rope.base.evaluate", "eval_location")
         result = resolver(pymodule, offset)
         if not isinstance(result, p.Infra.RopePyName):
             return None
@@ -304,7 +304,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             primary = primary.value
         if not isinstance(primary, ast.Name):
             return None
-        result = cls._runtime_callable("rope.base.evaluate", "eval_node")(
+        result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
             scope,
             expression,
         )
@@ -328,7 +328,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             TypeError: If Rope name comparison returned a non-boolean result.
 
         """
-        result = cls._runtime_callable("rope.refactor.occurrences", "same_pyname")(
+        result = cls.runtime_callable("rope.refactor.occurrences", "same_pyname")(
             expected,
             actual,
         )
@@ -398,12 +398,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
         """
         ignored_resources, source_folders, extension_modules = filter_lists
-        project_factory = cls._runtime_callable(
+        project_factory = cls.runtime_callable(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
         )
         # FLEXT owns writes; disable Rope's leaking Git subprocess.
-        fscommands_factory = cls._runtime_callable(
+        fscommands_factory = cls.runtime_callable(
             "rope.base.fscommands",
             "FileSystemCommands",
         )
@@ -428,7 +428,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         rope_project: t.Infra.RopeProject,
         pymodule: t.Infra.RopePyModule,
     ) -> t.Infra.RopeModuleImports:
-        loader = cls._runtime_callable(
+        loader = cls.runtime_callable(
             c.Infra.ROPE_IMPORTUTILS_MODULE,
             "get_module_imports",
         )
@@ -456,7 +456,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
                 or if Rope add_import returned non-text source or binding.
 
         """
-        result = cls._runtime_callable(c.Infra.ROPE_IMPORTUTILS_MODULE, "add_import")(
+        result = cls.runtime_callable(c.Infra.ROPE_IMPORTUTILS_MODULE, "add_import")(
             project,
             module,
             module_name,
@@ -483,7 +483,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         *,
         resource: t.Infra.RopeResource | None = None,
     ) -> t.Infra.RopePyModule:
-        loader = cls._runtime_callable("rope.base.libutils", "get_string_module")
+        loader = cls.runtime_callable("rope.base.libutils", "get_string_module")
         pymodule = loader(rope_project, source, resource=resource, force_errors=True)
         if not isinstance(pymodule, p.Infra.RopePyModule):
             msg = "rope get_string_module returned non-PyModule"
@@ -495,7 +495,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         cls,
         rope_project: t.Infra.RopeProject,
     ) -> p.Infra.RopeImportOrganizer:
-        organizer_factory = cls._runtime_callable(
+        organizer_factory = cls.runtime_callable(
             c.Infra.ROPE_IMPORTUTILS_MODULE,
             "ImportOrganizer",
         )
@@ -515,7 +515,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         resources: t.SequenceOf[t.Infra.RopeResource] | None,
         in_hierarchy: bool,
     ) -> t.SequenceOf[t.Infra.RopeLocation]:
-        finder = cls._runtime_callable("rope.contrib.findit", "find_occurrences")
+        finder = cls.runtime_callable("rope.contrib.findit", "find_occurrences")
         raw_locations = finder(
             rope_project,
             resource,
@@ -541,7 +541,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         level: int,
         names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
     ) -> t.Infra.RopeFromImport:
-        from_import_factory = cls._runtime_callable(
+        from_import_factory = cls.runtime_callable(
             "rope.refactor.importutils.importinfo",
             "FromImport",
         )

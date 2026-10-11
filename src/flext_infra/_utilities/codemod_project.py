@@ -685,8 +685,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         predicate = condition.predicate
-        declared = isinstance(predicate, c.Infra.CodemodContextPredicate)
-        if not declared:
+        if not isinstance(predicate, c.Infra.CodemodContextPredicate):
             message = f"predicate is not declared: {predicate}"
             raise ValueError(message)
         own = FlextInfraUtilitiesPyproject.project_package_name(root)
