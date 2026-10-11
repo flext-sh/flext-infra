@@ -243,7 +243,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                     return result.from_failure(validated)
             extras = f"[{','.join(sorted(optional))}]" if optional else ""
             requests.append(
-                f"{member.distribution}{extras} @ git+{member.url}@{workspace.integration.branch}",
+                f"{member.distribution}{extras} @ "
+                f"git+{member.url}@{workspace.integration.branch}",
             )
             declared_groups = payload.get(c.Infra.DEPENDENCY_GROUPS, {})
             if not isinstance(declared_groups, Mapping):

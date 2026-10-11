@@ -94,7 +94,6 @@ class FlextInfraUtilitiesRopeCore(
                     name
                     for name, module in tuple(sys.modules.items())
                     if name.partition(".")[0] in sys.stdlib_module_names
-                    and module is not None
                     and module.__spec__ is not None
                     and module.__spec__.origin == "frozen"
                 ),

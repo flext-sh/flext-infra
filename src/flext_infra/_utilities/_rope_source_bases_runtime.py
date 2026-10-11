@@ -867,7 +867,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"{identity}"
                 )
                 raise TypeError(message)
-            builtin_class = FlextInfraUtilitiesRopeRuntime._runtime_callable(  # ruff: ignore[private-member-access] - same-runtime internal rope accessor
+            builtin_class = FlextInfraUtilitiesRopeRuntime.runtime_callable(
                 "rope.base.builtins",
                 "BuiltinClass",
             )

@@ -148,7 +148,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
                 if not isinstance(expression, ast.Name):
-                    msg = f"unsupported facade inheritance identity: {owner_module}.{owner_name}"
+                    msg = (
+                        f"unsupported facade inheritance identity: "
+                        f"{owner_module}.{owner_name}"
+                    )
                     raise TypeError(msg)
                 inherited = cls._facade_declared_class(
                     modules, owner_module, expression.id, frozenset()

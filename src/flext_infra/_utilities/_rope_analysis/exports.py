@@ -18,7 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope_analysis._exports_binding_inventory import (
-    _ExportBindingInventory,
+    ExportBindingInventory,
 )
 
 
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             and whether ``__all__`` was bound.
 
         """
-        collector = _ExportBindingInventory()
+        collector = ExportBindingInventory()
         collector.collect(statements)
         return (collector.assignments, collector.definitions, collector.explicit_all)
 

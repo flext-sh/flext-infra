@@ -214,8 +214,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
         tm.that(
-            f"{provider.distribution}[feature] @ git+{provider.url}@{u.Tests.integration().branch}"
-            in dev,
+            f"{provider.distribution}[feature] @ "
+            f"git+{provider.url}@{u.Tests.integration().branch}" in dev,
             eq=True,
         )
         tm.that(

@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             ValueError: If Rope wrapper body has inconsistent indentation.
 
         """
-        lines = cls._runtime_callable("rope.base.codeanalyze", "SourceLinesAdapter")(
+        lines = cls.runtime_callable("rope.base.codeanalyze", "SourceLinesAdapter")(
             source,
         )
         if not isinstance(lines, p.Infra.RopeSourceLines):
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         )
         regions = tuple(
             regions_adapter.validate_python(
-                cls._runtime_callable("rope.base.simplify", "ignored_regions")(source),
+                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
                 strict=True,
             ),
         )
@@ -126,7 +126,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             ValueError: If Rope source edits overlap or escape their snapshot.
 
         """
-        collector = cls._runtime_callable("rope.base.codeanalyze", "ChangeCollector")(
+        collector = cls.runtime_callable("rope.base.codeanalyze", "ChangeCollector")(
             source,
         )
         add = getattr(collector, "add_change", None)
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not isinstance(updated, str):
             msg = "Rope ChangeCollector returned a non-source result"
             raise TypeError(msg)
-        change = cls._runtime_callable("rope.base.change", "ChangeContents")(
+        change = cls.runtime_callable("rope.base.change", "ChangeContents")(
             resource,
             updated,
         )
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
                 contract.
 
         """
-        factory = cls._runtime_callable("rope.refactor.restructure", "Restructure")
+        factory = cls.runtime_callable("rope.refactor.restructure", "Restructure")
         restructuring = factory(rope_project, pattern, goal, args=dict(arguments))
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         resource: t.Infra.RopeResource,
         offset: int,
     ) -> t.Infra.RopeMoveGlobal:
-        create = cls._runtime_callable("rope.refactor.move", "create_move")
+        create = cls.runtime_callable("rope.refactor.move", "create_move")
         mover = create(rope_project, resource, offset)
         if not isinstance(mover, p.Infra.RopeMoveGlobal):
             msg = "rope create_move did not return MoveGlobal-compatible object"
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         *,
         resources: t.SequenceOf[t.Infra.RopeResource],
     ) -> t.Infra.RopeChangeSet:
-        renamer_factory = cls._runtime_callable("rope.refactor.rename", "Rename")
+        renamer_factory = cls.runtime_callable("rope.refactor.rename", "Rename")
         renamer = renamer_factory(rope_project, resource, offset)
         get_changes = getattr(renamer, "get_changes", None)
         if not callable(get_changes):
@@ -231,7 +231,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         imports: bool,
         in_hierarchy: bool,
     ) -> t.Infra.RopeOccurrenceFinder:
-        create_finder = cls._runtime_callable(
+        create_finder = cls.runtime_callable(
             "rope.refactor.occurrences",
             "create_finder",
         )

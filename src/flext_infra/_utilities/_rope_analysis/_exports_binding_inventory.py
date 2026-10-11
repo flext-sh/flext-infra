@@ -11,7 +11,7 @@ import ast
 from flext_infra import c, t
 
 
-class _ExportBindingInventory:
+class ExportBindingInventory:
     """Inventory one statement list's exports, definitions, and ``__all__``."""
 
     def __init__(self) -> None:
