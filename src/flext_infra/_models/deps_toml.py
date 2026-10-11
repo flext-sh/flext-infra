@@ -38,27 +38,43 @@ class FlextInfraModelsDepsToml:
             ]
             dependencies: Annotated[
                 t.StrTuple,
-                m.Field(
-                    strict=False,
-                    description="Production requirement lines parsed from TOML arrays",
-                ),
+                m.Field(description="Production requirement lines"),
             ]
             optional_dependencies: Annotated[
-                t.MappingKV[str, Annotated[t.StrTuple, m.Field(strict=False)]],
+                t.MappingKV[str, t.StrTuple],
                 m.Field(description="Every declared optional requirement group"),
             ]
             dependency_groups: Annotated[
                 t.MappingKV[
                     str,
-                    Annotated[
-                        t.VariadicTuple[
-                            str | FlextInfraModelsDepsToml.DepsToml.GroupInclude
-                        ],
-                        m.Field(strict=False),
+                    t.VariadicTuple[
+                        str | FlextInfraModelsDepsToml.DepsToml.GroupInclude
                     ],
                 ],
                 m.Field(description="PEP 735 requirement and inclusion entries"),
             ]
+
+            @m.field_validator(
+                "dependencies",
+                "optional_dependencies",
+                "dependency_groups",
+                mode="before",
+            )
+            @classmethod
+            def toml_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+                """Freeze TOML arrays before validating their strict element types.
+
+                Returns:
+                    The same declarations with array containers converted to tuples.
+                """
+                if isinstance(value, list):
+                    return tuple(value)
+                if isinstance(value, dict):
+                    return {
+                        name: tuple(entries) if isinstance(entries, list) else entries
+                        for name, entries in value.items()
+                    }
+                return value
 
             @m.field_validator("dependency_groups")
             @classmethod

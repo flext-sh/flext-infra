@@ -29,6 +29,7 @@ class FlextInfraConstantsBase(
         """Canonical pyproject dependency-group names."""
 
         DEV = "dev"
+        CODEGEN = "codegen"
         DOCS = "docs"
         SECURITY = "security"
         TEST = "test"

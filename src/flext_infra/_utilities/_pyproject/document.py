@@ -127,8 +127,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             )
             u.Cli.toml_sync_string_list(
                 groups,
-                "codegen",
-                sorted({*provenance.codegen_dependencies, *member_groups}),
+                c.Infra.DependencyGroup.CODEGEN,
+                sorted({
+                    *u.Cli.toml_as_string_list(
+                        u.Cli.toml_value(groups, c.Infra.DependencyGroup.CODEGEN),
+                    ),
+                    *member_groups,
+                }),
             )
         cls._sync_dependency_groups(
             source,
@@ -141,7 +146,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         u.Cli.toml_sync_string_list(
             groups,
             str(c.Infra.DEV),
-            sorted({*dev, *custom_dev, *member_requests, *member_groups}),
+            sorted({*dev, *member_requests, *member_groups}),
         )
         local_requirements = cls.document_requirement_lines(source)
         if local_requirements.failure:
