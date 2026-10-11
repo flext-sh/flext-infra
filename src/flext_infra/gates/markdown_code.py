@@ -454,7 +454,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
-                verdict=passed,
+                verdict=passed and not issues,
+                issues=tuple(issues),
+                raw_output="\n".join(issue.formatted for issue in issues),
                 outcome=(
                     c.Infra.ToolOutcome.ERROR
                     if not passed
@@ -462,8 +464,6 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                issues=tuple(issues),
-                raw_output="\n".join(issue.formatted for issue in issues),
                 started=started,
             ),
         )

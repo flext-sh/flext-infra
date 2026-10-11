@@ -26,7 +26,10 @@ class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
 
     @staticmethod
-    def test_member_contextual_packages_keep_independent_owners(tmp_path: Path) -> None:
+    @pytest.mark.parametrize("shadowed", [False, True])
+    def test_member_contextual_packages_keep_independent_owners(
+        tmp_path: Path, *, shadowed: bool
+    ) -> None:
         """Equal contextual import names in separate projects remain independent."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         sources: dict[Path, str] = {}
@@ -38,6 +41,12 @@ class TestsFlextInfraSemanticPhaseContract:
                 pyproject=f'[project]\nname = "{name}"\nversion = "1.0.0"\n',
                 with_src=True,
             )
+            u.Tests.initialize_git_repo(member)
+            provider = member / "src" / name / "utilities.py"
+            sources[provider] = (
+                "from flext_cli import FlextCliUtilities\n"
+                "class MemberUtilities(FlextCliUtilities):\n    pass\n"
+            )
             context = member / "consumer_context"
             context.mkdir()
             path = context / "consumer.py"
@@ -47,9 +56,13 @@ class TestsFlextInfraSemanticPhaseContract:
                     "from .utilities import ConsumerContextUtilities as u\n"
                 ),
                 context / "utilities.py": (
-                    "from flext_cli import FlextCliUtilities\n"
-                    "class ConsumerContextUtilities(FlextCliUtilities):\n"
-                    "    pass\n"
+                    "from first_member.utilities import MemberUtilities\n"
+                    "class ConsumerContextUtilities(MemberUtilities):\n"
+                    + (
+                        "    json_dict_adapter = None\n"
+                        if shadowed and name == "second_member"
+                        else "    pass\n"
+                    )
                 ),
                 path: (
                     "from flext_cli import t\n"
@@ -57,16 +70,21 @@ class TestsFlextInfraSemanticPhaseContract:
                     "value = t.json_dict_adapter().validate_python({'name': 'value'})\n"
                 ),
             })
+        u.Tests.declare_workspace_projects(root, ("first_member", "second_member"))
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
             )
+        if shadowed:
+            tm.fail(planned, has="receiver is shadowed")
+            for path, source in sources.items():
+                tm.that(path.read_text(encoding="utf-8"), eq=source)
+            return
+        edits = tm.ok(planned)
         tm.that(tuple(edit.file_path for edit in edits), eq=tuple(consumers))
         for edit in edits:
             tm.that(edit.updated_source, has="u.json_dict_adapter()")
