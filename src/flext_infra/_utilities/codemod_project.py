@@ -36,6 +36,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -1211,15 +1212,21 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If project layout is unresolved.
 
         """
-        layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            root, file_path
+        )
+        if owner is None:
+            msg = f"project owner is unresolved: {file_path}"
+            raise ValueError(msg)
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(owner)
         if layout is None:
-            msg = f"project layout is unresolved: {root}"
+            msg = f"project layout is unresolved: {owner}"
             raise ValueError(msg)
         prefix = FlextInfraUtilitiesCodegenNamespace.project_prefix(
             file_path,
             project_layout=layout,
         )
-        if file_path.is_relative_to(root / c.Infra.DIR_TESTS):
+        if file_path.is_relative_to(owner / c.Infra.DIR_TESTS):
             return name.startswith(prefix)
         return name.startswith((prefix, layout.class_stem))
 
