@@ -45,7 +45,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             return issues
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
-            text = md_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            text = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for token in tokens:
                 if token in text:
                     issues.append(
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         compiled = tuple(re.compile(pattern) for pattern in patterns)
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
-            content = md_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for pattern in compiled:
                 if pattern.search(content):
                     issues.append(
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             rel = md_file.relative_to(scope.path).as_posix()
             if Path(rel) in evidence:
                 continue
-            text = md_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            text = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for line_number, line in enumerate(text.splitlines(), start=1):
                 for match in c.Infra.MACHINE_PATH_RE.finditer(line):
                     if match.group("user") in c.Infra.MACHINE_PATH_CONTAINER_USERS:
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         ]:
             if not md_file.exists():
                 continue
-            text = md_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            text = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for token, pattern in zip(excluded, patterns, strict=True):
                 if pattern.search(text):
                     issues.append(
@@ -261,7 +261,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
-            content = md_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for index, match in enumerate(c.Infra.PYTHON_FENCE_RE.finditer(content)):
                 # Ruff via running interpreter (venv SSOT);
                 # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).

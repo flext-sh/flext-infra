@@ -16,9 +16,12 @@ from typing import TYPE_CHECKING, override
 import pytest
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.validate._pytest_runner.command import FlextInfraPytestRunnerCommand
-from flext_infra.validate._pytest_runner.reports import FlextInfraPytestRunnerReports
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra.validate import FlextInfraTestmonDbInspector
+from flext_infra.validate._pytest_runner import (
+    FlextInfraPytestRunnerCommand,
+    FlextInfraPytestRunnerReports,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -60,19 +63,34 @@ class FlextInfraPytestRunnerExecution(
         Returns:
             The child environment shared by every runner invocation.
 
+        Raises:
+            ValueError: If test target has no declared project owner.
         """
         testmon_keys = (
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         coverage = execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+        source_root = self.root
+        if self.target_file is not None:
+            target_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                self.root, self.root / self.target_file
+            )
+            if target_root is None:
+                msg = "test target has no declared project owner"
+                raise ValueError(msg)
+            source_root = target_root
         overrides = {
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                self.root / c.Infra.DEFAULT_SRC_DIR,
+                source_root / c.Infra.DEFAULT_SRC_DIR,
             ),
         }
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
+        if self.profile_enabled or self.collection_command_prefix:
+            overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
+                config.Infra.tooling.tools.pytest.profile_process_directory
+            )
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
@@ -665,7 +683,7 @@ class FlextInfraPytestRunnerExecution(
             if any(char in str(publication.database) for char in "\r\n"):
                 msg = "testmon publication path cannot contain output delimiters"
                 raise ValueError(msg)
-            with output.open("a", encoding=c.Cli.ENCODING_DEFAULT) as stream:
+            with output.open("a", encoding=c.DEFAULT_ENCODING) as stream:
                 stream.write(
                     f"testmon_database={publication.database}\n"
                     f"testmon_digest={publication.digest}\n"

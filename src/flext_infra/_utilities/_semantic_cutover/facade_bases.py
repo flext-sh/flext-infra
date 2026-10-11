@@ -14,15 +14,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from functools import partial
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import (
+    Assignment,
     MetadataWrapper,
     QualifiedNameProvider,
     QualifiedNameSource,
+    Scope,
     ScopeProvider,
 )
 
@@ -63,6 +66,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         ) -> None:
             self.resolve_reference = resolve_reference
             self.context = context
+            self.destinations: t.MutableMappingKV[str, str] = {}
 
         @override
         def leave_Attribute(
@@ -72,40 +76,64 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         ) -> cst.BaseExpression:
             names = self.get_metadata(QualifiedNameProvider, original_node, ())
             targets = {
-                target
-                for name in names
+                self.resolve_reference(name.name)
                 if name.source is QualifiedNameSource.IMPORT
-                and (target := self.resolve_reference(name.name)) is not None
+                else None
+                for name in names
             }
-            if not targets:
+            if not targets or targets == {None}:
                 return updated_node
-            if len(targets) != 1 or any(
-                name.source is not QualifiedNameSource.IMPORT for name in names
-            ):
+            if len(targets) != 1 or (target := targets.pop()) is None:
                 msg = "behavior reference has ambiguous imported identity"
                 raise ValueError(msg)
-            module, receiver, member = targets.pop()
+            module, receiver, member = target
             module_import = "." in receiver
             bound_name = receiver.split(".")[0]
             imported_identity = module if module_import else f"{module}.{receiver}"
             scope = self.get_metadata(ScopeProvider, original_node)
-            for assignment in scope[bound_name]:
+            if not isinstance(scope, Scope):
+                msg = "behavior reference has no lexical scope"
+                raise TypeError(msg)
+            assignments = scope[bound_name]
+            for assignment in assignments:
                 qualified = assignment.get_qualified_names_for(bound_name)
                 own_class = (
                     module == self.context.full_module_name
+                    and isinstance(assignment, Assignment)
                     and isinstance(assignment.node, cst.ClassDef)
                     and assignment.node.name.value == receiver
                 )
-                if not own_class and any(
-                    name.name != imported_identity for name in qualified
+                if not own_class and (
+                    not qualified
+                    or any(
+                        name.source is not QualifiedNameSource.IMPORT
+                        or name.name != imported_identity
+                        for name in qualified
+                    )
                 ):
                     msg = f"relocated behavior receiver is shadowed: {receiver}"
                     raise ValueError(msg)
-            if module != self.context.full_module_name:
+            if module != self.context.full_module_name and not assignments:
+                self._reserve_destination(bound_name, imported_identity)
                 AddImportsVisitor.add_needed_import(
                     self.context, module, None if module_import else receiver
                 )
             return cst.Attribute(cst.parse_expression(receiver), cst.Name(member))
+
+        def _reserve_destination(self, bound_name: str, identity: str) -> None:
+            """Reserve module-global imports across all lexical consumer scopes.
+
+            Raises:
+                ValueError: If pending imports would bind different owners to one name.
+
+            """
+            if (
+                bound_name in self.destinations
+                and self.destinations[bound_name] != identity
+            ):
+                msg = f"conflicting relocated behavior import destination: {bound_name}"
+                raise ValueError(msg)
+            self.destinations[bound_name] = identity
 
     @classmethod
     def _behavior_lineage(
@@ -122,7 +150,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             receiver: The name of the class being resolved.
 
         Returns:
-            A tuple of pairs representing the lineage of the behavior, where each pair contains the module and class name.
+            Pairs of module and class names representing the behavior lineage.
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:
@@ -147,58 +175,101 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             bases: list[t.Pair[str, str]] = []
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
-                if not isinstance(expression, ast.Name):
-                    msg = (
-                        f"unsupported facade inheritance identity: "
-                        f"{owner_module}.{owner_name}"
-                    )
-                    raise TypeError(msg)
-                inherited = cls._facade_declared_class(
-                    modules, owner_module, expression.id, frozenset()
+                inherited = cls._behavior_base_identity(
+                    modules, owner_module, expression
                 )
                 if inherited is not None:
                     bases.append(inherited)
             sequences = [list(linearize(base, visiting | {identity})) for base in bases]
             sequences.append(list(bases))
-            lineage = [identity]
-            while any(sequences):
-                chosen = next(
-                    (
-                        sequence[0]
-                        for sequence in sequences
-                        if sequence
-                        and not any(sequence[0] in tail[1:] for tail in sequences)
-                    ),
-                    None,
-                )
-                if chosen is None:
-                    msg = f"inconsistent facade inheritance identity: {identity}"
-                    raise ValueError(msg)
-                lineage.append(chosen)
-                for sequence in sequences:
-                    if sequence and sequence[0] == chosen:
-                        sequence.pop(0)
-            cache[identity] = tuple(lineage)
+            cache[identity] = cls._merge_behavior_lineages(identity, sequences)
             return cache[identity]
 
         return linearize(resolved, frozenset())
 
     @classmethod
-    def _plan_behavior_consumers(
+    def _behavior_base_identity(
         cls,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Resolve removed typing behavior to its unique declared utility owner.
-
-        Internal consumers depend on the lower owner, never the utility facade
-        that composes them. External consumers keep the public facade contract.
-        No retired class or method-name registry participates in discovery.
-
-        Args:
-            sources: A mapping from file paths to their source code content.
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        module: str,
+        expression: ast.expr,
+    ) -> t.Pair[str, str] | None:
+        """Resolve a base's declared class, including imported-module attributes.
 
         Returns:
-            A result containing a variadic tuple of semantic migration edits.
+            The declared base identity, or no source-backed class.
+
+        Raises:
+            TypeError: If a base is not a supported proven binding.
+
+        """
+        if isinstance(expression, ast.Name):
+            return cls._facade_declared_class(
+                modules, module, expression.id, frozenset()
+            )
+        if isinstance(expression, ast.Attribute) and isinstance(
+            expression.value, ast.Name
+        ):
+            source, is_package = modules[module]
+            package = module if is_package else module.rpartition(".")[0]
+            target, _declared = cls._facade_binding_state(
+                source, module, expression.value.id, package
+            )
+            if target is not None and ".".join(target) in modules:
+                return cls._facade_declared_class(
+                    modules, ".".join(target), expression.attr, frozenset()
+                )
+        msg = (
+            "unsupported facade inheritance identity: "
+            f"{module}.{ast.unparse(expression)}"
+        )
+        raise TypeError(msg)
+
+    @staticmethod
+    def _merge_behavior_lineages(
+        identity: t.Pair[str, str],
+        sequences: t.SequenceOf[t.MutableSequenceOf[t.Pair[str, str]]],
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Merge inherited lineages in C3 order, rejecting inconsistent bases.
+
+        Returns:
+            The owner followed by its deterministic C3 lineage.
+
+        Raises:
+            ValueError: If inherited precedence cannot be merged consistently.
+
+        """
+        lineage = [identity]
+        while any(sequences):
+            chosen = next(
+                (
+                    sequence[0]
+                    for sequence in sequences
+                    if sequence
+                    and not any(sequence[0] in tail[1:] for tail in sequences)
+                ),
+                None,
+            )
+            if chosen is None:
+                msg = f"inconsistent facade inheritance identity: {identity}"
+                raise ValueError(msg)
+            lineage.append(chosen)
+            for sequence in sequences:
+                if sequence and sequence[0] == chosen:
+                    sequence.pop(0)
+        return tuple(lineage)
+
+    @classmethod
+    def _behavior_source_modules(
+        cls,
+        sources: t.MappingKV[Path, str],
+        typing_directory: str,
+    ) -> t.MappingKV[str, t.Pair[str, bool]]:
+        """Discover referenced providers and expand their typing inheritance.
+
+        Returns:
+            Live source modules needed for behavior ownership resolution.
+
         """
         statements = tuple(
             ast.unparse(node)
@@ -225,9 +296,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
             sources, statements
         )
-        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
-        utility_directory = families["u"].directory
-        typing_directory = families["t"].directory
         # Provider discovery expands the inventory, never the owners eligible
         # for a reference. Its declared inheritance lineage elects those owners.
         while True:
@@ -253,9 +321,26 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 sources, (*statements, *inherited_statements)
             )
             if expanded.keys() == modules.keys():
-                break
+                return modules
             statements = (*statements, *inherited_statements)
             modules = expanded
+
+    @classmethod
+    def _behavior_utility_owners(
+        cls,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        utility_directory: str,
+        typing_directory: str,
+    ) -> t.Pair[
+        t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+        frozenset[t.Quad[str, str, str, str]],
+    ]:
+        """Index exported utility methods and their contextual dispatch needs.
+
+        Returns:
+            Discovered method owners and methods requiring facade dispatch.
+
+        """
         owners: MutableMapping[t.Pair[str, str], list[t.Pair[str, str]]] = {}
         contextual: set[t.Quad[str, str, str, str]] = set()
         for module, (source, _package) in modules.items():
@@ -286,6 +371,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         utility_directory in parts
                         and declaration.name in exports
                         and not member.name.startswith("_")
+                        and cls._behavior_member_binding(declaration, member.name)
+                        is member
                     ):
                         owners.setdefault((parts[0], member.name), []).append((
                             module,
@@ -313,130 +400,280 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                                 declaration.name,
                                 member.name,
                             ))
+        return owners, frozenset(contextual)
 
-        def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-            tree = ast.parse(source)
-            identities = {
-                (node.module, alias.name)
-                for node in ast.walk(tree)
-                if isinstance(node, ast.ImportFrom) and node.module and not node.level
-                for alias in node.names
-            }
-            obsolete: set[t.Pair[str, str]] = set()
-            lineages: MutableMapping[
-                t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
-            ] = {}
+    @classmethod
+    def _typing_behavior_lineage(
+        cls,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        module: str,
+        receiver: str,
+        typing_directory: str,
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Elect only a declared typing facade or its retired private binding.
 
-            def resolve(qualified: str) -> t.Triple[str, str, str] | None:
-                imported = next(
-                    (
-                        identity
-                        for identity in identities
-                        if qualified.startswith(".".join(identity) + ".")
-                        and qualified.removeprefix(".".join(identity) + ".").count(".")
-                        == 0
-                    ),
-                    None,
+        Returns:
+            The elected typing lineage, or empty for an unrelated receiver.
+
+        """
+        package = module.split(".", 1)[0]
+        declared = cls._facade_declared_class(modules, module, receiver, frozenset())
+        facade = cls._facade_declared_class(modules, package, "t", frozenset())
+        retired = (
+            typing_directory in module.split(".")
+            and module not in modules
+            and facade is not None
+        )
+        if retired or (declared is not None and declared == facade):
+            return cls._behavior_lineage(
+                modules, package if retired else module, "t" if retired else receiver
+            )
+        return ()
+
+    @classmethod
+    def _behavior_member_declared(
+        cls,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        lineage: t.SequenceOf[t.Pair[str, str]],
+        member: str,
+    ) -> bool:
+        """Keep methods still declared on the typing lineage at their owner.
+
+        Returns:
+            Whether any class in the lineage declares the method.
+
+        """
+        return cls._behavior_effective_declaration(modules, lineage, member) is not None
+
+    @classmethod
+    def _behavior_effective_declaration(
+        cls,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        lineage: t.SequenceOf[t.Pair[str, str]],
+        member: str,
+    ) -> t.Pair[str, str] | None:
+        """Locate the first C3 class that binds a member, including non-method masks.
+
+        Returns:
+            The effective declaring class identity, or no declaration.
+
+        """
+        for owner_module, class_name in lineage:
+            declaration = next(
+                node
+                for node in ast.parse(modules[owner_module][0]).body
+                if isinstance(node, ast.ClassDef) and node.name == class_name
+            )
+            if cls._behavior_member_binding(declaration, member) is not None:
+                return owner_module, class_name
+        return None
+
+    @classmethod
+    def _behavior_member_binding(
+        cls,
+        declaration: ast.ClassDef,
+        member: str,
+    ) -> ast.stmt | None:
+        """Follow class execution order without treating bare annotations as masks.
+
+        Returns:
+            The last statement that binds the member, or no class binding.
+
+        """
+        for node in reversed(declaration.body):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                if node.name == member:
+                    return node
+            elif (
+                isinstance(node, ast.Assign | ast.AnnAssign)
+                and node.value is not None
+                and cls._assigns_name(node, member)
+            ):
+                return node
+        return None
+
+    @classmethod
+    def _plan_behavior_consumers(
+        cls,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Resolve removed typing behavior to its unique declared utility owner.
+
+        Internal consumers depend on the lower owner, never the utility facade
+        that composes them. External consumers keep the public facade contract.
+        No retired class or method-name registry participates in discovery.
+
+        Returns:
+            Immutable consumer edits, or failures for unresolved identities.
+
+        """
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        typing_directory = families["t"].directory
+        modules = cls._behavior_source_modules(sources, typing_directory)
+        ownership = cls._behavior_utility_owners(
+            modules, families["u"].directory, typing_directory
+        )
+        return cls._semantic_edits(
+            cls._editable_sources(sources),
+            partial(
+                cls._rewrite_behavior_consumer,
+                modules=modules,
+                typing_directory=typing_directory,
+                ownership=ownership,
+            ),
+        )
+
+    @classmethod
+    def _behavior_reference_target(
+        cls,
+        qualified: str,
+        path: Path,
+        lineage: t.SequenceOf[t.Pair[str, str]],
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        ownership: t.Pair[
+            t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+            frozenset[t.Quad[str, str, str, str]],
+        ],
+    ) -> t.Triple[str, str, str] | None:
+        """Elect a unique relocated method owner in inherited precedence order.
+
+        Returns:
+            The module, receiver and member, or no target when none is declared.
+
+        Raises:
+            ValueError: If ownership is ambiguous or requires internal facade dispatch.
+
+        """
+        member = qualified.rpartition(".")[2]
+        owners, contextual = ownership
+        if not any(
+            owners.get((owner_module.partition(".")[0], member))
+            for owner_module, _class in lineage
+        ):
+            return None
+        public_lineage = cls._behavior_lineage(
+            modules, qualified.partition(".")[0], "u"
+        )
+        effective = cls._behavior_effective_declaration(modules, public_lineage, member)
+        if effective is None or effective not in owners.get(
+            (effective[0].partition(".")[0], member), ()
+        ):
+            msg = (
+                "relocated behavior is not reachable through public utilities: "
+                f"{qualified}"
+            )
+            raise ValueError(msg)
+        owner_module, owner_class = effective
+        owner_package = owner_module.split(".", 1)[0]
+        internal = owner_package in path.parts and c.Infra.DEFAULT_SRC_DIR in path.parts
+        if (
+            internal
+            and (owner_package, owner_module, owner_class, member) in contextual
+        ):
+            msg = f"lower behavior owner requires facade dispatch: {qualified}"
+            raise ValueError(msg)
+        return (
+            owner_module if internal else qualified.partition(".")[0],
+            owner_class if internal else "u",
+            member,
+        )
+
+    @classmethod
+    def _rewrite_behavior_consumer(
+        cls,
+        path: Path,
+        source: str,
+        *,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        typing_directory: str,
+        ownership: t.Pair[
+            t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+            frozenset[t.Quad[str, str, str, str]],
+        ],
+    ) -> t.Infra.TransformResult:
+        """Rebind proven imported behavior and compose its semantic import edits.
+
+        Returns:
+            The rewritten source and its changes, without publishing effects.
+
+        """
+        tree = ast.parse(source)
+        identities = {
+            (node.module, alias.name)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module and not node.level
+            for alias in node.names
+        }
+        obsolete: set[t.Pair[str, str]] = set()
+        lineages: MutableMapping[
+            t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
+        ] = {}
+
+        def resolve(qualified: str) -> t.Triple[str, str, str] | None:
+            imported = next(
+                (
+                    identity
+                    for identity in identities
+                    if qualified.startswith(".".join(identity) + ".")
+                    and qualified.removeprefix(".".join(identity) + ".").count(".") == 0
+                ),
+                None,
+            )
+            if imported is None:
+                return None
+            module, receiver = imported
+            if imported not in lineages:
+                lineages[imported] = cls._typing_behavior_lineage(
+                    modules, module, receiver, typing_directory
                 )
-                if imported is None:
-                    return None
-                module, receiver = imported
-                package = module.split(".")[0]
-                member = qualified.rpartition(".")[2]
-                if imported not in lineages:
-                    declared = cls._facade_declared_class(
-                        modules, module, receiver, frozenset()
-                    )
-                    facade = cls._facade_declared_class(
-                        modules, package, "t", frozenset()
-                    )
-                    retired = (
-                        typing_directory in module.split(".")
-                        and module not in modules
-                        and facade is not None
-                    )
-                    lineages[imported] = (
-                        cls._behavior_lineage(
-                            modules,
-                            package if retired else module,
-                            "t" if retired else receiver,
-                        )
-                        if retired or (declared is not None and declared == facade)
-                        else ()
-                    )
-                lineage = lineages[imported]
-                if any(
-                    isinstance(declaration, ast.ClassDef)
-                    and declaration.name == class_name
-                    and any(
-                        isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
-                        and method.name == member
-                        for method in declaration.body
-                    )
-                    for owner_module, class_name in lineage
-                    for declaration in ast.parse(modules[owner_module][0]).body
-                ):
-                    return None
-                candidates: t.SequenceOf[t.Pair[str, str]] = ()
-                for owner_module, _class in lineage:
-                    candidates = owners.get((owner_module.split(".")[0], member), ())
-                    if candidates:
-                        break
-                if not candidates:
-                    return None
-                if len(candidates) != 1:
-                    msg = f"ambiguous relocated behavior owner: {qualified}"
-                    raise ValueError(msg)
-                owner_module, owner_class = candidates[0]
-                owner_package = owner_module.split(".")[0]
-                internal = (
-                    owner_package in path.parts
-                    and c.Infra.DEFAULT_SRC_DIR in path.parts
-                )
-                if (
-                    internal
-                    and (owner_package, owner_module, owner_class, member) in contextual
-                ):
-                    msg = f"lower behavior owner requires facade dispatch: {qualified}"
-                    raise ValueError(msg)
+            lineage = lineages[imported]
+            if cls._behavior_member_declared(
+                modules, lineage, qualified.rpartition(".")[2]
+            ):
+                return None
+            target = cls._behavior_reference_target(
+                qualified, path, lineage, modules, ownership
+            )
+            if target is not None:
                 obsolete.add(imported)
-                return (
-                    owner_module if internal else package,
-                    owner_class if internal else f"{package}.u",
-                    member,
-                )
+            return target
 
-            if not identities:
-                return source, ()
-            indices = tuple(
-                index
-                for index, part in enumerate(path.parts)
-                if part == c.Infra.DEFAULT_SRC_DIR
-            )
-            module_name = (
-                ".".join((*path.parts[indices[-1] + 1 : -1], path.stem))
-                if indices
-                else None
-            )
-            context = CodemodContext(full_module_name=module_name)
-            updated = MetadataWrapper(cst.parse_module(source)).visit(
-                cls._BehaviorReferences(resolve, context)
-            )
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.ImportFrom) or node.module is None:
-                    continue
-                for alias in node.names:
-                    if (node.module, alias.name) in obsolete:
-                        RemoveImportsVisitor.remove_unused_import(
-                            context, node.module, alias.name, alias.asname
-                        )
-            updated = AddImportsVisitor(context).transform_module(updated)
-            updated = RemoveImportsVisitor(context).transform_module(updated)
-            return updated.code, (
-                "rebound relocated behavior to declared utility owners",
-            )
+        if not identities:
+            return source, ()
+        indices = tuple(
+            index
+            for index, part in enumerate(path.parts)
+            if part == c.Infra.DEFAULT_SRC_DIR
+        )
+        module_name = (
+            ".".join((*path.parts[indices[-1] + 1 : -1], path.stem))
+            if indices
+            else None
+        )
+        context = CodemodContext(full_module_name=module_name)
+        updated = MetadataWrapper(cst.parse_module(source)).visit(
+            cls._BehaviorReferences(resolve, context)
+        )
+        cls._remove_obsolete_behavior_imports(context, tree, obsolete)
+        updated = AddImportsVisitor(context).transform_module(updated)
+        updated = RemoveImportsVisitor(context).transform_module(updated)
+        return updated.code, ("rebound relocated behavior to declared utility owners",)
 
-        return cls._semantic_edits(cls._editable_sources(sources), rewrite)
+    @staticmethod
+    def _remove_obsolete_behavior_imports(
+        context: CodemodContext,
+        tree: ast.Module,
+        obsolete: set[t.Pair[str, str]],
+    ) -> None:
+        """Schedule removal only for imports whose proven behavior was rebound."""
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or node.module is None:
+                continue
+            for alias in node.names:
+                if (node.module, alias.name) in obsolete:
+                    RemoveImportsVisitor.remove_unused_import(
+                        context, node.module, alias.name, alias.asname
+                    )
 
     @classmethod
     def _plan_facade_bases(

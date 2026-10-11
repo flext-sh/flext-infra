@@ -140,7 +140,7 @@ class FlextInfraUtilitiesDocsApi:
         module_file = cls._module_file(project_root, module_name)
         if not module_file.exists():
             return []
-        source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = module_file.read_text(encoding=c.DEFAULT_ENCODING)
         values = cls._assignment_strings(source, symbol_name)
         if values:
             return values
@@ -197,7 +197,7 @@ class FlextInfraUtilitiesDocsApi:
         module_file = cls._module_file(project_root, module_name)
         if not module_file.exists():
             return {}
-        source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = module_file.read_text(encoding=c.DEFAULT_ENCODING)
         entries, refs = (
             FlextInfraUtilitiesRopeAnalysis.module_mapping_assignment_source(
                 source,
@@ -472,7 +472,7 @@ class FlextInfraUtilitiesDocsApi:
             f"{symbol_name}.py"
         )
         if sibling.exists() and sibling.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         ).lstrip().startswith('"""'):
             return True
         return None
@@ -498,7 +498,7 @@ class FlextInfraUtilitiesDocsApi:
         module_file = cls._module_file(project_root, module_name)
         if not module_file.exists():
             return False
-        source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = module_file.read_text(encoding=c.DEFAULT_ENCODING)
         directly = cls._directly_documented(
             project_root,
             source,
@@ -727,7 +727,7 @@ class FlextInfraUtilitiesDocsApi:
         )
         if not init_path.exists():
             return FlextInfraUtilitiesDocsApi.public_contract(project_root, "")
-        source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = init_path.read_text(encoding=c.DEFAULT_ENCODING)
         return FlextInfraUtilitiesDocsApi._resolved_contract(
             project_root,
             package_name,
@@ -830,7 +830,7 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            source = module_file.read_text(encoding=c.DEFAULT_ENCODING)
             results.append((
                 module_file.relative_to(project_root).as_posix(),
                 message,

@@ -303,7 +303,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         state = snapshot.value
         if state.content is None:
             return result_type.fail(f"facade input is absent: {path}")
-        return result_type.ok((state, state.content.decode(c.Cli.ENCODING_DEFAULT)))
+        return result_type.ok((state, state.content.decode(c.DEFAULT_ENCODING)))
 
     @staticmethod
     def _render_facade(

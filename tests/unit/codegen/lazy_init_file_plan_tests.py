@@ -53,7 +53,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(tuple(file.path for file in plan.files), eq=(destination,))
         tm.that(plan.uv_environments, eq=())
         file = plan.files[0]
-        source = tm.not_none(file.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+        source = tm.not_none(file.desired_content).decode(c.DEFAULT_ENCODING)
         tm.that(source, has="PayloadOwner")
         tm.that(source, has="class Sample(ExistingOwner, PayloadOwner)")
         tm.that(source, has="retained = 'unchanged'")
@@ -271,7 +271,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 member_makefile,
-                member_makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                member_makefile.read_text(encoding=c.DEFAULT_ENCODING)
                 + "# managed member drift\n",
             ),
         )
@@ -328,7 +328,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         unit_path = package_root / "__unit__.py"
         unit_path.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         before = {path: path.read_bytes() for path in (init_path, unit_path)}
         service = u.Tests.create_lazy_init_service(repository_root)
@@ -380,21 +380,21 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         generated_header = f"{c.Infra.AUTOGEN_HEADER}\n"
         stub_path = package_root / c.Infra.INIT_PYI
-        stub_path.write_text(generated_header, encoding=c.Cli.ENCODING_DEFAULT)
+        stub_path.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         root_sidecar = package_root / "_exports.py"
-        root_sidecar.write_text(generated_header, encoding=c.Cli.ENCODING_DEFAULT)
+        root_sidecar.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         constants_dir = package_root / c.Infra.ROOT_EXPORTS_DIR
         constants_dir.mkdir()
         constants_init = constants_dir / c.Infra.INIT_PY
-        constants_init.write_text(generated_header, encoding=c.Cli.ENCODING_DEFAULT)
+        constants_init.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         constants_sidecar = constants_dir / "_exports_lazy.py"
-        constants_sidecar.write_text(generated_header, encoding=c.Cli.ENCODING_DEFAULT)
+        constants_sidecar.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         obsolete_dir = package_root / "_root_exports"
         obsolete_dir.mkdir()
         obsolete_init = obsolete_dir / c.Infra.INIT_PY
-        obsolete_init.write_text(generated_header, encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_init.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         obsolete_part = obsolete_dir / "part.py"
-        obsolete_part.write_text(generated_header, encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_part.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         expected_deletes = {
             stub_path.resolve(),
             root_sidecar.resolve(),

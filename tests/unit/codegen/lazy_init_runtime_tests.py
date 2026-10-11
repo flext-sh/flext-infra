@@ -31,23 +31,23 @@ class TestsFlextInfraLazyInitRuntime:
         )
         package = repository / "tests" / "unit"
         package.mkdir(parents=True, exist_ok=True)
-        (package / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (package / "support.py").write_text(
             "class PublishedSupport:\n    pass\n__all__ = ['PublishedSupport']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         conftest = package / "conftest.py"
         private_source = "pytest_plugins = []\n__all__ = ['pytest_plugins']\n"
-        conftest.write_text(private_source, encoding=c.Cli.ENCODING_DEFAULT)
+        conftest.write_text(private_source, encoding=c.DEFAULT_ENCODING)
 
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
 
         generated = (package / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(generated, has="PublishedSupport")
         tm.that(generated, lacks="pytest_plugins")
-        tm.that(conftest.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=private_source)
+        tm.that(conftest.read_text(encoding=c.DEFAULT_ENCODING), eq=private_source)
 
     @staticmethod
     def _generate_package(tmp_path: Path) -> t.Pair[Path, Path]:
@@ -64,7 +64,7 @@ class TestsFlextInfraLazyInitRuntime:
             "class FlextDemo:\n    pass\n"
             "primary = FlextDemo\n"
             "__all__ = ('FlextDemo', 'primary')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         return repository_root, package_root
@@ -99,7 +99,7 @@ class TestsFlextInfraLazyInitRuntime:
         )
         package_root.joinpath("api.py").write_text(
             "class FlextBare:\n    pass\n__all__ = ('FlextBare',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         with tm.scope(python_paths=[str(repository_root / c.Infra.DEFAULT_SRC_DIR)]):
@@ -128,7 +128,7 @@ class TestsFlextInfraLazyInitRuntime:
             '        count: int = FlextModels.Field(description="Payload count.")\n'
             "m = FlextRuntimeModels\n"
             "__all__ = ('FlextRuntimeModels', 'm')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         probe = (
@@ -172,7 +172,7 @@ class TestsFlextInfraLazyInitRuntime:
         )
         child = package_root / "child"
         child.mkdir()
-        (child / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (child / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (child / "api.py").write_text(
             "class PublishedChild:\n    pass\n"
             + (
@@ -180,7 +180,7 @@ class TestsFlextInfraLazyInitRuntime:
                 if same_named_export
                 else "__all__ = ('PublishedChild',)\n"
             ),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         if same_named_export:
             with pytest.raises(RuntimeError, match="ownership is ambiguous"):
@@ -211,12 +211,12 @@ class TestsFlextInfraLazyInitRuntime:
         )
         package_root.joinpath("api.py").write_text(
             "__all__ = ()\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         initializer = package_root / c.Infra.INIT_PY
-        original = initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        original = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
-        tm.that(initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original)
+        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         probe = (
             "import flext_empty_runtime as package\n"
             "print(not hasattr(package, '__all__'))\n"
@@ -245,7 +245,7 @@ class TestsFlextInfraLazyInitRuntime:
             "raise ModuleNotFoundError('missing runtime dependency')\n"
             "class FlextDemo:\n    pass\n"
             "__all__ = ('FlextDemo',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         with tm.scope(python_paths=[str(repository_root / c.Infra.DEFAULT_SRC_DIR)]):
@@ -273,20 +273,20 @@ class TestsFlextInfraLazyInitRuntime:
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         initializer = package / c.Infra.INIT_PY
-        canonical = initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        canonical = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         conflicted = canonical + (
             "\n<<<<<<< HEAD\n__all__ = ['stale']\n"
             "=======\n__all__ = ['obsolete']\n>>>>>>> incoming\n"
         )
-        initializer.write_text(conflicted, encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text(conflicted, encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(repository) as rope:
             layout = tm.not_none(rope.layout(repository))
             tm.that(layout.runtime_aliases, eq=("m",))
-        tm.that(initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=conflicted)
+        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=conflicted)
 
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
 
-        tm.that(initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=canonical)
+        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=canonical)
         with tm.scope(python_paths=[str(repository / c.Infra.DEFAULT_SRC_DIR)]):
             generated = importlib.import_module("flext_rebuilt")
             declared = importlib.import_module("flext_rebuilt.models")
@@ -297,7 +297,7 @@ class TestsFlextInfraLazyInitRuntime:
             )
         declaration.write_text(
             "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         with infra.rope_workspace(repository) as rope, pytest.raises(SyntaxError):
             rope.layout(repository)
@@ -321,23 +321,23 @@ class TestsFlextInfraLazyInitRuntime:
         package.joinpath("constants.py").write_text(
             "class Parent:\n    class Domain:\n        pass\n"
             "c = Parent\n__all__ = ('Parent', 'c')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         examples = repository / "examples"
         examples.mkdir()
-        examples.joinpath("__init__.py").write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        examples.joinpath("__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
         facet = examples / "constants.py"
         facet_source = (
             "from flext_local.constants import Parent\n"
             "class Local(Parent):\n    pass\n__all__ = ('Local',)\n"
         )
-        facet.write_text(facet_source, encoding=c.Cli.ENCODING_DEFAULT)
+        facet.write_text(facet_source, encoding=c.DEFAULT_ENCODING)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         # The facet declares no letter, so the generator leaves it untouched:
         # no runtime-alias repair may invent a local binding for one.
-        tm.that(facet.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=facet_source)
+        tm.that(facet.read_text(encoding=c.DEFAULT_ENCODING), eq=facet_source)
         exports = u.Infra.public_export_names_source(
-            examples.joinpath("__init__.py").read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            examples.joinpath("__init__.py").read_text(encoding=c.DEFAULT_ENCODING),
         )
         tm.that("c" in exports, eq=True)
         probe = (

@@ -36,7 +36,7 @@ class TestsFlextInfraWorkspaceLifecycle:
                 f"step=$$(wc -l < {log}); "
                 f'if [ "$$step" -eq {fail_at + 1} ]; then '
                 "printf 'lifecycle-fixture-failure\\n' >&2; exit 7; fi\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         return member
 
@@ -110,7 +110,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(
             (root / "lifecycle.log")
             .read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             .splitlines(),
             eq=[f"{cwd}|{command[-1]}" for cwd, command in expected],
@@ -138,7 +138,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(failed.exit_code not in {None, 0}, eq=True)
         tm.that(failed.error is not None, eq=True)
         tm.that(
-            failed.output_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            failed.output_file.read_text(encoding=c.DEFAULT_ENCODING),
             has="lifecycle-fixture-failure",
         )
         tm.that(
@@ -152,7 +152,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(
             len(
                 (root / "lifecycle.log")
-                .read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                .read_text(encoding=c.DEFAULT_ENCODING)
                 .splitlines(),
             ),
             eq=fail_at + 1,

@@ -111,12 +111,15 @@ class FlextInfraUtilitiesRopeCore(
             ValueError: If the containing workspace declaration is invalid.
         """
         resolved = source_root.resolve()
-        for parent in resolved.parents:
+        for parent in (resolved, *resolved.parents):
             declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
             if declarations.failure:
                 raise ValueError(declarations.error or "invalid .gitmodules")
             members = tuple(parent / item.path for item in declarations.value)
-            if any(resolved.is_relative_to(member.resolve()) for member in members):
+            if members and (
+                resolved == parent
+                or any(resolved.is_relative_to(member.resolve()) for member in members)
+            ):
                 return (parent, *members)
         standalone = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             Path(resolved.anchor), resolved
@@ -128,11 +131,10 @@ class FlextInfraUtilitiesRopeCore(
     def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
         """Resolve imports against the containing declared workspace, if attached.
 
+        Invalid workspace declarations propagate from the declaration reader.
+
         Yields:
             A source-scoped project or its declared workspace import graph.
-
-        Raises:
-            ValueError: If the containing workspace declaration is invalid.
         """
         roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
         with FlextInfraUtilitiesRopeCore.open_project(

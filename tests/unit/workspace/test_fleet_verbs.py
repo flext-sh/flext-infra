@@ -35,7 +35,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             f" >> {log}; "
             "printf 'fleet-fixture-output\\n'; "
             f"exit {exit_code}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         return member
 
@@ -92,14 +92,12 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         tm.that(all(row.error is None for row in report.receipts), eq=True)
         tm.that(
             report.receipts[0].output_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             ),
             has="fleet-fixture-output",
         )
         tm.that(
-            (root / "fleet.log")
-            .read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            .splitlines(),
+            (root / "fleet.log").read_text(encoding=c.DEFAULT_ENCODING).splitlines(),
             # A top-level Make exports MAKELEVEL=1 to its recipe; the
             # inherited level 3 would have produced 4.
             eq=[f"{member}|{verb.value}|1"],
@@ -119,7 +117,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         tm.that(failed.exit_code not in {None, 0}, eq=True)
         tm.that(failed.error is not None, eq=True)
         tm.that(
-            failed.output_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            failed.output_file.read_text(encoding=c.DEFAULT_ENCODING),
             has="fleet-fixture-output",
         )
 

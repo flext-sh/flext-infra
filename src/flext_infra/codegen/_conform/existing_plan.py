@@ -161,8 +161,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return self._plan_existing_pyproject_bootstrap(target, codegen)
         return None
 
+    @staticmethod
     def _plan_existing_pyproject_bootstrap(
-        self,
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -184,7 +184,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         if before.value.content is None:
             return result_type.fail(f"pyproject is absent: {path}")
         recovered = u.Infra.recover_live_pyproject_text(
-            before.value.content.decode(c.Cli.ENCODING_DEFAULT),
+            before.value.content.decode(c.DEFAULT_ENCODING),
         )
         if recovered.failure:
             return result_type.from_failure(recovered)
@@ -225,7 +225,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             project=target.root,
             path=path,
             before=before.value,
-            desired_content=rendered.value.encode(c.Cli.ENCODING_DEFAULT),
+            desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
             desired_mode=managed[0].mode,
             source_states=(*owners.value, *artifacts.value.sources),
         )

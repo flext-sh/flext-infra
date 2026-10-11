@@ -291,8 +291,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 pyproject,
-                pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                + "\n[tool.pyrefly]\n",
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING) + "\n[tool.pyrefly]\n",
             )
         )
         selected, project = self._quality_receipt(

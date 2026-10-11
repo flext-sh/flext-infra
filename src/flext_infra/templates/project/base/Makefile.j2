@@ -468,8 +468,8 @@ _builtin_require_network_auth:
 # consume present members as LIVE editable installs natively (operator law
 # 2026-10-06: a commit never influences dev behavior — the worktree is the
 # behavior): the root dev group requests every declared package, member group
-# and extra; root path sources select local editables, while CI's --no-editable
-# keeps the frozen builds. Each project still owns its physical lock.
+# and extra; local setup binds declared members to their live editable sources,
+# while CI's --no-editable keeps the frozen builds. Each project owns its lock.
 SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	trap 'if [ -n "$${FLEXT_SETUP_CREDENTIAL_STORE:-}" ]; then rm -f "$$FLEXT_SETUP_CREDENTIAL_STORE"; fi' EXIT; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
@@ -486,11 +486,15 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		printf 'ERROR[setup] uv.lock is missing: %s/uv.lock\n  Right way: only `make upg` writes uv.lock; setup installs the committed lock and never creates one.\n  How: run `make upg` in %s, then commit uv.lock.\n' "$(UV_PROJECT)" "$(PROJECT_ROOT)" >&2; \
 		exit 2; \
 	fi; \
+	mise -C "$(PROJECT_ROOT)" config ls --json; \
+	for member in $(WORKSPACE_SUBPROJECTS); do \
+		mise -C "$(PROJECT_ROOT)/$$member" config ls --json; \
+	done; \
+	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only; \
 	for member in $(WORKSPACE_SUBPROJECTS); do \
 		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)/$$member" --config-only; \
 	done; \
-	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)"; \
 	if [ "$(strip $({{ make.ci.variable }}))" != "{{ make.ci.value }}" ]; then \
 		for member in $(WORKSPACE_SUBPROJECTS); do \
@@ -521,7 +525,7 @@ _builtin_require_workspace:
 
 # Execute the interpreter provisioned by setup without discovering a project
 # workspace or creating a dependency-resolution file during a runtime command.
-override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PYTHONPATH="$(if $(1),$(1),$(PROJECT_ROOT)/src)" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
+override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src$(if $(1),:$(1))" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
 # The checked-out flext-infra lane owns every lifecycle verb: a workspace
 # runs the generator it carries (the submodule src), so a broken published
 # dependency tip can never block the local recovery cycle. A checkout without

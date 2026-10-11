@@ -32,6 +32,8 @@ class FlextInfraConstantsCheck:
         "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
     )
     PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
+    PYTEST_SELECTION_PROFILE_FILENAME: ClassVar[str] = "testmon-selection.pstats"
+    PYTEST_INVENTORY_PROFILE_FILENAME: ClassVar[str] = "testmon-inventory.pstats"
     PYTEST_PROFILE_STARTUP: ClassVar[str] = (
         "import atexit, cProfile, os, sys\n"
         "from pathlib import Path\n"

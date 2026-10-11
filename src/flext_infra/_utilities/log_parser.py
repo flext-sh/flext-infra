@@ -49,7 +49,7 @@ class FlextInfraUtilitiesLogParser:
             )
         return u.validate_value(
             m.Infra.SarifReport,
-            sarif_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            sarif_path.read_text(encoding=c.DEFAULT_ENCODING),
             from_json=True,
         ).map(lambda report: tuple(res for run in report.runs for res in run.results))
 

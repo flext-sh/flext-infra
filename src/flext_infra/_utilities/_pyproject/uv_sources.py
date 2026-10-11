@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
@@ -17,9 +16,6 @@ from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
 )
-
-if TYPE_CHECKING:
-    from tomlkit.items import Table
 
 
 class FlextInfraUtilitiesPyprojectUvSources(
@@ -116,11 +112,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
 
     @staticmethod
-    def _resolved_uv_table(document: t.Cli.TomlDocument) -> Table:
+    def _resolved_uv_table(document: t.Cli.TomlDocument) -> t.Cli.TomlTable:
         """Return the ``[tool.uv]`` table, creating its nesting when absent.
 
         Returns:
-            The resulting ``Table``.
+            The resulting ``t.Cli.TomlTable``.
 
         """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
@@ -131,7 +127,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _sync_uv_candidates(
-        uv: Table,
+        uv: t.Cli.TomlTable,
         candidate_sources: t.StrMapping,
         local_members: t.StrSequence,
         requirements: t.StrSequence,
@@ -143,12 +139,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
         manifest owns this temporary pin; the committed lock owns normal
         resolutions when no candidate is declared (flext-oe420).
         """
+        dependency_extras = FlextInfraUtilitiesDependencies.dependency_extras
         overrides = [
-            f"{name}{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)}"
+            f"{name}{dependency_extras(requirements, name)}"
             for name in sorted(local_members)
         ]
         overrides.extend(
-            f"{name}{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)} @ {source}"
+            f"{name}{dependency_extras(requirements, name)} @ {source}"
             for name, source in sorted(candidate_sources.items())
         )
         if overrides:
@@ -162,7 +159,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _sync_uv_constraints(
-        uv: Table,
+        uv: t.Cli.TomlTable,
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
         """Sync the SSOT-rendered constraints, link mode, and banned cooldown keys.
@@ -194,7 +191,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
 
     @staticmethod
-    def _sync_uv_environments(uv: Table, resolution: m.Infra.UvResolutionSpec) -> None:
+    def _sync_uv_environments(
+        uv: t.Cli.TomlTable,
+        resolution: m.Infra.UvResolutionSpec,
+    ) -> None:
         """Sync the fleet toolchain SSOT environments.
 
         Environments come from the fleet toolchain SSOT: an empty declaration
@@ -213,7 +213,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
             u.Cli.toml_remove_key_if_present(uv, "environments")
 
     @staticmethod
-    def _sync_uv_excludes(uv: Table, resolution: m.Infra.UvResolutionSpec) -> None:
+    def _sync_uv_excludes(
+        uv: t.Cli.TomlTable,
+        resolution: m.Infra.UvResolutionSpec,
+    ) -> None:
         """Sync the uv scoped exclude-dependencies payload.
 
         Project is a flext-infra routing key only; uv scoped form is
@@ -298,16 +301,24 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _sync_member_sources(
-        uv: Table,
+        uv: t.Cli.TomlTable,
         members: t.SequenceOf[m.Infra.RepositoryRef],
     ) -> None:
-        """Replace native workspace identity with the declared root path overlay."""
+        """Replace native workspace identity with the declared root path overlay.
+
+        Raises:
+            TypeError: If the UV sources table is not a TOML mapping.
+        """
         u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:
             sources = u.Cli.toml_ensure_table(uv, "sources")
         wanted = {member.distribution for member in members}
-        for source_name in tuple(sources):
+        source_entries = u.Cli.toml_as_mapping(sources)
+        if source_entries is None:
+            msg = "UV sources must be a TOML mapping"
+            raise TypeError(msg)
+        for source_name in tuple(source_entries):
             entry = u.Cli.toml_table_child(sources, source_name)
             if source_name not in wanted and (
                 source_name.startswith("flext-")
@@ -326,7 +337,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 member.distribution,
                 {"path": member.path.as_posix(), "editable": member.editable},
             )
-        if not tuple(sources):
+        if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")
 
 

@@ -24,6 +24,7 @@ from flext_infra import c
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSourceBases,
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
@@ -38,7 +39,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     """Resolve facade letters to the class their declaring module names."""
 
     @classmethod
-    def facade_classes(cls, package: str) -> t.StrMapping:
+    def facade_classes(
+        cls,
+        package: str,
+        *,
+        source_root: Path | None = None,
+    ) -> t.StrMapping:
         """Map every letter ``package`` publishes to its declared facade class.
 
         Returns:
@@ -48,8 +54,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If facade package is not importable for derivation.
 
         """
+        sources = (
+            {
+                path: path.read_text(encoding=c.DEFAULT_ENCODING)
+                for root in FlextInfraUtilitiesRopeCore.import_project_roots(
+                    source_root
+                )
+                for path in (root / c.Infra.DEFAULT_SRC_DIR / package).rglob("*.py")
+            }
+            if source_root is not None
+            else {}
+        )
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            {},
+            sources,
             (f"from {package} import *",),
         )
         indexed = modules.get(package)

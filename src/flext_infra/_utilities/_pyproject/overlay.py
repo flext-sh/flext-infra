@@ -130,7 +130,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
         live_payload: t.JsonMapping,
         live: str | None,
     ) -> p.Result[t.StrSequence]:
-        """Remove only entries carrying this generator's explicit provenance."""
+        """Remove only entries carrying this generator's explicit provenance.
+
+        Returns:
+            The resulting ``p.Result[t.StrSequence]``.
+        """
         groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         values = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
@@ -184,7 +188,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
         live_payload: t.JsonMapping,
         live: str | None,
     ) -> p.Result[bool]:
-        """Preserve the live project dev additions before conformance floors."""
+        """Preserve the live project dev additions before conformance floors.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
         groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
         custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
             live_payload,

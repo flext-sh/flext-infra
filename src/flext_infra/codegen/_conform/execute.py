@@ -378,7 +378,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)
         root = request.root.expanduser().resolve()
-        roots = {"@bootstrap-0": root}
+        roots = {
+            f"@bootstrap-{index}": (root / repository.path).resolve()
+            for index, repository in enumerate(plan.repositories)
+        }
         return transaction.run_files_locked(
             roots,
             lambda scope_root: self._publish_bootstrap_locked(
@@ -449,11 +452,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 f"bootstrap requires declared destinations for {surface}",
             )
         expected_paths = {
-            request.root.expanduser().resolve() / path for path in destinations
+            (request.root.expanduser().resolve() / repository.path / path).resolve()
+            for repository in plan.repositories
+            for path in destinations
         }
-        if {file.path for file in plan.files} != expected_paths:
+        planned_paths = {file.path for file in plan.files}
+        if planned_paths != expected_paths:
             return r[t.VariadicTuple[Path]].fail(
-                f"bootstrap plan does not own the declared destinations for {surface}",
+                f"bootstrap plan does not own the declared destinations for {surface}: "
+                f"missing={sorted(map(str, expected_paths - planned_paths))}; "
+                f"unexpected={sorted(map(str, planned_paths - expected_paths))}",
             )
         changed = tuple(
             file for file in plan.files if u.Infra.codegen_file_requires_effect(file)

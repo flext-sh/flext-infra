@@ -9,10 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_cli import u as cli_u
 
+from flext_core import u as core_u
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +22,358 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
+
+    @staticmethod
+    def test_local_utility_binding_preserves_global_cli_runtime(tmp_path: Path) -> None:
+        """Reusing a sufficient local core import must not replace global CLI u."""
+        tm.that(tm.ok(cli_u.Cli.env_read("FIELD", {"FIELD": "value"})), eq="value")
+        tm.that(hasattr(core_u, "Cli"), eq=False)
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        unaffected = (
+            'def existing():\n    return u.Cli.env_read("FIELD", {"FIELD": "value"})\n'
+        )
+        source = (
+            "from flext_cli import u\n"
+            "def migrated():\n"
+            "    from flext_core import t, u\n"
+            '    return t.scalar_mapping_adapter().validate_python({"name": "value"})\n'
+            + unaffected
+        )
+        path.write_text(source, encoding="utf-8")
+        phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources={path: source}
+                )
+            )
+            tm.that(len(planned), eq=1)
+            updated = planned[0].updated_source
+            tm.that(updated, has="from flext_cli import u")
+            tm.that(updated, has="    from flext_core import u")
+            tm.that(updated, has=unaffected)
+            tm.that(updated, has="    return u.scalar_mapping_adapter()")
+            tm.that(updated.count("from flext_core import"), eq=1)
+            remaining = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources={path: updated}
+                )
+            )
+        tm.that(remaining, empty=True)
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def _reviewed_behavior_provider(
+        package: Path,
+        variant: str,
+    ) -> t.MutableMappingKV[Path, str]:
+        """Declare a governed provider with real core inheritance and utility MRO.
+
+        Returns:
+            Source declarations consumed by the real semantic planner.
+
+        """
+        provider = package.parent / "flext_reviewed"
+        private = provider / "_utilities"
+        private.mkdir(parents=True)
+        sources = {
+            provider / "__init__.py": (
+                "from .typings import t\nfrom .utilities import u\n"
+                '__all__ = ["t", "u"]\n'
+            ),
+            provider / "typings.py": (
+                "from flext_core import t as core_t\n"
+                "class FlextReviewedTypes(core_t):\n    pass\n"
+                't = FlextReviewedTypes\n__all__ = ["FlextReviewedTypes", "t"]\n'
+            ),
+            private / "base.py": (
+                "from flext_core import u as core_u\n"
+                "class FlextReviewedBase(core_u):\n"
+                "    @classmethod\n"
+                "    def scalar_mapping_adapter(cls):\n"
+                "        return cls.type_adapter(str)\n"
+                '__all__ = ["FlextReviewedBase"]\n'
+            ),
+            private / "derived.py": (
+                "from .base import FlextReviewedBase\n"
+                "class FlextReviewedDerived(FlextReviewedBase):\n"
+                "    @classmethod\n"
+                "    def scalar_mapping_adapter(cls):\n"
+                "        return cls.type_adapter(int)\n"
+                '__all__ = ["FlextReviewedDerived"]\n'
+            ),
+            private / "unused.py": (
+                "class FlextReviewedUnused:\n"
+                "    @staticmethod\n"
+                "    def scalar_mapping_adapter():\n        return None\n"
+                '__all__ = ["FlextReviewedUnused"]\n'
+            ),
+            provider / "utilities.py": (
+                "from ._utilities.derived import FlextReviewedDerived\n"
+                "class FlextReviewedUtilities(FlextReviewedDerived):\n    pass\n"
+                "u = FlextReviewedUtilities\n"
+                '__all__ = ["FlextReviewedUtilities", "u"]\n'
+            ),
+        }
+        if variant == "orphan":
+            sources.pop(private / "derived.py")
+            sources.pop(private / "unused.py")
+            sources[provider / "utilities.py"] = (
+                "class FlextReviewedUtilities:\n    pass\n"
+                "u = FlextReviewedUtilities\n"
+                '__all__ = ["FlextReviewedUtilities", "u"]\n'
+            )
+        elif variant == "diamond":
+            sources[private / "right.py"] = (
+                "from .base import FlextReviewedBase\n"
+                "class FlextReviewedRight(FlextReviewedBase):\n    pass\n"
+                '__all__ = ["FlextReviewedRight"]\n'
+            )
+            sources[provider / "utilities.py"] = (
+                "from ._utilities.derived import FlextReviewedDerived\n"
+                "from ._utilities.right import FlextReviewedRight\n"
+                "class FlextReviewedUtilities("
+                "FlextReviewedDerived, FlextReviewedRight):\n"
+                "    pass\n"
+                "u = FlextReviewedUtilities\n"
+                '__all__ = ["FlextReviewedUtilities", "u"]\n'
+            )
+        elif variant == "masked":
+            sources[private / "derived.py"] = sources[private / "derived.py"].replace(
+                "        return cls.type_adapter(int)\n",
+                "        return cls.type_adapter(int)\n"
+                "    scalar_mapping_adapter = None\n",
+            )
+        elif variant == "static-internal":
+            sources[private / "derived.py"] = (
+                sources[private / "derived.py"]
+                .replace("@classmethod", "@staticmethod")
+                .replace(
+                    "def scalar_mapping_adapter(cls)", "def scalar_mapping_adapter()"
+                )
+                .replace("cls.type_adapter", "FlextReviewedBase.type_adapter")
+            )
+        return sources
+
+    @staticmethod
+    def test_reviewer_counterexamples_reject_atomically(tmp_path: Path) -> None:
+        """Reproduce each unsafe identity, pending import and public-owner election."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        provider = TestsFlextInfraSemanticPhaseContract._reviewed_behavior_provider(
+            package, "orphan"
+        )
+        cases = {
+            "unresolved competitor": (
+                "if condition:\n    from flext_core import t\n"
+                "else:\n    from unrelated_package import t\n"
+                "value = t.scalar_mapping_adapter()\n"
+            ),
+            "pending imports": (
+                "from flext_core import t as core_t\n"
+                "from flext_cli import t as cli_t\n"
+                "def first():\n    return core_t.scalar_mapping_adapter()\n"
+                "def second():\n    return cli_t.json_dict_adapter()\n"
+            ),
+            "pending module imports": (
+                "from flext_core import t as core_t\n"
+                "from flext_cli import t as cli_t\n"
+                "first = core_t.scalar_mapping_adapter()\n"
+                "second = cli_t.json_dict_adapter()\n"
+            ),
+            "unreachable owner": (
+                "from flext_reviewed import t\nvalue = t.scalar_mapping_adapter()\n"
+            ),
+        }
+        accepted: list[str] = []
+        for case, source in cases.items():
+            sources = {**provider, path: source}
+            for source_path, content in sources.items():
+                source_path.write_text(content, encoding="utf-8")
+            with infra.rope_workspace(root) as rope:
+                planned = u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            if planned.success:
+                accepted.append(case)
+            else:
+                expected = (
+                    "ambiguous imported identity"
+                    if case == "unresolved competitor"
+                    else "not reachable through public utilities"
+                    if case == "unreachable owner"
+                    else "conflicting relocated behavior import destination"
+                )
+                tm.fail(planned, has=expected)
+            for source_path, content in sources.items():
+                tm.that(source_path.read_text(encoding="utf-8"), eq=content)
+        tm.that(accepted, eq=[])
+
+    @staticmethod
+    @pytest.mark.parametrize("variant", ["override", "diamond", "static-internal"])
+    def test_public_utility_c3_elects_effective_owner(
+        tmp_path: Path,
+        variant: str,
+    ) -> None:
+        """A reachable derived override wins; exported uncomposed helpers do not."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = (
+            package.parent / "flext_reviewed" / "consumer.py"
+            if variant == "static-internal"
+            else package / "consumer.py"
+        )
+        source = "from flext_reviewed import t\nvalue = t.scalar_mapping_adapter()\n"
+        sources = {
+            **TestsFlextInfraSemanticPhaseContract._reviewed_behavior_provider(
+                package, variant
+            ),
+            path: source,
+        }
+        for source_path, content in sources.items():
+            source_path.write_text(content, encoding="utf-8")
+        phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources=sources
+                )
+            )
+            tm.that(tuple(edit.file_path for edit in planned), eq=(path,))
+            updated = planned[0].updated_source
+            if variant == "static-internal":
+                tm.that(updated, has="from flext_reviewed._utilities.derived import")
+                tm.that(
+                    updated, has="value = FlextReviewedDerived.scalar_mapping_adapter()"
+                )
+            else:
+                tm.that(updated, has="from flext_reviewed import u")
+                tm.that(updated, has="value = u.scalar_mapping_adapter()")
+            remaining = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources={**sources, path: updated}
+                )
+            )
+        tm.that(remaining, empty=True)
+        for source_path, content in sources.items():
+            tm.that(source_path.read_text(encoding="utf-8"), eq=content)
+
+    @staticmethod
+    @pytest.mark.parametrize("variant", ["masked", "internal"])
+    def test_utility_owner_masks_and_context_reject_atomically(
+        tmp_path: Path,
+        variant: str,
+    ) -> None:
+        """Reject later non-method masks and internal class-dependent dispatch."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = TestsFlextInfraSemanticPhaseContract._reviewed_behavior_provider(
+            package, variant
+        )
+        path = (
+            package.parent / "flext_reviewed" / "consumer.py"
+            if variant == "internal"
+            else package / "consumer.py"
+        )
+        sources[path] = (
+            "from flext_reviewed import t\nvalue = t.scalar_mapping_adapter()\n"
+        )
+        for source_path, content in sources.items():
+            source_path.write_text(content, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        tm.fail(
+            planned,
+            has="requires facade dispatch"
+            if variant == "internal"
+            else "not reachable through public utilities",
+        )
+        for source_path, content in sources.items():
+            tm.that(source_path.read_text(encoding="utf-8"), eq=content)
+
+    @staticmethod
+    @pytest.mark.parametrize("utilities_import", ["", "from flext_core import u\n"])
+    def test_named_adapter_factories_bind_public_utilities(
+        tmp_path: Path,
+        utilities_import: str,
+    ) -> None:
+        """Discover real core factory owners and insert the missing public import."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from flext_core import t\n"
+            + utilities_import
+            + "value = t.strict_str_sequence_adapter().validate_python(['scope'])\n"
+            + "other = t.scalar_mapping_adapter().validate_python({'name': 'value'})\n"
+            + "untouched = 't.scalar_mapping_adapter()'\n"
+            + "def local(t):\n    return t.scalar_mapping_adapter()\n"
+        )
+        path.write_text(source, encoding="utf-8")
+        phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources={path: source}
+                )
+            )
+            tm.that(len(planned), eq=1)
+            updated = planned[0].updated_source
+            tm.that(updated, has="u.strict_str_sequence_adapter()")
+            tm.that(updated, has="u.scalar_mapping_adapter()")
+            tm.that(updated, has="from flext_core import u")
+            tm.that(updated, has="def local(t):\n    return t.scalar_mapping_adapter()")
+            tm.that(updated, has="'t.scalar_mapping_adapter()'")
+            remaining = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources={path: updated}
+                )
+            )
+        tm.that(remaining, empty=True)
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_named_adapter_factories_reject_shadowed_utilities(tmp_path: Path) -> None:
+        """A locally bound utilities receiver cannot receive a factory rewrite."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from flext_core import t\n"
+            "def local(u):\n    return t.scalar_mapping_adapter()\n"
+        )
+        path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.fail(planned, has="receiver is shadowed")
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_named_adapter_factories_reject_ambiguous_imports(tmp_path: Path) -> None:
+        """Two imported typing identities cannot elect a utilities receiver."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from flext_core import t\n"
+            "from flext_cli import t\n"
+            "value = t.scalar_mapping_adapter()\n"
+        )
+        path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.fail(planned, has="ambiguous imported identity")
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
     @pytest.mark.parametrize(

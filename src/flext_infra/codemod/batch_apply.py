@@ -164,13 +164,23 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The rescanned report after the proven AST replacements.
 
+        Raises:
+            RuntimeError: If the syntax cascade repeats a source state.
+
         """
         after_ast = current
-        if current.actionable:
+        seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
+        while after_ast.actionable:
+            state = FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
+            if state in seen:
+                msg = "mod syntax cascade cycle before semantic publication"
+                raise RuntimeError(msg)
+            seen.add(state)
+            before_ast = after_ast
             FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             rope_workspace.refresh()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        FlextInfraCodemodBatchApply.validate_fix_match(current, after_ast)
+            FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
         return after_ast
 
     @staticmethod

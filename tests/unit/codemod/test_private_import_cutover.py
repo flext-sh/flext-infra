@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import dataclasses
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,8 +17,10 @@ from tests import tm
 
 
 @dataclasses.dataclass(frozen=True)
-class FacadeNaming:
+class TestsFlextInfraFacadeNaming:
     """The resolved facade identity of one public/private module pair."""
+
+    __test__ = False
 
     private_module: str
     private_class: str
@@ -33,11 +36,11 @@ class FacadeNaming:
         leaf: str,
         nested_class: str,
         alias: str,
-    ) -> FacadeNaming:
+    ) -> TestsFlextInfraFacadeNaming:
         """Derive every name from the sampled family naming contract.
 
         Returns:
-            The resulting ``FacadeNaming``.
+            The resulting ``TestsFlextInfraFacadeNaming``.
 
         """
         return cls(
@@ -52,6 +55,55 @@ class FacadeNaming:
 class TestsFlextInfraPrivateImportCutover:
     """Exercise private-import automation only through ``u.Infra``."""
 
+    @pytest.mark.parametrize(
+        ("example_path", "consumer"),
+        [
+            (
+                "flext-grpc/examples/advanced_usage.py",
+                (
+                    "from flext_grpc import c, p, t\n"
+                    "example = namespace['ExamplesFlextGrpcAdvancedUsage']()\n"
+                    "assert example.c is c\n"
+                    "assert example.p is p\n"
+                    "assert example.t is t\n"
+                ),
+            ),
+            (
+                "flext-oracle-wms/examples/example_02_configuration.py",
+                (
+                    "from flext_oracle_wms import c\n"
+                    "configurations = namespace['get_environment_configs']()\n"
+                    "assert configurations\n"
+                    "assert all(configuration.timeout == c.OracleWms.DEFAULT_TIMEOUT\n"
+                    "           for configuration in configurations.values())\n"
+                    "settings = namespace['create_demo_config']()\n"
+                    "assert settings.OracleWms.timeout == c.OracleWms.DEFAULT_TIMEOUT\n"
+                ),
+            ),
+        ],
+    )
+    def test_workspace_examples_preserve_public_facade_runtime(
+        self,
+        example_path: str,
+        consumer: str,
+    ) -> None:
+        """Exercise actual facade accessors and offline configuration consumers."""
+        root = Path(__file__).resolve().parents[4]
+        executed = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys\nfrom runpy import run_path\n"
+                    "namespace = run_path(sys.argv[1])\n" + consumer,
+                    str(root / example_path),
+                ],
+                cwd=root,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True)
+        tm.that(executed.stderr, eq="")
+
     def test_earlier_semantic_move_retires_stale_preflight_import(
         self,
         tmp_path: Path,
@@ -59,7 +111,12 @@ class TestsFlextInfraPrivateImportCutover:
         """Test earlier semantic move retires stale preflight import."""
         consumer, statement, _ = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family("constants", "profile", "Profile", "c"),
+            TestsFlextInfraFacadeNaming.from_family(
+                "constants",
+                "profile",
+                "Profile",
+                "c",
+            ),
         )
         sources = {consumer: "from flext_sample import c\nvalue = c.Profile.Value\n"}
         tm.that(self._edits(tmp_path, sources, consumer, statement), empty=True)
@@ -75,7 +132,12 @@ class TestsFlextInfraPrivateImportCutover:
         """An invalid import blocks only a cutover that reaches its module."""
         consumer, statement, facade_sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family("constants", "profile", "Profile", "c"),
+            TestsFlextInfraFacadeNaming.from_family(
+                "constants",
+                "profile",
+                "Profile",
+                "c",
+            ),
         )
         package = installed_dependency_path / "flext_sample"
         package.mkdir()
@@ -121,7 +183,7 @@ class TestsFlextInfraPrivateImportCutover:
         *,
         case: str,
         depth: int,
-    ) -> dict[Path, str]:
+    ) -> t.MutableMappingKV[Path, str]:
         """Materialize the installed sample dependency package for one case.
 
         Deep cases bridge the private facade through real subclasses and
@@ -142,7 +204,7 @@ class TestsFlextInfraPrivateImportCutover:
         )
         if case == "ambiguous":
             dependency_sources[package / "other.py"] = self._facade_source(
-                naming=FacadeNaming(
+                naming=TestsFlextInfraFacadeNaming(
                     private_module="flext_sample._constants.profile",
                     private_class="FlextSampleConstantsProfile",
                     root_class="OtherConstants",
@@ -187,7 +249,12 @@ class TestsFlextInfraPrivateImportCutover:
         """Test installed facades are read only discovery inputs."""
         consumer, statement, facade_sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family("constants", "profile", "Profile", "c"),
+            TestsFlextInfraFacadeNaming.from_family(
+                "constants",
+                "profile",
+                "Profile",
+                "c",
+            ),
         )
         package = installed_dependency_path / "flext_sample"
         package.mkdir()
@@ -531,7 +598,7 @@ class TestsFlextInfraPrivateImportCutover:
         )
 
     @staticmethod
-    def _facade_source(*, naming: FacadeNaming) -> str:
+    def _facade_source(*, naming: TestsFlextInfraFacadeNaming) -> str:
         """Build one public facade module that nests the private class.
 
         Returns:
@@ -550,7 +617,7 @@ class TestsFlextInfraPrivateImportCutover:
     def _facade_case(
         cls,
         tmp_path: Path,
-        naming: FacadeNaming,
+        naming: TestsFlextInfraFacadeNaming,
         *,
         import_alias: str = "",
     ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
@@ -639,7 +706,12 @@ class TestsFlextInfraPrivateImportCutover:
         """Derive the nested facade path and remove the private import atomically."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family("utilities", "managers", "Sample", "u"),
+            TestsFlextInfraFacadeNaming.from_family(
+                "utilities",
+                "managers",
+                "Sample",
+                "u",
+            ),
         )
         sources[consumer_path] = (
             "from flext_sample import p\n"
@@ -665,7 +737,12 @@ class TestsFlextInfraPrivateImportCutover:
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
             dataclasses.replace(
-                FacadeNaming.from_family("utilities", "managers", "Sample", "u"),
+                TestsFlextInfraFacadeNaming.from_family(
+                    "utilities",
+                    "managers",
+                    "Sample",
+                    "u",
+                ),
                 root_bases="(FlextSampleUtilitiesManagers)",
             ),
         )
@@ -683,7 +760,7 @@ class TestsFlextInfraPrivateImportCutover:
         """Keep a homonymous local binding outside the authenticated cutover."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family(
+            TestsFlextInfraFacadeNaming.from_family(
                 "utilities",
                 "managers",
                 "Sample",
@@ -705,22 +782,347 @@ class TestsFlextInfraPrivateImportCutover:
         tm.that(updated, has="    return managers")
         tm.that(updated, lacks=private_import)
 
-    def test_rejects_shadowed_public_facade_alias(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        "consumer",
+        [
+            (
+                "def select(u: str) -> str:\n"
+                "    return FlextSampleUtilitiesManagers.ServiceManagers or u\n"
+            ),
+            (
+                "class Consumer:\n"
+                "    def select(self, u):\n"
+                "        return FlextSampleUtilitiesManagers.ServiceManagers or u\n"
+            ),
+            (
+                "class Consumer:\n"
+                "    def select(self):\n"
+                "        u = 'local'\n"
+                "        return FlextSampleUtilitiesManagers.ServiceManagers or u\n"
+            ),
+            "u = 'module'\nmanager = FlextSampleUtilitiesManagers.ServiceManagers\n",
+            (
+                "class Consumer:\n"
+                "    def select[u](self):\n"
+                "        return FlextSampleUtilitiesManagers.ServiceManagers\n"
+            ),
+            (
+                "class Consumer[u]:\n"
+                "    def select(self):\n"
+                "        return FlextSampleUtilitiesManagers.ServiceManagers\n"
+            ),
+            (
+                "class Consumer:\n"
+                "    u = 'attribute'\n"
+                "    class Nested("
+                "metaclass=FlextSampleUtilitiesManagers.ServiceManagers):\n"
+                "        pass\n"
+            ),
+            (
+                "class Consumer:\n"
+                "    u = 'attribute'\n"
+                "    manager = FlextSampleUtilitiesManagers.ServiceManagers\n"
+            ),
+            (
+                "class Consumer:\n"
+                "    global u\n"
+                "    u = 'module'\n"
+                "    def select(self):\n"
+                "        return FlextSampleUtilitiesManagers.ServiceManagers\n"
+            ),
+        ],
+    )
+    def test_rejects_shadowed_public_facade_alias(
+        self,
+        tmp_path: Path,
+        consumer: str,
+    ) -> None:
         """Fail before effects when a local binding would capture the facade alias."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family("utilities", "managers", "Sample", "u"),
+            TestsFlextInfraFacadeNaming.from_family(
+                "utilities",
+                "managers",
+                "Sample",
+                "u",
+            ),
         )
-        sources[consumer_path] = (
-            f"{private_import}\n\n"
-            "def select(u: str) -> str:\n"
-            "    return FlextSampleUtilitiesManagers.ServiceManagers or u\n"
-        )
+        sources[consumer_path] = f"{private_import}\n\n{consumer}"
 
         tm.fail(
             self._plan(tmp_path, sources, consumer_path, private_import),
             has="public facade alias u is shadowed",
         )
+
+    @pytest.mark.parametrize(
+        "class_binding",
+        [
+            "    u = 'attribute'\n",
+            "    @property\n    def u(self):\n        return 'attribute'\n",
+            "    class u:\n        pass\n",
+        ],
+    )
+    def test_preserves_class_attributes_named_like_public_facade(
+        self,
+        tmp_path: Path,
+        class_binding: str,
+    ) -> None:
+        """Class attributes do not capture module references inside methods."""
+        consumer_path, private_import, sources = self._facade_case(
+            tmp_path,
+            TestsFlextInfraFacadeNaming.from_family(
+                "utilities",
+                "managers",
+                "Sample",
+                "u",
+            ),
+        )
+        sources[consumer_path] = (
+            f"{private_import}\n\nclass Consumer:\n"
+            f"{class_binding}"
+            "    def select(self):\n"
+            "        return FlextSampleUtilitiesManagers.ServiceManagers\n"
+        )
+
+        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
+
+        tm.that(updated, has=class_binding)
+        tm.that(updated, has="return u.Sample.ServiceManagers")
+        tm.that(updated, lacks=private_import)
+
+    @pytest.mark.parametrize(
+        "mode", [(True, False), (True, True), (False, False), (False, True)]
+    )
+    @pytest.mark.parametrize(
+        ("declaration", "evaluation", "scope"),
+        [
+            (
+                (
+                    "    select = staticmethod("
+                    "lambda value=PrivateBinding.ServiceManagers: value)\n"
+                ),
+                "Consumer.select()",
+                (True, False),
+            ),
+            (
+                (
+                    "    select = staticmethod("
+                    "lambda *, value=PrivateBinding.ServiceManagers: value)\n"
+                ),
+                "Consumer.select()",
+                (True, False),
+            ),
+            (
+                (
+                    "    class Nested(metaclass=PrivateBinding.ServiceManagers):\n"
+                    "        pass\n"
+                ),
+                "type(Consumer.Nested)",
+                (True, False),
+            ),
+            (
+                (
+                    "    class Nested(Base, "
+                    "selection=PrivateBinding.ServiceManagers):\n"
+                    "        pass\n"
+                ),
+                "Consumer.Nested.selected",
+                (True, False),
+            ),
+            (
+                "    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n",
+                "Consumer.select()",
+                (False, False),
+            ),
+            (
+                (
+                    "    class Nested:\n"
+                    "        selected = PrivateBinding.ServiceManagers\n"
+                ),
+                "Consumer.Nested.selected",
+                (False, False),
+            ),
+            *[
+                (
+                    f"    def select({parameters}){returns}:\n        pass\n",
+                    f"Consumer.select.__annotations__[{key!r}]",
+                    (True, True),
+                )
+                for parameters, returns, key in [
+                    ("self, value: PrivateBinding.ServiceManagers, /", "", "value"),
+                    ("self, value: PrivateBinding.ServiceManagers", "", "value"),
+                    ("self, *, value: PrivateBinding.ServiceManagers", "", "value"),
+                    ("self, *value: PrivateBinding.ServiceManagers", "", "value"),
+                    ("self, **value: PrivateBinding.ServiceManagers", "", "value"),
+                    ("self", " -> PrivateBinding.ServiceManagers", "return"),
+                ]
+            ],
+            (
+                "    value: PrivateBinding.ServiceManagers\n",
+                "Consumer.__annotations__['value']",
+                (True, True),
+            ),
+            (
+                (
+                    "    async def select(self) -> PrivateBinding.ServiceManagers:\n"
+                    "        pass\n"
+                ),
+                "Consumer.select.__annotations__['return']",
+                (True, True),
+            ),
+            (
+                (
+                    "    @decorate(PrivateBinding.ServiceManagers)\n"
+                    "    def select(self):\n        pass\n"
+                ),
+                "Consumer.select.selected",
+                (True, False),
+            ),
+            *[
+                (
+                    f"    def select[T{parameter}]():\n        pass\n",
+                    f"Consumer.select.__type_params__[0].{attribute}",
+                    (True, False),
+                )
+                for parameter, attribute in [
+                    (": PrivateBinding.ServiceManagers", "__bound__"),
+                    (
+                        ": (PrivateBinding.ServiceManagers, int)",
+                        "__constraints__[0]",
+                    ),
+                    (" = PrivateBinding.ServiceManagers", "__default__"),
+                ]
+            ],
+            (
+                (
+                    "    class Nested[T: PrivateBinding.ServiceManagers]:\n"
+                    "        pass\n"
+                ),
+                "Consumer.Nested.__type_params__[0].__bound__",
+                (True, False),
+            ),
+            (
+                (
+                    "    def select[T](self, "
+                    "value: PrivateBinding.ServiceManagers):\n        pass\n"
+                ),
+                "Consumer.select.__annotations__['value']",
+                (True, True),
+            ),
+            (
+                "    type Alias = PrivateBinding.ServiceManagers\n",
+                "Consumer.Alias.__value__",
+                (True, False),
+            ),
+            (
+                (
+                    "    @decorate(PrivateBinding.ServiceManagers)\n"
+                    "    class Nested:\n        pass\n"
+                ),
+                "Consumer.Nested.selected",
+                (True, False),
+            ),
+            (
+                (
+                    "    @staticmethod\n"
+                    "    def select(value=PrivateBinding.ServiceManagers):\n"
+                    "        return value\n"
+                ),
+                "Consumer.select()",
+                (True, False),
+            ),
+        ],
+    )
+    def test_class_cutover_respects_definition_evaluation_scope(
+        self,
+        tmp_path: Path,
+        declaration: str,
+        evaluation: str,
+        *,
+        mode: t.Pair[bool, bool],
+        scope: t.Pair[bool, bool],
+    ) -> None:
+        """Defaults and class keywords use the enclosing dictionary."""
+        shadowed, future_annotations = mode
+        enclosing_scope, annotation_scope = scope
+        consumer_path, private_import, sources = self._facade_case(
+            tmp_path,
+            TestsFlextInfraFacadeNaming.from_family(
+                "utilities",
+                "managers",
+                "Sample",
+                "u",
+            ),
+            import_alias="PrivateBinding",
+        )
+        source = (
+            ("from __future__ import annotations\n" if future_annotations else "")
+            + (
+                f"{private_import}\n"
+                "def decorate(selection):\n"
+                "    def apply(function):\n"
+                "        function.selected = selection\n"
+                "        return function\n"
+                "    return apply\n"
+                "class Base:\n"
+                "    def __init_subclass__(cls, *, selection):\n"
+                "        cls.selected = selection\n"
+                "class Consumer:\n"
+            )
+            + ("    u = 'attribute'\n" if shadowed else "")
+            + declaration
+        )
+        sources[consumer_path] = source
+        planned = self._plan(tmp_path, sources, consumer_path, private_import)
+        rejected_capture = (
+            shadowed
+            and enclosing_scope
+            and (not annotation_scope or not future_annotations)
+        )
+        if rejected_capture and planned.failure:
+            tm.fail(planned, has="public facade alias u is shadowed")
+            return
+        updated = tm.ok(planned)[0].updated_source
+        tm.that(updated, has="u.Sample.ServiceManagers")
+        package = tmp_path / "flext-sample/src/flext_sample"
+        sources[package / "_utilities/managers.py"] = (
+            "class FlextSampleUtilitiesManagers:\n"
+            "    class ServiceManagers(type):\n        pass\n"
+        )
+        sources[package / "__init__.py"] = "from .utilities import u\n"
+        sources[consumer_path] = updated
+        for path, content in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        executed = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sys\nfrom runpy import run_path\n"
+                        "sys.path.insert(0, sys.argv[1])\n"
+                        "from flext_sample import u\n"
+                        "Consumer = run_path(sys.argv[2])['Consumer']\n"
+                        + (
+                            f"assert {evaluation} == 'u.Sample.ServiceManagers'\n"
+                            if annotation_scope and future_annotations
+                            else f"assert {evaluation} is u.Sample.ServiceManagers\n"
+                        )
+                    ),
+                    str(package.parent),
+                    str(consumer_path),
+                ],
+                cwd=tmp_path,
+            ),
+        )
+        if rejected_capture:
+            tm.that(u.Cli.process_succeeded(executed.outcome), eq=False)
+            tm.that(executed.stderr, has="AttributeError")
+            tm.fail(planned, has="public facade alias u is shadowed")
+            return
+        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True)
+        tm.that(executed.stderr, eq="")
 
     def test_accepts_alias_owned_by_removed_private_import(
         self,
@@ -729,7 +1131,7 @@ class TestsFlextInfraPrivateImportCutover:
         """Replace the old import binding with its public facade atomically."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family(
+            TestsFlextInfraFacadeNaming.from_family(
                 "models",
                 "base",
                 "Metadata",
@@ -752,7 +1154,7 @@ class TestsFlextInfraPrivateImportCutover:
         """Keep a type-only facade import in the original type-only boundary."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family(
+            TestsFlextInfraFacadeNaming.from_family(
                 "models",
                 "base",
                 "Metadata",
@@ -795,7 +1197,7 @@ class TestsFlextInfraPrivateImportCutover:
                 f"from {private_module} import {private_class} as {alias}b",
             )
             sources[package_path / f"{layer}.py"] = self._facade_source(
-                naming=FacadeNaming(
+                naming=TestsFlextInfraFacadeNaming(
                     private_module=private_module,
                     private_class=private_class,
                     root_class=f"FlextSample{layer.title()}",
@@ -836,7 +1238,7 @@ class TestsFlextInfraPrivateImportCutover:
         """Rewire an operational family without a registered family-to-alias map."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family(
+            TestsFlextInfraFacadeNaming.from_family(
                 "exceptions",
                 "base",
                 "Invalid",
@@ -859,7 +1261,7 @@ class TestsFlextInfraPrivateImportCutover:
         """Delete the long public alias while wiring the canonical facade."""
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            FacadeNaming.from_family(
+            TestsFlextInfraFacadeNaming.from_family(
                 "models",
                 "pydantic",
                 "Pydantic",

@@ -157,7 +157,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         cls,
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
-    ) -> dict[Path, str]:
+    ) -> t.MutableMappingKV[Path, str]:
         """Rebind config imports only to their existing, permitted declaration.
 
         A declaration in another family is not repaired by importing its leaf.
@@ -212,8 +212,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for part in path.relative_to(namespace).parts
         )
 
-    @staticmethod
+    @classmethod
     def _collect_settings_exports(
+        cls,
         context: tuple[
             p.Infra.RopeProject,
             str,
@@ -222,9 +223,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             Path,
             t.MappingKV[Path, str],
         ],
-    ) -> dict[str, t.Pair[str, str]]:
+    ) -> t.MutableMappingKV[str, t.Pair[str, str]]:
         project, source, namespace, runtime, root, sources = context
-        exports: dict[str, t.Pair[str, str]] = {}
+        exports: t.MutableMappingKV[str, t.Pair[str, str]] = {}
         for statement in ast.parse(source).body:
             if not isinstance(statement, ast.ImportFrom) or statement.level:
                 continue
@@ -243,9 +244,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     root,
                     sources,
                 )
-                resolved = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_settings_export(
-                    alias_context
-                )
+                resolved = cls._resolve_settings_export(alias_context)
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]
         return exports
@@ -275,12 +274,13 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if binding is None:
             return None
-        owner, _line = binding.get_definition_location()
+        owner = binding.get_definition_location()[0]
         resource = owner.get_resource() if owner is not None else None
-        if resource is None:
-            return None
-        target = Path(resource.real_path).resolve()
-        if target not in sources or not target.is_relative_to(namespace):
+        if (
+            resource is None
+            or (target := Path(resource.real_path).resolve()) not in sources
+            or not target.is_relative_to(namespace)
+        ):
             return None
         if not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target):
             return None
@@ -470,7 +470,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         sources: t.MappingKV[Path, str],
         declaration: t.Triple[Path, ast.ClassDef, p.Infra.RopePyName],
         destination: t.Triple[Path, str, str],
-    ) -> dict[Path, str]:
+    ) -> t.MutableMappingKV[Path, str]:
         origin, node, _binding = declaration
         target, _owner, exposure = destination
         root = Path(project.root.real_path)
@@ -700,7 +700,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         ).read()
         target_resource = project.get_resource(target.relative_to(root).as_posix())
         destination = project.get_pymodule(target_resource).get_scope()
-        imports: dict[str, ast.Import | ast.ImportFrom] = {}
+        imports: t.MutableMappingKV[str, ast.Import | ast.ImportFrom] = {}
         for statement in ast.parse(source).body:
             if isinstance(statement, ast.Import | ast.ImportFrom):
                 for alias in statement.names:
@@ -845,6 +845,16 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             and isinstance(item.ctx, ast.Load)
             and item.id not in locals_
         }
+
+    @classmethod
+    def preflight_semantic_import_graph(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        original: t.MappingKV[Path, str],
+        proposed: t.MappingKV[Path, str],
+    ) -> None:
+        """Expose the existing graph guard for a composed semantic candidate."""
+        cls._preflight_declaration_graph(workspace, original, proposed)
 
     @staticmethod
     def _preflight_declaration_graph(

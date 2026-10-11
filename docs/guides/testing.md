@@ -82,6 +82,9 @@ the inherited plugin set, Python path, and existing site customization. Complete
 descendants publish PID-separated profiles bound by digest to the same run receipt;
 the report renders them separately alongside the suite and collection profiles.
 Abruptly terminated processes may leave no profile and are never reported as completed.
+Focused `FILE` runs collect a complete inventory rather than an incremental selection;
+the report authenticates that inventory profile from the run's selection plan without
+requiring a selection profile that the run did not produce.
 
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound

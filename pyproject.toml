@@ -464,7 +464,7 @@ notice-rgx = "Copyright \\(c\\) \\d{4} \\S[^\\n]*\\. All rights reserved\\."
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = [
   "flext_cli.FlextCli",
-  "flext_cli.config.FlextCliConfig",
+  "flext_cli.FlextCliConfig",
   "flext_cli.m.ArbitraryTypesModel",
   "flext_cli.m.BaseModel",
   "flext_cli.m.BaseSettings",
@@ -508,7 +508,6 @@ runtime-evaluated-base-classes = [
   "flext_infra._models._config.external_cache.FlextInfraExternalCacheDirectorySpec",
   "flext_infra._models.codegen_render.MkdocsRenderContext",
   "flext_infra._models.git.GitRemoteRequest",
-  "flext_infra._models.git.GitRepoRequest",
   "flext_infra._models.layout._LayoutContract",
   "flext_infra._models.mise_toolchain._ConfigContract",
   "flext_infra._models.mixins.FilePathMixin",

@@ -10,7 +10,6 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_core import c as core_c
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
 
@@ -62,10 +61,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         """
         if value is None:
             return None
-        if isinstance(value, core_c.PRIMITIVES_TYPES):
+        if isinstance(value, c.PRIMITIVES_TYPES):
             primitive: t.JsonValue = value
             return primitive
-        scalar_types = core_c.PRIMITIVES_TYPES
+        scalar_types = c.PRIMITIVES_TYPES
         if isinstance(value, list):
             sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
             converted: t.MutableSequenceOf[t.JsonValue] = []

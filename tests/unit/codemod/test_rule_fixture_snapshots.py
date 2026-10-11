@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -17,6 +19,189 @@ from tests import t, tm, u
 
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
+
+    @pytest.mark.parametrize("suffix", ["", "; value = 1", ";"])
+    def test_managed_artifact_sequential_full_source_fixes_parse(
+        self,
+        tmp_path: Path,
+        suffix: str,
+    ) -> None:
+        """Parse sequential pinned-engine outputs and prove both fixed points."""
+        owner = Path(__file__).resolve().parents[3]
+        private_import = (
+            "from flext_infra._utilities.project_managed_artifacts import "
+            "FlextInfraUtilitiesProjectManagedArtifacts"
+        )
+        source = (
+            f"from flext_infra import u\n{private_import}{suffix}\n"
+            "result = FlextInfraUtilitiesProjectManagedArtifacts."
+            "snapshot_config_sources(root)\n"
+        )
+        _ = ast.parse(source)
+        staged: list[tuple[Path, Path, Path, str]] = []
+        for filename, rule_id, expect_fix in (
+            (
+                "rewire-project-managed-artifacts",
+                "rewire-project-managed-artifacts-call",
+                True,
+            ),
+            (
+                "remove-project-managed-artifacts-private-import",
+                "remove-project-managed-artifacts-private-import",
+                not suffix,
+            ),
+        ):
+            root = tmp_path / filename
+            demo = self._owner(root)
+            rule = self._catalog(root) / "rules" / f"{filename}.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    rule,
+                    (self._catalog(owner) / "rules" / rule.name).read_text(
+                        encoding="utf-8",
+                    ),
+                ),
+            )
+            fixture = self._catalog(root) / "tests" / f"{rule_id}-test.yml"
+            case = "  - |\n" + "".join(f"    {line}\n" for line in source.splitlines())
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    fixture,
+                    f"id: {rule_id}\nvalid: []\ninvalid:\n{case}"
+                    if expect_fix
+                    else f"id: {rule_id}\nvalid:\n{case}invalid: []\n",
+                ),
+            )
+            tm.ok(
+                FlextInfraModGateEngine.refresh_rule_snapshots(
+                    root,
+                    (demo, rule),
+                    apply=True,
+                ),
+            )
+            if expect_fix:
+                snapshots = tm.ok(
+                    u.Cli.yaml_safe_load(self._snapshot(root, rule_id)),
+                )["snapshots"]
+                assert isinstance(snapshots, Mapping)
+                tm.that(len(snapshots), eq=1)
+                snapshot = next(iter(snapshots.values()))
+                assert isinstance(snapshot, Mapping)
+                fixed = snapshot["fixed"]
+                assert isinstance(fixed, str)
+                source = fixed
+            _ = ast.parse(source)
+            staged.append((root, demo, rule, rule_id))
+        tm.that(source, has="result = u.Infra.snapshot_config_sources(root)")
+        tm.that(private_import in source, eq=bool(suffix))
+        for root, demo, rule, rule_id in staged:
+            case = "  - |\n" + "".join(f"    {line}\n" for line in source.splitlines())
+            fixture = self._catalog(root) / "tests" / f"{rule_id}-test.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    fixture,
+                    f"id: {rule_id}\nvalid:\n{case}invalid: []\n",
+                ),
+            )
+            tm.ok(
+                FlextInfraModGateEngine.refresh_rule_snapshots(
+                    root,
+                    (demo, rule),
+                    apply=True,
+                ),
+            )
+            tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(root, (demo, rule)))
+
+    def test_managed_artifact_cutover_preserves_live_export_owner(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Run the owned rules against the live initializer and consumer fixtures."""
+        demo = self._owner(tmp_path)
+        tm.ok(
+            FlextInfraModGateEngine.refresh_rule_snapshots(
+                tmp_path,
+                (demo,),
+                apply=True,
+            ),
+        )
+        owner = Path(__file__).resolve().parents[3]
+        catalog = self._catalog(owner)
+        rules = [demo]
+        for filename in (
+            "remove-project-managed-artifacts-private-import",
+            "rewire-project-managed-artifacts",
+        ):
+            source_rule = catalog / "rules" / f"{filename}.yml"
+            rule = self._catalog(tmp_path) / "rules" / source_rule.name
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    rule,
+                    source_rule.read_text(encoding="utf-8"),
+                ),
+            )
+            rules.append(rule)
+            rule_id = (
+                "rewire-project-managed-artifacts-call"
+                if filename == "rewire-project-managed-artifacts"
+                else filename
+            )
+            for relative in (
+                Path("tests") / f"{rule_id}-test.yml",
+                Path("tests")
+                / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
+                / f"{rule_id}{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}",
+            ):
+                source = (catalog / relative).read_text(encoding="utf-8")
+                if relative.name == f"{filename}-test.yml":
+                    initializer = (
+                        owner / "src/flext_infra/_utilities/__init__.py"
+                    ).read_text(encoding="utf-8")
+                    live_case = "  - |\n" + "".join(
+                        f"    {line}\n" for line in initializer.splitlines()
+                    )
+                    source = source.replace("invalid:\n", f"{live_case}invalid:\n")
+                destination = self._catalog(tmp_path) / relative
+                tm.ok(u.Cli.ensure_dir(destination.parent))
+                tm.ok(u.Cli.atomic_write_text_file(destination, source))
+
+        tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, tuple(rules)))
+        for rule in rules[1:]:
+            rule_id = tm.ok(u.Cli.yaml_safe_load(rule))["id"]
+            assert isinstance(rule_id, str)
+            cases = tm.ok(
+                u.Cli.yaml_safe_load(
+                    self._catalog(tmp_path) / "tests" / f"{rule_id}-test.yml",
+                ),
+            )["valid"]
+            assert isinstance(cases, list)
+            for source in cases:
+                assert isinstance(source, str)
+                _ = ast.parse(source)
+            snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
+                "snapshots"
+            ]
+            assert isinstance(snapshots, Mapping)
+            fixed_cases = ""
+            for snapshot in snapshots.values():
+                assert isinstance(snapshot, Mapping)
+                fixed = snapshot["fixed"]
+                assert isinstance(fixed, str)
+                _ = ast.parse(fixed)
+                fixed_cases += "  - |\n" + "".join(
+                    f"    {line}\n" for line in fixed.splitlines()
+                )
+            fixture = self._catalog(tmp_path) / "tests" / f"{rule_id}-test.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    fixture,
+                    fixture.read_text(encoding="utf-8").replace(
+                        "invalid:\n",
+                        f"{fixed_cases}invalid:\n",
+                    ),
+                ),
+            )
+        tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, tuple(rules)))
 
     @staticmethod
     def _catalog(root: Path) -> Path:

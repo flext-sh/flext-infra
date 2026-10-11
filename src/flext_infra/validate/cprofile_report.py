@@ -11,7 +11,7 @@ import pstats
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
-from flext_infra import config, m, r, s, u
+from flext_infra import c, config, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -110,12 +110,14 @@ class FlextInfraCProfileReport(s[bool]):
             raise ValueError(msg)
         policy = config.Infra.tooling.tools.pytest
         suite = directory / policy.profile_suite_filename
+        collection = plan.manifest_path.with_suffix(".pstats")
+        inventory = directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME
         profiles = (
             self.profile,
-            directory / "testmon-selection.pstats",
+            collection,
             *(
-                (directory / "testmon-inventory.pstats",)
-                if plan.inventory_collected
+                (inventory,)
+                if plan.inventory_collected and collection != inventory
                 else ()
             ),
             *((suite,) if suite.is_file() else ()),

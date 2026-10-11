@@ -22,6 +22,25 @@ class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
+    def test_setup_installs_dependencies_before_importing_infra(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Native config admission precedes sync; Python validation follows it."""
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        admitted = recipe.index("config ls --json")
+        installed = recipe.index("$(UV) sync")
+        validated = recipe.index("codegen mise-artifacts")
+        tm.that(admitted < installed < validated, eq=True)
+        tm.that(recipe[:installed], lacks="$(PROJECT_FLEXT_INFRA)")
+
+    @staticmethod
     def test_environment_prerequisites_resolve_without_running_recipes(
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -299,7 +318,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.that(
             makefile,
-            has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" ]; then',
+            has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" '
+            "]; then",
         )
         resolve_assignments = re.findall(
             r"^(?:([\w-]+): )?TOOL_BOOTSTRAP_RESOLVE :=[ ]?(.*)$",

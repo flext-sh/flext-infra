@@ -129,7 +129,7 @@ class TestsFlextInfraCheckReportContract:
         tm.that(self._sources(project), eq=before)
         (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         report = m.Infra.SarifReport.model_validate_json(
-            report_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            report_path.read_text(encoding=c.DEFAULT_ENCODING),
             strict=True,
         )
         assert report.properties is not None

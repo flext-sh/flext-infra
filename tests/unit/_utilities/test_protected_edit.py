@@ -39,17 +39,17 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         updated = "VALUE = 2\n"
-        py_file.write_text(original, encoding=c.Cli.ENCODING_DEFAULT)
+        py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
 
         def invalidate_configuration() -> None:
             """Introduce a real invalid Ruff setting after the valid baseline."""
             (tmp_path / "pyproject.toml").write_text(
                 project_config + "[tool.ruff]\nline-length = 'invalid'\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
 
         def edit() -> None:
-            py_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+            py_file.write_text(updated, encoding=c.DEFAULT_ENCODING)
             invalidate_configuration()
 
         def protected_write() -> None:
@@ -77,7 +77,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         with pytest.raises(RuntimeError, match="ruff normalization failed"):
             protected_write()
-        tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original)
+        tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
     @pytest.mark.parametrize("batch", [False, True])
@@ -111,12 +111,12 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         if nonfixable:
             requested = "VALUE = missing_value\n"
             expected = original
-        py_file.write_text(original, encoding=c.Cli.ENCODING_DEFAULT)
+        py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
         if batch:
             peer = package / "peer.py"
             peer_before = unused + previous
             peer_requested = unused + updated
-            peer.write_text(peer_before, encoding=c.Cli.ENCODING_DEFAULT)
+            peer.write_text(peer_before, encoding=c.DEFAULT_ENCODING)
             result = u.Infra.protected_source_writes(
                 {py_file: requested, peer: peer_requested},
                 request=m.Infra.ProtectedSourceWritesRequest(
@@ -126,7 +126,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                 ),
             )
             tm.that(
-                peer.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                peer.read_text(encoding=c.DEFAULT_ENCODING),
                 eq=peer_before if nonfixable else peer_requested,
             )
         else:
@@ -140,13 +140,13 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             )
         tm.that(result[0], eq=not nonfixable)
         tm.that(result[1], empty=not nonfixable)
-        tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=expected)
+        tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=expected)
 
     @staticmethod
     def _assert_protected_source_write(py_file: Path, workspace: Path) -> None:
         original_source = "def helper() -> int:\n    return 1\n"
         updated_source = "def helper() -> int:\n    return 2\n"
-        py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+        py_file.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
         result = u.Infra.protected_source_write(
             py_file,
@@ -159,7 +159,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         tm.that(result, eq=(True, []))
         tm.that(
-            py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n"),
+            py_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n"),
             eq=updated_source.rstrip("\n"),
         )
 
@@ -187,7 +187,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         py_file = tmp_path / "sample.py"
         original_source = "def value() -> int:\n    return 1\n"
         updated_source = "def value() -> int:\n    return 2\n"
-        py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+        py_file.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
         result = u.Infra.preview_source_writes(
             {py_file: updated_source},
@@ -196,7 +196,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         )
 
         tm.that(result, eq=(True, []))
-        tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original_source)
+        tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original_source)
 
     def test_protected_source_write_skips_pytest_for_non_test_file(
         self,
@@ -218,8 +218,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     ) -> None:
         left_file = tmp_path / "left.py"
         right_file = tmp_path / "right.py"
-        left_file.write_text("VALUE = 1\n", encoding=c.Cli.ENCODING_DEFAULT)
-        right_file.write_text("VALUE = 10\n", encoding=c.Cli.ENCODING_DEFAULT)
+        left_file.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        right_file.write_text("VALUE = 10\n", encoding=c.DEFAULT_ENCODING)
 
         result = u.Infra.protected_source_writes(
             {left_file: "VALUE = 2\n", right_file: "VALUE = 20\n"},
@@ -234,14 +234,14 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(result, eq=(True, []))
         tm.that(
             (
-                left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
+                left_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")
                 == "VALUE = 2"
             ),
             eq=True,
         )
         tm.that(
             (
-                right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
+                right_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")
                 == "VALUE = 20"
             ),
             eq=True,

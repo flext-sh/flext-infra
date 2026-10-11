@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import cProfile
-import importlib
 import os
 import sys
 from pathlib import Path
 
 from flext_infra import c, config, m, u
+from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 
 
 class FlextInfraPytestProfile:
@@ -55,10 +55,7 @@ class FlextInfraPytestProfile:
 
     def _run_parent(self, started_at_monotonic: float) -> int:
         # The entry has already started profiling before importing this adapter.
-        runner_cls = importlib.import_module(
-            "flext_infra.validate.pytest_runner",
-        ).FlextInfraPytestRunner
-        runner = runner_cls.from_environment(
+        runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=(
                 sys.executable,
@@ -91,11 +88,6 @@ class FlextInfraPytestProfile:
                     ),
                 )
 
-        directory_env = c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV
-        previous = os.environ.get(directory_env)
-        os.environ[directory_env] = (
-            config.Infra.tooling.tools.pytest.profile_process_directory
-        )
         try:
             outcome = runner.execute().unwrap()
         except BaseException as failure:
@@ -107,19 +99,11 @@ class FlextInfraPytestProfile:
             else:
                 bind(owned)
             raise
-        finally:
-            if previous is None:
-                os.environ.pop(directory_env, None)
-            else:
-                os.environ[directory_env] = previous
         owned = owned_receipts()
         if len(owned) > 1:
             msg = f"profiled run published more than one run context: {owned}"
             raise RuntimeError(msg)
         bind(owned)
-        if not isinstance(outcome, int):
-            msg = f"profiled runner returned a non-integer exit status: {outcome!r}"
-            raise TypeError(msg)
         return outcome
 
     def _finish(self, profile: cProfile.Profile) -> None:
@@ -138,6 +122,14 @@ class FlextInfraPytestProfile:
             if directory is not None:
                 children = directory / policy.profile_process_directory
                 profiles = sorted(children.glob("*.pstats"))
+                profiles.extend(
+                    artifact
+                    for artifact in (
+                        directory / c.Infra.PYTEST_SELECTION_PROFILE_FILENAME,
+                        directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,
+                    )
+                    if artifact.is_file()
+                )
                 suite = directory / policy.profile_suite_filename
                 if suite.is_file():
                     profiles.append(suite)

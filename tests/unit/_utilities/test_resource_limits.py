@@ -259,8 +259,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.that(result.value.outcome.raw_return_code, eq=expected)
         tm.that(bool(result.value.stdout.splitlines()), eq=True)
         pid = int(result.value.stdout.splitlines()[0])
-        tm.that(int(pid_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)), eq=pid)
-        tm.that(error_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), empty=True)
+        tm.that(int(pid_file.read_text(encoding=c.DEFAULT_ENCODING)), eq=pid)
+        tm.that(error_file.read_text(encoding=c.DEFAULT_ENCODING), empty=True)
         remaining = u.Cli.run_raw(
             ("/bin/ps", "-p", str(pid), "-o", "stat="),
             timeout=policy.termination_grace_seconds,

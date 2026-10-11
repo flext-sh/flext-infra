@@ -265,7 +265,7 @@ class FlextInfraUtilitiesCodemodProject(
         for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
             if module.name == c.Infra.INIT_PY:
                 continue
-            source = module.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            source = module.read_text(encoding=c.DEFAULT_ENCODING)
             declared = frozenset(
                 FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
                     source,
@@ -301,7 +301,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         tree = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(
-            facade_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            facade_file.read_text(encoding=c.DEFAULT_ENCODING),
         ).get_ast()
         for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(tree):
             if (
@@ -1380,7 +1380,7 @@ class FlextInfraUtilitiesCodemodProject(
         """
         return frozenset(
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                file_path.read_text(encoding=c.DEFAULT_ENCODING),
             ),
         )
 

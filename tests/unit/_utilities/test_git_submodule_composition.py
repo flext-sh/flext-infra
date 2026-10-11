@@ -35,7 +35,7 @@ class TestsFlextInfraGitSubmoduleComposition:
         (member / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "{name}"\ndependencies = [{quoted_runtime}]\n\n'
             f"[dependency-groups]\ndev = [{quoted_groups}]\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.commit_git_changes(member, f"declare {name}")
         return member
@@ -123,7 +123,7 @@ class TestsFlextInfraGitSubmoduleComposition:
         u.Tests.initialize_git_repo(root)
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "alpha"\n\tpath = alpha\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.fail(
             u.Infra.git_submodule_declarations(root),
@@ -138,7 +138,7 @@ class TestsFlextInfraGitSubmoduleComposition:
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "alpha"]\n\tpath = shared\n'
             '[submodule "beta"]\n\tpath = shared\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.fail(
             u.Infra.git_submodule_declarations(root),
@@ -155,7 +155,7 @@ class TestsFlextInfraGitSubmoduleComposition:
         member = parent / "alpha"
         (member / "CHANGELOG.md").write_text(
             "moved\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.commit_git_changes(member, "advance member")
         u.Tests.git_run(parent, "add", "alpha")

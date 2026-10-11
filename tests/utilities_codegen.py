@@ -255,7 +255,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return (
             None
             if match is None or match.desired_content is None
-            else tm.not_none(match.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+            else tm.not_none(match.desired_content).decode(c.DEFAULT_ENCODING)
         )
 
     @staticmethod

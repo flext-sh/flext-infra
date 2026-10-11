@@ -38,7 +38,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         """
         facet_dir = package_root / subpackage
         facet_dir.mkdir()
-        (facet_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (facet_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         symbol_name = (
             f"Flext{subpackage.removeprefix('_').title().replace('_', '')}Part"
         )
@@ -47,7 +47,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
             f"class {symbol_name}:\n"
             '    """Bootstrap owner."""\n\n'
             f'__all__ = ["{symbol_name}"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         return facet_dir
 
@@ -69,7 +69,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         tm.that(result, eq=0)
         for facet in (lazy_parts, typings):
             init_content = (facet / c.Infra.INIT_PY).read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             tm.that(init_content, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
             tm.that(init_content, lacks="install_lazy_exports")
@@ -95,13 +95,13 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         lazy_parts = self._write_bootstrap_owner(package_root, "_lazy_parts")
         generated_stub = f'{c.Infra.AUTOGEN_HEADER}\n"""Lazy Parts package."""\n'
         init_path = lazy_parts / c.Infra.INIT_PY
-        init_path.write_text(generated_stub, encoding=c.Cli.ENCODING_DEFAULT)
+        init_path.write_text(generated_stub, encoding=c.DEFAULT_ENCODING)
 
         result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
         tm.that(init_path.is_file(), eq=True)
-        rendered = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        rendered = init_path.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(rendered.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
         tm.that(rendered, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
         tm.that(rendered, lacks="install_lazy_exports")
@@ -132,7 +132,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         result = u.Tests.run_lazy_init(repository_root)
 
         init_content = (consumer_facet / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(result, eq=0)
         tm.that(
@@ -165,7 +165,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
             "class FlextModels:\n"
             '    """Root model facade."""\n\n'
             '__all__ = ["FlextModels"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         result = u.Tests.run_lazy_init(repository_root)
@@ -173,7 +173,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         tm.that(result, eq=0)
         for package_dir in (package_root, public_facet):
             init_content = (package_dir / c.Infra.INIT_PY).read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             tm.that(
                 init_content,
@@ -204,13 +204,13 @@ class TestsFlextInfraLazyInitBootstrapPackage:
             "class FlextModels:\n"
             '    """Root model facade."""\n\n'
             '__all__ = ["FlextModels"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         result = u.Tests.run_lazy_init(repository_root)
 
         root_init = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         published = next(
             ast.literal_eval(node.value)

@@ -154,7 +154,7 @@ class FlextInfraSemanticPublication:
             if (
                 plan.path.resolve() not in template_sources
                 and plan.before.content is not None
-                and plan.before.content.decode(c.Cli.ENCODING_DEFAULT).startswith(
+                and plan.before.content.decode(c.DEFAULT_ENCODING).startswith(
                     c.Infra.AUTOGEN_HEADERS,
                 )
             ):

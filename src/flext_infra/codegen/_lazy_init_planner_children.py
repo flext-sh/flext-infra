@@ -65,7 +65,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if any(not module.is_package_init for module in entry.modules):
                 return True
             if entry.init_path.is_file():
-                source = entry.init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                source = entry.init_path.read_text(encoding=c.DEFAULT_ENCODING)
                 if source.strip() and not source.startswith(c.Infra.AUTOGEN_HEADER):
                     return True
         return False

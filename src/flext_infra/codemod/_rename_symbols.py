@@ -331,7 +331,10 @@ class FlextInfraRenameSymbols:
                         accepted = accepted or destination is not None
                         continue
                     if destination is not None or not new_suffix.isidentifier():
-                        msg = f"declaration rename destination is occupied: {owner}.{new_suffix}"
+                        msg = (
+                            f"declaration rename destination is occupied: "
+                            f"{owner}.{new_suffix}"
+                        )
                         raise ValueError(msg)
                     module, line = expected.get_definition_location()
                     resource = module.get_resource() if module is not None else None
@@ -340,7 +343,10 @@ class FlextInfraRenameSymbols:
                         raise ValueError(msg)
                     path = Path(resource.real_path)
                     if path not in sources:
-                        msg = f"declaration rename escapes authenticated inventory: {path}"
+                        msg = (
+                            f"declaration rename escapes authenticated inventory: "
+                            f"{path}"
+                        )
                         raise ValueError(msg)
                     offset = u.Infra.find_identifier_offset_in_lines(
                         sources[path].splitlines(keepends=True),
@@ -348,7 +354,10 @@ class FlextInfraRenameSymbols:
                         symbol=old_suffix.split(".")[-1],
                     )
                     if offset is None:
-                        msg = f"declaration rename has no identifier: {owner}.{old_suffix}"
+                        msg = (
+                            f"declaration rename has no identifier: "
+                            f"{owner}.{old_suffix}"
+                        )
                         raise ValueError(msg)
                     changes = u.Infra.rename_changes(
                         project,

@@ -145,7 +145,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
             True when the file opens with the generator's AUTOGEN_HEADER.
 
         """
-        with path.open(encoding=c.Cli.ENCODING_DEFAULT) as handle:
+        with path.open(encoding=c.DEFAULT_ENCODING) as handle:
             return handle.readline().startswith(c.Infra.AUTOGEN_HEADER)
 
 
