@@ -599,6 +599,7 @@ Infra:
       # The pre-push hook runs every pre_push row below. make setup installs
       # both hooks locally with prek and installs none under CI=Y.
       pre_commit: true
+      pre_commit_check_gates: [format, lint, markdown, conflict-markers]
       pre_push: true
       workflow:
         - {verb: setup, contexts: [local, ci]}
