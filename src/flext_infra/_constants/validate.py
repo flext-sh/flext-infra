@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from enum import IntEnum, unique
+from enum import IntEnum, StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -19,6 +19,15 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsSharedInfra:
     """Shared infrastructure constants consumed by flext_infra.constants."""
+
+    @unique
+    class PytestConnectivityProperty(StrEnum):
+        """Wire properties proving a connectivity prerequisite skip."""
+
+        REASON = "flext_connectivity_prerequisite"
+        PHASE = "flext_connectivity_prerequisite_phase"
+        CAPABILITY = "flext_connectivity_prerequisite_capability"
+        NODE = "flext_connectivity_prerequisite_node"
 
     TYPING_MUTATION_METADATA_DEPENDENCIES: ClassVar[
         tuple[type[ScopeProvider | ParentNodeProvider | ExpressionContextProvider], ...]

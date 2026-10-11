@@ -158,3 +158,6 @@ class FlextInfraPytestProfile:
                 self.output.with_suffix(".pstats.json"),
                 receipt.model_dump_json(indent=2) + "\n",
             ).unwrap()
+
+
+__all__: list[str] = ["FlextInfraPytestProfile"]

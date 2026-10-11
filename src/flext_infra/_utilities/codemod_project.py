@@ -673,9 +673,9 @@ class FlextInfraUtilitiesCodemodProject(
     ) -> t.Infra.RopeResource | None:
         """Resolve descendants in the SDK's complete search-root order.
 
-        A file has no descendants in its own search root. Later roots may
-        still contain a package or namespace with the same spelling, so every
-        root retains its independent parent resolution.
+        The SDK elects a same-named directory before a module file. Only an
+        elected folder can contain descendants in that search root; later
+        roots retain their independent package and namespace resolution.
 
         Returns:
             The first real child module in the native resolution order.
@@ -709,7 +709,7 @@ class FlextInfraUtilitiesCodemodProject(
                     parent_name, folder, level or 1
                 )
             parent = modules_by_name[parent_key]
-            if parent is None or not isinstance(parent, p.Infra.RopeRoot):
+            if not isinstance(parent, p.Infra.RopeRoot):
                 continue
             child_key = (child_name, parent.real_path, 1)
             if child_key not in modules_by_name:

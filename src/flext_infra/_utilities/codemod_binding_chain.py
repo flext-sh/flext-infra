@@ -58,20 +58,28 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 The resulting ``bool``.
             """
             root, source, project = frame
-            capture = m.Infra.AstGrepCapture.model_validate(captures[condition.variable])
+            capture = m.Infra.AstGrepCapture.model_validate(
+                captures[condition.variable]
+            )
             content = sources[source].encode("utf-8")
             text, start, end = cls._validated_capture_span(source, capture, content)
             tree = ast.parse(text, filename=str(source))
             if not any(
                 isinstance(node, ast.expr | ast.Import | ast.ImportFrom)
-                and FlextInfraUtilitiesRopeRuntimeModules.source_offset(text, node) == start
+                and FlextInfraUtilitiesRopeRuntimeModules.source_offset(text, node)
+                == start
                 and ast.get_source_segment(text, node) == capture.text
                 for node in ast.walk(tree)
             ):
                 return False
-            if condition.predicate is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT:
+            if (
+                condition.predicate
+                is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
+            ):
                 return cls._unreferenced_import_holds(tree, capture.text)
-            resource = project.get_resource(source.relative_to(root.resolve()).as_posix())
+            resource = project.get_resource(
+                source.relative_to(root.resolve()).as_posix()
+            )
             module = project.get_pymodule(resource)
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
             if cls._type_payload_occurrence(project, module, text, start, end):
@@ -83,7 +91,10 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 project, module, text, (start, end), sources
             ):
                 return False
-            if condition.predicate is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE:
+            if (
+                condition.predicate
+                is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
+            ):
                 return True
             return cls._resolved_expression_holds(
                 (project, module, scope),
@@ -656,10 +667,8 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 for parent in ast.walk(tree)
                 for child in ast.iter_child_nodes(parent)
             }
-            declarations = (
-                cls._single_reaching_declarations(
-                    tree, parents, scope, expression
-                )
+            declarations = cls._single_reaching_declarations(
+                tree, parents, scope, expression
             )
             if isinstance(expression, ast.Attribute):
                 return not declarations
@@ -668,13 +677,13 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             declaration = declarations[0]
             if isinstance(declaration, ast.arg):
                 return False
-            start = FlextInfraUtilitiesRopeRuntimeModules.source_offset(source, declaration)
+            start = FlextInfraUtilitiesRopeRuntimeModules.source_offset(
+                source, declaration
+            )
             if start >= offset:
                 return False
-            return (
-                cls._declaration_reaches_unconditionally(
-                    parents, declaration, expression, declared_routes
-                )
+            return cls._declaration_reaches_unconditionally(
+                parents, declaration, expression, declared_routes
             )
 
         @staticmethod
@@ -700,7 +709,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             spelling = ast.unparse(expression)
             declarations: list[ast.AST] = []
             for node in ast.walk(tree):
-                names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(node)
+                names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
+                    node
+                )
                 attribute = isinstance(node, ast.Attribute) and isinstance(
                     node.ctx, ast.Store | ast.Del
                 )

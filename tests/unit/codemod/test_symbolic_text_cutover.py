@@ -24,6 +24,40 @@ class TestsFlextInfraSymbolicTextCutover:
     """Exercise native findings, binding admission, and public publication."""
 
     @staticmethod
+    @pytest.mark.parametrize("namespace", [False, True])
+    @pytest.mark.parametrize("layout", ["same-root", "importing-folder"])
+    def test_snapshot_preserves_child_lookup_with_a_file_owner(
+        mod_workspace: Path,
+        *,
+        namespace: bool,
+        layout: str,
+    ) -> None:
+        """Snapshot closure preserves the SDK's independent child resolution."""
+        source = mod_workspace / c.Infra.DEFAULT_SRC_DIR
+        importing = source if layout == "same-root" else mod_workspace / "consumer_area"
+        importing.mkdir(exist_ok=True)
+        package = importing / "search_owner"
+        package.mkdir(parents=True)
+        earlier = source / "search_owner.py"
+        earlier.write_text("class Earlier:\n    pass\n", encoding="utf-8")
+        if not namespace:
+            (package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        child = package / "child.py"
+        child.write_text("class Later:\n    pass\n", encoding="utf-8")
+        consumer = importing / "consumer.py"
+        consumer.write_text("from search_owner import child\n", encoding="utf-8")
+
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
+        )
+        captured = {state.path: state.content for state in snapshot.states}
+        tm.that(earlier in captured, eq=layout == "importing-folder")
+        if layout == "importing-folder":
+            tm.that(captured[earlier], eq=earlier.read_bytes())
+        tm.that(captured[child], eq=child.read_bytes())
+
+    @staticmethod
     def test_snapshot_preserves_imports_in_nested_statement_suites(
         mod_workspace: Path,
     ) -> None:

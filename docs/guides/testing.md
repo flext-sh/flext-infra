@@ -58,6 +58,16 @@ Run the complete suite through its declared verb:
 make test-full
 ```
 
+For an unbounded diagnostic of one declared file, the same verb accepts the
+validated repository-relative input:
+
+```bash
+make test-full FILE=tests/unit/codemod/test_symbolic_text_cutover.py
+```
+
+Both phases use the same persistent database. This scoped receipt proves only
+the requested file; production acceptance still requires the complete suite.
+
 Use `make profile-test` before optimizing a slow suite, then `make profile-test-report`
 to render the parent and aggregated child profiles. Profiling uses the same Make runner,
 persistent Testmon database, selection, and deadline as `make test`. Each collection

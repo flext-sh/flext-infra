@@ -236,7 +236,8 @@ class TestsFlextInfraPytestDiag:
             '<property name="flext_connectivity_prerequisite_capability" '
             f'value="{capability}"/>'
             f'<property name="flext_connectivity_prerequisite_node" value="{node}"/>'
-            '</properties><skipped type="pytest.skip" message="ordinary skip"/></testcase>'
+            '</properties><skipped type="pytest.skip" message="ordinary '
+            'skip"/></testcase>'
             "</testsuite></testsuites>",
             encoding="utf-8",
         )

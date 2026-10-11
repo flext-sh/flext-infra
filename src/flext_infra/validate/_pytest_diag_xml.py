@@ -113,10 +113,12 @@ class FlextInfraPytestDiagXmlMixin:
         properties = [
             (prop.attrib.get("name", ""), prop.attrib.get("value", ""))
             for prop in case.iter("property")
-            if prop.attrib.get("name", "").startswith("flext_connectivity_prerequisite")
+            if prop.attrib.get("name", "").startswith(
+                c.Infra.PytestConnectivityProperty.REASON
+            )
         ]
         receipt = dict(properties)
-        node = receipt.get("flext_connectivity_prerequisite_node", "")
+        node = receipt.get(c.Infra.PytestConnectivityProperty.NODE, "")
         # Pytest's JUnit address conversion preserves parameter IDs verbatim.
         path, bracket, params = node.partition("[")
         names = path.split("::")
@@ -124,12 +126,12 @@ class FlextInfraPytestDiagXmlMixin:
         names[-1] += bracket + params
         skipped = case.find("skipped")
         return (
-            len(properties) == len(receipt) == 4
+            len(properties) == len(receipt) == len(c.Infra.PytestConnectivityProperty)
             and len(names) > 1
-            and receipt.get("flext_connectivity_prerequisite") == reason
+            and receipt.get(c.Infra.PytestConnectivityProperty.REASON) == reason
             and bool(reason)
-            and receipt.get("flext_connectivity_prerequisite_phase") == "setup"
-            and bool(receipt.get("flext_connectivity_prerequisite_capability"))
+            and receipt.get(c.Infra.PytestConnectivityProperty.PHASE) == "setup"
+            and bool(receipt.get(c.Infra.PytestConnectivityProperty.CAPABILITY))
             and ".".join(names[:-1]) == case.attrib.get("classname")
             and names[-1] == case.attrib.get("name")
             and sum(1 for _ in case.iter("skipped")) == 1

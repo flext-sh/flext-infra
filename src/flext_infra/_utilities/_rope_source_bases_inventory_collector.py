@@ -71,7 +71,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         elif isinstance(node, ast.AugAssign):
             cls._aug_assign(spec, node, bindings)
         elif isinstance(node, ast.Delete):
-            cls._delete(spec, node, bindings)
+            cls._delete(node, bindings)
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             bindings[node.name] = None
         elif isinstance(node, ast.If):
@@ -558,7 +558,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _delete(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Delete,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:

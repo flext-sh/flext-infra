@@ -325,28 +325,6 @@ class FlextInfraUtilitiesProjectDiscovery(
             ):
                 targets.add(target.relative_to(resolved_root).as_posix())
 
-    @staticmethod
-    def _collect_scan_dir_targets(
-        scan_dir: Path,
-        pattern: str,
-        resolved_root: Path,
-        targets: set[str],
-    ) -> None:
-        """Add every Python file under one configured scan directory.
-
-        Trees the codegen artifact SSOT ignores for source scans (generated
-        sources included) are outside the inventory the semantic phases
-        index, so they never become scan or rewrite targets either.
-        """
-        if not scan_dir.exists():
-            return
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
-        for target in scan_dir.rglob(pattern):
-            if target.is_file() and not ignored.intersection(
-                target.relative_to(scan_dir).parts,
-            ):
-                targets.add(target.relative_to(resolved_root).as_posix())
-
     @classmethod
     def governed_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
         """Return the repositories a verb run at ``repository_root`` governs.

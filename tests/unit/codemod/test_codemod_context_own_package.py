@@ -237,4 +237,3 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 eq=False,
             )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
-

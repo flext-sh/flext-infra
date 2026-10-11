@@ -85,7 +85,7 @@ class TestsFlextInfraPytestProfile:
             / "profiles"
             / config.Infra.tooling.tools.pytest.profile_suite_filename
         )
-        with pytest.raises(RuntimeError, match="target_file|test target file"):
+        with pytest.raises(RuntimeError, match=r"target_file|test target file"):
             profile_parent(runner, output, target_file=target_file)
         tm.that(
             list((cached_runner_project / runner.reports).glob("*/run-context.json")),

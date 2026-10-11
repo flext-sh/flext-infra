@@ -88,7 +88,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             if conv is None or not isinstance(conv, scalar_types):
                 return None
             converted_map[key] = conv
-        mapping: t.JsonValue = t.json_dict_adapter().validate_python(converted_map)
+        mapping: t.JsonValue = u.json_dict_adapter().validate_python(converted_map)
         return mapping
 
     def read_current_typings_from_pyproject(

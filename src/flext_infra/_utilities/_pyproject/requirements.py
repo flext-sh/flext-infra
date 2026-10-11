@@ -30,6 +30,33 @@ class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
 
     @staticmethod
+    def _custom_dev_additions(live_payload: t.JsonMapping) -> t.StrSequence:
+        """Retain custom dev requirements after excluding generated members.
+
+        Returns:
+            The consumer-owned dev additions.
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
+        uv = u.Cli.toml_mapping_child(tool, "uv") or {}
+        sources = u.Cli.toml_mapping_child(uv, "sources") or {}
+        local = {
+            name
+            for name in sources
+            if (entry := u.Cli.toml_mapping_child(sources, name)) is not None
+            and ("path" in entry or entry.get("workspace") is True)
+        }
+        return tuple(
+            requirement
+            for requirement in u.Cli.toml_as_string_list(groups.get(str(c.Infra.DEV)))
+            if not (
+                FlextInfraUtilitiesDependencies.dep_name(requirement) in local
+                and "@" in requirement
+                and ";" not in requirement
+            )
+        )
+
+    @staticmethod
     def requirement_group_fields(
         document: t.Cli.TomlDocument,
         project: t.Cli.TomlTable,

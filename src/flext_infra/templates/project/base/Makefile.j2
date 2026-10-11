@@ -81,6 +81,11 @@ export TMPDIR TMP TEMP; \
 {#- Tests run on the provisioned toolchain: every verb's tools resolve from
     the mise-managed PATH, so a test observes the runtime's tool versions. -#}
 {%- macro pytest_test_runner(operation="", bounded=true) -%}
+{%- if operation == "full" %}
+if [ -n "$(strip $(FILE))" ]; then \
+{{ pytest_target_file("test-full") }}
+fi; \
+{%- endif %}
 {{ pytest_testmon_guard() }}
 {{ pytest_scratch_root() }}
 {{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(UV_RUN) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
