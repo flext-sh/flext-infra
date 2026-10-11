@@ -49,7 +49,7 @@ class FlextInfraModelsCodegenFixModels:
             m.Field(description="File processing status"),
         ]
         changes: Annotated[
-            t.StrSequence, m.Field(description="Applied replacements")
+            t.StrSequence, m.Field(description="Applied replacements"),
         ] = m.Field(default_factory=tuple)
 
     class ConsolidatorReport(m.ContractModel):
