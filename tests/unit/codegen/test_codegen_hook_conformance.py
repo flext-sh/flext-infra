@@ -11,11 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, m, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import c, u
+from tests import c, tm, u
 
 pytestmark = pytest.mark.slow
 

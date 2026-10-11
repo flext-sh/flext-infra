@@ -14,13 +14,11 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
-from flext_infra._models._config import (
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-    FlextInfraConfigModelsRepository,
-    FlextInfraConfigModelsScaffold,
-)
+from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -33,6 +31,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Installed infrastructure CLI command"),
         ]
+        examples_module: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Repository-declared public examples module"),
+        ] = None
         pytest: Annotated[
             FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
@@ -73,6 +75,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         uv_link_mode: Annotated[
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
+        ]
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Canonical toolchain consumed by native bootstrap"),
         ]
         mise_selector: Annotated[
             t.NonEmptyStr,
@@ -286,9 +292,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         def _config_base(self) -> FlextInfraConfigModelsScaffold.ScaffoldConfigBaseSpec:
             """ENFORCE-042 config base selected from the declared profile.
 
-            The fleet-converged ``_config.py`` composes ``FlextSettings`` FIRST
-            with the project's capability base. The base is a property of the
-            declared dependency profile, never a per-project hand choice: the
+            The fleet-converged ``_config.py`` inherits only the project's frozen
+            config capability base, independently of runtime settings. The base
+            is a property of the declared dependency profile, never a per-project
+            hand choice: the
             first entry of ``scaffold.project.config_bases`` whose distribution
             the profile depends on (its runtime requirements or its upstream).
 

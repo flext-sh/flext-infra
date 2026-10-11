@@ -13,11 +13,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -269,7 +268,7 @@ class TestsFlextInfraCodegenLazyInit:
                 owned_init = self._create_init_file(owned, "")
                 (owned / "provider.py").write_text(
                     "class Owned: pass\n__all__ = ('Owned',)\n",
-                    encoding=c.Cli.ENCODING_DEFAULT,
+                    encoding=c.DEFAULT_ENCODING,
                 )
                 owned_inits.add(owned_init)
             outside = repository / ("off_scope_" + "_".join(source_roots))
@@ -285,7 +284,7 @@ class TestsFlextInfraCodegenLazyInit:
                     module = foreign / f"provider{suffix}"
                     module.write_text(
                         "class Foreign: pass\n__all__ = ('Foreign',)\n",
-                        encoding=c.Cli.ENCODING_DEFAULT,
+                        encoding=c.DEFAULT_ENCODING,
                     )
                     foreign_paths.add(module)
 

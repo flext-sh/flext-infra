@@ -177,11 +177,13 @@ class FlextInfraUtilitiesBase:
         )
 
     @staticmethod
-    def merge_conflict_control(line: str | bytes) -> str | None:
+    def merge_conflict_control(
+        line: str | bytes,
+    ) -> c.Infra.MergeConflictControl | None:
         """Classify one Git merge-control line from the protocol SSOT.
 
         Returns:
-            The resulting ``str | None``.
+            The matching typed Git control, or ``None``.
 
         """
         return next(
@@ -189,9 +191,24 @@ class FlextInfraUtilitiesBase:
                 kind
                 for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
                 if (
-                    line.startswith(token.encode("ascii"))
+                    (
+                        line.rstrip(
+                            c.Infra.MERGE_CONFLICT_LINE_TERMINATORS.encode(
+                                c.Infra.MERGE_CONFLICT_ENCODING,
+                            )
+                        )
+                        == token.encode(c.Infra.MERGE_CONFLICT_ENCODING)
+                        if kind == c.Infra.MergeConflictControl.SEPARATOR
+                        else line.startswith(
+                            token.encode(c.Infra.MERGE_CONFLICT_ENCODING)
+                        )
+                    )
                     if isinstance(line, bytes)
-                    else line.startswith(token)
+                    else (
+                        line.rstrip(c.Infra.MERGE_CONFLICT_LINE_TERMINATORS) == token
+                        if kind == c.Infra.MergeConflictControl.SEPARATOR
+                        else line.startswith(token)
+                    )
                 )
             ),
             None,
@@ -275,7 +292,7 @@ class FlextInfraUtilitiesBase:
         """
         rule_ids: set[str] = set()
         fixable_ids: set[str] = set()
-        for raw_document in rule_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).split(
+        for raw_document in rule_path.read_text(encoding=c.DEFAULT_ENCODING).split(
             "\n---",
         ):
             if not any(

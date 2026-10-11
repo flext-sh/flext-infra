@@ -9,13 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

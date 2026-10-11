@@ -111,6 +111,22 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             self.repository_root,
             rules,
         ).unwrap()
+        self.progress.emit("mod: apply syntax fixes before semantic publication")
+        initial = FlextInfraModGateEngine.scan(
+            self.repository_root,
+            fix=False,
+        ).unwrap()
+
+        def apply_ast() -> p.Result[t.Cli.ResultValue]:
+            self._apply_ast_phase(self.repository_root, self.rope, initial)
+            return r[t.Cli.ResultValue].ok(value=True)
+
+        FlextInfraCodemodSemanticApply.run_restoring(
+            self.repository_root,
+            initial,
+            (),
+            apply_ast,
+        ).unwrap()
         self.progress.emit("mod: apply declared consumer text cutovers")
         self._apply_text_phase(
             self.repository_root,
@@ -136,6 +152,36 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"rewritten_bindings={census.constant_consumer_bindings}",
         )
         return self._execute_apply_cycle(text_precondition_pending=False)
+
+    @staticmethod
+    def _apply_ast_phase(
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        current: m.Infra.ModScanReport,
+    ) -> m.Infra.ModScanReport:
+        """Apply syntax fixes before a semantic gate judges their consumers.
+
+        Returns:
+            The rescanned report after the proven AST replacements.
+
+        Raises:
+            RuntimeError: If the syntax cascade repeats a source state.
+
+        """
+        after_ast = current
+        seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
+        while after_ast.actionable:
+            state = FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
+            if state in seen:
+                msg = "mod syntax cascade cycle before semantic publication"
+                raise RuntimeError(msg)
+            seen.add(state)
+            before_ast = after_ast
+            FlextInfraModGateEngine.scan(root, fix=True).unwrap()
+            rope_workspace.refresh()
+            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
+        return after_ast
 
     @staticmethod
     def _apply_text_phase(
@@ -205,13 +251,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             ]
         ]
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
-        after_ast = current
         phase_states = [fingerprint(root, current)]
-        if current.actionable:
-            FlextInfraModGateEngine.scan(root, fix=True).unwrap()
-            rope_workspace.refresh()
-            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        self.validate_fix_match(current, after_ast)
+        after_ast = self._apply_ast_phase(root, rope_workspace, current)
         transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
             root,
             after_ast,

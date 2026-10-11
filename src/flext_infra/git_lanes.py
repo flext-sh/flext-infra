@@ -206,14 +206,14 @@ class FlextInfraGitLanes:
             )
             if wire.failure:
                 return r[m.Infra.GitLaneEvidence].from_failure(wire)
-            pull_requests = u.TypeAdapter(
+            pull_requests = u.type_adapter(
                 tuple[m.Infra.GitLanePullRequest, ...],
             ).validate_json(wire.value)
         if request.read_beads:
             wire = cls._selected_beads(request.repo_root)
             if wire.failure:
                 return r[m.Infra.GitLaneEvidence].from_failure(wire)
-            beads = u.TypeAdapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
+            beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
         evidence = m.Infra.GitLaneEvidence(
@@ -294,7 +294,7 @@ class FlextInfraGitLanes:
                 "coordinator evidence file is required",
             )
         evidence = m.Infra.GitLaneEvidence.model_validate_json(
-            request.evidence_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            request.evidence_file.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if evidence.repo_root.resolve() != request.repo_root.resolve():
             return r[m.Infra.GitLaneEvidence].fail("lane evidence repository mismatch")
@@ -320,7 +320,7 @@ class FlextInfraGitLanes:
             else config.Infra.codegen.branch_policy.lane_governance_file
         )
         return m.Infra.GitLaneGovernance.model_validate_json(
-            source.expanduser().read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            source.expanduser().read_text(encoding=c.DEFAULT_ENCODING),
         ).coordination
 
     @staticmethod

@@ -22,7 +22,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSource,
-    FlextInfraUtilitiesTransformerHeader,
 )
 
 
@@ -139,7 +138,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         """
         expected_target_source = (
-            target_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            target_file.read_text(encoding=c.DEFAULT_ENCODING)
             if target_file.is_file()
             else None
         )
@@ -197,7 +196,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             RuntimeError: If ``not ok``.
 
         """
-        source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
         blocks, ranges, moved = (
             FlextInfraUtilitiesRefactorNamespaceMoves._moved_block_facts(
                 source.splitlines(),
@@ -625,7 +624,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         public_alias_names = {name for name in alias_names if not name.startswith("_")}
         if not public_alias_names:
             return
-        source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
         moved_lines, kept_lines, first_moved_line = cls._split_alias_lines(
             source.splitlines(),
             public_alias_names,
@@ -647,7 +646,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             filename=c.Infra.TYPINGS_PY,
         )
         expected_target_source = (
-            target_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            target_file.read_text(encoding=c.DEFAULT_ENCODING)
             if target_file.is_file()
             else None
         )
@@ -780,7 +779,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part,
             )
-            if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(
+            if not u.Infra.alias_locally_bound(
                 target_source,
                 bound,
             )

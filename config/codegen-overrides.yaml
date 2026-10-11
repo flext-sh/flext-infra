@@ -42,6 +42,7 @@ Infra:
         flext:
           keep_root_files:
             - sgconfig.yml
+            - mise.version
           archive_names:
             - CHANGELOG.md
         flext-cli:

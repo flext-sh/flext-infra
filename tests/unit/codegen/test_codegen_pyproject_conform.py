@@ -10,15 +10,77 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_core import e
 from flext_infra import c, config, m, p
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCodegenPyprojectConform:
     """Tests for ``FlextInfraCodegenPyprojectConform``."""
+
+    def test_workspace_provisions_member_toml_arrays(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Member extras and included groups reach the root provisioning contract."""
+        member = self._repository(
+            "fixture-member",
+            role=c.Infra.MakeProfile.STANDALONE,
+            path="fixture-member",
+        )
+        workspace = u.Tests.workspace_spec(
+            self._repository(
+                "workspace",
+                role=c.Infra.MakeProfile.WORKSPACE,
+                path=".",
+            ),
+            subprojects=(member,),
+        )
+        path = tmp_path / member.path / c.PYPROJECT_FILENAME
+        path.parent.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                path,
+                '[project]\nname = "fixture-member"\n'
+                'dependencies = ["fixture-runtime>=1"]\n'
+                "[project.optional-dependencies]\n"
+                'feature = ["fixture-extra>=2"]\n'
+                "[dependency-groups]\n"
+                'base = ["fixture-tool>=3"]\n'
+                'dev = [{include-group = "base"}, "fixture-checker>=4"]\n',
+            ),
+        )
+        options = u.Infra.PyprojectConformOptions(repository_root=tmp_path)
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                '[project]\nname = "workspace"\ndependencies = []\n',
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+                options=options,
+            ),
+        )
+        dev = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
+        tm.that(dev, has=["fixture-tool>=3", "fixture-checker>=4"])
+        assert workspace.integration is not None
+        tm.that(
+            dev,
+            has=(
+                f"{member.distribution}[feature] @ "
+                f"git+{member.url}@{workspace.integration.branch}"
+            ),
+        )
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                rendered,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+                options=options,
+            ),
+        )
+        tm.that(repeated, eq=rendered)
 
     @staticmethod
     def _repository(
@@ -50,11 +112,15 @@ class TestsFlextInfraCodegenPyprojectConform:
         return u.Tests.workspace_spec(
             self._repository("workspace", role=role, path="."),
             subprojects=(
-                self._repository(
-                    "flext-core",
-                    role=c.Infra.MakeProfile.STANDALONE,
-                    path="flext-core",
-                ),
+                (
+                    self._repository(
+                        "flext-core",
+                        role=c.Infra.MakeProfile.STANDALONE,
+                        path="flext-core",
+                    ),
+                )
+                if role is c.Infra.MakeProfile.STANDALONE
+                else ()
             ),
         )
 
@@ -356,11 +422,10 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     @pytest.mark.parametrize(
-        ("role", "attached"),
+        "role",
         [
-            (c.Infra.MakeProfile.STANDALONE, False),
-            (c.Infra.MakeProfile.STANDALONE, True),
-            (c.Infra.MakeProfile.WORKSPACE, False),
+            c.Infra.MakeProfile.STANDALONE,
+            c.Infra.MakeProfile.WORKSPACE,
         ],
     )
     def test_generated_dev_floors_follow_publication_topology(

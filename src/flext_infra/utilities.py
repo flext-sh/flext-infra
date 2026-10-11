@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodegenPathCutover,
     FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeferredSelfReferenceRewrite,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
@@ -76,7 +77,26 @@ from flext_infra._utilities import (
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
 )
-from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
+from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
+from flext_infra._utilities._git.worktree_io import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_inventory import (
+    FlextInfraUtilitiesRopeSourceBasesInventory,
+)
+from flext_infra._utilities._rope_source_bases_inventory_collector import (
+    FlextInfraUtilitiesRopeSourceBindingCollector,
+)
+from flext_infra._utilities._rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities.compatibility_alias_validation import (
+    FlextInfraUtilitiesCompatibilityAliasValidation,
+)
+from flext_infra._utilities.private_import_validation import (
+    FlextInfraUtilitiesPrivateImportValidation,
+)
 
 
 class FlextInfraUtilities(FlextCliUtilities):
@@ -157,6 +177,14 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesPrivateImportAncestry,
         FlextInfraUtilitiesPrivateImportFacades,
         FlextInfraUtilitiesCodemodRules,
+        FlextInfraUtilitiesGitRemote,
+        FlextInfraUtilitiesRopeSourceBindingCollector,
+        FlextInfraUtilitiesGitWorktreeIO,
+        FlextInfraUtilitiesRopeSourceBasesInventory,
+        FlextInfraUtilitiesRopeSourceBasesAliases,
+        FlextInfraUtilitiesCompatibilityAliasValidation,
+        FlextInfraUtilitiesPrivateImportValidation,
+        FlextInfraUtilitiesRopeSourceBasesRuntime,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

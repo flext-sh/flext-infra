@@ -9,11 +9,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import c, t, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraDepsDetectionDeptry:
@@ -36,11 +34,11 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "project"
         project.mkdir()
-        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.DEFAULT_ENCODING)
         write = ""
         if report is not None:
             payload = tmp_path / "deptry-payload.json"
-            payload.write_text(report, encoding=c.Cli.ENCODING_DEFAULT)
+            payload.write_text(report, encoding=c.DEFAULT_ENCODING)
             write = (
                 'while [ "$#" -gt 0 ]; do\n'
                 '  if [ "$1" = "--json-output" ]; then cp '
@@ -51,7 +49,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         deptry = venv_bin / c.Infra.DEPTRY
         deptry.write_text(
             f"#!/bin/sh\n{write}exit {exit_code}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         deptry.chmod(0o755)
         return venv_bin, project
@@ -64,7 +62,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         """Test issues and exit code are reported."""
         source = tmp_path / "source-report.json"
         tm.ok(u.Cli.json_write(source, deptry_report_payload))
-        report = source.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        report = source.read_text(encoding=c.DEFAULT_ENCODING)
         venv_bin, project = self._environment(tmp_path, report, exit_code=1)
 
         issues, exit_code = tm.ok(

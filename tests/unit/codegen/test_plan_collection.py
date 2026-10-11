@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import m, u
+from tests import tm
 
 
 class TestsFlextInfraPlanCollection:
@@ -91,6 +91,20 @@ class TestsFlextInfraPlanCollection:
                 "canonical_dir": "docs/plans",
                 "sources": "kilo-local-plans",
             })
+
+    @pytest.mark.parametrize(
+        "field",
+        ["plan_globs", "exclude_globs", "updated_fields"],
+    )
+    def test_yaml_sequence_items_keep_their_strict_contract(
+        self,
+        field: str,
+    ) -> None:
+        """Accept YAML lists without coercing their invalid item values."""
+        source = self._config().sources[0].model_dump()
+        source[field] = [3]
+        with pytest.raises(ValueError, match="valid string"):
+            m.Infra.PlanCollectionSource.model_validate(source)
 
     def test_plan_and_companion_are_snapshotted_without_writing(
         self,

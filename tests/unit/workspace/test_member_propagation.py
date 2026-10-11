@@ -20,11 +20,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra, main
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, t, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator

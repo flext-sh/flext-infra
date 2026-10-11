@@ -8,27 +8,67 @@ from __future__ import annotations
 
 import re
 import shutil
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, t, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
+    def test_setup_installs_dependencies_before_importing_infra(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Native config admission precedes sync; Python validation follows it."""
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        admitted = recipe.index("config ls --json")
+        installed = recipe.index("$(UV) sync")
+        validated = recipe.index("codegen mise-artifacts")
+        tm.that(admitted < installed < validated, eq=True)
+        tm.that(recipe[:installed], lacks="$(PROJECT_FLEXT_INFRA)")
+
+    @staticmethod
+    def test_environment_prerequisites_resolve_without_running_recipes(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """GNU Make resolves the complete environment guard dependency graph."""
+        _profile, project_root = generated_make_template
+        checked = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "--question", "_builtin_require_environment"],
+                cwd=project_root,
+            ),
+        )
+        # Question mode reports pending phony recipes as 1, unresolved rules as 2.
+        tm.that(
+            checked.outcome.raw_return_code,
+            eq=1,
+            msg=checked.stdout + checked.stderr,
+        )
+
+    @staticmethod
     @pytest.mark.remote
     @pytest.mark.slow
+    @pytest.mark.parametrize("verb", ["setup", "upg"])
     def test_setup_preserves_the_resolved_native_locks(
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        verb: str,
     ) -> None:
-        """Provision the real fixture without replacing its native lock payloads."""
+        """Both lifecycles use Mise's interpreter; setup preserves native locks."""
         profile = c.Infra.MakeProfile.STANDALONE
         project_root = u.Tests.resolved_make_checkout(
             resolved_make_templates[profile],
@@ -43,7 +83,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
         provisioned = tm.ok(
             u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup"],
+                ["--no-print-directory", verb],
                 cwd=project_root,
             ),
         )
@@ -53,10 +93,67 @@ class TestsFlextInfraCodegenMakeUpgrade:
             eq=True,
             msg=provisioned.stdout + provisioned.stderr,
         )
-        tm.that(tuple(lock.read_bytes() for lock in locks), eq=previous)
+        if verb == "setup":
+            tm.that(tuple(lock.read_bytes() for lock in locks), eq=previous)
         tm.that(
             (u.Infra.runtime_environment_dir(project_root) / "pyvenv.cfg").is_file(),
             eq=True,
+        )
+        managed_python = tm.ok(
+            u.Cli.capture(
+                ["mise", "-C", str(project_root), "which", "python"],
+                cwd=project_root,
+            ),
+        ).strip()
+        base_prefix_command = ["-c", "import sys; print(sys.base_prefix)"]
+        managed_prefix = tm.ok(
+            u.Cli.capture([managed_python, *base_prefix_command], cwd=project_root),
+        ).strip()
+        environment_python = u.Infra.runtime_environment_dir(project_root) / (
+            "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+        )
+        environment_prefix = tm.ok(
+            u.Cli.capture(
+                [str(environment_python), *base_prefix_command], cwd=project_root
+            ),
+        ).strip()
+        tm.that(environment_prefix, eq=managed_prefix)
+
+    @staticmethod
+    @pytest.mark.remote
+    @pytest.mark.slow
+    def test_setup_rejects_invalid_lock_without_syncing_dependencies(
+        tmp_path: Path,
+        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """The real setup refuses invalid lock input without changing packages."""
+        profile = c.Infra.MakeProfile.STANDALONE
+        project_root = u.Tests.resolved_make_checkout(
+            resolved_make_templates[profile],
+            tmp_path / "invalid-setup-lock",
+            profile,
+        )
+        lock = project_root / c.Infra.UV_LOCK_FILENAME
+        lock.write_text('version = "invalid"\n', encoding="utf-8")
+        previous_lock = lock.read_bytes()
+        environment = u.Infra.runtime_environment_dir(project_root)
+        previous_packages = tuple(
+            sorted(environment.glob("lib/python*/site-packages/*.dist-info")),
+        )
+
+        provisioned = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup"],
+                cwd=project_root,
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(provisioned.outcome), eq=False)
+        tm.that(provisioned.stderr, has="ERROR[setup] uv.lock does not match")
+        tm.that(lock.read_bytes(), eq=previous_lock)
+        tm.that(
+            tuple(sorted(environment.glob("lib/python*/site-packages/*.dist-info"))),
+            eq=previous_packages,
         )
 
     @staticmethod
@@ -143,7 +240,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             *converge.split("\n\n", 1)[0].splitlines(),
         ]
 
-    def test_upg_is_the_only_resolver_and_setup_installs_frozen(
+    def test_upg_is_the_only_resolver_and_setup_requires_matching_lock(
         self,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -152,10 +249,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         The generated Makefile confines every uv upgrade to the `upg`
         lifecycle and every `mise lock --bump` to that lifecycle or its shared
         bootstrap gated by a switch that only `upg` sets. `setup` installs
-        what the committed locks pin (`--frozen`, `install --locked`) and
-        never stops on a stale lock; `audit` holds the lock verdict.
+        what the committed locks pin (`--locked`, `install --locked`) and
+        rejects a stale UV lock before synchronization.
         """
-        _profile, project_root = generated_make_template
+        profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
         )
@@ -189,28 +286,23 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 'relock "$(PROJECT_ROOT)"',
             ],
         )
-        # Every `mise install` names only declared toolchain keys: a bare
-        # install would also provision the operator's global registry. Setup
-        # installs what the lock pins `--locked` and the rest unlocked, so an
-        # incomplete or stale lock never stops it
-        # (operator-ruling-2026-10-09-setup-resilient).
+        # Every install names only the declared keys and keeps the committed
+        # lock authoritative; no host tool list or unlocked install survives.
         declared = " ".join(f'"{key}"' for key in toolchain.mise_install_keys)
-        tm.that(makefile, has=f"for mise_tool in {declared};")
-        installs = re.findall(r"install --yes(.*?)(?:; \\|$)", makefile, re.MULTILINE)
+        installs = re.findall(
+            r"install --locked --yes(.*?)(?:; \\|$)", makefile, re.MULTILINE
+        )
         tm.that(
             {install.strip() for install in installs},
-            eq={declared, "$$mise_without_lock"},
+            eq={declared},
         )
-        tm.that(makefile, has="install --locked --yes $$mise_from_lock")
         tm.that(
             makefile,
-            has='MISE_LOCKFILE=false "$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" '
-            "install --yes $$mise_without_lock",
+            lacks=["MISE_LOCKFILE=false", "$$mise_without_lock", "$$mise_from_lock"],
         )
-        # Setup holds no lock verdict: the toolchain proof runs in `audit`,
-        # resolving uv through the mise installation (#1887), never PATH.
+        # Activation proves the installed identities before any post-setup hook.
         activated = makefile.split("_setup_activated:\n", 1)[1].split("\n\n", 1)[0]
-        tm.that(activated, lacks="mise-proof")
+        tm.that(activated, has="mise-proof")
         audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]
         tm.that(
             audit,
@@ -224,7 +316,11 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "make upg",
             ],
         )
-        tm.that(makefile, has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then')
+        tm.that(
+            makefile,
+            has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" '
+            "]; then",
+        )
         resolve_assignments = re.findall(
             r"^(?:([\w-]+): )?TOOL_BOOTSTRAP_RESOLVE :=[ ]?(.*)$",
             makefile,
@@ -235,27 +331,53 @@ class TestsFlextInfraCodegenMakeUpgrade:
         sync_flags = re.search(r"^UV_SYNC_FLAGS := (.*)$", makefile, re.MULTILINE)
         assert sync_flags is not None
         tm.that(sync_flags.group(1), lacks="--upgrade")
-        # Setup never resolves, checks or writes uv.lock: a readable lock
-        # installs --frozen, an unreadable one provisions straight from the
-        # manifest, and nothing deletes or re-derives the committed lock.
+        # Setup verifies the committed lock before any dependency sync;
+        # only upg may resolve or write it.
         setup_recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
             "\n\n",
             1,
         )[0]
-        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=[])
-        tm.that(setup_recipe, has=["uv_lock_mode=--frozen", "$$uv_lock_mode"])
+        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=["$(UV) lock"])
         tm.that(
             setup_recipe,
-            has='--requirements "$(UV_PROJECT)/pyproject.toml" --all-extras',
+            has=[
+                "lock --check",
+                "$(UV_SYNC_FLAGS) --locked",
+                "ERROR[setup]",
+                "make upg",
+            ],
+        )
+        lock_check = setup_recipe.index("lock --check")
+        sync = setup_recipe.index("$(UV) sync")
+        tm.that(lock_check < setup_recipe.index("exit 2;", lock_check) < sync, eq=True)
+        admission = "codegen mise-artifacts"
+        tm.that(setup_recipe.count(admission), eq=2)
+        tm.that(lock_check < setup_recipe.index(admission) < sync, eq=True)
+        tm.that(setup_recipe.rindex(admission) < sync, eq=True)
+        tm.that(
+            setup_recipe,
+            has=[
+                '--repository-root "$(PROJECT_ROOT)" --config-only',
+                "for member in $(WORKSPACE_SUBPROJECTS); do",
+                '--repository-root "$(PROJECT_ROOT)/$$member" --config-only',
+            ],
         )
         tm.that(
             setup_recipe,
             lacks=[
-                "uv_lock_mode=--locked",
+                "--frozen",
+                "WARNING[setup]",
+                "--requirements",
                 'rm -f "$(UV_PROJECT)/uv.lock"',
                 ">/dev/null",
-                "make upg",
             ],
+        )
+        tm.that(
+            "--all-packages" in sync_flags.group(1),
+            eq=profile is c.Infra.MakeProfile.WORKSPACE,
+        )
+        tm.that(
+            makefile, has="override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable"
         )
 
         mise_toml = u.Cli.toml_mapping_from_text(
@@ -265,7 +387,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         settings = mise_toml.get("settings")
         assert isinstance(settings, Mapping)
         tm.that(settings.get("lockfile"), eq=toolchain.mise_lockfile)
-        tm.that(settings.get("disable_update_warning"), eq=True)
+        tm.that(
+            settings.get("disable_update_warning"),
+            eq=toolchain.mise_disable_update_warning,
+        )
         tm.that(dict(settings), lacks="locked")
         tm.that(dict(mise_toml), lacks="tool_config")
         tm.that(
@@ -512,11 +637,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
             '[tool.uv.workspace]\nmembers = ["member"]\n',
             encoding="utf-8",
         )
-        previous = {lock.name: lock.read_bytes() for lock in member.glob("*.lock")}
+        member_lock = member / c.Infra.UV_LOCK_FILENAME
+        previous = member_lock.read_bytes() if member_lock.is_file() else None
 
         upgraded = tm.ok(
             u.Tests.run_isolated_make(
-                ["--no-print-directory", "_builtin_require_upg_lock_owner"],
+                ["--no-print-directory", "upg"],
                 cwd=member,
             ),
         )
@@ -524,10 +650,66 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
         tm.that(upgraded.stderr, has=["ERROR[upg]", str(workspace.resolve())])
         tm.that(
-            {lock.name: lock.read_bytes() for lock in member.glob("*.lock")},
+            member_lock.read_bytes() if member_lock.is_file() else None,
             eq=previous,
         )
         tm.that(workspace_lock.exists(), eq=False)
+
+    @pytest.mark.remote
+    @pytest.mark.slow
+    def test_failed_member_hook_prevents_containing_root_upgrade(
+        self,
+        tmp_path: Path,
+        generated_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Actual public Make hooks propagate member failure without root effects."""
+        workspace = tmp_path / "workspace"
+        member = workspace / "member"
+        for destination, profile in (
+            (workspace, c.Infra.MakeProfile.WORKSPACE),
+            (member, c.Infra.MakeProfile.STANDALONE),
+        ):
+            shutil.copytree(
+                generated_make_templates[profile],
+                destination,
+                symlinks=True,
+                ignore=shutil.ignore_patterns(".venv", ".git"),
+                dirs_exist_ok=True,
+            )
+            u.Tests.initialize_git_repo(destination)
+        head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
+        u.Tests.git_run(
+            workspace,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"160000,{head.strip()},member",
+        )
+        u.Tests.commit_git_changes(workspace, "attach member")
+        marker = workspace / "root-upgrade-started"
+        (workspace / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
+            'pre-upg:\n\t@touch "$(PROJECT_ROOT)/root-upgrade-started"\n',
+            encoding="utf-8",
+        )
+        (member / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
+            "pre-upg:\n\t@printf 'member pre-upg failed\\n' >&2; exit 29\n",
+            encoding="utf-8",
+        )
+        root_lock = workspace / c.Infra.UV_LOCK_FILENAME
+        previous = root_lock.read_bytes() if root_lock.is_file() else None
+        upgraded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"],
+                cwd=member,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
+        tm.that(upgraded.stderr, has="member pre-upg failed")
+        tm.that(marker.is_file(), eq=False)
+        tm.that(
+            root_lock.read_bytes() if root_lock.is_file() else None,
+            eq=previous,
+        )
 
     def test_member_alignment_is_one_way_after_complete_convergence(
         self,
@@ -559,4 +741,4 @@ class TestsFlextInfraCodegenMakeUpgrade:
             self._recipe_targets_containing(text, alignment),
             eq={"_upg_converge"},
         )
-        tm.that(text, lacks=["--no-workspace", "--all-packages"])
+        tm.that(text, lacks="--no-workspace")

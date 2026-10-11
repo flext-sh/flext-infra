@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, override
 
 import libcst as cst
 from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import AddImportsVisitor
+from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
@@ -245,6 +245,101 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                 ),
             )
 
+    class _EmptyTypeChecking(cst.CSTTransformer):
+        """Prune exhausted annotation guards without discarding their comments."""
+
+        METADATA_DEPENDENCIES = (QualifiedNameProvider,)
+
+        def __init__(self) -> None:
+            self.removed = False
+            self.type_guards: set[cst.If] = set()
+
+        @override
+        def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
+            if any(
+                name.name == "typing.TYPE_CHECKING"
+                for name in self.get_metadata(
+                    QualifiedNameProvider, original_node.test, set()
+                )
+            ):
+                self.type_guards.add(updated_node)
+            return updated_node
+
+        def _prune(
+            self,
+            statements: t.SequenceOf[cst.BaseStatement],
+        ) -> t.Pair[t.VariadicTuple[cst.BaseStatement], t.VariadicTuple[cst.EmptyLine]]:
+            """Return retained statements and any trailing preserved comments.
+
+            Returns:
+                The retained suite and its pending comment lines.
+
+            Raises:
+                TypeError: If a statement cannot carry preserved leading lines.
+
+            """
+            retained: list[cst.BaseStatement] = []
+            pending: list[cst.EmptyLine] = []
+            for statement in statements:
+                if (
+                    isinstance(statement, cst.If)
+                    and statement in self.type_guards
+                    and statement.orelse is None
+                    and isinstance(statement.body, cst.IndentedBlock)
+                    and all(
+                        isinstance(line, cst.SimpleStatementLine)
+                        and all(isinstance(item, cst.Pass) for item in line.body)
+                        for line in statement.body.body
+                    )
+                ):
+                    self.removed = True
+                    pending.extend(statement.leading_lines)
+                    header = statement.body.header
+                    if header.comment is not None:
+                        pending.append(cst.EmptyLine(comment=header.comment))
+                    for line in statement.body.body:
+                        if isinstance(line, cst.SimpleStatementLine):
+                            pending.extend(line.leading_lines)
+                            if line.trailing_whitespace.comment is not None:
+                                pending.append(
+                                    cst.EmptyLine(
+                                        comment=line.trailing_whitespace.comment
+                                    )
+                                )
+                    pending.extend(statement.body.footer)
+                    continue
+                replacement = statement
+                if pending:
+                    if not isinstance(
+                        statement, (cst.SimpleStatementLine, cst.BaseCompoundStatement)
+                    ):
+                        msg = "statement cannot preserve exhausted guard comments"
+                        raise TypeError(msg)
+                    replacement = statement.with_changes(
+                        leading_lines=tuple(pending) + tuple(statement.leading_lines),
+                    )
+                    pending.clear()
+                retained.append(replacement)
+            return tuple(retained), tuple(pending)
+
+        @override
+        def leave_Module(
+            self, original_node: cst.Module, updated_node: cst.Module
+        ) -> cst.Module:
+            body, footer = self._prune(updated_node.body)
+            return updated_node.with_changes(
+                body=body, footer=footer + tuple(updated_node.footer)
+            )
+
+        @override
+        def leave_IndentedBlock(
+            self, original_node: cst.IndentedBlock, updated_node: cst.IndentedBlock
+        ) -> cst.IndentedBlock:
+            body, footer = self._prune(updated_node.body)
+            return updated_node.with_changes(
+                body=body, footer=footer + tuple(updated_node.footer)
+            )
+
     @classmethod
     def _rewrite_private_import_source(
         cls,
@@ -270,7 +365,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         for facade_alias in sorted(runtime_public_imports):
             package = public_imports[facade_alias]
             AddImportsVisitor.add_needed_import(context, package, facade_alias)
-        rewritten = rewritten.visit(AddImportsVisitor(context))
+        rewritten = AddImportsVisitor(context).transform_module(rewritten)
         type_only_imports = {
             alias: package
             for alias, package in public_imports.items()
@@ -282,6 +377,13 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             if not type_imports.inserted:
                 msg = "type-only facade migration has no TYPE_CHECKING boundary"
                 raise ValueError(msg)
+        cleanup = cls._EmptyTypeChecking()
+        rewritten = MetadataWrapper(rewritten).visit(cleanup)
+        if cleanup.removed:
+            RemoveImportsVisitor.remove_unused_import(
+                context, "typing", "TYPE_CHECKING"
+            )
+            rewritten = RemoveImportsVisitor(context).transform_module(rewritten)
         return rewritten.code
 
 

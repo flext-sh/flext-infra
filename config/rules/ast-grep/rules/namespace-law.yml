@@ -185,6 +185,9 @@ language: python
 severity: error
 files:
   - "**/*.py"
+ignores:
+  - "**/tests/**"
+  - "**/conftest.py"
 metadata:
   relocation: package-root-import
   context:
@@ -241,6 +244,9 @@ ignores:
   - "**/_base.py"
   - "**/settings.py"
   - "**/_settings.py"
+  # Test files legitimately import from flext-tests (tests) facade
+  - "**/tests/**"
+  - "**/conftest.py"
 metadata:
   relocation: own-package-import
   context:
@@ -295,6 +301,9 @@ ignores:
   - "**/_base.py"
   - "**/settings.py"
   - "**/_settings.py"
+  # Test files legitimately import from flext-tests (tests) facade
+  - "**/tests/**"
+  - "**/conftest.py"
 metadata:
   relocation: own-package-import
   context:
@@ -346,6 +355,10 @@ language: python
 severity: error
 files:
   - "**/*.py"
+ignores:
+  # Test files legitimately import from flext-tests (tests) submodules
+  - "**/tests/**"
+  - "**/conftest.py"
 metadata:
   context:
     MODULE:

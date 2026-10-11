@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m
 from flext_infra.codemod import (
@@ -19,7 +18,7 @@ from flext_infra.codemod import (
     FlextInfraModGateEngine,
     FlextInfraNamespaceRelocationPhase,
 )
-from tests import u
+from tests import tm, u
 
 _SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
 _REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]

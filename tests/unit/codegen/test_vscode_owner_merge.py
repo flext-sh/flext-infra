@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
+from tests import tm
 
 
 class TestsFlextInfraVscodeOwnerMerge:
@@ -98,6 +97,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                     "python.analysis.diagnosticSeverityOverrides": {
                         "reportMissingTypeStubs": "error",
                     },
+                    "ruff.nativeServer": True,
                 }),
             ),
             encoding="utf-8",
@@ -111,3 +111,4 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.that("ruff.nativeServer" in doc, eq=False)

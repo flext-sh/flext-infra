@@ -9,14 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, main, s
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -100,6 +99,47 @@ class TestsFlextInfraTypeGates:
         return m.Infra.GateContext(
             repository_root=real_python_package,
             reports_dir=reports,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "plugin_output",
+        ["native-plugin-output", "    native-plugin-output", "Deferral trace:"],
+    )
+    def test_mypy_preserves_malformed_native_output(
+        checker_context: m.Infra.GateContext,
+        plugin_output: str,
+    ) -> None:
+        """Unexpected plugin output remains a causal, visible tool failure."""
+        project = checker_context.repository_root
+        plugin = project / "plugin.py"
+        plugin.write_text(
+            "from mypy.plugin import Plugin\n"
+            "def plugin(version: str) -> type[Plugin]:\n"
+            f"    print({plugin_output!r})\n"
+            "    return Plugin\n",
+            encoding="utf-8",
+        )
+        pyproject = project / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8").replace(
+                "[tool.mypy]\n",
+                '[tool.mypy]\nplugins = ["plugin.py"]\n',
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraMypyGate(project).check(project, checker_context)
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(
+            tuple(issue.code for issue in result.issues),
+            has=c.Infra.ToolOutcome.ERROR,
+        )
+        tm.that(
+            "\n".join(issue.message for issue in result.issues),
+            has=plugin_output,
         )
 
     @staticmethod
@@ -189,10 +229,8 @@ class TestsFlextInfraTypeGates:
 
         assert accepted.result.passed, accepted.raw_output
         assert not accepted.issues, accepted.raw_output
-        source.write_text(
-            valid_source.replace(f"{service}[str]", f"{service}[set[int]]"),
-            encoding=c.DEFAULT_ENCODING,
-        )
+        invalid_source = valid_source.replace(f"{service}[str]", f"{service}[set[int]]")
+        source.write_text(invalid_source, encoding=c.DEFAULT_ENCODING)
 
         rejected = gate.check(project, checker_context)
 
@@ -203,9 +241,9 @@ class TestsFlextInfraTypeGates:
         assert issue.severity == c.Infra.ERROR, rejected.raw_output
         diagnostic_path = project / issue.file
         assert diagnostic_path.resolve() == source.resolve(), rejected.raw_output
-        annotation = valid_source.splitlines()[2]
+        annotation = invalid_source.splitlines()[2]
         assert issue.line == 3, rejected.raw_output
-        assert issue.column == annotation.index(service), rejected.raw_output
+        assert issue.column == annotation.index("set[int]"), rejected.raw_output
         assert service in issue.message, rejected.raw_output
 
     @staticmethod
@@ -232,81 +270,6 @@ class TestsFlextInfraTypeGates:
         tm.that(result.result.passed, eq=False)
         messages = "\n".join(issue.message for issue in result.issues)
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_mypy_preserves_malformed_native_output(
-        checker_context: m.Infra.GateContext,
-    ) -> None:
-        """Unexpected plugin output remains a causal, visible tool failure."""
-        project = checker_context.repository_root
-        plugin = project / "plugin.py"
-        plugin.write_text(
-            "from mypy.plugin import Plugin\n"
-            "def plugin(version: str) -> type[Plugin]:\n"
-            "    print('native-plugin-output')\n"
-            "    return Plugin\n",
-            encoding="utf-8",
-        )
-        pyproject = project / "pyproject.toml"
-        pyproject.write_text(
-            pyproject.read_text(encoding="utf-8").replace(
-                "[tool.mypy]\n",
-                '[tool.mypy]\nplugins = ["plugin.py"]\n',
-            ),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraMypyGate(project).check(project, checker_context)
-
-        tm.that(result.result.passed, eq=False)
-        tm.that(
-            tuple(issue.code for issue in result.issues),
-            has=c.Infra.ToolOutcome.ERROR,
-        )
-        tm.that(
-            "\n".join(issue.message for issue in result.issues),
-            has="native-plugin-output",
-        )
-
-    @staticmethod
-    def test_mypy_deferral_trace_does_not_poison_the_report(
-        checker_context: m.Infra.GateContext,
-    ) -> None:
-        """Mypy's deferral-trace stdout is trace payload; the report still parses.
-
-        A semantic-analysis internal error makes mypy print a "Deferral trace:"
-        header plus indented lines on stdout before (or instead of) the JSON
-        report. The one-JSON-object-per-line contract treats nothing indented
-        as a report line, so the trace must never reach the JSON validator.
-        """
-        project = checker_context.repository_root
-        plugin = project / "plugin.py"
-        plugin.write_text(
-            "from mypy.plugin import Plugin\n"
-            "def plugin(version: str) -> type[Plugin]:\n"
-            "    print('Deferral trace:')\n"
-            "    print('    "
-            "flext_infra._utilities._pyproject._requirements_provenance:13')\n"
-            "    return Plugin\n",
-            encoding="utf-8",
-        )
-        pyproject = project / "pyproject.toml"
-        pyproject.write_text(
-            pyproject.read_text(encoding="utf-8").replace(
-                "[tool.mypy]\n",
-                '[tool.mypy]\nplugins = ["plugin.py"]\n',
-            ),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraMypyGate(project).check(project, checker_context)
-
-        tm.that(result.result.passed, eq=True)
-        tm.that(
-            "\n".join(issue.message for issue in result.issues),
-            lacks="not a valid structured report",
-        )
 
     @staticmethod
     @pytest.mark.slow

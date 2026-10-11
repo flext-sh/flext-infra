@@ -9,13 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m, p, r, t
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -92,7 +91,7 @@ class TestsFlextInfraFileParticipantRecovery:
         package = root / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
         owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
@@ -244,7 +243,7 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.ok(
             u.Cli.atomic_write_binary_file_guarded(
                 session.journal_state,
-                crash_journal.model_dump_json(indent=2).encode(c.Cli.ENCODING_DEFAULT),
+                crash_journal.model_dump_json(indent=2).encode(c.DEFAULT_ENCODING),
                 permission_mode=tm.not_none(session.journal_state.mode),
             ),
         )

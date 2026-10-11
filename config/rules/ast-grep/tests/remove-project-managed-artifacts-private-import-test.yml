@@ -1,6 +1,61 @@
 id: remove-project-managed-artifacts-private-import
 valid:
   - from flext_infra import u
+  - from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts; value = 1
+  - from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts;
+  - value = 1; from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+  - |
+    if TYPE_CHECKING:
+        from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+  - |
+    def load():
+        from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+  - |
+    class Loader:
+        from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+  - |
+    if TYPE_CHECKING:
+        from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+        pass
+  - |
+    def load():
+        from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+        return None
+  - |
+    class Loader:
+        from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+        pass
+  - from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts as Artifacts
+  - from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts, OtherOwner
+  - |
+    from flext_infra._utilities.project_managed_artifacts import (
+        FlextInfraUtilitiesProjectManagedArtifacts,
+        OtherOwner,
+    )
+  - |
+    from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    __all__ = ["FlextInfraUtilitiesProjectManagedArtifacts"]
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_infra._utilities.project_managed_artifacts import (
+            FlextInfraUtilitiesProjectManagedArtifacts,
+        )
+    __all__ = ("FlextInfraUtilitiesProjectManagedArtifacts",)
+    _LAZY_IMPORTS = {"FlextInfraUtilitiesProjectManagedArtifacts": ".project_managed_artifacts"}
+  - |
+    from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    result = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(root)
+  - |
+    from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    class PublicOwner(FlextInfraUtilitiesProjectManagedArtifacts):
+        pass
+  - |
+    from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    owner: FlextInfraUtilitiesProjectManagedArtifacts
+  - |
+    from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    owner: "FlextInfraUtilitiesProjectManagedArtifacts"
 invalid:
   - from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
   - |

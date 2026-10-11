@@ -271,7 +271,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         if init_path is None or not init_path.is_file():
             return ()
         return u.Infra.absolute_import_sources_source(
-            init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            init_path.read_text(encoding=c.DEFAULT_ENCODING),
             name=alias_name,
         )
 
@@ -309,7 +309,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                     continue
                 declared.update(
                     u.Infra.facade_letter_names_source(
-                        module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                        module_path.read_text(encoding=c.DEFAULT_ENCODING),
                     ),
                 )
         names = frozenset(declared)

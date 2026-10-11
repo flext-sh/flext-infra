@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m, p, t, u
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +52,16 @@ class TestsFlextInfraFacadeBaseCutover:
         ("statement", "base", "rebind"),
         [
             ("from parent_pkg import m", "m", "m = ChildModels"),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m = ChildModels",
+            ),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m: type[ChildModels] = ChildModels",
+            ),
             (
                 "from parent_pkg import m as _parent_m",
                 "_parent_m",
@@ -176,6 +186,32 @@ class TestsFlextInfraFacadeBaseCutover:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(source, encoding="utf-8")
         tm.that(u.Infra.facade_classes("parent_pkg"), eq={"m": self.PARENT_CLASS})
+
+    @pytest.mark.parametrize("consumer", ["workspace", "member"])
+    def test_facade_classes_read_a_declared_sibling_without_installation(
+        self,
+        tmp_path: Path,
+        consumer: str,
+    ) -> None:
+        """Derive the parent contract from the declared workspace source graph."""
+        child, sources = self._workspace(tmp_path, "")
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "parent"]\npath = parent\n'
+            "url = https://example.org/parent.git\n"
+            '[submodule "child"]\npath = child\n'
+            "url = https://example.org/child.git\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            u.Infra.facade_classes(
+                "parent_pkg",
+                source_root=tmp_path if consumer == "workspace" else child.parents[2],
+            ),
+            eq={"m": self.PARENT_CLASS},
+        )
 
     def test_composite_facade_cuts_over_every_letter(self, tmp_path: Path) -> None:
         """A facade binding several parent letters cuts over all of them."""

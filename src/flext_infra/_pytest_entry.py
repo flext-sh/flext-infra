@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import cProfile
-import importlib
 import sys
-import time
 from pathlib import Path
+
+import flext_infra
+from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
 class FlextInfraPytestEntry:
     """Facade for the pytest entrypoint with pre-import clock."""
-
-    _STARTED_AT_MONOTONIC: float = time.monotonic()
 
     @classmethod
     def main(cls) -> int:
@@ -26,43 +24,42 @@ class FlextInfraPytestEntry:
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The
-        ``file`` and ``file-slow`` operations run one declared target file
-        through the same budgeted and slow phases; they require the Make
-        boundary to export the single-file target environment variable.
+        ``file`` and ``file-slow`` run the declared target's regular and slow
+        phases. Both require Make to export the single-file target variable.
+        ``full-slow`` runs the full slow phase without the incremental budget.
 
         Returns:
             The resulting ``int``.
 
         Raises:
             ValueError: If unsupported pytest operation.
-            TypeError: If the runner returns a non-integer process status.
+            RuntimeError: If profiling was not activated before runtime imports.
 
         """
-        # Deliberately deferred past the pre-import clock snapshot: the
-        # module contract keeps every FLEXT import inside the budgeted window.
+        # The clock module captures startup before these runtime imports.
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
         slow_phase = mode == "full-slow"
+        runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
         if mode == "profile":
-            profiler = cProfile.Profile()
-            profiler.enable()
+            profiler = FlextInfraPytestClock.profiler
+            if profiler is None:
+                msg = "pytest profile requires its pre-import profiler"
+                raise RuntimeError(msg)
             try:
-                profile_module = importlib.import_module("flext_infra._pytest_profile")
-                profile = profile_module.FlextInfraPytestProfile(Path(sys.argv[2]))
+                profile = flext_infra.FlextInfraPytestProfile(Path(sys.argv[2]))
                 status = profile.run_parent(
-                    started_at_monotonic=cls._STARTED_AT_MONOTONIC,
+                    started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
                     profile=profiler,
                 )
             finally:
                 profiler.disable()
-            if isinstance(status, int):
-                return status
-            msg = f"pytest profile returned a non-integer process status: {status!r}"
-            raise TypeError(msg)
+            return status
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
-        runner = runner_module.FlextInfraPytestRunner.from_environment(
-            started_at_monotonic=cls._STARTED_AT_MONOTONIC,
+        runner = flext_infra.FlextInfraPytestRunner.from_environment(
+            started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             slow_phase=slow_phase,
+            unbounded=mode in {"full", "full-slow"},
         )
         if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (
@@ -79,10 +76,7 @@ class FlextInfraPytestEntry:
         else:
             msg = f"unsupported pytest operation: {mode}"
             raise ValueError(msg)
-        if isinstance(status, int):
-            return status
-        msg = f"pytest runner returned a non-integer process status: {status!r}"
-        raise TypeError(msg)
+        return status
 
 
 if __name__ == "__main__":

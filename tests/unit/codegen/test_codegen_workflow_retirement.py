@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import u
+from tests import tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
@@ -81,7 +80,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         for entry in workflows:
             workflow = root / entry.destination
             workflow.parent.mkdir(parents=True, exist_ok=True)
-            workflow.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+            workflow.write_text(content, encoding=c.DEFAULT_ENCODING)
 
         request = u.Tests.conform_request(
             root,
@@ -107,7 +106,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         }
         tm.that(retired, eq=expected)
         for path in workflow_paths:
-            tm.that(path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
 
     @pytest.mark.parametrize("declared_release", [False, True])
     def test_release_workflows_converge_from_scaffold_to_existing_repository(

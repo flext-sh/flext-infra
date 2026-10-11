@@ -377,7 +377,7 @@ class FlextInfraPyprojectModernizerDocument:
         if state.rendered == state.original_rendered.rstrip() + "\n":
             return r[t.StrSequence].ok(())
         if not dry_run:
-            u.write_file(path, state.rendered, encoding=c.Cli.ENCODING_DEFAULT)
+            u.write_file(path, state.rendered, encoding=c.DEFAULT_ENCODING)
         return r[t.StrSequence].ok((*changes, *comment_changes))
 
 

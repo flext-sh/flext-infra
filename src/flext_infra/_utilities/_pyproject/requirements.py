@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, r, t
+from flext_infra import c, config, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._pyproject._requirements_provenance import (
-    RequirementProvenance,
+    FlextInfraUtilitiesPyprojectRequirementsProvenance,
 )
 
 if TYPE_CHECKING:
@@ -51,7 +51,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
             section = u.Cli.toml_table_child(parent, section_name)
             if section is None:
                 continue
-            for group_name in tuple(section):
+            group_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.Cli.toml_unwrap_item(section),
+            )
+            for group_name in group_names:
                 yield section, group_name
 
     @classmethod
@@ -69,7 +72,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = RequirementProvenance(
+        provenance = FlextInfraUtilitiesPyprojectRequirementsProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
@@ -98,7 +101,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -155,7 +158,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         requirement: str,
         *,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
@@ -227,7 +230,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         parsed: t.Pair[str, str],
         line: str | None,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
     ) -> p.Result[t.Pair[t.Pair[str, str], str | None]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 
@@ -319,10 +322,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r.fail(f"invalid internal requirement: {requirement}")
+            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].fail(
+                f"invalid internal requirement: {requirement}",
+            )
         source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
         if source.failure:
-            return r.from_failure(source)
+            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].from_failure(
+                source,
+            )
         marker_text = marker.strip()
         head = head_match.group("head").strip()
         marker_pair = (bool(separator and marker_text), marker_text)
@@ -414,6 +421,31 @@ class FlextInfraUtilitiesPyprojectRequirements:
         inline = f"{head} @ git+{url}@{declared_ref}"
         return r[str].ok(f"{inline}; {marker_text}" if has_marker else inline)
 
+    @staticmethod
+    def active_development_requirements(requirements: t.StrSequence) -> t.StrSequence:
+        """Preserve declared requirements except explicitly retired distributions.
+
+        Returns:
+            Requirements retaining their order and complete constraints.
+
+        Raises:
+            ValueError: A retired distribution does not name a valid package.
+
+        """
+        retired_names = frozenset(
+            FlextInfraUtilitiesDependencies.dep_name(requirement)
+            for requirement in config.Infra.codegen.scaffold.project.retired_dev
+        )
+        if None in retired_names:
+            msg = "Retired development distributions must name valid packages"
+            raise ValueError(msg)
+        return tuple(
+            requirement
+            for requirement in requirements
+            if FlextInfraUtilitiesDependencies.dep_name(requirement)
+            not in retired_names
+        )
+
     @classmethod
     def _sync_dependency_groups(
         cls,
@@ -422,7 +454,17 @@ class FlextInfraUtilitiesPyprojectRequirements:
         project_name: str,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
-        """Migrate optional dev dependencies and normalize declared groups."""
+        """Migrate development groups while applying explicit retirement policy.
+
+        Raises:
+            ValueError: Retirement conflicts with required development dependencies.
+
+        """
+        if cls.active_development_requirements(required_dev_dependencies) != tuple(
+            required_dev_dependencies,
+        ):
+            msg = "Canonical development requirements include retired distributions"
+            raise ValueError(msg)
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
         optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
@@ -454,7 +496,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 sourced_live_names,
             )
         )
-        dev = [*required_dev, *live_dev, *optional_dev]
+        dev = [
+            *required_dev,
+            *cls.active_development_requirements((*live_dev, *optional_dev)),
+        ]
         if dev:
             u.Cli.toml_sync_string_list(
                 groups,
@@ -464,7 +509,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
         else:
             u.Cli.toml_remove_key_if_present(groups, str(c.Infra.DEV))
 
-        codegen = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen"))
+        codegen = cls.active_development_requirements(
+            u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")),
+        )
         if codegen:
             u.Cli.toml_sync_string_list(
                 groups,

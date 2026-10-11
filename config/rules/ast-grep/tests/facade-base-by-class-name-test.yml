@@ -25,6 +25,16 @@ valid:
     c: type[ConsumerConstants] = ConsumerConstants
 invalid:
   - |
+    from flext_core import FlextConstants as c
+    class FlextDbOracleConstants(c):
+        pass
+    c = FlextDbOracleConstants
+  - |
+    from flext_core import FlextConstants as c
+    class FlextDbOracleConstants(c):
+        pass
+    c: type[FlextDbOracleConstants] = FlextDbOracleConstants
+  - |
     from flext_cli import m
     class FlextMeltanoModels(m):
         pass

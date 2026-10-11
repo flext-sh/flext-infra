@@ -10,7 +10,6 @@ from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import (
-    FlextInfraCliRouteBase,
     FlextInfraFlextBindingService,
     FlextInfraGitService,
     FlextInfraRefactorRoutes,
@@ -37,35 +36,33 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
     @staticmethod
     def _apply_flext_binding(
         params: m.Infra.FlextBindingRequest,
-    ) -> p.Result[t.Cli.ResultValue]:
+    ) -> p.Cli.ErasedCommandResult:
         """Apply the typed binding request through its service owner.
 
         Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
+            The canonical CLI result view.
 
         """
         return FlextInfraFlextBindingService.apply(
             consumer_root=params.repository_root,
             flext_root=params.flext_root,
             python=params.python,
-        ).map(FlextInfraCliRouteBase.as_route_value)
+        )
 
     @staticmethod
     def _sync_environment(
         params: m.Infra.WorkspaceEnvironmentCliRequest,
-    ) -> p.Result[t.Cli.ResultValue]:
+    ) -> p.Cli.ErasedCommandResult:
         """Keep the internal beads render context off the public CLI surface.
 
         Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
+            The canonical CLI result view.
 
         """
         request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
             params.model_dump(),
         )
-        return FlextInfraWorkspaceEnvironmentMixin.execute_request(request).map(
-            FlextInfraCliRouteBase.as_route_value,
-        )
+        return FlextInfraWorkspaceEnvironmentMixin.execute_request(request)
 
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
@@ -76,7 +73,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 name=c.Infra.VERB_RUN,
                 help_text="Run release orchestration CLI flow",
                 model_cls=FlextInfraReleaseOrchestrator,
-                handler=FlextInfraCliRouteBase.result_handler(infra.release_run),
+                handler=infra.release_run,
                 success_message="Release completed successfully",
             ),
         ),
@@ -85,9 +82,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 name="validate-lifecycle",
                 help_text="Validate the root and governed member lifecycles serially",
                 model_cls=m.Infra.WorkspaceEnvironmentRequest,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    FlextInfraWorkspaceLifecycle.execute_request,
-                ),
+                handler=FlextInfraWorkspaceLifecycle.execute_request,
                 success_message="workspace serial lifecycle validated",
             ),
             m.Cli.ResultCommandRoute(
@@ -97,25 +92,21 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                     "without effects"
                 ),
                 model_cls=m.Infra.GitLaneVerificationRequest,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    FlextInfraGitService.verify_lane,
-                ),
+                handler=FlextInfraGitService.verify_lane,
                 success_message="lane stash and live integration ancestry verified",
             ),
             m.Cli.ResultCommandRoute(
                 name="verify-lanes",
                 help_text="Read-only lane inventory, ownership census, and refusals",
                 model_cls=m.Infra.GitLaneVerificationRequest,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    FlextInfraGitService.verify_lanes,
-                ),
+                handler=FlextInfraGitService.verify_lanes,
                 success_message="lane inventory verified",
             ),
             m.Cli.ResultCommandRoute(
                 name="identity",
                 help_text="Report canonical Git checkout identity",
                 model_cls=m.Infra.GitRepoRequest,
-                handler=FlextInfraCliRouteBase.result_handler(u.Infra.git_identity),
+                handler=u.Infra.git_identity,
                 success_message="workspace Git identity resolved",
             ),
             m.Cli.ResultCommandRoute(
@@ -124,9 +115,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                     "Reject staged, unstaged, untracked changes and stash entries"
                 ),
                 model_cls=m.Infra.GitStatusRequest,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    FlextInfraGitService.verify_clean,
-                ),
+                handler=FlextInfraGitService.verify_clean,
                 success_message=(
                     "workspace Git worktree is clean and has no stash entries"
                 ),
@@ -135,9 +124,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",
                 model_cls=m.Infra.WorkspaceEnvironmentRequest,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    FlextInfraWorkspaceEnvironmentProvenance.execute_request,
-                ),
+                handler=FlextInfraWorkspaceEnvironmentProvenance.execute_request,
                 success_message="workspace editable provenance verified",
             ),
             m.Cli.ResultCommandRoute(
@@ -159,17 +146,13 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                         "detect",
                         "Detect workspace or standalone mode",
                         FlextInfraWorkspaceDetector,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraWorkspaceDetector.execute_command,
-                        ),
+                        FlextInfraWorkspaceDetector.execute_command,
                     ),
                     (
                         "propagate",
                         "Publish this workspace's flext-infra to every member",
                         FlextInfraWorkspacePropagation,
-                        FlextInfraCliRouteBase.result_handler(
-                            infra.workspace_propagate,
-                        ),
+                        infra.workspace_propagate,
                     ),
                     (
                         "sync-environment",
@@ -184,9 +167,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                             "concurrently and publish its receipts"
                         ),
                         FlextInfraWorkspaceFleetVerbs,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraWorkspaceFleetVerbs.execute_command,
-                        ),
+                        FlextInfraWorkspaceFleetVerbs.execute_command,
                     ),
                     (
                         c.Infra.FLEET_GAPS_ROUTE_NAME,
@@ -197,9 +178,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                             "the receipt"
                         ),
                         FlextInfraWorkspaceFleetGaps,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraWorkspaceFleetGaps.execute_command,
-                        ),
+                        FlextInfraWorkspaceFleetGaps.execute_command,
                     ),
                 )
             ),

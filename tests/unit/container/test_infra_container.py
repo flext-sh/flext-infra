@@ -15,10 +15,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_core import FlextContainer
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraContainerInfraContainer:

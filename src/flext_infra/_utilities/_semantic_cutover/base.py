@@ -155,7 +155,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         Returns:
             A result containing a tuple of semantic migration edits.
         """
-        consumers = cls._plan_behavior_consumers(sources)
+        consumers = cls._plan_behavior_consumers(
+            rope_workspace.repository_root, sources
+        )
         if consumers.failure:
             return consumers
         working = dict(sources)

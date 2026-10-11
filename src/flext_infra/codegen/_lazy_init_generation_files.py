@@ -185,8 +185,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         return content is not None and content.startswith(
             tuple(
-                header.encode(c.Cli.ENCODING_DEFAULT)
-                for header in c.Infra.AUTOGEN_HEADERS
+                header.encode(c.DEFAULT_ENCODING) for header in c.Infra.AUTOGEN_HEADERS
             ),
         )
 
@@ -220,7 +219,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             )
         else:
             rendered = FlextInfraCodegenGeneration.render_init(plan).encode(
-                c.Cli.ENCODING_DEFAULT,
+                c.DEFAULT_ENCODING,
             )
             init_plan = self._file_plan(
                 project=project,
@@ -281,7 +280,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 )
                 desired: bytes | None = FlextInfraCodegenGeneration.render_init(
                     generated_plan,
-                ).encode(c.Cli.ENCODING_DEFAULT)
+                ).encode(c.DEFAULT_ENCODING)
             elif self._is_generated(init_before.content):
                 desired = None
             else:

@@ -54,6 +54,9 @@ release instead of the project release. Activation does not install tools or
 write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
 `make upg`. A missing pin requires `make upg`; a runtime that is not yet installed
 requires `make setup`, whose provisioning happens before activation.
+Both setup and upgrade resolve the executable through `mise which python` at the
+shared environment-sync boundary and pass that exact path to uv. Recursive Make
+calls do not require a caller-provided `SETUP_PYTHON` environment variable.
 Make and direnv restrict global and system configuration discovery to the
 elected runtime's `.mise` directory; unrelated host tool declarations never
 belong to project provisioning.
@@ -90,6 +93,20 @@ requirement or Mise self-management release that only the upgraded generator
 declares therefore reaches the lock and environment in the same run. The declared
 lock platforms and release cooldown come from the typed toolchain; never edit
 native lock payloads or substitute manual installation commands.
+
+`codegen.scaffold.project.retired_dev` declares development distributions that
+must no longer reach managed `dev` or `codegen` groups. Conformance filters them
+from existing groups, optional development extras, and member contributions;
+declaring the same distribution as a required development floor fails. Retire
+obsolete typing stubs here when their runtime SDK supplies inline typing, then
+regenerate and run `make upg` to reconcile locks and the installed environment.
+Do not uninstall packages manually or weaken the type checker.
+
+Member contributions carry per-occurrence provenance in both managed development
+groups. CUSTOM entries retain their full constraints and origins; removing a
+member removes only its generated contributions. The public conform and overlay
+paths use canonical resolver-key ordering and preserve these ownership comments
+so repeated generation reaches a byte-identical fixed point.
 
 Each internal `flext-*` requirement declares its integration line in `pyproject.toml`,
 never a commit: the resolved commit exists only in `uv.lock`, and only `make upg` moves
@@ -234,6 +251,18 @@ green. Concurrent changes require a fresh read before writing and revalidation o
 affected paths. A published work-in-progress commit preserves work and enables review;
 completion requires integration and runtime measured at the integrated SHA.
 
+The pytest runner retains the native exit code when startup fails before a final
+JUnit report is produced. Its process-outcome receipt and raw log remain available,
+but no completed-suite summary or run accounting is published. A graceful failing
+suite with JUnit still follows the normal diagnostics and accounting path; neither
+an interruption nor a missing report is evidence that tests passed.
+
+Distributed stop requests validate the initialized native controller through
+`p.Infra.PytestStopController` at report time, not during session startup. The
+runner requests a stop through its real `shouldstop` field and leaves shutdown
+to xdist. A present incompatible controller fails instead of taking the serial
+session path. Plugin autoload and enforcement remain active.
+
 For namespace automation, investigate catalog, classifier, transformation, publication,
 and consumers in that order. The namespace laws are codemod catalog rules, so the
 codemod gate is their one verdict. Preserve mutability, inheritance, imports, and
@@ -280,14 +309,14 @@ only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
 configuration keeps Mypy, Pyright, codemod and smells out of CI. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate, so Mypy and Pyright
-block at pre-push. The pre-commit hook runs only the ordered scope declared by
-`make.ci.pre_commit_check_gates` and no tests. Tool kind does not redefine that scope.
+block at pre-push. The pre-commit hook runs the same gate partition as CI and
+the same incremental `make test` operation with the configured CI exclusions.
 Conflict detection uses the canonical Git inventory, including unpublished files,
 and the shared merge-control classifier. It reads literal source-link targets without
 following them. Every finding, including a native warning, blocks approval while its
 original severity remains in the receipt.
 
-Every workspace and standalone projection exposes `make pre-commit` for the fast hook
+Every workspace and standalone projection exposes `make pre-commit` for the CI validation
 workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
 declared order, and closes with `verify-clean`; it never substitutes the fast hook for
 approval. The configured CI token selects the blocking CI gate partition. Audit is
@@ -375,6 +404,11 @@ fixed expectation for later Mypy releases. The resource test requires the worklo
 start, then a nonzero raw status and a diagnostic without a timeout; it never rewrites
 the result into a synthetic `MemoryError` or success. The Darwin supervisor can instead
 terminate a process whose resident memory exceeds its limit.
+
+The Mypy gate validates every nonempty report line as JSON, except native `LOG:`
+progress lines. Indentation and a `Deferral trace` prefix do not exempt plugin
+output from validation. A malformed report remains a failed gate with its original
+stdout, stderr, and exit code retained; it is never evidence that analysis passed.
 
 ## Abstraction-boundary project identity
 

@@ -20,17 +20,15 @@ from flext_infra._models import (
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
 )
-from flext_infra._models._config import (
-    FlextInfraConfigModelsContexts,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-    FlextInfraConfigModelsProvider,
-    FlextInfraConfigModelsRelease,
-    FlextInfraConfigModelsRender,
-    FlextInfraConfigModelsScaffold,
-    FlextInfraConfigModelsTemplates,
-    FlextInfraConfigModelsWorkspace,
-)
+from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
+from flext_infra._models._config.release import FlextInfraConfigModelsRelease
+from flext_infra._models._config.render import FlextInfraConfigModelsRender
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
+from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraConfigModelsArtifact:
@@ -659,10 +657,14 @@ class FlextInfraConfigModelsArtifact:
                 msg = "file-only surfaces require the self repository scope"
                 raise ValueError(msg)
             if (
-                self.what == c.Infra.CodegenConformSurface.MISE_CONFIG
+                self.what
+                in {
+                    c.Infra.CodegenConformSurface.MISE_CONFIG,
+                    c.Infra.CodegenConformSurface.ENVRC,
+                }
                 and self.scope != c.Infra.CodegenConformScope.SELF
             ):
-                msg = "mise-config requires the self repository scope"
+                msg = f"{self.what} requires the self repository scope"
                 raise ValueError(msg)
             return self
 

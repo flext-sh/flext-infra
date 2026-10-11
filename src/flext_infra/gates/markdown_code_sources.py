@@ -71,7 +71,7 @@ class FlextInfraMarkdownCodeSources:
         collected: list[t.Triple[str, str, t.Pair[str, int]]] = []
         for md_path in markdown_files:
             relative_posix = md_path.relative_to(project_dir).as_posix()
-            content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
+            content = md_path.read_text(c.DEFAULT_ENCODING)
             for index, match in enumerate(
                 match
                 for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
@@ -115,7 +115,7 @@ class FlextInfraMarkdownCodeSources:
                 # Agent-toolhome projections under .github are regenerated
                 # distributions, never governed source.
                 continue
-            tree = ast.parse(py_path.read_text(c.Cli.ENCODING_DEFAULT))
+            tree = ast.parse(py_path.read_text(c.DEFAULT_ENCODING))
             for node in ast.walk(tree):
                 # Only these carry docstrings; ast.walk also yields expression
                 # nodes and ast.get_docstring raises TypeError on those.

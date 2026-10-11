@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import FlextInfraPyprojectModernizer, main
-from tests import c, m
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

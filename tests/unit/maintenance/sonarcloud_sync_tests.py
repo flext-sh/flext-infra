@@ -16,10 +16,9 @@ import sys
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraSonarcloudSettingsSync, c, config, m
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from tests import t

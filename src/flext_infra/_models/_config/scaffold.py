@@ -11,7 +11,7 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
 class FlextInfraConfigModelsScaffold:
@@ -101,6 +101,12 @@ class FlextInfraConfigModelsScaffold:
                 description="Canonical development and validation requirements",
             ),
         ]
+        retired_dev: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description="Development distributions retired from managed groups"
+            ),
+        ] = ()
         dependency_profiles: Annotated[
             t.VariadicTuple[
                 FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec

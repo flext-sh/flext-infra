@@ -12,11 +12,9 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m, t
 
 from flext_infra import c
-from flext_infra._models._config import (
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-)
+from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
 
 
 class FlextInfraConfigModelsRepository:
@@ -347,6 +345,16 @@ class FlextInfraConfigModelsRepository:
                 ),
             ),
         ] = ()
+        examples_module: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
+                description=(
+                    "Explicit dotted examples module with a repository-relative "
+                    "Python source file; absence does not select an entrypoint"
+                ),
+            ),
+        ] = None
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(
@@ -378,6 +386,12 @@ class FlextInfraConfigModelsRepository:
         root: Annotated[
             Path,
             m.Field(description="Resolved repository root receiving conformance"),
+        ]
+        toolchain_root: Annotated[
+            Path,
+            m.Field(
+                description="Composition root owning the active generation toolchain"
+            ),
         ]
         make_profile: Annotated[
             c.Infra.MakeProfile,

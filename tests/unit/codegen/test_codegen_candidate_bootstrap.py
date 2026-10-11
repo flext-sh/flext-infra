@@ -10,10 +10,10 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, infra, m
-from tests import u
+from flext_infra import config, infra
+from tests import c, m, tm, u
+from tests.unit.codegen import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenCandidateBootstrap:
@@ -315,8 +315,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("conflict_section", ["tool", "dependency-groups"])
     def test_pyproject_bootstrap_uses_declared_candidate_surface(
         tmp_path: Path,
+        conflict_section: str,
     ) -> None:
         """A healthy provider restores a candidate before its own Make can import."""
         source, _ = u.Tests.render_make_environment(
@@ -337,12 +339,43 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             encoding="utf-8",
         )
         projection = candidate / c.PYPROJECT_FILENAME
+        original = projection.read_text(encoding="utf-8")
+        original_groups = u.Tests.toml_table_at(original, "dependency-groups")
+        roots = config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots
+        bases = tuple(root.rpartition(".") for root in roots)
+        probe_source = "\n".join(
+            f"import {module} as provider{index}\n\n"
+            f"class BootstrapProbe{index}(provider{index}.{base}):\n    pass\n"
+            for index, (module, _, base) in enumerate(bases)
+        )
+        if not roots:
+            probe_source = "class BootstrapProbe:\n    pass\n"
+        probe = candidate / "src" / "bootstrap_probe.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                probe,
+                probe_source,
+            ),
+        )
+        owned = tm.ok(u.Infra.pyproject_managed_file()).managed_tool_tables[0]
+        preserved = tm.ok(u.Infra.pyproject_regeneration_source(original))
+        conflict = "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
+        corrupt = (
+            preserved + f"\n[tool.{owned}]\n{conflict}"
+            if conflict_section == "tool"
+            else preserved.replace(
+                "[dependency-groups]\n",
+                f"[dependency-groups]\n{conflict}",
+                1,
+            )
+        )
         tm.ok(
             u.Cli.atomic_write_text_file(
                 projection,
-                projection.read_text(encoding="utf-8") + "\n# stale projection\n",
+                corrupt,
             ),
         )
+        before = TestsFlextInfraConformSupport.project_tree(candidate)
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
 
         tm.ok(infra.bootstrap_candidate(command))
@@ -352,7 +385,29 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             is not None,
             eq=True,
         )
-        tm.that(first.content or b"", lacks=b"# stale projection")
+        restored = (first.content or b"").decode("utf-8")
+        tm.that(restored, lacks="<<<<<<< HEAD")
+        tm.that(
+            u.Tests.toml_table_at(restored, "dependency-groups"),
+            eq=original_groups,
+        )
+        after = TestsFlextInfraConformSupport.project_tree(candidate)
+        tm.that(
+            tuple(item for item in after if item[0] != projection.name),
+            eq=tuple(item for item in before if item[0] != projection.name),
+        )
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(candidate, {}, roots),
+            eq=tuple(
+                sorted({
+                    *roots,
+                    *(
+                        f"provider{index}.{base}"
+                        for index, (_, _, base) in enumerate(bases)
+                    ),
+                })
+            ),
+        )
         tm.ok(infra.bootstrap_candidate(command))
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True)),

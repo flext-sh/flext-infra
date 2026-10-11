@@ -71,7 +71,7 @@ class FlextInfraUtilitiesDocsFix:
         changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             original = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
                 errors=c.Infra.IGNORE,
             )
 
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesDocsFix:
 
         """
         original = md_file.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
             errors=c.Infra.IGNORE,
         )
         link_count = 0
@@ -197,7 +197,7 @@ class FlextInfraUtilitiesDocsFix:
         updated = fence_changed[0]
         updated, toc_changed = FlextInfraUtilitiesDocs.update_toc(updated)
         if apply and updated != original:
-            _ = md_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+            _ = md_file.write_text(updated, encoding=c.DEFAULT_ENCODING)
         return m.Infra.DocsPhaseItemModel(
             phase="fix",
             file=md_file.as_posix(),

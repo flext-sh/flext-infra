@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests import m
+from tests import m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -6,11 +6,45 @@ files:
 ignores:
   - "**/utilities.py"
 rule:
-  any:
-    - pattern: from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
-    - pattern: |
-        from flext_infra._utilities.project_managed_artifacts import (
-            FlextInfraUtilitiesProjectManagedArtifacts,
-        )
+  all:
+    # Empty fixes cannot remove a required suite's last statement. Match only
+    # direct module statements, and never a subset of a mixed import.
+    - kind: import_from_statement
+    - not:
+        inside:
+          not:
+            kind: module
+    - regex: '^from\s+flext_infra\._utilities\.project_managed_artifacts\s+import\s+(?:FlextInfraUtilitiesProjectManagedArtifacts|\(\s*FlextInfraUtilitiesProjectManagedArtifacts\s*,?\s*\))$'
+    - not:
+        any:
+          - precedes:
+              regex: '^;$'
+          - follows:
+              regex: '^;$'
+    - any:
+        - pattern: from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+        - pattern: |
+            from flext_infra._utilities.project_managed_artifacts import (
+                FlextInfraUtilitiesProjectManagedArtifacts,
+            )
+    # Only a reference-free binding is superseded. Strings also carry public
+    # exports, lazy export maps, and deferred annotations in generated owners.
+    - not:
+        inside:
+          kind: module
+          stopBy: end
+          has:
+            stopBy: end
+            any:
+              - all:
+                  - kind: identifier
+                  - regex: '^FlextInfraUtilitiesProjectManagedArtifacts$'
+                  - not:
+                      inside:
+                        kind: import_from_statement
+                        stopBy: end
+              - all:
+                  - kind: string
+                  - regex: '\bFlextInfraUtilitiesProjectManagedArtifacts\b'
 fix: ""
-message: Remove the private project managed-artifact owner import after facade rewiring.
+message: Remove the unused private project managed-artifact owner import after facade rewiring, retaining live uses and exports.

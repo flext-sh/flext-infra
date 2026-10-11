@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m, u
+from tests import tm
 
 
 class TestsFlextInfraApiAliasCutover:

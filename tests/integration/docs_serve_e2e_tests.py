@@ -18,10 +18,10 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, r
 from flext_infra.docs.server import FlextInfraDocServer
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

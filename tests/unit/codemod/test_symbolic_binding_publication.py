@@ -11,11 +11,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import u
+from tests import tm, u
 
 # Shared fixture line: the owned-constant read every receiver scenario asserts on.
 _OWNED_CI_LINE = (

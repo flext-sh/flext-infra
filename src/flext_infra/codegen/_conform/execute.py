@@ -317,6 +317,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             if surface in {
                 c.Infra.CodegenConformSurface.MAKEFILE,
                 c.Infra.CodegenConformSurface.DOCS_CONFIG,
+                c.Infra.CodegenConformSurface.ENVRC,
                 c.Infra.CodegenConformSurface.PYPROJECT,
                 c.Infra.CodegenConformSurface.MISE_CONFIG,
             }:
@@ -367,6 +368,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if surface not in {
             c.Infra.CodegenConformSurface.MAKEFILE,
             c.Infra.CodegenConformSurface.DOCS_CONFIG,
+            c.Infra.CodegenConformSurface.ENVRC,
             c.Infra.CodegenConformSurface.PYPROJECT,
             c.Infra.CodegenConformSurface.MISE_CONFIG,
         }:
@@ -376,7 +378,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)
         root = request.root.expanduser().resolve()
-        roots = {"@bootstrap-0": root}
+        roots = {
+            f"@bootstrap-{index}": (root / repository.path).resolve()
+            for index, repository in enumerate(plan.repositories)
+        }
         return transaction.run_files_locked(
             roots,
             lambda scope_root: self._publish_bootstrap_locked(
@@ -447,11 +452,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 f"bootstrap requires declared destinations for {surface}",
             )
         expected_paths = {
-            request.root.expanduser().resolve() / path for path in destinations
+            (request.root.expanduser().resolve() / repository.path / path).resolve()
+            for repository in plan.repositories
+            for path in destinations
         }
-        if {file.path for file in plan.files} != expected_paths:
+        planned_paths = {file.path for file in plan.files}
+        if planned_paths != expected_paths:
             return r[t.VariadicTuple[Path]].fail(
-                f"bootstrap plan does not own the declared destinations for {surface}",
+                f"bootstrap plan does not own the declared destinations for {surface}: "
+                f"missing={sorted(map(str, expected_paths - planned_paths))}; "
+                f"unexpected={sorted(map(str, planned_paths - expected_paths))}",
             )
         changed = tuple(
             file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
@@ -494,9 +504,39 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             staged_validator=(
                 self._validate_mise_stage
                 if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
+                else self._validate_pyproject_stage
+                if surface is c.Infra.CodegenConformSurface.PYPROJECT
                 else None
             ),
         )
+
+    @staticmethod
+    def _validate_pyproject_stage(
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Parse the staged replacement before publishing semantic prerequisites.
+
+        Returns:
+            The unchanged session or the native TOML parser failure.
+
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        if not publications:
+            return result_type.fail("pyproject bootstrap requires staged replacements")
+        for publication in publications:
+            if publication.replacement is None:
+                return result_type.fail(
+                    "pyproject bootstrap requires a replacement for every publication",
+                )
+            parsed = u.Cli.toml_read_document(publication.replacement.path)
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+        u.Cli.info(
+            f"stage=pyproject-staged-validation files={len(publications)} "
+            "semantic-analysis=next-gen",
+        )
+        return result_type.ok(session)
 
     @staticmethod
     def _validate_mise_stage(

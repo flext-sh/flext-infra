@@ -13,10 +13,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraCliRouteService, c, config, main
-from tests import m, t, u
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraCodegenMain:

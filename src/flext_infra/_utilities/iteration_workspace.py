@@ -39,7 +39,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
         """
         workers = min(config.Infra.codegen.fleet_workers, len(payloads))
-        if True:
+        if workers <= 1:
             return tuple(task(payload) for payload in payloads)
         context = multiprocessing.get_context("forkserver")
         with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:

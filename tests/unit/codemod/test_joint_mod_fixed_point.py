@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, main, u
 from flext_infra.codemod import FlextInfraModGateEngine
+from tests import tm
 
 
 @pytest.mark.slow

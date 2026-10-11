@@ -9,16 +9,16 @@ from __future__ import annotations
 import shlex
 import sys
 import time
-from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import pytest
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.validate._pytest_runner.command import FlextInfraPytestRunnerCommand
-from flext_infra.validate._pytest_runner.reports import FlextInfraPytestRunnerReports
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+from flext_infra import FlextInfraTestmonDbInspector, c, config, m, r, t, u
+from flext_infra.validate._pytest_runner import (
+    FlextInfraPytestRunnerCommand,
+    FlextInfraPytestRunnerReports,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -47,38 +47,59 @@ class FlextInfraPytestRunnerExecution(
             pre_run_digest=digest,
         ).execute()
 
-    def _selection_env(
+    def _selection_process_options(
         self,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-    ) -> MutableMapping[str, str]:
-        """Return the child environment shared by every runner invocation.
+        live: bool = False,
+    ) -> p.Cli.ProcessOptions:
+        """Declare child overrides and removals at the process boundary.
 
         The coverage verb owns no testmon plugin, so its children neither
         receive nor inherit a testmon database location.
 
         Returns:
-            The child environment shared by every runner invocation.
+            The process options shared by every runner invocation.
 
+        Raises:
+            ValueError: If test target has no declared project owner.
         """
         testmon_keys = (
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         coverage = execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+        source_root = self.root
+        if self.target_file is not None:
+            target_root = u.Infra.nearest_project_root(
+                self.root, self.root / self.target_file
+            )
+            if target_root is None:
+                msg = "test target has no declared project owner"
+                raise ValueError(msg)
+            source_root = target_root
         overrides = {
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                self.root / c.Infra.DEFAULT_SRC_DIR,
+                source_root / c.Infra.DEFAULT_SRC_DIR,
             ),
         }
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
+        if self.profile_enabled or self.collection_command_prefix:
+            overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
+                config.Infra.tooling.tools.pytest.profile_process_directory
+            )
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
             *(testmon_keys if coverage else ()),
         )
-        return u.Cli.process_env(remove_keys=remove_keys, overrides=overrides)
+        return m.Cli.ProcessOptions(
+            env=overrides,
+            remove_env_keys=tuple(key for key in remove_keys if key not in overrides),
+            live=live,
+            deadline=self._process_deadline(),
+        )
 
     def _resolve_selection(
         self,
@@ -164,10 +185,7 @@ class FlextInfraPytestRunnerExecution(
             command,
             selection_log,
             cwd=self.root,
-            options=m.Cli.ProcessOptions(
-                env=self._selection_env(execution_mode=execution_mode),
-                deadline=self._process_deadline(),
-            ),
+            options=self._selection_process_options(execution_mode=execution_mode),
         ).unwrap()
         self._record_process_outcome(
             report_dir,
@@ -270,13 +288,15 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline:
+    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
         """Use the entrypoint clock for selection, execution, and cleanup.
 
         Returns:
-            The resulting ``p.Cli.ProcessDeadline``.
+            The bounded operation's deadline, or no deadline for full execution.
 
         """
+        if self.unbounded:
+            return None
         pytest_settings = config.Infra.tooling.tools.pytest
         return m.Cli.ProcessDeadline(
             expires_at_monotonic=self.started_at_monotonic
@@ -305,13 +325,17 @@ class FlextInfraPytestRunnerExecution(
             command,
             report_dir / "pytest.log",
             cwd=self.root,
-            options=m.Cli.ProcessOptions(
-                env=self._selection_env(execution_mode=execution_mode),
+            options=self._selection_process_options(
+                execution_mode=execution_mode,
                 live=True,
-                deadline=self._process_deadline(),
             ),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
+        if self.profile_enabled:
+            self._bind_child_profile(
+                report_dir,
+                report_dir / config.Infra.tooling.tools.pytest.profile_suite_filename,
+            )
         return outcome
 
     @staticmethod
@@ -346,13 +370,14 @@ class FlextInfraPytestRunnerExecution(
             raise RuntimeError(msg)
 
     @staticmethod
-    def _completed_failure(outcome: p.Cli.ProcessOutcome) -> bool:
+    def _completed_failure(outcome: p.Cli.ProcessOutcome, report_dir: Path) -> bool:
         """Return whether a failing suite still finished its lifecycle.
 
         Under xdist the declared max-failures stop exits as Interrupted, not
         TestsFailed; it is still one completed suite lifecycle whose bounded
         evidence must be published. An operator signal keeps forwarded_signal
-        set and never qualifies.
+        set and never qualifies. A startup interruption has no final JUnit
+        report and must retain its native failure without suite finalization.
 
         Returns:
             Whether a failing suite still finished its lifecycle.
@@ -363,6 +388,7 @@ class FlextInfraPytestRunnerExecution(
             in {pytest.ExitCode.TESTS_FAILED, pytest.ExitCode.INTERRUPTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
+            and (report_dir / "junit.xml").is_file()
         )
 
     @staticmethod
@@ -446,7 +472,7 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             warnings,
-            diagnostics.skipped_count,
+            diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases),
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             not accounting_complete,
@@ -503,6 +529,7 @@ class FlextInfraPytestRunnerExecution(
             f"warnings={warnings}\n"
             f"{self._phase_warning_lines(phases)}"
             f"skipped={diagnostics.skipped_count}\n"
+            f"connectivity_prerequisite_skips={len(diagnostics.connectivity_skip_cases)}\n"
             f"collection_errors={diagnostics.collection_failed_count}\n"
             f"collection_skips={diagnostics.collection_skipped_count}\n"
             f"exit={final_exit}\n"
@@ -574,7 +601,7 @@ class FlextInfraPytestRunnerExecution(
         return self._execute_testmon(complete=False)
 
     def execute_full(self) -> p.Result[int]:
-        """Run incremental then full under one deadline and persistent database.
+        """Run incremental then full using one persistent database.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -619,11 +646,15 @@ class FlextInfraPytestRunnerExecution(
         # Selection, execution, and integrity inspection share one database.
         # Serialize competing worktrees within this invocation's typed deadline.
         deadline = self._process_deadline()
-        wait_seconds = max(
-            0.0,
-            deadline.expires_at_monotonic
-            - deadline.termination_grace_seconds
-            - time.monotonic(),
+        wait_seconds = (
+            c.Infra.JOURNAL_LEASE_WAIT_SECONDS
+            if deadline is None
+            else max(
+                0.0,
+                deadline.expires_at_monotonic
+                - deadline.termination_grace_seconds
+                - time.monotonic(),
+            )
         )
         self._cache_publication = None
         with u.Infra.codegen_transaction_lease(
@@ -658,7 +689,7 @@ class FlextInfraPytestRunnerExecution(
             if any(char in str(publication.database) for char in "\r\n"):
                 msg = "testmon publication path cannot contain output delimiters"
                 raise ValueError(msg)
-            with output.open("a", encoding=c.Cli.ENCODING_DEFAULT) as stream:
+            with output.open("a", encoding=c.DEFAULT_ENCODING) as stream:
                 stream.write(
                     f"testmon_database={publication.database}\n"
                     f"testmon_digest={publication.digest}\n"
@@ -683,12 +714,15 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
+        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=execution_mode,
                 testmon_db=self.testmon_db,
-                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+                deadline_monotonic=(
+                    None if deadline is None else deadline.expires_at_monotonic
+                ),
                 report_directory=report_dir,
             ),
         )
@@ -768,7 +802,7 @@ class FlextInfraPytestRunnerExecution(
             not u.Cli.process_succeeded(outcome)
             and not cache_hit
             and not completed_zero_tests
-            and not self._completed_failure(outcome)
+            and not self._completed_failure(outcome, report_dir)
         ):
             if (
                 self.target_file is not None
@@ -842,12 +876,15 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
+        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
-                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+                deadline_monotonic=(
+                    None if deadline is None else deadline.expires_at_monotonic
+                ),
                 report_directory=report_dir,
             ),
         )
@@ -864,7 +901,7 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
         )
-        if self._completed_failure(outcome):
+        if self._completed_failure(outcome, report_dir):
             return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
         if not u.Cli.process_succeeded(outcome):
             return r.ok(outcome.raw_return_code)
