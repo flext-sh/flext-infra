@@ -729,6 +729,10 @@ class FlextInfraConfigModelsMake(
                 description="Mandatory projected approval hook; host owns installation",
             ),
         ] = True
+        pre_commit_check_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Canonical check gates required by the commit hook"),
+        ]
         pre_push: Annotated[
             bool,
             m.Field(
@@ -838,6 +842,13 @@ class FlextInfraConfigModelsMake(
                 msg = "make project_check_gates must be unique"
                 raise ValueError(msg)
             builtin = set(c.Infra.CANONICAL_GATE_IDS)
+            unknown = sorted(set(self.pre_commit_check_gates) - builtin)
+            if unknown:
+                msg = (
+                    "make.pre_commit_check_gates contains unknown gates: "
+                    f"{', '.join(unknown)}"
+                )
+                raise ValueError(msg)
             shadowed = sorted(set(self.project_check_gates) & builtin)
             if shadowed:
                 msg = (

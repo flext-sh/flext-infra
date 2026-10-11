@@ -588,9 +588,6 @@ Infra:
         # and the project-owned tools.mypy.timeout_seconds budget.
         # direnv proves the developer's own activation, so it is local-only.
         local_check_gates: [ mypy, pyright, codemod, smells, direnv ]
-        # Fast-hook scope is declared here, independently of a tool's kind.
-        # Heavy checks remain mandatory in CI and the complete local check.
-        pre_commit_check_gates: [ format, lint, markdown, conflict-markers ]
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # An absent CI uses testmon for incremental developer runs.
@@ -600,6 +597,9 @@ Infra:
       # the pre-push hook runs every pre_push row below. make setup installs
       # both hooks locally with prek and installs none under CI=Y.
       pre_commit: true
+      # Fast-hook scope belongs to MakeSpec, not its CI environment delta.
+      # Heavy checks remain mandatory in CI and the complete local check.
+      pre_commit_check_gates: [ format, lint, markdown, conflict-markers ]
       pre_push: true
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
