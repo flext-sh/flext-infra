@@ -503,6 +503,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         limits: t.StrSequence,
         targets: t.StrSequence,
         workers: str,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.INCREMENTAL
+        ),
         trailing: t.StrSequence,
     ) -> t.VariadicTuple[str]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.

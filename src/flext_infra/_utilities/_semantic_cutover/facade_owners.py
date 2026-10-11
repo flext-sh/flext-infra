@@ -28,6 +28,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBases,
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -319,7 +322,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             c.Infra.INIT_PY if is_package else f"{module.rpartition('.')[2]}.py",
         )
         return MappingProxyType(
-            FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+            FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 module,
                 path,
                 source,

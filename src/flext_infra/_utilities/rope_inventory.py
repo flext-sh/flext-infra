@@ -475,6 +475,8 @@ class FlextInfraUtilitiesRopeInventory:
 
         """
         if FlextInfraUtilitiesRopeInventory._in_class_scope(class_chain, scope_chain):
+            # An UPPER name is a constant wherever it binds: the census owns
+            # class-level constants too, not only module-level ones.
             return "constant" if name.isupper() else "attribute"
         if scope_chain:
             return FlextInfraUtilitiesRopeInventory._scoped_binding_kind(name)

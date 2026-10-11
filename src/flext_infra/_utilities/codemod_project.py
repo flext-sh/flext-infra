@@ -41,7 +41,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeSourceBases,
+    FlextInfraUtilitiesSemanticCutoverBindings,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -111,10 +116,12 @@ class FlextInfraUtilitiesCodemodProject(
             )
             # Requesting a lazy export loads its elected provider module. Merely
             # installing the map does not load every provider in the package.
-            provider_aliases = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
-                name,
-                path,
-                resource.read(),
+            provider_aliases = (
+                FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                    name,
+                    path,
+                    resource.read(),
+                )
             )
             aliases.update({
                 f"{name}.{export}": provider
@@ -853,7 +860,7 @@ class FlextInfraUtilitiesCodemodProject(
         text = sources.get(path)
         if text is None:
             return False
-        routes = FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases(
+        routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
             module.get_name(), path, text
         )
         if not cls._single_reaching_binding(text, scope, expression, offset, routes):
