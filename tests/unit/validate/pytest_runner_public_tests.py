@@ -91,7 +91,7 @@ class TestsFlextInfraPytestRunner:
             / config.Infra.codegen.make.testmon_cache.reports_directory
         )
         suite_command = runner.build_command(report)
-        names = []
+        names: t.MutableSequenceOf[str] = []
         for command in (
             runner.build_selection_command(
                 report_log=report / "selection.jsonl",
@@ -295,12 +295,6 @@ class TestsFlextInfraPytestRunner:
         declare_parallel_project(cached_runner_project)
         policy = config.Infra.tooling.tools.pytest
         cache = config.Infra.codegen.make.testmon_cache
-        pyproject = cached_runner_project / c.PYPROJECT_FILENAME
-        pyproject.write_text(
-            pyproject.read_text(encoding="utf-8")
-            + f'markers = ["{policy.slow_marker}: slow phase"]\n',
-            encoding="utf-8",
-        )
         (cached_runner_project / cache.target_directory / "test_phases.py").write_text(
             "import pytest\nfrom runner_sample import answer\n\n"
             + "".join(
@@ -650,52 +644,38 @@ class TestsFlextInfraPytestRunner:
         tm.that(recorded, has="--timeout=0")
 
     @staticmethod
+    @pytest.mark.slow
     @pytest.mark.parametrize("ci_context", [False, True])
-    def test_full_argv_keeps_testmon_without_marker_filter_or_time_limit(
+    def test_full_outlives_the_configured_case_budget(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """The full argv disables the per-case timeout and names no stop instant.
-
-        ``--timeout=0`` is pytest-timeout's documented "no timeout"; the full
-        scope deselects no marker in any context.
-        """
-        runner = runner_for(cached_runner_project, ci_context=ci_context)
-        report = (
-            cached_runner_project
-            / config.Infra.codegen.make.testmon_cache.reports_directory
+        """A real slow case exceeds the configured budget and completes in full."""
+        policy = config.Infra.tooling.tools.pytest
+        runner = runner_for(cached_runner_project, ci_context=ci_context).model_copy(
+            update={"unbounded": True},
         )
-        command = runner.model_copy(update={"unbounded": True}).build_command(
-            report,
-            execution_mode=c.Infra.PytestExecutionMode.FULL,
+        (cached_runner_project / runner.target / "test_outlives_budget.py").write_text(
+            "import time\nimport pytest\n\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_outlives_budget():\n"
+            f"    time.sleep({policy.case_timeout_seconds + 1})\n",
+            encoding=c.DEFAULT_ENCODING,
         )
-        tm.that(command, has=["--testmon", "--testmon-noselect"])
+        tm.that(tm.ok(runner.execute_full()), eq=0)
+        reports = cached_runner_project / runner.reports
         tm.that(
-            [
-                token
-                for token in command
-                if token.startswith(c.Infra.PYTEST_SUITE_STOP_OPTION)
-            ],
-            eq=[],
+            summary(reports),
+            has=["executed=2", "failed=0", "errors=0", "exit=0"],
         )
-        tm.that(
-            [token for token in command if token.startswith("--timeout=")],
-            eq=["--timeout=0"],
+        latest = (reports / "latest.txt").read_text().strip()
+        context = m.Infra.PytestRunContext.model_validate_json(
+            (reports / latest / "run-context.json").read_text(),
         )
-        tm.that("-m" in command[3:], eq=False)
-        tm.that(command, has="--no-cov")
-        bounded = runner.build_command(report)
-        tm.that(
-            [token for token in bounded if token.startswith("--timeout=")],
-            eq=[f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"],
-        )
-        tm.that(
-            any(
-                token.startswith(c.Infra.PYTEST_SUITE_STOP_OPTION) for token in bounded
-            ),
-            eq=True,
-        )
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that(context.deadline_monotonic, none=True)
+        tm.that(context.testmon_db, eq=runner.testmon_db)
 
     @staticmethod
     @pytest.mark.slow
