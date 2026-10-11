@@ -27,7 +27,11 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     @staticmethod
     def _behavior_package(package: Path, value_type: str) -> dict[Path, str]:
-        """Declare a real typed factory and its public facade in one fixture package."""
+        """Declare a real typed factory and its public facade in one fixture package.
+
+        Returns:
+            The resulting ``dict[Path, str]``.
+        """
         directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
         return {
             package / "__init__.py": (
@@ -149,7 +153,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             "except AttributeError:\n    print('unavailable')\n"
             "else:\n    raise AssertionError('foreign behavior adopted')\n"
             if relation == "foreign-only"
-            else f"assert consumer.first_call() == {'7' if relation == 'isolated' else repr('7')}\n"
+            else f"assert consumer.first_call() == "
+            f"{'7' if relation == 'isolated' else repr('7')}\n"
         )
         output = tm.ok(
             u.Cli.run_raw(
@@ -160,7 +165,8 @@ class TestsFlextInfraUtilityFacadeProjection:
                     + first_contract
                     + "assert consumer.second_call() == '7'\n"
                     + (
-                        f"from {first.name} import Eager\nassert Eager.adapter.validate_python('9') == '9'\n"
+                        f"from {first.name} import Eager\nassert "
+                        f"Eager.adapter.validate_python('9') == '9'\n"
                         if relation == "inherited"
                         else ""
                     )
@@ -247,7 +253,11 @@ class TestsFlextInfraUtilityFacadeProjection:
                 (
                     sys.executable,
                     "-c",
-                    f"from {package.name}._decorators.consumer import consume; assert consume() == 'facade'",
+                    (
+                        f"from {package.name}._decorators.consumer import consume; "
+                        f"assert "
+                        f"consume() == 'facade'"
+                    ),
                 ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),

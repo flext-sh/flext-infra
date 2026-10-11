@@ -19,9 +19,6 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
 from tests import c, m, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
-from tests.utilities_fixture_project import (
-    TestsFlextInfraUtilitiesProjectFixtureMixin,
-)
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin

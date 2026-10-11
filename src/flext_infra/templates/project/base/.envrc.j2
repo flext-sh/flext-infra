@@ -40,11 +40,6 @@ export MISE_CEILING_PATHS="${runtime_parent}"
 # standalone checkout or a linked worktree owns its own physical environment
 # inside the checkout. The location is law, never configuration: no
 # environment is shared with another checkout or lives outside it.
-=======
-# A member inside a workspace uses the workspace environment. A linked Git
-# worktree owns a physical sibling environment selected by its Git identity;
-# primary checkouts retain their own local environment.
->>>>>>> recover/redo-d0560ba3c-merge-20261009
 VENV_DIR="${RUNTIME_ROOT}/{{ environment_directory }}"
 if [[ -L "${VENV_DIR}" ]]; then
   log_error "workspace environment must be physical, not a symlink: ${VENV_DIR}"
@@ -78,8 +73,6 @@ if [[ ! -d "${mise_shims_dir}" ]]; then
   log_error "mise has no shims directory (${mise_shims_dir}); run make setup"
   return 1
 fi
-PATH_add "${mise_shims_dir}"
-=======
 # The declared tools lead the PATH: a standalone binary the caller's PATH
 # lists earlier (for example a host ~/.local/bin/uv) never shadows the release
 # mise.lock pins. Prepending in reverse keeps mise's own precedence order.
@@ -95,7 +88,6 @@ for ((mise_index = ${#mise_bin_paths[@]} - 1; mise_index >= 0; mise_index--)); d
 done
 unset mise_bin_paths_output mise_bin_paths mise_index
 {% endraw -%}
->>>>>>> /tmp/at_src_flext_infra_templates_project_base_.envrc.j2
 # End SECTION: mise activation
 
 # === SECTION: configured paths (managed) ===
