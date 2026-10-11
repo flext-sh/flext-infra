@@ -550,6 +550,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         Returns:
             Immutable consumer edits, or failures for unresolved identities.
 
+        Raises:
+            ValueError: If a consumer has no declared project owner.
+
         """
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
