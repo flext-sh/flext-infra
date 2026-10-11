@@ -331,7 +331,10 @@ class FlextInfraPytestRunnerExecution(
             ),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
-        if self.profile_enabled:
+        if self.profile_enabled and (
+            u.Cli.process_succeeded(outcome)
+            or self._completed_failure(outcome, report_dir)
+        ):
             self._bind_child_profile(
                 report_dir,
                 report_dir / config.Infra.tooling.tools.pytest.profile_suite_filename,

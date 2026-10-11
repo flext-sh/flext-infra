@@ -34,13 +34,32 @@ class FlextInfraConstantsCheck:
     PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
     PYTEST_SELECTION_PROFILE_FILENAME: ClassVar[str] = "testmon-selection.pstats"
     PYTEST_INVENTORY_PROFILE_FILENAME: ClassVar[str] = "testmon-inventory.pstats"
+    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest_clock"
+    PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
+        "import sys\n"
+        "from pathlib import Path\n"
+        "from importlib.util import find_spec, module_from_spec, spec_from_file_location\n"
+        f"clock_name = {PYTEST_PROFILE_CLOCK_MODULE!r}\n"
+        "clock = sys.modules.get(clock_name)\n"
+        "if clock is None:\n"
+        "    package = find_spec(clock_name.split('.', 1)[0])\n"
+        "    if package is None or package.origin is None:\n"
+        "        raise ModuleNotFoundError(clock_name)\n"
+        "    clock_path = Path(package.origin).with_name("
+        "clock_name.rsplit('.', 1)[1] + '.py')\n"
+        "    clock_spec = spec_from_file_location(clock_name, clock_path)\n"
+        "    if clock_spec is None or clock_spec.loader is None:\n"
+        "        raise ImportError(clock_name)\n"
+        "    clock = module_from_spec(clock_spec)\n"
+        "    sys.modules[clock_name] = clock\n"
+        "    clock_spec.loader.exec_module(clock)\n"
+        "profile = clock.FlextInfraPytestClock.start_profiler()\n"
+    )
     PYTEST_PROFILE_STARTUP: ClassVar[str] = (
-        "import atexit, cProfile, os, sys\n"
+        PYTEST_PROFILE_BOOTSTRAP + "import atexit, os, sys\n"
         "from pathlib import Path\n"
         "from importlib.machinery import PathFinder\n"
         "from importlib.util import module_from_spec\n"
-        "profile = cProfile.Profile()\n"
-        "profile.enable()\n"
         f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
         "atexit.register(profile.dump_stats, str(output / f'{os.getpid()}.pstats'))\n"
         "startup = str(Path(__file__).parent)\n"
@@ -52,10 +71,9 @@ class FlextInfraConstantsCheck:
         "    original.loader.exec_module(module)\n"
     )
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
-        "import cProfile, os, runpy, sys\n"
+        PYTEST_PROFILE_BOOTSTRAP + "import os, runpy, sys\n"
         "from pathlib import Path\n"
         "output = sys.argv.pop(1)\n"
-        "profile = cProfile.Profile()\n"
         "try:\n"
         f"    directory = os.environ.get({PYTEST_PROFILE_PROCESS_DIRECTORY_ENV!r})\n"
         "    if directory is not None:\n"
@@ -68,9 +86,7 @@ class FlextInfraConstantsCheck:
         "        inherited = os.environ.get('PYTHONPATH', '')\n"
         "        os.environ['PYTHONPATH'] = str(startup) + "
         "(os.pathsep + inherited if inherited else '')\n"
-        "    profile.runcall(\n"
-        "        runpy.run_module, 'pytest', run_name='__main__', alter_sys=True\n"
-        "    )\n"
+        "    runpy.run_module('pytest', run_name='__main__', alter_sys=True)\n"
         "finally:\n"
         "    profile.dump_stats(output)\n"
     )
@@ -78,9 +94,9 @@ class FlextInfraConstantsCheck:
 
     The profile entry enables run-owned startup instrumentation for descendants,
     including pytester children. Existing site customization is still executed.
-    Stdlib only, so pytest installs assertion rewriting before any plugin
-    package (``flext_infra`` included) is imported; pytest's ``SystemExit``
-    still sets the exit status, unlike ``python -m cProfile``.
+    The stdlib loader resolves the clock without importing its parent package.
+    Pytest installs assertion rewriting before any plugin package is imported;
+    its ``SystemExit`` still sets the native exit status.
     """
 
     @unique

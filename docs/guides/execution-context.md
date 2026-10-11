@@ -116,14 +116,15 @@ When the projection carries no line, a hand-written `project.flext_source` in th
 manifest declares it, and a commit in a hand-written source fails. Fix the setup or
 `upg` owner and regenerate through `make gen`; manual installs do not replace the cycle.
 
-A workspace root declares local-member requirements as bare distribution names and
-resolves them through `[tool.uv.sources]` entries with `workspace = true`. The root
-alone owns `[tool.uv.workspace]`; member manifests never declare a nested workspace.
-Publishable members retain their declared inline Git provenance and, while attached,
-redirect local sibling requirements through their own workspace-source overlay.
-Standalone conformance removes that overlay without removing the declared Git
-requirements. Dependencies outside the declared workspace retain their governed
-integration source rather than becoming local members.
+A workspace root preserves declared Git requirements and binds its package members
+through `[tool.uv.sources]` entries containing their declared local `path` and
+`editable` values. No repository declares a native `[tool.uv.workspace]`: each
+repository owns its lock independently. Publishable members retain the same inline
+Git provenance whether attached or standalone; only the containing root owns the
+local source overlay and the shared runtime environment. Regenerate that root with
+`make gen` and reconcile its lock with `make upg` when the local binding changes.
+Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
+paths against that same topology; a frozen Git artifact is not a live local source.
 
 ## Runtime environment
 
@@ -256,6 +257,14 @@ JUnit report is produced. Its process-outcome receipt and raw log remain availab
 but no completed-suite summary or run accounting is published. A graceful failing
 suite with JUnit still follows the normal diagnostics and accounting path; neither
 an interruption nor a missing report is evidence that tests passed.
+
+Suite profiles are bound only after successful execution or a completed failing
+suite with its final JUnit report. An interrupted profiling child keeps its native
+process outcome and raw log without attempting to read an unfinished profile.
+A missing profile from a completed suite remains an artifact failure.
+Startup instrumentation, the pytest launcher and the profiling entrypoint share
+one process-local profiler. Nested profiling subprocesses retain their own profiles
+and still execute the original site customization.
 
 Distributed stop requests validate the initialized native controller through
 `p.Infra.PytestStopController` at report time, not during session startup. The

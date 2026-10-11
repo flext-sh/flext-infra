@@ -21,3 +21,15 @@ class FlextInfraPytestClock:
     )
     if profiler is not None:
         profiler.enable()
+
+    @classmethod
+    def start_profiler(cls) -> cProfile.Profile:
+        """Share the process profiler across startup, launcher and entrypoint.
+
+        Returns:
+            The active profiler owned by this process.
+        """
+        if cls.profiler is None:
+            cls.profiler = cProfile.Profile()
+            cls.profiler.enable()
+        return cls.profiler

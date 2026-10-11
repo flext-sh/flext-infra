@@ -32,7 +32,7 @@ class TestsFlextInfraSemanticPhaseContract:
     ) -> None:
         """Equal contextual import names in separate projects remain independent."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
-        sources: dict[Path, str] = {}
+        sources: t.MutableMappingKV[Path, str] = {}
         consumers: list[Path] = []
         for name in ("first_member", "second_member"):
             member = u.Tests.mk_project(
@@ -436,7 +436,7 @@ class TestsFlextInfraSemanticPhaseContract:
             RuntimeError: If the published fixture has no source module loader.
 
         """
-        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root = u.Tests.create_lazy_init_workspace(tmp_path)[0]
         contextual = root / "consumer_context"
         contextual.mkdir()
         path = contextual / "consumer.py"
@@ -491,12 +491,16 @@ class TestsFlextInfraSemanticPhaseContract:
                 tm.that(updated, has="u.json_dict_adapter()")
                 tm.that(updated, has="u.json_list_adapter()")
                 tm.that("from flext_cli import u" in updated, eq=False)
-                remaining = tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        phase, rope_workspace=rope, sources={**sources, path: updated}
-                    )
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            phase,
+                            rope_workspace=rope,
+                            sources={**sources, path: updated},
+                        )
+                    ),
+                    empty=True,
                 )
-                tm.that(remaining, empty=True)
         for source_path, content in sources.items():
             tm.that(source_path.read_text(encoding="utf-8"), eq=content)
         if binding == "inherited":

@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 import sysconfig
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 
@@ -278,3 +279,92 @@ class TestsFlextInfraBindingInstall:
             )),
         )
         tm.that(rebound.stdout.strip(), eq="current-worktree")
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_checkout_generator_consumes_the_provisioned_public_sdk() -> None:
+        """Exercise real TOML generation and authenticate its declared sources.
+
+        Only the generator checkout is selected, as in the native Make owner.
+        Its upstream SDK must come from the provisioned environment, not an
+        additional source-path override that hides a mixed checkout/install.
+        """
+        checkout = Path(__file__).resolve().parents[3]
+        root = u.Infra.runtime_environment_dir(checkout).parent
+        status = tm.ok(u.Tests.run_isolated_make(["status"], cwd=checkout))
+        tm.that(
+            u.Cli.process_succeeded(status.outcome),
+            eq=True,
+            msg=status.stdout + status.stderr,
+        )
+        consumer = dedent("""\
+            from importlib.metadata import distribution
+            from pathlib import Path
+            from sys import argv
+
+            from flext_infra import (
+                FlextInfraWorkspaceDetector,
+                FlextInfraWorkspaceEnvironmentProvenance,
+                c, config, m, u,
+            )
+
+            root = Path(argv[1])
+            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root).unwrap()
+            for repository in (workspace.repository, *workspace.subprojects):
+                if repository.package:
+                    artifact = distribution(repository.distribution)
+                    raw = artifact.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+                    receipt = (
+                        m.Infra.DirectUrlReceipt.model_validate_json(raw) if raw else None
+                    )
+                    print(repository.distribution, artifact.version,
+                          artifact.locate_file(""),
+                          receipt.vcs_info if receipt else None,
+                          receipt.dir_info if receipt else None,
+                          flush=True)
+            source = u.Cli.files_read_text(root / c.PYPROJECT_FILENAME).unwrap()
+            document = u.Cli.toml_parse_text(source)
+            assert document is not None
+            groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+            assert groups is not None
+            comments = u.Cli.toml_array_item_comments(groups, str(c.Infra.DEV))
+            values = u.Cli.toml_as_string_list(
+                u.Cli.toml_value(groups, str(c.Infra.DEV))
+            )
+            assert len(comments) == len(values)
+            toolchain = config.Infra.codegen.toolchain
+            rendered = u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                uv_resolution=m.Infra.UvResolutionSpec(
+                    link_mode=toolchain.uv_link_mode,
+                    constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
+                    exclude_dependencies=tuple(config.Infra.codegen.uv_exclude_dependencies),
+                    environments=tuple(toolchain.uv_environments),
+                ),
+                options=u.Infra.PyprojectConformOptions(
+                    repository_root=root,
+                    flext_line=u.Infra.flext_integration_line(
+                        codegen=config.Infra.codegen, repository_root=root,
+                    ).unwrap(),
+                ),
+            ).unwrap()
+            assert u.Cli.toml_parse_text(rendered) is not None
+            FlextInfraWorkspaceEnvironmentProvenance.validate(root).unwrap()
+            """)
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", consumer, str(root)),
+                cwd=checkout,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(checkout / c.Infra.DEFAULT_SRC_DIR)},
+                    remove_env_keys=("MYPYPATH", "VIRTUAL_ENV", "UV_PROJECT"),
+                ),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome),
+            eq=True,
+            msg=outcome.stdout + outcome.stderr,
+        )

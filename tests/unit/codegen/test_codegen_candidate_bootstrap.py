@@ -13,11 +13,26 @@ import pytest
 
 from flext_infra import config, infra
 from tests import c, m, tm, u
-from tests.unit.codegen import TestsFlextInfraConformSupport
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
+
+    @staticmethod
+    def test_current_repository_is_a_valid_relative_bootstrap_target() -> None:
+        """Self recovery remains relative while invalid path inputs fail."""
+        target = m.Infra.CandidateBootstrapTargetSpec.model_validate({
+            "path": ".",
+            "what": c.Infra.CodegenConformSurface.MAKEFILE,
+        })
+        tm.that(target.path, eq=Path("."))
+        for invalid in ("", " ", Path.cwd()):
+            with pytest.raises(m.ValidationError):
+                m.Infra.CandidateBootstrapTargetSpec.model_validate({
+                    "path": invalid,
+                    "what": c.Infra.CodegenConformSurface.MAKEFILE,
+                })
 
     @staticmethod
     def _campaign(tmp_path: Path) -> tuple[Path, Path, Path]:

@@ -886,6 +886,7 @@ class FlextInfraUtilitiesCodemodProject(
             case (
                 c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE
+                | c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE
                 | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
                 | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
             ):
@@ -1027,6 +1028,8 @@ class FlextInfraUtilitiesCodemodProject(
                 return cls._context_root_init_holds(root, file_path)
             case c.Infra.CodemodContextPredicate.FAMILY_BASE:
                 return cls._family_package_has_base(file_path)
+            case c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE:
+                return cls._family_base_file(root, file_path)
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
             case c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:
@@ -1034,6 +1037,35 @@ class FlextInfraUtilitiesCodemodProject(
             case _:
                 message = f"predicate is not project-scoped: {predicate}"
                 raise ValueError(message)
+
+    @classmethod
+    def _family_base_file(cls, root: Path, file_path: Path) -> bool:
+        """Prove the immediate family leaf from its owner's declared layout.
+
+        Returns:
+            Whether the file is a declared family base leaf.
+
+        Raises:
+            ValueError: If the project's layout cannot be resolved.
+        """
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(root, file_path)
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+        if layout is None:
+            msg = f"project layout is unresolved: {file_path}"
+            raise ValueError(msg)
+        directory = file_path.parent
+        facade = directory.parent / f"{directory.name.removeprefix('_')}.py"
+        return (
+            file_path.name == f"base{c.Infra.EXT_PYTHON}"
+            and directory.parent.resolve() == layout.package_dir.resolve()
+            and directory.name.startswith("_")
+            and not directory.name.startswith("__")
+            and facade.is_file()
+            and bool(
+                frozenset(config.Infra.tooling.lazy_init.import_layer_order)
+                & cls._module_exports(facade)
+            )
+        )
 
     @staticmethod
     def _context_root_init_holds(root: Path, file_path: Path) -> bool:

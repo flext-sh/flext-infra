@@ -34,9 +34,17 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Canonical generator surface for this target"),
         ]
 
+        @m.field_validator("path", mode="before")
+        @classmethod
+        def _validate_path_input[TPayload](cls, value: TPayload) -> TPayload:
+            if isinstance(value, str) and not value.strip():
+                msg = "candidate bootstrap path must not be empty"
+                raise ValueError(msg)
+            return value
+
         @m.model_validator(mode="after")
         def _validate_path(self) -> Self:
-            if self.path.is_absolute() or not self.path.parts:
+            if self.path.is_absolute():
                 msg = "candidate bootstrap path must be relative"
                 raise ValueError(msg)
             return self
