@@ -480,14 +480,36 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(package / "__init__.py", conflicted)
         self._write(
             package / "codemod" / consumer_name,
-            import_statement + "\n\nu.Sample.plan_cutover()\n",
+            "import sys\n"
+            + import_statement
+            + "\n\nsys.getdefaultencoding()\nu.Sample.plan_cutover()\n",
         )
         self._write(
             package / "_utilities" / "semantic_cutover.py",
             "class FlextSampleUtilitiesSemanticCutover:\n"
             "    @staticmethod\n"
             "    def plan_cutover() -> None:\n"
+            "        pass\n"
+            "class _PrivateCutover:\n"
+            "    @staticmethod\n"
+            "    def plan_cutover() -> None:\n"
             "        pass\n",
+        )
+        self._write(
+            package / "_utilities" / "internal_owner.py",
+            "class InternalOwner:\n"
+            "    @staticmethod\n"
+            "    def internal_step() -> None:\n"
+            "        pass\n"
+            "class OtherInternalOwner:\n"
+            "    @staticmethod\n"
+            "    def internal_step() -> None:\n"
+            "        pass\n",
+        )
+        self._write(
+            package / "_utilities" / "internal_consumer.py",
+            "from flext_sample._utilities.internal_owner import InternalOwner\n"
+            "InternalOwner.internal_step()\n",
         )
         facade = package / "utilities.py"
         self._write(

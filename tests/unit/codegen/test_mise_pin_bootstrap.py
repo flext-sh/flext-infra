@@ -35,7 +35,7 @@ class TestsFlextInfraMisePinBootstrap:
         template.write_text(
             '{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe %}'
             '{{ tool_bootstrap_recipe("bootstrap", "$(PROJECT_ROOT)", '
-            "toolchain.mise_selector, [toolchain.mise_selector], "
+            "toolchain, [toolchain.mise_selector], "
             '"printf recovered > recovered.txt", make) }}',
             encoding="utf-8",
         )
@@ -48,7 +48,7 @@ class TestsFlextInfraMisePinBootstrap:
             encoding="utf-8",
         )
         (tmp_path / ".mise.toml").write_text(
-            "[settings]\nlockfile = true\nlocked = true\n"
+            f"[settings]\nlockfile = {str(toolchain.mise_lockfile).lower()}\n"
             "[tools]\n"
             f'"{toolchain.mise_selector}" = "{toolchain.mise_version}"\n',
             encoding="utf-8",
@@ -63,6 +63,42 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(setup.stderr, has="pins no")
         tm.that((tmp_path / "mise.lock").exists(), eq=False)
         tm.that((tmp_path / "recovered.txt").exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("enabled", [False, True])
+    def test_mise_settings_follow_typed_policy_without_global_locking(
+        *, enabled: bool
+    ) -> None:
+        """Project valid policy changes without locking unrelated host tools."""
+        toolchain = config.Infra.codegen.toolchain.model_copy(
+            update={
+                "mise_lockfile": enabled,
+                "mise_provenance_api_failures_fatal": enabled,
+                "mise_locked_verify_provenance": enabled,
+            },
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                u.Infra.codegen_templates_root(config.Infra.codegen)
+                / "base"
+                / ".mise.toml.j2",
+                toolchain,
+            ),
+        )
+        document = u.Tests.toml_payload(rendered)
+        settings = u.Tests.toml_table_at(document, "settings")
+        tm.that(settings["lockfile"], eq=toolchain.mise_lockfile)
+        tm.that(
+            settings["provenance_api_failures_fatal"],
+            eq=toolchain.mise_provenance_api_failures_fatal,
+        )
+        tm.that(
+            settings["locked_verify_provenance"],
+            eq=toolchain.mise_locked_verify_provenance,
+        )
+        tm.that("locked" in settings, eq=False)
+        tm.that("disable_update_warning" in settings, eq=False)
+        tm.that("tool_config" in document, eq=False)
 
     @pytest.mark.slow
     def test_upgrade_recovers_a_missing_self_pin(self, tmp_path: Path) -> None:

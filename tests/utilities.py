@@ -123,6 +123,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     packages_read=overrides.packages_read,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
+                    toolchain=codegen.toolchain,
                     make=codegen.make,
                     workspace_repositories=overrides.workspace_repositories,
                     checkout_submodules=codegen.checkout_submodules,

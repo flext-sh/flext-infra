@@ -35,6 +35,7 @@ class TestsFlextInfraConformSupport:
         return m.Infra.RepositoryConformTarget(
             repository=repository,
             root=root,
+            toolchain_root=root,
             make_profile=make_profile,
             beads=u.Tests.beads_project(repository.name),
             canonical_project_name=repository.distribution,

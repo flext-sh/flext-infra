@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsMiseToolchain:
@@ -470,6 +470,15 @@ class FlextInfraModelsMiseToolchain:
                 The resulting ``t.MappingKV[str, str]``.
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
+
+        @m.computed_field
+        @property
+        def mise_platforms_by_host(self) -> t.MappingKV[str, str]:
+            """Project the canonical host identities into shell case keys."""
+            return {
+                f"{system}/{machine}": platform
+                for (system, machine), platform in c.Infra.MISE_PLATFORM_BY_HOST.items()
+            }
 
         @m.computed_field
         @property

@@ -59,6 +59,7 @@ class FlextInfraPytestEntry:
             raise TypeError(msg)
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
+        runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
         runner = runner_module.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,

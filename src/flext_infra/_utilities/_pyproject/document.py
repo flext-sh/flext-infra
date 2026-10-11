@@ -15,6 +15,12 @@ from flext_cli import u
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectUvSources
+from flext_infra._utilities._pyproject._requirements_provenance import (
+    _RequirementProvenance,
+)
+from flext_infra._utilities._pyproject.overlay import (
+    FlextInfraUtilitiesPyprojectOverlay,
+)
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -33,10 +39,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             Path | None,
             m.Field(description="Canonical root for declared member metadata"),
         ] = None
-        codegen_dependencies: Annotated[
-            t.StrSequence,
-            m.Field(description="Codegen floors from the canonical rendered profile"),
-        ] = ()
 
     @classmethod
     def _parsed_pyproject(
@@ -101,21 +103,23 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if environment.failure:
             return r[str].from_failure(environment)
         member_requests, member_groups, member_requirements = environment.value
+        custom_dev: t.StrSequence = ()
         if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
             payload = u.Cli.toml_as_mapping(source)
             if payload is None:
                 return r[str].fail("root metadata is not a TOML mapping")
+            custom = FlextInfraUtilitiesPyprojectOverlay._custom_dev_additions(
+                payload,
+                pyproject_content,
+            )
+            if custom.failure:
+                return r[str].from_failure(custom)
+            custom_dev = custom.value
             groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
             u.Cli.toml_sync_string_list(
                 groups,
                 str(c.Infra.DEV),
-                cls._custom_dev_additions(payload),
-            )
-            # Codegen is already a managed group, unlike CUSTOM dev additions.
-            u.Cli.toml_sync_string_list(
-                groups,
-                "codegen",
-                sorted({*provenance.codegen_dependencies, *member_groups}),
+                custom.value,
             )
         cls._sync_dependency_groups(
             source,
@@ -128,7 +132,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         u.Cli.toml_sync_string_list(
             groups,
             str(c.Infra.DEV),
-            sorted({*dev, *member_requests}),
+            sorted({*dev, *custom_dev, *member_requests, *member_groups}),
         )
         local_requirements = cls.document_requirement_lines(source)
         if local_requirements.failure:
@@ -153,6 +157,24 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
+        if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
+            normalized_custom: list[str] = []
+            context = _RequirementProvenance(
+                declared_sources=declared_sources,
+                candidate_sources=candidate_sources,
+                family_line=provenance.flext_line.branch
+                if provenance.flext_line
+                else None,
+            )
+            for value in custom_dev:
+                canonical = cls._canonical_requirement(value, provenance=context)
+                if canonical.failure:
+                    return r[str].from_failure(canonical)
+                normalized_custom.append(canonical.value)
+            FlextInfraUtilitiesPyprojectOverlay._sync_member_dev_provenance(
+                source,
+                custom=normalized_custom,
+            )
         cls._remove_legacy_tooling(source)
         synced = cls._synced_conform_tables(
             source,

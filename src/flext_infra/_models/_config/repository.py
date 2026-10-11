@@ -379,6 +379,12 @@ class FlextInfraConfigModelsRepository:
             Path,
             m.Field(description="Resolved repository root receiving conformance"),
         ]
+        toolchain_root: Annotated[
+            Path,
+            m.Field(
+                description="Composition root owning the active generation toolchain"
+            ),
+        ]
         make_profile: Annotated[
             c.Infra.MakeProfile,
             m.Field(description="Make profile inferred from live Git topology"),

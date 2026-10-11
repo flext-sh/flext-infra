@@ -74,6 +74,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
         ]
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Canonical toolchain consumed by native bootstrap"),
+        ]
         mise_selector: Annotated[
             t.NonEmptyStr,
             m.Field(description="Mise backend selector the mise.lock pin is read from"),

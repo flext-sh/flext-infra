@@ -23,8 +23,6 @@ from rope.base.resources import File, Folder
 
 from flext_infra import t
 
-from flext_infra import t
-
 
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired."""

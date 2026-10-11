@@ -124,6 +124,15 @@ blocks the proposed migration. A missing destination blocks the whole campaign b
 publication; historical lists cannot be enabled before their definers publish the
 destination contract.
 
+For a live provider whose own bootstrap calls the method being renamed, the public
+`flext-infra refactor apply-renames --rename-definitions` route renames the existing
+declaration and its references in one authenticated transaction. The declaration must
+belong to the explicit scan roots and the destination must be unoccupied. This uses
+the existing Rope rename owner, preserves unrelated homonyms, and verifies a fresh
+zero-edit scan before publication completes. The default consumer-migration mode
+continues to require an already-declared destination; no compatibility method is
+needed during a declaration cutover.
+
 `text_globs` explicitly selects non-Python documentation and configuration text.
 `python_documentation` selects comments and actual module, class and function
 docstrings, including concatenated string tokens. Executable string payloads are

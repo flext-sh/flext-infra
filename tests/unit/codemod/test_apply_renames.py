@@ -152,6 +152,48 @@ class TestsFlextInfraApplyRenames:
         )
 
     @staticmethod
+    def test_owned_method_declarations_and_callers_rename_atomically(
+        mod_workspace: Path,
+    ) -> None:
+        """Real provider imports keep working without renaming parser homonyms."""
+        driver = mod_workspace / "renames.csv"
+        driver.write_text("old,new\nparse,parse_module\n", encoding="utf-8")
+        (mod_workspace / "definer.py").write_text(
+            "class ModuleSource:\n"
+            "    @staticmethod\n"
+            "    def parse(value):\n"
+            "        return value.upper()\n"
+            "class Parser:\n"
+            "    @staticmethod\n"
+            "    def parse(value, target):\n"
+            "        return target(value)\n"
+            "class Facade(Parser, ModuleSource):\n"
+            "    pass\n"
+            "BOOTSTRAP = ModuleSource.parse('ready')\n",
+            encoding="utf-8",
+        )
+        consumer = mod_workspace / "consumer.py"
+        consumer.write_text(
+            "from definer import ModuleSource as chosen, Facade, BOOTSTRAP\n"
+            "print(BOOTSTRAP, chosen.parse('source'), Facade.parse('7', int))\n",
+            encoding="utf-8",
+        )
+        request = m.Infra.ApplyRenamesInput(
+            csv=str(driver),
+            roots=(str(mod_workspace),),
+            bindings={"": ("definer.ModuleSource",)},
+            rename_definitions=True,
+            apply=True,
+        )
+        report = tm.ok(FlextInfraApplyRenames.run(request))
+        tm.that(report.files_changed, eq=2)
+        tm.that(report.occurrences, eq=0)
+        output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
+        tm.that(output.stdout, eq="READY SOURCE 7\n")
+        again = tm.ok(FlextInfraApplyRenames.run(request))
+        tm.that(again.files_changed, eq=0)
+
+    @staticmethod
     def test_rope_uses_current_owner_and_preserves_alias_homonyms(
         mod_workspace: Path,
     ) -> None:

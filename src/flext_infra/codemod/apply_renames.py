@@ -46,6 +46,7 @@ class FlextInfraApplyRenames:
                 python,
                 pairs,
                 params.bindings,
+                rename_definitions=params.rename_definitions,
             )
             for path, source in sources.items():
                 edits = list(symbols.get(path, ()))

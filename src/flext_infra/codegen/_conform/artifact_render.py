@@ -169,7 +169,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         formatted = u.Infra.format_toml_source(
             composed_rendered,
             path=live_path,
-            toolchain_root=repository_root,
+            toolchain_root=(
+                repository_root
+                if render_inputs is None
+                else render_inputs.target.toolchain_root
+            ),
             taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
         )
         if formatted.failure:
@@ -545,6 +549,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 python_version=codegen.toolchain.python_version,
                 github_actions=codegen.github_actions,
+                toolchain=codegen.toolchain,
                 make=codegen.make,
                 workspace_repositories=workspace_repositories,
                 # Why: dependabot.yml.j2 branches on this and the model
@@ -661,6 +666,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
                 mise_install_tools=codegen.toolchain.mise_install_keys,
+                toolchain=codegen.toolchain,
                 python_version=codegen.toolchain.python_version,
                 make=codegen.make,
                 extra_verbs=(

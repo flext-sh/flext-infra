@@ -512,11 +512,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
             '[tool.uv.workspace]\nmembers = ["member"]\n',
             encoding="utf-8",
         )
-        previous = {lock.name: lock.read_bytes() for lock in member.glob("*.lock")}
+        member_lock = member / c.Infra.UV_LOCK_FILENAME
+        previous = member_lock.read_bytes() if member_lock.is_file() else None
 
         upgraded = tm.ok(
             u.Tests.run_isolated_make(
-                ["--no-print-directory", "_builtin_require_upg_lock_owner"],
+                ["--no-print-directory", "upg"],
                 cwd=member,
             ),
         )
@@ -524,10 +525,66 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
         tm.that(upgraded.stderr, has=["ERROR[upg]", str(workspace.resolve())])
         tm.that(
-            {lock.name: lock.read_bytes() for lock in member.glob("*.lock")},
+            member_lock.read_bytes() if member_lock.is_file() else None,
             eq=previous,
         )
         tm.that(workspace_lock.exists(), eq=False)
+
+    @pytest.mark.remote
+    @pytest.mark.slow
+    def test_failed_member_hook_prevents_containing_root_upgrade(
+        self,
+        tmp_path: Path,
+        generated_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Actual public Make hooks propagate member failure without root effects."""
+        workspace = tmp_path / "workspace"
+        member = workspace / "member"
+        for destination, profile in (
+            (workspace, c.Infra.MakeProfile.WORKSPACE),
+            (member, c.Infra.MakeProfile.STANDALONE),
+        ):
+            shutil.copytree(
+                generated_make_templates[profile],
+                destination,
+                symlinks=True,
+                ignore=shutil.ignore_patterns(".venv", ".git"),
+                dirs_exist_ok=True,
+            )
+            u.Tests.initialize_git_repo(destination)
+        head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
+        u.Tests.git_run(
+            workspace,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"160000,{head.strip()},member",
+        )
+        u.Tests.commit_git_changes(workspace, "attach member")
+        marker = workspace / "root-upgrade-started"
+        (workspace / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
+            'pre-upg:\n\t@touch "$(PROJECT_ROOT)/root-upgrade-started"\n',
+            encoding="utf-8",
+        )
+        (member / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
+            "pre-upg:\n\t@printf 'member pre-upg failed\\n' >&2; exit 29\n",
+            encoding="utf-8",
+        )
+        root_lock = workspace / c.Infra.UV_LOCK_FILENAME
+        previous = root_lock.read_bytes() if root_lock.is_file() else None
+        upgraded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"],
+                cwd=member,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
+        tm.that(upgraded.stderr, has="member pre-upg failed")
+        tm.that(marker.is_file(), eq=False)
+        tm.that(
+            root_lock.read_bytes() if root_lock.is_file() else None,
+            eq=previous,
+        )
 
     def test_member_alignment_is_one_way_after_complete_convergence(
         self,

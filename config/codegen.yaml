@@ -754,6 +754,7 @@ Infra:
         description: Publish only receipt-attested release artifacts.
       - name: gen
         description: Regenerate every managed projection atomically.
+        produces_activation: true
       - name: gen-footprint
         description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
         produces_activation: true

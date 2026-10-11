@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
@@ -371,15 +372,30 @@ class FlextInfraUtilitiesCodegenFacades:
                     )
                     if binding is None:
                         continue
+                    imported = binding.imported_module
+                    if (
+                        imported.level == 0
+                        and imported.module_name is not None
+                        and imported.module_name.split(".", 1)[0]
+                        in sys.stdlib_module_names
+                    ):
+                        # Standard-library imports cannot declare owned facades.
+                        # Built-in modules have no source resource for Rope.
+                        continue
                     declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
                         project,
                         binding,
                     )
-                    lower_owner = family == "u" and declared.is_relative_to(
+                    owner_directory = (
                         pkg_dir
                         / FlextInfraUtilitiesCodegenNamespace.facade_families()[
                             family
                         ].directory
+                    )
+                    lower_owner = (
+                        family == "u"
+                        and declared.is_relative_to(owner_directory)
+                        and not path.is_relative_to(owner_directory)
                     )
                     if not lower_owner and (
                         not public_receiver
@@ -415,7 +431,7 @@ class FlextInfraUtilitiesCodegenFacades:
                 filename=str(path),
             )
             for node in tree.body:
-                if not isinstance(node, ast.ClassDef):
+                if not isinstance(node, ast.ClassDef) or node.name.startswith("_"):
                     continue
                 if family == "u":
                     members = tuple(

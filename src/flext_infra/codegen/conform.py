@@ -18,14 +18,29 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
 
     @staticmethod
     def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
-        """Project the single generated Mise isolation contract into templates."""
+        """Project the single generated Mise isolation contract into templates.
+
+        Returns:
+            m.Infra.MiseBootstrapEnvironmentSpec: The projected Mise bootstrap environment specification.
+        """
         return u.Infra.mise_bootstrap_environment()
 
     @staticmethod
     def _link_mode(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
-        """Resolve the repository override through one codegen authority."""
+        """Resolve the repository override through one codegen authority.
+
+        Args:
+            repository (m.Infra.RepositoryRef): The repository reference containing the uv link mode.
+            toolchain (m.Infra.ToolchainSpec): The toolchain specification containing the uv link mode.
+
+        Returns:
+            str: The resolved uv link mode.
+
+        Raises:
+            TypeError: If the resolved uv link mode is not a string.
+        """
         link_mode = repository.uv_link_mode or toolchain.uv_link_mode
         if not isinstance(link_mode, str):
             msg = "resolved uv link mode must be a string"
@@ -36,7 +51,15 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
     def _dependency_cooldown_policy(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> tuple[tuple[str, ...], dict[str, str]]:
-        """Compose fleet defaults with the repository's narrower policy."""
+        """Compose fleet defaults with the repository's narrower policy.
+
+        Args:
+            repository (m.Infra.RepositoryRef): The repository reference containing dependency cooldown policies.
+            toolchain (m.Infra.ToolchainSpec): The toolchain specification containing default dependency cooldown policies.
+
+        Returns:
+            tuple[tuple[str, ...], dict[str, str]]: A tuple containing the exclusions and overrides for dependency cooldown.
+        """
         exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
         overrides = dict(toolchain.dependency_cooldown_overrides)
         for package in repository.dependency_cooldown_exclusions:
@@ -55,20 +78,23 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
 
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
+
+        Returns:
+            tuple[m.Infra.MakeVerbSpec, ...]: A tuple of discovered MakeVerbSpec instances, one for each script
+            directory containing an all.sh entrypoint.
         """
         scripts_dir = repository_root / "scripts"
         if not scripts_dir.is_dir():
             return ()
-        discovered: list[m.Infra.MakeVerbSpec] = []
-        for entry in sorted(scripts_dir.iterdir()):
-            if entry.is_dir() and (entry / "all.sh").is_file():
-                discovered.append(
-                    m.Infra.MakeVerbSpec(
-                        name=entry.name,
-                        description=f"Script command: {entry.name}",
-                        requires_apply=True,
-                    )
-                )
+        discovered: list[m.Infra.MakeVerbSpec] = [
+            m.Infra.MakeVerbSpec(
+                name=entry.name,
+                description=f"Script command: {entry.name}",
+                requires_apply=True,
+            )
+            for entry in sorted(scripts_dir.iterdir())
+            if entry.is_dir() and (entry / "all.sh").is_file()
+        ]
         return tuple(discovered)
 
     @classmethod

@@ -15,6 +15,7 @@ import inspect
 import pkgutil
 import re
 import sys
+import traceback
 from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, override
@@ -119,9 +120,21 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             The resulting ``t.SequenceOf[m.Infra.ValidationReport]``.
 
         """
-        module = importlib.import_module(module_name)
+        try:
+            module = importlib.import_module(module_name)
+            classes = inspect.getmembers(module, inspect.isclass)
+        except Exception as exc:
+            return [
+                m.Infra.ValidationReport(
+                    passed=False,
+                    violations=(
+                        f"{module_name}: {''.join(traceback.format_exception(exc))}",
+                    ),
+                    summary=f"{module_name}: runtime census discovery failed",
+                ),
+            ]
         violations: list[str] = []
-        for _name, obj in inspect.getmembers(module, inspect.isclass):
+        for _name, obj in classes:
             if not self._is_local_class(obj, module.__name__):
                 continue
             report = u.check(obj)

@@ -189,9 +189,15 @@ class FlextInfraUtilitiesBase:
                 kind
                 for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
                 if (
-                    line.startswith(token.encode("ascii"))
+                    (
+                        line == token.encode("ascii")
+                        if kind == "separator"
+                        else line.startswith(token.encode("ascii"))
+                    )
                     if isinstance(line, bytes)
-                    else line.startswith(token)
+                    else (
+                        line == token if kind == "separator" else line.startswith(token)
+                    )
                 )
             ),
             None,
