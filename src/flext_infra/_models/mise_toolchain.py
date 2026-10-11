@@ -316,6 +316,15 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = True
+        mise_disable_update_warning: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] disable_update_warning. "
+                    "The self-managed Mise release moves through make upg."
+                ),
+            ),
+        ] = True
         mise_provenance_api_failures_fatal: Annotated[
             bool,
             m.Field(

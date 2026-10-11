@@ -73,6 +73,7 @@ class TestsFlextInfraMisePinBootstrap:
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={
                 "mise_lockfile": enabled,
+                "mise_disable_update_warning": enabled,
                 "mise_provenance_api_failures_fatal": enabled,
                 "mise_locked_verify_provenance": enabled,
             },
@@ -97,7 +98,10 @@ class TestsFlextInfraMisePinBootstrap:
             eq=toolchain.mise_locked_verify_provenance,
         )
         tm.that("locked" in settings, eq=False)
-        tm.that("disable_update_warning" in settings, eq=False)
+        tm.that(
+            settings["disable_update_warning"],
+            eq=toolchain.mise_disable_update_warning,
+        )
         tm.that("tool_config" in document, eq=False)
 
     @pytest.mark.slow
