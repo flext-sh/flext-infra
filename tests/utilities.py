@@ -165,6 +165,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
     CodegenTestSupport = TestsFlextInfraUtilitiesCodegenTestSupport
 
+    CodegenTestSupport = TestsFlextInfraUtilitiesCodegenTestSupport
     class Tests(
         TestsFlextInfraUtilitiesTomlMixin,
         TestsFlextInfraUtilitiesProjectFixtureMixin,
