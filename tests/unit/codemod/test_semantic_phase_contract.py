@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

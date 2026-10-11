@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, r
 from flext_infra.codegen import (
@@ -24,7 +23,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]

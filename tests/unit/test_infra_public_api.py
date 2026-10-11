@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 import flext_infra
+from tests import tm
 
 
 class TestsFlextInfraPublicApi:

@@ -9,9 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

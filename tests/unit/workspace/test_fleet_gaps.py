@@ -16,11 +16,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator

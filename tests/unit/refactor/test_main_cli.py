@@ -12,11 +12,9 @@ from pathlib import Path
 from types import CodeType
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main, r
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import t, u
+from tests import t, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p

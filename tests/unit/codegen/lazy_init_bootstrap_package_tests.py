@@ -19,9 +19,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

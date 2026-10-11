@@ -448,13 +448,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return True
         if not isinstance(value, ast.Name) or value.id not in visible:
             return False
-        owner_target, attribute, member = resolved
-        definition = spec.definitions[owner_target]
-        spec.definitions[owner_target] = definition.model_copy(
+        definition = spec.definitions[owner.target]
+        spec.definitions[owner.target] = definition.model_copy(
             update={
                 "members": {
                     **definition.members,
-                    attribute: member,
+                    target.attr: visible[value.id],
                 },
             },
         )

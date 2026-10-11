@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import u
+from tests import tm, u
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use

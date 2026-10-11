@@ -10,10 +10,9 @@ from pathlib import Path
 from shlex import quote
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraWorkspaceLifecycle:

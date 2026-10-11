@@ -408,6 +408,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     in {
                         c.Infra.CodegenConformSurface.MAKEFILE,
                         c.Infra.CodegenConformSurface.DOCS_CONFIG,
+                        c.Infra.CodegenConformSurface.ENVRC,
                         c.Infra.CodegenConformSurface.PYPROJECT,
                         c.Infra.CodegenConformSurface.MISE_CONFIG,
                     }
@@ -419,6 +420,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         current_repository = workspace.repository
         if self.initial_workspace is None and request.what not in {
             c.Infra.CodegenConformSurface.MAKEFILE,
+            c.Infra.CodegenConformSurface.ENVRC,
             c.Infra.CodegenConformSurface.PYPROJECT,
             c.Infra.CodegenConformSurface.MISE_CONFIG,
         }:

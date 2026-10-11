@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import u
+from tests import tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow

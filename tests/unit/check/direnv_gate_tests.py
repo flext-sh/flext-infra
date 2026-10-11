@@ -9,14 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.direnv import FlextInfraDirenvGate
 from flext_infra.workspace.environment_contracts import (
     FlextInfraWorkspaceEnvironmentContracts,
 )
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

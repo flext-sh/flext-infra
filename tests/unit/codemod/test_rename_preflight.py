@@ -10,10 +10,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import m, u
 from flext_infra.codemod import FlextInfraApplyRenames
+from tests import tm
 
 
 class TestsFlextInfraRenamePreflight:

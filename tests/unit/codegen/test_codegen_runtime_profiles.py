@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCodegenRuntimeProfiles:

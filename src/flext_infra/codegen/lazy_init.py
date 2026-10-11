@@ -23,6 +23,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -210,9 +211,10 @@ class FlextInfraCodegenLazyInit(
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         target_roots = 0
         for root in roots:
+            import_roots = FlextInfraUtilitiesRopeCore.import_project_roots(root)
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
-                rope_repository_root=root,
+                rope_repository_root=import_roots[0],
             ) as rope:
                 if self.target_module:
                     targets = self._target_package_dirs(rope.workspace_index, root)

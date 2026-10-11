@@ -11,11 +11,11 @@ import sys
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import m, t, u
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
+from tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

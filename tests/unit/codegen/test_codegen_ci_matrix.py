@@ -11,12 +11,11 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import u
+from tests import tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow

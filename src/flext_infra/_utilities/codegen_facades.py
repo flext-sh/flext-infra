@@ -330,6 +330,12 @@ class FlextInfraUtilitiesCodegenFacades:
                 ):
                     continue
                 tree = ast.parse(source, filename=str(path))
+                imported_receivers = {
+                    alias.asname or alias.name.split(".", 1)[0]
+                    for node in ast.walk(tree)
+                    if isinstance(node, (ast.Import, ast.ImportFrom))
+                    for alias in node.names
+                }
                 pymodule: t.Infra.RopePyModule | None = None
                 lines = source.splitlines(keepends=True)
                 for reference in (
@@ -352,6 +358,8 @@ class FlextInfraUtilitiesCodegenFacades:
                         else receiver
                     )
                     if not isinstance(receiver, ast.Name):
+                        continue
+                    if receiver.id not in imported_receivers:
                         continue
                     if pymodule is None:
                         resource = project.get_resource(

@@ -14,11 +14,10 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, u as infra_u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import c, m, p, t, u
+from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]

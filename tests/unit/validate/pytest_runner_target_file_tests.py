@@ -9,11 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import config, m
-from tests import c, t, u
-from tests.unit.validate.pytest_runner_support import runner_for, summary
+from flext_infra import config
+from tests import c, m, t, tm, u
 
 
 @pytest.mark.unit
@@ -183,7 +181,9 @@ class TestsFlextInfraPytestTargetFile:
             "def test_declared() -> None:\n    return None\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, target_file=relative)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=relative
+        )
         report = cached_runner_project / cache.reports_directory
         suite = runner.build_command(report)
         selection = runner.build_selection_command(
@@ -199,7 +199,7 @@ class TestsFlextInfraPytestTargetFile:
         """An absent declared file fails before pytest starts."""
         outcome = "raised"
         try:
-            runner_for(
+            u.Tests.PytestRunner.runner_for(
                 cached_runner_project,
                 target_file=Path("tests/missing_declared_case.py"),
             )
@@ -224,7 +224,9 @@ class TestsFlextInfraPytestTargetFile:
             "'executed', encoding='utf-8')\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, target_file=relative)
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=relative
+        )
         outcome = tm.ok(runner.execute_file())
         tm.that(outcome, eq=pytest.ExitCode.OK.value)
         tm.that(
@@ -245,9 +247,13 @@ class TestsFlextInfraPytestTargetFile:
             encoding="utf-8",
         )
         for _ in range(2):
-            runner = runner_for(cached_runner_project, target_file=relative)
+            runner = u.Tests.PytestRunner.runner_for(
+                cached_runner_project, target_file=relative
+            )
             tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
-            report = summary(cached_runner_project / cache.reports_directory)
+            report = u.Tests.PytestRunner.summary(
+                cached_runner_project / cache.reports_directory
+            )
             tm.that(report, has="executed=1\n")
 
     @staticmethod
@@ -269,7 +275,11 @@ class TestsFlextInfraPytestTargetFile:
                 kept + f"def test_edited() -> None:\n    assert {value}\n",
                 encoding="utf-8",
             )
-            runner = runner_for(cached_runner_project, target_file=relative)
+            runner = u.Tests.PytestRunner.runner_for(
+                cached_runner_project, target_file=relative
+            )
             tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
-            report = summary(cached_runner_project / cache.reports_directory)
+            report = u.Tests.PytestRunner.summary(
+                cached_runner_project / cache.reports_directory
+            )
             tm.that(report, has="executed=2\n")

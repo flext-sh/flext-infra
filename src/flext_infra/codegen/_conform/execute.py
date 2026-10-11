@@ -317,6 +317,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             if surface in {
                 c.Infra.CodegenConformSurface.MAKEFILE,
                 c.Infra.CodegenConformSurface.DOCS_CONFIG,
+                c.Infra.CodegenConformSurface.ENVRC,
                 c.Infra.CodegenConformSurface.PYPROJECT,
                 c.Infra.CodegenConformSurface.MISE_CONFIG,
             }:
@@ -367,6 +368,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if surface not in {
             c.Infra.CodegenConformSurface.MAKEFILE,
             c.Infra.CodegenConformSurface.DOCS_CONFIG,
+            c.Infra.CodegenConformSurface.ENVRC,
             c.Infra.CodegenConformSurface.PYPROJECT,
             c.Infra.CodegenConformSurface.MISE_CONFIG,
         }:
@@ -494,9 +496,35 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             staged_validator=(
                 self._validate_mise_stage
                 if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
+                else self._validate_pyproject_stage
+                if surface is c.Infra.CodegenConformSurface.PYPROJECT
                 else None
             ),
         )
+
+    @staticmethod
+    def _validate_pyproject_stage(
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Parse the staged replacement before publishing semantic prerequisites.
+
+        Returns:
+            The unchanged session or the native TOML parser failure.
+
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        if len(publications) != 1 or publications[0].replacement is None:
+            return result_type.fail(
+                "pyproject bootstrap requires one staged replacement"
+            )
+        parsed = u.Cli.toml_read_document(publications[0].replacement.path)
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        u.Cli.info(
+            "stage=pyproject-staged-validation files=1 semantic-analysis=next-gen"
+        )
+        return result_type.ok(session)
 
     @staticmethod
     def _validate_mise_stage(

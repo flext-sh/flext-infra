@@ -101,6 +101,29 @@ class FlextInfraUtilitiesRopeCore(
         )
 
     @staticmethod
+    def import_project_roots(source_root: Path) -> t.VariadicTuple[Path]:
+        """Resolve the declared source graph containing one import consumer.
+
+        Returns:
+            The containing workspace and its members, or the standalone root.
+
+        Raises:
+            ValueError: If the containing workspace declaration is invalid.
+        """
+        resolved = source_root.resolve()
+        for parent in resolved.parents:
+            declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
+            if declarations.failure:
+                raise ValueError(declarations.error or "invalid .gitmodules")
+            members = tuple(parent / item.path for item in declarations.value)
+            if any(resolved.is_relative_to(member.resolve()) for member in members):
+                return (parent, *members)
+        standalone = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            Path(resolved.anchor), resolved
+        )
+        return (standalone if standalone is not None else resolved,)
+
+    @staticmethod
     @contextmanager
     def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
         """Resolve imports against the containing declared workspace, if attached.
@@ -111,20 +134,9 @@ class FlextInfraUtilitiesRopeCore(
         Raises:
             ValueError: If the containing workspace declaration is invalid.
         """
-        resolved = source_root.resolve()
-        root = resolved
-        roots: t.SequenceOf[Path] = (resolved,)
-        for parent in resolved.parents:
-            declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
-            if declarations.failure:
-                raise ValueError(declarations.error or "invalid .gitmodules")
-            members = tuple(parent / item.path for item in declarations.value)
-            if any(resolved.is_relative_to(member.resolve()) for member in members):
-                root = parent
-                roots = (parent, *members)
-                break
+        roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
         with FlextInfraUtilitiesRopeCore.open_project(
-            root,
+            roots[0],
             project_roots=roots,
         ) as project:
             yield project

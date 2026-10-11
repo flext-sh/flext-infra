@@ -10,9 +10,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitAliasInheritance:

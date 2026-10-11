@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
-from tests import m, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraCodegenArtifactSsot:

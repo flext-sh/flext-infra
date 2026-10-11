@@ -10,9 +10,9 @@ import dataclasses
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m, p, t, u
+from tests import tm
 
 
 @dataclasses.dataclass(frozen=True)

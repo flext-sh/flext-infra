@@ -10,11 +10,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_core import e
 from flext_infra import c, config, m, p
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCodegenPyprojectConform:

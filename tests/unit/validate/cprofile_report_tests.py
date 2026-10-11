@@ -10,11 +10,11 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, u
 from flext_infra.services import FlextInfraValidationCommandRoutes
 from flext_infra.validate import FlextInfraCProfileReport
+from tests import tm
 
 
 class TestsFlextInfraCProfileReport:

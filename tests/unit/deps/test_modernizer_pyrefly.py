@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import (
     FlextInfraEnsurePyreflyConfigPhase,
@@ -18,7 +17,7 @@ from flext_infra import (
     c,
     config,
 )
-from tests import m, t, u
+from tests import m, t, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:

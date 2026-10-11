@@ -11,10 +11,9 @@ import sysconfig
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config
-from tests import m, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraBindingInstall:

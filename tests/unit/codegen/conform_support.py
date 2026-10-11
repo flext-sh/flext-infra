@@ -9,11 +9,9 @@ from __future__ import annotations
 from difflib import unified_diff
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraConformSupport:

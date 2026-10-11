@@ -9,9 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, m, u
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]

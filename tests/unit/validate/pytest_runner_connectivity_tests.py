@@ -10,10 +10,8 @@ import socket
 from pathlib import Path
 
 import pytest
-from flext_tests import c as tests_c, tm
 
-from flext_infra import m, u
-from tests.unit.validate.pytest_runner_support import runner_for, summary
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPytestRunnerConnectivity:
@@ -27,7 +25,7 @@ class TestsFlextInfraPytestRunnerConnectivity:
     ) -> None:
         """Forged properties never exempt ordinary call or fixture setup skips."""
         root = cached_runner_project
-        runner = runner_for(root)
+        runner = u.Tests.PytestRunner.runner_for(root)
         test_file = root / runner.target / "test_connectivity.py"
         test_file.write_text(
             "import pytest\n"
@@ -41,11 +39,11 @@ class TestsFlextInfraPytestRunnerConnectivity:
         if owner_skip:
             tm.that(tm.ok(runner.execute_full()), eq=0)
             tm.that(
-                summary(reports),
+                u.Tests.PytestRunner.summary(reports),
                 has=["skipped=1", "connectivity_prerequisite_skips=1", "exit=0"],
             )
             return
-        u.Cli.run_checked([*tests_c.Cli.GIT_INIT_COMMAND, str(root)]).unwrap()
+        u.Cli.run_checked([*c.Cli.GIT_INIT_COMMAND, str(root)]).unwrap()
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             listener.listen(32)
@@ -75,9 +73,9 @@ class TestsFlextInfraPytestRunnerConnectivity:
                 "def test_ready_fixture(ordinary_fixture):\n    pass\n",
                 encoding="utf-8",
             )
-            tm.that(tm.ok(runner_for(root).execute_full()), eq=1)
+            tm.that(tm.ok(u.Tests.PytestRunner.runner_for(root).execute_full()), eq=1)
         tm.that(
-            summary(reports),
+            u.Tests.PytestRunner.summary(reports),
             has=["skipped=4", "connectivity_prerequisite_skips=0", "exit=1"],
         )
         latest = (reports / "latest.txt").read_text(encoding="utf-8").strip()

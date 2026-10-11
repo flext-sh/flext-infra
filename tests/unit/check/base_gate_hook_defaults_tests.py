@@ -15,12 +15,12 @@ import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

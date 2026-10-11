@@ -10,10 +10,9 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraToolTablesPhase, config
-from tests import t, u
+from tests import t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

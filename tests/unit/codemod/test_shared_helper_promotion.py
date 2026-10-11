@@ -12,11 +12,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraSharedHelperPromotion:

@@ -9,11 +9,9 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import m
 from flext_infra.codegen import FlextInfraCodegenLazyInitProjectionManifest
-from tests import u
+from tests import tm, u
 
 
 def _plan(

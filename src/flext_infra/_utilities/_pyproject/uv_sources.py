@@ -261,7 +261,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv = cls._resolved_uv_table(document)
         members = (
             tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         local_names = tuple(member.distribution for member in members)

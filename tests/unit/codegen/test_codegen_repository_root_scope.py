@@ -12,11 +12,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import c, config, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import t, u
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
@@ -105,29 +103,70 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             has=f'{cache.database_environment_variable}="$$database"',
         )
 
-    def test_file_verb_runs_one_entry_on_one_cache(self, tmp_path: Path) -> None:
-        """The requested file runs through one entry on one guard and cache.
-
-        The ``file`` operation of ``flext_infra._pytest_entry`` executes the
-        declared target incremental then complete, slow items included, so the
-        recipe composes exactly one entry and no separate slow phase.
-        """
+    def test_file_verb_exports_selection_to_both_phases(self, tmp_path: Path) -> None:
+        """The Make FILE selection reaches both phases on one guard and cache."""
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[0]
         cache = config.Infra.codegen.make.testmon_cache
-        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=1)
-        tm.that(recipe.rstrip().endswith("_pytest_entry file"), eq=True)
-        tm.that(recipe, lacks=["file-slow"])
+        exported = f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'
+        tm.that(recipe, has=exported)
+        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=2)
+        tm.that(
+            recipe.index(exported) < recipe.index("-m flext_infra._pytest_entry"),
+            eq=True,
+        )
+        tm.that(recipe, has=["_pytest_entry file;", "_pytest_entry file-slow;"])
         tm.that(
             recipe.count(f'{cache.database_environment_variable}="$$database"'),
-            eq=1,
+            eq=2,
         )
         tm.that(recipe.count("set -eu;"), eq=1)
         tm.that(recipe.count("' EXIT;"), eq=1)
         tm.that(recipe, lacks=["_pytest_entry slow", "_pytest_entry full"])
+        selected = "tests/requested.py"
+        expanded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_builtin_test_file_all", f"FILE={selected}"],
+                cwd=root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(expanded.outcome),
+            eq=True,
+            msg=expanded.stdout + expanded.stderr,
+        )
+        tm.that(
+            expanded.stdout,
+            has=f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="{selected}";',
+        )
+
+    def test_file_profile_does_not_execute_bounded_tests(self, tmp_path: Path) -> None:
+        """A selected profile reaches profiling without a bounded test preflight."""
+        root = self._render_root_makefile(tmp_path)
+        selected = "tests/requested.py"
+        expanded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_builtin-profile-test", f"FILE={selected}"],
+                cwd=root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(expanded.outcome),
+            eq=True,
+            msg=expanded.stdout + expanded.stderr,
+        )
+        tm.that(
+            expanded.stdout,
+            has=f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="{selected}";',
+        )
+        tm.that(expanded.stdout, has="-m flext_infra._pytest_entry profile")
+        tm.that(
+            expanded.stdout,
+            lacks=["_pytest_entry file;", "_pytest_entry file-slow;"],
+        )
 
     @staticmethod
     def test_conform_owns_repository_root_makefile() -> None:
@@ -264,16 +303,23 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             msg=execution.stdout + execution.stderr,
         )
         steps = execution.stdout.splitlines()
+        expected_steps = (
+            "--upgrade --refresh",
+            "lock --bump",
+            "install --locked --yes",
+            "deps modernize",
+            "_builtin-gen",
+            "_activated-gen",
+        )
+        for needle in expected_steps:
+            tm.that(
+                execution.stdout,
+                has=needle,
+                msg=execution.stdout + execution.stderr,
+            )
         positions = [
             next(i for i, step in enumerate(steps) if needle in step)
-            for needle in (
-                "--upgrade --refresh",
-                "lock --bump",
-                "install --yes",
-                "deps modernize",
-                "_builtin-gen",
-                "_activated-gen",
-            )
+            for needle in expected_steps
         ]
         tm.that(positions, eq=sorted(positions))
         # uv.lock resolves twice (flext-5kqsx): the upgrade selects the newest

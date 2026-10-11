@@ -12,12 +12,11 @@ from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 from flext_cli import cli
-from flext_tests import tm
 
 from flext_infra import config, m, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

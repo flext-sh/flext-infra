@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
-from tests import c, t, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraLazyInitRuntime:

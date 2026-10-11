@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import FlextInfraWorktreeService
-from tests import c, p, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraWorktreeRemoval(u.Tests.WorktreeFixture):

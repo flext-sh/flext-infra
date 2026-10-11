@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import m, p, r, t, u
+from tests import m, p, r, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable

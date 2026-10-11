@@ -10,11 +10,10 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -11,7 +11,6 @@ import stat
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, m, p, r
 from flext_infra.codegen import (
@@ -23,7 +22,7 @@ from flext_infra.codegen import (
 from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraTransactionDirectoryJournal:

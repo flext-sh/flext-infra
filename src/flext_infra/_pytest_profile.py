@@ -45,7 +45,7 @@ class FlextInfraPytestProfile:
         self.context = None
         self.output.with_suffix(".pstats.json").unlink(missing_ok=True)
         try:
-            return profile.runcall(self._run_parent, started_at_monotonic)
+            return self._run_parent(started_at_monotonic)
         finally:
             self._finish(profile)
 

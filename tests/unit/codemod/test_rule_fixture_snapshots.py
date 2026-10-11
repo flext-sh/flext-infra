@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraModRuleFixtureSnapshots:

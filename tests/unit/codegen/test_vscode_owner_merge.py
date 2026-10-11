@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
+from tests import tm
 
 
 class TestsFlextInfraVscodeOwnerMerge:

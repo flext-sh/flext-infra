@@ -104,7 +104,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[str].from_failure(environment)
         member_requests, member_groups, member_requirements = environment.value
         custom_dev: t.StrSequence = ()
-        if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
+        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
             payload = u.Cli.toml_as_mapping(source)
             if payload is None:
                 return r[str].fail("root metadata is not a TOML mapping")
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
-        if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
+        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
             normalized_custom: list[str] = []
             context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
                 declared_sources=declared_sources,
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
         members = (
             tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         if not members:

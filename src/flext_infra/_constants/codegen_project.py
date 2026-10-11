@@ -60,6 +60,7 @@ class FlextInfraConstantsCodegenProject:
         ALL = "all"
         DEPENDENCIES = "dependencies"
         DOCS_CONFIG = "docs-config"
+        ENVRC = "envrc"
         FACADES = "facades"
         LAZY_INIT = "lazy-init"
         MAKEFILE = "makefile"

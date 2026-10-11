@@ -11,13 +11,12 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m, t
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraSymbolicTextCutover:

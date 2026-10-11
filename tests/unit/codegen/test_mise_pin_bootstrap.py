@@ -11,10 +11,9 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import u
+from tests import tm, u
 
 pytestmark = pytest.mark.remote
 

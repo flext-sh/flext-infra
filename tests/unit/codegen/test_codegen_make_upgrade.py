@@ -8,27 +8,48 @@ from __future__ import annotations
 
 import re
 import shutil
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, t, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
+    def test_environment_prerequisites_resolve_without_running_recipes(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """GNU Make resolves the complete environment guard dependency graph."""
+        _profile, project_root = generated_make_template
+        checked = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "--question", "_builtin_require_environment"],
+                cwd=project_root,
+            ),
+        )
+        # Question mode reports pending phony recipes as 1, unresolved rules as 2.
+        tm.that(
+            checked.outcome.raw_return_code,
+            eq=1,
+            msg=checked.stdout + checked.stderr,
+        )
+
+    @staticmethod
     @pytest.mark.remote
     @pytest.mark.slow
+    @pytest.mark.parametrize("verb", ["setup", "upg"])
     def test_setup_preserves_the_resolved_native_locks(
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        verb: str,
     ) -> None:
-        """Provision the real fixture without replacing its native lock payloads."""
+        """Both lifecycles use Mise's interpreter; setup preserves native locks."""
         profile = c.Infra.MakeProfile.STANDALONE
         project_root = u.Tests.resolved_make_checkout(
             resolved_make_templates[profile],
@@ -43,7 +64,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
         provisioned = tm.ok(
             u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup"],
+                ["--no-print-directory", verb],
                 cwd=project_root,
             ),
         )
@@ -53,11 +74,31 @@ class TestsFlextInfraCodegenMakeUpgrade:
             eq=True,
             msg=provisioned.stdout + provisioned.stderr,
         )
-        tm.that(tuple(lock.read_bytes() for lock in locks), eq=previous)
+        if verb == "setup":
+            tm.that(tuple(lock.read_bytes() for lock in locks), eq=previous)
         tm.that(
             (u.Infra.runtime_environment_dir(project_root) / "pyvenv.cfg").is_file(),
             eq=True,
         )
+        managed_python = tm.ok(
+            u.Cli.capture(
+                ["mise", "-C", str(project_root), "which", "python"],
+                cwd=project_root,
+            ),
+        ).strip()
+        base_prefix_command = ["-c", "import sys; print(sys.base_prefix)"]
+        managed_prefix = tm.ok(
+            u.Cli.capture([managed_python, *base_prefix_command], cwd=project_root),
+        ).strip()
+        environment_python = u.Infra.runtime_environment_dir(project_root) / (
+            "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+        )
+        environment_prefix = tm.ok(
+            u.Cli.capture(
+                [str(environment_python), *base_prefix_command], cwd=project_root
+            ),
+        ).strip()
+        tm.that(environment_prefix, eq=managed_prefix)
 
     @staticmethod
     @pytest.mark.remote
@@ -226,28 +267,23 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 'relock "$(PROJECT_ROOT)"',
             ],
         )
-        # Every `mise install` names only declared toolchain keys: a bare
-        # install would also provision the operator's global registry. Setup
-        # installs what the lock pins `--locked` and the rest unlocked, so an
-        # incomplete or stale lock never stops it
-        # (operator-ruling-2026-10-09-setup-resilient).
+        # Every install names only the declared keys and keeps the committed
+        # lock authoritative; no host tool list or unlocked install survives.
         declared = " ".join(f'"{key}"' for key in toolchain.mise_install_keys)
-        tm.that(makefile, has=f"for mise_tool in {declared};")
-        installs = re.findall(r"install --yes(.*?)(?:; \\|$)", makefile, re.MULTILINE)
+        installs = re.findall(
+            r"install --locked --yes(.*?)(?:; \\|$)", makefile, re.MULTILINE
+        )
         tm.that(
             {install.strip() for install in installs},
-            eq={declared, "$$mise_without_lock"},
+            eq={declared},
         )
-        tm.that(makefile, has="install --locked --yes $$mise_from_lock")
         tm.that(
             makefile,
-            has='MISE_LOCKFILE=false "$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" '
-            "install --yes $$mise_without_lock",
+            lacks=["MISE_LOCKFILE=false", "$$mise_without_lock", "$$mise_from_lock"],
         )
-        # Setup holds no lock verdict: the toolchain proof runs in `audit`,
-        # resolving uv through the mise installation (#1887), never PATH.
+        # Activation proves the installed identities before any post-setup hook.
         activated = makefile.split("_setup_activated:\n", 1)[1].split("\n\n", 1)[0]
-        tm.that(activated, lacks="mise-proof")
+        tm.that(activated, has="mise-proof")
         audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]
         tm.that(
             audit,
@@ -261,7 +297,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "make upg",
             ],
         )
-        tm.that(makefile, has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then')
+        tm.that(
+            makefile,
+            has='if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" ]; then',
+        )
         resolve_assignments = re.findall(
             r"^(?:([\w-]+): )?TOOL_BOOTSTRAP_RESOLVE :=[ ]?(.*)$",
             makefile,
@@ -328,7 +367,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         settings = mise_toml.get("settings")
         assert isinstance(settings, Mapping)
         tm.that(settings.get("lockfile"), eq=toolchain.mise_lockfile)
-        tm.that(settings.get("disable_update_warning"), eq=True)
+        tm.that(
+            settings.get("disable_update_warning"),
+            eq=toolchain.mise_disable_update_warning,
+        )
         tm.that(dict(settings), lacks="locked")
         tm.that(dict(mise_toml), lacks="tool_config")
         tm.that(

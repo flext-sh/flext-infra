@@ -10,9 +10,9 @@ import re
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraCliRouteBase, c, m, p, r, t
+from tests import tm
 
 
 class TestsFlextInfraCliRouteBase:
