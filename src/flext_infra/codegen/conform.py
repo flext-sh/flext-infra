@@ -18,14 +18,25 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
 
     @staticmethod
     def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
-        """Project the single generated Mise isolation contract into templates."""
+        """Project the single generated Mise isolation contract into templates.
+
+        Returns:
+            The resulting ``m.Infra.MiseBootstrapEnvironmentSpec``.
+        """
         return u.Infra.mise_bootstrap_environment()
 
     @staticmethod
     def _link_mode(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
-        """Resolve the repository override through one codegen authority."""
+        """Resolve the repository override through one codegen authority.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If resolved uv link mode must be a string.
+        """
         link_mode = repository.uv_link_mode or toolchain.uv_link_mode
         if not isinstance(link_mode, str):
             msg = "resolved uv link mode must be a string"
@@ -36,7 +47,11 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
     def _dependency_cooldown_policy(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> tuple[tuple[str, ...], dict[str, str]]:
-        """Compose fleet defaults with the repository's narrower policy."""
+        """Compose fleet defaults with the repository's narrower policy.
+
+        Returns:
+            The resulting ``tuple[tuple[str, ...], dict[str, str]]``.
+        """
         exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
         overrides = dict(toolchain.dependency_cooldown_overrides)
         for package in repository.dependency_cooldown_exclusions:
@@ -55,20 +70,22 @@ class FlextInfraCodegenConform(FlextInfraCodegenConformExecute):
 
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
+
+        Returns:
+            The resulting ``tuple[m.Infra.MakeVerbSpec, ...]``.
         """
         scripts_dir = repository_root / "scripts"
         if not scripts_dir.is_dir():
             return ()
-        discovered: list[m.Infra.MakeVerbSpec] = []
-        for entry in sorted(scripts_dir.iterdir()):
-            if entry.is_dir() and (entry / "all.sh").is_file():
-                discovered.append(
-                    m.Infra.MakeVerbSpec(
-                        name=entry.name,
-                        description=f"Script command: {entry.name}",
-                        requires_apply=True,
-                    )
-                )
+        discovered: list[m.Infra.MakeVerbSpec] = [
+            m.Infra.MakeVerbSpec(
+                name=entry.name,
+                description=f"Script command: {entry.name}",
+                requires_apply=True,
+            )
+            for entry in sorted(scripts_dir.iterdir())
+            if entry.is_dir() and (entry / "all.sh").is_file()
+        ]
         return tuple(discovered)
 
     @classmethod

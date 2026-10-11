@@ -61,14 +61,7 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
             msg = f"unsupported definition kind: {kind}"
             raise ValueError(msg)
         for statement in ast.parse(source).body:
-            if (
-                isinstance(
-                    statement,
-                    ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
-                )
-                and isinstance(statement, node_types)
-                and statement.name == name
-            ):
+            if isinstance(statement, node_types) and statement.name == name:
                 return FlextInfraUtilitiesRopeHelpers.statement_line_span(statement)
         return None
 

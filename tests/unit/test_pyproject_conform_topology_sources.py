@@ -189,7 +189,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
             'qa = [{include-group = "checks"}]\n',
             encoding="utf-8",
         )
-        source = '[project]\nname = "workspace"\nversion = "1.0.0"\ndependencies = ["httpx>=0.27"]\n'
+        source = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\ndependencies = '
+            '["httpx>=0.27"]\n'
+        )
         options = u.Infra.PyprojectConformOptions(
             flext_line=u.Tests.integration(),
             repository_root=tmp_path,
@@ -209,8 +212,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq={"pytest>=8", "hypothesis>=6"},
         )
         tm.that(
-            f"{provider.distribution}[feature] @ git+{provider.url}@{u.Tests.integration().branch}"
-            in dev,
+            f"{provider.distribution}[feature] @ "
+            f"git+{provider.url}@{u.Tests.integration().branch}" in dev,
             eq=True,
         )
         tm.that(

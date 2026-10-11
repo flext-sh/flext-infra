@@ -125,7 +125,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
     @staticmethod
     def _custom_dev_additions(live_payload: t.JsonMapping) -> t.StrSequence:
-        """Exclude generated member requests before preserving CUSTOM dev input."""
+        """Exclude generated member requests before preserving CUSTOM dev input.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+        """
         groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
         uv = u.Cli.toml_mapping_child(tool, "uv") or {}

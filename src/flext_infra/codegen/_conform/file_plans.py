@@ -46,7 +46,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 path=path,
                 before=before.value,
                 desired_content=rendered.encode(c.Cli.ENCODING_DEFAULT),
-                desired_mode=(0o644 if mode is None else mode),
+                desired_mode=mode,
                 source_states=source_states,
             ),
         )
