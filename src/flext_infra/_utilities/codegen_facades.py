@@ -16,6 +16,7 @@ from libcst import Arg, ClassDef, Module, Name, parse_module
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
+from rope.base import exceptions
 
 from flext_infra import c, t
 from flext_infra._utilities import (
@@ -24,7 +25,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
 )
-from rope.base import exceptions
 
 
 class FlextInfraUtilitiesCodegenFacades:

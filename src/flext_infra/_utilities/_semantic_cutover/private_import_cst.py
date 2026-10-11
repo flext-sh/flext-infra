@@ -308,17 +308,18 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                                 )
                     pending.extend(statement.body.footer)
                     continue
+                replacement = statement
                 if pending:
                     if not isinstance(
                         statement, (cst.SimpleStatementLine, cst.BaseCompoundStatement)
                     ):
                         msg = "statement cannot preserve exhausted guard comments"
                         raise TypeError(msg)
-                    statement = statement.with_changes(
+                    replacement = statement.with_changes(
                         leading_lines=tuple(pending) + tuple(statement.leading_lines),
                     )
                     pending.clear()
-                retained.append(statement)
+                retained.append(replacement)
             return tuple(retained), tuple(pending)
 
         @override
@@ -327,7 +328,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         ) -> cst.Module:
             body, footer = self._prune(updated_node.body)
             return updated_node.with_changes(
-                body=body, footer=footer + updated_node.footer
+                body=body, footer=footer + tuple(updated_node.footer)
             )
 
         @override
@@ -336,7 +337,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         ) -> cst.IndentedBlock:
             body, footer = self._prune(updated_node.body)
             return updated_node.with_changes(
-                body=body, footer=footer + updated_node.footer
+                body=body, footer=footer + tuple(updated_node.footer)
             )
 
     @classmethod
