@@ -280,14 +280,14 @@ only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
 configuration keeps Mypy, Pyright, codemod and smells out of CI. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate, so Mypy and Pyright
-block at pre-push. The pre-commit hook runs only the ordered scope declared by
-`make.ci.pre_commit_check_gates` and no tests. Tool kind does not redefine that scope.
+block at pre-push. The pre-commit hook runs the same gate partition as CI and
+the same incremental `make test` operation with the configured CI exclusions.
 Conflict detection uses the canonical Git inventory, including unpublished files,
 and the shared merge-control classifier. It reads literal source-link targets without
 following them. Every finding, including a native warning, blocks approval while its
 original severity remains in the receipt.
 
-Every workspace and standalone projection exposes `make pre-commit` for the fast hook
+Every workspace and standalone projection exposes `make pre-commit` for the CI validation
 workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
 declared order, and closes with `verify-clean`; it never substitutes the fast hook for
 approval. The configured CI token selects the blocking CI gate partition. Audit is

@@ -76,13 +76,6 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ]
-        pre_commit_check_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Ordered fast-hook gate scope; never the full CI approval",
-            ),
-        ]
 
         @m.model_validator(mode="after")
         def _validate_local_check_gates(self) -> Self:
@@ -102,19 +95,6 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(unknown)}"
                 )
                 raise ValueError(msg)
-            hook = self.pre_commit_check_gates
-            if len(hook) != len(set(hook)):
-                message = "make.ci.pre_commit_check_gates must be unique"
-                raise ValueError(message)
-            invalid = sorted(set(hook) - allowed)
-            if invalid:
-                message = (
-                    f"make.ci.pre_commit_check_gates contains unknown gates: {invalid}"
-                )
-                raise ValueError(message)
-            if set(hook) & c.Infra.TYPE_CHECKER_GATES:
-                message = "whole-program type checkers cannot run in the fast hook"
-                raise ValueError(message)
             return self
 
     class MakeVerbSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -1023,11 +1003,12 @@ class FlextInfraConfigModelsMake(
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != ("check",):
-                msg = (
-                    "the pre-commit hook runs only the fast check: no setup, "
-                    "no audit and no tests"
-                )
+            if hook != tuple(
+                verb
+                for verb in approval
+                if verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
+            ):
+                msg = "the pre-commit hook requires the CI check and test workflow"
                 raise ValueError(msg)
             if "pre-commit" not in declared:
                 msg = "make pre-commit must be declared in every profile"
@@ -1117,20 +1098,6 @@ class FlextInfraConfigModelsMake(
             """
             local = frozenset(self.ci.local_check_gates)
             return tuple(gate for gate in self.check_gates_default if gate not in local)
-
-        @m.computed_field
-        @property
-        def check_gates_pre_commit(self) -> t.VariadicTuple[str]:
-            """Run the declared fast scope within the complete active gate universe.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-            """
-            return tuple(
-                gate
-                for gate in self.ci.pre_commit_check_gates
-                if gate in self.check_gates_default
-            )
 
         @m.computed_field
         @property

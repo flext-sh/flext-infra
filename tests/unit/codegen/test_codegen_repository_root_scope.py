@@ -44,19 +44,27 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         log = u.Tests.cli_shim(bin_dir, c.Infra.CLI_DIRENV)
         return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}, log
 
+<<<<<<< Updated upstream
     def test_pre_commit_recipe_runs_only_the_fast_gates(self, tmp_path: Path) -> None:
         """The pre-commit hook verb runs one check over the fast external gates."""
+=======
+    def test_pre_commit_displays_the_canonical_contract(self, tmp_path: Path) -> None:
+        """The real Make consumer exposes the configured CI validation contract."""
+>>>>>>> Stashed changes
         root = self._render_root_makefile(tmp_path)
-        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+        result = tm.ok(
+            u.Cli.run(
+                [c.Infra.MAKE, "OPTIONS=Y", "pre-commit"],
+                cwd=root,
+            ),
         )
-        recipe = rendered.split("\n_builtin-pre-commit:", 1)[1].split("\n\n", 1)[0]
-        commands = [line for line in recipe.splitlines() if line.startswith("\t")]
-        gates = ",".join(config.Infra.codegen.make.check_gates_pre_commit)
-        tm.that(len(commands), eq=1)
-        tm.that(commands[0], has=["check run", f'--gates "{gates}"'])
-        tm.that(recipe, lacks=["setup", " test", "audit"])
-        tm.that(rendered, lacks=["DEBUG1 scratch=", "DEBUG2 scratch="])
+        contract = next(
+            verb
+            for verb in config.Infra.codegen.make.verbs
+            if verb.name == "pre-commit"
+        )
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stdout, has=contract.description)
 
     def test_verify_clean_projection_uses_the_public_git_service(
         self,

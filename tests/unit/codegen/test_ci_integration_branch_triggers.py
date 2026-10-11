@@ -88,10 +88,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    def test_ci_runs_the_approval_rows_and_the_hook_runs_the_fast_check(
+    def test_ci_and_hook_share_the_check_and_test_workflow(
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """CI runs each approval verb; the pre-commit hook runs only the fast check."""
+        """CI approval and the commit hook share their check and test operations."""
         codegen = config.Infra.codegen
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="approval-consumer",
@@ -144,7 +144,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 for step in codegen.make.workflow
                 if "pre_commit" in step.contexts
             ),
-            eq=(c.Infra.VERB_CHECK,),
+            eq=(c.Infra.VERB_CHECK, c.Infra.VERB_TEST),
         )
 
     @staticmethod

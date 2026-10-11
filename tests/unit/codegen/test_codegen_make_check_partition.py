@@ -113,37 +113,24 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.that(any("make pre-commit" in command for command in commands), eq=False)
 
     @staticmethod
-    def test_pre_commit_runs_only_the_declared_fast_scope() -> None:
-        """The hook consumes its declared scope, not every external tool."""
+    def test_pre_commit_uses_the_ci_validation_workflow() -> None:
+        """Commit checks and tests derive from the same CI workflow rows."""
         make = config.Infra.codegen.make
-        tm.that(bool(make.check_gates_pre_commit), eq=True)
-        tm.that(
-            make.check_gates_pre_commit,
-            eq=tuple(
-                gate
-                for gate in make.ci.pre_commit_check_gates
-                if gate in make.check_gates_default
-            ),
+        ci_validation = tuple(
+            step.verb
+            for step in make.workflow
+            if "ci" in step.contexts
+            and step.verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST)
         )
-        tm.that(
-            set(make.check_gates_pre_commit) <= set(make.check_gates_default),
-            eq=True,
+        commit_validation = tuple(
+            step.verb for step in make.workflow if "pre_commit" in step.contexts
         )
+        tm.that(commit_validation, eq=ci_validation)
 
     @staticmethod
-    @pytest.mark.parametrize("checker", sorted(c.Infra.TYPE_CHECKER_GATES))
-    def test_fast_hook_refuses_whole_program_type_checkers(checker: str) -> None:
-        """An expensive type-check route cannot replace the fast hook contract."""
-        make = config.Infra.codegen.make
-        payload = make.ci.model_dump(exclude_computed_fields=True)
-        payload["pre_commit_check_gates"] = (checker,)
-        with pytest.raises(e.PydanticValidationError, match="whole-program"):
-            m.Infra.MakeCiSpec.model_validate(payload)
-
-    @staticmethod
-    @pytest.mark.parametrize("verb", ["setup", "audit", "test"])
-    def test_pre_commit_workflow_refuses_slow_steps(verb: str) -> None:
-        """A pre-commit workflow row other than the fast check is refused."""
+    @pytest.mark.parametrize("verb", ["setup", "audit", "verify-clean"])
+    def test_pre_commit_workflow_refuses_other_lifecycle_steps(verb: str) -> None:
+        """Provisioning and clean-tree approval remain separate lifecycle operations."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["workflow"] = [
             {
@@ -157,7 +144,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             for row in payload["workflow"]
         ]
         with pytest.raises(
-            e.PydanticValidationError, match="pre-commit hook runs only"
+            e.PydanticValidationError, match="pre-commit hook requires"
         ):
             m.Infra.MakeSpec.model_validate(payload)
 
