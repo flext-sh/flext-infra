@@ -174,7 +174,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.services.cli_dispatch import FlextInfraCliDispatchService
     from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
-    from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
     from flext_infra.services.cli_routes import FlextInfraCliRouteService
     from flext_infra.services.cli_routes_codegen import FlextInfraCodegenRoutes
     from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
@@ -231,7 +230,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCli",
     "FlextInfraCliDispatchService",
     "FlextInfraCliModProgress",
-    "FlextInfraCliRouteBase",
     "FlextInfraCliRouteService",
     "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
@@ -420,7 +418,6 @@ install_lazy_exports(
         "FlextInfraCli": ".cli",
         "FlextInfraCliDispatchService": ".services.cli_dispatch",
         "FlextInfraCliModProgress": ".services.cli_mod_progress",
-        "FlextInfraCliRouteBase": ".services.cli_route_base",
         "FlextInfraCliRouteService": ".services.cli_routes",
         "FlextInfraCodegen": ".services.codegen",
         "FlextInfraCodegenCensus": ".codegen.census",
