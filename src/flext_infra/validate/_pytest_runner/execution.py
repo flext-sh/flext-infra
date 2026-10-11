@@ -270,13 +270,15 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline:
+    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
         """Use the entrypoint clock for selection, execution, and cleanup.
 
         Returns:
-            The resulting ``p.Cli.ProcessDeadline``.
+            The bounded operation's deadline, or no deadline for full execution.
 
         """
+        if self.unbounded:
+            return None
         pytest_settings = config.Infra.tooling.tools.pytest
         return m.Cli.ProcessDeadline(
             expires_at_monotonic=self.started_at_monotonic
@@ -446,7 +448,7 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             warnings,
-            diagnostics.skipped_count,
+            diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases),
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             not accounting_complete,
@@ -503,6 +505,7 @@ class FlextInfraPytestRunnerExecution(
             f"warnings={warnings}\n"
             f"{self._phase_warning_lines(phases)}"
             f"skipped={diagnostics.skipped_count}\n"
+            f"connectivity_prerequisite_skips={len(diagnostics.connectivity_skip_cases)}\n"
             f"collection_errors={diagnostics.collection_failed_count}\n"
             f"collection_skips={diagnostics.collection_skipped_count}\n"
             f"exit={final_exit}\n"
@@ -574,7 +577,7 @@ class FlextInfraPytestRunnerExecution(
         return self._execute_testmon(complete=False)
 
     def execute_full(self) -> p.Result[int]:
-        """Run incremental then full under one deadline and persistent database.
+        """Run incremental then full using one persistent database.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -619,11 +622,15 @@ class FlextInfraPytestRunnerExecution(
         # Selection, execution, and integrity inspection share one database.
         # Serialize competing worktrees within this invocation's typed deadline.
         deadline = self._process_deadline()
-        wait_seconds = max(
-            0.0,
-            deadline.expires_at_monotonic
-            - deadline.termination_grace_seconds
-            - time.monotonic(),
+        wait_seconds = (
+            c.Infra.JOURNAL_LEASE_WAIT_SECONDS
+            if deadline is None
+            else max(
+                0.0,
+                deadline.expires_at_monotonic
+                - deadline.termination_grace_seconds
+                - time.monotonic(),
+            )
         )
         self._cache_publication = None
         with u.Infra.codegen_transaction_lease(
@@ -683,12 +690,15 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
+        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=execution_mode,
                 testmon_db=self.testmon_db,
-                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+                deadline_monotonic=(
+                    None if deadline is None else deadline.expires_at_monotonic
+                ),
                 report_directory=report_dir,
             ),
         )
@@ -842,12 +852,15 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
+        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
-                deadline_monotonic=self._process_deadline().expires_at_monotonic,
+                deadline_monotonic=(
+                    None if deadline is None else deadline.expires_at_monotonic
+                ),
                 report_directory=report_dir,
             ),
         )

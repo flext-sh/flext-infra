@@ -485,6 +485,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The bounded suite's time-limit arguments.
 
         """
+        if self.unbounded:
+            return self._UNBOUNDED_LIMITS
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,

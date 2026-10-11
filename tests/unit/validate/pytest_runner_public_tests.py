@@ -794,7 +794,7 @@ class TestsFlextInfraPytestRunner:
         bounded = runner_for(cached_runner_project)
         reports_root = cached_runner_project / bounded.reports
         existing = set(reports_root.glob("*/run-context.json"))
-        runner = runner_for(cached_runner_project, unbounded=True)
+        runner = bounded.model_copy(update={"unbounded": True})
         (cached_runner_project / runner.target / "test_unbounded_policy.py").write_text(
             "from flext_tests import tm\n\n"
             "def test_unbounded_policy(pytestconfig):\n"
