@@ -12,7 +12,6 @@ from flext_infra import c, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesManagedConflicts,
-    FlextInfraUtilitiesPyprojectRequirements,
 )
 
 _MEMBER_DEV_PROVENANCE = "flext: derived member environment"

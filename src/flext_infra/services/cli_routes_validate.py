@@ -46,18 +46,14 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                     "and publish authenticated projections"
                 ),
                 model_cls=m.Infra.DocsCollectRequest,
-                handler=FlextInfraValidationCommandRoutes.result_handler(
-                    FlextInfraDocCollector.collect,
-                ),
+                handler=FlextInfraDocCollector.collect,
                 success_message="Configured plan sources collected and published",
             ),
             m.Cli.ResultCommandRoute(
                 name="generate",
                 help_text="Generate project docs through the publication transaction",
                 model_cls=m.Infra.DocsGenerateRequest,
-                handler=FlextInfraValidationCommandRoutes.result_handler(
-                    FlextInfraDocGenerator.execute_request,
-                ),
+                handler=FlextInfraDocGenerator.execute_request,
                 success_message="Generated documentation committed and verified",
             ),
             m.Cli.ResultCommandRoute(
@@ -66,9 +62,7 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                     "Format documentation through the canonical markdown-format gate"
                 ),
                 model_cls=FlextInfraDocFormatter,
-                handler=FlextInfraValidationCommandRoutes.result_handler(
-                    infra.docs_format,
-                ),
+                handler=infra.docs_format,
                 success_message="Format completed successfully",
             ),
             *tuple(
@@ -76,9 +70,7 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                     name=route_name,
                     help_text=help_text,
                     model_cls=model_cls,
-                    handler=FlextInfraValidationCommandRoutes.result_handler(
-                        model_cls.execute_command,
-                    ),
+                    handler=model_cls.execute_command,
                     success_message=success_message,
                 )
                 for route_name, help_text, model_cls, success_message in (

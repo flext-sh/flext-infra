@@ -12,10 +12,8 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config import (
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsScaffold,
-)
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraConfigModelsTemplates:

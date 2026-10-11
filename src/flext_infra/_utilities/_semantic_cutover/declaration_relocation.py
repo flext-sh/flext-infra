@@ -278,13 +278,14 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             return None
         owner = binding.get_definition_location()[0]
         resource = owner.get_resource() if owner is not None else None
-        if (
-            resource is None
-            or (target := Path(resource.real_path).resolve()) not in sources
-            or not target.is_relative_to(namespace)
-        ):
+        if resource is None:
             return None
-        if not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target):
+        target = Path(resource.real_path).resolve()
+        if (
+            target not in sources
+            or not target.is_relative_to(namespace)
+            or not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target)
+        ):
             return None
         destination = project.get_pymodule(resource)
         declared = destination.get_attributes().get(alias.name)

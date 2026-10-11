@@ -24,7 +24,7 @@ class TestsFlextInfraCiToolCacheReuse:
                 repository_branch="0.12.0-dev",
             ),
         )
-        named = {}
+        named: t.MutableMappingKV[str, t.JsonMapping] = {}
         for step in steps:
             name = step.get("name")
             if isinstance(name, str):

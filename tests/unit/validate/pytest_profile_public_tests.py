@@ -76,7 +76,7 @@ class TestsFlextInfraPytestProfile:
             / "profiles"
             / config.Infra.tooling.tools.pytest.profile_suite_filename
         )
-        with pytest.raises(RuntimeError, match="target_file|test target file"):
+        with pytest.raises(RuntimeError, match=r"target_file|test target file"):
             u.Tests.PytestRunner.profile_parent(runner, output, target_file=target_file)
         tm.that(
             list((cached_runner_project / runner.reports).glob("*/run-context.json")),
@@ -102,7 +102,7 @@ class TestsFlextInfraPytestProfile:
         (cached_runner_project / target).write_text(
             "import pytest\n"
             "pytest_plugins = ['pytester']\n"
-            "@pytest.mark.slow\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_runtime(pytester):\n"
             "    result = pytester.runpytest_subprocess('--version')\n"
             "    assert result.ret == pytest.ExitCode.OK\n"
@@ -133,7 +133,16 @@ class TestsFlextInfraPytestProfile:
         tm.that(len(profiles) >= 2, eq=True)
         for child in profiles:
             functions = pstats.Stats(str(child)).get_stats_profile().func_profiles
-            tm.that("ProfiledSiteCustomization" in functions, eq=True)
+            startup_functions = tuple(
+                (name, function.file_name)
+                for name, function in functions.items()
+                if function.file_name.endswith("sitecustomize.py")
+            )
+            tm.that(
+                "ProfiledSiteCustomization" in functions,
+                eq=True,
+                msg=f"site customization absent from {child}: {startup_functions}",
+            )
             tm.that(
                 any("_pytest" in function.file_name for function in functions.values()),
                 eq=True,
@@ -237,6 +246,30 @@ class TestsFlextInfraPytestProfile:
         parent_profile = project / ".reports" / "profiles" / "pytest.pstats"
         profile = reports_root / latest_name / "testmon-selection.pstats"
         stats = pstats.Stats(str(profile))
+        directory = reports_root / latest_name
+        policy = config.Infra.tooling.tools.pytest
+        suite = pstats.Stats(
+            *(
+                str(path)
+                for path in (
+                    directory / policy.profile_suite_filename,
+                    *sorted(
+                        (directory / policy.profile_process_directory).glob("*.pstats")
+                    ),
+                )
+            )
+        ).get_stats_profile()
+        tm.that(
+            any(
+                name == "test_runtime"
+                and Path(function.file_name)
+                == project
+                / config.Infra.codegen.make.testmon_cache.target_directory
+                / "test_runtime.py"
+                for name, function in suite.func_profiles.items()
+            ),
+            eq=True,
+        )
         assert any(
             "_pytest" in function.file_name
             for function in stats.get_stats_profile().func_profiles.values()
@@ -245,7 +278,6 @@ class TestsFlextInfraPytestProfile:
         # The class body runs on import, unlike its methods: this proves the
         # public runner was first imported while the parent profiler was active.
         assert FlextInfraPytestRunner.__name__ in parent_stats.func_profiles
-        policy = config.Infra.tooling.tools.pytest
         report = FlextInfraCProfileReport(
             repository_root=project,
             profile=parent_profile,

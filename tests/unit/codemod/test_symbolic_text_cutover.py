@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
@@ -23,144 +23,132 @@ class TestsFlextInfraSymbolicTextCutover:
     """Exercise native findings, binding admission, and public publication."""
 
     @staticmethod
-    def test_occurrence_identity_is_lexical_and_immutable(mod_workspace: Path) -> None:
-        """Identical spelling in another scope never borrows a module binding."""
-        owner = mod_workspace / "definer.py"
-        owner.write_text("class Public:\n    pass\nu = Public\n", encoding="utf-8")
-        consumer = mod_workspace / "consumer.py"
-        source = (
-            "from definer import Public, u\n"
-            "note = '\u00e9'\n"
-            "value = Public\n"
-            "def independent(Public):\n"
-            "    return Public\n"
-        )
-        consumer.write_text(source, encoding="utf-8")
-        rule = m.Infra.CodemodRule(
-            id="binding-probe",
-            digest="probe",
-            provider="probe",
-            resource=Path("probe.yml"),
-            fixable=True,
-            context=(
-                m.Infra.CodemodContextCondition(
-                    variable="OWNER",
-                    predicate=c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                    arg=("definer", "Public"),
-                    holds=True,
-                ),
-                m.Infra.CodemodContextCondition(
-                    variable="OWNER",
-                    predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    arg=("u",),
-                    holds=True,
-                ),
-            ),
-        )
-        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
-        for start, expected in (
-            (source.index("Public", source.index("value =")), True),
-            (source.rindex("Public"), False),
-        ):
-            start_byte = len(source[:start].encode("utf-8"))
-            capture: t.JsonMapping = {
-                "OWNER": {
-                    "text": "Public",
-                    "range": {
-                        "byteOffset": {
-                            "start": start_byte,
-                            "end": start_byte + len("Public"),
-                        }
-                    },
-                },
-            }
-            for _ in range(2):
-                tm.that(
-                    u.Infra.codemod_context_admits(
-                        m.Infra.CodemodAdmission(
-                            root=mod_workspace,
-                            rule=rule,
-                            file_path=consumer,
-                            captures=capture,
-                            facts=facts,
-                        ),
-                    ),
-                    eq=expected,
-                    msg=f"occurrence at byte {start_byte} expected {expected}",
-                )
-        tm.that(consumer.read_text(encoding="utf-8"), eq=source)
-        closed = u.Infra.codemod_binding_snapshot(
+    @pytest.mark.parametrize("namespace", [False, True])
+    @pytest.mark.parametrize("layout", ["same-root", "importing-folder"])
+    def test_snapshot_preserves_child_lookup_with_a_file_owner(
+        mod_workspace: Path,
+        *,
+        namespace: bool,
+        layout: str,
+    ) -> None:
+        """Snapshot closure preserves the SDK's independent child resolution."""
+        source = mod_workspace / c.Infra.DEFAULT_SRC_DIR
+        importing = source if layout == "same-root" else mod_workspace / "consumer_area"
+        importing.mkdir(exist_ok=True)
+        package = importing / "search_owner"
+        package.mkdir(parents=True)
+        earlier = source / "search_owner.py"
+        earlier.write_text("class Earlier:\n    pass\n", encoding="utf-8")
+        if not namespace:
+            (package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        child = package / "child.py"
+        child.write_text("class Later:\n    pass\n", encoding="utf-8")
+        consumer = importing / "consumer.py"
+        consumer.write_text("from search_owner import child\n", encoding="utf-8")
+
+        snapshot = u.Infra.codemod_binding_snapshot(
             mod_workspace,
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
-            ("definer",),
         )
-        start = source.index("Public", source.index("value ="))
-        start_byte = len(source[:start].encode("utf-8"))
-        positive: t.JsonMapping = {
-            "OWNER": {
-                "text": "Public",
-                "range": {
-                    "byteOffset": {
-                        "start": start_byte,
-                        "end": start_byte + len("Public"),
-                    }
-                },
-            }
-        }
-        owner.write_text(
-            "class Public:\n    pass\nclass Independent:\n    pass\nu = Independent\n",
+        captured = {state.path: state.content for state in snapshot.states}
+        tm.that(earlier in captured, eq=layout == "importing-folder")
+        if layout == "importing-folder":
+            tm.that(captured[earlier], eq=earlier.read_bytes())
+        tm.that(captured[child], eq=child.read_bytes())
+
+    @staticmethod
+    def test_snapshot_preserves_imports_in_nested_statement_suites(
+        mod_workspace: Path,
+    ) -> None:
+        """Static closure includes inactive function, handler, and case imports."""
+        owners = ("function_owner", "handler_owner", "case_owner")
+        for name in owners:
+            (mod_workspace / f"{name}.py").write_text(
+                "class Public:\n    pass\n",
+                encoding="utf-8",
+            )
+        consumer = mod_workspace / "consumer.py"
+        consumer.write_text(
+            "def deferred():\n"
+            "    import function_owner\n"
+            "try:\n"
+            "    pass\n"
+            "except Exception:\n"
+            "    import handler_owner\n"
+            "match None:\n"
+            "    case None:\n"
+            "        import case_owner\n",
             encoding="utf-8",
         )
-        tm.that(
-            u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=mod_workspace,
-                    rule=rule,
-                    file_path=consumer,
-                    captures=positive,
-                    facts=facts,
-                    snapshot=closed,
-                ),
-            ),
-            eq=True,
+
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
         )
-        tm.that(
-            u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=mod_workspace,
-                    rule=rule,
-                    file_path=consumer,
-                    captures=positive,
-                    facts=facts,
-                ),
-            ),
-            eq=False,
-        )
-        tm.that(consumer.read_text(encoding="utf-8"), eq=source)
+
+        captured = {state.path: state.content for state in snapshot.states}
+        for name in owners:
+            owner = mod_workspace / f"{name}.py"
+            tm.that(captured[owner], eq=owner.read_bytes())
+
+    @staticmethod
+    def test_snapshot_preserves_importing_folder_owners(mod_workspace: Path) -> None:
+        """A shared missing absolute module retains each folder's own source."""
+        inputs: list[m.Cli.AtomicFileState] = []
+        owners: list[Path] = []
+        for package_name in ("left", "right"):
+            package = mod_workspace / package_name
+            package.mkdir()
+            (package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+            owner = package / "local_owner.py"
+            owner.write_text(
+                f"class {package_name.title()}:\n    pass\n",
+                encoding="utf-8",
+            )
+            owners.append(owner)
+            consumer = package / "consumer.py"
+            consumer.write_text("import local_owner\n", encoding="utf-8")
+            inputs.append(
+                tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
+            )
+
+        snapshot = u.Infra.codemod_binding_snapshot(mod_workspace, tuple(inputs))
+
+        captured = {state.path: state.content for state in snapshot.states}
+        for owner in owners:
+            tm.that(captured[owner], eq=owner.read_bytes())
 
     @staticmethod
     def test_binding_receipt_cannot_resolve_another_occurrence(
         mod_workspace: Path,
+        binding_probe_rule: m.Infra.CodemodRule,
     ) -> None:
         """A stale span is rejected instead of falling back to another same name."""
         consumer = mod_workspace / "consumer.py"
         consumer.write_text("value = 1\n", encoding="utf-8")
-        rule = m.Infra.CodemodRule(
-            id="binding-probe",
-            digest="probe",
-            provider="probe",
-            resource=Path("probe.yml"),
-            fixable=True,
-            context=(
-                m.Infra.CodemodContextCondition(
-                    variable="OWNER",
-                    predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    arg=("value",),
-                    holds=True,
+        rule = binding_probe_rule.model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="OWNER",
+                        predicate=c.Infra.CodemodContextPredicate.SAME_BINDING,
+                        arg=("value",),
+                        holds=True,
+                    ),
                 ),
-            ),
+            }
         )
-        with pytest.raises(ValueError, match="binding capture differs from source"):
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
+        )
+        with (
+            u.Infra.codemod_binding_project(mod_workspace, snapshot) as (
+                project,
+                sources,
+            ),
+            pytest.raises(ValueError, match="binding capture differs from source"),
+        ):
             u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(
                     root=mod_workspace,
@@ -173,7 +161,10 @@ class TestsFlextInfraSymbolicTextCutover:
                         }
                     },
                     facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                    snapshot=snapshot,
                 ),
+                project=project,
+                sources=sources,
             )
         tm.that(consumer.read_text(encoding="utf-8"), eq="value = 1\n")
 

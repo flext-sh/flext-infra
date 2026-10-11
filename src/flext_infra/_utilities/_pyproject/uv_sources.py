@@ -314,11 +314,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         if sources is None:
             sources = u.Cli.toml_ensure_table(uv, "sources")
         wanted = {member.distribution for member in members}
-        source_entries = u.Cli.toml_as_mapping(sources)
-        if source_entries is None:
-            msg = "UV sources must be a TOML mapping"
-            raise TypeError(msg)
-        for source_name in tuple(source_entries):
+        source_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_unwrap_item(sources),
+        )
+        for source_name in source_names:
             entry = u.Cli.toml_table_child(sources, source_name)
             if source_name not in wanted and (
                 source_name.startswith("flext-")

@@ -33,6 +33,8 @@ from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportFacades,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -74,7 +76,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             original_node: cst.Attribute,
             updated_node: cst.Attribute,
         ) -> cst.BaseExpression:
-            names = self.get_metadata(QualifiedNameProvider, original_node, ())
+            names = self.get_metadata(QualifiedNameProvider, original_node, None)
+            if names is None:
+                return updated_node
             targets = {
                 self.resolve_reference(name.name)
                 if name.source is QualifiedNameSource.IMPORT
@@ -144,11 +148,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     ) -> t.VariadicTuple[t.Pair[str, str]]:
         """Follow the imported facade's declared classes and base bindings.
 
-        Args:
-            modules: A mapping of module names to their source code and a boolean flag.
-            module: The name of the module containing the facade.
-            receiver: The name of the class being resolved.
-
         Returns:
             Pairs of module and class names representing the behavior lineage.
         """
@@ -180,9 +179,16 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 )
                 if inherited is not None:
                     bases.append(inherited)
-            sequences = [list(linearize(base, visiting | {identity})) for base in bases]
-            sequences.append(list(bases))
-            cache[identity] = cls._merge_behavior_lineages(identity, sequences)
+            cache[identity] = (
+                identity,
+                *FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
+                    (
+                        *(linearize(base, visiting | {identity}) for base in bases),
+                        tuple(bases),
+                    ),
+                    message=f"inconsistent facade inheritance identity: {identity}",
+                ),
+            )
             return cache[identity]
 
         return linearize(resolved, frozenset())
@@ -225,40 +231,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
         raise TypeError(msg)
 
-    @staticmethod
-    def _merge_behavior_lineages(
-        identity: t.Pair[str, str],
-        sequences: t.SequenceOf[t.MutableSequenceOf[t.Pair[str, str]]],
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
-        """Merge inherited lineages in C3 order, rejecting inconsistent bases.
-
-        Returns:
-            The owner followed by its deterministic C3 lineage.
-
-        Raises:
-            ValueError: If inherited precedence cannot be merged consistently.
-
-        """
-        lineage = [identity]
-        while any(sequences):
-            chosen = next(
-                (
-                    sequence[0]
-                    for sequence in sequences
-                    if sequence
-                    and not any(sequence[0] in tail[1:] for tail in sequences)
-                ),
-                None,
-            )
-            if chosen is None:
-                msg = f"inconsistent facade inheritance identity: {identity}"
-                raise ValueError(msg)
-            lineage.append(chosen)
-            for sequence in sequences:
-                if sequence and sequence[0] == chosen:
-                    sequence.pop(0)
-        return tuple(lineage)
-
     @classmethod
     def _behavior_source_modules(
         cls,
@@ -272,18 +244,50 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         statements = tuple(
-            ast.unparse(node)
+            statement
             for source in sources.values()
-            for tree in (ast.parse(source),)
-            for called in (
-                {
-                    call.func.value.id
-                    for call in ast.walk(tree)
-                    if isinstance(call, ast.Call)
-                    and isinstance(call.func, ast.Attribute)
-                    and isinstance(call.func.value, ast.Name)
-                },
+            for statement in cls._behavior_imports(source)
+        )
+        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
+            sources, statements
+        )
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        typing_directory = families["t"].directory
+        # Provider discovery expands the inventory, never the owners eligible
+        # for a reference. Its declared inheritance lineage elects those owners.
+        while True:
+            inherited_statements = tuple(
+                statement
+                for module, (source, _package) in modules.items()
+                if typing_directory in module.split(".") or module.endswith(".typings")
+                for statement in cls._behavior_base_imports(source)
             )
+            expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
+                sources, (*statements, *inherited_statements)
+            )
+            if expanded.keys() == modules.keys():
+                break
+            statements = (*statements, *inherited_statements)
+            modules = expanded
+        return modules
+
+    @staticmethod
+    def _behavior_imports(source: str) -> t.StrTuple:
+        """Select imports participating in facade or method references.
+
+        Returns:
+            The declared import statements.
+        """
+        tree = ast.parse(source)
+        called = {
+            call.func.value.id
+            for call in ast.walk(tree)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Attribute)
+            and isinstance(call.func.value, ast.Name)
+        }
+        return tuple(
+            ast.unparse(node)
             for node in ast.walk(tree)
             if isinstance(node, ast.ImportFrom)
             and node.module
@@ -293,8 +297,27 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 for alias in node.names
             )
         )
-        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            sources, statements
+
+    @staticmethod
+    def _behavior_base_imports(source: str) -> t.StrTuple:
+        """Read imported class bases from one provider declaration.
+
+        Returns:
+            The imports that supply declared base names.
+        """
+        tree = ast.parse(source)
+        names = {
+            base.id
+            for declaration in tree.body
+            if isinstance(declaration, ast.ClassDef)
+            for base in declaration.bases
+            if isinstance(base, ast.Name)
+        }
+        return tuple(
+            ast.unparse(node)
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and any((alias.asname or alias.name) in names for alias in node.names)
         )
         # Provider discovery expands the inventory, never the owners eligible
         # for a reference. Its declared inheritance lineage elects those owners.
@@ -345,27 +368,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         contextual: set[t.Quad[str, str, str, str]] = set()
         for module, (source, _package) in modules.items():
             parts = module.split(".")
-            if utility_directory not in parts and typing_directory not in parts:
+            if utility_directory not in parts:
                 continue
             tree = ast.parse(source)
-            exports = {
-                name
-                for node in tree.body
-                if isinstance(node, ast.Assign | ast.AnnAssign)
-                and node.value is not None
-                and any(
-                    isinstance(target, ast.Name) and target.id == "__all__"
-                    for target in (
-                        node.targets if isinstance(node, ast.Assign) else (node.target,)
-                    )
-                )
-                for name in ast.literal_eval(node.value)
-            }
+            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
             for declaration in tree.body:
-                if not isinstance(declaration, ast.ClassDef):
+                if (
+                    not isinstance(declaration, ast.ClassDef)
+                    or declaration.name not in exports
+                ):
                     continue
                 for member in declaration.body:
-                    if not isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef):
+                    if not isinstance(
+                        member, ast.FunctionDef | ast.AsyncFunctionDef
+                    ) or member.name.startswith("_"):
                         continue
                     if (
                         utility_directory in parts
@@ -377,6 +393,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         owners.setdefault((parts[0], member.name), []).append((
                             module,
                             declaration.name,
+                            member.name,
                         ))
                         decorators = {
                             decorator.id
@@ -674,6 +691,82 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     RemoveImportsVisitor.remove_unused_import(
                         context, node.module, alias.name, alias.asname
                     )
+
+    @classmethod
+    def _resolve_behavior_reference(
+        cls,
+        state: m.Infra.SemanticBehaviorResolution,
+        qualified: str,
+    ) -> t.Triple[str, str, str] | None:
+        """Resolve one qualified call using its consumer-owned operation state.
+
+        Returns:
+            The canonical module, receiver, and member, or no relocation.
+
+        Raises:
+            ValueError: If the owner is ambiguous or requires facade dispatch.
+        """
+        imported = next(
+            (
+                identity
+                for identity in state.identities
+                if qualified.startswith(".".join(identity) + ".")
+                and qualified.removeprefix(".".join(identity) + ".").count(".") == 0
+            ),
+            None,
+        )
+        if imported is None:
+            return None
+        package = imported[0].split(".")[0]
+        member = qualified.rpartition(".")[2]
+        if imported not in state.lineages:
+            state.lineages[imported] = cls._behavior_import_lineage(
+                imported, state.inventory, state.typing_directory
+            )
+        lineage = state.lineages[imported]
+        if any(
+            isinstance(declaration, ast.ClassDef)
+            and declaration.name == class_name
+            and any(
+                isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
+                and method.name == member
+                for method in declaration.body
+            )
+            for owner_module, class_name in lineage
+            for declaration in ast.parse(state.inventory.modules[owner_module][0]).body
+        ):
+            return None
+        candidates: t.SequenceOf[t.Pair[str, str]] = ()
+        for owner_module, _class in lineage:
+            candidates = state.inventory.owners.get(
+                (owner_module.split(".")[0], member), ()
+            )
+            if candidates:
+                break
+        if not candidates:
+            return None
+        if len(candidates) != 1:
+            message = f"ambiguous relocated behavior owner: {qualified}"
+            raise ValueError(message)
+        owner_module, owner_class = candidates[0]
+        owner_package = owner_module.split(".")[0]
+        internal = (
+            owner_package in state.path.parts
+            and c.Infra.DEFAULT_SRC_DIR in state.path.parts
+        )
+        if (
+            internal
+            and (owner_package, owner_module, owner_class, member)
+            in state.inventory.contextual
+        ):
+            message = f"lower behavior owner requires facade dispatch: {qualified}"
+            raise ValueError(message)
+        state.obsolete.add(imported)
+        return (
+            owner_module if internal else package,
+            owner_class if internal else f"{package}.u",
+            member,
+        )
 
     @classmethod
     def _plan_facade_bases(

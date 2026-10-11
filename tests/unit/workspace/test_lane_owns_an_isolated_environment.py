@@ -1,4 +1,4 @@
-"""Lane provisioning owns a real physical environment inside its checkout.
+"""Lane provisioning owns a real checkout environment.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService
 from tests import c, tm, u

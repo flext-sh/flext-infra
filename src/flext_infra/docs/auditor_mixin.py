@@ -61,7 +61,7 @@ class FlextInfraDocAuditorMixin:
         ],
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
-        validated_checks = t.json_list_adapter().validate_python(sorted(checks))
+        validated_checks = u.json_list_adapter().validate_python(sorted(checks))
         sorted_checks: t.JsonValueList = list(validated_checks)
         summary: t.JsonDict = {
             c.Infra.RK_SCOPE: scope.name,

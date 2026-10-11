@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config
-from tests import m, tm, u
+from flext_infra import config
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraBindingInstall:

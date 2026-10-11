@@ -26,6 +26,40 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesRopeSourceBasesRuntime:
     """Qualified runtime-base resolution and linearization."""
 
+    @staticmethod
+    def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
+        lineages: t.SequenceOf[t.SequenceOf[TIdentity]],
+        *,
+        message: str,
+    ) -> t.VariadicTuple[TIdentity]:
+        """Merge declared ancestor sequences using their C3 ordering.
+
+        Returns:
+            The consistent ordered ancestors.
+
+        Raises:
+            ValueError: If no consistent ordering exists.
+        """
+        sequences = [list(lineage) for lineage in lineages]
+        result: list[TIdentity] = []
+        while any(sequences):
+            candidate = next(
+                (
+                    sequence[0]
+                    for sequence in sequences
+                    if sequence
+                    and all(sequence[0] not in other[1:] for other in sequences)
+                ),
+                None,
+            )
+            if candidate is None:
+                raise ValueError(message)
+            result.append(candidate)
+            for sequence in sequences:
+                if sequence and sequence[0] == candidate:
+                    sequence.pop(0)
+        return tuple(result)
+
     class _RuntimeBaseResolver:
         """Resolve owned classes in C3 order and external classes through Rope.
 
@@ -928,31 +962,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The merged linearization headed by the identity.
 
-            Raises:
-                ValueError: If no consistent C3 ordering exists.
-
             """
-            sequences = [list(self._linearize(parent)) for parent in parents]
-            sequences.append(list(parents))
-            result = [identity]
-            while any(sequences):
-                candidate = next(
+            return (
+                identity,
+                *FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                     (
-                        sequence[0]
-                        for sequence in sequences
-                        if sequence
-                        and all(sequence[0] not in other[1:] for other in sequences)
+                        *(self._linearize(parent) for parent in parents),
+                        parents,
                     ),
-                    None,
-                )
-                if candidate is None:
-                    message = f"Inconsistent class MRO: {identity}"
-                    raise ValueError(message)
-                result.append(candidate)
-                for sequence in sequences:
-                    if sequence and sequence[0] == candidate:
-                        sequence.pop(0)
-            return tuple(result)
+                    message=f"Inconsistent class MRO: {identity}",
+                ),
+            )
 
         def _member(
             self,

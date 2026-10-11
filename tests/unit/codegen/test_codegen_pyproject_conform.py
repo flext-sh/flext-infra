@@ -49,11 +49,15 @@ class TestsFlextInfraCodegenPyprojectConform:
         return u.Tests.workspace_spec(
             self._repository("workspace", role=role, path="."),
             subprojects=(
-                self._repository(
-                    "flext-core",
-                    role=c.Infra.MakeProfile.STANDALONE,
-                    path="flext-core",
-                ),
+                (
+                    self._repository(
+                        "flext-core",
+                        role=c.Infra.MakeProfile.STANDALONE,
+                        path="flext-core",
+                    ),
+                )
+                if role is c.Infra.MakeProfile.STANDALONE
+                else ()
             ),
         )
 
@@ -355,11 +359,10 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     @pytest.mark.parametrize(
-        ("role", "attached"),
+        "role",
         [
-            (c.Infra.MakeProfile.STANDALONE, False),
-            (c.Infra.MakeProfile.STANDALONE, True),
-            (c.Infra.MakeProfile.WORKSPACE, False),
+            c.Infra.MakeProfile.STANDALONE,
+            c.Infra.MakeProfile.WORKSPACE,
         ],
     )
     def test_generated_dev_floors_follow_publication_topology(

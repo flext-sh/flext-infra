@@ -154,6 +154,7 @@ if TYPE_CHECKING:
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.promoted import FlextInfraPromoted
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+    from flext_infra.pytest_profile import FlextInfraPytestProfile
     from flext_infra.refactor.accessor_migration import (
         FlextInfraAccessorMigrationOrchestrator,
     )
@@ -173,7 +174,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.services.cli_dispatch import FlextInfraCliDispatchService
     from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
-    from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
     from flext_infra.services.cli_routes import FlextInfraCliRouteService
     from flext_infra.services.cli_routes_codegen import FlextInfraCodegenRoutes
     from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
@@ -230,7 +230,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCli",
     "FlextInfraCliDispatchService",
     "FlextInfraCliModProgress",
-    "FlextInfraCliRouteBase",
     "FlextInfraCliRouteService",
     "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
@@ -321,6 +320,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPyreflyGate",
     "FlextInfraPyrightGate",
     "FlextInfraPytestDiagExtractor",
+    "FlextInfraPytestProfile",
     "FlextInfraPytestRunner",
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraRefactorCensus",
@@ -418,7 +418,6 @@ install_lazy_exports(
         "FlextInfraCli": ".cli",
         "FlextInfraCliDispatchService": ".services.cli_dispatch",
         "FlextInfraCliModProgress": ".services.cli_mod_progress",
-        "FlextInfraCliRouteBase": ".services.cli_route_base",
         "FlextInfraCliRouteService": ".services.cli_routes",
         "FlextInfraCodegen": ".services.codegen",
         "FlextInfraCodegenCensus": ".codegen.census",
@@ -509,6 +508,7 @@ install_lazy_exports(
         "FlextInfraPyreflyGate": ".gates.pyrefly",
         "FlextInfraPyrightGate": ".gates.pyright",
         "FlextInfraPytestDiagExtractor": ".validate.pytest_diag",
+        "FlextInfraPytestProfile": ".pytest_profile",
         "FlextInfraPytestRunner": ".validate.pytest_runner",
         "FlextInfraPythonVersionEnforcer": ".maintenance.python_version",
         "FlextInfraRefactorCensus": ".refactor.census",

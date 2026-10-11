@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_core import t
-from flext_infra import FlextInfraServiceBase, m
+from flext_infra import FlextInfraServiceBase, m, t
 
 
 class FlextInfraCodegenExecutionBase[TResult: t.JsonPayload](

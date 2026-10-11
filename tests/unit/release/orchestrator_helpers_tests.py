@@ -542,12 +542,12 @@ source = { registry = "https://pypi.org/simple" }
             tm.that(result.value, eq={"flext-api": "0.12.0"})
 
         @staticmethod
-        def test_missing_lock_yields_an_empty_map(tmp_path: Path) -> None:
-            """No lock means no git entries to seed; the render stays the authority."""
+        def test_missing_lock_fails_loud(tmp_path: Path) -> None:
+            """Release pins require the lock owned by dependency resolution."""
             result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
 
-            tm.ok(result)
-            tm.that(result.value, eq={})
+            tm.fail(result)
+            tm.that(result.error or "", has=c.Infra.UV_LOCK_FILENAME)
 
         @staticmethod
         def test_invalid_lock_fails_loud(tmp_path: Path) -> None:
@@ -560,4 +560,15 @@ source = { registry = "https://pypi.org/simple" }
             result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
 
             tm.fail(result)
-            tm.that(result.error or "", has="invalid TOML")
+            tm.that(result.error or "", has=c.Infra.UV_LOCK_FILENAME)
+
+        @staticmethod
+        def test_invalid_package_preserves_validation_failure(tmp_path: Path) -> None:
+            """A parseable lock with an invalid package is never partly consumed."""
+            TestsFlextInfraReleaseHelpers.TestsInternalLockedVersions.write_lock(
+                tmp_path,
+                '[[package]]\nname = "flext-api"\nversion = 1\nsource = {git = "repo"}',
+            )
+
+            with pytest.raises(c.ValidationError):
+                FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)

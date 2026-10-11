@@ -324,12 +324,9 @@ class FlextInfraModelsGit(
             m.Field(description="Local commit-ish pushed to the remote branch"),
         ] = "HEAD"
 
-    class GitRemoteRequest(m.ContractModel):
+    class GitRemoteRequest(GitRepoRequest):
         """One repository plus one remote name."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         remote: Annotated[t.NonEmptyStr, m.Field(description="Remote name")] = "origin"
 
     class GitRemoteBranchRequest(GitRemoteRequest):

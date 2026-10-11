@@ -12,7 +12,7 @@ from typing import override
 from flext_cli import FlextCliConfig
 
 from flext_infra import c
-from flext_infra._models import FlextInfraConfigModels
+from flext_infra._models._config.base import FlextInfraConfigModels
 
 
 class FlextInfraConfig(FlextCliConfig):

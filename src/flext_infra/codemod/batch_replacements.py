@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 import libcst as cst
 
 from flext_infra import FlextInfraRuffFormatGate, c, m, r, t, u
-from flext_infra.codemod._batch_dead_scaffold import DeadScaffold
-from flext_infra.codemod._batch_orphan_import import OrphanImport
+from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -262,9 +262,9 @@ class FlextInfraModReplacements:
                 module = cst.parse_module(before)
             except cst.ParserSyntaxError:
                 continue
-            stripped = module.visit(DeadScaffold())
+            stripped = module.visit(FlextInfraDeadScaffold())
             if stripped.code.count("TYPE_CHECKING") == 1:
-                stripped = stripped.visit(OrphanImport())
+                stripped = stripped.visit(FlextInfraOrphanImport())
             if stripped.code == before:
                 continue
             path.write_text(stripped.code, c.DEFAULT_ENCODING)

@@ -1,4 +1,4 @@
-"""Pytest execution adapter imported after the entry activates cold-start profiling.
+"""Pytest execution adapter loaded through the public lazy export.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,8 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from flext_infra import c, config, m, u
-from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from flext_infra import FlextInfraPytestRunner, c, config, m, u
 
 
 class FlextInfraPytestProfile:
@@ -37,7 +36,10 @@ class FlextInfraPytestProfile:
 
         """
         if not self.output.resolve().is_relative_to(
-            (Path.cwd() / ".reports").resolve(),
+            (
+                Path.cwd()
+                / config.Infra.codegen.make.testmon_cache.reports_directory.parent
+            ).resolve(),
         ):
             msg = "parent profile must stay under the repository reports directory"
             raise ValueError(msg)
@@ -150,3 +152,6 @@ class FlextInfraPytestProfile:
                 self.output.with_suffix(".pstats.json"),
                 receipt.model_dump_json(indent=2) + "\n",
             ).unwrap()
+
+
+__all__: list[str] = ["FlextInfraPytestProfile"]

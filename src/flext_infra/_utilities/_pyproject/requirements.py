@@ -51,7 +51,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
             section = u.Cli.toml_table_child(parent, section_name)
             if section is None:
                 continue
-            for group_name in tuple(section):
+            group_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.Cli.toml_unwrap_item(section),
+            )
+            for group_name in group_names:
                 yield section, group_name
 
     @classmethod
@@ -319,10 +322,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r.fail(f"invalid internal requirement: {requirement}")
+            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].fail(
+                f"invalid internal requirement: {requirement}",
+            )
         source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
         if source.failure:
-            return r.from_failure(source)
+            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].from_failure(
+                source,
+            )
         marker_text = marker.strip()
         head = head_match.group("head").strip()
         marker_pair = (bool(separator and marker_text), marker_text)

@@ -25,7 +25,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSourceBases,
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
