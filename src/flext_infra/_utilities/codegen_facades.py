@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
@@ -339,17 +340,18 @@ class FlextInfraUtilitiesCodegenFacades:
                     if not isinstance(reference, ast.Attribute):
                         continue
                     receiver = reference.value
-                    if nested_namespace and (
-                        not isinstance(receiver, ast.Attribute)
-                        or receiver.attr != namespace
-                    ):
-                        continue
+                    public_receiver = not nested_namespace or (
+                        isinstance(receiver, ast.Attribute)
+                        and receiver.attr == namespace
+                    )
                     receiver = (
                         receiver.value
-                        if nested_namespace and isinstance(receiver, ast.Attribute)
+                        if nested_namespace
+                        and public_receiver
+                        and isinstance(receiver, ast.Attribute)
                         else receiver
                     )
-                    if not isinstance(receiver, ast.Name) or receiver.id != family:
+                    if not isinstance(receiver, ast.Name):
                         continue
                     if pymodule is None:
                         resource = project.get_resource(
@@ -368,17 +370,44 @@ class FlextInfraUtilitiesCodegenFacades:
                         pymodule,
                         offset,
                     )
-                    if binding is None or binding.imported_name != family:
+                    if binding is None:
+                        continue
+                    imported = binding.imported_module
+                    if (
+                        imported.level == 0
+                        and imported.module_name is not None
+                        and imported.module_name.split(".", 1)[0]
+                        in sys.stdlib_module_names
+                    ):
+                        # Standard-library imports cannot declare owned facades.
+                        # Built-in modules have no source resource for Rope.
                         continue
                     declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
                         project,
                         binding,
                     )
-                    if declared not in {
-                        pkg_dir,
-                        pkg_dir / c.Infra.INIT_PY,
-                        facade_path,
-                    }:
+                    owner_directory = (
+                        pkg_dir
+                        / FlextInfraUtilitiesCodegenNamespace.facade_families()[
+                            family
+                        ].directory
+                    )
+                    lower_owner = (
+                        family == "u"
+                        and declared.is_relative_to(owner_directory)
+                        and not path.is_relative_to(owner_directory)
+                    )
+                    if not lower_owner and (
+                        not public_receiver
+                        or receiver.id != family
+                        or binding.imported_name != family
+                        or declared
+                        not in {
+                            pkg_dir,
+                            pkg_dir / c.Infra.INIT_PY,
+                            facade_path,
+                        }
+                    ):
                         continue
                     methods.add(reference.attr)
         return frozenset(method for method in methods if not method.startswith("_"))
@@ -402,7 +431,7 @@ class FlextInfraUtilitiesCodegenFacades:
                 filename=str(path),
             )
             for node in tree.body:
-                if not isinstance(node, ast.ClassDef):
+                if not isinstance(node, ast.ClassDef) or node.name.startswith("_"):
                     continue
                 if family == "u":
                     members = tuple(

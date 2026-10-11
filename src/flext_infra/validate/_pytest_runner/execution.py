@@ -754,7 +754,6 @@ class FlextInfraPytestRunnerExecution(
         command = self.build_command(
             report_dir,
             selection_plan,
-            serialize=self.profile_enabled,
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
@@ -877,10 +876,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
             verify_inventory=False,
         )
-        command = self.build_coverage_command(
-            report_dir,
-            serialize=self.profile_enabled,
-        )
+        command = self.build_coverage_command(report_dir)
         outcome = self._run_suite(
             command,
             report_dir,

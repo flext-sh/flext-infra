@@ -62,13 +62,28 @@ Use `make profile-test` before optimizing a slow suite, then `make profile-test-
 to render the parent and aggregated child profiles. Profiling uses the same Make runner,
 persistent Testmon database, selection, and deadline as `make test`. Each collection
 process writes its own cProfile artifact under that run's report directory.
-The profiled suite runs serially inside its instrumented interpreter, so the report
-includes fixture setup, test calls, and teardown. Parent, suite, and collection
-profiles are bound to the same run by their receipts and digests. Profiling a declared
-file uses the runner's repository-relative `FLEXT_PYTEST_TARGET_FILE` input.
-A failing or
-interrupted profiled run remains RED with its original process outcome. The profile is
+The instrumented suite and its Python worker descendants capture fixture setup,
+test calls, and teardown. Parent, suite, collection, and descendant profiles are
+bound to the same run by their receipts and digests. A failing or interrupted
+profiled run remains RED with its original process outcome. The profile is
 diagnostic evidence, not a substitute for a complete test result.
+
+For a focused diagnostic, run the same verb from the workspace root:
+
+```bash
+make profile-test FILE=flext-tests/tests/unit/test_capability_collection.py
+make profile-test-report
+```
+
+`FILE` uses the same repository-relative validation as `test-file`. Both scoped
+verbs run one operation over the complete declared file with the same persistent
+Testmon database and deadline. The entry activates cProfile before
+importing the runner. The canonical child launcher installs run-owned stdlib startup
+instrumentation for Python descendants, including pytester subprocesses, preserving
+the inherited plugin set, Python path, and existing site customization. Completed
+descendants publish PID-separated profiles bound by digest to the same run receipt;
+the report renders them separately alongside the suite and collection profiles.
+Abruptly terminated processes may leave no profile and are never reported as completed.
 
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound

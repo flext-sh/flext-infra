@@ -31,6 +31,7 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraFlextUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodRules,
@@ -45,12 +46,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeSourceBases,
 )
-from flext_infra._utilities.codemod_binding_chain import (
-    FlextInfraUtilitiesCodemodBindingChain,
-)
 
 
-class FlextInfraUtilitiesCodemodProject(FlextInfraUtilitiesCodemodBindingChain):
+class FlextInfraUtilitiesCodemodProject(
+    FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+):
     """Evaluate rule context over project facts: packages, layers, graphs."""
 
     @classmethod

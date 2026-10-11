@@ -575,16 +575,25 @@ class FlextInfraUtilitiesPrivateImportFacades:
         bindings: t.MappingKV[str, set[str]],
         class_bases: t.MappingKV[str, t.VariadicTuple[str]],
     ) -> str | None:
-        """Resolve one private class to exactly one inherited facade path.
+        """Resolve one imported binding to exactly one inherited facade path.
 
         Returns:
             The resulting ``str | None``.
 
         Raises:
             ValueError: If ambiguous public facade references for; or if cyclic public
-                facade inheritance; or if ambiguous public facade base identity.
+                facade inheritance; or if ambiguous public facade base identity;
+                or if ambiguous or cyclic public export identity.
 
         """
+        identities = cls._export_identities(bindings, qualified, frozenset())
+        if len(identities) != 1:
+            msg = (
+                f"ambiguous private symbol identity for {qualified}: "
+                f"{sorted(identities)}"
+            )
+            raise ValueError(msg)
+        identity = identities.pop()
         references: set[str] = set()
         for tree, facade_alias, root_name, facade_file in owners:
             root_class = next(
@@ -599,7 +608,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 continue
             cls._collect_facade_references(
                 references,
-                (bindings, class_bases, qualified),
+                (bindings, class_bases, identity),
                 root_class,
                 facade_alias,
                 f"{package}.{Path(facade_file).stem}.{root_name}",

@@ -220,7 +220,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             ValueError: If the mutation is not a recognized provider
-                metadata, module table, or class namespace rebinding.
+                metadata, module table, or class namespace rebinding, and
+                it is not an opaque computed attribute rebind that cannot
+                declare a class base.
 
         """
         if FlextInfraUtilitiesRopeSourceBindingCollector._provider_metadata_rebind(
@@ -234,8 +236,33 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return
         if cls._complete_class_namespace(spec, node, targets, bindings):
             return
+        if cls._opaque_attribute_mutation(targets, node):
+            return
         message = cls._mutation_message(spec, node)
         raise ValueError(message)
+
+    @staticmethod
+    def _opaque_attribute_mutation(
+        targets: t.SequenceOf[ast.expr],
+        node: ast.Assign | ast.AnnAssign,
+    ) -> bool:
+        """Whether the mutation carries an opaque computed attribute rebind.
+
+        A ``receiver.attr = <call>`` mutates a foreign namespace with a
+        value computed at runtime, so it can never declare a module-level
+        class binding: the inventory records no binding and stays silent.
+        Rebinding shapes that could smuggle a class identity (constant or
+        name right-hand sides) still fail loudly below.
+
+        Returns:
+            ``True`` if the mutation is an opaque computed attribute rebind,
+            ``False`` otherwise.
+        """
+        if not isinstance(node.value, ast.Call):
+            return False
+        return bool(targets) and all(
+            isinstance(target, ast.Attribute) for target in targets
+        )
 
     @staticmethod
     def _mutation_message(
@@ -395,7 +422,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
-            node, targets, visible
+            node,
+            targets,
+            visible,
         ):
             return False
         target = targets[0]
@@ -403,7 +432,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if not isinstance(target, ast.Attribute):
             return False
         owner = cls._reference(target.value, visible, spec.module)
-        if owner.target not in spec.definitions or owner.attributes:
+        owner = cls._nested_class_receiver(owner, spec.definitions)
+        if owner is None:
             return False
         if isinstance(value, ast.Call):
             definition = spec.definitions[owner.target]
@@ -428,6 +458,45 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             },
         )
         return True
+
+    @staticmethod
+    def _nested_class_receiver(
+        reference: m.Infra.SourceClassReference,
+        definitions: t.MappingKV[str, m.Infra.SourceClassDefinition],
+    ) -> m.Infra.SourceClassReference | None:
+        """Resolve a receiver only through inventoried nested class identities.
+
+        Args:
+            reference: The initial class reference to resolve.
+            definitions: A mapping of class targets to their definitions.
+
+        Returns:
+            The resolved nested class reference, or None if it cannot be resolved.
+            Returns None if the resolution fails.
+
+        Raises:
+            ValueError: If a cyclic class namespace receiver is detected.
+        """
+        current = reference
+        visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
+        while current.attributes:
+            identity = current.target, current.attributes
+            if identity in visited:
+                message = f"cyclic class namespace receiver: {current.qualified_base}"
+                raise ValueError(message)
+            visited.add(identity)
+            definition = definitions.get(current.target)
+            if definition is None:
+                return None
+            member = definition.members.get(current.attributes[0])
+            if member is None:
+                return None
+            current = member.model_copy(
+                update={
+                    "attributes": (*member.attributes, *current.attributes[1:]),
+                },
+            )
+        return current if current.target in definitions else None
 
     @classmethod
     def _name_assignment(
@@ -493,22 +562,18 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         node: ast.Delete,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:
-        """Drop one deletion's name bindings when conditionals are allowed.
+        """Drop one deletion's name bindings.
 
-        Captured project sources never delete a binding: keeping the previous
-        class would silently survive the deletion, so the statement fails.
-
-        Raises:
-            ValueError: If a captured project source deletes a binding.
+        Deleting a plain module-level name removes the binding exactly: the
+        name no longer exists, so keeping the previous class would lie about
+        the module's final state, and downstream resolution fails loudly if
+        anything still references it. Attribute-target deletions bind no
+        module-level name and are recorded as nothing.
 
         """
-        if not spec.allow_conditional:
-            message = cls._mutation_message(spec, node)
-            raise ValueError(message)
-        if all(isinstance(target, ast.Name) for target in node.targets):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    bindings.pop(target.id, None)
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                bindings.pop(target.id, None)
 
     @classmethod
     def _if(
