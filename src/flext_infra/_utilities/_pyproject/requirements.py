@@ -62,7 +62,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
         declared_sources: t.StrMapping,
         candidate_sources: t.StrMapping,
         family_line: str | None,
-        workspace_members: t.StrSequence = (),
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -74,7 +73,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
-            workspace_members=workspace_members,
         )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
@@ -183,12 +181,18 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
         if dependency_name is None:
             return r[str].ok(requirement.strip())
-        member_requirement = cls._workspace_member_requirement(
-            requirement,
-            provenance.workspace_members,
-        )
-        if member_requirement is not None:
-            return r[str].ok(member_requirement)
+        if "@" not in requirement.partition(";")[0] and (
+            FlextInfraUtilitiesDependencies
+            .dependency_constraint(
+                requirement,
+                replace_source=True,
+            )
+            .partition(";")[0]
+            .strip()
+            != dependency_name
+        ):
+            # A PEP 508 URL cannot also encode bounds; keep explicit bounds intact.
+            return r[str].ok(requirement.strip())
         prepared = cls._parsed_canonical_provenance(requirement)
         if prepared.failure:
             return r[str].from_failure(prepared)
@@ -214,35 +218,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
             marker_pair,
             pins_commit=pins_commit,
         )
-
-    @staticmethod
-    def _workspace_member_requirement(
-        requirement: str,
-        workspace_members: t.StrSequence,
-    ) -> str | None:
-        """Render a workspace root's declared member requirement, or None.
-
-        Only the workspace root's render passes its declared members here: a
-        member requirement renders as the bare name plus the
-        ``[tool.uv.sources] workspace = true`` provenance, and a git+ URL
-        would double-declare the source uv already resolves from the root's
-        own workspace manifest. Every other render passes no members — its
-        internal requirements flow on to the inline git+ form.
-
-        Returns:
-            The resulting ``str | None``.
-
-        """
-        bare_requirement = requirement.strip().strip('"').strip()
-        if FlextInfraUtilitiesDependencies.dep_name(bare_requirement) not in (
-            workspace_members
-        ):
-            return None
-        member_name = FlextInfraUtilitiesDependencies.dep_name(bare_requirement)
-        marker = bare_requirement.partition(";")[2]
-        if marker:
-            return f"{member_name}; {marker.strip()}"
-        return member_name
 
     @classmethod
     def _resolved_requirement_provenance(
@@ -540,12 +515,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def _remove_workspace_dependency_group(document: t.Cli.TomlDocument) -> None:
         """Drop the retired git-pinned ``workspace`` dependency group.
 
-        Native uv workspace membership (``[tool.uv.workspace]`` in the root's
-        managed pyproject projection) replaced the group as the member
-        identity: `uv sync --all-packages` provisions every member natively,
-        so a git-pinned duplicate would silently win the resolution away from
-        the live worktrees (a member declared both as a path and as a URL is
-        a uv conflict).
+        The root's canonical dev group requests declared package members and
+        their groups/extras; its path sources select local checkouts. A second
+        membership group would be a competing generated owner.
         """
         groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if groups is not None:

@@ -11,7 +11,7 @@ import pstats
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
-from flext_infra import m, r, s, u
+from flext_infra import config, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -108,6 +108,8 @@ class FlextInfraCProfileReport(s[bool]):
         if plan.manifest_path.parent.resolve() != directory.resolve():
             msg = "profile selection plan does not match its run directory"
             raise ValueError(msg)
+        policy = config.Infra.tooling.tools.pytest
+        suite = directory / policy.profile_suite_filename
         profiles = (
             self.profile,
             directory / "testmon-selection.pstats",
@@ -116,6 +118,8 @@ class FlextInfraCProfileReport(s[bool]):
                 if plan.inventory_collected
                 else ()
             ),
+            *((suite,) if suite.is_file() else ()),
+            *sorted((directory / policy.profile_process_directory).glob("*.pstats")),
         )
         for profile in profiles:
             receipt = (

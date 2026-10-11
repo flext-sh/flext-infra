@@ -10,7 +10,11 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import c, m, s, t
+from flext_infra import c, m, t
+from flext_infra.base import s
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 if TYPE_CHECKING:
     from flext_infra import p

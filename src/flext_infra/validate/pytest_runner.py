@@ -13,6 +13,9 @@ from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerExecution
 if TYPE_CHECKING:
     from flext_infra import t
 
+if TYPE_CHECKING:
+    from flext_infra import t
+
 
 class FlextInfraPytestRunner(FlextInfraPytestRunnerExecution):
     """Expose whole-suite cached execution through the public package boundary."""

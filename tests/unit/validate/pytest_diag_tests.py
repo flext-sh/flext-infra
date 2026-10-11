@@ -205,6 +205,52 @@ class TestsFlextInfraPytestDiag:
         )
         tm.that(slow_report.slow_entries, length_gt=0)
 
+    @pytest.mark.parametrize(
+        ("phase", "capability", "node", "accepted"),
+        [
+            ("setup", "connectivity", "tests/test_case.py::test_skip", True),
+            ("call", "connectivity", "tests/test_case.py::test_skip", False),
+            ("setup", "", "tests/test_case.py::test_skip", False),
+            ("setup", "connectivity", "tests/test_case.py::test_other", False),
+        ],
+    )
+    def test_prerequisite_identity_is_required(
+        self,
+        tmp_path: Path,
+        phase: str,
+        capability: str,
+        node: str,
+        *,
+        accepted: bool,
+    ) -> None:
+        """The XML consumer rejects call-phase, missing capability or wrong node."""
+        junit = tmp_path / "junit.xml"
+        log = tmp_path / "pytest.log"
+        log.write_text("", encoding="utf-8")
+        junit.write_text(
+            '<testsuites><testsuite tests="1" failures="0" errors="0" skipped="1">'
+            '<testcase classname="tests.test_case" name="test_skip" time="0.1">'
+            '<properties><property name="flext_connectivity_prerequisite" '
+            'value="ordinary skip"/>'
+            f'<property name="flext_connectivity_prerequisite_phase" value="{phase}"/>'
+            '<property name="flext_connectivity_prerequisite_capability" '
+            f'value="{capability}"/>'
+            f'<property name="flext_connectivity_prerequisite_node" value="{node}"/>'
+            '</properties><skipped type="pytest.skip" message="ordinary skip"/></testcase>'
+            "</testsuite></testsuites>",
+            encoding="utf-8",
+        )
+        report = tm.ok(
+            self._extractor(junit, log).extract(
+                junit, log, report_log=log.with_suffix(".jsonl")
+            )
+        )
+        tm.that(report.skipped_count, eq=1)
+        tm.that(
+            report.connectivity_skip_cases,
+            eq=("tests.test_case::test_skip",) if accepted else (),
+        )
+
     def test_extract_missing_log_preserves_file_error(self, tmp_path: Path) -> None:
         """Test extract missing log preserves file error."""
         junit = tmp_path / "junit.xml"

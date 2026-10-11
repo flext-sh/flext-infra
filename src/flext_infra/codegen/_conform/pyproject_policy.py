@@ -94,6 +94,16 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                     ),
                 },
             )
+        source_document = u.Cli.toml_parse_text(source)
+        if source_document is None:
+            return r[str].fail("rendered pyproject is not valid TOML")
+        groups = u.Cli.toml_table_child(source_document, c.Infra.DEPENDENCY_GROUPS)
+        codegen_floors = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            u.Cli.toml_value(groups, "codegen") if groups is not None else (),
+        )
+        if codegen_floors.failure:
+            return r[str].from_failure(codegen_floors)
         return u.Infra.pyproject_conform(
             source,
             workspace=workspace,
@@ -108,6 +118,8 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             ),
             options=u.Infra.PyprojectConformOptions(
                 flext_line=flext_line.value,
+                repository_root=target.root,
+                codegen_dependencies=codegen_floors.value,
             ),
         )
 
