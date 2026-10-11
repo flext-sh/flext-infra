@@ -24,6 +24,22 @@ _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.fixture
+def binding_probe_rule() -> m.Infra.CodemodRule:
+    """Supply one validated metadata owner for semantic binding probes.
+
+    Returns:
+        The probe rule whose consumer supplies its context conditions.
+    """
+    return m.Infra.CodemodRule(
+        id="binding-probe",
+        digest="probe",
+        provider="probe",
+        resource=Path("probe.yml"),
+        fixable=True,
+    )
+
+
 def _read_fixture(*parts: str) -> str:
     return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
 
@@ -617,11 +633,25 @@ def cached_runner_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
     # A faithful consumer project carries the fleet-standard coverage
     # boundary: the Cython provider mapping of dependency_injector is not
     # parseable source and is omitted by every fleet coverage config.
-    (project_root / "pyproject.toml").write_text(
-        '[tool.coverage.run]\nomit = ["*/dependency_injector/providers.pyx"]\n'
-        "[tool.pytest.ini_options]\n"
-        f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n',
-        encoding="utf-8",
+    tm.ok(
+        u.Cli.toml_write_mapping(
+            project_root / c.PYPROJECT_FILENAME,
+            {
+                "tool": {
+                    "coverage": {
+                        "run": {"omit": ["*/dependency_injector/providers.pyx"]},
+                    },
+                    "pytest": {
+                        "ini_options": {
+                            "pythonpath": [c.Infra.DEFAULT_SRC_DIR],
+                            "markers": list(
+                                config.Infra.tooling.tools.pytest.standard_markers,
+                            ),
+                        },
+                    },
+                },
+            },
+        ),
     )
     (package_root / "__init__.py").write_text(
         "def answer() -> int:\n    return 42\n",

@@ -31,7 +31,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             f'version = "{version}"\n'
             f'backend = "aqua:tamasfe/{tool}"\n'
             f'specifiers = ["{selector}"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
     @staticmethod
@@ -43,7 +43,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
         """
         lock = Path(__file__).resolve().parents[1] / c.Infra.MISE_LOCK_FILENAME
-        return lock.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        return lock.read_text(encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
     def pinned_mise_version(lock_text: str, tool: str) -> str:
@@ -85,7 +85,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             The resulting ``str``.
 
         """
-        return tm.not_none(plan.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+        return tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
 
     @staticmethod
     def infra_mapping(value: t.JsonMapping) -> t.JsonMapping:

@@ -113,7 +113,7 @@ class FlextInfraCodemodSemanticApply:
 
         """
         return tuple(
-            (path.as_posix(), u.Cli.sha256_bytes(source.encode(c.Cli.ENCODING_DEFAULT)))
+            (path.as_posix(), u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING)))
             for path, source in sorted(cls._source_inventory(root, preflight).items())
         )
 
@@ -474,7 +474,7 @@ class FlextInfraCodemodSemanticApply:
                     file_path=plan.path,
                     original_source=working[plan.path],
                     updated_source=(plan.desired_content or b"").decode(
-                        c.Cli.ENCODING_DEFAULT,
+                        c.DEFAULT_ENCODING,
                     ),
                 )
                 for plan in planned.value
@@ -516,7 +516,7 @@ class FlextInfraCodemodSemanticApply:
                         f"{file_path}"
                     )
                     raise ValueError(msg)
-                original_source = content.decode(c.Cli.ENCODING_DEFAULT)
+                original_source = content.decode(c.DEFAULT_ENCODING)
                 working[file_path] = original_source
             updated_source = u.Infra.ensure_future_annotations(original_source)
             if updated_source != original_source:
@@ -675,7 +675,7 @@ class FlextInfraCodemodSemanticApply:
             if content is None:
                 msg = f"authenticated source disappeared during mod preflight: {path}"
                 raise ValueError(msg)
-            sources[path] = content.decode(c.Cli.ENCODING_DEFAULT)
+            sources[path] = content.decode(c.DEFAULT_ENCODING)
         return sources
 
     @staticmethod
@@ -754,10 +754,7 @@ class FlextInfraCodemodSemanticApply:
         for path in consumer_first:
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             content = state.content
-            if (
-                content is None
-                or content.decode(c.Cli.ENCODING_DEFAULT) != original[path]
-            ):
+            if content is None or content.decode(c.DEFAULT_ENCODING) != original[path]:
                 msg = f"source changed after semantic preflight: {path}"
                 raise ValueError(msg)
             project_root = u.Infra.project_root(path)
@@ -770,7 +767,7 @@ class FlextInfraCodemodSemanticApply:
             )
             if normalized.failure:
                 return r[bool].from_failure(normalized)
-            new_content = normalized.value.encode(c.Cli.ENCODING_DEFAULT)
+            new_content = normalized.value.encode(c.DEFAULT_ENCODING)
             if content == new_content:
                 continue
             semantic_plans.append(

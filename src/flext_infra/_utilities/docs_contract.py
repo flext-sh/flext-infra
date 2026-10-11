@@ -312,7 +312,7 @@ class FlextInfraUtilitiesDocsContract:
 
         """
         exists = path.exists()
-        current = path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if exists else ""
+        current = path.read_text(encoding=c.DEFAULT_ENCODING) if exists else ""
         normalized = (
             FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)[0]
             if path.suffix == ".md"
@@ -322,7 +322,7 @@ class FlextInfraUtilitiesDocsContract:
         created = not exists
         if apply and (drift or created):
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
+            _ = path.write_text(normalized, encoding=c.DEFAULT_ENCODING)
         return m.Infra.GeneratedFile(
             path=path.as_posix(),
             changed=drift or created,

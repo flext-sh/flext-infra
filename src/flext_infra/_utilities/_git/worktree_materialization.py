@@ -272,7 +272,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 ".",
                 *pathspecs,
                 strip_newline_in_stdout=False,
-            ).encode(c.Cli.ENCODING_DEFAULT, errors="surrogateescape")
+            ).encode(c.DEFAULT_ENCODING, errors="surrogateescape")
             for layer in ((), ("--cached",))
         )
         deleted = frozenset(

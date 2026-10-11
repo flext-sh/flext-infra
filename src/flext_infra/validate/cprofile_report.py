@@ -110,16 +110,20 @@ class FlextInfraCProfileReport(s[bool]):
             raise ValueError(msg)
         policy = config.Infra.tooling.tools.pytest
         suite = directory / policy.profile_suite_filename
-        profiles = (
-            self.profile,
-            directory / "testmon-selection.pstats",
-            *(
-                (directory / "testmon-inventory.pstats",)
-                if plan.inventory_collected
-                else ()
-            ),
-            *((suite,) if suite.is_file() else ()),
-            *sorted((directory / policy.profile_process_directory).glob("*.pstats")),
+        profiles = tuple(
+            dict.fromkeys((
+                self.profile,
+                plan.manifest_path.with_suffix(".pstats"),
+                *(
+                    (directory / "testmon-inventory.pstats",)
+                    if plan.inventory_collected
+                    else ()
+                ),
+                *((suite,) if plan.node_ids else ()),
+                *sorted(
+                    (directory / policy.profile_process_directory).glob("*.pstats")
+                ),
+            ))
         )
         for profile in profiles:
             receipt = (

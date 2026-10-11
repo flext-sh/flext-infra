@@ -35,7 +35,7 @@ class TestsFlextInfraLazyInitCleanup:
         for path in stale_paths:
             path.write_text(
                 f"{c.Infra.AUTOGEN_HEADER}\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         return repository_root, package_root, stale_paths
 
@@ -77,11 +77,11 @@ class TestsFlextInfraLazyInitCleanup:
             alias="m",
         )
         obsolete_module = package_root / "_root_typing.py"
-        obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_module.write_text("ROOT = ()\n", encoding=c.DEFAULT_ENCODING)
         obsolete_package = package_root / "_root_typing_parts"
         obsolete_package.mkdir()
         obsolete_part = obsolete_package / "facades.py"
-        obsolete_part.write_text("FACADES = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_part.write_text("FACADES = ()\n", encoding=c.DEFAULT_ENCODING)
 
         result = u.Tests.run_lazy_init(repository_root)
 
@@ -102,7 +102,7 @@ class TestsFlextInfraLazyInitCleanup:
             alias="m",
         )
         obsolete_module = package_root / "_root_exports.py"
-        obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_module.write_text("ROOT = ()\n", encoding=c.DEFAULT_ENCODING)
         service = u.Tests.create_lazy_init_service(repository_root)
 
         result = service.plan_files()
@@ -121,11 +121,11 @@ class TestsFlextInfraLazyInitCleanup:
             alias="m",
         )
         obsolete_module = package_root / "_root_typing.py"
-        obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_module.write_text("ROOT = ()\n", encoding=c.DEFAULT_ENCODING)
         obsolete_package = package_root / "_root_typing_parts"
         obsolete_package.mkdir()
         unexpected = obsolete_package / "KEEP.txt"
-        unexpected.write_text("operator data\n", encoding=c.Cli.ENCODING_DEFAULT)
+        unexpected.write_text("operator data\n", encoding=c.DEFAULT_ENCODING)
 
         result = u.Tests.plan_lazy_init(repository_root)
 

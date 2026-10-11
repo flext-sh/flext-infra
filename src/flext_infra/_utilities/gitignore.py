@@ -225,7 +225,7 @@ class FlextInfraUtilitiesGitignore:
             The resulting ``p.Result[str]``.
 
         """
-        lines = content.decode(c.Cli.ENCODING_DEFAULT).splitlines(keepends=True)
+        lines = content.decode(c.DEFAULT_ENCODING).splitlines(keepends=True)
         located = FlextInfraUtilitiesGitignore._locate_block_markers(
             lines,
             markers,

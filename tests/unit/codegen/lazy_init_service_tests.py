@@ -122,12 +122,12 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         selected_root.joinpath(c.Infra.INIT_PY).write_text(
             '__all__ = ["FlextTestsSelectedModels", "m"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         unrelated_init = unrelated_root / c.Infra.INIT_PY
         unrelated_init.write_text(
             '__all__ = ["FlextTestsUnrelatedModels", "m"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(
             selected_root / "models.py",
@@ -146,7 +146,7 @@ class TestsFlextInfraCodegenLazyInitService:
 
         result = u.Tests.materialize_lazy_init(service)
         selected_generated = selected_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(result.success, eq=True)
@@ -163,28 +163,28 @@ class TestsFlextInfraCodegenLazyInitService:
         package_root.joinpath("runner.py").write_text(
             'class FlextTestsLibraryRunner:\n    """Root runner."""\n\n'
             '__all__ = ["FlextTestsLibraryRunner"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         services_root = package_root / "services"
         services_root.mkdir()
         services_root.joinpath(c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         services_root.joinpath("dbt.py").write_text(
             'class FlextTestsDbtServiceBase:\n    """DBT service."""\n\n'
             '__all__ = ["FlextTestsDbtServiceBase"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
         generated_root = package_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         generated_services = services_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(result.success, eq=True)
@@ -210,13 +210,13 @@ class TestsFlextInfraCodegenLazyInitService:
         private_child = selected_root / "_utilities"
         private_child.mkdir()
         child_init = private_child / c.Infra.INIT_PY
-        child_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        child_init.write_text("", encoding=c.DEFAULT_ENCODING)
         child_init_before = child_init.read_bytes()
         private_child.joinpath("conversion.py").write_text(
             "class FlextTestsConversion:\n"
             '    """Established direct root import."""\n\n'
             '__all__ = ["FlextTestsConversion"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         selected_root.joinpath(c.Infra.INIT_PY).write_text(
             "_DIRECT_IMPORTS = (\n"
@@ -227,7 +227,7 @@ class TestsFlextInfraCodegenLazyInitService:
             '    "m",\n'
             ")\n"
             '__all__ = ["FlextTestsSelectedModels", "m"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
         service.target_module = "flext_test_selected"
@@ -235,7 +235,7 @@ class TestsFlextInfraCodegenLazyInitService:
 
         result = u.Tests.materialize_lazy_init(service)
         generated_root = selected_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(result.success, eq=True)
@@ -254,18 +254,18 @@ class TestsFlextInfraCodegenLazyInitService:
         examples_root = repository_root / c.Infra.DIR_EXAMPLES
         examples_root.mkdir()
         examples_init = examples_root / c.Infra.INIT_PY
-        examples_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        examples_init.write_text("", encoding=c.DEFAULT_ENCODING)
         examples_root.joinpath("demo.py").write_text(
             'class ExamplesDemo:\n    """Example boundary."""\n\n'
             '__all__ = ["ExamplesDemo"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
         service.target_module = c.Infra.DIR_EXAMPLES
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
-        generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        generated = examples_init.read_text(encoding=c.DEFAULT_ENCODING)
 
         tm.that(result.success, eq=True)
         tm.that(
@@ -287,7 +287,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tests_root = repository_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_init = tests_root / c.Infra.INIT_PY
-        tests_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        tests_init.write_text("", encoding=c.DEFAULT_ENCODING)
         u.Tests.write_lazy_init_namespace_module(
             tests_root / "constants.py",
             class_name="TestsFlextTestsConstants",
@@ -302,19 +302,19 @@ class TestsFlextInfraCodegenLazyInitService:
         unit_root.mkdir()
         unit_root.joinpath(c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         unit_root.joinpath("test_noise.py").write_text(
             'class TestsCollectedNoise:\n    """Collected test class."""\n\n'
             '__all__ = ["TestsCollectedNoise"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
         service.target_module = c.Infra.DIR_TESTS
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
-        generated = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        generated = tests_init.read_text(encoding=c.DEFAULT_ENCODING)
 
         tm.that(result.success, eq=True)
         tm.that(generated, contains="TestsFlextTestsConstants")
@@ -324,7 +324,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated, lacks="TestsCollectedNoise")
         tm.that(generated, lacks=".unit.test_noise")
         child_generated = unit_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(child_generated, contains="TestsCollectedNoise")
         tm.that(child_generated, contains="install_lazy_exports")
@@ -513,7 +513,7 @@ class TestsFlextInfraCodegenLazyInitService:
             f'class {first}:\n    """First export."""\n\n'
             f'class {second}:\n    """Second export."""\n\n'
             f'__all__ = ["{first}", "{second}"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
         service.target_module = "flext_test_project"
@@ -550,7 +550,7 @@ class TestsFlextInfraCodegenLazyInitService:
             package.mkdir()
             package.joinpath(c.Infra.INIT_PY).write_text(
                 "",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         for child, class_name in (
             ("_models", "TestsUnitModels"),
@@ -560,12 +560,12 @@ class TestsFlextInfraCodegenLazyInitService:
             child_root.mkdir()
             child_root.joinpath(c.Infra.INIT_PY).write_text(
                 "",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             child_root.joinpath("base.py").write_text(
                 f'class {class_name}:\n    """Child export."""\n\n'
                 f'__all__ = ["{class_name}"]\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         service = u.Tests.create_lazy_init_service(repository_root)
         service.target_module = c.Infra.DIR_TESTS
@@ -576,7 +576,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(result.success, eq=True)
         generated = unit_root / c.Infra.INIT_PY
         tm.that(
-            generated.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            generated.read_text(encoding=c.DEFAULT_ENCODING),
             has=["._models", "._utilities"],
         )
         formatted = u.Cli.run_raw([
@@ -654,7 +654,7 @@ class TestsFlextInfraCodegenLazyInitService:
         nested_root.mkdir(parents=True)
         nested_root.joinpath(c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         nested_root.joinpath("constants.py").write_text(
             '"""Base constants consumer."""\n\n'
@@ -666,7 +666,7 @@ class TestsFlextInfraCodegenLazyInitService:
             '    """Base constants class."""\n\n'
             '    VALUE: str = ""\n\n\n'
             '__all__: list[str] = ["FlextTestsBaseConstants"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         init_path = nested_root / c.Infra.INIT_PY
         apply_service = u.Tests.create_lazy_init_service(repository_root)
@@ -674,7 +674,7 @@ class TestsFlextInfraCodegenLazyInitService:
         apply_service.apply_changes = True
 
         apply_result = u.Tests.materialize_lazy_init(apply_service)
-        applied_init = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        applied_init = init_path.read_text(encoding=c.DEFAULT_ENCODING)
         check_service = u.Tests.create_lazy_init_service(repository_root)
         check_service.target_module = "flext_test_project.servers._base"
         check_service.check_only = True
@@ -706,17 +706,17 @@ class TestsFlextInfraCodegenLazyInitService:
         tests_root = repository_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_init = tests_root / c.Infra.INIT_PY
-        tests_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        tests_init.write_text("", encoding=c.DEFAULT_ENCODING)
         shadowing_root = tests_root / directory_name
         shadowing_root.mkdir()
         residue_init = shadowing_root / c.Infra.INIT_PY
         residue_init.write_text(
             f'{c.Infra.AUTOGEN_HEADER}\n"""Generated package."""\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         shadowing_root.joinpath("test_contracts.py").write_text(
             'class TestsTypingContracts:\n    """Collected test class."""\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         # A stdlib-named directory that is NOT first-level under the source
         # root imports as ``unit.io`` and is a legal generated package.
@@ -724,18 +724,18 @@ class TestsFlextInfraCodegenLazyInitService:
         nested_io_root.mkdir(parents=True)
         tests_root.joinpath("unit", c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         nested_io_root.joinpath("test_streams.py").write_text(
             'class TestsIoStreams:\n    """Collected test class."""\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         apply_service = u.Tests.create_lazy_init_service(repository_root)
         apply_service.target_module = c.Infra.DIR_TESTS
         apply_service.apply_changes = True
 
         apply_result = u.Tests.materialize_lazy_init(apply_service)
-        generated_tests_init = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        generated_tests_init = tests_init.read_text(encoding=c.DEFAULT_ENCODING)
         check_service = u.Tests.create_lazy_init_service(repository_root)
         check_service.target_module = c.Infra.DIR_TESTS
         check_service.check_only = True

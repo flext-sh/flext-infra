@@ -468,7 +468,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         try:
-            source_text = content.decode(c.Cli.ENCODING_DEFAULT)
+            source_text = content.decode(c.DEFAULT_ENCODING)
         except UnicodeDecodeError as exc:
             return r[m.Infra.ProjectManagedArtifactsFragment].fail_op(
                 f"decode project config source {source}",

@@ -35,7 +35,7 @@ class TestsFlextInfraPytestTargetFile:
             (True, True, "collection"),
         ],
     )
-    def test_public_make_runs_requested_file_phases(
+    def test_public_make_runs_each_requested_test_once(
         provisioned_infra_checkout: t.Pair[str, Path],
         *,
         budgeted: bool,
@@ -84,9 +84,12 @@ class TestsFlextInfraPytestTargetFile:
         observed: t.StrSequence = (
             proof.read_text().splitlines() if proof.exists() else []
         )
-        tm.that(set(observed) <= set(expected), eq=True)
+        tm.that(
+            all(observed.count(item) <= expected.count(item) for item in observed),
+            eq=True,
+        )
         if expected and not failure:
-            tm.that(set(observed), eq=set(expected))
+            tm.that(sorted(observed), eq=sorted(expected))
         receipts = [
             m.Infra.PytestRunContext.model_validate_json(path.read_text())
             for path in sorted(
@@ -94,14 +97,10 @@ class TestsFlextInfraPytestTargetFile:
                 key=lambda path: path.stat().st_mtime_ns,
             )
         ]
-        tm.that(len(receipts), eq=2 if expected and not failure else 1)
+        tm.that(len(receipts), eq=1)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
-        if len(receipts) == 2:
-            tm.that(
-                receipts[0].execution_mode, eq=c.Infra.PytestExecutionMode.INCREMENTAL
-            )
-            tm.that(receipts[1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-            tm.that(receipts[0].deadline_monotonic, eq=receipts[1].deadline_monotonic)
+        tm.that(receipts[0].execution_mode, eq=c.Infra.PytestExecutionMode.INCREMENTAL)
+        tm.that(receipts[0].deadline_monotonic is not None, eq=True)
         if expected and not failure:
             TestsFlextInfraPytestTargetFile._assert_rerun_executes_again(
                 root,
@@ -169,7 +168,7 @@ class TestsFlextInfraPytestTargetFile:
         )
         after = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         tm.that(after[: len(before)], eq=before)
-        tm.that(set(after[len(before) :]), eq=set(expected))
+        tm.that(sorted(after[len(before) :]), eq=sorted(expected))
 
     @staticmethod
     def test_declared_file_replaces_the_suite_directory(
@@ -225,7 +224,7 @@ class TestsFlextInfraPytestTargetFile:
             encoding="utf-8",
         )
         runner = runner_for(cached_runner_project, target_file=relative)
-        outcome = tm.ok(runner.execute_file())
+        outcome = tm.ok(runner.execute())
         tm.that(outcome, eq=pytest.ExitCode.OK.value)
         tm.that(
             declared.with_suffix(".executed").read_text(encoding="utf-8"),
@@ -246,7 +245,7 @@ class TestsFlextInfraPytestTargetFile:
         )
         for _ in range(2):
             runner = runner_for(cached_runner_project, target_file=relative)
-            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
             report = summary(cached_runner_project / cache.reports_directory)
             tm.that(report, has="executed=1\n")
 
@@ -257,7 +256,7 @@ class TestsFlextInfraPytestTargetFile:
     ) -> None:
         """A partly edited declared file stays green and runs every test.
 
-        The complete phase follows incremental selection on the same cache,
+        One invocation selects the complete file on the persistent cache,
         so an edit touching one test still verifies both tests of the file.
         """
         cache = config.Infra.codegen.make.testmon_cache
@@ -270,6 +269,6 @@ class TestsFlextInfraPytestTargetFile:
                 encoding="utf-8",
             )
             runner = runner_for(cached_runner_project, target_file=relative)
-            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
             report = summary(cached_runner_project / cache.reports_directory)
             tm.that(report, has="executed=2\n")

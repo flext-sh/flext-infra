@@ -274,6 +274,18 @@ class FlextInfraImportNormalizationRoutesMixin(
             or bound in scope.facade_dependencies
         ):
             return None
+        if any(
+            isinstance(reference, ast.Name) and reference.id == bound
+            for declaration in state.tree.body
+            if isinstance(
+                declaration,
+                ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            )
+            for parameter in declaration.type_params
+            if isinstance(parameter, ast.TypeVar) and parameter.bound is not None
+            for reference in ast.walk(parameter.bound)
+        ):
+            return None
         if (
             scope.family_letter is not None
             and bound in c.Infra.ALIAS_NAMES

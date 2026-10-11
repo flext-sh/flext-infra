@@ -295,7 +295,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         extractor = FlextInfraPytestDiagExtractor(
             repository_root=self.root,
             junit=report_dir / "junit.xml",
-            log=report_dir / "pytest.log",
+            log_path=report_dir / "pytest.log",
             report_log=report_dir / "events.jsonl",
         )
         return extractor.extract(

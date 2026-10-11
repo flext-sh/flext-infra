@@ -21,20 +21,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable
-    class RopeRoot(Protocol):
-        """Rope project root shape."""
-
-        @property
-        def real_path(self) -> str: ...
-
-        def get_child(
-            self,
-            name: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
-
-        def has_child(self, name: str) -> bool: ...
-
-    @runtime_checkable
     class RopeResource(Protocol):
         """Rope project resource shape shared by files and folders."""
 
@@ -46,6 +32,17 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         @property
         def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+    @runtime_checkable
+    class RopeRoot(RopeResource, Protocol):
+        """Folder resource with the SDK's child lookup contract."""
+
+        def get_child(
+            self,
+            name: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def has_child(self, name: str) -> bool: ...
 
     @runtime_checkable
     class RopeFile(Protocol):
@@ -267,6 +264,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         def get_source_folders(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
+        def get_python_path_folders(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
 

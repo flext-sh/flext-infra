@@ -24,7 +24,7 @@ class TestsFlextInfraWorkspaceFactory:
 
     default_python: str = f"^{config.Infra.codegen.toolchain.python_version}"
     default_version: str = c.Tests.RELEASE_VERSION_BASE
-    encoding: str = c.Cli.ENCODING_DEFAULT
+    encoding: str = c.DEFAULT_ENCODING
 
     def create_minimal(self, tmp_path: Path, name: t.NonEmptyStr = "test-proj") -> Path:
         """Create a minimal project with pyproject.toml, Makefile, and src/.

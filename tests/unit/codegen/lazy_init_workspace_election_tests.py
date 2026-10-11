@@ -65,7 +65,7 @@ class TestsFlextInfraLazyInitWorkspaceElection:
                 f'[submodule "{name}"]\n\tpath = {name}\n'
                 for name in ("flext-ws-owner", "flext-ws-middle", "flext-ws-child")
             ),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(
             owner / c.Infra.CONSTANTS_PY,
@@ -95,7 +95,7 @@ class TestsFlextInfraLazyInitWorkspaceElection:
         tm.that(u.Tests.run_lazy_init(owner_repo), eq=0)
         tm.that(u.Tests.run_lazy_init(owner_repo, check_only=True), eq=0)
         generated = owner.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         entries, _refs = u.Infra.lazy_import_mapping_source(generated)
 

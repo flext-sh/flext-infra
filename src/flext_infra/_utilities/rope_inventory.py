@@ -10,8 +10,6 @@ import ast
 from operator import itemgetter
 from pathlib import Path
 
-from rope.base import exceptions
-
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
@@ -39,7 +37,6 @@ class FlextInfraUtilitiesRopeInventory:
             All same-file defined objects for one workspace module.
 
         Raises:
-            RuntimeError: If rope inventory failed to load.
             TypeError: If rope inventory scope unavailable for.
             ValueError: If path is outside the active rope workspace.
 
@@ -51,31 +48,14 @@ class FlextInfraUtilitiesRopeInventory:
             raise ValueError(msg)
         module_entry = rope_workspace.module(file_path)
         convention = rope_workspace.convention(file_path)
-        try:
-            pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                rope_project,
-                resource,
-            )
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors() as exc:
-            msg = (
-                "rope inventory failed to load "
-                f"{resource.path}: {type(exc).__name__}: {exc!s}"
-            )
-            raise RuntimeError(msg) from exc
-        except (
-            RecursionError,
-            SyntaxError,
-            ValueError,
-            exceptions.RopeError,
-        ) as exc:
-            msg = (
-                "rope inventory failed to load "
-                f"{resource.path}: {type(exc).__name__}: {exc!s}"
-            )
-            raise RuntimeError(msg) from exc
+        pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            rope_project,
+            resource,
+        )
         # The text the module snapshot was parsed from: names and offsets must
         # come from one snapshot even when the file changed on disk since.
         source = pymodule.source_code
+        parameter_lines = cls._parameter_lines(source)
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
@@ -87,6 +67,7 @@ class FlextInfraUtilitiesRopeInventory:
                 rope_project=rope_project,
                 resource=resource,
                 source=source,
+                parameter_lines=parameter_lines,
                 name=name,
                 pyname=pyname,
                 module_name=module_entry.module_name
@@ -310,7 +291,7 @@ class FlextInfraUtilitiesRopeInventory:
         if kind == "parameter":
             # Rope reports a parameter at its function's ``def`` line; in a
             # multi-line signature the identifier lives on its own line.
-            line = cls._parameter_line(options.source, line, options.name)
+            line = options.parameter_lines.get((line, options.name), line)
         is_facade_member = cls._is_facade_member(
             options.convention,
             name=options.name,
@@ -361,18 +342,17 @@ class FlextInfraUtilitiesRopeInventory:
         )
 
     @staticmethod
-    def _parameter_line(source: str, def_line: int, name: str) -> int:
-        """Return the line of parameter ``name`` in the function defined at a line.
+    def _parameter_lines(source: str) -> t.MappingKV[t.Pair[int, str], int]:
+        """Index parameter positions once for one immutable module snapshot.
 
         Returns:
-            The parameter's own line, or ``def_line`` when no function defined
-            there declares it.
+            Parameter lines keyed by function definition line and parameter name.
 
         """
+        positions: t.MutableMappingKV[t.Pair[int, str], int] = {}
         for node in ast.walk(ast.parse(source)):
-            if not (
-                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
-                and node.lineno == def_line
+            if not isinstance(
+                node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
             ):
                 continue
             arguments = node.args
@@ -384,10 +364,8 @@ class FlextInfraUtilitiesRopeInventory:
                 *((arguments.kwarg,) if arguments.kwarg else ()),
             )
             for argument in declared:
-                if argument.arg == name:
-                    line: int = argument.lineno
-                    return line
-        return def_line
+                positions.setdefault((node.lineno, argument.arg), argument.lineno)
+        return positions
 
     @staticmethod
     def _definition_line(
@@ -543,19 +521,17 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _occurrence_search_resources(
         options: m.Infra.RopeInventoryRecordInput,
-        definition_path: Path | None,
+        definition_path: Path,
         name: str,
         *,
         all_surfaces: bool = False,
-    ) -> t.VariadicTuple[t.Infra.RopeResource] | None:
-        """Scope the occurrence search resources, or ``None`` to search everywhere.
+    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+        """Scope the occurrence search to the validated definition path.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Infra.RopeResource] | None``.
+            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
 
         """
-        if definition_path is None:
-            return None
         if all_surfaces:
             return FlextInfraUtilitiesRopeImports.indexed_surface_search_resources(
                 options.rope_workspace,

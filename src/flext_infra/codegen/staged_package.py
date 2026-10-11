@@ -106,7 +106,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _runtime_imports(path: Path, content: bytes) -> tuple[str, ...]:
-        tree = ast.parse(content.decode(c.Cli.ENCODING_DEFAULT), filename=str(path))
+        tree = ast.parse(content.decode(c.DEFAULT_ENCODING), filename=str(path))
         excluded = {
             id(child)
             for guard in ast.walk(tree)
@@ -283,7 +283,7 @@ class FlextInfraStagedPackage:
                 "staged facade requires an existing package and desired bytes"
             )
         tree = ast.parse(
-            file.desired_content.decode(c.Cli.ENCODING_DEFAULT),
+            file.desired_content.decode(c.DEFAULT_ENCODING),
             filename=str(file.path),
         )
         facade = FlextInfraStagedPackage._facade_owner(tree, local)
@@ -297,7 +297,7 @@ class FlextInfraStagedPackage:
         if owner_state is None or owner_state.content is None:
             return result_type.fail(f"canonical owner was not pinned: {owner_path}")
         owner_tree = ast.parse(
-            owner_state.content.decode(c.Cli.ENCODING_DEFAULT), filename=str(owner_path)
+            owner_state.content.decode(c.DEFAULT_ENCODING), filename=str(owner_path)
         )
         contract = FlextInfraStagedPackage._owner_contract(owner_tree, classname)
         if contract.failure:

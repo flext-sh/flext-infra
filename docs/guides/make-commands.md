@@ -56,6 +56,9 @@ The consecutive generation passes prove the fixed point after structural rewrite
 first pass derives Ruff source roots from the declared template outputs, including test
 directories it will create, so the verification pass sees the same topology.
 `make build` packages the validated candidate; it does not replace runtime verification.
+Release builds require a readable, valid root `uv.lock`. Internal Git dependency pins
+come from its canonical typed package inventory; workspace declarations retain
+precedence. A missing or malformed lock fails the release before artifact construction.
 Each verb executes its declared operation directly. No project, file, pattern, action,
 phase, fix, or changed-only selector may be attached to a standard verb. When
 `make setup` initializes an absent governed submodule, it uses the explicit GitHub

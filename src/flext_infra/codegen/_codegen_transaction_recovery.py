@@ -185,7 +185,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 transaction_id=journal.transaction_id if journal is not None else None,
                 normalized_journal_sha256=(
                     u.Cli.sha256_bytes(
-                        journal.model_dump_json().encode(c.Cli.ENCODING_DEFAULT),
+                        journal.model_dump_json().encode(c.DEFAULT_ENCODING),
                     )
                     if journal is not None
                     else None

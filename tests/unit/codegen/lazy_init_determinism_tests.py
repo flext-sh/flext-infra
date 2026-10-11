@@ -52,7 +52,7 @@ class TestsFlextInfraLazyInitDeterminism:
         exit_code = u.Tests.run_lazy_init(repository_root)
         tm.that(exit_code, eq=0)
         init_text = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         entries, _refs = u.Infra.lazy_import_mapping_source(init_text)
         keys = [key for key, _names in entries]

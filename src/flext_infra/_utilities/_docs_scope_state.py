@@ -75,7 +75,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             payload: t.JsonMapping = {}
         else:
             try:
-                source = content.decode(c.Cli.ENCODING_DEFAULT)
+                source = content.decode(c.DEFAULT_ENCODING)
             except UnicodeDecodeError as exc:
                 msg = f"docs pyproject is not valid UTF-8: {pyproject_path}"
                 raise ValueError(msg) from exc

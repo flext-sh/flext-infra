@@ -37,6 +37,49 @@ class FlextInfraModelsRefactor(
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
     """
 
+    class SemanticBehaviorOwners(m.ImmutableValueModel):
+        """Declared modules and unique owners used for behavior relocation."""
+
+        modules: Annotated[
+            t.MappingKV[str, t.Pair[str, bool]],
+            m.Field(description="Qualified source text and package identities"),
+        ]
+        owners: Annotated[
+            t.MappingKV[
+                t.Pair[str, str],
+                t.VariadicTuple[t.Pair[str, str]],
+            ],
+            m.Field(description="Utility class candidates by package and method"),
+        ]
+        contextual: Annotated[
+            frozenset[t.Quad[str, str, str, str]],
+            m.Field(description="Methods requiring dispatch through their facade"),
+        ]
+
+    class SemanticBehaviorResolution(m.ArbitraryTypesModel):
+        """One consumer's mutable relocation state over immutable owner facts."""
+
+        path: Annotated[Path, m.Field(description="Consumer source identity")]
+        inventory: Annotated[
+            FlextInfraModelsRefactor.SemanticBehaviorOwners,
+            m.Field(description="Declared behavior owners"),
+        ]
+        typing_directory: Annotated[
+            str, m.Field(description="Canonical typing family directory")
+        ]
+        identities: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(description="Imported module and receiver identities"),
+        ]
+        lineages: Annotated[
+            t.MutableMappingKV[t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]],
+            m.Field(description="Consumer-local ancestry cache"),
+        ]
+        obsolete: Annotated[
+            MutableSet[t.Pair[str, str]],
+            m.Field(description="Imports superseded by canonical owner references"),
+        ]
+
     class ModTextCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Repository-scoped request for authenticated Sed rule replay."""
 

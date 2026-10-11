@@ -283,8 +283,8 @@ class FlextInfraModelsCore:
         )
         testmon_db: Path | None = m.Field(
             description=(
-                "External pytest-testmon database; absent for the coverage and "
-                "the full operations, which never load testmon"
+                "External pytest-testmon database shared by incremental and "
+                "full operations; absent for coverage"
             ),
         )
         deadline_monotonic: float | None = m.Field(
