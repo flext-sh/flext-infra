@@ -319,34 +319,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if isinstance(node, ast.ImportFrom)
             and any((alias.asname or alias.name) in names for alias in node.names)
         )
-        # Provider discovery expands the inventory, never the owners eligible
-        # for a reference. Its declared inheritance lineage elects those owners.
-        while True:
-            inherited_statements = tuple(
-                ast.unparse(node)
-                for module, (source, _package) in modules.items()
-                if typing_directory in module.split(".") or module.endswith(".typings")
-                for tree in (ast.parse(source),)
-                for names in (
-                    {
-                        base.id
-                        for declaration in tree.body
-                        if isinstance(declaration, ast.ClassDef)
-                        for base in declaration.bases
-                        if isinstance(base, ast.Name)
-                    },
-                )
-                for node in tree.body
-                if isinstance(node, ast.ImportFrom)
-                and any((alias.asname or alias.name) in names for alias in node.names)
-            )
-            expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-                sources, (*statements, *inherited_statements)
-            )
-            if expanded.keys() == modules.keys():
-                return modules
-            statements = (*statements, *inherited_statements)
-            modules = expanded
 
     @classmethod
     def _behavior_utility_owners(
@@ -393,7 +365,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         owners.setdefault((parts[0], member.name), []).append((
                             module,
                             declaration.name,
-                            member.name,
                         ))
                         decorators = {
                             decorator.id

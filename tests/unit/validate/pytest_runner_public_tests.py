@@ -621,9 +621,9 @@ class TestsFlextInfraPytestRunner:
             f"markers = [\n{marker_lines}]\n",
             encoding="utf-8",
         )
-        runner = runner_for(cached_runner_project, ci_context=ci_context).model_copy(
-            update={"unbounded": True}
-        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, ci_context=ci_context
+        ).model_copy(update={"unbounded": True})
         source = "import pytest\nfrom runner_sample import answer\n\n"
         for index, marker in enumerate(markers):
             source += (
@@ -680,7 +680,9 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """A real slow case exceeds the configured budget and completes in full."""
         policy = config.Infra.tooling.tools.pytest
-        runner = runner_for(cached_runner_project, ci_context=ci_context).model_copy(
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, ci_context=ci_context
+        ).model_copy(
             update={"unbounded": True},
         )
         (cached_runner_project / runner.target / "test_outlives_budget.py").write_text(

@@ -33,7 +33,6 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 
 
-
 class TestsFlextInfraUtilitiesCodegenTestSupport:
     """Own shared typed construction for codegen test contracts."""
 
@@ -105,33 +104,33 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
             Returns:
                 The resulting ``m.Infra.GithubWorkflowRenderSpec``.
 
-                """
-                overrides = (
-                    u.CodegenTestSupport.Ci.WorkflowRenderOverrides()
-                    if overrides is None
-                    else overrides
-                )
-                codegen = config.Infra.codegen
-                return m.Infra.GithubWorkflowRenderSpec(
-                    dist=dist,
-                    make_profile=make_profile,
-                    repository_branch=repository_branch,
-                    ci_trigger_branches=ci_trigger_branches,
-                    system_packages=overrides.system_packages,
-                    packages_read=overrides.packages_read,
-                    python_version=codegen.toolchain.python_version,
-                    github_actions=codegen.github_actions,
-                    toolchain=codegen.toolchain,
-                    make=codegen.make,
-                    workspace_repositories=overrides.workspace_repositories,
-                    checkout_submodules=codegen.checkout_submodules,
-                    custom_steps=overrides.custom_steps,
-                    has_devcontainer=overrides.has_devcontainer,
-                    dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-                    cooldown_excluded_dependencies=(
-                        overrides.cooldown_excluded_dependencies
-                    ),
-                )
+            """
+            overrides = (
+                u.CodegenTestSupport.Ci.WorkflowRenderOverrides()
+                if overrides is None
+                else overrides
+            )
+            codegen = config.Infra.codegen
+            return m.Infra.GithubWorkflowRenderSpec(
+                dist=dist,
+                make_profile=make_profile,
+                repository_branch=repository_branch,
+                ci_trigger_branches=ci_trigger_branches,
+                system_packages=overrides.system_packages,
+                packages_read=overrides.packages_read,
+                python_version=codegen.toolchain.python_version,
+                github_actions=codegen.github_actions,
+                toolchain=codegen.toolchain,
+                make=codegen.make,
+                workspace_repositories=overrides.workspace_repositories,
+                checkout_submodules=codegen.checkout_submodules,
+                custom_steps=overrides.custom_steps,
+                has_devcontainer=overrides.has_devcontainer,
+                dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
+                cooldown_excluded_dependencies=(
+                    overrides.cooldown_excluded_dependencies
+                ),
+            )
 
         @staticmethod
         def ci_job_steps(rendered: str) -> t.VariadicTuple[t.JsonMapping]:
@@ -159,11 +158,13 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
             return tuple(
                 t.Cli.JSON_MAPPING_ADAPTER.validate_python(step) for step in steps
             )
+
+
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
-
     CodegenTestSupport = TestsFlextInfraUtilitiesCodegenTestSupport
+
     class Tests(
         TestsFlextInfraUtilitiesTomlMixin,
         TestsFlextInfraUtilitiesProjectFixtureMixin,
