@@ -24,9 +24,9 @@ class FlextInfraPytestEntry:
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The
-        ``file`` runs one complete declared target file in a bounded
-        operation, including its slow tests; it requires the Make
-        boundary to export the single-file target environment variable.
+        ``file`` and ``file-slow`` run the declared target's regular and slow
+        phases. Both require Make to export the single-file target variable.
+        ``full-slow`` runs the full slow phase without the incremental budget.
 
         Returns:
             The resulting ``int``.
@@ -53,13 +53,13 @@ class FlextInfraPytestEntry:
                 profiler.disable()
             return status
 
-        slow_phase = mode == "slow"
+        slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = flext_infra.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             slow_phase=slow_phase,
-            unbounded=mode == "full",
+            unbounded=mode in {"full", "full-slow"},
         )
-        if mode == "file" and runner.target_file is None:
+        if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (
                 f"pytest operation {mode} requires the Make boundary to export "
                 "the single-file target variable"
@@ -67,9 +67,9 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode == "full":
+        elif mode in {"full", "full-slow"}:
             status = runner.execute_full().unwrap()
-        elif mode in {"", "slow", "file"}:
+        elif mode in {"", "slow", "file", "file-slow"}:
             status = runner.execute().unwrap()
         else:
             msg = f"unsupported pytest operation: {mode}"

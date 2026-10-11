@@ -10,7 +10,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from difflib import unified_diff
 from pathlib import Path
+
+import pytest
 
 from flext_infra import c, config, m
 from tests import tm, u
@@ -159,6 +162,63 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(second, eq=rendered)
 
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_retired_development_requirements_do_not_reappear(
+        self,
+        tmp_path: Path,
+        attached: bool,
+    ) -> None:
+        """The public generator removes retired items and preserves other inputs."""
+        retired = config.Infra.codegen.scaffold.project.retired_dev
+        retained = "fixture-retained-development"
+        while retained in retired:
+            retained += "-extra"
+        entries = ", ".join(f'"{name}"' for name in (*retired, retained))
+        source = (
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            f"[dependency-groups]\ndev = [{entries}]\n"
+        )
+        workspace = self._workspace(role=self._ROLE.STANDALONE)
+        expected = {retained}
+        if attached:
+            member = self._member_ref("fixture-retirement-member", "member")
+            workspace = self._workspace(member)
+            member_file = tmp_path / member.path / c.PYPROJECT_FILENAME
+            member_file.parent.mkdir()
+            member_file.write_text(
+                '[project]\nname = "fixture-retirement-member"\nversion = "0.1.0"\n'
+                f"[dependency-groups]\ndev = [{entries}]\n",
+                encoding="utf-8",
+            )
+            expected.add(self._inline_requirement(member))
+        options = u.Infra.PyprojectConformOptions(
+            flext_line=u.Tests.integration(),
+            repository_root=tmp_path,
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            )
+        )
+        tm.that(
+            set(u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")),
+            eq=expected,
+        )
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                rendered,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            )
+        )
+        tm.that(repeated, eq=rendered)
+
     def test_root_requests_all_extras_groups_and_retains_constraints(
         self,
         tmp_path: Path,
@@ -208,7 +268,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         dev = set(u.Tests.toml_strings_at(first, "dependency-groups", "dev"))
         tm.that(
             set(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
-            eq={"build>=1"},
+            eq={"build>=1", "hypothesis>=6", "pytest>=8"},
         )
         tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
         tm.that(
@@ -367,7 +427,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 options=options,
             ),
         )
-        tm.that(second, eq=first)
+        tm.that(
+            second,
+            eq=first,
+            msg="\n".join(unified_diff(first.splitlines(), second.splitlines())),
+        )
         # A later explicit CUSTOM duplicate does not inherit the owned marker.
         custom_member = self._inline_requirement(member)
         live = first.replace(
@@ -379,6 +443,66 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             set(u.Tests.toml_strings_at(merged, "dependency-groups", "dev")),
             eq={"hypothesis>=6", custom_member},
+        )
+
+    def test_overlay_preserves_custom_codegen_and_rederives_member_groups(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Template composition retains CUSTOM codegen additions and provenance."""
+        member = self._member_ref("acme-engine", "libraries/engine")
+        path = tmp_path / member.path / c.PYPROJECT_FILENAME
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n'
+            '[dependency-groups]\ndev = ["hypothesis>=6"]\n',
+            encoding="utf-8",
+        )
+        source = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            '[dependency-groups]\ncodegen = ["build>=1"]\ndev = []\n'
+        )
+        template = (
+            '[project]\nname = "workspace"\nversion = "1.0.0"\n'
+            '[dependency-groups]\ncodegen = ["ruff>=1"]\ndev = []\n'
+        )
+        options = u.Infra.PyprojectConformOptions(
+            repository_root=tmp_path,
+            flext_line=u.Tests.integration(),
+        )
+        workspace = self._workspace(member)
+        initial = tm.ok(u.Infra.overlay_preserved(template, source))
+        tm.that(
+            u.Tests.toml_strings_at(initial, "dependency-groups", "codegen"),
+            eq=("build>=1", "ruff>=1"),
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                initial,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(template, first))
+        tm.that(
+            u.Tests.toml_strings_at(merged, "dependency-groups", "codegen"),
+            eq=("build>=1", "ruff>=1"),
+        )
+        second = tm.ok(
+            u.Infra.pyproject_conform(
+                merged,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        tm.that(
+            second,
+            eq=first,
+            msg="\n".join(unified_diff(first.splitlines(), second.splitlines())),
         )
 
     def test_marked_same_value_outside_dev_preserves_custom_dev(self) -> None:
@@ -488,17 +612,21 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 eq=("hypothesis>=6",),
             )
             for repeat in (first, tm.ok(u.Infra.overlay_preserved(seed, first))):
+                actual = tm.ok(
+                    u.Infra.pyproject_conform(
+                        repeat,
+                        workspace=self._workspace(),
+                        required_dev_dependencies=(),
+                        uv_resolution=self._toolchain_resolution(),
+                        options=options,
+                    )
+                )
                 tm.that(
-                    tm.ok(
-                        u.Infra.pyproject_conform(
-                            repeat,
-                            workspace=self._workspace(),
-                            required_dev_dependencies=(),
-                            uv_resolution=self._toolchain_resolution(),
-                            options=options,
-                        ),
-                    ),
+                    actual,
                     eq=first,
+                    msg="\n".join(
+                        unified_diff(first.splitlines(), actual.splitlines())
+                    ),
                 )
 
     def test_root_missing_member_metadata_fails_loud(self, tmp_path: Path) -> None:

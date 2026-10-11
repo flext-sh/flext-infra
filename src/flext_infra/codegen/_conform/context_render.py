@@ -142,6 +142,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 tooling_runtime=render_inputs.tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
+                examples_module=repository.examples_module,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.

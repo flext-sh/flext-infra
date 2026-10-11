@@ -732,10 +732,10 @@ class FlextInfraConfigModelsMake(
         pre_commit_check_gates: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
-                default=tuple(),
+                default=(),
                 description="Canonical check gates required by the commit hook",
             ),
-        ] = tuple()
+        ] = ()
         pre_push: Annotated[
             bool,
             m.Field(

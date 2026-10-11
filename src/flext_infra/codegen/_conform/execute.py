@@ -522,15 +522,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if len(publications) != 1 or publications[0].replacement is None:
-            return result_type.fail(
-                "pyproject bootstrap requires one staged replacement"
-            )
-        parsed = u.Cli.toml_read_document(publications[0].replacement.path)
-        if parsed.failure:
-            return result_type.from_failure(parsed)
+        if not publications:
+            return result_type.fail("pyproject bootstrap requires staged replacements")
+        for publication in publications:
+            if publication.replacement is None:
+                return result_type.fail(
+                    "pyproject bootstrap requires a replacement for every publication",
+                )
+            parsed = u.Cli.toml_read_document(publication.replacement.path)
+            if parsed.failure:
+                return result_type.from_failure(parsed)
         u.Cli.info(
-            "stage=pyproject-staged-validation files=1 semantic-analysis=next-gen"
+            f"stage=pyproject-staged-validation files={len(publications)} "
+            "semantic-analysis=next-gen",
         )
         return result_type.ok(session)
 

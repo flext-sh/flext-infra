@@ -229,10 +229,8 @@ class TestsFlextInfraTypeGates:
 
         assert accepted.result.passed, accepted.raw_output
         assert not accepted.issues, accepted.raw_output
-        source.write_text(
-            valid_source.replace(f"{service}[str]", f"{service}[set[int]]"),
-            encoding=c.DEFAULT_ENCODING,
-        )
+        invalid_source = valid_source.replace(f"{service}[str]", f"{service}[set[int]]")
+        source.write_text(invalid_source, encoding=c.DEFAULT_ENCODING)
 
         rejected = gate.check(project, checker_context)
 
@@ -243,9 +241,9 @@ class TestsFlextInfraTypeGates:
         assert issue.severity == c.Infra.ERROR, rejected.raw_output
         diagnostic_path = project / issue.file
         assert diagnostic_path.resolve() == source.resolve(), rejected.raw_output
-        annotation = valid_source.splitlines()[2]
+        annotation = invalid_source.splitlines()[2]
         assert issue.line == 3, rejected.raw_output
-        assert issue.column == annotation.index(service), rejected.raw_output
+        assert issue.column == annotation.index("set[int]"), rejected.raw_output
         assert service in issue.message, rejected.raw_output
 
     @staticmethod

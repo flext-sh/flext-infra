@@ -11,12 +11,13 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import flext_tests
 import pytest
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDeclarationRelocation:
@@ -105,6 +106,28 @@ class TestsFlextInfraDeclarationRelocation:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
+    def test_settings_imports_preserve_external_lazy_package(
+        tmp_path: Path,
+    ) -> None:
+        """Resolve the actual external provider without treating it as local WIP."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = Path(flext_tests.__file__).resolve()
+        tm.that(provider.is_relative_to(root), eq=False)
+        consumer = package / "_settings.py"
+        source = "from flext_tests import tm\nclass Settings:\n    matcher = tm\n"
+        consumer.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources={consumer: source},
+                ),
+            )
+        tm.that(planned, eq=())
+        tm.that(consumer.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
     def test_settings_imports_do_not_evade_illegal_declaration_owners(
         tmp_path: Path,
     ) -> None:
@@ -141,7 +164,7 @@ class TestsFlextInfraDeclarationRelocation:
         body: str = "value: str = Field(default='payload')",
         base: str = "PayloadBase",
         variants: frozenset[str] = frozenset(),
-    ) -> tuple[Path, dict[Path, str]]:
+    ) -> t.Pair[Path, t.MutableMappingKV[Path, str]]:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         stem = u.derive_class_stem(root.name)
         models = (

@@ -22,7 +22,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSource,
-    FlextInfraUtilitiesTransformerHeader,
 )
 
 
@@ -780,7 +779,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part,
             )
-            if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(
+            if not u.Infra.alias_locally_bound(
                 target_source,
                 bound,
             )

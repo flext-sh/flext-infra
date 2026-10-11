@@ -699,8 +699,7 @@ Infra:
         - name: build
           description: Build the project distribution artifacts.
         - name: examples
-          description: Run the workspace public runtime examples.
-          profiles: [workspace]
+          description: Run this repository's explicitly declared public runtime examples module.
         - name: check
           description: Run the configured non-test gates except the dedicated smells audit.
         - name: census
@@ -1402,6 +1401,10 @@ Infra:
           - rumdl>=0.2.62
           - vulture>=2.16
           - yamlfix>=1.19.1
+        # Flask and Werkzeug ship inline typing; their legacy stubs shadow it.
+        retired_dev:
+          - types-flask
+          - types-werkzeug
         dependency_profiles:
         # NOTE: a workspace manifest may declare an upstream distribution;
         # conformance must model that upstream relationship generically.
@@ -1409,10 +1412,10 @@ Infra:
             runtime:
               - flext-core
               - annotated-types>=0.8.0
-              - beartype>=0.23.0
+              - beartype>=0.23.1
               - dependency-injector>=4.49.1
               - packaging>=26.3
-              - pydantic>=2.14.0,<3
+              - pydantic>=2.14.1,<3
               - pydantic-settings>=2.15.0
               - pyyaml>=6.0.3
               - structlog>=26.1.0
@@ -1422,7 +1425,7 @@ Infra:
             runtime:
               - flext-cli
               - flext-core
-              - pydantic>=2.14.0,<3
+              - pydantic>=2.14.1,<3
               - pydantic-settings>=2.15.0
             codegen: [flext-infra]
         # Project-scoped requirements extend the shared profile without

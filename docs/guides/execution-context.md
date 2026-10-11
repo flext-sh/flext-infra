@@ -94,6 +94,20 @@ declares therefore reaches the lock and environment in the same run. The declare
 lock platforms and release cooldown come from the typed toolchain; never edit
 native lock payloads or substitute manual installation commands.
 
+`codegen.scaffold.project.retired_dev` declares development distributions that
+must no longer reach managed `dev` or `codegen` groups. Conformance filters them
+from existing groups, optional development extras, and member contributions;
+declaring the same distribution as a required development floor fails. Retire
+obsolete typing stubs here when their runtime SDK supplies inline typing, then
+regenerate and run `make upg` to reconcile locks and the installed environment.
+Do not uninstall packages manually or weaken the type checker.
+
+Member contributions carry per-occurrence provenance in both managed development
+groups. CUSTOM entries retain their full constraints and origins; removing a
+member removes only its generated contributions. The public conform and overlay
+paths use canonical resolver-key ordering and preserve these ownership comments
+so repeated generation reaches a byte-identical fixed point.
+
 Each internal `flext-*` requirement declares its integration line in `pyproject.toml`,
 never a commit: the resolved commit exists only in `uv.lock`, and only `make upg` moves
 it to the line tip. The manifest does not pin revisions. A commit left in the
@@ -236,6 +250,18 @@ decisive result. A run that is in progress, interrupted, or missing its exit cod
 green. Concurrent changes require a fresh read before writing and revalidation of the
 affected paths. A published work-in-progress commit preserves work and enables review;
 completion requires integration and runtime measured at the integrated SHA.
+
+The pytest runner retains the native exit code when startup fails before a final
+JUnit report is produced. Its process-outcome receipt and raw log remain available,
+but no completed-suite summary or run accounting is published. A graceful failing
+suite with JUnit still follows the normal diagnostics and accounting path; neither
+an interruption nor a missing report is evidence that tests passed.
+
+Distributed stop requests validate the initialized native controller through
+`p.Infra.PytestStopController` at report time, not during session startup. The
+runner requests a stop through its real `shouldstop` field and leaves shutdown
+to xdist. A present incompatible controller fails instead of taking the serial
+session path. Plugin autoload and enforcement remain active.
 
 For namespace automation, investigate catalog, classifier, transformation, publication,
 and consumers in that order. The namespace laws are codemod catalog rules, so the

@@ -318,18 +318,29 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 raise ValueError(msg)
             visited.add(provider_name)
             provider_path = Path(provider_resource.real_path).resolve()
+            file_resource: p.Infra.RopeResource = provider_resource
             if provider_resource.is_folder():
+                if not isinstance(provider_resource, p.Infra.RopeRoot):
+                    msg = (
+                        "declaration-relocation: invalid folder resource "
+                        f"{provider_path}"
+                    )
+                    raise TypeError(msg)
+                file_resource = provider_resource.get_child(c.Infra.INIT_PY)
                 provider_path /= c.Infra.INIT_PY
             provider_file = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                project.get_resource(
-                    provider_path.relative_to(root).as_posix(),
-                ),
+                file_resource,
                 provider_path,
+            )
+            source = (
+                sources[provider_path]
+                if provider_path.is_relative_to(root) and provider_path in sources
+                else provider_file.read()
             )
             aliases = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 provider_name,
                 provider_path,
-                sources.get(provider_path, provider_file.read()),
+                source,
             )
             route = aliases.get(alias_name)
             if route is None:

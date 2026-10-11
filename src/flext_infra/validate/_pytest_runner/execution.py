@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, override
 import pytest
 
 from flext_infra import FlextInfraTestmonDbInspector, c, config, m, r, t, u
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
@@ -72,7 +71,7 @@ class FlextInfraPytestRunnerExecution(
         coverage = execution_mode == c.Infra.PytestExecutionMode.COVERAGE
         source_root = self.root
         if self.target_file is not None:
-            target_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            target_root = u.Infra.nearest_project_root(
                 self.root, self.root / self.target_file
             )
             if target_root is None:
@@ -371,13 +370,14 @@ class FlextInfraPytestRunnerExecution(
             raise RuntimeError(msg)
 
     @staticmethod
-    def _completed_failure(outcome: p.Cli.ProcessOutcome) -> bool:
+    def _completed_failure(outcome: p.Cli.ProcessOutcome, report_dir: Path) -> bool:
         """Return whether a failing suite still finished its lifecycle.
 
         Under xdist the declared max-failures stop exits as Interrupted, not
         TestsFailed; it is still one completed suite lifecycle whose bounded
         evidence must be published. An operator signal keeps forwarded_signal
-        set and never qualifies.
+        set and never qualifies. A startup interruption has no final JUnit
+        report and must retain its native failure without suite finalization.
 
         Returns:
             Whether a failing suite still finished its lifecycle.
@@ -388,6 +388,7 @@ class FlextInfraPytestRunnerExecution(
             in {pytest.ExitCode.TESTS_FAILED, pytest.ExitCode.INTERRUPTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
+            and (report_dir / "junit.xml").is_file()
         )
 
     @staticmethod
@@ -801,7 +802,7 @@ class FlextInfraPytestRunnerExecution(
             not u.Cli.process_succeeded(outcome)
             and not cache_hit
             and not completed_zero_tests
-            and not self._completed_failure(outcome)
+            and not self._completed_failure(outcome, report_dir)
         ):
             if (
                 self.target_file is not None
@@ -900,7 +901,7 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
         )
-        if self._completed_failure(outcome):
+        if self._completed_failure(outcome, report_dir):
             return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
         if not u.Cli.process_succeeded(outcome):
             return r.ok(outcome.raw_return_code)

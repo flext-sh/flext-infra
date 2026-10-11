@@ -760,6 +760,26 @@ class TestsFlextInfraUtilityFacadeProjection:
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(), eq=original)
 
+    def test_rejects_multiple_namespace_declarations(self, tmp_path: Path) -> None:
+        """Reject an ambiguous facade without dropping either declaration body."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        facade = package / c.Infra.UTILITIES_PY
+        source = (
+            "from flext_cli import u\n"
+            "class FlextSampleUtilities(u):\n"
+            "    class Sample:\n        declaration = 'first'\n"
+            "    class Extra:\n        declaration = 'second'\n"
+            "u = FlextSampleUtilities\n"
+            '__all__ = ["FlextSampleUtilities", "u"]\n'
+        )
+        self._write(facade, source)
+        (package / family.directory).mkdir()
+
+        with pytest.raises(ValueError, match="at most one utility namespace"):
+            u.Infra.render_utility_facade(package)
+        tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
     def test_rejects_owners_without_a_public_facade(self, tmp_path: Path) -> None:
         """Utility owners without a facade have no public surface at all."""
         package = tmp_path / "src" / "flext_sample"

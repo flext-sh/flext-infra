@@ -238,6 +238,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             """Repository-shape knobs for the generated Make fixture."""
 
             package: bool = True
+            examples_module: str | None = None
             extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
             script_dispatch: m.Infra.ScriptDispatchSpec | None = None
 
@@ -264,6 +265,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 update={
                     "editable": True,
                     "package": shape.package,
+                    "examples_module": shape.examples_module,
                     "extra_verbs": shape.extra_verbs,
                     "script_dispatch": shape.script_dispatch,
                 },

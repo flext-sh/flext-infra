@@ -315,7 +315,11 @@ class FlextInfraUtilitiesCodegenFacades:
         namespace: str,
         family: Literal["u", "p", "m"],
     ) -> frozenset[str]:
+        """Collect consumed members through their actual imported Rope identities.
 
+        Returns:
+            The required public members; invalid source positions fail at Rope.
+        """
         methods: set[str] = set()
         with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
             for path in (
@@ -358,9 +362,10 @@ class FlextInfraUtilitiesCodegenFacades:
                         and isinstance(receiver, ast.Attribute)
                         else receiver
                     )
-                    if not isinstance(receiver, ast.Name):
-                        continue
-                    if receiver.id not in imported_receivers:
+                    if (
+                        not isinstance(receiver, ast.Name)
+                        or receiver.id not in imported_receivers
+                    ):
                         continue
                     if pymodule is None:
                         resource = project.get_resource(
@@ -371,9 +376,10 @@ class FlextInfraUtilitiesCodegenFacades:
                             resource,
                         )
                     offset = sum(map(len, lines[: receiver.lineno - 1]))
-                    prefix = lines[receiver.lineno - 1].encode(c.DEFAULT_ENCODING)
                     offset += len(
-                        prefix[: receiver.col_offset].decode(c.DEFAULT_ENCODING),
+                        lines[receiver.lineno - 1]
+                        .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
+                        .decode(c.DEFAULT_ENCODING),
                     )
                     binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
                         pymodule,
@@ -471,6 +477,14 @@ class FlextInfraUtilitiesCodegenFacades:
         tree: ast.Module,
         path: Path,
     ) -> t.Pair[ast.ClassDef, ast.ClassDef]:
+        """Resolve one facade and its single declared utility namespace.
+
+        Returns:
+            The facade and its namespace, or the facade when no namespace exists.
+
+        Raises:
+            ValueError: If the facade or its namespace identity is ambiguous.
+        """
         facades = tuple(node for node in tree.body if isinstance(node, ast.ClassDef))
         if len(facades) != 1:
             message = f"expected one utility facade class in {path}"
@@ -479,8 +493,7 @@ class FlextInfraUtilitiesCodegenFacades:
             node for node in facades[0].body if isinstance(node, ast.ClassDef)
         )
         if len(nested) > 1:
-            message = f"expected at most one utility namespace class in {path}"
-            raise ValueError(message)
+            return facades[0], facades[0]
         return facades[0], nested[0] if nested else facades[0]
 
     @classmethod

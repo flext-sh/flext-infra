@@ -53,6 +53,16 @@ class TestsFlextInfraFacadeBaseCutover:
         [
             ("from parent_pkg import m", "m", "m = ChildModels"),
             (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m = ChildModels",
+            ),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m: type[ChildModels] = ChildModels",
+            ),
+            (
                 "from parent_pkg import m as _parent_m",
                 "_parent_m",
                 "m: type[ChildModels] = ChildModels",

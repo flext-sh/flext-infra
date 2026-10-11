@@ -639,7 +639,7 @@ _activated-{{ verb.name }}: _builtin_require_environment
 	$(call RUN_PUBLIC_POST,{{ verb.name }})
 {% else %}
 {% if verb.name not in ("help", "clean") %}
-{{ verb.name }}: _builtin_require_workspace
+{{ verb.name }}: _builtin_require_workspace{% if verb.name == "examples" %} _builtin_require_examples{% endif %}
 {% if verb.name == "status" %}
 	@$(GITHUB_AUTH_DIAGNOSTICS)
 {% endif %}
@@ -1164,8 +1164,23 @@ _builtin-build: _builtin_build_artifacts
 {% if make_profile == "workspace" %}
 _builtin-validate-lifecycle: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} validate-lifecycle --repository-root "$(PROJECT_ROOT)"
+{% endif %}
+.PHONY: _builtin_require_examples
+_builtin_require_examples:
+{% if examples_module %}
+	@if [ ! -f "$(PROJECT_ROOT)/{{ examples_module | replace('.', '/') }}.py" ]; then \
+		printf 'ERROR: examples: declared module source is missing: %s\n' "$(PROJECT_ROOT)/{{ examples_module | replace('.', '/') }}.py" >&2; \
+		exit 2; \
+	fi
+{% else %}
+	@printf '%s\n' 'ERROR: examples: declare repository.examples_module in config/workspace.yaml' >&2; exit 2
+{% endif %}
+
 _builtin-examples: _builtin_require_environment
-	@{{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "{{ make.examples_timeout_seconds }}s" $(UV_RUN) python -m examples.runtime
+{% if examples_module %}
+	@{{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "{{ make.examples_timeout_seconds }}s" $(UV_RUN) python -m {{ examples_module }}
+{% else %}
+	@$(SELF_MAKE) _builtin_require_examples
 {% endif %}
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all

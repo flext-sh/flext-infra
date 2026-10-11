@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,53 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
+
+    @staticmethod
+    def test_member_contextual_packages_keep_independent_owners(tmp_path: Path) -> None:
+        """Equal contextual import names in separate projects remain independent."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources: dict[Path, str] = {}
+        consumers: list[Path] = []
+        for name in ("first_member", "second_member"):
+            member = u.Tests.mk_project(
+                root,
+                name,
+                pyproject=f'[project]\nname = "{name}"\nversion = "1.0.0"\n',
+                with_src=True,
+            )
+            context = member / "consumer_context"
+            context.mkdir()
+            path = context / "consumer.py"
+            consumers.append(path)
+            sources.update({
+                context / "__init__.py": (
+                    "from .utilities import ConsumerContextUtilities as u\n"
+                ),
+                context / "utilities.py": (
+                    "from flext_cli import FlextCliUtilities\n"
+                    "class ConsumerContextUtilities(FlextCliUtilities):\n"
+                    "    pass\n"
+                ),
+                path: (
+                    "from flext_cli import t\n"
+                    "from consumer_context import u\n"
+                    "value = t.json_dict_adapter().validate_python({'name': 'value'})\n"
+                ),
+            })
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        tm.that(tuple(edit.file_path for edit in edits), eq=tuple(consumers))
+        for edit in edits:
+            tm.that(edit.updated_source, has="u.json_dict_adapter()")
+            tm.that(edit.file_path.read_text(encoding="utf-8"), eq=sources[edit.file_path])
 
     @staticmethod
     def test_local_utility_binding_preserves_global_cli_runtime(tmp_path: Path) -> None:
@@ -357,6 +405,110 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
+    @pytest.mark.parametrize("binding", ["inherited", "override", "mask"])
+    def test_contextual_utilities_resolve_real_inherited_members(
+        tmp_path: Path,
+        binding: str,
+    ) -> None:
+        """Contextual lazy facades reuse only the identical effective declaration.
+
+        Raises:
+            RuntimeError: If the published fixture has no source module loader.
+
+        """
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        contextual = root / "consumer_context"
+        contextual.mkdir()
+        path = contextual / "consumer.py"
+        source = (
+            "from flext_cli import t\n"
+            "from consumer_context import u\n"
+            "value = t.json_dict_adapter().validate_python({'name': 'value'})\n"
+            "items = t.json_list_adapter().validate_python(['value'])\n"
+        )
+        member = (
+            "    @staticmethod\n    def json_dict_adapter():\n        return None\n"
+            if binding == "override"
+            else "    json_dict_adapter = None\n"
+            if binding == "mask"
+            else "    pass\n"
+        )
+        sources = {
+            contextual / "__init__.py": (
+                "from types import MappingProxyType\n"
+                "from flext_core import install_lazy_exports\n"
+                "__all__ = ('ConsumerContextUtilities', 'u')\n"
+                "install_lazy_exports(__name__, globals(), MappingProxyType({"
+                "'ConsumerContextUtilities': '.utilities', 'u': '.utilities'}), "
+                "public_exports=__all__)\n"
+            ),
+            contextual / "utilities.py": (
+                "from flext_tests import FlextTestsUtilities\n"
+                "from flext_cli import FlextCliUtilities\n"
+                "class ConsumerContextUtilities("
+                "FlextTestsUtilities, FlextCliUtilities):\n"
+                + member
+                + "u = ConsumerContextUtilities\n"
+                + "__all__ = ['ConsumerContextUtilities', 'u']\n"
+            ),
+            path: source,
+        }
+        for source_path, content in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(source_path, content))
+        phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
+        updated = source
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                phase, rope_workspace=rope, sources=sources
+            )
+            if binding != "inherited":
+                tm.fail(planned, has="receiver is shadowed")
+            else:
+                edits = tm.ok(planned)
+                tm.that(tuple(edit.file_path for edit in edits), eq=(path,))
+                updated = edits[0].updated_source
+                tm.that(updated, has="from consumer_context import u")
+                tm.that(updated, has="u.json_dict_adapter()")
+                tm.that(updated, has="u.json_list_adapter()")
+                tm.that("from flext_cli import u" in updated, eq=False)
+                remaining = tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        phase, rope_workspace=rope, sources={**sources, path: updated}
+                    )
+                )
+                tm.that(remaining, empty=True)
+        for source_path, content in sources.items():
+            tm.that(source_path.read_text(encoding="utf-8"), eq=content)
+        if binding == "inherited":
+            tm.ok(u.Cli.atomic_write_text_file(path, updated))
+            package_spec = importlib.util.spec_from_file_location(
+                contextual.name, contextual / "__init__.py"
+            )
+            consumer_spec = importlib.util.spec_from_file_location(
+                f"{contextual.name}.consumer", path
+            )
+            if (
+                package_spec is None
+                or package_spec.loader is None
+                or consumer_spec is None
+                or consumer_spec.loader is None
+            ):
+                msg = "Published contextual consumer has no loader"
+                raise RuntimeError(msg)
+            loaded_package = importlib.util.module_from_spec(package_spec)
+            consumer = importlib.util.module_from_spec(consumer_spec)
+            tm.that(contextual.name in sys.modules, eq=False)
+            sys.modules[contextual.name] = loaded_package
+            try:
+                package_spec.loader.exec_module(loaded_package)
+                consumer_spec.loader.exec_module(consumer)
+                tm.that(consumer.value, eq={"name": "value"})
+                tm.that(consumer.items, eq=["value"])
+            finally:
+                sys.modules.pop(f"{contextual.name}.utilities", None)
+                sys.modules.pop(contextual.name)
+
+    @staticmethod
     def test_named_adapter_factories_reject_ambiguous_imports(tmp_path: Path) -> None:
         """Two imported typing identities cannot elect a utilities receiver."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -484,6 +636,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(result.stdout.strip(), eq=f"ALIGNED UNCHANGED {typing_owner}")
 
     @staticmethod
+    @pytest.mark.parametrize("guarded", [False, True])
     @pytest.mark.parametrize(
         "upstream_import",
         [
@@ -494,6 +647,8 @@ class TestsFlextInfraSemanticPhaseContract:
     def test_constant_consumers_resolve_upstream_binding_without_shadow_rewrites(
         tmp_path: Path,
         upstream_import: str,
+        *,
+        guarded: bool,
     ) -> None:
         """Inherited constants use the existing facade and reach a fixed point."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -517,6 +672,19 @@ class TestsFlextInfraSemanticPhaseContract:
                 f"{shadowed}"
             ),
         }
+        if guarded:
+            sources[path] = (
+                "from __future__ import annotations\n"
+                "from typing import TYPE_CHECKING\n"
+                f"from {package.name} import c\n"
+                "# Keep the provider documentation.\n"
+                "if TYPE_CHECKING:  # Annotation boundary.\n"
+                f"    {upstream_import}\n"
+                "def annotated(value: core_c):\n"
+                "    return c.PRIMITIVES_TYPES\n"
+                "downstream = c.PRIMITIVES_TYPES\n\n"
+                f"{shadowed}"
+            )
         for source_path, source in sources.items():
             source_path.write_text(source, encoding="utf-8")
         phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
@@ -529,7 +697,13 @@ class TestsFlextInfraSemanticPhaseContract:
             tm.ok(planned)
             tm.that(tuple(edit.file_path for edit in planned.value), eq=(path,))
             updated = planned.value[0].updated_source
-            tm.that(updated, has="upstream = c.PRIMITIVES_TYPES")
+            if guarded:
+                tm.that(updated, has="def annotated(value: c):")
+                tm.that(updated, has="# Keep the provider documentation.")
+                tm.that(updated, has="# Annotation boundary.")
+                tm.that(updated, lacks="TYPE_CHECKING")
+            else:
+                tm.that(updated, has="upstream = c.PRIMITIVES_TYPES")
             tm.that(updated, has="downstream = c.PRIMITIVES_TYPES")
             tm.that(updated, has=shadowed)
             tm.that(updated.count(f"from {package.name} import c"), eq=1)

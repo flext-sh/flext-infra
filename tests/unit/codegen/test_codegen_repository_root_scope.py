@@ -86,8 +86,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         `make test` runs in CI and pre-commit, so slow-marked items stay out of
         it (operator 2026-10-01: nothing slow in CI or pre-commit). `test-file`
         is the sole single-file path and runs only locally, so its one ``file``
-        entry runs the declared file incremental then complete, slow items
-        included; a file whose items are all slow-marked never ends the verb
+        entry runs the complete declared file once, including slow items;
+        a file whose items are all slow-marked never ends the verb
         with zero executed tests. Neither recipe appends the full suite.
         """
         root = self._render_root_makefile(tmp_path)
@@ -104,46 +104,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(
             recipe,
             has=f'{cache.database_environment_variable}="$$database"',
-        )
-
-    def test_file_verb_exports_selection_to_both_phases(self, tmp_path: Path) -> None:
-        """The Make FILE selection reaches both phases on one guard and cache."""
-        root = self._render_root_makefile(tmp_path)
-        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
-        )
-        recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[0]
-        cache = config.Infra.codegen.make.testmon_cache
-        exported = f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'
-        tm.that(recipe, has=exported)
-        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=2)
-        tm.that(
-            recipe.index(exported) < recipe.index("-m flext_infra._pytest_entry"),
-            eq=True,
-        )
-        tm.that(recipe, has=["_pytest_entry file;", "_pytest_entry file-slow;"])
-        tm.that(
-            recipe.count(f'{cache.database_environment_variable}="$$database"'),
-            eq=2,
-        )
-        tm.that(recipe.count("set -eu;"), eq=1)
-        tm.that(recipe.count("' EXIT;"), eq=1)
-        tm.that(recipe, lacks=["_pytest_entry slow", "_pytest_entry full"])
-        selected = "tests/requested.py"
-        expanded = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_builtin_test_file_all", f"FILE={selected}"],
-                cwd=root,
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(expanded.outcome),
-            eq=True,
-            msg=expanded.stdout + expanded.stderr,
-        )
-        tm.that(
-            expanded.stdout,
-            has=f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="{selected}";',
         )
 
     def test_file_profile_does_not_execute_bounded_tests(self, tmp_path: Path) -> None:

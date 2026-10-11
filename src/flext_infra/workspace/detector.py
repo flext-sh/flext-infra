@@ -801,6 +801,7 @@ class FlextInfraWorkspaceDetector(
         return result_type.ok(
             repository.model_copy(
                 update={
+                    "examples_module": commands.examples_module,
                     "extra_verbs": commands.extra_verbs,
                     "script_dispatch": commands.script_dispatch,
                 },

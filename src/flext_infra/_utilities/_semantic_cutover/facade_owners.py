@@ -100,7 +100,22 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If ``owner is None``.
 
         """
-        owner = cls._facade_letter_class(modules, module, letter)
+        resolved = cls._facade_declared_class(modules, module, letter, frozenset())
+        if resolved is not None and resolved[1] == letter:
+            owner_module, owner_name = resolved
+            exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                modules[module][0],
+            )
+            exported_owner = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                modules[owner_module][0],
+            )
+            owner = (
+                owner_name
+                if owner_name in exported_here and owner_name in exported_owner
+                else None
+            )
+        else:
+            owner = cls._facade_letter_class(modules, module, letter)
         if owner is None:
             msg = (
                 f"{module}.{letter} is not declared with its facade class in the "
