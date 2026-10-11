@@ -17,7 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._pyproject._requirements_provenance import (
-    RequirementProvenance,
+    FlextInfraRequirementProvenance,
 )
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
 
     @staticmethod
-    def _custom_dev_additions(live_payload: t.JsonMapping) -> t.StrSequence:
+    def custom_dev_additions(live_payload: t.JsonMapping) -> t.StrSequence:
         """Retain custom dev requirements after excluding generated members.
 
         Returns:
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = RequirementProvenance(
+        provenance = FlextInfraRequirementProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
@@ -125,7 +125,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraRequirementProvenance,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -182,7 +182,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         requirement: str,
         *,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraRequirementProvenance,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
@@ -254,7 +254,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         parsed: t.Pair[str, str],
         line: str | None,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraRequirementProvenance,
     ) -> p.Result[t.Pair[t.Pair[str, str], str | None]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 

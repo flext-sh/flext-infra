@@ -36,7 +36,6 @@ class FlextInfraPytestEntry:
 
         Raises:
             ValueError: If unsupported pytest operation.
-            TypeError: If the runner returns a non-integer process status.
 
         """
         # Resolve public lazy exports after taking the entry clock.
@@ -52,10 +51,7 @@ class FlextInfraPytestEntry:
                 )
             finally:
                 profiler.disable()
-            if isinstance(status, int):
-                return status
-            msg = f"pytest profile returned a non-integer process status: {status!r}"
-            raise TypeError(msg)
+            return status
 
         slow_phase = mode == "slow"
         runner = flext_infra.FlextInfraPytestRunner.from_environment(
@@ -78,10 +74,7 @@ class FlextInfraPytestEntry:
         else:
             msg = f"unsupported pytest operation: {mode}"
             raise ValueError(msg)
-        if isinstance(status, int):
-            return status
-        msg = f"pytest runner returned a non-integer process status: {status!r}"
-        raise TypeError(msg)
+        return status
 
 
 if __name__ == "__main__":

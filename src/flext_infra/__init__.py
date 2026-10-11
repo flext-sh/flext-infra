@@ -154,6 +154,7 @@ if TYPE_CHECKING:
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.promoted import FlextInfraPromoted
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+    from flext_infra.pytest_profile import FlextInfraPytestProfile
     from flext_infra.refactor.accessor_migration import (
         FlextInfraAccessorMigrationOrchestrator,
     )
@@ -321,6 +322,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPyreflyGate",
     "FlextInfraPyrightGate",
     "FlextInfraPytestDiagExtractor",
+    "FlextInfraPytestProfile",
     "FlextInfraPytestRunner",
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraRefactorCensus",
@@ -509,6 +511,7 @@ install_lazy_exports(
         "FlextInfraPyreflyGate": ".gates.pyrefly",
         "FlextInfraPyrightGate": ".gates.pyright",
         "FlextInfraPytestDiagExtractor": ".validate.pytest_diag",
+        "FlextInfraPytestProfile": ".pytest_profile",
         "FlextInfraPytestRunner": ".validate.pytest_runner",
         "FlextInfraPythonVersionEnforcer": ".maintenance.python_version",
         "FlextInfraRefactorCensus": ".refactor.census",

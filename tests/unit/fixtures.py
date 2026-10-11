@@ -617,11 +617,25 @@ def cached_runner_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
     # A faithful consumer project carries the fleet-standard coverage
     # boundary: the Cython provider mapping of dependency_injector is not
     # parseable source and is omitted by every fleet coverage config.
-    (project_root / "pyproject.toml").write_text(
-        '[tool.coverage.run]\nomit = ["*/dependency_injector/providers.pyx"]\n'
-        "[tool.pytest.ini_options]\n"
-        f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n',
-        encoding="utf-8",
+    tm.ok(
+        u.Cli.toml_write_mapping(
+            project_root / c.PYPROJECT_FILENAME,
+            {
+                "tool": {
+                    "coverage": {
+                        "run": {"omit": ["*/dependency_injector/providers.pyx"]},
+                    },
+                    "pytest": {
+                        "ini_options": {
+                            "pythonpath": [c.Infra.DEFAULT_SRC_DIR],
+                            "markers": list(
+                                config.Infra.tooling.tools.pytest.standard_markers,
+                            ),
+                        },
+                    },
+                },
+            },
+        ),
     )
     (package_root / "__init__.py").write_text(
         "def answer() -> int:\n    return 42\n",

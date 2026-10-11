@@ -111,7 +111,7 @@ class TestsFlextInfraPytestProfile:
         (cached_runner_project / target).write_text(
             "import pytest\n"
             "pytest_plugins = ['pytester']\n"
-            "@pytest.mark.slow\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_runtime(pytester):\n"
             "    result = pytester.runpytest_subprocess('--version')\n"
             "    assert result.ret == pytest.ExitCode.OK\n"
@@ -138,7 +138,16 @@ class TestsFlextInfraPytestProfile:
         tm.that(len(profiles) >= 2, eq=True)
         for child in profiles:
             functions = pstats.Stats(str(child)).get_stats_profile().func_profiles
-            tm.that("ProfiledSiteCustomization" in functions, eq=True)
+            startup_functions = tuple(
+                (name, function.file_name)
+                for name, function in functions.items()
+                if function.file_name.endswith("sitecustomize.py")
+            )
+            tm.that(
+                "ProfiledSiteCustomization" in functions,
+                eq=True,
+                msg=f"site customization absent from {child}: {startup_functions}",
+            )
             tm.that(
                 any("_pytest" in function.file_name for function in functions.values()),
                 eq=True,

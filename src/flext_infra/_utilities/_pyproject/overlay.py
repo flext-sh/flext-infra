@@ -135,9 +135,9 @@ class FlextInfraUtilitiesPyprojectOverlay:
         )
         if str(c.Infra.DEV) in live_groups:
             groups[str(c.Infra.DEV)] = list(
-            FlextInfraUtilitiesPyprojectRequirements._custom_dev_additions(
-                live_payload
-            ),
+                FlextInfraUtilitiesPyprojectRequirements.custom_dev_additions(
+                    live_payload
+                ),
             )
             merged[c.Infra.DEPENDENCY_GROUPS] = groups
 

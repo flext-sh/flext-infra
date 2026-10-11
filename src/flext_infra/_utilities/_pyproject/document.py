@@ -110,7 +110,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             u.Cli.toml_sync_string_list(
                 groups,
                 str(c.Infra.DEV),
-                cls._custom_dev_additions(payload),
+                cls.custom_dev_additions(payload),
             )
             # Codegen is already a managed group, unlike CUSTOM dev additions.
             u.Cli.toml_sync_string_list(

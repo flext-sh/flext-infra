@@ -680,8 +680,6 @@ class FlextInfraUtilitiesCodemodProject(
         Returns:
             The first real child module in the native resolution order.
 
-        Raises:
-            TypeError: If a module search root has no folder resource contract.
         """
         project, resource = frame
         parent_name, child_name = names
@@ -700,9 +698,6 @@ class FlextInfraUtilitiesCodemodProject(
         )
         modules_by_name[key] = None
         for folder in folders:
-            if not isinstance(folder, p.Infra.RopeRoot):
-                msg = f"module search root has no folder resource contract: {folder}"
-                raise TypeError(msg)
             parent_key = (parent_name, folder.real_path, level or 1)
             if parent_key not in modules_by_name:
                 modules_by_name[parent_key] = project.find_relative_module(
@@ -814,9 +809,6 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         predicate = condition.predicate
-        if not isinstance(predicate, c.Infra.CodemodContextPredicate):
-            message = f"predicate is not declared: {predicate}"
-            raise ValueError(message)
         own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
             case c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION:

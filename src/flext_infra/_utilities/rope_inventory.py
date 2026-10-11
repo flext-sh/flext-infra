@@ -543,19 +543,17 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _occurrence_search_resources(
         options: m.Infra.RopeInventoryRecordInput,
-        definition_path: Path | None,
+        definition_path: Path,
         name: str,
         *,
         all_surfaces: bool = False,
-    ) -> t.VariadicTuple[t.Infra.RopeResource] | None:
-        """Scope the occurrence search resources, or ``None`` to search everywhere.
+    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+        """Scope the occurrence search to the validated definition path.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Infra.RopeResource] | None``.
+            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
 
         """
-        if definition_path is None:
-            return None
         if all_surfaces:
             return FlextInfraUtilitiesRopeImports.indexed_surface_search_resources(
                 options.rope_workspace,

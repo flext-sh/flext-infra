@@ -9,7 +9,6 @@ from __future__ import annotations
 import shlex
 import sys
 import time
-from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -47,18 +46,19 @@ class FlextInfraPytestRunnerExecution(
             pre_run_digest=digest,
         ).execute()
 
-    def _selection_env(
+    def _selection_process_options(
         self,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-    ) -> MutableMapping[str, str]:
-        """Return the child environment shared by every runner invocation.
+        live: bool = False,
+    ) -> p.Cli.ProcessOptions:
+        """Declare child overrides and removals at the process boundary.
 
         The coverage verb owns no testmon plugin, so its children neither
         receive nor inherit a testmon database location.
 
         Returns:
-            The child environment shared by every runner invocation.
+            The process options shared by every runner invocation.
 
         """
         testmon_keys = (
@@ -73,12 +73,21 @@ class FlextInfraPytestRunnerExecution(
         }
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
+        if self.profile_enabled:
+            overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
+                config.Infra.tooling.tools.pytest.profile_process_directory
+            )
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
             *(testmon_keys if coverage else ()),
         )
-        return u.Cli.process_env(remove_keys=remove_keys, overrides=overrides)
+        return m.Cli.ProcessOptions(
+            env=overrides,
+            remove_env_keys=tuple(key for key in remove_keys if key not in overrides),
+            live=live,
+            deadline=self._process_deadline(),
+        )
 
     def _resolve_selection(
         self,
@@ -164,10 +173,7 @@ class FlextInfraPytestRunnerExecution(
             command,
             selection_log,
             cwd=self.root,
-            options=m.Cli.ProcessOptions(
-                env=self._selection_env(execution_mode=execution_mode),
-                deadline=self._process_deadline(),
-            ),
+            options=self._selection_process_options(execution_mode=execution_mode),
         ).unwrap()
         self._record_process_outcome(
             report_dir,
@@ -307,10 +313,9 @@ class FlextInfraPytestRunnerExecution(
             command,
             report_dir / "pytest.log",
             cwd=self.root,
-            options=m.Cli.ProcessOptions(
-                env=self._selection_env(execution_mode=execution_mode),
+            options=self._selection_process_options(
+                execution_mode=execution_mode,
                 live=True,
-                deadline=self._process_deadline(),
             ),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
