@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,6 +22,93 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
+
+    @staticmethod
+    def test_relocated_behavior_runs_through_its_real_consumer(tmp_path: Path) -> None:
+        """Typing facade imports are removed while the utility behavior runs."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        typing_family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
+        utility_family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        stem = u.derive_class_stem(root.name)
+        typing_owner = f"{stem}{typing_family.suffix}"
+        utility_owner = f"{stem}{utility_family.suffix}"
+        parser_owner = f"{utility_owner}Parser"
+        utility_directory = package / utility_family.directory
+        utility_directory.mkdir()
+        sources = {
+            package / c.Infra.INIT_PY: (
+                f"from {package.name}.typings import t\n"
+                f"from {package.name}.utilities import u\n"
+                '__all__ = ["t", "u"]\n'
+            ),
+            package / c.Infra.TYPINGS_PY: (
+                f"class {typing_owner}:\n    pass\nt = {typing_owner}\n"
+            ),
+            utility_directory / "parser.py": (
+                f"class {parser_owner}:\n"
+                "    @staticmethod\n"
+                "    def parse(value: str) -> str:\n"
+                "        return value.upper()\n"
+                f'__all__ = ["{parser_owner}"]\n'
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name}.{utility_family.directory}.parser "
+                f"import {parser_owner}\n"
+                f"class {utility_owner}({parser_owner}):\n    pass\n"
+                f"u = {utility_owner}\n"
+            ),
+            package / "consumer.py": (
+                f"from {package.name}.typings import {typing_owner}\n"
+                f"value = {typing_owner}.parse('aligned')\n"
+            ),
+            package / "unrelated.py": (
+                f"from {package.name}.typings import {typing_owner}\n"
+                f"owner = {typing_owner}.__name__\n"
+                "value = 'unchanged'.upper()\n"
+            ),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        tm.that(
+            u.Infra.public_export_names_source(
+                sources[utility_directory / "parser.py"],
+            ),
+            eq=(parser_owner,),
+        )
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+        tm.that(edits, empty=False)
+        for edit in edits:
+            tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
+        result = tm.ok(
+            u.Cli.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.consumer import value; "
+                        f"from {package.name}.unrelated import "
+                        "owner, value as unrelated; "
+                        "print(value, unrelated, owner)"
+                    ),
+                ],
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                            root / c.Infra.DEFAULT_SRC_DIR,
+                        ),
+                    },
+                ),
+            ),
+        )
+        tm.that(result.stdout.strip(), eq=f"ALIGNED UNCHANGED {typing_owner}")
 
     @staticmethod
     @pytest.mark.parametrize(

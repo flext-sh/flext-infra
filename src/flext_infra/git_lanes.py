@@ -294,7 +294,7 @@ class FlextInfraGitLanes:
                 "coordinator evidence file is required",
             )
         evidence = m.Infra.GitLaneEvidence.model_validate_json(
-            request.evidence_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            request.evidence_file.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if evidence.repo_root.resolve() != request.repo_root.resolve():
             return r[m.Infra.GitLaneEvidence].fail("lane evidence repository mismatch")
@@ -320,7 +320,7 @@ class FlextInfraGitLanes:
             else config.Infra.codegen.branch_policy.lane_governance_file
         )
         return m.Infra.GitLaneGovernance.model_validate_json(
-            source.expanduser().read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            source.expanduser().read_text(encoding=c.DEFAULT_ENCODING),
         ).coordination
 
     @staticmethod

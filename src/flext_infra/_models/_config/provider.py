@@ -11,8 +11,7 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsSharedInfra
+from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
@@ -95,7 +94,7 @@ class FlextInfraConfigModelsProvider:
         integration_branch_preference: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
-                default=FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE,
+                default=c.Infra.INTEGRATION_BRANCH_PREFERENCE,
                 min_length=1,
                 description=(
                     "Ordered names tried against live Git to derive one "
@@ -106,7 +105,7 @@ class FlextInfraConfigModelsProvider:
                     "never the answer."
                 ),
             ),
-        ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
+        ] = c.Infra.INTEGRATION_BRANCH_PREFERENCE
 
     class GithubActionPinSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One GitHub Action reference from the codegen catalog."""

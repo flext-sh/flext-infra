@@ -182,6 +182,12 @@ class FlextInfraModelsRefactorGrep:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
+        own_package: Annotated[
+            str | None,
+            m.Field(
+                description="Declared namespace when package predicates require it",
+            ),
+        ]
         predicates: Annotated[
             frozenset[c.Infra.CodemodContextPredicate],
             m.Field(description="Context predicates these facts were built for"),

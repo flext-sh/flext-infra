@@ -53,7 +53,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 snapshot.stderr``.
 
         """
-        pid = pid_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        pid = pid_file.read_text(encoding=c.DEFAULT_ENCODING)
         snapshot = u.Cli.run_raw(
             ("/bin/ps", "-p", str(int(pid)), "-o", "stat="),
             timeout=timeout,
@@ -73,7 +73,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         """
         source = root / "checked.py"
-        source.write_text("value: int = 1\n", encoding=c.Cli.ENCODING_DEFAULT)
+        source.write_text("value: int = 1\n", encoding=c.DEFAULT_ENCODING)
         config_file = root / "mypy.ini"
         # The workload checks through the governed checker settings, so its
         # crash reporting (show_traceback) matches every managed project.
@@ -91,10 +91,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 "def plugin(version: str) -> type[Plugin]:\n"
                 + indent(plugin_body, "    ")
                 + "\n    return Plugin\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             config_source += f"plugins = {plugin}\n"
-        config_file.write_text(config_source, encoding=c.Cli.ENCODING_DEFAULT)
+        config_file.write_text(config_source, encoding=c.DEFAULT_ENCODING)
         return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod
@@ -204,7 +204,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     def write_executable(path: Path, body: str) -> None:
         """Write one executable fixture with deterministic permissions."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
+        path.write_text(body, encoding=c.DEFAULT_ENCODING)
         path.chmod(0o755)
 
     @staticmethod

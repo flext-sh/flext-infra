@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import cProfile
-import importlib
 import sys
 import time
 from pathlib import Path
+
+import flext_infra
 
 
 class FlextInfraPytestEntry:
@@ -26,8 +27,8 @@ class FlextInfraPytestEntry:
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The
-        ``file`` and ``file-slow`` operations run one declared target file
-        through the same budgeted and slow phases; they require the Make
+        ``file`` runs one complete declared target file in a bounded
+        operation, including its slow tests; it requires the Make
         boundary to export the single-file target environment variable.
 
         Returns:
@@ -35,11 +36,9 @@ class FlextInfraPytestEntry:
 
         Raises:
             ValueError: If unsupported pytest operation.
-            TypeError: If the runner returns a non-integer process status.
 
         """
-        # Deliberately deferred past the pre-import clock snapshot: the
-        # module contract keeps every FLEXT import inside the budgeted window.
+        # Resolve public lazy exports after taking the entry clock.
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
         slow_phase = mode == "full-slow"
         runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
@@ -47,25 +46,22 @@ class FlextInfraPytestEntry:
             profiler = cProfile.Profile()
             profiler.enable()
             try:
-                profile_module = importlib.import_module("flext_infra._pytest_profile")
-                profile = profile_module.FlextInfraPytestProfile(Path(sys.argv[2]))
+                profile = flext_infra.FlextInfraPytestProfile(Path(sys.argv[2]))
                 status = profile.run_parent(
                     started_at_monotonic=cls._STARTED_AT_MONOTONIC,
                     profile=profiler,
                 )
             finally:
                 profiler.disable()
-            if isinstance(status, int):
-                return status
-            msg = f"pytest profile returned a non-integer process status: {status!r}"
-            raise TypeError(msg)
+            return status
 
-        slow_phase = mode in {"slow", "full-slow", "file-slow"}
-        runner = runner_module.FlextInfraPytestRunner.from_environment(
+        slow_phase = mode == "slow"
+        runner = flext_infra.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=cls._STARTED_AT_MONOTONIC,
             slow_phase=slow_phase,
+            unbounded=mode == "full",
         )
-        if mode in {"file", "file-slow"} and runner.target_file is None:
+        if mode == "file" and runner.target_file is None:
             msg = (
                 f"pytest operation {mode} requires the Make boundary to export "
                 "the single-file target variable"
@@ -73,17 +69,14 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode in {"full", "full-slow"}:
+        elif mode == "full":
             status = runner.execute_full().unwrap()
-        elif mode in {"", "slow", "file", "file-slow"}:
+        elif mode in {"", "slow", "file"}:
             status = runner.execute().unwrap()
         else:
             msg = f"unsupported pytest operation: {mode}"
             raise ValueError(msg)
-        if isinstance(status, int):
-            return status
-        msg = f"pytest runner returned a non-integer process status: {status!r}"
-        raise TypeError(msg)
+        return status
 
 
 if __name__ == "__main__":

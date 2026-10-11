@@ -114,7 +114,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                         t.MutableMappingKV[Path, str],
                     ]
                 ].fail(f"docs guide source is absent: {path}")
-            content = state.content.decode(c.Cli.ENCODING_DEFAULT)
+            content = state.content.decode(c.DEFAULT_ENCODING)
             if path.parent == source_root:
                 sources[path] = content
             else:

@@ -206,7 +206,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             else conflict + declaration
         )
         path = root / c.PYPROJECT_FILENAME
-        path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+        path.write_text(content, encoding=c.DEFAULT_ENCODING)
 
         result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
 
@@ -217,7 +217,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         else:
             tm.that(result.failure, eq=True)
             tm.that(result.error, has="outside owner-declared TOML sections")
-        tm.that(path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
 
     @staticmethod
     def test_infra_repository_identity_fails_loud_when_undeclared(

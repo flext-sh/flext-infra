@@ -241,7 +241,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             sources_dir = Path(tmp)
             origin: t.MutableMappingKV[str, t.Pair[str, int]] = {}
             for name, (text, located) in embedded.items():
-                (sources_dir / name).write_text(text, c.Cli.ENCODING_DEFAULT)
+                (sources_dir / name).write_text(text, c.DEFAULT_ENCODING)
                 origin[name] = located
             ran = True
             formatted = self._run(
@@ -277,8 +277,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                         )
                         for name, (text, location) in embedded.items()
                         if Path(location[0]).suffix == c.Infra.EXT_PYTHON
-                        and (sources_dir / name).read_text(c.Cli.ENCODING_DEFAULT)
-                        != text
+                        and (sources_dir / name).read_text(c.DEFAULT_ENCODING) != text
                     )
             else:
                 findings.extend(
@@ -331,7 +330,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             The rewritten path, or ``None`` when the document stayed identical.
 
         """
-        content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
+        content = md_path.read_text(c.DEFAULT_ENCODING)
         relative_posix = md_path.relative_to(project_dir).as_posix()
         # Preserve indexes across fragments the formatter does not own.
         staged: t.MutableSequenceOf[t.Pair[int, str]] = []
@@ -381,7 +380,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         updated = c.Infra.MARKDOWN_PY_FENCE_RE.sub(_resubstitute, content)
         if updated == content:
             return None
-        md_path.write_text(updated, c.Cli.ENCODING_DEFAULT)
+        md_path.write_text(updated, c.DEFAULT_ENCODING)
         return md_path
 
     @staticmethod
@@ -406,7 +405,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             )
             if not source.is_file():
                 return (list(blocks), False)
-            formatted = source.read_text(c.Cli.ENCODING_DEFAULT)
+            formatted = source.read_text(c.DEFAULT_ENCODING)
             if FlextInfraMarkdownCodeSources.syntax_broken(formatted, md_path):
                 return (list(blocks), False)
             blocks.append(formatted)
@@ -455,7 +454,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
-                verdict=passed,
+                verdict=passed and not issues,
+                issues=tuple(issues),
+                raw_output="\n".join(issue.formatted for issue in issues),
                 outcome=(
                     c.Infra.ToolOutcome.ERROR
                     if not passed
@@ -463,8 +464,6 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                issues=tuple(issues),
-                raw_output="\n".join(issue.formatted for issue in issues),
                 started=started,
             ),
         )

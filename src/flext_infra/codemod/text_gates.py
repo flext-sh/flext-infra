@@ -106,7 +106,7 @@ class FlextInfraModTextGateEngine:
                 f"text rule project identity is absent: {identity.path}",
             )
         recovered = u.Infra.recover_live_pyproject_text(
-            identity.content.decode(c.Cli.ENCODING_DEFAULT),
+            identity.content.decode(c.DEFAULT_ENCODING),
         )
         if recovered.failure:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(recovered)
@@ -201,7 +201,7 @@ class FlextInfraModTextGateEngine:
         source = snapshot.path
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()
-        parsed = u.Cli.yaml_parse(snapshot.content.decode(c.Cli.ENCODING_DEFAULT))
+        parsed = u.Cli.yaml_parse(snapshot.content.decode(c.DEFAULT_ENCODING))
         if parsed.failure:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
         listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
@@ -616,7 +616,7 @@ class FlextInfraModTextGateEngine:
             )
         return r[t.Triple[m.Cli.AtomicFileState, str, str]].ok((
             before,
-            before.content.decode(c.Cli.ENCODING_DEFAULT),
+            before.content.decode(c.DEFAULT_ENCODING),
             relative,
         ))
 
@@ -638,7 +638,7 @@ class FlextInfraModTextGateEngine:
             project=root,
             path=path,
             before=before,
-            desired_content=updated.encode(c.Cli.ENCODING_DEFAULT),
+            desired_content=updated.encode(c.DEFAULT_ENCODING),
             desired_mode=before.mode,
             source_states=(*base_states, before),
             owner="mod-text",

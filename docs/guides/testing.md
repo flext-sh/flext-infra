@@ -58,12 +58,24 @@ Run the complete suite through its declared verb:
 make test-full
 ```
 
+For an unbounded diagnostic of one declared file, the same verb accepts the
+validated repository-relative input:
+
+```bash
+make test-full FILE=tests/unit/codemod/test_symbolic_text_cutover.py
+```
+
+Both phases use the same persistent database. This scoped receipt proves only
+the requested file; production acceptance still requires the complete suite.
+
 Use `make profile-test` before optimizing a slow suite, then `make profile-test-report`
 to render the parent and aggregated child profiles. Profiling uses the same Make runner,
 persistent Testmon database, selection, and deadline as `make test`. Each collection
-process, controller, and worker writes its own cProfile artifact under that run's report
-directory; the aggregate includes fixture setup, test calls, and teardown. A failing or
-interrupted profiled run remains RED with its original process outcome. The profile is
+process writes its own cProfile artifact under that run's report directory.
+The instrumented suite and its Python worker descendants capture fixture setup,
+test calls, and teardown. Parent, suite, collection, and descendant profiles are
+bound to the same run by their receipts and digests. A failing or interrupted
+profiled run remains RED with its original process outcome. The profile is
 diagnostic evidence, not a substitute for a complete test result.
 
 For a focused diagnostic, run the same verb from the workspace root:
@@ -73,9 +85,9 @@ make profile-test FILE=flext-tests/tests/unit/test_capability_collection.py
 make profile-test-report
 ```
 
-`FILE` uses the same repository-relative validation as `test-file`. Profiling runs
-one incremental operation, not the two-operation `test-file` lifecycle, with the
-same persistent Testmon database and deadline. The entry activates cProfile before
+`FILE` uses the same repository-relative validation as `test-file`. Both scoped
+verbs run one operation over the complete declared file with the same persistent
+Testmon database and deadline. The entry activates cProfile before
 importing the runner. The canonical child launcher installs run-owned stdlib startup
 instrumentation for Python descendants, including pytester subprocesses, preserving
 the inherited plugin set, Python path, and existing site customization. Completed
@@ -83,13 +95,28 @@ descendants publish PID-separated profiles bound by digest to the same run recei
 the report renders them separately alongside the suite and collection profiles.
 Abruptly terminated processes may leave no profile and are never reported as completed.
 
+Use `make profile-mod` and `make profile-mod-report` to measure the canonical
+mutating codemod lifecycle. The profile is written to the generated Make
+`PROFILE_REPORTS_DIR`. The same CLI profiling entry serves `profile-gen` and
+`profile-census`, preserves the CLI exit status, and flushes its profile when
+the CLI raises. A failed profiling invocation remains RED; its statistics
+identify the expensive owner and do not replace the required quality gates.
+
+Codemod admission resolves the declared package namespace once in the typed facts
+of each pass. Findings consume that snapshot; a later pass reads the current
+manifest again. No process-global namespace cache carries identity across passes.
+Behavior relocation builds CST metadata only for files whose attribute names occur
+in the declared utility inventory. Import visitors run only after an actual
+relocation; consumers without one retain their source.
+
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound
 derive from that policy. Use the profile and complete run receipts to repair
 a slow owner; an interrupted selection or suite remains a failed invocation.
 
 The runner first completes the incremental operation, then executes the full suite using
-the same database and one monotonic deadline. The first failure stops the sequence. The
+the same database without process, suite, or item time limits. The first failure stops
+the sequence. The
 full phase includes both configured `external-gate-markers` and `ci-excluded-markers` in
 every context. External tests retain their declared services, network access, and
 authentication requirements.
@@ -154,3 +181,21 @@ Private attribute usage is enforced by Pyright's resolved owner and export seman
 source, tests, examples, and scripts according to the typed path policy. The
 `ban-test-private-access` ast-grep rule retains only dynamic private-module imports; it
 does not duplicate semantic attribute detection or require deleting test scenarios.
+
+Import normalization preserves the declared provider of a generic parameter bound.
+Its regression test imports the rewritten consumer in a fresh interpreter and checks
+the resolved bound against that provider's public type. Rebinding a bound to an
+unrelated local facade changes the consumer contract and can create a checker cycle.
+
+Scaffold fixtures materialize each declared member's manifest before planning a
+workspace. Existing member manifests remain the fixture's inputs; newly seeded
+members read their version from the current repository. Tests that exercise only
+root policy declare no unmaterialized members.
+
+Pytest diagnostics require `junit`, `log_path`, and `report_log` at their public
+request boundary. The runner constructs that same request, and extraction preserves
+the original file, parser, and event-validation failures.
+
+Conform projects declared utility, protocol, and model facades across the canonical
+Python inventory, including auxiliary packages. Facade tests generate the package
+initializers before exercising the composed public surface in a fresh interpreter.

@@ -51,7 +51,6 @@ def runner_for(
         reports=cache.reports_directory,
         testmon_db=testmon_db,
         slow_phase=slow_phase,
-        unbounded=unbounded,
     )
 
 

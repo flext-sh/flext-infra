@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from json import dumps
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
@@ -201,30 +202,19 @@ class FlextInfraReleaseBuildMixin(FlextInfraReleaseProjectMixin):
 
         """
         lock_path = repository_root / c.Infra.UV_LOCK_FILENAME
-        text = u.Cli.files_read_text(lock_path)
-        if text.failure:
-            # A consumer without a lock (fixture workspaces, first-release
-            # trees) has no internal git entries to seed; the render's
-            # fail-loud still covers every name the map lacks.
-            return r[t.MutableStrMapping].ok({})
-        document = u.Cli.toml_parse_text(text.value)
-        if document is None:
-            return r[t.MutableStrMapping].fail(
-                f"release build cannot parse {lock_path}: invalid TOML",
-            )
+        document = u.Cli.toml_read_json(lock_path)
+        if document.failure:
+            return r[t.MutableStrMapping].from_failure(document)
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
         versions: t.MutableStrMapping = {}
-        for package in document.get("package") or []:
-            name = package.get("name") or ""
-            version = package.get("version") or ""
-            source = package.get("source") or {}
+        for package in locked.package:
             if (
-                name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
-                and version
-                and isinstance(source, dict)
-                and source.get("git")
+                package.name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
+                and package.version
+                and package.source.git
             ):
-                versions.setdefault(name, version)
-        return r[bool].ok(versions)
+                versions.setdefault(package.name, package.version)
+        return r[t.MutableStrMapping].ok(versions)
 
     @classmethod
     def _snapshot_policy(

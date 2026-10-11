@@ -14,8 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, config, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import FlextInfraGate, c, config, u
 
 if TYPE_CHECKING:
     from flext_infra import m, t
@@ -63,7 +62,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
         if not ignore_path.is_file():
             return ()
         patterns: list[str] = []
-        for line in ignore_path.read_text(c.Cli.ENCODING_DEFAULT).splitlines():
+        for line in ignore_path.read_text(c.DEFAULT_ENCODING).splitlines():
             stripped = line.strip()
             if not stripped or stripped.startswith("#"):
                 continue

@@ -275,7 +275,7 @@ class FlextInfraUtilitiesBase:
         """
         rule_ids: set[str] = set()
         fixable_ids: set[str] = set()
-        for raw_document in rule_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).split(
+        for raw_document in rule_path.read_text(encoding=c.DEFAULT_ENCODING).split(
             "\n---",
         ):
             if not any(

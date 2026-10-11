@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, s, u
+from flext_infra import c, m, r, s, t, u
 from flext_infra.validate import FlextInfraPytestDiagXmlMixin
 
 if TYPE_CHECKING:
@@ -28,12 +28,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     The human-readable pytest log remains required diagnostic evidence.
     """
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
     junit: Annotated[Path, m.Field(description="JUnit XML path")]
-    log_path: Annotated[Path, m.Field(description="Pytest log path")] = m.Field(
-        alias="log",
-    )
+    log_path: Annotated[Path, m.Field(description="Pytest log path")]
     report_log: Annotated[Path, m.Field(description="Pytest report-log JSONL path")]
     failed: Annotated[
         Path | None,
@@ -67,11 +63,11 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
                 lifecycle.
 
         """
-        lines = report_log.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
+        lines = report_log.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
         if not lines:
             msg = f"pytest report log contains no events: {report_log}"
             raise ValueError(msg)
-        warnings = []
+        warnings: t.MutableSequenceOf[m.Infra.PytestReportEvent] = []
         for line in lines:
             event = m.Infra.PytestReportEvent.model_validate_json(line)
             if event.report_type == "WarningMessage":
@@ -82,7 +78,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             m.Infra.PytestWarningEvent.model_validate_json(line)
             for line in report_log
             .with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
-            .read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            .read_text(encoding=c.DEFAULT_ENCODING)
             .splitlines()
         ]
         for event, identity in zip(warnings, identities, strict=True):
@@ -190,7 +186,11 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             r with diagnostics dict containing counts and entries.
 
         """
-        return self._extract_diagnostics(junit_path, log_path, report_log=report_log)
+        log_path.read_text(encoding=c.DEFAULT_ENCODING)
+        diag = m.Infra.DiagResult()
+        self._parse_xml(junit_path, diag)
+        self._extract_report_events(report_log, diag)
+        return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @classmethod
     def extract_report_log(
@@ -206,16 +206,6 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         diag = m.Infra.DiagResult()
         cls._extract_report_events(report_log, diag)
         return r.ok(cls._diagnostics_model(diag))
-
-    @staticmethod
-    def _read_log_text(log_path: Path) -> str:
-        """Read the required pytest log without exception normalization.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
     @staticmethod
     def _diagnostics_model(diag: m.Infra.DiagResult) -> m.Infra.PytestDiagnostics:
@@ -253,25 +243,6 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             skip_cases=diag.skip_cases,
             slow_entries=diag.slow_entries,
         )
-
-    def _extract_diagnostics(
-        self,
-        junit_path: Path,
-        log_path: Path,
-        *,
-        report_log: Path,
-    ) -> p.Result[m.Infra.PytestDiagnostics]:
-        """Extract pytest diagnostics after input normalization.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.PytestDiagnostics]``.
-
-        """
-        self._read_log_text(log_path)
-        diag = m.Infra.DiagResult()
-        self._parse_xml(junit_path, diag)
-        self._extract_report_events(report_log, diag)
-        return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @override
     def execute(self) -> p.Result[bool]:

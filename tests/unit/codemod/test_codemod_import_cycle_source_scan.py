@@ -51,6 +51,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
 
         """
         return m.Infra.CodemodProjectFacts(
+            own_package=None,
             predicates=frozenset({c.Infra.CodemodContextPredicate.IMPORT_CYCLE}),
             import_graph={},
             import_modules={},
@@ -77,30 +78,41 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         rule = self._cycle_rule()
         facts = self._facts()
 
-        verdict = u.Infra.codemod_context_admits(
-            m.Infra.CodemodAdmission(
-                root=project,
-                rule=rule,
-                file_path=legado,
-                captures={"MODULE": {"text": "demo.live"}, "NAME": {"text": "value"}},
-                facts=facts,
-            ),
-        )
-
-        tm.that(verdict, eq=False)
-        with pytest.raises(ValueError, match="absent from the project import graph"):
-            u.Infra.codemod_context_admits(
+        with u.Infra.codemod_binding_project(
+            project, m.Infra.CodemodBindingSnapshot(states=())
+        ) as (rope_project, sources):
+            verdict = u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(
                     root=project,
                     rule=rule,
-                    file_path=live,
+                    file_path=legado,
                     captures={
                         "MODULE": {"text": "demo.live"},
                         "NAME": {"text": "value"},
                     },
                     facts=facts,
                 ),
+                project=rope_project,
+                sources=sources,
             )
+            tm.that(verdict, eq=False)
+            with pytest.raises(
+                ValueError, match="absent from the project import graph"
+            ):
+                u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=project,
+                        rule=rule,
+                        file_path=live,
+                        captures={
+                            "MODULE": {"text": "demo.live"},
+                            "NAME": {"text": "value"},
+                        },
+                        facts=facts,
+                    ),
+                    project=rope_project,
+                    sources=sources,
+                )
 
     @staticmethod
     def test_generated_source_tree_is_outside_the_scan_targets(

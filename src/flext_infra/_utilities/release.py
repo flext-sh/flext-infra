@@ -263,7 +263,7 @@ class FlextInfraUtilitiesRelease:
             u.write_file(
                 output_path,
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             u.fetch_logger(__name__).info(
                 "release_notes_written",
@@ -348,9 +348,9 @@ class FlextInfraUtilitiesRelease:
         changelog_path = docs / "CHANGELOG.md"
         latest_path = docs / "releases" / "latest.md"
         tagged_path = docs / "releases" / f"{tag}.md"
-        notes_text = notes_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        notes_text = notes_path.read_text(encoding=c.DEFAULT_ENCODING)
         existing = (
-            changelog_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            changelog_path.read_text(encoding=c.DEFAULT_ENCODING)
             if changelog_path.exists()
             else "# Changelog\n\n"
         )
@@ -360,10 +360,10 @@ class FlextInfraUtilitiesRelease:
             tag=tag,
         )
         changelog_path.parent.mkdir(parents=True, exist_ok=True)
-        u.write_file(changelog_path, updated, encoding=c.Cli.ENCODING_DEFAULT)
+        u.write_file(changelog_path, updated, encoding=c.DEFAULT_ENCODING)
         latest_path.parent.mkdir(parents=True, exist_ok=True)
-        u.write_file(latest_path, notes_text, encoding=c.Cli.ENCODING_DEFAULT)
-        u.write_file(tagged_path, notes_text, encoding=c.Cli.ENCODING_DEFAULT)
+        u.write_file(latest_path, notes_text, encoding=c.DEFAULT_ENCODING)
+        u.write_file(tagged_path, notes_text, encoding=c.DEFAULT_ENCODING)
         u.fetch_logger(__name__).info(
             "release_changelog_written",
             path=str(changelog_path),

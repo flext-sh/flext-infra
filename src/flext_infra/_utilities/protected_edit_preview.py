@@ -53,7 +53,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         existing_paths: list[Path] = []
         for path in updates:
             if path.exists():
-                before_sources[path] = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                before_sources[path] = path.read_text(encoding=c.DEFAULT_ENCODING)
                 existing_paths.append(path)
                 continue
             before_sources[path] = None
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 if path.exists():
                     path.unlink()
                 continue
-            path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+            path.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
     def _reverted_report_lines(
@@ -102,7 +102,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
         """
         rel = FlextInfraUtilitiesProtectedEditPreview._relative_path(path, workspace)
-        modified = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        modified = path.read_text(encoding=c.DEFAULT_ENCODING)
         diff = FlextInfraUtilitiesProtectedEditPreview.unified_diff_lines(
             before_source,
             modified,
@@ -191,7 +191,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         try:
             for path, updated_source in normalized_updates.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
+                path.write_text(updated_source, encoding=c.DEFAULT_ENCODING)
             if post_write is not None:
                 post_write()
             return FlextInfraUtilitiesProtectedEditPreview._preview_write_reports(

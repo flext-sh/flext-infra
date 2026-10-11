@@ -14,7 +14,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config
-from tests import m, u
+from tests import m, t, u
 
 
 class TestsFlextInfraBindingInstall:
@@ -45,7 +45,6 @@ class TestsFlextInfraBindingInstall:
                     issue_prefix="binding-workspace",
                 ),
             )
-            consumer = workspace / consumer.name
         for root, name in (
             (supplier, "binding-candidate"),
             (consumer, "binding-consumer"),
@@ -76,11 +75,11 @@ class TestsFlextInfraBindingInstall:
                 'build-backend = "setuptools.build_meta"\n'
                 f'[project]\nname = "{name}"\nversion = "1.0.0"\n{optional}'
                 f'\n[tool.setuptools]\npy-modules = ["{name.replace("-", "_")}"]\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             (root / f"{name.replace('-', '_')}.py").write_text(
                 'VALUE = "installed"\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
 
     @staticmethod
@@ -93,7 +92,7 @@ class TestsFlextInfraBindingInstall:
         """
         inactive = "; python_version < '0'"
         marker = inactive if scenario == "inactive" else ""
-        policy = []
+        policy: t.MutableSequenceOf[str] = []
         if scenario in {"override", "override-constraint"}:
             policy.append('override-dependencies = ["binding-candidate==1"]')
         if scenario == "inactive-override":
@@ -111,7 +110,7 @@ class TestsFlextInfraBindingInstall:
             '[project]\nname = "binding-consumer"\nversion = "1.0.0"\n'
             f'dependencies = ["Binding_Candidate[feature]>={minimum}{marker}"]\n'
             f"{constraints}",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         return declaration.read_bytes()
 
@@ -177,6 +176,8 @@ class TestsFlextInfraBindingInstall:
         supplier, consumer, extra, workspace = (
             tmp_path / name for name in ("supplier", "consumer", "extra", "workspace")
         )
+        if scenario == "borrowed-member":
+            consumer = workspace / consumer.name
         TestsFlextInfraBindingInstall._seed_candidate_projects(
             supplier,
             consumer,

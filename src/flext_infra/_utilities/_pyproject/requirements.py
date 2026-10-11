@@ -17,7 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._pyproject._requirements_provenance import (
-    RequirementProvenance,
+    FlextInfraRequirementProvenance,
 )
 
 if TYPE_CHECKING:
@@ -28,6 +28,33 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
+
+    @staticmethod
+    def custom_dev_additions(live_payload: t.JsonMapping) -> t.StrSequence:
+        """Retain custom dev requirements after excluding generated members.
+
+        Returns:
+            The consumer-owned dev additions.
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
+        uv = u.Cli.toml_mapping_child(tool, "uv") or {}
+        sources = u.Cli.toml_mapping_child(uv, "sources") or {}
+        local = {
+            name
+            for name in sources
+            if (entry := u.Cli.toml_mapping_child(sources, name)) is not None
+            and ("path" in entry or entry.get("workspace") is True)
+        }
+        return tuple(
+            requirement
+            for requirement in u.Cli.toml_as_string_list(groups.get(str(c.Infra.DEV)))
+            if not (
+                FlextInfraUtilitiesDependencies.dep_name(requirement) in local
+                and "@" in requirement
+                and ";" not in requirement
+            )
+        )
 
     @staticmethod
     def requirement_group_fields(
@@ -51,7 +78,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
             section = u.Cli.toml_table_child(parent, section_name)
             if section is None:
                 continue
-            for group_name in tuple(section):
+            group_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.Cli.toml_unwrap_item(section),
+            )
+            for group_name in group_names:
                 yield section, group_name
 
     @classmethod
@@ -69,7 +99,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = RequirementProvenance(
+        provenance = FlextInfraRequirementProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
@@ -98,7 +128,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraRequirementProvenance,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -155,7 +185,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         requirement: str,
         *,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraRequirementProvenance,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
@@ -227,7 +257,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         parsed: t.Pair[str, str],
         line: str | None,
-        provenance: RequirementProvenance,
+        provenance: FlextInfraRequirementProvenance,
     ) -> p.Result[t.Pair[t.Pair[str, str], str | None]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 
@@ -319,10 +349,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r.fail(f"invalid internal requirement: {requirement}")
+            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].fail(
+                f"invalid internal requirement: {requirement}",
+            )
         source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
         if source.failure:
-            return r.from_failure(source)
+            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].from_failure(
+                source,
+            )
         marker_text = marker.strip()
         head = head_match.group("head").strip()
         marker_pair = (bool(separator and marker_text), marker_text)

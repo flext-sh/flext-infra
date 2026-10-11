@@ -346,7 +346,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file.parent.mkdir(parents=True, exist_ok=True)
         py_file.write_text(
             f"{c.Infra.FUTURE_ANNOTATIONS}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         try:
             return cls.lint_snapshot(py_file, workspace, gates=gates)
@@ -662,7 +662,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]``.
 
         """
-        original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        original_source = py_file.read_text(encoding=c.DEFAULT_ENCODING)
         before = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(
             py_file,
             workspace,
@@ -670,7 +670,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
         if updated_source == original_source:
             return before, before
-        py_file.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
+        py_file.write_text(updated_source, encoding=c.DEFAULT_ENCODING)
         try:
             after = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(
                 py_file,
@@ -678,7 +678,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 gates=gates,
             )
         finally:
-            py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+            py_file.write_text(original_source, encoding=c.DEFAULT_ENCODING)
         return before, after
 
 

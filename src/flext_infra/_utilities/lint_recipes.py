@@ -442,8 +442,8 @@ class FlextInfraUtilitiesLintRecipes:
 
         """
         return len(
-            line.encode(c.Cli.ENCODING_DEFAULT)[:col_offset].decode(
-                c.Cli.ENCODING_DEFAULT,
+            line.encode(c.DEFAULT_ENCODING)[:col_offset].decode(
+                c.DEFAULT_ENCODING,
             ),
         )
 
@@ -742,8 +742,8 @@ class FlextInfraUtilitiesLintRecipes:
         prefix = sum(len(text) for text in lines[: lineno - 1])
         column = len(
             lines[lineno - 1]
-            .encode(c.Cli.ENCODING_DEFAULT)[:col_offset]
-            .decode(c.Cli.ENCODING_DEFAULT),
+            .encode(c.DEFAULT_ENCODING)[:col_offset]
+            .decode(c.DEFAULT_ENCODING),
         )
         return prefix + column
 

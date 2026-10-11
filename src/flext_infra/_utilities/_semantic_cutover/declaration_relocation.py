@@ -214,8 +214,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for part in path.relative_to(namespace).parts
         )
 
-    @staticmethod
+    @classmethod
     def _collect_settings_exports(
+        cls,
         context: tuple[
             p.Infra.RopeProject,
             str,
@@ -245,9 +246,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     root,
                     sources,
                 )
-                resolved = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_settings_export(
-                    alias_context
-                )
+                resolved = cls._resolve_settings_export(alias_context)
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]
         return exports
@@ -277,14 +276,16 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if binding is None:
             return None
-        owner, _line = binding.get_definition_location()
+        owner = binding.get_definition_location()[0]
         resource = owner.get_resource() if owner is not None else None
         if resource is None:
             return None
         target = Path(resource.real_path).resolve()
-        if target not in sources or not target.is_relative_to(namespace):
-            return None
-        if not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target):
+        if (
+            target not in sources
+            or not target.is_relative_to(namespace)
+            or not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target)
+        ):
             return None
         destination = project.get_pymodule(resource)
         declared = destination.get_attributes().get(alias.name)

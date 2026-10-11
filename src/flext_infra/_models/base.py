@@ -10,9 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
-
-from flext_infra import t
+from flext_cli import m, t
 
 
 class FlextInfraModelsBase:

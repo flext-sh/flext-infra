@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING
 
 import pytest
@@ -20,33 +19,27 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@dataclasses.dataclass(frozen=True)
-class DiagExtractorOptions:
-    """Optional extractor fixture knobs grouped into one contract."""
-
-    failed: Path | None = None
-    errors: Path | None = None
-    warnings: Path | None = None
-    slowest: Path | None = None
-    skips: Path | None = None
-    events: str = (
-        '{"$report_type":"SessionStart"}\n'
-        '{"$report_type":"SessionFinish","exitstatus":0}\n'
-    )
-    identities: str = ""
-
-
 class TestsFlextInfraPytestDiag:
     """Tests for ``FlextInfraPytestDiag``."""
+
+    @staticmethod
+    def test_extractor_requires_the_canonical_log_path_field(tmp_path: Path) -> None:
+        """Reject an input that supplies no canonical required log path."""
+        with pytest.raises(m.ValidationError):
+            FlextInfraPytestDiagExtractor.model_validate({
+                "junit": tmp_path / "junit.xml",
+                "log": tmp_path / "pytest.log",
+                "report_log": tmp_path / "events.jsonl",
+            })
 
     @staticmethod
     def _extractor(
         junit: Path,
         log: Path,
         *,
-        options: DiagExtractorOptions | None = None,
+        options: m.Tests.PytestDiagOptions | None = None,
     ) -> FlextInfraPytestDiagExtractor:
-        resolved = DiagExtractorOptions() if options is None else options
+        resolved = m.Tests.PytestDiagOptions() if options is None else options
         report_log = log.with_suffix(".jsonl")
         report_log.write_text(resolved.events, encoding="utf-8")
         report_log.with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX).write_text(
@@ -55,7 +48,7 @@ class TestsFlextInfraPytestDiag:
         )
         return FlextInfraPytestDiagExtractor(
             junit=junit,
-            log=log,
+            log_path=log,
             report_log=report_log,
             failed=resolved.failed,
             errors=resolved.errors,
@@ -306,7 +299,7 @@ class TestsFlextInfraPytestDiag:
             self._extractor(
                 junit,
                 log,
-                options=DiagExtractorOptions(
+                options=m.Tests.PytestDiagOptions(
                     events='{"$report_type":"WarningMessage",'
                     '"category":"DeprecationWarning","filename":"test_case.py",'
                     '"lineno":10,"message":"test warning","when":"runtest"}\n',
@@ -340,7 +333,7 @@ class TestsFlextInfraPytestDiag:
             self._extractor(
                 junit,
                 log,
-                options=DiagExtractorOptions(
+                options=m.Tests.PytestDiagOptions(
                     events=event * 2,
                     identities=self._identity("DomainNotice", "first\nsecond") * 2,
                 ),
@@ -390,7 +383,7 @@ class TestsFlextInfraPytestDiag:
         extractor = self._extractor(
             junit,
             log,
-            options=DiagExtractorOptions(
+            options=m.Tests.PytestDiagOptions(
                 failed=tmp_path / "failed.txt",
                 errors=tmp_path / "errors.txt",
                 warnings=tmp_path / "warnings.txt",
@@ -424,7 +417,7 @@ class TestsFlextInfraPytestDiag:
         extractor = self._extractor(
             junit,
             log,
-            options=DiagExtractorOptions(
+            options=m.Tests.PytestDiagOptions(
                 events='{"$report_type":"WarningMessage",'
                 f'"category":"{category}","filename":"test_case.py",'
                 '"lineno":10,"message":"enforcement evidence"}\n',
@@ -466,7 +459,7 @@ class TestsFlextInfraPytestDiag:
         extractor = self._extractor(
             junit,
             log,
-            options=DiagExtractorOptions(events=events),
+            options=m.Tests.PytestDiagOptions(events=events),
         )
         with pytest.raises(ValueError, match=r"contains no events|validation error"):
             extractor.extract(junit, log, report_log=extractor.report_log)
@@ -493,7 +486,7 @@ class TestsFlextInfraPytestDiag:
         extractor = self._extractor(
             junit,
             log,
-            options=DiagExtractorOptions(
+            options=m.Tests.PytestDiagOptions(
                 events='{"$report_type":"WarningMessage","category":"DomainNotice",'
                 '"filename":"test_case.py","lineno":10,"message":"evidence"}\n',
             ),

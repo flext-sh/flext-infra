@@ -143,7 +143,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         }
         return u.Infra.overridden_methods(
             tuple(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                path.read_text(encoding=c.DEFAULT_ENCODING)
                 for directory in self._existing_check_dirs(project_dir)
                 for path in u.Infra.iter_directory_python_files(
                     project_dir / directory,
@@ -206,7 +206,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     recipes,
                     import_graph=import_graph,
                 )
-                if repaired.encode(c.Cli.ENCODING_DEFAULT) != before.content:
+                if repaired.encode(c.DEFAULT_ENCODING) != before.content:
                     planned.append((before, repaired))
             for before, repaired in planned:
                 u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
@@ -235,7 +235,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if before.content is None:
             raise FileNotFoundError(before.path)
         path = before.path
-        source = before.content.decode(c.Cli.ENCODING_DEFAULT)
+        source = before.content.decode(c.DEFAULT_ENCODING)
         owned = {issue.code: recipes[issue.code] for issue in issues}
         if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
             source = (
@@ -331,7 +331,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             f"{issue.file}:{issue.line}:{issue.code}"
             for path, found in by_file.items()
             for issue in u.Infra.overridden_findings(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                path.read_text(encoding=c.DEFAULT_ENCODING),
                 found,
                 path=path,
                 recipes=recipes,

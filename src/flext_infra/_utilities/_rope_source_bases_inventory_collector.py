@@ -71,7 +71,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         elif isinstance(node, ast.AugAssign):
             cls._aug_assign(spec, node, bindings)
         elif isinstance(node, ast.Delete):
-            cls._delete(spec, node, bindings)
+            cls._delete(node, bindings)
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             bindings[node.name] = None
         elif isinstance(node, ast.If):
@@ -430,17 +430,55 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         )
         if resolved is None:
             return False
-        owner_target, attribute, member = resolved
-        definition = spec.definitions[owner_target]
-        spec.definitions[owner_target] = definition.model_copy(
+        definition = spec.definitions[owner.target]
+        spec.definitions[owner.target] = definition.model_copy(
             update={
                 "members": {
                     **definition.members,
-                    attribute: member,
+                    target.attr: visible[value.id],
                 },
             },
         )
         return True
+
+    @staticmethod
+    def _nested_class_receiver(
+        reference: m.Infra.SourceClassReference,
+        definitions: t.MappingKV[str, m.Infra.SourceClassDefinition],
+    ) -> m.Infra.SourceClassReference | None:
+        """Resolve a receiver only through inventoried nested class identities.
+
+        Args:
+            reference: The initial class reference to resolve.
+            definitions: A mapping of class targets to their definitions.
+
+        Returns:
+            The resolved nested class reference, or None if it cannot be resolved.
+            Returns None if the resolution fails.
+
+        Raises:
+            ValueError: If a cyclic class namespace receiver is detected.
+        """
+        current = reference
+        visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
+        while current.attributes:
+            identity = current.target, current.attributes
+            if identity in visited:
+                message = f"cyclic class namespace receiver: {current.qualified_base}"
+                raise ValueError(message)
+            visited.add(identity)
+            definition = definitions.get(current.target)
+            if definition is None:
+                return None
+            member = definition.members.get(current.attributes[0])
+            if member is None:
+                return None
+            current = member.model_copy(
+                update={
+                    "attributes": (*member.attributes, *current.attributes[1:]),
+                },
+            )
+        return current if current.target in definitions else None
 
     @classmethod
     def _name_assignment(
@@ -502,7 +540,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _delete(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Delete,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:

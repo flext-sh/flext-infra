@@ -15,7 +15,7 @@ from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
-from flext_cli import r, u
+from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -352,7 +352,7 @@ class FlextInfraUtilitiesCodemodRules:
         Returns:
             The resulting ``p.Result[str]``.
         """
-        parsed = u.Cli.yaml_parse(config.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+        parsed = u.Cli.yaml_parse(config.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure:
             return r[str].from_failure(parsed)
         scope = parsed.value.get(c.Infra.CODEMOD_SCOPE_KEY)
@@ -509,7 +509,7 @@ class FlextInfraUtilitiesCodemodRules:
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
 
         parsed_config = u.Cli.yaml_parse(
-            config.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            config.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if parsed_config.failure:
             return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(parsed_config)
@@ -535,7 +535,7 @@ class FlextInfraUtilitiesCodemodRules:
                     f"codemod ruleDirs entry is missing: {rule_dir}",
                 )
             sources.extend(
-                (resource, resource.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+                (resource, resource.read_text(encoding=c.DEFAULT_ENCODING))
                 for resource in sorted(rule_dir.rglob("*.yml"))
                 if not any(
                     part.startswith("_")
@@ -557,7 +557,7 @@ class FlextInfraUtilitiesCodemodRules:
         if not cache_file.is_file():
             return None
         loaded = u.Cli.json_loads(
-            cache_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            cache_file.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if loaded.failure:
             return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
@@ -614,7 +614,7 @@ class FlextInfraUtilitiesCodemodRules:
         """
         identity = u.Cli.json_dumps([
             provider,
-            Path(__file__).read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            Path(__file__).read_text(encoding=c.DEFAULT_ENCODING),
             [[str(resource), text] for resource, text in sources],
         ])
         if identity.failure:

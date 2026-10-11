@@ -38,7 +38,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         parent.mkdir()
         (parent / c.Infra.INIT_PY).write_text(
             c.Infra.AUTOGEN_HEADERS[0] + "\n__all__ = []\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(
             parent / "constants.py",
@@ -47,26 +47,25 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         parent_constants = parent / c.Infra.CONSTANTS_PY
         parent_constants.write_text(
-            parent_constants.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            + "\nimport re\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            parent_constants.read_text(encoding=c.DEFAULT_ENCODING) + "\nimport re\n",
+            encoding=c.DEFAULT_ENCODING,
         )
         (parent / "result.py").write_text(
             "from flext_core import FlextResult\nr = FlextResult\n"
             "__all__ = ['FlextResult', 'r']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (child / "constants.py").write_text(
             "from flext_bootstrap_parent import c as parent_c\n"
             "class BootstrapChildConstants(parent_c):\n    pass\n"
             "c = BootstrapChildConstants\n__all__ = ['BootstrapChildConstants', 'c']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (child / "consumer.py").write_text(
             "from flext_bootstrap_child import r\n"
             "def execute():\n    return r.ok('bootstrap-ready')\n"
             "__all__ = ['execute']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         first = (child / c.Infra.INIT_PY).read_bytes()
@@ -134,7 +133,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(
@@ -171,7 +170,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         entries, _refs = u.Infra.lazy_import_mapping_source(generated)
         sources = dict(entries)
@@ -215,7 +214,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         entries, _refs = u.Infra.lazy_import_mapping_source(generated)
         sources = dict(entries)
