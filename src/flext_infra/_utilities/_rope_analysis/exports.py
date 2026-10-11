@@ -219,7 +219,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             and whether ``__all__`` was bound.
 
         """
-        collector = ExportBindingInventory()
+        collector = _ExportBindingInventory()
         collector.collect_statements(statements)
         return (collector.assignments, collector.definitions, collector.explicit_all)
 

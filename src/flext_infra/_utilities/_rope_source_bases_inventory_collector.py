@@ -422,31 +422,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
-            node,
-            targets,
-            visible,
+            node, targets, visible
         ):
             return False
-        target = targets[0]
-        value = node.value
-        if not isinstance(target, ast.Attribute):
-            return False
-        owner = cls._reference(target.value, visible, spec.module)
-        owner = cls._nested_class_receiver(owner, spec.definitions)
-        if owner is None:
-            return False
-        if isinstance(value, ast.Call):
-            definition = spec.definitions[owner.target]
-            spec.definitions[owner.target] = definition.model_copy(
-                update={
-                    "members": {
-                        **definition.members,
-                        target.attr: None,
-                    },
-                },
-            )
-            return True
-        if not isinstance(value, ast.Name) or value.id not in visible:
+        resolved = cls._inventoried_receiver_update(
+            spec, node, targets, visible, spec.module
+        )
+        if resolved is None:
             return False
         owner_target, attribute, member = resolved
         definition = spec.definitions[owner_target]
@@ -459,73 +441,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             },
         )
         return True
-
-    @staticmethod
-    def _nested_class_receiver(
-        reference: m.Infra.SourceClassReference,
-        definitions: t.MappingKV[str, m.Infra.SourceClassDefinition],
-    ) -> m.Infra.SourceClassReference | None:
-        """Resolve a receiver only through inventoried nested class identities.
-
-        Args:
-            reference: The initial class reference to resolve.
-            definitions: A mapping of class targets to their definitions.
-
-        Returns:
-            The resolved nested class reference, or None if it cannot be resolved.
-            Returns None if the resolution fails.
-
-        Raises:
-            ValueError: If a cyclic class namespace receiver is detected.
-        """
-        current = reference
-        visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
-        while current.attributes:
-            identity = current.target, current.attributes
-            if identity in visited:
-                message = f"cyclic class namespace receiver: {current.qualified_base}"
-                raise ValueError(message)
-            visited.add(identity)
-            definition = definitions.get(current.target)
-            if definition is None:
-                return None
-            member = definition.members.get(current.attributes[0])
-            if member is None:
-                return None
-            current = member.model_copy(
-                update={
-                    "attributes": (*member.attributes, *current.attributes[1:]),
-                },
-            )
-        return current if current.target in definitions else None
-
-    @classmethod
-    def _inventoried_receiver_update(
-        cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
-        node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
-        visible: MutableMapping[str, m.Infra.SourceClassReference | None],
-        module: str,
-    ) -> tuple[str, str, m.Infra.SourceClassReference | None] | None:
-        """Resolve one inventoried receiver update, or ``None`` when inapplicable.
-
-        Returns:
-            The ``(owner target, attribute, member)`` update, or ``None``.
-
-        """
-        target = targets[0]
-        value = node.value
-        if not isinstance(target, ast.Attribute):
-            return None
-        owner = cls._reference(target.value, visible, module)
-        if owner.target not in spec.definitions or owner.attributes:
-            return None
-        if isinstance(value, ast.Call):
-            return owner.target, target.attr, None
-        if isinstance(value, ast.Name) and value.id in visible:
-            return owner.target, target.attr, visible[value.id]
-        return None
 
     @classmethod
     def _name_assignment(
