@@ -192,7 +192,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         what the committed locks pin (`--locked`, `install --locked`) and
         rejects a stale UV lock before synchronization.
         """
-        _profile, project_root = generated_make_template
+        profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
         )
@@ -281,7 +281,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=["$(UV) lock"])
         tm.that(
             setup_recipe,
-            has=["lock --check", "$(UV_SYNC_FLAGS) --locked", "ERROR[setup]", "make upg"],
+            has=[
+                "lock --check",
+                "$(UV_SYNC_FLAGS) --locked",
+                "ERROR[setup]",
+                "make upg",
+            ],
         )
         lock_check = setup_recipe.index("lock --check")
         sync = setup_recipe.index("$(UV) sync")
@@ -310,9 +315,11 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.that(
             "--all-packages" in sync_flags.group(1),
-            eq=_profile is c.Infra.MakeProfile.WORKSPACE,
+            eq=profile is c.Infra.MakeProfile.WORKSPACE,
         )
-        tm.that(makefile, has="override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable")
+        tm.that(
+            makefile, has="override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable"
+        )
 
         mise_toml = u.Cli.toml_mapping_from_text(
             (project_root / c.Infra.MISE_TOML_FILENAME).read_text(encoding="utf-8"),

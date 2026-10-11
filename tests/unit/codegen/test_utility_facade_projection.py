@@ -558,7 +558,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             self._write(
                 directory / "pyproject.toml",
                 f'[project]\nname = "{distribution}"\nversion = "1.0.0"\n'
-                + ('dependencies = ["provider"]\n' if distribution == "receiver" else ""),
+                + (
+                    'dependencies = ["provider"]\n'
+                    if distribution == "receiver"
+                    else ""
+                ),
             )
         self._write(package / "__init__.py", "")
         self._write(foreign / "__init__.py", "from .utilities import u\n")
