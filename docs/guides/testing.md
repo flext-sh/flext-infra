@@ -95,6 +95,13 @@ descendants publish PID-separated profiles bound by digest to the same run recei
 the report renders them separately alongside the suite and collection profiles.
 Abruptly terminated processes may leave no profile and are never reported as completed.
 
+Use `make profile-mod` and `make profile-mod-report` to measure the canonical
+mutating codemod lifecycle. The profile is written to the generated Make
+`PROFILE_REPORTS_DIR`. The same CLI profiling entry serves `profile-gen` and
+`profile-census`, preserves the CLI exit status, and flushes its profile when
+the CLI raises. A failed profiling invocation remains RED; its statistics
+identify the expensive owner and do not replace the required quality gates.
+
 The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
 in `config/tooling.yaml`. The typed runner and generated Make process bound
 derive from that policy. Use the profile and complete run receipts to repair
