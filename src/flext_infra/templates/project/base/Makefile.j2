@@ -110,7 +110,7 @@ case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative p
 if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
 export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
 {%- if run_tests %}
-{{ pytest_test_runner(("file", "file-slow"), allow_empty_file_phases=true) }}
+{{ pytest_test_runner(("file", "file-slow"), allow_empty_file_phases=true) | trim }}
 {%- endif %}
 {%- endmacro -%}
 # @flext-generated: continuous

@@ -38,17 +38,23 @@ class FlextInfraModelsDepsToml:
             ]
             dependencies: Annotated[
                 t.StrTuple,
-                m.Field(description="Production requirement lines"),
+                m.Field(
+                    strict=False,
+                    description="Production requirement lines parsed from TOML arrays",
+                ),
             ]
             optional_dependencies: Annotated[
-                t.MappingKV[str, t.StrTuple],
+                t.MappingKV[str, Annotated[t.StrTuple, m.Field(strict=False)]],
                 m.Field(description="Every declared optional requirement group"),
             ]
             dependency_groups: Annotated[
                 t.MappingKV[
                     str,
-                    t.VariadicTuple[
-                        str | FlextInfraModelsDepsToml.DepsToml.GroupInclude
+                    Annotated[
+                        t.VariadicTuple[
+                            str | FlextInfraModelsDepsToml.DepsToml.GroupInclude
+                        ],
+                        m.Field(strict=False),
                     ],
                 ],
                 m.Field(description="PEP 735 requirement and inclusion entries"),
