@@ -189,6 +189,12 @@ class TestsFlextInfraCodegenRuntimeProfiles:
                 sorted(set(config.Infra.tooling.tools.pyrefly.strict_errors)), "error"
             ),
         )
+        tm.that(
+            u.Tests.toml_table_at(rendered, "tool", "pyrefly", "errors"),
+            eq=dict.fromkeys(
+                sorted(set(config.Infra.tooling.tools.pyrefly.strict_errors)), "error"
+            ),
+        )
         toolchain = config.Infra.codegen.toolchain
         expected = tm.ok(
             u.Infra.pyproject_conform(

@@ -10,8 +10,7 @@ from pathlib import Path
 from typing import Annotated, Self
 
 from flext_core import m
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsRelease
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
 
@@ -168,7 +167,7 @@ class FlextInfraModelsRelease:
         ]
         next: Annotated[t.NonEmptyStr, m.Field(description="Version to release")]
         bump: Annotated[
-            FlextInfraConstantsRelease.VersionBump,
+            c.Infra.VersionBump,
             m.Field(description="Bump derived from merged PRs"),
         ]
         previous_tag: Annotated[
@@ -199,7 +198,7 @@ class FlextInfraModelsRelease:
             Returns:
                 The resulting ``str``.
             """
-            return FlextInfraConstantsRelease.TAG_FORMAT.format(version=self.next)
+            return c.Infra.TAG_FORMAT.format(version=self.next)
 
         @m.computed_field
         @property
@@ -302,7 +301,7 @@ class FlextInfraModelsRelease:
 
         dry_run: Annotated[bool, m.Field(description="Dry run flag")] = False
         phase: Annotated[
-            FlextInfraConstantsRelease.ReleasePhase,
+            c.Infra.ReleasePhase,
             m.Field(description="Release phase"),
         ]
         index: Annotated[

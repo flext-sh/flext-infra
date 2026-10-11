@@ -38,6 +38,9 @@ from flext_infra.gates.codemod import FlextInfraCodemodGate
 if TYPE_CHECKING:
     from flext_infra import FlextInfraGate
 
+if TYPE_CHECKING:
+    from flext_infra.gates.base_gate import FlextInfraGate
+
 
 class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""

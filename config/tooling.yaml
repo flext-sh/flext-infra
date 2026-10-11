@@ -501,7 +501,7 @@ Infra:
                 No model or import workaround substitutes for this prohibition.
                 Canonical tracking remains flext-p7bxt and flext-4536i.
             - files: "**/tests/**"
-              rules: [ magic-value-comparison, private-member-access, compare-to-empty-string, too-many-public-methods, boolean-positional-value-in-call, pytest-fixture-autouse, mutable-class-default, no-self-use, import-private-name ]
+              rules: [ magic-value-comparison, private-member-access, compare-to-empty-string, too-many-public-methods, boolean-positional-value-in-call, boolean-type-hint-positional-argument, pytest-fixture-autouse, mutable-class-default, no-self-use, import-private-name ]
               authority: operator-ruling-2026-10-07-tests-family-consumption
               reason: >-
                 Test idioms: assertions compare against literal expected values
@@ -566,16 +566,6 @@ Infra:
                 Generated lazy-init package initializers must execute the lazy
                 installation, which is not a re-export.
 
-            - files: "scripts/**"
-              rules: [ any-type, unused-function-argument, undocumented-public-class, undocumented-public-method, undocumented-public-function, undocumented-public-init, unnecessary-multiline-docstring, blank-line-after-function, missing-blank-line-after-summary, multi-line-summary-first-line, raw-string-in-exception, f-string-in-exception, commented-out-code, shebang-not-executable, boolean-type-hint-positional-argument, boolean-default-value-positional-argument, read-whole-file, write-whole-file, if-exp-instead-of-or-operator, repeated-append, logging-string-concat, non-lowercase-variable-in-function, invalid-module-name, manual-list-comprehension, manual-list-copy, multiple-starts-ends-with, missing-maxsplit-arg, import-private-name, magic-value-comparison, literal-membership, unspecified-encoding, os-path-abspath, os-path-exists, os-path-join, os-path-dirname, builtin-open, path-constructor-current-directory, avoidable-escaped-quote, unsorted-dunder-all, used-dummy-variable, unused-noqa, noqa-comments, print, runtime-cast-value, banned-api, relative-imports, raise-vanilla-args, error-instead-of-exception, verbose-raise ]
-              authority: operator-ruling-2026-10-02-mcb-scripts-automation
-              reason: >-
-                Repository automation helpers (mcb scripts/**, migrated from mcb config/managed-artifacts.yaml when the project per-file declaration surface retired): CLI entrypoints print to stdout and use os.path; the sys.path bootstrap forces module-level imports after executable code. Scoped to scripts/** so shipped source keeps every rule. Subprocess relief removed by operator-ruling-2026-10-08-subprocess-supersedes-all: processes go through u.Cli.run.
-            - files: "**/tests/python/**"
-              rules: [ raise-vanilla-args ]
-              authority: operator-ruling-2026-10-02-mcb-tests-python
-              reason: >-
-                mcb tests/python exercises the scripts automation end to end (migrated from the retired project per-file surface: TRY003). Subprocess relief removed by operator-ruling-2026-10-08-subprocess-supersedes-all.
             - files: "src/flext_cli/_utilities/processes.py"
               rules: [ suspicious-subprocess-import, subprocess-without-shell-equals-true ]
               authority: operator-ruling-2026-10-08-subprocess-supersedes-all
@@ -600,6 +590,24 @@ Infra:
                 workspace venv exists and cannot import the u.Cli facade; it
                 owns its dev-server process lifecycle by design. Bounded to
                 this single skill script.
+            - files: "src/flext_tests/_utilities/environment.py"
+              rules: [ suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path ]
+              authority: operator-ruling-2026-10-08-subprocess-supersedes-all
+              reason: >-
+                flext-tests owns the shared test-environment prerequisite
+                probe; the git ls-files check runs on a caller-supplied
+                untracked .env path and cannot be routed through u.Cli.run
+                without breaking the workspace-wide collection contract. The
+                command is a fixed ["git", "ls-files", ...] list with no shell
+                expansion; bounded to this module.
+            - files: "tests/unit/test_capability_collection.py"
+              rules: [ missing-copyright-notice, undocumented-public-method, suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path, line-too-long ]
+              authority: operator-ruling-2026-10-10-test-suite-subprocess
+              reason: >-
+                pytester-driven collection tests own their own git init and
+                subprocess invocation on a fixture path; the fixture owns
+                the process lifecycle by design. Bounded to this single test
+                module.
       mypy:
         # Wall-time bound for the bounded Mypy execution (SSOT). A project
         # config/tooling.yaml overlay may only lower it; no environment
@@ -883,7 +891,7 @@ Infra:
           # the namespace lifecycle overhead before the measured
           # parallel-worker ceiling lands.
           algar-oud-mig: 300
-          # cosmos-docgen slow phase measured on 2026-10-06: the full-slow
+          # cosmos-docgen slow phase measured on 2026-10-06: the slow-marker
           # selection (~44 real-work cases: isolated-workspace builds, deck
           # and document renders, subprocess resolvers) reaches ~150s wall on
           # a cold testmon database, so the 120s entry clock SIGTERM'd the
@@ -988,13 +996,13 @@ Infra:
           - "requires_engine: native check engine required by this test"
         # External-token gates never run inside
         # offline verification (`make test`); the runner records their exclusion.
-        # `make test-full` first completes that incremental phase, then executes
-        # every marker under the same database and deadline. Existing external
-        # tests retain their declared environment and authentication requirements.
+        # `make test-full` runs locally only and executes every marker once,
+        # without testmon and without any time limit. Existing external tests
+        # retain their declared environment and authentication requirements.
         external-gate-markers: [remote, docker]
         # CI and pre-commit share make.ci.value;
-        # local and pre-push execution retain slow tests. The full phase of
-        # `make test-full` includes these markers in every context.
+        # local and pre-push execution retain slow tests. `make test-full`
+        # includes these markers in every context.
         ci-excluded-markers: [slow]
         # Fixtures declaring local engines or resolution cannot execute in approval.
         ci-excluded-fixtures:

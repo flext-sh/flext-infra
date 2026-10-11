@@ -98,6 +98,11 @@ class FlextInfraCandidateBootstrapService:
             manifest_state.path: manifest_state,
         }
         for root, target in zip(roots.values(), targets, strict=True):
+            contract = self._planner.surface_contract(target.what)
+            if contract.complete_governed:
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"candidate bootstrap requires one declared surface: {root}",
+                )
             request = m.Infra.CodegenConformRequest(
                 root=root,
                 what=target.what,
@@ -107,19 +112,32 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planner.plan(request)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            destinations = self._planner.surface_contract(target.what).destinations
-            if not destinations:
+            if not contract.destinations and not planned.value.files:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
             for file in planned.value.files:
+                foreign_owner = file.project != root or not file.path.is_relative_to(
+                    root
+                )
+                outside_surface = (
+                    not foreign_owner
+                    and contract.destinations is not None
+                    and file.path.relative_to(root).as_posix()
+                    not in contract.destinations
+                )
+                if foreign_owner or outside_surface:
+                    detail = (
+                        "candidate bootstrap destination has a foreign owner"
+                        if foreign_owner
+                        else "candidate bootstrap destination is outside its surface"
+                    )
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"candidate bootstrap destination is outside its surface: "
+                        f"{file.path}",
+                    )
                 files.append(file)
                 for state in file.source_states:
-                    previous = inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        return r[m.Infra.CodegenPhaseAnalysis].fail(
-                            f"candidate bootstrap observed two states for {state.path}",
-                        )
                     inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
@@ -128,6 +146,34 @@ class FlextInfraCandidateBootstrapService:
                 inputs=tuple(inputs.values()),
             ),
         )
+
+    @staticmethod
+    def _planned_file_failure(
+        root: Path,
+        file: m.Infra.CodegenFilePlan,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
+    ) -> str | None:
+        """Name the first bootstrap violation of one planned file.
+
+        Returns:
+            The failure message, or ``None`` when the file is planable.
+
+        """
+        if file.project != root or not file.path.is_relative_to(root):
+            return f"candidate bootstrap destination has a foreign owner: {file.path}"
+        if (
+            contract.destinations is not None
+            and file.path.relative_to(root).as_posix() not in contract.destinations
+        ):
+            return (
+                f"candidate bootstrap destination is outside its surface: {file.path}"
+            )
+        for state in file.source_states:
+            previous = inputs.get(state.path)
+            if previous is not None and previous != state:
+                return f"candidate bootstrap observed two states for {state.path}"
+        return None
 
     def _verify(
         self,

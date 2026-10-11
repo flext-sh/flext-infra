@@ -499,6 +499,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.FlextInfraModelsMixins.WriteMixin",
   "flext_infra._models._codegen.fix.BulkFixItem",
   "flext_infra._models._codegen.pipeline.CodegenCommand",
+  "flext_infra._models._config.FlextInfraConfigModelsContract.ConfigContract",
   "flext_infra._models._config.contexts.MakeCommandContext",
   "flext_infra._models._config.contexts.MakeRenderContext",
   "flext_infra._models._config.contract.ConfigContract",
@@ -513,7 +514,6 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.mixins.FilePathMixin",
   "flext_infra._models.mixins.PositiveLineMixin",
   "flext_infra._models.mixins.ScopeMixin",
-  "flext_infra.base.FlextInfraServiceBase",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",
@@ -610,6 +610,7 @@ split-on-trailing-comma = false
 "**/test_public_contracts_cov.py" = ["line-too-long"]
 "**/tests/**" = [
   "boolean-positional-value-in-call",
+  "boolean-type-hint-positional-argument",
   "compare-to-empty-string",
   "import-private-name",
   "magic-value-comparison",
@@ -619,59 +620,7 @@ split-on-trailing-comma = false
   "pytest-fixture-autouse",
   "too-many-public-methods",
 ]
-"**/tests/python/**" = ["raise-vanilla-args"]
 "**/xlsx.py" = ["import-outside-top-level"]
-"scripts/**" = [
-  "any-type",
-  "avoidable-escaped-quote",
-  "banned-api",
-  "blank-line-after-function",
-  "boolean-default-value-positional-argument",
-  "boolean-type-hint-positional-argument",
-  "builtin-open",
-  "commented-out-code",
-  "error-instead-of-exception",
-  "f-string-in-exception",
-  "if-exp-instead-of-or-operator",
-  "import-private-name",
-  "invalid-module-name",
-  "literal-membership",
-  "logging-string-concat",
-  "magic-value-comparison",
-  "manual-list-comprehension",
-  "manual-list-copy",
-  "missing-blank-line-after-summary",
-  "missing-maxsplit-arg",
-  "multi-line-summary-first-line",
-  "multiple-starts-ends-with",
-  "non-lowercase-variable-in-function",
-  "noqa-comments",
-  "os-path-abspath",
-  "os-path-dirname",
-  "os-path-exists",
-  "os-path-join",
-  "path-constructor-current-directory",
-  "print",
-  "raise-vanilla-args",
-  "raw-string-in-exception",
-  "read-whole-file",
-  "relative-imports",
-  "repeated-append",
-  "runtime-cast-value",
-  "shebang-not-executable",
-  "undocumented-public-class",
-  "undocumented-public-function",
-  "undocumented-public-init",
-  "undocumented-public-method",
-  "unnecessary-multiline-docstring",
-  "unsorted-dunder-all",
-  "unspecified-encoding",
-  "unused-function-argument",
-  "unused-noqa",
-  "used-dummy-variable",
-  "verbose-raise",
-  "write-whole-file",
-]
 "scripts/**/*.py" = [
   "commented-out-code",
   "line-too-long",
@@ -685,8 +634,21 @@ split-on-trailing-comma = false
   "subprocess-without-shell-equals-true",
   "suspicious-subprocess-import",
 ]
+"src/flext_tests/_utilities/environment.py" = [
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
 "tests/**/*.py" = ["assert"]
 "tests/test_snapshot_drill.py" = ["import-private-name"]
+"tests/unit/test_capability_collection.py" = [
+  "line-too-long",
+  "missing-copyright-notice",
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+  "undocumented-public-method",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

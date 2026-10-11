@@ -39,13 +39,6 @@ class FlextInfraConfigModelsWorkspace:
             if self.path.is_absolute() or not self.path.parts:
                 msg = "candidate bootstrap path must be relative"
                 raise ValueError(msg)
-            if self.what not in {
-                c.Infra.CodegenConformSurface.MAKEFILE,
-                c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                c.Infra.CodegenConformSurface.PYPROJECT,
-            }:
-                msg = "candidate bootstrap owns only declared recovery surfaces"
-                raise ValueError(msg)
             return self
 
     class DependencyCommitSourceSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -491,20 +484,6 @@ class FlextInfraConfigModelsWorkspace:
         subprojects: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),
-        ] = ()
-        superproject_members: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Distribution names of the sibling members a superproject's "
-                    "[tool.uv.workspace] declares when this checkout is one of "
-                    "its members; empty for workspace roots and true standalones. "
-                    "Attached manifests redirect sibling dependencies through "
-                    "[tool.uv.sources] workspace = true while retaining inline "
-                    "Git provenance for publication; standalone renders remove "
-                    "the containing workspace source overlay."
-                ),
-            ),
         ] = ()
         external_dependency_paths: Annotated[
             t.VariadicTuple[Path],

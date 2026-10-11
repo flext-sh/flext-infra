@@ -33,7 +33,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsValidate,
     FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesImportLayers,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesLogParser,
@@ -76,6 +76,7 @@ from flext_infra._utilities import (
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
 )
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 
 
 class FlextInfraUtilities(FlextCliUtilities):
@@ -100,8 +101,8 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenFilePlan,
         FlextInfraUtilitiesCodegenNamespace,
-        FlextInfraUtilitiesImportLayers,
         FlextInfraUtilitiesCodegenPathCutover,
+        FlextInfraUtilitiesImportLaw,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesPyrefly,
         FlextInfraUtilitiesProjectManagedArtifacts,
@@ -155,6 +156,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesCodemodProject,
         FlextInfraUtilitiesPrivateImportAncestry,
         FlextInfraUtilitiesPrivateImportFacades,
+        FlextInfraUtilitiesCodemodRules,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

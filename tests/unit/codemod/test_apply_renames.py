@@ -48,6 +48,8 @@ class TestsFlextInfraApplyRenames:
     ) -> None:
         """Test check and apply preserve drivers and reach fixed point."""
         target = self._seed(mod_workspace)
+        projection = mod_workspace / "consumer.md"
+        projection.symlink_to(target.name)
         driver = mod_workspace / "renames.csv"
         other = mod_workspace / "another.csv"
         other.write_bytes(driver.read_bytes())
@@ -70,6 +72,8 @@ class TestsFlextInfraApplyRenames:
             target.read_text(),
             eq="A campaign_renamed_token keeps surrounding prose.\n",
         )
+        tm.that(projection.is_symlink(), eq=True)
+        tm.that(projection.read_bytes(), eq=target.read_bytes())
         tm.that(driver.read_bytes(), eq=original_driver)
         tm.that(other.read_bytes(), eq=original_driver)
         tm.that(data.read_text(), eq="description\ncampaign_renamed_token\n")

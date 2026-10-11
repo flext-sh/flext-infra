@@ -1,4 +1,4 @@
-"""Import-layer facts the import enforcement reads: namespaces, layers, lazy exports.
+"""Import-law facts: namespaces, layers, lazy exports and facade routes.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,12 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeAnalysis,
+)
 
 
-class FlextInfraUtilitiesImportLayers:
-    """Locate a module's namespace, layer and lazy exports for import law."""
+class FlextInfraUtilitiesImportLaw:
+    """Single owner of the import-law facts the enforcement routes read."""
 
     @classmethod
     def import_namespace(
@@ -55,18 +57,8 @@ class FlextInfraUtilitiesImportLayers:
             parts = parts[:-1]
         return namespace_dir, ".".join(parts)
 
-    @classmethod
-    def import_layer_order(cls) -> t.StrSequence:
-        """Return the declared import-layer order.
-
-        Returns:
-            The layer names, lowest layer first.
-
-        """
-        return tuple(config.Infra.tooling.lazy_init.import_layer_order)
-
-    @classmethod
-    def module_import_layer(cls, module: str) -> int:
+    @staticmethod
+    def module_import_layer(module: str) -> int:
         """Return the layer rank of one dotted module of a namespace.
 
         A module's layer is the first path segment, from its namespace
@@ -79,9 +71,13 @@ class FlextInfraUtilitiesImportLayers:
             The index of the module's layer in the declared order.
 
         """
-        order = cls.import_layer_order()
-        declared = FlextInfraUtilitiesCodegenNamespace.facade_families()
-        families = {family.module: letter for letter, family in declared.items()}
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        families = {
+            family.module: letter
+            for letter, family in (
+                FlextInfraUtilitiesCodegenNamespace.facade_families().items()
+            )
+        }
         for part in module.split(".")[1:]:
             stem = part.lstrip("_")
             layer = families.get(stem, stem)
@@ -117,6 +113,48 @@ class FlextInfraUtilitiesImportLayers:
         )
 
     @staticmethod
+    def import_lazy_exports(project_root: Path, package: str) -> t.StrMapping | None:
+        """Map each name one owned package ``__init__`` publishes to its module.
+
+        The package resolves under ``src/`` or the project root (internal
+        tiers). Relative targets resolve against the package; a target naming
+        another distribution (``flext_cli``) stays absolute.
+
+        Returns:
+            The published name to absolute defining module mapping, or
+            ``None`` when the dotted name is a module, a missing path or a
+            package of another project.
+
+        Raises:
+            ValueError: If the package init declares its lazy map indirectly.
+
+        """
+        top, *rest = package.split(".")
+        bases = (project_root / c.Infra.DEFAULT_SRC_DIR, project_root)
+        owner = next(
+            (base for base in bases if (base / top / c.Infra.INIT_PY).is_file()),
+            None,
+        )
+        if owner is None:
+            return None
+        init = owner.joinpath(top, *rest, c.Infra.INIT_PY)
+        if not init.is_file():
+            return None
+        targets, references = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
+                init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            )
+        )
+        if references:
+            msg = f"{init}: lazy map is declared through {', '.join(references)}"
+            raise ValueError(msg)
+        return {
+            name: f"{package}{module}" if module.startswith(".") else module
+            for module, names in targets
+            for name in names
+        }
+
+    @staticmethod
     def import_package_dir(project_root: Path, package: str) -> Path | None:
         """Return the directory of one dotted package the project owns.
 
@@ -132,37 +170,6 @@ class FlextInfraUtilitiesImportLayers:
             candidate = base.joinpath(top, *rest)
             return candidate if (candidate / c.Infra.INIT_PY).is_file() else None
         return None
-
-    @staticmethod
-    def import_lazy_exports(package_dir: Path, package: str) -> t.StrMapping:
-        """Map each name one package ``__init__`` publishes to its module.
-
-        Relative targets resolve against the package; a target naming another
-        distribution (``flext_cli``) stays absolute.
-
-        Returns:
-            The published name to absolute defining module mapping.
-
-        Raises:
-            ValueError: If the package init declares its lazy map indirectly.
-
-        """
-        init = package_dir / c.Infra.INIT_PY
-        if not init.is_file():
-            return {}
-        targets, references = (
-            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            )
-        )
-        if references:
-            msg = f"{init}: lazy map is declared through {', '.join(references)}"
-            raise ValueError(msg)
-        return {
-            name: f"{package}{module}" if module.startswith(".") else module
-            for module, names in targets
-            for name in names
-        }
 
     @staticmethod
     def import_facade_dependencies(
@@ -189,4 +196,4 @@ class FlextInfraUtilitiesImportLayers:
         return frozenset(dependencies)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesImportLayers"]
+__all__: list[str] = ["FlextInfraUtilitiesImportLaw"]

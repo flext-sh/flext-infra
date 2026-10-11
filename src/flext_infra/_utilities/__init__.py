@@ -243,6 +243,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.class_scope import (
         FlextInfraUtilitiesSemanticCutoverClassScope,
     )
+    from flext_infra._utilities._semantic_cutover.constant_consumers import (
+        FlextInfraUtilitiesSemanticConstantConsumers,
+    )
     from flext_infra._utilities._semantic_cutover.declaration_payload import (
         FlextInfraUtilitiesDeclarationPayload,
     )
@@ -323,7 +326,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesCodegenPathCutover,
     )
     from flext_infra._utilities.codemod_binding_chain import (
-        FlextInfraUtilitiesCodemodBindingChain,
+        FlextInfraFlextUtilitiesCodemodBindingChain,
     )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
@@ -357,7 +360,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.gitignore import FlextInfraUtilitiesGitignore
-    from flext_infra._utilities.import_layers import FlextInfraUtilitiesImportLayers
+    from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.iteration_directory import (
         FlextInfraUtilitiesIterationDirectory,
@@ -483,6 +486,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraMypyDarwinSupervisor",
     "FlextInfraMypyProfiler",
     "FlextInfraRopeProject",
@@ -492,7 +496,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
-    "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -562,7 +565,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
     "FlextInfraUtilitiesGitignore",
-    "FlextInfraUtilitiesImportLayers",
+    "FlextInfraUtilitiesImportLaw",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -639,6 +642,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSourceBasesRuntime",
     "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
+    "FlextInfraUtilitiesSemanticConstantConsumers",
     "FlextInfraUtilitiesSemanticCutover",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
     "FlextInfraUtilitiesSemanticCutoverAliases",
@@ -686,6 +690,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraMypyDarwinSupervisor": "._mypy_supervisor",
         "FlextInfraMypyProfiler": "._mypy_profile",
         "FlextInfraRopeProject": "._rope.project",
@@ -695,7 +700,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
-        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
@@ -773,7 +777,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitWorktreeRootsMixin": "._git.worktree_roots",
         "FlextInfraUtilitiesGitWorktreeStatusMixin": "._git.worktree_status",
         "FlextInfraUtilitiesGitignore": ".gitignore",
-        "FlextInfraUtilitiesImportLayers": ".import_layers",
+        "FlextInfraUtilitiesImportLaw": ".import_law",
         "FlextInfraUtilitiesIteration": ".iteration",
         "FlextInfraUtilitiesIterationDirectory": ".iteration_directory",
         "FlextInfraUtilitiesIterationMatching": ".iteration_matching",
@@ -854,6 +858,9 @@ install_lazy_exports(
             "._rope_source_bases_inventory_collector"
         ),
         "FlextInfraUtilitiesRopeStructure": ".rope_structure",
+        "FlextInfraUtilitiesSemanticConstantConsumers": (
+            "._semantic_cutover.constant_consumers"
+        ),
         "FlextInfraUtilitiesSemanticCutover": ".semantic_cutover",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": "._semantic_cutover.alias_cst",
         "FlextInfraUtilitiesSemanticCutoverAliases": "._semantic_cutover.aliases",

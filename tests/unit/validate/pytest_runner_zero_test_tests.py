@@ -197,11 +197,16 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(plan.owns_no_tests, eq=True)
 
     @pytest.mark.slow
-    def test_full_run_publishes_receipt_for_zero_test_project(
+    def test_full_run_keeps_native_status_for_zero_test_project(
         self,
         tmp_path: Path,
     ) -> None:
-        """A failed incremental scope cannot be normalized by the full operation."""
+        """The unbounded full operation never normalizes an empty suite.
+
+        It runs no testmon selection, so no zero-test receipt exists: pytest's
+        native no-tests status is the result, with the run context naming the
+        unbounded full operation.
+        """
         project = self._zero_test_project(tmp_path)
         runner = self._runner(project, tmp_path)
 
@@ -210,25 +215,28 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
-        summary = self._latest_summary(reports_root)
-        plan = m.Infra.PytestSelectionPlan.model_validate_json(
-            self._read(summary.parent / "selection-plan.json"),
+        report_dir = reports_root / self._read(reports_root / "latest.txt").strip()
+        context = m.Infra.PytestRunContext.model_validate_json(
+            self._read(report_dir / "run-context.json"),
         )
-        tm.that(plan.owns_no_tests, eq=True)
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            self._read(summary.parent / "run-accounting.json"),
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that(context.testmon_db, none=True)
+        tm.that(context.deadline_monotonic, none=True)
+        suite = m.Cli.ProcessOutcome.model_validate_json(
+            self._read(report_dir / "suite-outcome.json"),
         )
-        tm.that(accounting.executed_count, eq=0)
+        tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that((report_dir / "run-accounting.json").exists(), eq=False)
 
     @pytest.mark.slow
-    def test_budgeted_phase_of_a_slow_only_file_publishes_receipt(
+    def test_slow_only_declared_file_executes_its_slow_items(
         self,
         tmp_path: Path,
     ) -> None:
-        """A file whose items are all slow is an empty budgeted scope.
+        """A declared file carries its slow items, so a slow-only file runs.
 
-        The phase retains rc=5 so Make can compose it with the slow phase.
-        A whole-suite budgeted inventory that collects nothing stays a failure.
+        The file scope never deselects the slow marker: a file whose items are
+        all slow executes them instead of ending as an empty scope.
         """
         project = self._zero_test_project(tmp_path)
         cache = config.Infra.codegen.make.testmon_cache
@@ -244,17 +252,13 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._runner(project, tmp_path, target_file=relative).execute(),
         )
 
-        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that(outcome, eq=pytest.ExitCode.OK.value)
         summary = self._latest_summary(project / cache.reports_directory)
-        tm.that(self._read(summary), has="outcome=not_executed\n")
+        tm.that(self._read(summary), has=["outcome=executed\n", "executed=1\n"])
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
         )
-        tm.that(plan.owns_no_tests, eq=True)
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            self._read(summary.parent / "run-accounting.json"),
-        )
-        tm.that(accounting.executed_count, eq=0)
+        tm.that(plan.owns_no_tests, eq=False)
 
     @pytest.mark.slow
     def test_target_file_collection_failure_stays_red(

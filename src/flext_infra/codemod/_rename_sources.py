@@ -12,7 +12,8 @@ import re
 import tokenize
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, c, config, m, t, u
+from flext_infra import c, m, t, u
+from flext_infra._config import FlextInfraConfig, config
 
 
 class FlextInfraRenameSources:
@@ -61,7 +62,7 @@ class FlextInfraRenameSources:
             The authenticated file states of every electable rename source.
 
         Raises:
-            ValueError: If rename source disappeared.
+            ValueError: If a rename source disappeared or escapes the scan roots.
 
         """
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
@@ -96,6 +97,17 @@ class FlextInfraRenameSources:
                     relative.full_match(pattern) for pattern in params.text_globs
                 )
                 if not python and not text:
+                    continue
+                if path.is_symlink():
+                    destination = path.resolve(strict=True)
+                    if not any(
+                        destination.is_relative_to(candidate.resolve())
+                        for candidate in roots
+                    ):
+                        msg = f"rename source escapes declared scan roots: {path}"
+                        raise ValueError(msg)
+                    # The target is the writable authority; an in-tree link
+                    # remains a projection and is never an atomic destination.
                     continue
                 state = u.Cli.atomic_read_binary_file_state(
                     path,

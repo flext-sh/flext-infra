@@ -10,7 +10,11 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import c, m, s, t
+from flext_infra import c, m, t
+from flext_infra.base import s
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -144,8 +148,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             ValueError: If the surface is not a declared conformance surface.
 
         """
-        supported = isinstance(surface, c.Infra.CodegenConformSurface)
-        if not supported:
+        if not isinstance(surface, c.Infra.CodegenConformSurface):
             message = f"unsupported codegen conform surface: {surface}"
             raise ValueError(message)
         match surface:
