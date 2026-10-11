@@ -99,6 +99,7 @@ class FlextInfraProtocolsDocs(Protocol):
         @property
         def source_paths(self) -> t.VariadicTuple[str]: ...
 
+    @runtime_checkable
     class MkDocsConfigLoader(Protocol):
         """Native configuration callable required by strict builds."""
 
@@ -106,6 +107,7 @@ class FlextInfraProtocolsDocs(Protocol):
             self, *, config_file: str, site_dir: str, strict: bool
         ) -> MkDocsConfig: ...
 
+    @runtime_checkable
     class MkDocsServer(Protocol):
         """Native server callable required by documentation composition."""
 
