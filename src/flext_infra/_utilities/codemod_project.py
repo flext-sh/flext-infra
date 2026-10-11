@@ -851,6 +851,14 @@ class FlextInfraUtilitiesCodemodProject(
                 if own is None:
                     message = "package predicates require the admission namespace"
                     raise ValueError(message)
+                if predicate is c.Infra.CodemodContextPredicate.OWN_PACKAGE:
+                    owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                        root, file_path
+                    )
+                    if owner is None:
+                        message = f"project owner is unresolved: {file_path}"
+                        raise ValueError(message)
+                    own = FlextInfraUtilitiesPyproject.project_package_name(owner)
                 return cls._context_package_holds(
                     root,
                     predicate,
