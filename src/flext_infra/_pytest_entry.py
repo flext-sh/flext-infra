@@ -53,13 +53,13 @@ class FlextInfraPytestEntry:
                 profiler.disable()
             return status
 
-        slow_phase = mode in {"slow", "full-slow", "file-slow"}
+        slow_phase = mode == "slow"
         runner = flext_infra.FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             slow_phase=slow_phase,
-            unbounded=mode in {"full", "full-slow"},
+            unbounded=mode == "full",
         )
-        if mode in {"file", "file-slow"} and runner.target_file is None:
+        if mode == "file" and runner.target_file is None:
             msg = (
                 f"pytest operation {mode} requires the Make boundary to export "
                 "the single-file target variable"
@@ -67,9 +67,9 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode in {"full", "full-slow"}:
+        elif mode == "full":
             status = runner.execute_full().unwrap()
-        elif mode in {"", "slow", "file", "file-slow"}:
+        elif mode in {"", "slow", "file"}:
             status = runner.execute().unwrap()
         else:
             msg = f"unsupported pytest operation: {mode}"
