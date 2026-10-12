@@ -192,7 +192,11 @@ class TestsFlextInfraFileParticipantRecovery:
         package = root / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
+        header = c.Infra.AUTOGEN_HEADERS[0]
+        initializer.write_text(
+            f"{header}\n__all__ = ()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         before = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
         owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
@@ -202,7 +206,9 @@ class TestsFlextInfraFileParticipantRecovery:
             project=root,
             path=initializer,
             before=before,
-            desired_content=b"__all__ = ('missing_export',)\n",
+            desired_content=(
+                f"{header}\n__all__ = ('missing_export',)\n".encode(c.DEFAULT_ENCODING)
+            ),
             desired_mode=before.mode,
             owner="lazy-init",
         )
@@ -227,6 +233,22 @@ class TestsFlextInfraFileParticipantRecovery:
         )
         tm.that(restored.content, eq=publication.desired_content)
         tm.that(restored.mode, eq=before.mode)
+        report_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
+            report_path.read_text(encoding=c.DEFAULT_ENCODING),
+        )
+        tm.that(receipt.effect_targets, eq=(initializer,))
+        tm.that(receipt.attempted_files, eq=(initializer,))
+        tm.that(receipt.pending_files, eq=())
+        tm.that(receipt.completed, eq=False)
+        assert receipt.transaction_id is not None
+        digest = u.Cli.sha256_content(receipt.model_dump_json())
+        history = (
+            report_path.with_suffix("")
+            / receipt.transaction_id
+            / f"{digest}{report_path.suffix}"
+        )
+        tm.that(history.is_file(), eq=True)
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
 
     @staticmethod

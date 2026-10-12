@@ -340,7 +340,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         result = service.plan_files()
 
-        tm.that(result.success, eq=True)
+        tm.that(result.success, eq=True, msg=result.error)
         analysis = result.value
         tm.that(analysis.phase, eq="lazy-init")
         plans = {plan.path: plan for plan in analysis.files}
@@ -412,7 +412,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         result = u.Tests.create_lazy_init_service(repository_root).plan_files()
 
-        tm.that(result.success, eq=True)
+        tm.that(result.success, eq=True, msg=result.error)
         deletes = {
             plan.path
             for plan in result.value.files

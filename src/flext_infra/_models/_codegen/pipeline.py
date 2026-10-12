@@ -129,6 +129,18 @@ class FlextInfraModelsCodegenPipelineModels:
             default=(),
             description="Authored destinations retained because generation does not own their bodies",
         )
+        effect_targets: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Destinations authorized for effects by this invocation's journal",
+        )
+        attempted_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Effect targets with an observed write, retention, or failure",
+        )
+        pending_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Authorized effect targets without a publication outcome",
+        )
         issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
             default=(),
             description="Native publication failures keyed to their actual targets",

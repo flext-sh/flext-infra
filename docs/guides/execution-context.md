@@ -277,6 +277,14 @@ green. Concurrent changes require a fresh read before writing and revalidation o
 affected paths. A published work-in-progress commit preserves work and enables review;
 completion requires integration and runtime measured at the integrated SHA.
 
+Generation publication receipts identify their transaction and retain immutable
+digest-addressed history before updating the latest report. Their effect targets
+come from the journal's physical destination resolver. Written, retained and failed
+targets account for attempted effects; remaining targets stay pending. Final
+accounting cannot mark an invocation complete while any authorized effect is
+pending. This inventory covers publication effects, not unchanged files or a
+repository's unexecuted checks.
+
 The pytest runner retains the native exit code when startup fails before a final
 JUnit report is produced. Its process-outcome receipt and raw log remain available,
 but no completed-suite summary or run accounting is published. A graceful failing

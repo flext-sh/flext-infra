@@ -369,9 +369,6 @@ class FlextInfraUtilitiesCodegenFacades:
         Returns:
             A facade whose direct owners preserve the existing source C3 order.
 
-        Raises:
-            ValueError: If declaration spellings compete or source spans are ambiguous.
-            TypeError: If projection does not retain the source module.
         """
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
@@ -389,13 +386,51 @@ class FlextInfraUtilitiesCodegenFacades:
             facade_path,
         )
         independent = cls._independent_publishers(pkg_dir, owners_dir, sources)
-        declarations = [
+        declarations, declared_names, bound_namespace = cls._declared_facade_contract(
+            independent,
+            declarations,
+            facade,
+            namespace,
+            facade_target=f"{pkg_dir.name}.{facade_path.stem}",
+        )
+        ordered = cls._declared_facade_order(pkg_dir, sources, declarations)
+        existing = tuple(cls._base_name(base) for base in namespace.bases)
+        if existing == ordered:
+            return source
+        context = CodemodContext()
+        if bound_namespace:
+            cls._declared_facade_stale_imports(context, source, declared_names)
+        cls._declared_facade_declared_imports(
+            context,
+            declarations,
+            declared_names,
+            existing,
+        )
+        return cls._declared_facade_render(context, source, namespace, ordered)
+
+    @classmethod
+    def _declared_facade_contract(
+        cls,
+        independent: frozenset[str],
+        declarations: list[m.Infra.SourceClassReference],
+        facade: ast.ClassDef,
+        namespace: ast.ClassDef,
+        *,
+        facade_target: str,
+    ) -> tuple[list[m.Infra.SourceClassReference], set[str], bool]:
+        """Filter declared owners, then append the namespace's own base owners.
+
+        Returns:
+            The final declarations, their qualified names, and whether the
+            facade binds the namespace through assignment.
+        """
+        filtered = [
             item
             for item in declarations
             if item.qualified_base not in independent
             or item.qualified_base in {cls._base_name(base) for base in namespace.bases}
         ]
-        declared_names = {item.qualified_base for item in declarations}
+        declared_names = {item.qualified_base for item in filtered}
         bound_namespace = namespace is facade and any(
             isinstance(statement, ast.Assign)
             and isinstance(statement.value, ast.Name)
@@ -409,10 +444,10 @@ class FlextInfraUtilitiesCodegenFacades:
             for statement in facade.body
         )
         if bound_namespace:
-            declarations = []
-        declarations.extend(
+            filtered.clear()
+        filtered.extend(
             m.Infra.SourceClassReference(
-                target=f"{pkg_dir.name}.{facade_path.stem}",
+                target=facade_target,
                 attributes=tuple(
                     ast.unparse(
                         base.value if isinstance(base, ast.Subscript) else base
@@ -423,24 +458,52 @@ class FlextInfraUtilitiesCodegenFacades:
             for base in namespace.bases
             if cls._base_name(base) not in declared_names
         )
+        return filtered, declared_names, bound_namespace
+
+    @classmethod
+    def _declared_facade_order(
+        cls,
+        pkg_dir: Path,
+        sources: t.MutableMappingKV[str, t.Pair[Path, str]],
+        declarations: list[m.Infra.SourceClassReference],
+    ) -> t.SequenceOf[str]:
+        """Resolve the C3 base order of the facade's declared owners.
+
+        Returns:
+            The ordered base names the facade namespace must compose.
+        """
         with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
-            ordered = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
+            return FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
                 project,
                 sources,
                 declarations,
             )
-        existing = tuple(cls._base_name(base) for base in namespace.bases)
-        if existing == ordered:
-            return source
-        context = CodemodContext()
-        if bound_namespace:
-            for node in ast.walk(ast.parse(source)):
-                if isinstance(node, ast.ImportFrom) and node.module is not None:
-                    for alias in node.names:
-                        if alias.name in declared_names:
-                            RemoveImportsVisitor.remove_unused_import(
-                                context, node.module, alias.name
-                            )
+
+    @staticmethod
+    def _declared_facade_stale_imports(
+        context: CodemodContext,
+        source: str,
+        declared_names: set[str],
+    ) -> None:
+        """Drop imports of names the facade now binds through assignment."""
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.ImportFrom) and node.module is not None:
+                for alias in node.names:
+                    if alias.name in declared_names:
+                        RemoveImportsVisitor.remove_unused_import(
+                            context,
+                            node.module,
+                            alias.name,
+                        )
+
+    @staticmethod
+    def _declared_facade_declared_imports(
+        context: CodemodContext,
+        declarations: list[m.Infra.SourceClassReference],
+        declared_names: set[str],
+        existing: tuple[str, ...],
+    ) -> None:
+        """Register the imports the reordered facade bases require."""
         for item in declarations:
             if (
                 item.qualified_base in declared_names
@@ -451,6 +514,24 @@ class FlextInfraUtilitiesCodegenFacades:
                     item.target,
                     item.qualified_base,
                 )
+
+    @classmethod
+    def _declared_facade_render(
+        cls,
+        context: CodemodContext,
+        source: str,
+        namespace: ast.ClassDef,
+        ordered: t.SequenceOf[str],
+    ) -> str:
+        """Reorder the namespace bases and apply the registered imports.
+
+        Returns:
+            The projected facade source.
+
+        Raises:
+            ValueError: If the namespace has no unique concrete source span.
+            TypeError: If the projection does not preserve the source module.
+        """
         wrapper = MetadataWrapper(parse_module(source))
         owners = tuple(
             node
@@ -465,22 +546,33 @@ class FlextInfraUtilitiesCodegenFacades:
         owner = owners[0]
         updated = wrapper.module.deep_replace(
             owner,
-            owner.with_changes(
-                bases=tuple(
-                    (
-                        owner.bases[-1] if index == len(ordered) - 1 else owner.bases[0]
-                    ).with_changes(value=parse_expression(name))
-                    if owner.bases
-                    else Arg(parse_expression(name))
-                    for index, name in enumerate(ordered)
-                )
-            ),
+            owner.with_changes(bases=cls._declared_facade_bases(owner, ordered)),
         )
         if not isinstance(updated, Module):
             message = "Declared facade projection did not preserve the module"
             raise TypeError(message)
         result = AddImportsVisitor(context).transform_module(updated)
         return RemoveImportsVisitor(context).transform_module(result).code
+
+    @staticmethod
+    def _declared_facade_bases(
+        owner: ClassDef,
+        ordered: t.SequenceOf[str],
+    ) -> tuple[Arg, ...]:
+        """Build the reordered base arguments for the facade namespace.
+
+        Returns:
+            One base argument per ordered name, preserving the source C3 order.
+
+        """
+        return tuple(
+            (
+                owner.bases[-1] if index == len(ordered) - 1 else owner.bases[0]
+            ).with_changes(value=parse_expression(name))
+            if owner.bases
+            else Arg(parse_expression(name))
+            for index, name in enumerate(ordered)
+        )
 
     @staticmethod
     def _rebind_declared_imports(

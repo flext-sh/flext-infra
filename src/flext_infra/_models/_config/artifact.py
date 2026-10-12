@@ -654,8 +654,12 @@ class FlextInfraConfigModelsArtifact:
             if facades and self.module is None:
                 msg = "facades requires an exact destination --module"
                 raise ValueError(msg)
-            if file_only and (self.scope != c.Infra.CodegenConformScope.SELF):
-                msg = "file-only surfaces require the self repository scope"
+            if (
+                file_only
+                and self.module is not None
+                and self.scope != c.Infra.CodegenConformScope.SELF
+            ):
+                msg = "an exact module requires the self repository scope"
                 raise ValueError(msg)
             if (
                 self.what

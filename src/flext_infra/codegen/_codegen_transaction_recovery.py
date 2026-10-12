@@ -51,13 +51,38 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         Returns:
             The session whose published paths and issues have been recorded.
         """
+        destinations: list[Path] = []
+        for entry in session.journal.entries:
+            destination = FlextInfraMiseArtifactsFiles.resolve_transaction(
+                session.plan.layout,
+                entry.path,
+                purpose="publication accounting",
+            )
+            if destination.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(destination)
+            destinations.append(destination.value)
+        effect_targets = tuple(dict.fromkeys(destinations))
+        observed_targets = {
+            *session.written_files,
+            *session.retained_files,
+            *(Path(issue.file) for issue in session.issues),
+        }
+        attempted_files = tuple(
+            path for path in effect_targets if path in observed_targets
+        )
+        pending_files = tuple(
+            path for path in effect_targets if path not in observed_targets
+        )
         outcome = m.Infra.CodegenPhaseOutcome(
             root=session.plan.layout.scope_root,
             transaction_id=session.journal.transaction_id,
             phase=phase,
-            completed=completed,
+            completed=completed and not pending_files,
             written_files=session.written_files,
             retained_files=session.retained_files,
+            effect_targets=effect_targets,
+            attempted_files=attempted_files,
+            pending_files=pending_files,
             issues=session.issues,
             exception=session.exception,
         )
@@ -81,6 +106,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         if evidence.failure:
             return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
+        if completed and pending_files:
+            return r[m.Infra.CodegenTransactionSession].fail(
+                "publication accounting is incomplete: "
+                + ", ".join(str(path) for path in pending_files),
+                error_code=c.Infra.ToolOutcome.ERROR.value,
+            )
         return r[m.Infra.CodegenTransactionSession].ok(session)
 
     def participant_policy(

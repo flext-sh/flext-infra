@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -301,6 +302,57 @@ class FlextInfraModelsTransformers:
             FlextInfraModelsTransformers.HeaderSpan,
             m.Field(description="Byte offsets for the header sections"),
         ]
+
+    class FacadeNamespaceCutover(m.ArbitraryTypesModel):
+        """Shared planning state for one duplicate facade-namespace cutover.
+
+        Replaces the untyped parameter bundle the nesting planner threaded
+        through its helpers: the Rope project, the physical root, the editable
+        sources, the prospective bytes and the accumulated consumer rewrites
+        travel as one resolved contract.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        project: Annotated[
+            t.Infra.RopeProject,
+            m.Field(description="Rope project snapshot holding the editable sources"),
+        ]
+        root: Annotated[Path, m.Field(description="Physical project root")]
+        sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(description="Editable source bytes per path"),
+        ]
+        working: Annotated[
+            t.MutableMappingKV[Path, str],
+            m.Field(description="Prospective source bytes per path"),
+        ]
+
+    class FacadeNamespaceSite(m.ArbitraryTypesModel):
+        """Resolved duplicate-facade site for one editable source module."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        path: Annotated[Path, m.Field(description="Source path holding the facade")]
+        source: Annotated[str, m.Field(description="Source bytes holding the facade")]
+        facade: Annotated[ast.ClassDef, m.Field(description="Facade composition class")]
+        namespace: Annotated[
+            ast.ClassDef,
+            m.Field(description="Single composed namespace class"),
+        ]
+        children: Annotated[
+            tuple[ast.ClassDef, ...],
+            m.Field(description="Facade body classes"),
+        ]
+        owner: Annotated[
+            t.Infra.RopePyObject,
+            m.Field(description="Facade declaration owner"),
+        ]
+        target: Annotated[
+            t.Infra.RopePyObject,
+            m.Field(description="Namespace declaration owner"),
+        ]
+        tree: Annotated[ast.Module, m.Field(description="Parsed source module")]
 
 
 __all__: list[str] = ["FlextInfraModelsTransformers"]

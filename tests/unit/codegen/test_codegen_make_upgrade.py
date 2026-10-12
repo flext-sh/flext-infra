@@ -333,49 +333,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(sync_flags.group(1), lacks="--upgrade")
         # Setup verifies the committed lock before any dependency sync;
         # only upg may resolve or write it.
-        setup_recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
-            "\n\n",
-            1,
-        )[0]
-        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=["$(UV) lock"])
-        tm.that(
-            setup_recipe,
-            has=[
-                "lock --check",
-                "$(UV_SYNC_FLAGS) --locked",
-                "ERROR[setup]",
-                "make upg",
-            ],
-        )
-        lock_check = setup_recipe.index("lock --check")
-        sync = setup_recipe.index("$(UV) sync")
-        tm.that(lock_check < setup_recipe.index("exit 2;", lock_check) < sync, eq=True)
-        admission = "codegen mise-artifacts"
-        tm.that(setup_recipe.count(admission), eq=2)
-        tm.that(lock_check < setup_recipe.index(admission) < sync, eq=True)
-        tm.that(setup_recipe.rindex(admission) < sync, eq=True)
-        tm.that(
-            setup_recipe,
-            has=[
-                '--repository-root "$(PROJECT_ROOT)" --config-only',
-                "for member in $(WORKSPACE_SUBPROJECTS); do",
-                '--repository-root "$(PROJECT_ROOT)/$$member" --config-only',
-            ],
-        )
-        tm.that(
-            setup_recipe,
-            lacks=[
-                "--frozen",
-                "WARNING[setup]",
-                "--requirements",
-                'rm -f "$(UV_PROJECT)/uv.lock"',
-                ">/dev/null",
-            ],
-        )
-        tm.that(
-            "--all-packages" in sync_flags.group(1),
-            eq=profile is c.Infra.MakeProfile.WORKSPACE,
-        )
+        self._assert_setup_recipe(makefile, profile, sync_flags.group(1))
         tm.that(
             makefile, has="override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable"
         )
