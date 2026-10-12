@@ -9,12 +9,65 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c, m, p, r, u
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraStagedPackage:
     """Plan one complete package view and its static workspace import closure."""
+
+    @classmethod
+    def plan_sources(
+        cls,
+        workspace: Path,
+        updates: t.MappingKV[Path, str],
+    ) -> p.Result[m.Infra.StageSourcePlan]:
+        """Pin real project inputs for preview without writing live source.
+
+        Args:
+            workspace: The root of the Git workspace containing the projects.
+            updates: A mapping from file paths to their desired content.
+
+        Returns:
+            A result wrapping the planned stage source or the first failure encountered.
+        """
+        result_type = r[m.Infra.StageSourcePlan]
+        workspace = workspace.resolve()
+        discovered = cls._workspace_layouts(workspace)
+        if discovered.failure:
+            return result_type.from_failure(discovered)
+        layouts = discovered.value
+        selected: list[m.Infra.RopeProjectLayout] = []
+        states: dict[Path, m.Cli.AtomicFileState] = {}
+        for path in updates:
+            root = u.Infra.project_root(path)
+            local = u.Infra.layout(root) if root is not None else None
+            if local is None:
+                return result_type.fail(f"preview source has no project layout: {path}")
+            layouts[local.package_name] = local
+            if not any(item.project_root == local.project_root for item in selected):
+                pinned = cls._pin_closure(local, layouts, selected, states)
+                if pinned.failure:
+                    return result_type.from_failure(pinned)
+            observed = u.Cli.atomic_read_binary_file_state(path, required=False)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            states[path] = observed.value
+        metadata = cls._pin_workspace_metadata(workspace, states)
+        if metadata.failure:
+            return result_type.from_failure(metadata)
+        return result_type.ok(
+            m.Infra.StageSourcePlan(
+                workspace=workspace,
+                roots=tuple(
+                    dict.fromkeys((
+                        workspace,
+                        *(item.project_root for item in selected),
+                    ))
+                ),
+                inputs=tuple(states.values()),
+                updates=updates,
+            )
+        )
 
     @staticmethod
     def workspace_root(root: Path) -> p.Result[Path]:
@@ -68,13 +121,13 @@ class FlextInfraStagedPackage:
         workspace: Path,
     ) -> p.Result[dict[str, m.Infra.RopeProjectLayout]]:
 
-        spec = FlextInfraWorkspaceDetector.load_workspace_spec(workspace)
-        if spec.failure:
-            return r[dict[str, m.Infra.RopeProjectLayout]].from_failure(spec)
+        declarations = u.Infra.git_submodule_declarations(workspace)
+        if declarations.failure:
+            return r[dict[str, m.Infra.RopeProjectLayout]].from_failure(declarations)
         layouts: dict[str, m.Infra.RopeProjectLayout] = {}
         for repository in (
             workspace,
-            *(workspace / ref.path for ref in spec.value.subprojects),
+            *(workspace / declaration.path for declaration in declarations.value),
         ):
             layout = u.Infra.layout(repository)
             if layout is not None:

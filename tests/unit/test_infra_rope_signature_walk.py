@@ -9,8 +9,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, cast
 
-from rope.refactor import patchedast
-
+from flext_infra import m
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c, tm, u
 
@@ -164,7 +163,7 @@ class TestsFlextInfraRopeSignaturePatch:
                 resource,
                 source.index("values["),
                 "items",
-                resources=(resource,),
+                options=m.Infra.RopeRenameOptions(resources=(resource,)),
             )
             rope.rope_project.do(changes)
             rewritten = resource.read()
@@ -205,7 +204,7 @@ class TestsFlextInfraRopeSignaturePatch:
                 resource,
                 source.index("widths:"),
                 "sizes",
-                resources=(resource,),
+                options=m.Infra.RopeRenameOptions(resources=(resource,)),
             )
             rope.rope_project.do(changes)
             rewritten = resource.read()
@@ -216,7 +215,7 @@ class TestsFlextInfraRopeSignaturePatch:
     def test_write_ast_keeps_nested_generator_name_mutation() -> None:
         """Sorted children expose names below positionless comprehension nodes."""
         source = 'rendered = f"{next(width for width in widths)}"\n'
-        tree = patchedast.get_patched_ast(source, sorted_children=True)
+        tree = u.Infra.patched_ast(source)
         widths = next(
             node
             for node in ast.walk(tree)
@@ -228,6 +227,6 @@ class TestsFlextInfraRopeSignaturePatch:
         patchable = cast("TestsFlextInfraPatchableNode", widths)
         patchable.sorted_children = ["sizes"]
 
-        rendered = patchedast.write_ast(tree)
+        rendered = u.Infra.write_patched_ast(tree)
 
         tm.that(rendered, eq=source.replace("widths", "sizes"))

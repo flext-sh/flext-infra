@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraRuffLintGate, config
+from flext_infra import config
+from flext_infra.gates import FlextInfraRuffLintGate
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

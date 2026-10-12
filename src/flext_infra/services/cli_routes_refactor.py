@@ -10,27 +10,40 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import (
-    FlextInfraAccessorMigrationOrchestrator,
-    FlextInfraCliModProgress,
-    FlextInfraCodegenProtocolModels,
+from flext_infra import c, infra, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenProtocolModels
+from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
     FlextInfraCodemodSnapshotRefresh,
+)
+from flext_infra.refactor import (
     FlextInfraNamespaceEnforcer,
-    FlextInfraRefactorCensus,
     FlextInfraRefactorViolationsSweep,
     FlextInfraWrapperRootNamespaceRefactor,
-    c,
-    infra,
-    m,
-    p,
-    r,
-    t,
 )
+from flext_infra.services import FlextInfraCliModProgress
 
 
 class FlextInfraRefactorRoutes:
     """Own the complete refactor command tuple."""
+
+    @staticmethod
+    def execute_move_module(
+        request: m.Infra.ModuleMoveCommand,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Move a source module through the public workspace and semantic engine.
+
+        Returns:
+            The completed semantic relocation result.
+        """
+        with infra.rope_workspace(request.repository_root) as workspace:
+            target = u.Infra.move_module(
+                workspace.rope_project,
+                request.source_file,
+                request.destination_directory,
+            )
+        cli.display_text(str(target))
+        return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod
     def execute_apply_renames(
@@ -89,6 +102,12 @@ class FlextInfraRefactorRoutes:
 
     refactor_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
         m.Cli.ResultCommandRoute(
+            name="move-module",
+            help_text="Move one module and rewire its imports through Rope",
+            model_cls=m.Infra.ModuleMoveCommand,
+            handler=execute_move_module,
+        ),
+        m.Cli.ResultCommandRoute(
             name="apply-renames",
             help_text="Check or apply an old,new CSV rename list",
             model_cls=m.Infra.ApplyRenamesInput,
@@ -103,14 +122,14 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
-            model_cls=FlextInfraRefactorCensus,
-            handler=FlextInfraRefactorCensus.execute_command,
+            model_cls=m.Infra.CensusInput,
+            handler=infra.census,
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
+            handler=infra.accessor_migrate,
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",

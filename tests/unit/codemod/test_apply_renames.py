@@ -186,7 +186,11 @@ class TestsFlextInfraApplyRenames:
             apply=True,
         )
         report = tm.ok(FlextInfraApplyRenames.run(request))
-        tm.that(report.files_changed, eq=2)
+        tm.that(
+            report.files_changed,
+            eq=2,
+            msg=(mod_workspace / "definer.py").read_text(encoding="utf-8"),
+        )
         tm.that(report.occurrences, eq=0)
         output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
         tm.that(output.stdout, eq="READY SOURCE 7\n")

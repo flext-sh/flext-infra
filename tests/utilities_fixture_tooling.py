@@ -13,8 +13,9 @@ import time
 from pathlib import Path
 from textwrap import indent
 
-from flext_infra import FlextInfraPytestRunner, config, u
-from tests import c, m, p, t, tm
+from flext_infra import config, u
+from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 
@@ -297,6 +298,30 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         environment.parent.mkdir(parents=True, exist_ok=True)
         return u.Cli.run_checked(
             ["uv", "venv", "--python", sys.executable, str(environment)],
+            cwd=root,
+        )
+
+    @classmethod
+    def provision_python_project_environment(cls, root: Path) -> p.Result[bool]:
+        """Provision a fixture interpreter and its real editable project.
+
+        Returns:
+            The installation result or the original environment failure.
+        """
+        created = cls.create_python_environment(root)
+        if created.failure:
+            return r[bool].from_failure(created)
+        return u.Cli.run_checked(
+            (
+                c.Infra.UV,
+                "pip",
+                "install",
+                "--no-deps",
+                "--python",
+                str(u.Infra.runtime_environment_dir(root)),
+                "--editable",
+                str(root),
+            ),
             cwd=root,
         )
 

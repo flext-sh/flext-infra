@@ -70,6 +70,55 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                     return True
         return False
 
+    def _keeps_facade_when_empty(
+        self,
+        context: m.Infra.LazyInitPackageContext,
+    ) -> bool:
+        """Return whether a package keeps its facade despite an empty surface.
+
+        A package that owns live *modules* is a real package (FLEXT internal
+        family shape: ``_constants/_typings/_protocols/_models/_utilities``)
+        and keeps a light lazy-init surface even when that surface is empty.
+        Removing the initializer there would dissolve the package into a
+        namespace package, breaking facade imports, ruff private-import
+        analysis, and the declared family shape. An empty surface is a defect
+        to fix by declaring exports, never a reason to delete the initializer.
+
+        A package whose only content is a hand-written (non-generated)
+        initializer is a data or composition owner, not a generated facade.
+        It must be preserved (SKIP), never overwritten with a generated stub:
+        counting that initializer as "live content" would force a WRITE that
+        clobbers the owner's source (``_has_live_package_content`` remains the
+        parent-inventory predicate in ``_merge_child``).
+
+        Returns:
+            Whether the package owns live modules and must keep its facade.
+
+        """
+        package_entry = self._package_entry(context.pkg_dir)
+        return package_entry is not None and self._owns_non_init_module_source(
+            package_entry
+        )
+
+    def _owns_non_init_module_source(
+        self,
+        package_entry: m.Infra.RopePackageIndexEntry,
+    ) -> bool:
+        """Return whether a package owns any module other than its initializer.
+
+        Returns:
+            Whether the package owns any module other than its initializer.
+
+        """
+        candidates = (package_entry.package_dir, *package_entry.descendant_child_dirs)
+        for candidate in candidates:
+            entry = self._package_entry(candidate)
+            if entry is None:
+                continue
+            if any(not module.is_package_init for module in entry.modules):
+                return True
+        return False
+
     def _merge_children(
         self,
         pkg_dir: Path,
@@ -108,14 +157,18 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 continue
             child_pkg_name, child_exports = merged
             direct.append(child_pkg_name)
+            if not publish_child_exports:
+                # Non-public lazy roots (tests, examples, scripts)
+                # own layout directories, not export surfaces: a
+                # child package name never enters their lazy map.
+                continue
             self._add(
                 lazy_map,
                 child_pkg_name.rsplit(".", maxsplit=1)[-1],
                 (child_pkg_name, ""),
             )
-            if not publish_child_exports or (
-                is_facade_root
-                and self._is_private_owner(child_pkg_name, root_pkg=parent_pkg)
+            if is_facade_root and self._is_private_owner(
+                child_pkg_name, root_pkg=parent_pkg
             ):
                 continue
             self._publish_child_exports(lazy_map, child_exports)

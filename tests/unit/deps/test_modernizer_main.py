@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraPyprojectModernizer, main
+from flext_infra import main
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, tm
 
 if TYPE_CHECKING:

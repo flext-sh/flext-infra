@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, u as infra_u
+from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import c, m, p, t, tm, u
 
@@ -438,7 +438,7 @@ def resolved_make_templates(
         Every profile's committed ``make upg`` template for this run.
 
     """
-    templates: dict[c.Infra.MakeProfile, Path] = {}
+    templates: t.MutableMappingKV[c.Infra.MakeProfile, Path] = {}
     for profile in c.Infra.MakeProfile:
         run_root = _run_root(tmp_path_factory)
         parent = _run_scoped(run_root, "make-templates", profile.value)
@@ -518,7 +518,7 @@ def real_detector_project(
     setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=root, capture=False))
     u.Tests.record_dependency_command_output(setup)
     tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
-    runtime = infra_u.Infra.runtime_environment_dir(root)
+    runtime = u.Infra.runtime_environment_dir(root)
     executable = c.Infra.DEPTRY + (".exe" if os.name == "nt" else "")
     tool_path = runtime / ("Scripts" if os.name == "nt" else "bin") / executable
     tm.that(tool_path.is_file(), eq=True)
@@ -710,6 +710,7 @@ def mod_workspace(tmp_path: Path) -> Path:
     project_document = u.read_project_document_cached(_PROJECT_ROOT)
     project = u.build_project_metadata(_PROJECT_ROOT, project_document)
     workspace = tmp_path / "mod_workspace"
+    author_name = tm.ok(u.Cli.json_dumps(project.project.authors[0].name))
     tm.ok(u.Cli.ensure_dir(workspace))
     tm.ok(
         u.Cli.atomic_write_text_file(
@@ -718,6 +719,7 @@ def mod_workspace(tmp_path: Path) -> Path:
                 "[project]\n"
                 f'name = "{workspace.name.replace("_", "-")}"\n'
                 f'version = "{project.project.version}"\n'
+                f"authors = [{{name = {author_name}}}]\n"
                 f"{c.Infra.DEPENDENCIES} = []\n"
             ),
         ),

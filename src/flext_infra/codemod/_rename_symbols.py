@@ -237,8 +237,7 @@ class FlextInfraRenameSymbols:
                 ((old, new), bindings),
                 (sources, members),
                 (ordered_paths, resources),
-                planned,
-                rename_definitions=rename_definitions,
+                (planned, rename_definitions),
             )
             if bindings and not accepted:
                 msg = f"CSV destination has no declared current public owner: {new}"
@@ -262,7 +261,7 @@ class FlextInfraRenameSymbols:
             ValueError: If Rope input changed after authentication.
 
         """
-        resources: dict[Path, t.Infra.RopeFile] = {}
+        resources: t.MutableMappingKV[Path, t.Infra.RopeFile] = {}
         for path in ordered_paths:
             resource = project.get_resource(path.relative_to(root).as_posix())
             if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
@@ -284,9 +283,10 @@ class FlextInfraRenameSymbols:
             t.MappingKV[Path, frozenset[tuple[str, ...]]],
         ],
         inventory: t.Pair[t.SequenceOf[Path], t.MappingKV[Path, t.Infra.RopeResource]],
-        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
-        *,
-        rename_definitions: bool = False,
+        plan: t.Pair[
+            t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+            bool,
+        ],
     ) -> bool:
         """Plan one old-to-new pair against every declared owner binding.
 
@@ -300,7 +300,7 @@ class FlextInfraRenameSymbols:
 
         """
         (old, new), bindings = campaign
-        sources, members = corpus
+        members = corpus[1]
         ordered_paths, resources = inventory
         accepted = False
         for prefix, owners in bindings.items():
@@ -324,58 +324,14 @@ class FlextInfraRenameSymbols:
                 if member_path in members[path]
             )
             for owner in owners:
-                if rename_definitions:
-                    expected = cls.resolve_member(project, owner, old_suffix)
-                    destination = cls.resolve_member(project, owner, new_suffix)
-                    if expected is None:
-                        accepted = accepted or destination is not None
-                        continue
-                    if destination is not None or not new_suffix.isidentifier():
-                        msg = (
-                            f"declaration rename destination is occupied: "
-                            f"{owner}.{new_suffix}"
-                        )
-                        raise ValueError(msg)
-                    module, line = expected.get_definition_location()
-                    resource = module.get_resource() if module is not None else None
-                    if resource is None or line is None:
-                        msg = f"declaration rename has no source: {owner}.{old_suffix}"
-                        raise ValueError(msg)
-                    path = Path(resource.real_path)
-                    if path not in sources:
-                        msg = (
-                            f"declaration rename escapes authenticated inventory: "
-                            f"{path}"
-                        )
-                        raise ValueError(msg)
-                    offset = u.Infra.find_identifier_offset_in_lines(
-                        sources[path].splitlines(keepends=True),
-                        line=line,
-                        symbol=old_suffix.split(".")[-1],
-                    )
-                    if offset is None:
-                        msg = (
-                            f"declaration rename has no identifier: "
-                            f"{owner}.{old_suffix}"
-                        )
-                        raise ValueError(msg)
-                    changes = u.Infra.rename_changes(
+                if plan[1]:
+                    resolved = cls._plan_declaration_owner(
                         project,
-                        resource,
-                        offset,
-                        new_suffix,
-                        resources=tuple(resources.values()),
+                        (owner, old_suffix, new_suffix),
+                        (corpus[0], resources),
+                        plan[0],
                     )
-                    for change in changes.changes:
-                        cls._record_campaign_change(
-                            change,
-                            project=project,
-                            sources=sources,
-                            identity=(owner, old_suffix, new_suffix),
-                            planned=planned,
-                            rename_definitions=True,
-                        )
-                    accepted = True
+                    accepted = accepted or resolved
                     continue
                 if cls.resolve_member(project, owner, new_suffix) is None:
                     continue
@@ -392,20 +348,85 @@ class FlextInfraRenameSymbols:
                 for change in changes.changes:
                     cls._record_campaign_change(
                         change,
-                        project=project,
-                        sources=sources,
+                        context=(project, corpus[0]),
                         identity=(owner, old_suffix, new_suffix),
-                        planned=planned,
+                        planned=plan[0],
                     )
         return accepted
+
+    @classmethod
+    def _plan_declaration_owner(
+        cls,
+        project: p.Infra.RopeProject,
+        identity: t.Triple[str, str, str],
+        corpus: t.Pair[
+            t.MappingKV[Path, str],
+            t.MappingKV[Path, t.Infra.RopeResource],
+        ],
+        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+    ) -> bool:
+        """Plan a declaration rename without weakening its authenticated inventory.
+
+        Returns:
+            Whether the old or already-renamed destination has a declared owner.
+
+        Raises:
+            ValueError: A rename has no source or identifier, or its target conflicts.
+
+        """
+        owner, old_suffix, new_suffix = identity
+        sources, resources = corpus
+        expected = cls.resolve_member(project, owner, old_suffix)
+        destination = cls.resolve_member(project, owner, new_suffix)
+        if expected is None:
+            return destination is not None
+        if destination is not None or not new_suffix.isidentifier():
+            msg = f"declaration rename destination is occupied: {owner}.{new_suffix}"
+            raise ValueError(msg)
+        module, line = expected.get_definition_location()
+        resource = module.get_resource() if module is not None else None
+        if resource is None or line is None:
+            msg = f"declaration rename has no source: {owner}.{old_suffix}"
+            raise ValueError(msg)
+        path = Path(resource.real_path)
+        if path not in sources:
+            msg = f"declaration rename escapes authenticated inventory: {path}"
+            raise ValueError(msg)
+        offset = u.Infra.find_identifier_offset_in_lines(
+            sources[path].splitlines(keepends=True),
+            line=line,
+            symbol=old_suffix.split(".")[-1],
+            pyname=expected,
+        )
+        if offset is None:
+            msg = f"declaration rename has no identifier: {owner}.{old_suffix}"
+            raise ValueError(msg)
+        changes = u.Infra.rename_changes(
+            project,
+            resource,
+            offset,
+            new_suffix,
+            options=m.Infra.RopeRenameOptions(
+                resources=tuple(resources.values()),
+                in_hierarchy=True,
+            ),
+        )
+        for change in changes.changes:
+            cls._record_campaign_change(
+                change,
+                context=(project, sources),
+                identity=identity,
+                planned=planned,
+                rename_definitions=True,
+            )
+        return True
 
     @classmethod
     def _record_campaign_change(
         cls,
         change: p.AttributeProbe,
         *,
-        project: t.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        context: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
         identity: t.StrSequence,
         planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
         rename_definitions: bool = False,
@@ -417,6 +438,7 @@ class FlextInfraRenameSymbols:
             ValueError: If an edit has no single authenticated span or escapes
                 the known inventory.
         """
+        project, sources = context
         if not isinstance(change, p.Infra.RopeChangeContents):
             msg = "CSV Rope campaign produced a non-content effect"
             raise TypeError(msg)

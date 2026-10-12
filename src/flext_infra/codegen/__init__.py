@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.codegen import _conform
@@ -69,7 +69,6 @@ if TYPE_CHECKING:
         FlextInfraCodegenConformFilePlans,
     )
     from flext_infra.codegen._conform.gitignore import FlextInfraCodegenConformGitignore
-    from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
     from flext_infra.codegen._conform.pyproject_policy import (
         FlextInfraCodegenConformPyprojectPolicy,
     )
@@ -145,6 +144,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+    from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
     from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
     from flext_infra.codegen.conform import FlextInfraCodegenConform
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -185,7 +185,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformGitignore",
-    "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
@@ -221,6 +220,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMiseToolchainProof",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPipelineStagesMixin",
+    "FlextInfraCodegenPreconditions",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenProtocolModelAnnotations",
     "FlextInfraCodegenProtocolModelRender",
@@ -267,7 +267,6 @@ install_lazy_exports(
         "FlextInfraCodegenConformExistingPlan": "._conform.existing_plan",
         "FlextInfraCodegenConformFilePlans": "._conform.file_plans",
         "FlextInfraCodegenConformGitignore": "._conform.gitignore",
-        "FlextInfraCodegenConformPlan": "._conform.plan",
         "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
@@ -315,6 +314,7 @@ install_lazy_exports(
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
         "FlextInfraCodegenPipeline": ".pipeline",
         "FlextInfraCodegenPipelineStagesMixin": "._pipeline_stages",
+        "FlextInfraCodegenPreconditions": ".codegen_preconditions",
         "FlextInfraCodegenProjectNew": ".project_new",
         "FlextInfraCodegenProtocolModelAnnotations": "._protocol_model_annotations",
         "FlextInfraCodegenProtocolModelRender": "._protocol_model_render",

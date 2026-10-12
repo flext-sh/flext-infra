@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities import (
@@ -147,8 +147,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities._git.worktree_status import (
         FlextInfraUtilitiesGitWorktreeStatusMixin,
     )
-    from flext_infra._utilities._mypy_profile import FlextInfraMypyProfiler
-    from flext_infra._utilities._mypy_supervisor import FlextInfraMypyDarwinSupervisor
     from flext_infra._utilities._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
@@ -192,20 +190,8 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
-    from flext_infra._utilities._rope_analysis.asthelpers import (
-        FlextInfraUtilitiesRopeAnalysisAstHelpers,
-    )
     from flext_infra._utilities._rope_analysis.base import (
         FlextInfraUtilitiesRopeAnalysisBase,
-    )
-    from flext_infra._utilities._rope_analysis.exports import (
-        FlextInfraUtilitiesRopeAnalysisExports,
-    )
-    from flext_infra._utilities._rope_analysis.importstate import (
-        FlextInfraUtilitiesRopeAnalysisImportState,
-    )
-    from flext_infra._utilities._rope_analysis.sourcescan import (
-        FlextInfraUtilitiesRopeAnalysisSourceScan,
     )
     from flext_infra._utilities._rope_core_pymodule import (
         FlextInfraUtilitiesRopeCorePyModuleMixin,
@@ -221,9 +207,6 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._rope_source_bases_inventory import (
         FlextInfraUtilitiesRopeSourceBasesInventory,
-    )
-    from flext_infra._utilities._rope_source_bases_inventory_collector import (
-        FlextInfraUtilitiesRopeSourceBindingCollector,
     )
     from flext_infra._utilities._rope_source_bases_runtime import (
         FlextInfraUtilitiesRopeSourceBasesRuntime,
@@ -459,9 +442,6 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesRopeRuntimeTypes,
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-    from flext_infra._utilities.rope_source_bases import (
-        FlextInfraUtilitiesRopeSourceBases,
-    )
     from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
     from flext_infra._utilities.semantic_cutover import (
         FlextInfraUtilitiesSemanticCutover,
@@ -487,8 +467,6 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraFlextUtilitiesCodemodBindingChain",
-    "FlextInfraMypyDarwinSupervisor",
-    "FlextInfraMypyProfiler",
     "FlextInfraRopeProject",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
@@ -614,12 +592,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
-    "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisBase",
-    "FlextInfraUtilitiesRopeAnalysisExports",
-    "FlextInfraUtilitiesRopeAnalysisImportState",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
-    "FlextInfraUtilitiesRopeAnalysisSourceScan",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeClassMove",
     "FlextInfraUtilitiesRopeCore",
@@ -636,11 +610,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
     "FlextInfraUtilitiesRopeSource",
-    "FlextInfraUtilitiesRopeSourceBases",
     "FlextInfraUtilitiesRopeSourceBasesAliases",
     "FlextInfraUtilitiesRopeSourceBasesInventory",
     "FlextInfraUtilitiesRopeSourceBasesRuntime",
-    "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSemanticConstantConsumers",
     "FlextInfraUtilitiesSemanticCutover",
@@ -691,8 +663,6 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
-        "FlextInfraMypyDarwinSupervisor": "._mypy_supervisor",
-        "FlextInfraMypyProfiler": "._mypy_profile",
         "FlextInfraRopeProject": "._rope.project",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
@@ -828,12 +798,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesRepository": ".repository",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
         "FlextInfraUtilitiesRopeAnalysis": ".rope_analysis",
-        "FlextInfraUtilitiesRopeAnalysisAstHelpers": "._rope_analysis.asthelpers",
         "FlextInfraUtilitiesRopeAnalysisBase": "._rope_analysis.base",
-        "FlextInfraUtilitiesRopeAnalysisExports": "._rope_analysis.exports",
-        "FlextInfraUtilitiesRopeAnalysisImportState": "._rope_analysis.importstate",
         "FlextInfraUtilitiesRopeAnalysisIntrospection": ".rope_analysis_introspection",
-        "FlextInfraUtilitiesRopeAnalysisSourceScan": "._rope_analysis.sourcescan",
         "FlextInfraUtilitiesRopeAnalysisWorkspace": ".rope_analysis_workspace",
         "FlextInfraUtilitiesRopeClassMove": ".rope_class_move",
         "FlextInfraUtilitiesRopeCore": ".rope_core",
@@ -850,13 +816,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".rope_runtime_refactors",
         "FlextInfraUtilitiesRopeRuntimeTypes": ".rope_runtime_types",
         "FlextInfraUtilitiesRopeSource": ".rope_source",
-        "FlextInfraUtilitiesRopeSourceBases": ".rope_source_bases",
         "FlextInfraUtilitiesRopeSourceBasesAliases": "._rope_source_bases_aliases",
         "FlextInfraUtilitiesRopeSourceBasesInventory": "._rope_source_bases_inventory",
         "FlextInfraUtilitiesRopeSourceBasesRuntime": "._rope_source_bases_runtime",
-        "FlextInfraUtilitiesRopeSourceBindingCollector": (
-            "._rope_source_bases_inventory_collector"
-        ),
         "FlextInfraUtilitiesRopeStructure": ".rope_structure",
         "FlextInfraUtilitiesSemanticConstantConsumers": (
             "._semantic_cutover.constant_consumers"

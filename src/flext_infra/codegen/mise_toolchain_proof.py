@@ -8,8 +8,8 @@ at the first defect, that what runs is what the lock pins:
    toolchain selector accepts and, unless the tool declares that its upstream
    publishes none, carries a checksum for the current platform;
 2. install root — ``mise where <key>@<version>`` names the install root;
-3. self-containment — ``mise which <binary> --tool <key>@<version>`` and every symlink hop it
-   resolves through stay inside that root;
+3. self-containment — ``mise which <binary> --tool <key>@<version>`` and every
+   symlink hop it resolves through stay inside that root;
 4. real version — the tool's declared ``version_probe`` reports the locked
    version.
 

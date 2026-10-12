@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import re
 from collections.abc import Iterator
 
 from flext_infra import c, m, p, t
@@ -18,6 +19,35 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     """Select type positions structurally and bind every edit to Rope identity."""
+
+    @classmethod
+    def scoped_quoted_type_nodes(
+        cls,
+        source: str,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+    ) -> Iterator[t.Triple[ast.expr, p.Infra.RopeScope, int]]:
+        """Yield quoted type nodes in their original annotation declaration scope.
+
+        Yields:
+            The expression, original Rope scope, and physical annotation line.
+            Literal values and Annotated metadata are never type references.
+        """
+        for annotation, declaration_line in cls._annotation_roots(ast.parse(source)):
+            start, _end = cls.expression_range(source, annotation)
+            scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                module,
+                start,
+                declaration_line=declaration_line,
+            )
+            pending = [annotation]
+            while pending:
+                expression = pending.pop()
+                for node in cls._type_nodes(expression, project, scope):
+                    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                        pending.append(ast.parse(node.value, mode="eval").body)
+                    elif expression is not annotation:
+                        yield (node, scope, annotation.lineno)
 
     @classmethod
     def typeexpression_ranges(cls, source: str) -> frozenset[t.Pair[int, int]]:
@@ -331,7 +361,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         if expression.end_lineno is None or expression.end_col_offset is None:
             msg = "Parsed type expression has no complete source coordinates"
             raise ValueError(msg)
-        lines = source.splitlines(keepends=True)
+        lines = re.split(r"(?<=\n)|(?<=\r)(?!\n)", source)
         start = sum(map(len, lines[: expression.lineno - 1])) + len(
             lines[expression.lineno - 1]
             .encode("utf-8")[: expression.col_offset]

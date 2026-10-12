@@ -84,6 +84,8 @@ class TestsFlextInfraConformSupport:
                 if path.is_file()
                 and ".git" not in path.relative_to(root).parts
                 and ".infra-baseline" not in path.relative_to(root).parts
+                and c.Infra.TRANSACTION_STATE_DIRNAME
+                not in path.relative_to(root).parts
             ),
         )
 

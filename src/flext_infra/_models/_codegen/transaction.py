@@ -14,7 +14,8 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
-from flext_infra._models._codegen import FlextInfraModelsCodegenJournalModels
+from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
+from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsCodegenTransactionModels:
@@ -55,6 +56,21 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Workspace namespaces requiring sealed origins"
         )
 
+    class StageSourcePlan(m.ArbitraryTypesModel):
+        """Pinned project closure and desired bytes for effect-free validation."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        workspace: Path = m.Field(description="Canonical source workspace root")
+        roots: t.VariadicTuple[Path] = m.Field(
+            description="Discovered project roots covering the pinned source closure"
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Exact source and configuration observations"
+        )
+        updates: t.MappingKV[Path, str] = m.Field(
+            description="Desired source updates keyed by live destination"
+        )
+
     class StagePackageView(m.ArbitraryTypesModel):
         """Journal-owned materialized package view, never another source of truth."""
 
@@ -81,7 +97,7 @@ class FlextInfraModelsCodegenTransactionModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
-            Literal[8],
+            Literal[9],
             m.Field(description="Exact journal schema version"),
         ]
         transaction_id: Annotated[
@@ -100,7 +116,7 @@ class FlextInfraModelsCodegenTransactionModels:
             m.Field(gt=0, strict=True, description="Scope directory inode"),
         ]
         state: Annotated[
-            Literal["staging", "prepared", "recovering", "committed"],
+            Literal["staging", "prepared", "committed"],
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
@@ -166,7 +182,6 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             self._validate_staging_authority()
             self._validate_participant_coverage(selectors)
-            self._validate_recovery_state()
             staging_paths = tuple(intent.before.path for intent in self.staging_intents)
             if len(set(staging_paths)) != len(staging_paths):
                 msg = "staging intention paths must have unique authority"
@@ -228,24 +243,6 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen journal directory has no project participant"
                 raise ValueError(msg)
 
-        def _validate_recovery_state(self) -> None:
-            """Bind rollback identities to the journal's recovery state.
-
-            Raises:
-                ValueError: If recovering codegen journal lacks rollback identities; or
-                    if non-recovering codegen journal contains rollback identities.
-
-            """
-            recovery_declared = tuple(
-                entry.rollback_exists is not None for entry in self.entries
-            )
-            if self.state == "recovering" and not all(recovery_declared):
-                msg = "recovering codegen journal lacks rollback identities"
-                raise ValueError(msg)
-            if self.state != "recovering" and any(recovery_declared):
-                msg = "non-recovering codegen journal contains rollback identities"
-                raise ValueError(msg)
-
     class CodegenFootprint(m.Value):
         """Effect-free observed journal and requested publication footprint."""
 
@@ -270,9 +267,7 @@ class FlextInfraModelsCodegenTransactionModels:
             default=(),
             description="Physical roots authorized by current topology",
         )
-        journal_state: Literal[
-            "absent", "staging", "prepared", "recovering", "committed"
-        ] = m.Field(
+        journal_state: Literal["absent", "staging", "prepared", "committed"] = m.Field(
             description="Observed durable state, never a readiness or green receipt",
         )
         pending_roots: t.VariadicTuple[Path] = m.Field(
@@ -346,6 +341,19 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
+        retained_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Authored destinations retained during per-file election",
+        )
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Publication failures retained across successful phases",
+        )
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native publication cause",
+        )
 
         @m.model_validator(mode="after")
         def _validate_cursor(self) -> Self:

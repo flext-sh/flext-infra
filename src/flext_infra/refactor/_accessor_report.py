@@ -14,7 +14,7 @@ from flext_infra import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraAccessorMigrationReportMixin:
@@ -66,6 +66,7 @@ class FlextInfraAccessorMigrationReportMixin:
         source: str,
         *,
         preview_available: bool,
+        source_preview: p.Infra.SourcePreview,
     ) -> m.Infra.AccessorMigrationFile:
         """Rewrite one file, collect its manual warnings and lint evidence.
 
@@ -95,6 +96,7 @@ class FlextInfraAccessorMigrationReportMixin:
                     py_file,
                     self.repository_root,
                     updated_source=updated_source,
+                    source_preview=source_preview,
                     gates=self.gate_names,
                 )
             elif not self.effective_dry_run:

@@ -17,7 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsMixins,
 )
-from flext_infra._models._config import FlextInfraConfigModelsScaffold
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
@@ -498,6 +498,14 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
 
     class ToolingContextRequest(m.ArbitraryTypesModel):
         """Declared inputs the modernizer resolves into a runtime context."""
+
+        planned_sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(
+                exclude=True,
+                description="Captured Python candidate bytes overriding disk",
+            ),
+        ]
 
         project_name: Annotated[
             t.NonEmptyStr,

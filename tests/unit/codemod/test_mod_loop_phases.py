@@ -173,6 +173,7 @@ class TestsFlextInfraCodemodLoopPhases:
         progress = _RecordingProgress()
         with infra.rope_workspace(project) as rope:
             result = FlextInfraCodemodBatchApply(
+                source_preview=infra.source_preview(project),
                 repository_root=project,
                 apply_changes=True,
                 check_only=False,

@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraPyprojectModernizer, config
+from flext_infra import config
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, tm, u
 
 

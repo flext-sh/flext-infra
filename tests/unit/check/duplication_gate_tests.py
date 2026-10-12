@@ -199,3 +199,162 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.issues, eq=())
+
+    _PYTHON_BEHAVIOR_BLOCK = """\
+def normalize_records(records: list[str]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for record in records:
+        candidate = record.strip().casefold()
+        if not candidate:
+            continue
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        normalized.append(candidate)
+    ordered = sorted(normalized)
+    return tuple(ordered)
+"""
+
+    @staticmethod
+    def _governed_with_python_clone(tmp_path: Path, *, same_file: bool) -> Path:
+        """One governed checkout whose only duplication is Python behavior.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "python-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-python-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="python-clone-workspace",
+                database="python_clone_database",
+                issue_prefix="python-clone",
+            ),
+        )
+        package = root / "src" / "fixture_python_clone"
+        package.mkdir(parents=True, exist_ok=True)
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        if same_file:
+            (package / "duplicated.py").write_text(
+                f"{block}\n\n{block}",
+                encoding="utf-8",
+            )
+        else:
+            (package / "first.py").write_text(block, encoding="utf-8")
+            (package / "second.py").write_text(block, encoding="utf-8")
+        return root
+
+    def test_scope_renders_each_directory_exactly_once(self, tmp_path: Path) -> None:
+        """The resolved scope never hands the same directory to jscpd twice.
+
+        A duplicated scope entry makes jscpd clone every file against itself,
+        which is the false double-scan artifact; the union must be unique.
+        """
+        root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
+
+        scope = FlextInfraDuplicationGate(root)._render_scope_dirs(root)
+
+        tm.that(scope.success, eq=True)
+        directories = tuple(scope.value)
+        tm.that(len(directories), eq=len(set(directories)))
+
+    def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
+        """A clone between two distinct files is a blocking finding."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(len(execution.issues) >= 1, eq=True)
+
+    def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
+        """A file that duplicates a block inside itself is a finding.
+
+        The identical file/span pair from the double-scan is dropped, but a
+        same-file clone with two distinct spans is genuine duplication and
+        must never be hidden.
+        """
+        root = self._governed_with_python_clone(tmp_path, same_file=True)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(
+            {issue.file for issue in execution.issues},
+            eq={"src/fixture_python_clone/duplicated.py"},
+        )
+
+    @staticmethod
+    def _governed_with_fleet_members(tmp_path: Path, *, enable_fleet: bool) -> Path:
+        """One governed root plus two declared members sharing a Python block.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "fleet-duplication"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-fleet",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fleet-workspace",
+                database="fleet_database",
+                issue_prefix="fleet",
+            ),
+        )
+        root_package = root / "src" / "fixture_fleet"
+        root_package.mkdir(parents=True, exist_ok=True)
+        (root_package / "unique.py").write_text(
+            "ROOT_ONLY_MARKER = 'canonical-root-only'\n",
+            encoding="utf-8",
+        )
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        for name in ("alpha", "beta"):
+            member = root / f"peer-{name}"
+            package = member / "src" / f"peer_{name}"
+            package.mkdir(parents=True, exist_ok=True)
+            (member / "pyproject.toml").write_text(
+                f'[project]\nname = "peer-{name}"\nversion = "0"\n',
+                encoding="utf-8",
+            )
+            (package / "duplicated.py").write_text(block, encoding="utf-8")
+        (root / ".gitmodules").write_text(
+            '[submodule "peer-alpha"]\n'
+            "\tpath = peer-alpha\n"
+            "\turl = https://example.invalid/peer-alpha\n"
+            '[submodule "peer-beta"]\n'
+            "\tpath = peer-beta\n"
+            "\turl = https://example.invalid/peer-beta\n",
+            encoding="utf-8",
+        )
+        if enable_fleet:
+            pyproject = root / "pyproject.toml"
+            pyproject.write_text(
+                f"{pyproject.read_text(encoding='utf-8')}\n"
+                "[tool.flext.project.duplication]\n"
+                "fleet = true\n",
+                encoding="utf-8",
+            )
+        return root
+
+    def test_fleet_scope_reports_a_cross_project_clone(self, tmp_path: Path) -> None:
+        """Two declared members sharing a block are one cross-project finding."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=True)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.that(text, has="peer-alpha")
+        tm.that(text, has="peer-beta")
+
+    def test_fleet_disabled_ignores_member_projects(self, tmp_path: Path) -> None:
+        """Without the fleet declaration, member projects stay out of scope."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=False)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=True)

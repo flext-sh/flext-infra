@@ -13,10 +13,8 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._config import (
-    FlextInfraConfigModels,
-    FlextInfraConfigModelsContexts,
-)
+from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
 
 

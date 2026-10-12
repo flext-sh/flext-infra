@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, m, p, r, t
+from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.validate import FlextInfraValidateFreshImport
@@ -22,6 +23,106 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraFileParticipantRecovery:
     """Recover prepared file-only journals through their physical owners."""
+
+    @staticmethod
+    def test_late_authored_initializer_is_retained_instead_of_overwritten(
+        tmp_path: Path,
+    ) -> None:
+        """Reelect ownership from the current target before its single write."""
+        target = tmp_path / c.Infra.INIT_PY
+        target.write_text(f"{c.Infra.AUTOGEN_HEADER}\n", encoding=c.DEFAULT_ENCODING)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        replacement = tmp_path / "replacement.py"
+        replacement.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n__all__ = []\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publication = m.Infra.CodegenStagedFile(
+            phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+            project=tmp_path,
+            before=before,
+            replacement=tm.ok(
+                u.Cli.atomic_read_binary_file_state(replacement, required=True),
+            ),
+        )
+        authored = b"VALUE = 'authored behavior'\n"
+        target.write_bytes(authored)
+
+        outcome = tm.ok(FlextInfraMisePublication.publish((publication,)))
+
+        tm.that(outcome.written_files, eq=())
+        tm.that(outcome.retained_files, eq=(target,))
+        tm.that(outcome.issues, eq=())
+        tm.that(target.read_bytes(), eq=authored)
+
+    @staticmethod
+    def test_publication_adopts_current_destination_before_one_write(
+        tmp_path: Path,
+    ) -> None:
+        """An external edit before publication is input, not a fleet failure."""
+        target = tmp_path / "generated.md"
+        target.write_bytes(b"original\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        replacement = tmp_path / "replacement.md"
+        replacement.write_bytes(b"generated\n")
+        staged = m.Infra.CodegenStagedFile(
+            phase=c.Infra.CodegenStagedFilePhase.DOCS,
+            project=tmp_path,
+            before=before,
+            replacement=tm.ok(
+                u.Cli.atomic_read_binary_file_state(replacement, required=True),
+            ),
+        )
+        target.write_bytes(b"external edit\n")
+
+        outcome = tm.ok(FlextInfraMisePublication.publish((staged,)))
+
+        tm.that(outcome.written_files, eq=(target,))
+        tm.that(outcome.issues, eq=())
+        tm.that(target.read_bytes(), eq=b"generated\n")
+
+    @staticmethod
+    def test_publication_reports_failed_target_and_preserves_other_gains(
+        tmp_path: Path,
+    ) -> None:
+        """A rejected physical target does not stop independent publications."""
+        publications: list[m.Infra.CodegenStagedFile] = []
+        for index in range(3):
+            target = tmp_path / f"generated-{index}.md"
+            target.write_bytes(b"original\n")
+            replacement = tmp_path / f"replacement-{index}.md"
+            replacement.write_bytes(b"generated\n")
+            publications.append(
+                m.Infra.CodegenStagedFile(
+                    phase=c.Infra.CodegenStagedFilePhase.DOCS,
+                    project=tmp_path,
+                    before=tm.ok(
+                        u.Cli.atomic_read_binary_file_state(target, required=True),
+                    ),
+                    replacement=tm.ok(
+                        u.Cli.atomic_read_binary_file_state(replacement, required=True),
+                    ),
+                ),
+            )
+        rejected = publications[1].before.path
+        foreign = tmp_path / "foreign.md"
+        foreign.write_bytes(b"preserved\n")
+        rejected.unlink()
+        rejected.symlink_to(foreign)
+
+        outcome = tm.ok(FlextInfraMisePublication.publish(tuple(publications)))
+
+        tm.that(
+            outcome.written_files,
+            eq=(publications[0].before.path, publications[2].before.path),
+        )
+        tm.that(outcome.issues, len=1)
+        tm.that(outcome.issues[0].file, eq=str(rejected))
+        tm.that(outcome.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
+        tm.that(rejected.is_symlink(), eq=True)
+        tm.that(foreign.read_bytes(), eq=b"preserved\n")
+        for path in outcome.written_files:
+            tm.that(path.read_bytes(), eq=b"generated\n")
 
     @staticmethod
     @pytest.mark.parametrize("invalid_later_plan", ["participant", "destination"])
@@ -83,15 +184,19 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
 
     @staticmethod
-    def test_fresh_import_failure_restores_published_initializer(
+    def test_fresh_import_failure_preserves_published_initializer(
         tmp_path: Path,
     ) -> None:
-        """Test fresh import failure restores published initializer."""
+        """Preserve completed publication while reporting its invalid runtime."""
         root = u.Tests.git_repository(tmp_path)
         package = root / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
+        header = c.Infra.AUTOGEN_HEADERS[0]
+        initializer.write_text(
+            f"{header}\n__all__ = ()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         before = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
         owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
@@ -101,7 +206,9 @@ class TestsFlextInfraFileParticipantRecovery:
             project=root,
             path=initializer,
             before=before,
-            desired_content=b"__all__ = ('missing_export',)\n",
+            desired_content=(
+                f"{header}\n__all__ = ('missing_export',)\n".encode(c.DEFAULT_ENCODING)
+            ),
             desired_mode=before.mode,
             owner="lazy-init",
         )
@@ -124,8 +231,24 @@ class TestsFlextInfraFileParticipantRecovery:
         restored = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        tm.that(restored.content, eq=before.content)
+        tm.that(restored.content, eq=publication.desired_content)
         tm.that(restored.mode, eq=before.mode)
+        report_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
+            report_path.read_text(encoding=c.DEFAULT_ENCODING),
+        )
+        tm.that(receipt.effect_targets, eq=(initializer,))
+        tm.that(receipt.attempted_files, eq=(initializer,))
+        tm.that(receipt.pending_files, eq=())
+        tm.that(receipt.completed, eq=False)
+        assert receipt.transaction_id is not None
+        digest = u.Cli.sha256_content(receipt.model_dump_json())
+        history = (
+            report_path.with_suffix("")
+            / receipt.transaction_id
+            / f"{digest}{report_path.suffix}"
+        )
+        tm.that(history.is_file(), eq=True)
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
 
     @staticmethod
@@ -201,7 +324,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         if foreign_change == "none":
             tm.ok(recovered)
-            tm.that(target.exists(), eq=False)
+            tm.that(target.read_bytes(), eq=b"owned publication\n")
             tm.that(staging.exists(), eq=False)
             tm.that(session.journal_state.path.exists(), eq=False)
         else:
@@ -326,12 +449,12 @@ class TestsFlextInfraFileParticipantRecovery:
                 )
                 tm.fail(failed, has=str(cause))
                 tm.that(
-                    "recovery_error" in (failed.error_data or {}),
+                    (failed.error_data or {}).get("cleanup_error") is not None,
                     eq=journal_change != "unchanged",
                 )
             if journal_change == "unchanged":
                 tm.that(journal.exists(), eq=False)
-                tm.that(target.exists(), eq=False)
+                tm.that(target.read_bytes(), eq=b"prepared publication\n")
             else:
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),

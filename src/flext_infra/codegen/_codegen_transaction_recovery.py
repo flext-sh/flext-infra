@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraCodegenFileLeases, c, m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
@@ -18,7 +18,7 @@ from flext_infra.codegen import (
     FlextInfraMiseRecovery,
     FlextInfraMiseWorkspacePlanner,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -38,6 +38,81 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+
+    @staticmethod
+    def record_publication(
+        session: m.Infra.CodegenTransactionSession,
+        *,
+        phase: str | None = None,
+        completed: bool = False,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Persist cumulative gains before any subsequent phase can fail.
+
+        Returns:
+            The session whose published paths and issues have been recorded.
+        """
+        destinations: list[Path] = []
+        for entry in session.journal.entries:
+            destination = FlextInfraMiseArtifactsFiles.resolve_transaction(
+                session.plan.layout,
+                entry.path,
+                purpose="publication accounting",
+            )
+            if destination.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(destination)
+            destinations.append(destination.value)
+        effect_targets = tuple(dict.fromkeys(destinations))
+        observed_targets = {
+            *session.written_files,
+            *session.retained_files,
+            *(Path(issue.file) for issue in session.issues),
+        }
+        attempted_files = tuple(
+            path for path in effect_targets if path in observed_targets
+        )
+        pending_files = tuple(
+            path for path in effect_targets if path not in observed_targets
+        )
+        outcome = m.Infra.CodegenPhaseOutcome(
+            root=session.plan.layout.scope_root,
+            transaction_id=session.journal.transaction_id,
+            phase=phase,
+            completed=completed and not pending_files,
+            written_files=session.written_files,
+            retained_files=session.retained_files,
+            effect_targets=effect_targets,
+            attempted_files=attempted_files,
+            pending_files=pending_files,
+            issues=session.issues,
+            exception=session.exception,
+        )
+        report_path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        digest = u.Cli.sha256_content(outcome.model_dump_json())
+        evidence = u.Infra.publish_refactor_report_evidence(
+            session.plan.layout.scope_root,
+            outcome,
+            relative_path=(
+                report_path.with_suffix("")
+                / session.journal.transaction_id
+                / f"{digest}{report_path.suffix}"
+            ),
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
+        evidence = u.Infra.publish_refactor_report_evidence(
+            session.plan.layout.scope_root,
+            outcome,
+            relative_path=report_path,
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
+        if completed and pending_files:
+            return r[m.Infra.CodegenTransactionSession].fail(
+                "publication accounting is incomplete: "
+                + ", ".join(str(path) for path in pending_files),
+                error_code=c.Infra.ToolOutcome.ERROR.value,
+            )
+        return r[m.Infra.CodegenTransactionSession].ok(session)
 
     def participant_policy(
         self,
@@ -273,11 +348,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             *(
                 selector
                 for entry in journal.entries
-                for selector in (
-                    entry.desired_staging,
-                    entry.original_backup,
-                    entry.rollback_staging,
-                )
+                for selector in (entry.desired_staging,)
                 if selector is not None
             ),
         ):
@@ -510,43 +581,21 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[bool].fail(f"{failure}; durable journal disappeared")
         return self._recover_failure(layout, failure)
 
-    def _verified_prepublication_barriers(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
-        all_sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]],
-        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-    ) -> p.Result[bool]:
-        """Re-verify every pre-publication barrier, recovering on the first breach.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        barriers = FlextInfraCodegenPreconditions.prepublication_barriers(
-            plan,
-            tuple(source for _phase, source in all_sources),
-            tuple(item.before for item in publications),
-        )
-        if barriers.failure:
-            return r[bool].from_failure(
-                self._recover_failure(
-                    layout,
-                    barriers.error or "generation barrier failed",
-                ),
-            )
-        return r[bool].ok(value=True)
-
     def _recover_failure(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         failure: str,
+        *,
+        exception: BaseException | None = None,
     ) -> p.Result[bool]:
         recovered = self._recover_prepared(layout)
-        if recovered.failure:
-            # Recovery must never replace the failure that initiated it.
-            return r[bool].fail(failure, error_data={"recovery_error": recovered.error})
-        return r[bool].fail(failure)
+        return r[bool].fail(
+            failure,
+            exception=exception,
+            error_data={
+                "cleanup_error": recovered.error if recovered.failure else None
+            },
+        )
 
     def _write_journal(
         self,

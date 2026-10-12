@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -104,6 +106,65 @@ class TestsFlextInfraFacadeBaseCutover:
         updated = self._edits(tmp_path, sources, child)[0].updated_source
         tm.that(updated, has=f"    base = {self.PARENT_CLASS}.BaseModel\n")
         tm.that(updated, has="        return m.BaseModel\n")
+
+    def test_module_alias_uses_the_binding_before_assignment(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Resolve an imported module alias through its actual source identity."""
+        child, sources = self._workspace(
+            tmp_path,
+            """from parent_pkg import m
+
+class ChildModels(m):
+    pass
+
+m = ChildModels
+""",
+        )
+        parent = tmp_path / "parent/src/parent_pkg"
+        sources[parent / "prior.py"] = """class DeclaredAncestor:
+    pass
+
+__all__ = ['DeclaredAncestor']
+"""
+        sources[parent / "models.py"] = f"""from parent_pkg import prior
+
+previous = prior
+
+class {self.PARENT_CLASS}(previous.DeclaredAncestor):
+    pass
+
+m = {self.PARENT_CLASS}
+__all__ = [{self.PARENT_CLASS!r}, 'm']
+"""
+        updated = self._edits(tmp_path, sources, child)[0].updated_source
+        tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
+        sources[child] = updated
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        consumer = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from child_pkg.models import ChildModels; "
+                        "from parent_pkg.prior import DeclaredAncestor; "
+                        "assert isinstance(ChildModels(), DeclaredAncestor)"
+                    ),
+                ),
+                cwd=tmp_path,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": os.pathsep.join(
+                            (str(parent.parent), str(child.parent.parent)),
+                        ),
+                    },
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
 
     def test_every_letter_base_of_a_composed_facade_extends_its_own_parent(
         self,

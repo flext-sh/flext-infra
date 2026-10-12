@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):

@@ -30,8 +30,6 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
-    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
-    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"
 
     # These enums define the
@@ -292,8 +290,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."
-    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
-    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.

@@ -14,14 +14,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import (
-    FlextInfraCodegenFileLeases,
-    FlextInfraWorkspaceDetector,
-    c,
-    config,
-    m,
-    u,
-)
+from flext_infra import c, config, m, u
+from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p, t

@@ -13,7 +13,6 @@ from __future__ import annotations
 from flext_cli import FlextCliProtocols
 
 from flext_infra._protocols import (
-    FlextInfraProtocolsBase,
     FlextInfraProtocolsCheck,
     FlextInfraProtocolsDeps,
     FlextInfraProtocolsDocs,
@@ -21,6 +20,7 @@ from flext_infra._protocols import (
     FlextInfraProtocolsRope,
     FlextInfraProtocolsRopeRuntime,
 )
+from flext_infra._protocols.base import FlextInfraProtocolsBase
 
 
 class FlextInfraProtocols(FlextCliProtocols):

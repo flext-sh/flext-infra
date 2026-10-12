@@ -15,7 +15,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenStaging,
     FlextInfraMiseArtifactsJournal as journal_io,
     FlextInfraMiseArtifactsState as state,
-    FlextInfraMiseArtifactsVerification as verify,
     FlextInfraMisePublication,
     FlextInfraMiseStaging,
 )
@@ -151,11 +150,11 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         return result_type.ok((layout, transaction_directories.value, plan.value))
 
     @staticmethod
-    def _generation_source_barrier(
+    def _generation_sources(
         file_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         plan: m.Infra.MiseToolchainWorkspacePlan,
     ) -> p.Result[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]]:
-        """Prove conform and Mise sources unchanged, and tag them per phase.
+        """Tag conform and Mise source receipts without a workspace drift guard.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[t.Pair[str,
@@ -172,11 +171,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             *source_states.value,
             *(("mise", source) for source in plan.sources),
         )
-        return verify.states_current(
-            FlextInfraCodegenPreconditions.unique_states(
-                tuple(source for _phase, source in all_sources),
-            ),
-        ).map(lambda _ok: all_sources)
+        return r[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]].ok(all_sources)
 
     def _open_generation_journal(
         self,
@@ -317,7 +312,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         if topology.failure:
             return result_type.from_failure(topology)
         layout, transaction_directories, plan = topology.value
-        sources = self._generation_source_barrier(file_plans, plan)
+        sources = self._generation_sources(file_plans, plan)
         if sources.failure:
             return result_type.from_failure(sources)
         opened = self._open_generation_journal(
@@ -430,14 +425,6 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
         ]
         active_journal, active_state = journal_state
-        barriers = self._verified_prepublication_barriers(
-            layout,
-            plan,
-            all_sources,
-            publications,
-        )
-        if barriers.failure:
-            return result_type.from_failure(barriers)
         prepared_journal = journal_io.append_prepared(
             plan,
             active_journal,
@@ -475,23 +462,13 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
                     or "cannot publish prepared generation journal",
                 ),
             )
-        barriers = self._verified_prepublication_barriers(
-            layout,
-            plan,
-            all_sources,
-            publications,
-        )
-        if barriers.failure:
-            return result_type.from_failure(barriers)
         return result_type.ok((manifested.value, prepared_state.value))
 
     def _publish_prepared_generation(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        mise_publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish the staged set and prove publication and real-consumer liveness.
 
         Returns:
@@ -501,32 +478,10 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         """
         published = FlextInfraMisePublication.publish(publications)
         if published.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
+            return r[m.Infra.CodegenPhaseOutcome].from_failure(
                 self._recover_failure(
                     layout,
                     published.error or "generation publication failed",
-                ),
-            )
-        publication_state = verify.publications_live(publications)
-        if publication_state.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    layout,
-                    publication_state.error
-                    or "generation publication identity changed",
-                ),
-            )
-        live = verify.live(
-            self._owner,
-            plan,
-            mise_publications,
-            published=publications,
-        )
-        if live.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    layout,
-                    live.error or "Mise real-consumer validation failed",
                 ),
             )
         return published
@@ -583,19 +538,21 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         manifested, prepared_state = prepared.value
         finalized = self._publish_prepared_generation(
             layout,
-            plan,
             publications.value,
-            mise_publications,
         )
         if finalized.failure:
             return result_type.from_failure(finalized)
-        return result_type.ok(
+        return self.record_publication(
             m.Infra.CodegenTransactionSession(
                 plan=plan,
                 journal=manifested,
                 journal_state=prepared_state,
-                written_files=finalized.value,
+                written_files=finalized.value.written_files,
+                retained_files=finalized.value.retained_files,
+                issues=finalized.value.issues,
+                exception=finalized.value.exception,
             ),
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
         )
 
 

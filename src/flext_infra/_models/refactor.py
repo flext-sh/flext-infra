@@ -83,6 +83,28 @@ class FlextInfraModelsRefactor(
     class ModTextCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Repository-scoped request for authenticated Sed rule replay."""
 
+    class ModuleMoveCommand(m.ContractModel):
+        """Move a declared source module and its semantic import references."""
+
+        repository_root: Annotated[Path, m.Field(description="Owning repository root")]
+        source_file: Annotated[Path, m.Field(description="Existing Python module")]
+        destination_directory: Annotated[
+            Path,
+            m.Field(description="Existing destination package directory"),
+        ]
+
+    class RopeRenameOptions(m.ArbitraryTypesModel):
+        """Declared search scope and hierarchy policy for one semantic rename."""
+
+        resources: Annotated[
+            t.SequenceOf[t.Infra.RopeResource],
+            m.Field(description="Resources included in the semantic rename scope"),
+        ]
+        in_hierarchy: Annotated[
+            bool,
+            m.Field(description="Whether the rename includes inherited declarations"),
+        ] = False
+
     class ViolationsTotals(m.ContractModel):
         """One mod scan's violation totals as the sweep compares them."""
 
@@ -177,6 +199,45 @@ class FlextInfraModelsRefactor(
         m.ContractModel,
     ):
         """CLI/service request for namespace enforcement."""
+
+    class CensusOptions(m.ContractModel):
+        """Declared census filters and report destinations."""
+
+        json_output: Annotated[
+            str | None, m.Field(description="Path to write JSON report")
+        ] = None
+        impact_map_output: Annotated[
+            str | None, m.Field(description="Path to write impact map JSON")
+        ] = None
+        kinds: Annotated[
+            t.StrSequence | None, m.Field(description="Optional symbol-kind filters")
+        ] = None
+        rules: Annotated[
+            t.StrSequence | None, m.Field(description="Optional violation-rule filters")
+        ] = None
+        families: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional namespace-family filters"),
+        ] = None
+        include_local_scopes: Annotated[
+            bool, m.Field(description="Include locals, parameters and nested scopes")
+        ] = True
+
+    class CensusInput(
+        CensusOptions,
+        FlextInfraModelsMixins.WriteMixin,
+    ):
+        """Public census request separated from injected execution capabilities."""
+
+        check_only: Annotated[
+            bool, m.Field(alias="check", description="Validate without writing")
+        ] = False
+        dry_run_mode: Annotated[
+            bool, m.Field(alias="dry-run", description="Inspect without writing")
+        ] = False
+        output_format: Annotated[
+            str, m.Field(description="Output format (json|text)")
+        ] = "text"
 
     class AccessorMigrationInput(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """CLI/service request for accessor migration dry-runs and applies."""

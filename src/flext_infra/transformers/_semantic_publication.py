@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
@@ -31,6 +32,7 @@ class FlextInfraSemanticPublication:
         repository_root: Path,
         validator: Callable[[], p.Result[bool]] | None = None,
         codegen: m.Infra.CodegenConfigSpec | None = None,
+        projection_roots: t.VariadicTuple[Path] = (),
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Preflight every plan and commit only after byte and caller acceptance.
 
@@ -44,7 +46,13 @@ class FlextInfraSemanticPublication:
         files = cls._concrete_file_plans(plans, codegen)
         if files.failure:
             return r[tuple[Path, ...]].from_failure(files)
-        if not files.value:
+        if not files.value and not projection_roots:
+            if validator is not None:
+                checked = validator()
+                if checked.failure:
+                    return r[tuple[Path, ...]].from_failure(checked)
+                if not checked.value:
+                    return r[tuple[Path, ...]].fail("semantic acceptance rejected")
             return r[tuple[Path, ...]].ok(())
         inputs = cls._semantic_input_snapshots(plans)
         if inputs.failure:
@@ -54,13 +62,40 @@ class FlextInfraSemanticPublication:
             files=tuple(files.value),
             inputs=inputs.value,
         )
-        roots = cls._semantic_phase_roots(files.value)
+        roots = cls._semantic_phase_roots(files.value, projection_roots)
+        return cls._publish_joint_analysis(
+            analysis,
+            roots,
+            repository_root=repository_root,
+            projection_roots=projection_roots,
+            validator=validator,
+        )
+
+    @classmethod
+    def _publish_joint_analysis(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        roots: t.MappingKV[str, Path],
+        *,
+        repository_root: Path,
+        projection_roots: t.VariadicTuple[Path],
+        validator: Callable[[], p.Result[bool]] | None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Keep semantic and generated phases in the same recoverable journal.
+
+        Returns:
+            Published paths after phase receipts and consumer acceptance.
+        """
+        projection_analyses: list[m.Infra.CodegenPhaseAnalysis] = []
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
         )
 
         def validate_published() -> p.Result[bool]:
-            checked = transaction.validate_phase_analysis_locked(analysis)
+            checked = cls._validate_phase_receipts(
+                (analysis, *projection_analyses),
+                transaction.validate_phase_analysis_locked,
+            )
             if checked.failure or not checked.value or validator is None:
                 return checked
             return validator()
@@ -80,11 +115,43 @@ class FlextInfraSemanticPublication:
                 )
                 if published.failure:
                     return r[tuple[Path, ...]].from_failure(published)
+                if projection_roots:
+                    planned = FlextInfraCodegenLazyInit(
+                        repository_root=repository_root,
+                        project_scope_roots=projection_roots,
+                    ).plan_files()
+                    if planned.failure:
+                        return r[tuple[Path, ...]].from_failure(planned)
+                    projection_analyses.append(planned.value)
+                    published = transaction.append_phase_locked(
+                        published.value,
+                        planned.value.phase,
+                        planned.value.files,
+                    )
+                    if published.failure:
+                        return r[tuple[Path, ...]].from_failure(published)
                 return transaction.commit_locked(published.value, validate_published)
 
             return transaction.publish_prepared_locked(started.value, apply)
 
         return transaction.run_files_locked(roots, publish)
+
+    @staticmethod
+    def _validate_phase_receipts(
+        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
+        verify: Callable[[m.Infra.CodegenPhaseAnalysis], p.Result[bool]],
+    ) -> p.Result[bool]:
+        """Require every phase receipt before consumer acceptance.
+
+        Returns:
+            The first rejected receipt, or successful receipt validation.
+
+        """
+        for analysis in analyses:
+            checked = verify(analysis)
+            if checked.failure or not checked.value:
+                return checked
+        return r[bool].ok(value=True)
 
     @classmethod
     def _semantic_input_snapshots(
@@ -111,6 +178,7 @@ class FlextInfraSemanticPublication:
     @staticmethod
     def _semantic_phase_roots(
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        projection_roots: t.VariadicTuple[Path] = (),
     ) -> t.MappingKV[str, Path]:
         """Namespace the touched projects under stable semantic pseudo-roots.
 
@@ -121,7 +189,7 @@ class FlextInfraSemanticPublication:
         return {
             f"@semantic-{index}": project
             for index, project in enumerate(
-                sorted({plan.project for plan in files}),
+                sorted({plan.project for plan in files} | set(projection_roots)),
             )
         }
 

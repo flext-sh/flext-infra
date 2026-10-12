@@ -2,6 +2,9 @@
 
 <!-- TOC START -->
 
+- [Lane admission](#lane-admission)
+- [Recovery Branches](#recovery-branches)
+
 <!-- TOC END -->
 
 `u.Infra` owns scoped WIP capture. Callers select literal repository-relative paths in

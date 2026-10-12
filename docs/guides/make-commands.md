@@ -14,6 +14,7 @@
 - [Repair selector verbs and the mod loop](#repair-selector-verbs-and-the-mod-loop)
 - [Fleet automation verbs](#fleet-automation-verbs)
 - [Mandatory unsafe repair channel (operator law 2026-10-05)](#mandatory-unsafe-repair-channel-operator-law-2026-10-05)
+- [Native type descriptor policy](#native-type-descriptor-policy)
 - [Markdown quality pipeline](#markdown-quality-pipeline)
 - [Test contract](#test-contract)
 - [Failure contract](#failure-contract)
@@ -96,6 +97,12 @@ rules this repository owns from their tests, prints every created, updated or re
 snapshot, and leaves the diff for review in the same commit as the rule change.
 Inherited rule providers keep the snapshots their owner ships.
 
+`make mod` applies safe actionable rewrites before judging the final inventory.
+Detection-only, non-actionable-with-fix, generated-owner, and text findings remain
+blocking at that fixed point; zero actionable findings alone is not acceptance.
+The constants census must also retain zero violations before the verb succeeds.
+Accepted repairs remain available for fix-forward when the final inventory is red.
+
 For private imports, `make mod` first resolves whether the importing file and target
 module share an owner. Same-owner imports become relative imports without inspecting an
 installed package with the same top-level name. Only cross-owner imports require
@@ -153,6 +160,19 @@ engines `make mod` invokes as callback phases of its joint fixed point:
 namespace-enforce` / `refactor accessor-migrate` without `--apply` reports
   without writing) and publish their structured receipts under
   `.reports/refactor/`; a second run over a converged tree writes nothing.
+
+The public `flext-infra refactor move-module` command moves an existing module
+through the same Rope engine and rewrites its import references. Its required
+`--repository-root`, `--source-file`, and `--destination-directory` arguments
+declare the actual owners; relative paths resolve inside that repository.
+Both source and destination must belong to the repository, the destination must
+exist, and a competing destination module fails before any write. The command
+does not copy a loader, add an alias, restore a snapshot, or change package exports.
+After a structural move, regenerate and exercise the real package consumer.
+In particular, a lazy installer cannot depend on a generated parent package that
+imports that same installer before its declaration is available. Move the actual
+implementation ownership out of that cycle rather than suppressing declared
+exports or introducing a special initializer.
 
 ## Fleet automation verbs
 

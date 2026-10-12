@@ -25,10 +25,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_inventory_collector import (
+    FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 
 if TYPE_CHECKING:
@@ -229,7 +231,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         """
         target: t.Pair[str, str] | None = None
         declared = False
-        for node in cls._facade_module_statements(source, module):
+        statements = cls._facade_module_statements(source, module)
+        for index, node in enumerate(statements):
             if isinstance(node, ast.AnnAssign) and node.value is None:
                 # An annotation without a value does not rebind an existing name.
                 continue
@@ -240,6 +243,16 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 name,
             ):
                 target = cls._assigned_value_binding(node, module)
+                if isinstance(node.value, ast.Name):
+                    previous, previous_declared = cls._facade_binding_state(
+                        ast.unparse(
+                            ast.Module(body=list(statements[:index]), type_ignores=[]),
+                        ),
+                        module,
+                        node.value.id,
+                        package,
+                    )
+                    target = (module, node.value.id) if previous_declared else previous
                 declared = False
             elif isinstance(node, ast.ImportFrom):
                 binding = cls._imported_binding(node, name, package)

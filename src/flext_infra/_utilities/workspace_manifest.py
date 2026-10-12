@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r, t
+from flext_infra._utilities import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -92,20 +93,14 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
     @classmethod
     def fleet_umbrella(cls, repository_root: Path) -> bool:
-        """Whether this checkout declares itself a fleet umbrella.
-
-        The typed role in the handwritten workspace manifest is the only signal.
-        Every governed standalone project also carries this manifest, so file
-        existence alone would collapse its docs scope onto an aggregate root.
+        """Whether this checkout declares governed participants in Git.
 
         Returns:
             The resulting ``bool``.
 
         """
-        manifests = cls.load_workspace_manifest(repository_root).unwrap()
-        return any(
-            manifest.repository.role is c.Infra.MakeProfile.WORKSPACE
-            for manifest in manifests
+        return bool(
+            FlextInfraUtilitiesPyproject.workspace_project_paths(repository_root),
         )
 
 

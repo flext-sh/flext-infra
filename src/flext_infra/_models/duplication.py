@@ -52,6 +52,16 @@ class FlextInfraModelsDuplication:
             t.StrSequence,
             m.Field(description="Scope directory names"),
         ] = c.Infra.JSCPD_SCOPE_DIRNAMES
+        fleet: Annotated[
+            t.StrictBool,
+            m.Field(
+                description=(
+                    "Scan this governed workspace's declared members together in "
+                    "one cross-project jscpd run; the member set is derived from "
+                    "the workspace composition and is never listed here"
+                ),
+            ),
+        ] = False
 
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""

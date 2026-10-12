@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import (
-    FlextInfraCleanService,
+from flext_infra import c, infra, m
+from flext_infra.docs import (
     FlextInfraDocAuditor,
     FlextInfraDocBuilder,
     FlextInfraDocCollector,
@@ -19,13 +19,15 @@ from flext_infra import (
     FlextInfraDocGenerator,
     FlextInfraDocServer,
     FlextInfraDocValidator,
+)
+from flext_infra.maintenance import (
+    FlextInfraCleanService,
     FlextInfraPythonVersionEnforcer,
     FlextInfraSonarcloudIssues,
     FlextInfraSonarcloudSettingsSync,
+)
+from flext_infra.services.cli_routes_validate_commands import (
     FlextInfraValidationCommandRoutes,
-    c,
-    infra,
-    m,
 )
 
 if TYPE_CHECKING:

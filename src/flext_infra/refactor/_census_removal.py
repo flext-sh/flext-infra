@@ -10,7 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraCodegenLazyInit, m, u
+from flext_infra import m, u
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 
 if TYPE_CHECKING:
@@ -43,6 +44,8 @@ class FlextInfraRefactorCensusRemovalMixin(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         project_reports: t.VariadicTuple[m.Infra.ProjectReport],
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> t.VariadicTuple[m.Infra.ProjectReport]:
         """Keep only removal candidates that pass the configured dry-run gates.
 
@@ -57,8 +60,7 @@ class FlextInfraRefactorCensusRemovalMixin(
 
         """
         validated_reports: list[m.Infra.ProjectReport] = []
-        # Preview writes are restored before the next candidate, so one shared
-        # source cache stays valid for the entire dry-run validation pass.
+        # Previews validate staged bytes, so the live source cache remains valid.
         source_cache: MutableMapping[Path, str] = {}
         for report in project_reports:
             if not report.removal_candidates:
@@ -71,8 +73,11 @@ class FlextInfraRefactorCensusRemovalMixin(
                     rope,
                     self.root,
                     candidate,
-                    gates=self.dry_run_gate_names,
-                    source_cache=source_cache,
+                    options=m.Infra.RemovalPreviewOptions(
+                        gates=self.dry_run_gate_names,
+                        source_cache=source_cache,
+                    ),
+                    source_preview=source_preview,
                 )
                 if preview_result.failure:
                     msg = (

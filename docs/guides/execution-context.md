@@ -11,6 +11,7 @@
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
 - [Check gate partitions](#check-gate-partitions)
+- [Census consumer evidence](#census-consumer-evidence)
 - [Bounded Mypy failure status](#bounded-mypy-failure-status)
 - [Abstraction-boundary project identity](#abstraction-boundary-project-identity)
 - [Codemod scanner contract](#codemod-scanner-contract)
@@ -46,6 +47,12 @@ and keeps the command red, so `make gen` can repair a broken generated activatio
 without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
+
+The `flext_core.lazy` loader imports its implementation from root-level source
+modules, never through a generated child initializer. This keeps generation's
+own loader available before child projections are repaired. Recovery uses the
+same guarded `make gen` transaction and its post-generation runtime provenance
+check; it does not disable the environment guard or replace the generator.
 
 Activation loads the native `mise env --shell bash` output, which puts the
 installed tool directories ahead of the host's shared shims. This includes the
@@ -125,6 +132,13 @@ local source overlay and the shared runtime environment. Regenerate that root wi
 `make gen` and reconcile its lock with `make upg` when the local binding changes.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
+
+Operational Make prerequisites also verify that provenance before dispatch. An
+executable interpreter alone does not establish a valid development runtime.
+Run runtime actions through the root Make dispatcher. Its recipes use the
+setup-owned interpreter without selecting a member's lock for synchronization. Only
+setup and upgrade provision dependencies. A provenance failure is repaired through setup,
+not through a `--no-sync` override or a source-path injection.
 
 ## Runtime environment
 
@@ -206,8 +220,16 @@ The default `make gen` handler passes explicit `--scope all` to conform at
 `PROJECT_ROOT`: a workspace invocation covers its root and every declared member,
 while a standalone repository has only itself. The request model's default remains
 `SELF` for callers that do not select a scope, including file-only surfaces.
-Generation owns one transaction for ordinary projections, Mise artifacts, lazy
-exports and docs; no additional writer runs before or after its journal.
+Generation publishes ordinary projections, Mise artifacts, lazy exports and docs
+independently through the existing atomic file owner. Immediately before each write,
+the publisher reads that destination's current state; an external edit before the
+write is input rather than a campaign-wide failure. The atomic write still protects
+a race during that individual operation. Every target is attempted and failed targets
+are reported alongside successfully published paths.
+The journal authorizes temporary staging cleanup. It never restores destination
+preimages or deletes generated directories after a later phase fails. Accepted changes
+and unrelated external edits remain intact. Phase diagnostics accumulate into the
+publication report, and the final error verdict retains the original causal exception.
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
@@ -255,6 +277,14 @@ green. Concurrent changes require a fresh read before writing and revalidation o
 affected paths. A published work-in-progress commit preserves work and enables review;
 completion requires integration and runtime measured at the integrated SHA.
 
+Generation publication receipts identify their transaction and retain immutable
+digest-addressed history before updating the latest report. Their effect targets
+come from the journal's physical destination resolver. Written, retained and failed
+targets account for attempted effects; remaining targets stay pending. Final
+accounting cannot mark an invocation complete while any authorized effect is
+pending. This inventory covers publication effects, not unchanged files or a
+repository's unexecuted checks.
+
 The pytest runner retains the native exit code when startup fails before a final
 JUnit report is produced. Its process-outcome receipt and raw log remain available,
 but no completed-suite summary or run accounting is published. A graceful failing
@@ -281,6 +311,41 @@ codemod gate is their one verdict. Preserve mutability, inheritance, imports, an
 collection; validate the transformation through the public interface before widening
 the batch. Structural refactors go through `make mod`.
 
+Typing-alias relocation plans the declaration, destination and consumer changes
+before one protected publication. Explicit imports retain their lexical scopes
+and local bindings. Unsupported references, ambiguous bindings and uncertain
+star exports reject the entire move before publication, including creation of a
+previously absent destination. Quoted type expressions participate in semantic
+identity checks; ordinary strings, `Literal` values and `Annotated` metadata do not.
+
+Lazy initializer planning keeps facade exports lazy. A version metadata export
+whose name collides with its child module uses the existing eager-dunder contract:
+the scalar is bound before lazy installation and omitted from the lazy map. Public
+export traversal must not replace that scalar with the imported child module.
+Initializer ownership is elected from actual content and the accepted generator
+markers. Absent or empty initializers and explicitly marked projections may be
+generated. A nonempty authored initializer is retained in full, including executable
+loaders, declarations and constants; its public exports remain part of discovery.
+The lazy planning report records `ownership=authored`, `disposition=retained` and the
+existing RETAIN action. Publication reelects ownership from the current target before
+its single write, so a later authored replacement is retained and is not counted as
+a generated file. No directory-name exemption list selects this behavior.
+Shared input snapshots document the planner's inputs; later source edits do not
+invalidate an entire generation. Directed validation checks the actual generated
+targets rather than comparing every source with an earlier workspace snapshot.
+
+Repository generation plans treat malformed source as a failed input. The
+planning report at `.reports/codegen-plan.json` records each selected repository's
+outcome, exception type and original traceback. Generation reports failures at
+their affected files and retains successfully generated files. Changes made
+outside the generator do not authorize restoration of earlier workspace bytes.
+Lazy binding discovery parses package initializers only, so unrelated malformed
+consumer code cannot invalidate an otherwise valid declaration projection.
+
+Text codemods validate replacement Python before publishing any planned writes.
+An invalid replacement returns a failed result carrying the original `SyntaxError`,
+including its filename and source text. The complete batch remains unchanged.
+
 ## Check gate partitions
 
 `make file-gate FILE=<repository-relative path>` delegates to the existing
@@ -294,8 +359,8 @@ Pyright and codemod gates through the existing typed `RunCommand.gates` owner an
 `resolve_gates`; no separate gate vocabulary or configuration is introduced.
 The public `check run --file` requires explicit `--gates`, never silently falls
 back to whole-project gates, and rejects unknown names before scanner execution.
-Mypy and Pyright findings retain the existing informative SSOT policy; native
-errors, missing tools/configuration and malformed reports remain blocking.
+Every selected gate retains its native diagnostics and verdict; failures, missing
+tools/configuration and malformed reports remain blocking.
 Codemod uses its elected, staged provider configurations and native report owner.
 
 The former bare `typos` hook existed only in the Make recipe, help and tests,
@@ -348,11 +413,35 @@ The explicit single-file operation runs incremental selection followed by comple
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-Actions restores only that project database and saves only on an allowed integration
-push with a fresh completed-run path/digest/saveability receipt. The SQLite owner
-checkpoints and checks integrity before the runner releases its lease and exports
-the receipt. PRs, forks, cancelled or incomplete runs cannot publish cache state;
-a completed failing test run may save without changing its failing status.
+Actions restores only that project database. Keys separate project, operating system,
+architecture, Python runtime and branch; generation IDs remain immutable. Restore first
+prefers matching lock/config inputs, then earlier generations in the branch, then the
+PR base or repository default branch seed within GitHub's cache visibility rules.
+Testmon revalidates restored inputs rather than discarding history on every lock change.
+Branch pushes and same-origin PRs may save with a fresh completed-run
+path/digest/saveability receipt. Fork PRs and other events remain restore-only. The
+SQLite owner checkpoints and checks integrity before the runner releases its lease
+and exports the receipt. Cancelled, corrupt or incomplete runs cannot publish;
+a completed failing test run may save without changing its failing status, including
+when a later step fails. Publication never depends on a branch-name allowlist.
+
+CI uploads the reports that the original operations produced on every job outcome,
+including successful checks, completed failures and interrupted runs. The upload also
+runs when no test workflow row is selected, preserving the check reports independently.
+Its allowlist includes structured check summaries, coverage and JUnit artifacts, original
+suite/selection/inventory process outcomes, selection manifests, run context and
+accounting, cache integrity decisions and Markdown reconciliation. Raw process and test
+logs remain outside that artifact. Generation publication receipts include the latest
+receipt and immutable transaction history, retaining written, retained, attempted and
+pending targets without source snapshots. Planning evidence records candidate HEAD
+and dirty state when the selected root owns a Git repository, otherwise an explicit
+unversioned candidate, plus destination identities, planned modes and content digests,
+counts and native failures. It excludes desired source bytes, captured file state and
+environment command payloads. Original plan objects remain local to execution.
+An early failure publishes only the receipts reached
+by the operation; a missing report remains an artifact error, never a manufactured
+complete execution. Uploading reports does not change the native command status or
+authorize cache publication from an incomplete run.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The
@@ -456,6 +545,21 @@ whole-project checks and `check_files` scan every elected provider rule.
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
+Failed AST or semantic passes retain accepted writes for fix-forward. They propagate
+the operation's failure or first exception without restoring an earlier repository
+inventory. Each publication still validates its planned files and expected source
+identities before writing; a stale later batch cannot replace newer independent edits
+or undo an earlier accepted batch.
+
+Source previews use the mandatory `p.Infra.SourcePreview` capability composed by
+the public API. Census, accessor migration and codemod services receive that capability;
+they do not construct a generation transaction inside their execution. The existing
+transaction owner materializes authenticated candidate bytes and removes only its
+staging after validation. Parser or validator exceptions retain their original cause
+and leave live source bytes and modification times unchanged. Native Ruff uses the
+declared external project cache so its cache files never enter the authenticated
+source view.
+
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases
 or inheritance, and it does not rewrite initializer projections.

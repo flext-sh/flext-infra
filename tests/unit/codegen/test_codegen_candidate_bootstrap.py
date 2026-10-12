@@ -12,12 +12,36 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
+
+    @staticmethod
+    def _write_runtime_probe(candidate: Path) -> t.StrSequence:
+        """Declare importable descendants of the configured runtime roots.
+
+        Returns:
+            Configured roots exercised by the probe package.
+        """
+        policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
+        roots = policy.runtime_evaluated_roots
+        source = "\n".join(
+            f"import {module} as provider{index}\n\n"
+            f"class BootstrapProbe{index}(provider{index}.{base}):\n    pass\n"
+            f"class BootstrapConsumer{index}(BootstrapProbe{index}):\n    pass\n"
+            for index, (module, _, base) in enumerate(
+                root.rpartition(".") for root in roots
+            )
+        )
+        if not roots:
+            source = "class BootstrapProbe:\n    pass\n"
+        probe = candidate / "src" / "bootstrap_probe" / "models.py"
+        probe.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(probe, source))
+        return roots
 
     @staticmethod
     def test_current_repository_is_a_valid_relative_bootstrap_target() -> None:
@@ -356,29 +380,19 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         projection = candidate / c.PYPROJECT_FILENAME
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
-        roots = config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots
-        bases = tuple(root.rpartition(".") for root in roots)
-        probe_source = "\n".join(
-            f"import {module} as provider{index}\n\n"
-            f"class BootstrapProbe{index}(provider{index}.{base}):\n    pass\n"
-            for index, (module, _, base) in enumerate(bases)
+        roots = TestsFlextInfraCodegenCandidateBootstrap._write_runtime_probe(
+            candidate,
         )
-        if not roots:
-            probe_source = "class BootstrapProbe:\n    pass\n"
-        probe = candidate / "src" / "bootstrap_probe.py"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                probe,
-                probe_source,
-            ),
-        )
-        owned = tm.ok(u.Infra.pyproject_managed_file()).managed_tool_tables[0]
-        preserved = tm.ok(u.Infra.pyproject_regeneration_source(original))
+        original = tm.ok(u.Infra.pyproject_regeneration_source(original))
         conflict = "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         corrupt = (
-            preserved + f"\n[tool.{owned}]\n{conflict}"
+            original
+            + "\n[tool."
+            + tm.ok(u.Infra.pyproject_managed_file()).managed_tool_tables[0]
+            + "]\n"
+            + conflict
             if conflict_section == "tool"
-            else preserved.replace(
+            else original.replace(
                 "[dependency-groups]\n",
                 f"[dependency-groups]\n{conflict}",
                 1,
@@ -410,6 +424,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         tm.that(
             tuple(item for item in after if item[0] != projection.name),
             eq=tuple(item for item in before if item[0] != projection.name),
+            msg=TestsFlextInfraConformSupport.project_tree_diff(
+                tuple(item for item in before if item[0] != projection.name),
+                tuple(item for item in after if item[0] != projection.name),
+            ),
         )
         tm.that(
             u.Infra.runtime_evaluated_base_classes(candidate, {}, roots),
@@ -417,8 +435,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 sorted({
                     *roots,
                     *(
-                        f"provider{index}.{base}"
-                        for index, (_, _, base) in enumerate(bases)
+                        f"bootstrap_probe.models.BootstrapProbe{index}"
+                        for index in range(len(roots))
                     ),
                 })
             ),

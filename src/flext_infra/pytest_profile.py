@@ -11,7 +11,8 @@ import os
 import sys
 from pathlib import Path
 
-from flext_infra import FlextInfraPytestRunner, c, config, m, u
+from flext_infra import c, config, m, u
+from flext_infra.validate import FlextInfraPytestRunner
 
 
 class FlextInfraPytestProfile:

@@ -9,8 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import FlextInfraEnsurePackagingPhase, c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
+from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -158,6 +159,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     item.path.as_posix() for item in workspace.subprojects
                 ),
                 workspace_repositories=subprojects,
+                environment_imports=self._declared_environment_imports(
+                    target, workspace
+                ),
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,

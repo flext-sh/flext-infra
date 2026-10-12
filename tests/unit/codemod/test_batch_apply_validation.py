@@ -12,13 +12,13 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, infra, m, main
-from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
+from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from tests import tm, u
 
 
@@ -109,22 +109,30 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 + ("broken: str = 1\n" if broken else "")
             ),
         }
-        for path, source in sources.items():
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
-        if entry == "pipeline":
-            tm.fail(
-                FlextInfraWorkspaceChecker(repository_root=root).execute_payload(
-                    m.Infra.RunCommand(
-                        repository_root=root,
-                        projects=(".",),
-                        gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
-                    ),
+        for path, source in tuple(sources.items()):
+            sources[path] = tm.ok(
+                FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+                    root,
+                    path,
+                    source,
                 ),
-                has="quality",
             )
-            before = capsys.readouterr().out
-            tm.that(before, has=f"[FAIL] {c.Infra.PYREFLY}")
-            tm.that(before, has="scalar_mapping_adapter")
+            tm.ok(u.Cli.atomic_write_text_file(path, sources[path]))
+        command = (
+            sys.executable,
+            "-I",
+            "-c",
+            (
+                "import sys; sys.path.insert(0, sys.argv[1]); "
+                f"from {package.name}.consumer import value, constant, local; "
+                "assert value == {'name': 'value'}; "
+                "assert constant == local"
+            ),
+            str(package.parent),
+        )
+        if entry == "pipeline":
+            output = tm.ok(u.Cli.run_raw(command))
+            tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
             for path, source in sources.items():
                 tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
             tm.that(
@@ -154,23 +162,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             published = consumer.read_text(encoding=c.DEFAULT_ENCODING)
             tm.that(published, has="u.scalar_mapping_adapter()")
             tm.that(published, has="constant = c.JOINT_VALUE")
-            output = tm.ok(
-                u.Cli.run_raw(
-                    (
-                        sys.executable,
-                        "-I",
-                        "-c",
-                        (
-                            "import sys; sys.path.insert(0, sys.argv[1]); "
-                            "from flext_test_project.consumer import "
-                            "value, constant, local; "
-                            "assert value == {'name': 'value'}; "
-                            "assert constant == local"
-                        ),
-                        str(package.parent),
-                    ),
-                ),
-            )
+            output = tm.ok(u.Cli.run_raw(command))
             tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         if entry == "noop":
             published = consumer.read_text(encoding=c.DEFAULT_ENCODING)
@@ -238,6 +230,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
+                source_preview=infra.source_preview(mod_workspace),
                 repository_root=mod_workspace,
                 apply_changes=True,
                 rename_runner=FlextInfraApplyRenames(),

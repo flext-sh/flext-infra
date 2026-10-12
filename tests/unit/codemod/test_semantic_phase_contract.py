@@ -456,7 +456,7 @@ class TestsFlextInfraSemanticPhaseContract:
         sources = {
             contextual / "__init__.py": (
                 "from types import MappingProxyType\n"
-                "from flext_core import install_lazy_exports\n"
+                "from flext_core.lazy import install_lazy_exports\n"
                 "__all__ = ('ConsumerContextUtilities', 'u')\n"
                 "install_lazy_exports(__name__, globals(), MappingProxyType({"
                 "'ConsumerContextUtilities': '.utilities', 'u': '.utilities'}), "

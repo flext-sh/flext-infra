@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
     FlextInfraCodegenTransactionPhases,
@@ -19,6 +19,8 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsState as state,
     FlextInfraMiseArtifactsVerification as verify,
 )
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -29,6 +31,108 @@ class FlextInfraCodegenTransaction(
     FlextInfraCodegenTransactionPhases,
 ):
     """Keep every generation phase recoverable until one final fixed point."""
+
+    def preview_sources[T](
+        self,
+        workspace: Path,
+        updates: t.MappingKV[Path, str],
+        validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+    ) -> p.Result[T]:
+        """Validate a journal-owned source view without publishing live files.
+
+        Args:
+            workspace: The declared source workspace.
+            updates: Desired source content keyed by live paths.
+            validator: A callable that validates the source view.
+
+        Returns:
+            A result wrapping the validation outcome or the first failure encountered.
+        """
+        planned = FlextInfraStagedPackage.plan_sources(workspace, updates)
+        if planned.failure:
+            return r[T].from_failure(planned)
+        plan = planned.value
+        roots = {
+            f"@stage-inputs-{index}": root
+            for index, root in enumerate(sorted(plan.roots))
+        }
+
+        def validate_locked(scope_root: Path) -> p.Result[T]:
+            source_barrier = verify.states_current(plan.inputs)
+            if source_barrier.failure:
+                return r[T].from_failure(source_barrier)
+            started = self.begin_files_locked(scope_root, roots, plan.inputs)
+            if started.failure:
+                return r[T].from_failure(started)
+            session = started.value
+
+            def validate_prepared(
+                prepared: m.Infra.CodegenTransactionSession,
+            ) -> p.Result[T]:
+                participant = next(
+                    item
+                    for item in prepared.plan.layout.file_participants
+                    if item.root == plan.workspace
+                )
+                view_root = participant.transaction_root / "source-view"
+                candidates = {
+                    path: view_root / path.relative_to(plan.workspace)
+                    for path in plan.updates
+                }
+                writes = self._source_preview_writes(plan, view_root)
+                materialized = self._materialize_package_writes(prepared, writes)
+                if materialized.failure:
+                    return r[T].from_failure(materialized)
+                value = validator(view_root, candidates)
+                barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+                    materialized.value,
+                    "source preview journal changed during validation",
+                )
+                if barrier.failure:
+                    return r[T].from_failure(barrier)
+                cleaned = self._recover_prepared(prepared.plan.layout)
+                if cleaned.failure:
+                    return r[T].fail(
+                        cleaned.error or "source preview staging cleanup failed",
+                        error_code=cleaned.error_code,
+                        exception=cleaned.exception,
+                        error_data={
+                            **(cleaned.error_data or {}),
+                            "cleanup_error": cleaned.error,
+                        },
+                    )
+                return r[T].ok(value)
+
+            return self.publish_prepared_locked(session, validate_prepared)
+
+        return self.run_files_locked(roots, validate_locked)
+
+    @staticmethod
+    def _source_preview_writes(
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+    ) -> t.VariadicTuple[tuple[Path, bytes, int]]:
+        """Build the staged writes that materialize the previewed source view.
+
+        Returns:
+            One (destination, content, mode) write per changed source input.
+
+        """
+        writes: list[tuple[Path, bytes, int]] = []
+        for before in plan.inputs:
+            content = (
+                plan.updates[before.path].encode(c.DEFAULT_ENCODING)
+                if before.path in plan.updates
+                else before.content
+            )
+            if content is None:
+                continue
+            writes.append((
+                view_root / before.path.relative_to(plan.workspace),
+                content,
+                before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
+            ))
+        return tuple(writes)
 
     def run_files_locked[T](
         self,
@@ -210,7 +314,6 @@ class FlextInfraCodegenTransaction(
     @staticmethod
     def _file_transaction_guard(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[
         t.Pair[t.VariadicTuple[m.Infra.CodegenJournalDirectory], m.Cli.AtomicFileState]
     ]:
@@ -238,9 +341,6 @@ class FlextInfraCodegenTransaction(
             )
         if state.transaction_residue(layout):
             return result_type.fail("file transaction has unowned staging residue")
-        stable = verify.states_current(inputs)
-        if stable.failure:
-            return result_type.from_failure(stable)
         directories = state.plan_transaction_directories(layout)
         if directories.failure:
             return result_type.from_failure(directories)
@@ -263,7 +363,7 @@ class FlextInfraCodegenTransaction(
         result_type = r[
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
         ]
-        guarded = self._file_transaction_guard(layout, inputs)
+        guarded = self._file_transaction_guard(layout)
         if guarded.failure:
             return result_type.from_failure(guarded)
         directories, before = guarded.value
@@ -496,8 +596,8 @@ class FlextInfraCodegenTransaction(
         A phase that fails or raises after the journal was prepared recovers
         that journal here, while the lease is still held, and keeps the cause:
         a failure is returned unchanged and an exception escapes unchanged.
-        A failure whose owner already attempted or refused recovery (it carries
-        ``recovery_error``) is returned as-is, never recovered twice.
+        A failure whose owner already attempted or refused cleanup (it carries
+        ``cleanup_error``) is returned as-is, never cleaned twice.
 
         Returns:
             The resulting ``p.Result[T]``.
@@ -512,16 +612,18 @@ class FlextInfraCodegenTransaction(
                 exc.add_note(f"generation recovery failed: {recovered.error}")
             raise
         if outcome.success or (
-            outcome.error_data is not None and "recovery_error" in outcome.error_data
+            outcome.error_data is not None and "cleanup_error" in outcome.error_data
         ):
             return outcome
         recovered = self._recover_prepared(layout)
         if recovered.failure:
             return r[T].fail(
                 outcome.error or "generation phase failed",
+                error_code=outcome.error_code,
+                exception=outcome.exception,
                 error_data={
                     **(outcome.error_data or {}),
-                    "recovery_error": recovered.error,
+                    "cleanup_error": recovered.error,
                 },
             )
         return outcome

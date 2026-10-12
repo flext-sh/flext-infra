@@ -157,6 +157,31 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         planned = service.plan(request)
         plan = tm.ok(planned)
+        evidence_text = (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_text(
+            encoding="utf-8",
+        )
+        evidence = m.Infra.CodegenPlanningReport.model_validate_json(evidence_text)
+        tm.that(
+            tuple(outcome.repository for outcome in evidence.outcomes),
+            eq=tuple(repository.name for repository in plan.repositories),
+        )
+        planned_files = {file.path: file for file in plan.files}
+        for outcome in evidence.outcomes:
+            tm.that(outcome.planned_file_count, eq=len(outcome.files))
+            for file in outcome.files:
+                original = planned_files[file.path]
+                tm.that(
+                    file.desired_digest,
+                    eq=(
+                        None
+                        if original.desired_content is None
+                        else f"sha256:{u.Cli.sha256_bytes(original.desired_content)}"
+                    ),
+                )
+        tm.that(
+            evidence_text,
+            lacks=['"desired_content":', '"before":', '"environment":'],
+        )
         environment = plan.uv_environments[0]
         tm.that(environment.environment_root, eq=root.resolve())
         target = TestsFlextInfraConformSupport.conform_target(

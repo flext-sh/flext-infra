@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, t, u
+from flext_infra import c, config, t
 from flext_infra.services.codegen import FlextInfraCodegen
-from tests import tm
+from tests import m, tm, u
 
 
 class TestsFlextInfraVscodeOwnerMerge:
@@ -24,6 +24,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         _ = settings_path.write_text(
             '{"python.languageServer": "None"}\n',
             encoding="utf-8",
@@ -49,6 +50,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         _ = settings_path.write_text("{}\n", encoding="utf-8")
         first = FlextInfraCodegen.render_vscode_settings(root)
         tm.ok(first)
@@ -67,6 +69,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         stale_key = "**/.retired-runtime"
         _ = settings_path.write_text(
             tm.ok(u.Cli.json_dumps({"files.exclude": {stale_key: True}})),
@@ -90,6 +93,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         _ = settings_path.write_text(
             tm.ok(
                 u.Cli.json_dumps({
@@ -112,3 +116,31 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
         tm.that("ruff.nativeServer" in doc, eq=False)
+
+    @staticmethod
+    def test_attached_member_projects_its_workspace_interpreter(tmp_path: Path) -> None:
+        """Opening an attached member resolves its physical workspace runtime."""
+        parent = tmp_path / "parent"
+        member = u.Tests.WorktreeFixture.copied_member(
+            parent,
+            "fixture-parent",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            parent,
+            member,
+            distribution="fixture-member",
+            relative_path=member.relative_to(parent).as_posix(),
+        )
+        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
+        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(rendered)),
+        )
+        interpreter = u.type_adapter(str).validate_python(
+            doc["python.defaultInterpreterPath"],
+        )
+        projected = member / interpreter.removeprefix("${workspaceFolder}/")
+        tm.that(projected.resolve(), eq=u.Infra.runtime_python(member))
+        tm.that(str(tmp_path) in rendered, eq=False)

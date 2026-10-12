@@ -14,8 +14,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraWorkspaceDetector, config
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra import config
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -26,6 +29,22 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
+
+    @staticmethod
+    def test_actual_cli_preserves_toml_occurrence_comments() -> None:
+        """Exercise the real TOML supplier used by dependency overlay generation."""
+        document = u.Cli.toml_parse_text(
+            '[metadata]\nvalues = [\n"first", # occurrence\n"second",\n]\n',
+        )
+        if document is None:
+            pytest.fail("The public CLI parser rejected valid TOML")
+        table = u.Cli.toml_table_child(document, "metadata")
+        if table is None:
+            pytest.fail("The public CLI parser lost the declared TOML table")
+        tm.that(
+            u.Cli.toml_array_item_comments(table, "values"),
+            eq=("# occurrence", ""),
+        )
 
     @staticmethod
     def test_real_checkout_runtime_has_declared_provenance() -> None:
@@ -60,7 +79,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     def test_real_checkout_runtime_uses_declared_source(
         live_repository: m.Infra.RepositoryRef,
     ) -> None:
-        """Authenticate each actual public import resolver without synthetic packages."""
+        """Authenticate each real public import resolver without fake packages."""
         checkout = tm.ok(
             u.Infra.git_identity(
                 m.Infra.GitRepoRequest(repo_root=Path(__file__).resolve().parent),

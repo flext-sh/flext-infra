@@ -190,15 +190,13 @@ Infra:
         # findings never fail the run. Re-measure each entry as the fleet
         # converges and retire the rule from this list when its census
         # reaches zero.
+        #
+        # 2026-10-12: the complexity families (too-many-arguments,
+        # too-many-positional-arguments, too-many-locals,
+        # too-many-return-statements, too-many-branches, too-many-public-methods,
+        # too-many-statements, complex-structure) were retired — the fleet-wide
+        # census reached zero, so they block again through the normal gate.
         informative-rules:
-          - too-many-arguments
-          - too-many-positional-arguments
-          - too-many-locals
-          - too-many-return-statements
-          - too-many-branches
-          - too-many-public-methods
-          - too-many-statements
-          - complex-structure
           - suspicious-subprocess-import
           - subprocess-without-shell-equals-true
         line-length: 88

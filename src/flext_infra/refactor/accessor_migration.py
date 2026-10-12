@@ -29,6 +29,10 @@ class FlextInfraAccessorMigrationOrchestrator(
 ):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
 
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
     preview_limit: Annotated[
         int,
         m.Field(description="Maximum number of file previews to include in the report"),
@@ -89,10 +93,10 @@ class FlextInfraAccessorMigrationOrchestrator(
             The resulting ``p.Result[m.Infra.AccessorMigrationReport]``.
 
         """
-        selected_projects: t.StrSequence = (
-            self.project_names if self.project_names is not None else ()
+        resolved = u.Infra.resolve_projects(
+            self.repository_root,
+            self.project_names if self.project_names is not None else (),
         )
-        resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[m.Infra.AccessorMigrationReport].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
@@ -128,6 +132,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                     py_file,
                     read.value,
                     preview_available=len(previews) < self.preview_limit,
+                    source_preview=self.source_preview,
                 )
                 automated_change_count += len(file_report.automated_changes)
                 warning_count += len(file_report.warnings)
@@ -172,6 +177,8 @@ class FlextInfraAccessorMigrationOrchestrator(
     def execute_payload(
         cls,
         params: m.Infra.AccessorMigrationInput,
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service.
 
@@ -180,6 +187,7 @@ class FlextInfraAccessorMigrationOrchestrator(
 
         """
         result = cls(
+            source_preview=source_preview,
             repository_root=params.repository_root,
             selected_projects=params.projects,
             apply_changes=params.apply,

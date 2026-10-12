@@ -21,7 +21,7 @@ from typing import Self, override
 from rope.base.project import Project
 from rope.base.resources import File, Folder
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraRopeProject(Project):
@@ -123,8 +123,9 @@ class FlextInfraRopeProject(Project):
             folders: list[File | Folder] = list(self._custom_source_folders)
             for folder in self._custom_source_folders:
                 if (
-                    folder.is_folder()
-                    and self.pycore._is_package(folder)
+                    isinstance(folder, Folder)
+                    and folder.has_child(c.Infra.INIT_PY)
+                    and not folder.get_child(c.Infra.INIT_PY).is_folder()
                     and folder.parent not in folders
                 ):
                     folders.append(folder.parent)

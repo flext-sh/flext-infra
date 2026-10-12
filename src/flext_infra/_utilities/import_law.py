@@ -172,6 +172,28 @@ class FlextInfraUtilitiesImportLaw:
         return None
 
     @staticmethod
+    def import_bootstrap_dependency(
+        namespace: str,
+        module: str,
+        import_graph: t.MappingKV[str, frozenset[str]],
+    ) -> bool:
+        """Identify modules the root executes before lazy exports are installed.
+
+        Returns:
+            Whether routing the module through its root would re-enter bootstrap.
+        """
+        pending = list(import_graph.get(namespace, ()))
+        visited: set[str] = set()
+        while pending:
+            current = pending.pop()
+            if current == module:
+                return True
+            if current not in visited:
+                visited.add(current)
+                pending.extend(import_graph.get(current, ()))
+        return False
+
+    @staticmethod
     def import_facade_dependencies(
         module: str,
         root_exports: t.StrMapping,

@@ -13,6 +13,7 @@ from flext_infra import c, m, t, u
 from flext_infra.refactor import (
     FlextInfraImportNormalizationPlacementMixin,
     FlextInfraImportNormalizationRoutesMixin,
+    FlextInfraRefactorCensusApplyFormattingMixin,
 )
 
 
@@ -60,16 +61,23 @@ class FlextInfraImportNormalization(
         import_graph, _modules = u.Infra.project_import_graph(project_root)
         for file_path in files:
             source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
+            if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                continue
             normalized = cls.normalize_source(
                 project_root=project_root,
                 file_path=file_path,
                 source=source,
                 import_graph=import_graph,
             )
-            if normalized is None:
-                continue
-            file_path.write_text(normalized, encoding=c.DEFAULT_ENCODING)
-            changed = True
+            candidate = normalized if normalized is not None else source
+            candidate = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+                project_root,
+                file_path,
+                candidate,
+            ).unwrap()
+            if candidate != source:
+                file_path.write_text(candidate, encoding=c.DEFAULT_ENCODING)
+                changed = True
         return changed
 
     @classmethod
@@ -123,6 +131,11 @@ class FlextInfraImportNormalization(
                     direct_imports=u.Infra.import_direct_module(
                         namespace_dir,
                         file_path,
+                    )
+                    or u.Infra.import_bootstrap_dependency(
+                        namespace_dir.name,
+                        module,
+                        import_graph,
                     ),
                 ),
                 tree=tree,

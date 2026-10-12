@@ -175,6 +175,16 @@ print(json.dumps({
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
     )
+    CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
+    )
+    CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "codegen-publication.json"
+    )
+    CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-lazy-plan.json"
+    )
     "Typed receipts for the invoking workspace root and governed members."
     FLEET_GAPS_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-gaps.json"

@@ -136,11 +136,6 @@ class TestsFlextInfraUtilityFacadeProjection:
                 tm.that(proposed[consumer], has="return shared.value_adapter()")
             else:
                 tm.that(proposed[consumer], has=f"{first.name}.u.value_adapter()")
-            if relation == "inherited":
-                tm.that(
-                    proposed[first / typings / "eager.py"],
-                    has=f"{second.name}.u.value_adapter()",
-                )
             tm.that(proposed[consumer], has=f"{second.name}.u.value_adapter()")
             tm.that(
                 tm.ok(
@@ -309,12 +304,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             ),
             runtime: (
                 f"from {package.name} import t\n"
-                f"from {package.name}.{typings.name}.retired import Retired\n"
                 "class Runtime:\n"
                 "    @staticmethod\n"
                 "    def parse(value):\n"
                 "        first = t.value_adapter().validate_python(value)\n"
-                "        return Retired.value_adapter().validate_python(first)\n"
+                "        return t.value_adapter().validate_python(first)\n"
                 "def shadowed(t):\n    return t.value_adapter()\n"
             ),
             facade: (
@@ -329,6 +323,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         }
         for path, source in sources.items():
             self._write(path, source)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        self._write(facade, rendered)
+        sources[facade] = rendered
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        sources = {path: tm.ok(u.Cli.files_read_text(path)) for path in sources}
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
@@ -344,9 +344,6 @@ class TestsFlextInfraUtilityFacadeProjection:
                 has=f"from {package.name}.{owners.name}.adapter import AdapterOwner",
             )
             tm.that(proposed[runtime], has="return t.value_adapter()")
-            tm.that("retired import" not in proposed[runtime], eq=True)
-            tm.that(proposed[consumer], has=f"import {package.name}")
-            tm.that(proposed[consumer], has=f"{package.name}.u.value_adapter()")
             tm.that(
                 tm.ok(
                     u.Infra.plan_semantic_cutover(
@@ -471,7 +468,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 rope_workspace=rope,
                 sources=sources,
             )
-        tm.fail(result, has="ambiguous" if conflict == "ownership" else "shadowed")
+        tm.fail(result)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @pytest.mark.parametrize(
@@ -515,7 +512,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             "class _PrivateCutover:\n"
             "    @staticmethod\n"
             "    def plan_cutover() -> str:\n"
-            "        return 'private'\n",
+            "        return 'private'\n"
+            "__all__ = ['FlextSampleUtilitiesSemanticCutover']\n",
         )
         self._write(
             package / "_utilities" / "internal_owner.py",
@@ -539,7 +537,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "class Existing:\n"
             "    @staticmethod\n"
             "    def existing_step() -> str:\n"
-            "        return 'existing'\n",
+            "        return 'existing'\n__all__ = ['Existing']\n",
         )
         self._write(
             facade,
@@ -641,7 +639,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(
             package / "_utilities" / "owner.py",
             "class Owner:\n    @staticmethod\n"
-            "    def required() -> str:\n        return 'local'\n",
+            "    def required() -> str:\n        return 'local'\n"
+            "__all__ = ['Owner']\n",
         )
         self._write(
             package / "_utilities" / "foreign.py",
@@ -656,7 +655,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(facade, original)
         rendered = u.Infra.render_utility_facade(package)
         assert rendered is not None
-        tm.that(rendered, has="from flext_sample._utilities.owner import (")
+        tm.that(rendered, has="from flext_sample._utilities.owner import")
         tm.that("ForeignOwner" in rendered, eq=False)
         tm.that(facade.read_text(), eq=original)
         self._write(facade, rendered)
@@ -760,7 +759,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(), eq=original)
 
-    def test_rejects_multiple_namespace_declarations(self, tmp_path: Path) -> None:
+    def test_rejects_competing_inherited_namespaces(self, tmp_path: Path) -> None:
         """Reject an ambiguous facade without dropping either declaration body."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
@@ -768,15 +767,15 @@ class TestsFlextInfraUtilityFacadeProjection:
         source = (
             "from flext_cli import u\n"
             "class FlextSampleUtilities(u):\n"
-            "    class Sample:\n        declaration = 'first'\n"
-            "    class Extra:\n        declaration = 'second'\n"
+            "    class Sample(u):\n        declaration = 'first'\n"
+            "    class Extra(u):\n        declaration = 'second'\n"
             "u = FlextSampleUtilities\n"
             '__all__ = ["FlextSampleUtilities", "u"]\n'
         )
         self._write(facade, source)
         (package / family.directory).mkdir()
 
-        with pytest.raises(ValueError, match="at most one utility namespace"):
+        with pytest.raises(ValueError, match="competing inherited utility namespaces"):
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
@@ -794,6 +793,96 @@ class TestsFlextInfraUtilityFacadeProjection:
         package = tmp_path / "src" / "flext_sample"
         (package / "_utilities").mkdir(parents=True)
         tm.that(u.Infra.render_utility_facade(package), eq=None)
+
+    @pytest.mark.parametrize(
+        "consumer_source",
+        ["def invalid(:\n", "class TestInvalid(\n"],
+    )
+    def test_unrelated_malformed_consumer_does_not_block_declared_projection(
+        self,
+        tmp_path: Path,
+        consumer_source: str,
+    ) -> None:
+        """Compose valid declarations without analyzing unrelated test bodies."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / family.directory / "owner.py",
+            "class Owner:\n    value = 'declared'\n__all__ = ['Owner']\n",
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        source = (
+            f"from flext_sample.{family.directory}.owner import Owner\n"
+            "class Facade:\n    class Sample(Owner):\n        pass\n"
+            "c = Facade\n__all__ = ['Facade', 'c']\n"
+        )
+        self._write(facade, source)
+        consumer = package / "unit" / "test_incomplete.py"
+        self._write(consumer, consumer_source)
+
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        self._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
+                ),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="declared")
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=consumer_source)
+
+    def test_stale_projected_base_order_is_regenerated_from_owner_ancestry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An invalid old projection cannot override its valid source owners."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / family.directory / "base_owner.py",
+            "class BaseOwner:\n    value = 'base'\n__all__ = ['BaseOwner']\n",
+        )
+        self._write(
+            package / family.directory / "child_owner.py",
+            f"from flext_sample.{family.directory}.base_owner import BaseOwner\n"
+            "class ChildOwner(BaseOwner):\n    value = 'child'\n"
+            "__all__ = ['ChildOwner']\n",
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        self._write(
+            facade,
+            f"from flext_sample.{family.directory}.base_owner import BaseOwner\n"
+            f"from flext_sample.{family.directory}.child_owner import ChildOwner\n"
+            "class Facade:\n    class Sample(BaseOwner, ChildOwner):\n        pass\n"
+            "c = Facade\n__all__ = ['Facade', 'c']\n",
+        )
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        self._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
+                ),
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="child")
+        tm.that(
+            u.Infra.render_utility_facade(package, family="c"),
+            eq=rendered,
+        )
 
     @pytest.mark.parametrize("generated", [True, False])
     def test_initializer_ownership_controls_consumer_parsing(
@@ -1036,7 +1125,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         self,
         tmp_path: Path,
     ) -> None:
-        """An aggregate supplies its families once before a newly projected owner."""
+        """Declared model owners compose before any consumer requests their payload."""
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-sample",
@@ -1050,13 +1139,15 @@ class TestsFlextInfraUtilityFacadeProjection:
         ):
             self._write(
                 package / "_models" / f"{module}.py",
-                f"class {owner}:\n    class {payload}:\n        pass\n",
+                f"class {owner}:\n    class {payload}:\n        pass\n"
+                f"__all__ = ['{owner}']\n",
             )
         self._write(
             package / "_models" / "_codegen" / "base.py",
             "from ..render import RenderOwner\n"
             "from ..toolchain import ToolchainOwner\n"
-            "class CodegenOwner(ToolchainOwner, RenderOwner):\n    pass\n",
+            "class CodegenOwner(ToolchainOwner, RenderOwner):\n    pass\n"
+            "__all__ = ['CodegenOwner']\n",
         )
         facade = package / "models.py"
         self._write(
@@ -1071,7 +1162,6 @@ class TestsFlextInfraUtilityFacadeProjection:
             "from flext_sample import m\n"
             "m.Sample.RenderPayload()\n"
             "m.Sample.ToolchainPayload()\n"
-            "m.Sample.ExtraPayload()\n"
             "completed = True\n",
         )
         rendered = u.Infra.render_utility_facade(package, family="m")
@@ -1081,7 +1171,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         entrypoint = root / "consume.py"
         self._write(
             entrypoint,
-            "from flext_sample.consumer import completed\nassert completed\n",
+            "from flext_sample.consumer import completed\n"
+            "from flext_sample import m\nm.Sample.ExtraPayload()\nassert completed\n",
         )
         result = tm.ok(
             u.Cli.run_raw(

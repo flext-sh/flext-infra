@@ -10,10 +10,71 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
     """Governed artifact rendering and project overlay composition."""
+
+    @staticmethod
+    def planned_source_render_inputs(
+        render_inputs: m.Infra.CodegenRenderInputs,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> m.Infra.CodegenRenderInputs:
+        """Derive tooling from the Python sources the transaction will publish.
+
+        Returns:
+            Render inputs with the source-derived tooling fields reconciled.
+        """
+        root = render_inputs.target.root
+        python_plans = tuple(
+            plan
+            for plan in planned
+            if plan.path.suffix == c.Infra.EXT_PYTHON
+            and plan.desired_content is not None
+        )
+        sources = {
+            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+            for plan in python_plans
+            if plan.desired_content is not None
+        }
+        tooling = render_inputs.tooling_runtime
+        policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
+        runtime_bases = (
+            tuple(tooling.ruff_runtime_evaluated_base_classes)
+            if not any(
+                u.Infra.codegen_file_requires_effect(plan) for plan in python_plans
+            )
+            else u.Infra.runtime_evaluated_base_classes(
+                root,
+                sources,
+                policy.runtime_evaluated_roots,
+            )
+        )
+        rebinds = u.Infra.facade_rebind_modules(root, sources)
+        first_party = tuple(
+            FlextInfraToolTablesPhase.first_party_namespaces(
+                path=root,
+                planned_sources=tuple(sources),
+            ),
+        )
+        if (
+            rebinds == tuple(tooling.mypy_facade_rebind_modules)
+            and first_party == tuple(tooling.first_party)
+            and runtime_bases == tuple(tooling.ruff_runtime_evaluated_base_classes)
+        ):
+            return render_inputs
+        return render_inputs.model_copy(
+            update={
+                "tooling_runtime": tooling.model_copy(
+                    update={
+                        "mypy_facade_rebind_modules": rebinds,
+                        "ruff_runtime_evaluated_base_classes": runtime_bases,
+                        "first_party": first_party,
+                    },
+                ),
+            },
+        )
 
     @staticmethod
     def with_planned_pyproject(
@@ -694,6 +755,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 make_profile=target.make_profile,
                 package=target.repository.package,
                 workspace_repositories=tuple(workspace.subprojects),
+                environment_imports=self._declared_environment_imports(
+                    target, workspace
+                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 repository_root_rel=self._repository_root_rel(workspace),
                 workspace_subprojects=tuple(

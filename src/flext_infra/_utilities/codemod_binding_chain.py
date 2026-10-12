@@ -25,8 +25,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesSemanticCutoverBindings,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,

@@ -15,7 +15,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraMarkdownGate, FlextInfraRefactorCensus, c, infra, m
+from flext_infra import c, infra, m
+from flext_infra.gates import FlextInfraMarkdownGate
+from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -149,6 +151,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(status, has=f"?? {c.Infra.DIR_TESTS}/")
 
         report = FlextInfraRefactorCensus(
+            source_preview=infra.source_preview(root),
             repository_root=root,
             apply_changes=False,
             dry_run=False,

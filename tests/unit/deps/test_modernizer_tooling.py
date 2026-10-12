@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
 from tests import m, t, tm, u
 
 if TYPE_CHECKING:

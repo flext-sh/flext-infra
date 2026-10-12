@@ -705,7 +705,19 @@ class FlextInfraModTextGateEngine:
                         f"{path}",
                     )
                 if path.suffix == c.Infra.EXT_PYTHON:
-                    ast.parse(updated, filename=str(path))
+                    try:
+                        ast.parse(updated, filename=str(path))
+                    except SyntaxError as exc:
+                        return r[
+                            t.Triple[
+                                m.Infra.ModTextReport,
+                                t.VariadicTuple[m.Infra.CodegenFilePlan],
+                                t.VariadicTuple[m.Cli.AtomicFileState],
+                            ]
+                        ].fail(
+                            f"text rewrite produced invalid Python in {path}: {exc}",
+                            exception=exc,
+                        )
                 plans.append(
                     cls._rewrite_plan(root, path, before, updated, base_states),
                 )

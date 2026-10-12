@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, p, r
+from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsCandidates,
@@ -22,7 +22,7 @@ from flext_infra.codegen import (
 from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from tests import t, tm, u
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraTransactionDirectoryJournal:
@@ -255,10 +255,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.that(stat.S_IMODE(config_path.stat().st_mode), eq=desired_mode)
 
     @staticmethod
-    def test_later_phase_backs_up_originals_beside_earlier_phase(
+    def test_later_phase_records_identity_without_destination_preimages(
         tmp_path: Path,
     ) -> None:
-        """Each phase that replaces an existing file owns a distinct backup."""
+        """Phases retain fingerprints and gains without original-byte copies."""
         root = u.Tests.git_repository(tmp_path)
         owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
@@ -282,22 +282,43 @@ class TestsFlextInfraTransactionDirectoryJournal:
                     owner=phase,
                 )
                 session = tm.ok(owner.append_phase_locked(session, phase, (plan,)))
-            backups = [entry.original_backup for entry in session.journal.entries]
-            tm.that(len(set(backups)), eq=len(targets))
-            return owner.commit_locked(session, lambda: r[bool].ok(value=True))
+                checkpoint = m.Infra.CodegenPhaseOutcome.model_validate_json(
+                    (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_text(
+                        encoding=c.DEFAULT_ENCODING,
+                    ),
+                )
+                tm.that(checkpoint.completed, eq=False)
+                tm.that(checkpoint.root, eq=root)
+                tm.that(checkpoint.phase, eq=phase)
+                tm.that(checkpoint.written_files, eq=session.written_files)
+            tm.that(
+                tuple(entry.original_sha256 for entry in session.journal.entries),
+                eq=tuple(
+                    u.Cli.sha256_bytes(f"{phase} original\n".encode())
+                    for phase in targets
+                ),
+            )
+            return owner.commit_locked(session)
 
         tm.ok(owner.run_files_locked(roots, two_phases))
+        completed = m.Infra.CodegenPhaseOutcome.model_validate_json(
+            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_text(
+                encoding=c.DEFAULT_ENCODING,
+            ),
+        )
+        tm.that(completed.completed, eq=True)
+        tm.that(completed.written_files, eq=tuple(targets.values()))
         for phase, target in targets.items():
             tm.that(target.read_bytes(), eq=f"{phase} generated\n".encode())
 
     @staticmethod
     @pytest.mark.parametrize("foreign_change", [False, True])
-    def test_duplicate_phase_recovers_only_its_new_generated_files(
+    def test_duplicate_phase_preserves_previously_generated_files(
         tmp_path: Path,
         *,
         foreign_change: bool,
     ) -> None:
-        """Undo exact new publications, never a foreign replacement at their path."""
+        """Reject duplicate ownership without undoing accepted publications."""
         root = u.Tests.git_repository(tmp_path)
         u.Tests.copy_tracked_mise_seeds(root)
         owner = FlextInfraCodegenTransaction(
@@ -354,17 +375,14 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.fail(failed, has="multiple generation phases own one destination")
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
-        # Recovery consumes its journal on success in both branches: a foreign
-        # file inside a journaled generated directory classifies noop (the
-        # generation owns the path and rewrites it), so the cleanup preserves
-        # that authenticated non-empty directory and the journal still closes.
+        # Staging cleanup retires its cursor without removing generated outputs.
         tm.that(journal.exists(), eq=False)
         if foreign_change:
             tm.that(target.read_bytes(), eq=b"foreign content\n")
             tm.that((root / "docs").exists(), eq=True)
             tm.that((root / "docs/generated").exists(), eq=True)
         else:
-            tm.that((root / "docs").exists(), eq=False)
+            tm.that(target.read_bytes(), eq=b"first phase\n")
         tm.that((root / ".state").exists(), eq=False)
         tm.that(journal.with_name(f"{journal.name}.lock").is_file(), eq=True)
 
@@ -376,7 +394,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         *,
         raises: bool,
     ) -> None:
-        """A failing or raising phase after begin recovers under the same lease."""
+        """A failed phase retires staging while preserving previous publications."""
         root = u.Tests.git_repository(tmp_path)
         u.Tests.copy_tracked_mise_seeds(root)
         owner = FlextInfraCodegenTransaction(
@@ -449,11 +467,11 @@ class TestsFlextInfraTransactionDirectoryJournal:
             FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(),
             eq=False,
         )
-        tm.that(target.exists(), eq=False)
+        tm.that(target.read_bytes(), eq=b"prepared phase\n")
         restored = tm.ok(
             u.Cli.atomic_read_binary_file_state(config_path, required=True),
         )
-        tm.that((restored.content, restored.mode), eq=(original.content, original.mode))
+        tm.that((restored.content, restored.mode), eq=(original.content, desired_mode))
         tm.ok(owner.run_locked(prepare=True, operation=r[Path].ok))
 
     @staticmethod
@@ -728,7 +746,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
     ) -> m.Infra.CodegenTransactionJournal:
         physical = layout.scope_root.lstat()
         return m.Infra.CodegenTransactionJournal(
-            version=8,
+            version=9,
             transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
             scope_device=physical.st_dev,
             scope_inode=physical.st_ino,

@@ -14,10 +14,8 @@ from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenFixModels,
-    FlextInfraModelsCodegenLazyInitModels,
-)
+from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
+from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
 
 
 class FlextInfraModelsRope:

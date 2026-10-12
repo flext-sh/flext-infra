@@ -8,20 +8,11 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_cli import cli
 
-from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
-    FlextInfraRopeWorkspace,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraRefactorCensusCollectHelpersMixin,
@@ -32,10 +23,12 @@ from flext_infra.refactor import (
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(
     FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
+    m.Infra.CensusOptions,
     FlextInfraRefactorCensusCollectMixin,
     FlextInfraRefactorCensusCollectHelpersMixin,
     FlextInfraRefactorCensusFiltersMixin,
@@ -52,32 +45,10 @@ class FlextInfraRefactorCensus(
     and, when applying, removes the unreferenced objects it proved removable.
     """
 
-    json_output: Annotated[
-        str | None,
-        m.Field(description="Path to write JSON report"),
-    ] = None
-    impact_map_output: Annotated[
-        str | None,
-        m.Field(description="Path to write dry-run impact map JSON"),
-    ] = None
-    kinds: Annotated[
-        t.StrSequence | None,
-        m.Field(description="Optional symbol-kind filters; repeat --kinds NAME"),
-    ] = None
-    rules: Annotated[
-        t.StrSequence | None,
-        m.Field(description="Optional violation-rule filters; repeat --rules NAME"),
-    ] = None
-    families: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            description="Optional namespace-family filters; repeat --families NAME",
-        ),
-    ] = None
-    include_local_scopes: Annotated[
-        bool,
-        m.Field(description="Include locals, parameters, and nested scopes"),
-    ] = True
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
 
     @property
     def json_output_path(self) -> Path | None:
@@ -171,14 +142,16 @@ class FlextInfraRefactorCensus(
                     f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
                     f"applied={self.apply_changes and not self.effective_dry_run}",
                 )
-            impact_report = self._collect_report(rope)
+            impact_report = self._collect_report(
+                rope, source_preview=self.source_preview
+            )
             report = impact_report
             if (
                 self.apply_changes
                 and not self.effective_dry_run
                 and self._apply_removal_candidates(rope, impact_report)
             ):
-                report = self._collect_report(rope)
+                report = self._collect_report(rope, source_preview=self.source_preview)
         finalized = report.model_copy(
             update={
                 "scan_duration_seconds": time.monotonic() - started,

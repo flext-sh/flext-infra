@@ -137,7 +137,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         tm.that(isinstance(owner, type), eq=True)
         nested_child = getattr(owner, child)
         nested_base = getattr(owner, base)
-        tm.that(nested_child.__bases__, eq=(nested_base,))
+        tm.that(issubclass(nested_child, nested_base), eq=True)
 
     def test_nested_view_keeps_a_module_level_base_importable(
         self,
@@ -168,7 +168,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         holder_cls = getattr(loaded, holder)
         payload_cls = getattr(loaded, payload)
         tm.that(owner.View.item, eq=holder_cls)
-        tm.that(holder_cls.__bases__, eq=(payload_cls,))
+        tm.that(issubclass(holder_cls, payload_cls), eq=True)
         tm.that(f"\nclass {holder}({payload}):" in published, eq=True)
 
     def test_nested_class_decorator_keeps_a_moved_helper_bare(

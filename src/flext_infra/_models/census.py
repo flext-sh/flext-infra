@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSet
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
@@ -113,6 +114,20 @@ class FlextInfraModelsCensus:
             str,
             m.Field(description="Normalized Rope-derived semantic fingerprint"),
         ] = ""
+
+    class RemovalPreviewOptions(m.ArbitraryTypesModel):
+        """Gate selection and source cache shared by one removal preview batch."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        gates: Annotated[
+            t.StrSequence,
+            m.Field(description="Configured dry-run gate names the preview runs"),
+        ]
+        source_cache: Annotated[
+            t.MutableMappingKV[Path, str] | None,
+            m.Field(description="Live source cache reused across candidates"),
+        ] = None
 
     class RemovalCandidate(
         FlextInfraModelsMixins.AbsoluteFilePathTextMixin,

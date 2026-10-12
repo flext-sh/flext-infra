@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import (
+from flext_infra import infra, m, p, r, t
+from flext_infra.validate import (
     FlextInfraCProfileReport,
     FlextInfraInventoryService,
     FlextInfraPytestDiagExtractor,
@@ -18,11 +19,6 @@ from flext_infra import (
     FlextInfraTextPatternScanner,
     FlextInfraValidateFreshImport,
     FlextInfraValidateLazyMapFreshness,
-    infra,
-    m,
-    p,
-    r,
-    t,
 )
 
 

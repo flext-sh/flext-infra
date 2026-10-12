@@ -13,12 +13,11 @@ from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenFixModels,
-    FlextInfraModelsCodegenLazyInitModels,
-    FlextInfraModelsCodegenScaffoldModels,
-)
-from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
+from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
+from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -82,6 +81,10 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
         ] = ()
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Target planning failures retained beside valid file plans",
+        )
 
         @m.model_validator(mode="after")
         def _validate_unique_paths(self) -> Self:
@@ -118,6 +121,58 @@ class FlextInfraModelsCodegenPipelineModels:
             str,
             m.Field(description="Phase failure, empty on success"),
         ] = ""
+        written_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Destinations successfully published despite target failures",
+        )
+        retained_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description=(
+                "Authored destinations retained because generation does not own "
+                "their bodies"
+            ),
+        )
+        effect_targets: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description=(
+                "Destinations authorized for effects by this invocation's journal"
+            ),
+        )
+        attempted_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Effect targets with an observed write, retention, or failure",
+        )
+        pending_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Authorized effect targets without a publication outcome",
+        )
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Native publication failures keyed to their actual targets",
+        )
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native cause retained for causal Result propagation",
+        )
+        root: Path | None = m.Field(
+            default=None,
+            description="Actual publication scope when supplied by its owner",
+        )
+        transaction_id: str | None = m.Field(
+            default=None,
+            description=(
+                "Identity of the publication invocation that produced this receipt"
+            ),
+        )
+        phase: str | None = m.Field(
+            default=None,
+            description="Last completed publication phase",
+        )
+        completed: bool = m.Field(
+            default=False,
+            description="Whether the entire invocation reached final accounting",
+        )
 
     class CodegenConformPorts(m.ArbitraryTypesModel):
         """Collaborators the complete conform crosses into, wired by the facade.
@@ -173,3 +228,10 @@ class FlextInfraModelsCodegenPipelineModels:
             t.SequenceOf[FlextInfraModelsCodegenFixModels.AutoFixResult],
             m.Field(description="Auto-fix stage results"),
         ] = ()
+        lazy_unmapped_count: Annotated[
+            int | None,
+            m.Field(
+                ge=0,
+                description="Observed lazy drift, absent before that stage executes",
+            ),
+        ] = None

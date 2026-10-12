@@ -7,21 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+import traceback
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraWorkspaceDetector,
-    c,
-    config,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
@@ -95,7 +88,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
-        files, environments = gathered.value
+        files, environments, issues = gathered.value
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -104,6 +97,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 make_spec=config_spec.make,
                 uv_environments=tuple(environments),
                 files=tuple(files),
+                issues=tuple(issues),
             ),
         )
 
@@ -351,7 +345,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.from_failure(selected)
         planned = FlextInfraCodegenLazyInit(
             repository_root=root,
-            project_scope_roots=(root,),
+            project_scope_roots=tuple(
+                (root / participant.path).resolve()
+                for participant in selected.value
+                if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            ),
             target_module=request.module,
         ).plan_files()
         if planned.failure:
@@ -450,6 +448,69 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
         return result_type.ok((workspace, current_target, current_repository))
 
+    @staticmethod
+    def _planning_report_evidence(
+        root: Path,
+        outcomes: t.SequenceOf[m.Infra.CodegenRepositoryPlanOutcome],
+        repository_paths: t.MappingKV[str, Path],
+    ) -> p.Result[m.Infra.CodegenPlanningReport]:
+        """Project original planning outcomes into payload-free publication evidence.
+
+        Returns:
+            Candidate and target evidence, or the original Git identity failure.
+        """
+        evidence: list[m.Infra.CodegenPlanningRepositoryEvidence] = []
+        for outcome in outcomes:
+            project_root = repository_paths[outcome.repository].resolve()
+            probe = u.Infra.git_is_inside_work_tree(
+                m.Infra.GitRepoRequest(repo_root=project_root),
+            )
+            if probe.failure:
+                return r[m.Infra.CodegenPlanningReport].from_failure(probe)
+            candidate_sha: str | None = None
+            candidate_dirty: bool | None = None
+            candidate_kind: Literal["git", "unversioned"] = "unversioned"
+            if probe.value.value:
+                identity = u.Infra.git_identity(
+                    m.Infra.GitRepoRequest(repo_root=project_root),
+                )
+                if identity.failure:
+                    return r[m.Infra.CodegenPlanningReport].from_failure(identity)
+                if identity.value.repo_root.resolve() == project_root:
+                    candidate_kind = "git"
+                    candidate_sha = identity.value.head_oid
+                    candidate_dirty = identity.value.dirty
+            evidence.append(
+                m.Infra.CodegenPlanningRepositoryEvidence(
+                    repository=outcome.repository,
+                    root=project_root,
+                    candidate_kind=candidate_kind,
+                    candidate_sha=candidate_sha,
+                    candidate_dirty=candidate_dirty,
+                    files=tuple(
+                        m.Infra.CodegenPlanningFileEvidence(
+                            path=file.path,
+                            desired_digest=(
+                                None
+                                if file.desired_content is None
+                                else f"sha256:{u.Cli.sha256_bytes(file.desired_content)}"
+                            ),
+                            desired_mode=file.desired_mode,
+                            owner=file.owner,
+                            policy=file.policy,
+                        )
+                        for file in outcome.files
+                    ),
+                    issues=outcome.issues,
+                    error=outcome.error,
+                    error_type=outcome.error_type,
+                    elapsed=outcome.elapsed,
+                ),
+            )
+        return r[m.Infra.CodegenPlanningReport].ok(
+            m.Infra.CodegenPlanningReport(root=root, outcomes=tuple(evidence)),
+        )
+
     def _gathered_repository_plans(
         self,
         root: Path,
@@ -458,7 +519,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         selected: t.VariadicTuple[m.Infra.RepositoryRef],
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[
-        t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.UvEnvironmentPlan]]
+        t.Triple[
+            list[m.Infra.CodegenFilePlan],
+            list[m.Infra.UvEnvironmentPlan],
+            list[m.Infra.Issue],
+        ]
     ]:
         """Plan every selected repository and collect its governed file plans.
 
@@ -468,7 +533,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[
-            t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.UvEnvironmentPlan]]
+            t.Triple[
+                list[m.Infra.CodegenFilePlan],
+                list[m.Infra.UvEnvironmentPlan],
+                list[m.Infra.Issue],
+            ]
         ]
         u.Cli.info(f"stage=plan repositories={len(selected)}")
         tasks: list[m.Infra.CodegenRepositoryPlanTask] = []
@@ -493,25 +562,86 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         # plans them across worker processes; the results keep declaration
         # order, and publication stays serial under the generation lease.
         outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
+        repository_paths = {
+            repository.name: root / repository.path for repository in selected
+        }
+        evidence = self._planning_report_evidence(root, outcomes, repository_paths)
+        if evidence.failure:
+            return result_type.from_failure(evidence)
+        published = u.Infra.publish_refactor_report_evidence(
+            root,
+            evidence.value,
+            relative_path=c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH,
+        )
+        if published.failure:
+            return result_type.from_failure(published)
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
+        issues: list[m.Infra.Issue] = []
         for index, outcome in enumerate(outcomes, start=1):
+            issues.extend(outcome.issues)
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
-            if outcome.error:
-                return result_type.fail(outcome.error)
+            if outcome.error or outcome.error_type:
+                u.Cli.status(
+                    "conform",
+                    outcome.repository,
+                    result=False,
+                    elapsed=outcome.elapsed,
+                )
+                u.Cli.error(
+                    f"{outcome.repository}: {outcome.error_type}: {outcome.error}",
+                )
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(repository_paths[outcome.repository]),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=outcome.error_traceback or outcome.error,
+                    ),
+                )
+                continue
             files.extend(outcome.files)
             if outcome.environment is not None:
                 environments.append(outcome.environment)
+            for issue in outcome.issues:
+                u.Cli.error(issue.formatted)
             u.Cli.status(
                 "conform",
                 outcome.repository,
-                result=True,
+                result=not outcome.issues,
                 elapsed=outcome.elapsed,
             )
-        return result_type.ok((files, environments))
+        return result_type.ok((files, environments, issues))
 
     @classmethod
     def plan_repository_task(
+        cls,
+        task: m.Infra.CodegenRepositoryPlanTask,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Preserve a worker's failure as data without retry or publication.
+
+        Args:
+            task: The repository planning task to be executed.
+
+        Returns:
+            The outcome of the repository planning task, including any failure
+            information.
+        """
+        started = time.monotonic()
+        try:
+            return cls._plan_repository_task(task)
+        except (OSError, ValueError) as exc:
+            return m.Infra.CodegenRepositoryPlanOutcome(
+                repository=task.repository.name,
+                error=str(exc),
+                error_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
+                error_traceback=traceback.format_exc(),
+                elapsed=time.monotonic() - started,
+            )
+
+    @classmethod
+    def _plan_repository_task(
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
@@ -569,6 +699,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 config=config.Infra.codegen,
             ),
             elapsed=time.monotonic() - started,
+            issues=tuple(planner.planning_issues),
         )
 
     def _repository_planning_inputs(

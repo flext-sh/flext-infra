@@ -35,6 +35,17 @@ def _shared_mypy_cache_spec() -> FlextInfraConfigModelsMake.MypyCacheSpec:
     return FlextInfraConfigModelsMake.MypyCacheSpec()
 
 
+def _shared_ruff_cache_spec() -> FlextInfraExternalCacheDirectorySpec:
+    """Construct the declared external Ruff cache policy.
+
+    Returns:
+        The resulting ``FlextInfraExternalCacheDirectorySpec``.
+    """
+    return FlextInfraExternalCacheDirectorySpec(
+        external_storage_directory=Path("flext/infra/ruff")
+    )
+
+
 def _default_testmon_cache_policy() -> (
     FlextInfraConfigModelsMake.TestmonCachePolicySpec
 ):
@@ -101,6 +112,10 @@ class FlextInfraConfigModelsMake(
         """One selector-free public Make operation."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
+        arguments: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Named Make inputs consumed by this operation"),
+        ] = ()
         description: Annotated[
             t.NonEmptyStr,
             m.Field(description="Operator-facing help text"),
@@ -162,8 +177,8 @@ class FlextInfraConfigModelsMake(
 
         Implements the preserved #1001 delta (bead flext-j0u23): two-phase
         generations with per-mode caps, a per-repository byte budget with a
-        three-stage quota ladder, a save-ref allowlist (never save from PRs)
-        and a cache-key namespace.
+        three-stage quota ladder and a cache-key namespace. Event identity
+        determines publication eligibility; branch names are not policy.
         """
 
         mode: Annotated[
@@ -198,10 +213,6 @@ class FlextInfraConfigModelsMake(
             int,
             m.Field(ge=0, le=100, description="Quota-ladder block stage"),
         ] = 95
-        allowed_save_refs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Refs whose pushes may publish cache generations"),
-        ] = ("main", "0.12.0-dev")
         key_prefix: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actions cache key namespace"),
@@ -401,8 +412,8 @@ class FlextInfraConfigModelsMake(
 
             Implements the preserved #1001 delta (bead flext-j0u23): two-phase
             generations with per-mode caps, a per-repository byte budget with a
-            three-stage quota ladder, a save-ref allowlist (never save from PRs)
-            and a cache-key namespace.
+            three-stage quota ladder and a cache-key namespace. Event identity
+            determines publication eligibility; branch names are not policy.
             """
 
             mode: Annotated[
@@ -437,10 +448,6 @@ class FlextInfraConfigModelsMake(
                 int,
                 m.Field(ge=0, le=100, description="Quota-ladder block stage"),
             ] = 95
-            allowed_save_refs: Annotated[
-                tuple[t.NonEmptyStr, ...],
-                m.Field(description="Refs whose pushes may publish cache generations"),
-            ] = ("main", "0.12.0-dev")
             key_prefix: Annotated[
                 t.NonEmptyStr,
                 m.Field(description="Actions cache key namespace"),
@@ -778,10 +785,18 @@ class FlextInfraConfigModelsMake(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ] = m.Field(default_factory=_shared_mypy_cache_spec)
+        ruff_cache: Annotated[
+            FlextInfraExternalCacheDirectorySpec,
+            m.Field(description="External project-keyed native Ruff cache policy"),
+        ] = m.Field(default_factory=_shared_ruff_cache_spec)
         verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(description="Ordered canonical public verbs"),
         ]
+        common_arguments: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Named controls accepted by every generated Make verb"),
+        ] = ()
         clean: Annotated[
             FlextInfraConfigModelsMake.MakeCleanSpec,
             m.Field(description="Disposable artifacts removed by the clean verb"),

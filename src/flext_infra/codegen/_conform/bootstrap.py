@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, assert_never
 
-from flext_infra import c, m, s, t
+from typing_extensions import TypeForm
+
+from flext_infra import c, m, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -51,6 +53,25 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             ),
         ),
     ] = None
+    planning_issues: Annotated[
+        t.MutableSequenceOf[m.Infra.Issue],
+        m.Field(
+            exclude=True,
+            description="Native file planning failures retained by this invocation",
+        ),
+    ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[m.Infra.Issue])))
+
+    def _record_file_failure(self, path: Path, error: str) -> None:
+        """Retain an actual target failure through the shared diagnostic model."""
+        self.planning_issues.append(
+            m.Infra.Issue(
+                file=str(path),
+                line=0,
+                column=0,
+                code=c.Infra.ToolOutcome.ERROR.value,
+                message=error,
+            ),
+        )
 
     @staticmethod
     def link_mode(
@@ -90,6 +111,34 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             if entry.is_dir() and (entry / "all.sh").is_file()
         ]
         return tuple(discovered)
+
+    @staticmethod
+    def _declared_environment_imports(
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> t.VariadicTuple[t.Pair[str, Path]]:
+        """Resolve diagnostic package identities from their declared projects.
+
+        Returns:
+            Package names and exact project roots, without guessing distribution names.
+
+        Raises:
+            ValueError: If declared package namespace is unresolved.
+        """
+        roots = (
+            *((target.root,) if target.repository.package else ()),
+            *(
+                target.root / member.path
+                for member in workspace.subprojects
+                if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+                and member.package
+            ),
+        )
+        imports = tuple((u.Infra.project_package_name(root), root) for root in roots)
+        if any(not name for name, _root in imports):
+            msg = f"declared package namespace is unresolved: {target.root}"
+            raise ValueError(msg)
+        return imports
 
     @staticmethod
     def _merge_extra_verbs(
@@ -143,26 +192,26 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         """
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
-                return m.Infra.CodegenConformSurfaceContract(complete_governed=True)
+                contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)
             case (
                 c.Infra.CodegenConformSurface.LAZY_INIT
                 | c.Infra.CodegenConformSurface.FACADES
             ):
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     delegates=False,
                     pyproject=False,
                     templates=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.PYPROJECT_FILENAME}),
                     delegates=False,
                     templates=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.PYPROJECT_FILENAME}),
                     delegates=False,
                     custom=False,
@@ -170,7 +219,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             case c.Infra.CodegenConformSurface.MAKEFILE:
                 # The Makefile's bootstrap runs the generated lock publisher, so
                 # a recovered Makefile without it could never finish make upg.
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
                     pyproject=False,
                     custom=False,
@@ -179,25 +228,28 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 destination = (
                     Path(c.Infra.DIR_DOCS) / c.Infra.DOCS_CONFIG_FILENAME
                 ).as_posix()
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({destination}),
                     pyproject=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.ENVRC:
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.ENVRC_FILENAME}),
                     delegates=False,
                     pyproject=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.MISE_CONFIG:
-                return m.Infra.CodegenConformSurfaceContract(
+                contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.MISE_TOML_FILENAME}),
                     delegates=False,
                     pyproject=False,
                     custom=False,
                 )
+            case _:
+                assert_never(surface)
+        return contract
 
 
 __all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

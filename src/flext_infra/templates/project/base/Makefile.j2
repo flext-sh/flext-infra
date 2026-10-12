@@ -489,19 +489,7 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		mise -C "$(PROJECT_ROOT)/$$member" config ls --json; \
 	done; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"; \
-	if [ "$(strip $({{ make.ci.variable }}))" != "{{ make.ci.value }}" ]; then \
-		set --{% if package %} --editable "$(PROJECT_ROOT)"{% endif %}; \
-		for member in{% for member in workspace_repositories if member.package and member.editable %} "{{ member.path }}"{% endfor %}; do \
-			if [ ! -f "$(PROJECT_ROOT)/$$member/pyproject.toml" ]; then \
-				printf 'ERROR[setup] declared member metadata is missing: %s\n' "$(PROJECT_ROOT)/$$member/pyproject.toml" >&2; exit 2; \
-			fi; \
-			set -- "$$@" --editable "$(PROJECT_ROOT)/$$member"; \
-		done; \
-		if [ "$$\#" -gt 0 ]; then \
-			$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --link-mode "$(UV_LINK_MODE)" "$$@"; \
-		fi; \
-		$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
-	fi; \
+	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
 	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only; \
 	for member in $(WORKSPACE_SUBPROJECTS); do \
@@ -537,7 +525,7 @@ _builtin_require_workspace:
 
 # Execute the interpreter provisioned by setup without discovering a project
 # workspace or creating a dependency-resolution file during a runtime command.
-override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src$(if $(1),:$(1))" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
+override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTIME_BIN):$$PATH" PYTHONPATH="$(PROJECT_ROOT)/src$(if $(1),:$(1))" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
 # The checked-out flext-infra lane owns every lifecycle verb: a workspace
 # runs the generator it carries (the submodule src), so a broken published
 # dependency tip can never block the local recovery cycle. A checkout without
@@ -551,6 +539,7 @@ override PROJECT_INFRA_PYTHONPATH := $(if $(wildcard $(FLEXT_INFRA_SUBMODULE_SRC
 endif
 override PROJECT_INFRA_RUN = if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON)
 override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
+
 # Scaffold dev tools live in the validated optional dev
 # Lock law (operator 2026-10-03): only `make upg` writes uv.lock. Setup installs
 # the committed lock and never deletes, creates, or relocks it. Frozen sync
@@ -661,7 +650,13 @@ _activated-{{ verb.name }}: _builtin_require_environment
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-{{ verb.name }},direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }})
 
 .PHONY: _activated-{{ verb.name }}
+{% if verb.name == "status" %}
+_activated-{{ verb.name }}: _builtin_require_interpreter
+	+@$(SELF_MAKE) _builtin_status_import_observation
+	+@$(SELF_MAKE) _builtin_require_environment
+{% else %}
 _activated-{{ verb.name }}: _builtin_require_environment
+{% endif %}
 {% else %}
 {{ verb.name }}:
 {% endif %}
@@ -775,7 +770,8 @@ _builtin_require_mise:
 		exit 2; \
 	fi
 
-_builtin_require_environment: _builtin_require_workspace _builtin_require_mise
+.PHONY: _builtin_require_interpreter
+_builtin_require_interpreter: _builtin_require_workspace _builtin_require_mise
 # Documenting the interface (`make help`) must not require the interpreter it
 # tells the user how to provision. Only `make help` with no other goal
 # skips the check; any combined goal still demands the environment.
@@ -784,6 +780,11 @@ ifneq ($(MAKECMDGOALS),help)
 		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_PYTHON)" >&2; \
 		exit 2; \
 	fi
+endif
+
+_builtin_require_environment: _builtin_require_interpreter
+ifneq ($(MAKECMDGOALS),help)
+	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 endif
 
 # === SECTION: setup environment (managed) ===
@@ -875,7 +876,6 @@ _upg_converge:
 	@$(UV) lock --project "$(PROJECT_ROOT)"
 	@$(UV) lock --check --project "$(PROJECT_ROOT)"
 	@$(SELF_MAKE) _builtin_setup_environment
-	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(SELF_MAKE) _builtin_require_mise
 	$(call RUN_PUBLIC_ACTIVATE,gen)
@@ -1012,14 +1012,13 @@ profile-gen-report: _builtin_require_environment
 		"$(PROFILE_REPORTS_DIR)/conform.pstats"
 
 # Measure the same mutating codemod lifecycle, retaining profiles on failure.
-.PHONY: profile-mod profile-mod-report
-profile-mod: _builtin_require_environment
+_builtin-profile-mod: _builtin_require_environment
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
 	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
 		"$(PROFILE_REPORTS_DIR)/mod.pstats" refactor mod \
 		--repository-root "$(PROJECT_ROOT)" --apply
 
-profile-mod-report: _builtin_require_environment
+_builtin-profile-mod-report: _builtin_require_environment
 	@$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
 		"$(PROFILE_REPORTS_DIR)/mod.pstats"
 
@@ -1046,6 +1045,45 @@ _builtin-profile-test: _builtin_require_environment
 _builtin-profile-test-report: _builtin_require_environment
 	@$(call UV_RUN,$(PROJECT_INFRA_PYTHONPATH)) python -m flext_infra._cprofile_entry \
 		"$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}" "$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}.json"
+
+{% set status_origin_probe %}
+import importlib
+import inspect
+import json
+import sys
+
+declared = json.loads(sys.argv[2])
+names = tuple(name for name, root in declared)
+print(f"runtime-import-observation executable={sys.executable!r} prefix={sys.prefix!r}", flush=True)
+try:
+    for name, root in declared:
+        print(f"runtime-import-declaration module={name!r} source={root!r}", flush=True)
+        importlib.import_module(name)
+finally:
+    for name, module in tuple(sys.modules.items()):
+        if not any(name == package or name.startswith(package + ".") for package in names):
+            continue
+        spec = getattr(module, "__spec__", None)
+        print(
+            f"runtime-import-module name={name!r} "
+            f"origin={getattr(spec, 'origin', None)!r} "
+            f"file={getattr(module, '__file__', None)!r} "
+            f"path={getattr(module, '__path__', None)!r} "
+            f"cached={getattr(module, '__cached__', None)!r}",
+            flush=True,
+        )
+        for symbol, value in tuple(vars(module).items()):
+            function = value.__func__ if inspect.ismethod(value) else value
+            if inspect.isfunction(function):
+                print(
+                    f"runtime-import-code module={name!r} symbol={symbol!r} "
+                    f"co_filename={function.__code__.co_filename!r}",
+                    flush=True,
+                )
+{% endset %}
+_builtin_status_import_observation: _builtin_require_interpreter
+	@$(RUNTIME_PYTHON) -c 'import json, sys; exec(json.loads(sys.argv[1]))' \
+		'{{ status_origin_probe | tojson }}' '{{ environment_imports | tojson }}'
 
 _builtin_status_diagnostics: _builtin_require_environment
 	@$(GITHUB_AUTH_DIAGNOSTICS)

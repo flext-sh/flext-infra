@@ -10,7 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
+from flext_infra import c, p, t
+from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,
     FlextInfraDirenvGate,
@@ -29,14 +30,11 @@ from flext_infra import (
     FlextInfraRuffLintGate,
     FlextInfraRuntimeCensusGate,
     FlextInfraSmellsGate,
-    c,
-    p,
-    t,
 )
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraGate
+    from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class FlextInfraGateRegistry:

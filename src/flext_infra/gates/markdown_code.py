@@ -22,14 +22,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import (
-    FlextInfraGate,
-    FlextInfraMarkdownCodeSources,
-    FlextInfraMarkdownGateBase,
-    c,
-    m,
-    u,
-)
+from flext_infra import c, m, u
+from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
+from flext_infra.gates.markdown_support import FlextInfraMarkdownGateBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

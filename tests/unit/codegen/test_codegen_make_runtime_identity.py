@@ -28,7 +28,7 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )
-        tm.ok(u.Tests.create_python_environment(root))
+        tm.ok(u.Tests.provision_python_project_environment(root))
         host_config = tmp_path / "host-mise.toml"
         host_config.write_text("invalid-host = [\n", encoding="utf-8")
         lock = root / c.Infra.MISE_LOCK_FILENAME
@@ -69,6 +69,28 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
         tm.that(result.stdout, has="application-environment-preserved")
         tm.that(result.stderr, lacks="invalid-host")
         tm.that(lock.read_bytes(), eq=lock_before)
+
+    @staticmethod
+    def test_status_reports_the_first_missing_declared_package(
+        tmp_path: Path,
+    ) -> None:
+        """A bare interpreter cannot be reported as a provisioned project."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.ok(u.Tests.create_python_environment(root))
+        namespace = u.Infra.project_package_name(root)
+
+        result = tm.ok(u.Tests.run_isolated_make(["status"], cwd=root))
+
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=False,
+            msg=result.stdout + result.stderr,
+        )
+        tm.that(result.stdout, has=f"runtime-import-declaration module={namespace!r}")
+        tm.that(result.stderr, has=["ModuleNotFoundError", namespace])
 
     @staticmethod
     @pytest.mark.parametrize(

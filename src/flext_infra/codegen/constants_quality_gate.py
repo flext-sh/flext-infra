@@ -13,25 +13,21 @@ from collections.abc import MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING, override
 
-from flext_infra import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraRefactorCensus,
-    c,
-    m,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.refactor.census import FlextInfraRefactorCensus
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
-
 
 class FlextInfraCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
+
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -72,6 +68,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 f"lazy-init artifacts require codegen conform: {paths}",
             )
         census = FlextInfraRefactorCensus(
+            source_preview=self.source_preview,
             include_local_scopes=False,
             kinds=("constant",),
         ).model_copy(update={"repository_root": self.repository_root})

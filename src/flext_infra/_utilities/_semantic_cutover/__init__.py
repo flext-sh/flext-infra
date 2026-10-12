@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.alias_cst import (
@@ -100,6 +100,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.self_facade import (
         FlextInfraUtilitiesSemanticCutoverSelfFacade,
     )
+    from flext_infra._utilities._semantic_cutover.test_helpers import (
+        FlextInfraUtilitiesSemanticTestHelpers,
+    )
 
 
 __all__: tuple[str, ...] = (
@@ -132,6 +135,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticNestingTypes",
+    "FlextInfraUtilitiesSemanticTestHelpers",
 )
 
 install_lazy_exports(
@@ -171,6 +175,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticNestingTypes": ".nesting_types",
+        "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
     }),
     public_exports=__all__,
 )

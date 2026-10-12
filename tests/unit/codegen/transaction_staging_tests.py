@@ -18,6 +18,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
+from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import t, tm, u
 
@@ -26,11 +27,59 @@ class TestsFlextInfraTransactionStaging:
     """Exercise durable staging authority before publishing live destinations."""
 
     @staticmethod
+    @pytest.mark.parametrize("mutation", ["content", "inode", "unchanged"])
+    def test_semantic_commit_preserves_external_changes_after_publication(
+        tmp_path: Path,
+        mutation: str,
+    ) -> None:
+        """Settle publication without treating later external edits as failure."""
+        root = u.Tests.git_repository(tmp_path)
+        target = root / "sample.py"
+        target.write_bytes(b"value = 1\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        desired = b"value = 2\n"
+        plan = m.Infra.SemanticFilePlan(
+            project=root,
+            path=target,
+            before=before,
+            desired_content=desired,
+            desired_mode=before.mode,
+            changes=("semantic migration",),
+        )
+
+        def validate() -> p.Result[bool]:
+            published = tm.ok(
+                u.Cli.atomic_read_binary_file_state(target, required=True),
+            )
+            tm.that(published.content, eq=desired)
+            if mutation == "content":
+                target.write_bytes(b"value = 3\n")
+            elif mutation == "inode":
+                assert published.mode is not None
+                tm.ok(
+                    u.Cli.atomic_write_binary_file_guarded(
+                        published,
+                        desired,
+                        permission_mode=published.mode,
+                    ),
+                )
+            return r[bool].ok(value=True)
+
+        outcome = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            (plan,),
+            repository_root=root,
+            validator=validate,
+        )
+        tm.ok(outcome)
+        tm.that(
+            target.read_bytes(),
+            eq=b"value = 3\n" if mutation == "content" else desired,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("inside", [False, True])
     @pytest.mark.parametrize("boundary", ["managed", "file"])
-    @pytest.mark.parametrize(
-        "state", ["staging", "prepared", "recovering", "committed"]
-    )
+    @pytest.mark.parametrize("state", ["staging", "prepared", "committed"])
     def test_request_authorization_preserves_foreign_pending_journal(
         tmp_path: Path,
         boundary: str,

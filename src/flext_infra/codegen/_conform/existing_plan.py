@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+import traceback
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
@@ -124,45 +125,62 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         """
         if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
-            envrc_context = m.Infra.EnvrcRenderSpec(
+            context = m.Infra.EnvrcRenderSpec(
                 repository_root_rel=self._repository_root_rel(workspace),
                 environment_path_prepends=codegen.toolchain.environment_path_prepends,
             )
-            planned = self._bootstrap_destination_plan(
-                target,
-                codegen,
-                envrc_context,
-                c.Infra.ENVRC_FILENAME,
-            )
-            if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
-        if contract.destinations == frozenset({c.Infra.MISE_TOML_FILENAME}):
+            destination = c.Infra.ENVRC_FILENAME
+        elif contract.destinations == frozenset({c.Infra.MISE_TOML_FILENAME}):
             context = m.Infra.ToolchainSpec(**{
                 name: value
                 for name, value in codegen.toolchain.model_dump().items()
                 if name in m.Infra.ToolchainSpec.model_fields
             })
-            planned = self._bootstrap_destination_plan(
-                target,
-                codegen,
-                context,
-                c.Infra.MISE_TOML_FILENAME,
-            )
-            if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
-        if contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
+            destination = c.Infra.MISE_TOML_FILENAME
+        elif contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
             return self._plan_existing_bootstrap(target, workspace, codegen)
-        if (
+        elif (
             contract.destinations == frozenset({c.PYPROJECT_FILENAME})
             and not contract.templates
         ):
             return self._plan_existing_pyproject_bootstrap(target, codegen)
-        return None
+        else:
+            return None
+        planned = self._bootstrap_destination_plan(
+            target, codegen, context, destination
+        )
+        if planned.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
 
     @staticmethod
+    def _bootstrap_pyproject_source(
+        path: Path,
+    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, str]]:
+        """Recover owned TOML while retaining the exact authenticated before state.
+
+        Returns:
+            The original file identity and its recovered regeneration source.
+        """
+        result_type = r[t.Pair[m.Cli.AtomicFileState, str]]
+        before = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if before.failure:
+            return result_type.from_failure(before)
+        if before.value.content is None:
+            return result_type.fail(f"pyproject is absent: {path}")
+        recovered = u.Infra.recover_live_pyproject_text(
+            before.value.content.decode(c.DEFAULT_ENCODING),
+        )
+        if recovered.failure:
+            return result_type.from_failure(recovered)
+        source = u.Infra.pyproject_regeneration_source(recovered.value)
+        if source.failure:
+            return result_type.from_failure(source)
+        return result_type.ok((before.value, source.value))
+
+    @classmethod
     def _plan_existing_pyproject_bootstrap(
+        cls,
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -178,19 +196,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         path = target.root / c.PYPROJECT_FILENAME
-        before = u.Cli.atomic_read_binary_file_state(path, required=True)
-        if before.failure:
-            return result_type.from_failure(before)
-        if before.value.content is None:
-            return result_type.fail(f"pyproject is absent: {path}")
-        recovered = u.Infra.recover_live_pyproject_text(
-            before.value.content.decode(c.DEFAULT_ENCODING),
-        )
-        if recovered.failure:
-            return result_type.from_failure(recovered)
-        source = u.Infra.pyproject_regeneration_source(recovered.value)
-        if source.failure:
-            return result_type.from_failure(source)
+        prepared = cls._bootstrap_pyproject_source(path)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        before, source = prepared.value
         owners = u.Infra.snapshot_config_sources(config.ssot_config_dir().parent)
         if owners.failure:
             return result_type.from_failure(owners)
@@ -203,7 +212,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             managed_artifacts=artifacts.value.resolution,
         )
         rendered = modernizer.conform_source(
-            source.value,
+            source,
             path=path,
             format_source=False,
             topology=m.Infra.PyprojectDeclaredTopology(
@@ -224,7 +233,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         planned = m.Infra.CodegenFilePlan(
             project=target.root,
             path=path,
-            before=before.value,
+            before=before,
             desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
             desired_mode=managed[0].mode,
             source_states=(*owners.value, *artifacts.value.sources),
@@ -248,7 +257,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         root = target.root
         repository = target.repository
-        project, metadata = identity
+        _project, _metadata = identity
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
@@ -259,12 +268,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             f"elapsed={time.monotonic() - managed_started:.2f}s",
         )
         tooling_started = time.monotonic()
+        custom_result = (
+            self._plan_existing_custom(root, codegen, profile=target.make_profile.value)
+            if contract.custom
+            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+        )
+        if custom_result.failure:
+            return result_type.from_failure(custom_result)
         tooling_context = self._existing_tooling_context(
             target,
-            project,
-            metadata,
+            identity,
             codegen,
             managed_artifacts.value.resolution,
+            custom_result.value,
         )
         if tooling_context.failure:
             return result_type.from_failure(tooling_context)
@@ -286,24 +302,25 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         if managed_result.failure:
             return result_type.from_failure(managed_result)
         planned = list(managed_result.value)
-        if contract.custom:
-            custom_result = self._plan_existing_custom(
-                root,
-                codegen,
-                profile=target.make_profile.value,
+        planned.extend(custom_result.value)
+        final_inputs = self.planned_source_render_inputs(render_inputs, planned)
+        if contract.pyproject and final_inputs is not render_inputs:
+            final_templates = self._plan_existing_templates(
+                render_inputs=final_inputs,
+                contract=contract,
             )
-            if custom_result.failure:
-                return result_type.from_failure(custom_result)
-            planned.extend(custom_result.value)
+            if final_templates.failure:
+                return result_type.from_failure(final_templates)
+            planned = [*final_templates.value, *planned[len(managed_result.value) :]]
         return result_type.ok(tuple(planned))
 
     def _existing_tooling_context(
         self,
         target: m.Infra.RepositoryConformTarget,
-        project: m.Infra.ProjectSpec,
-        metadata: p.ProjectMetadata,
+        identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
         codegen: m.Infra.CodegenConfigSpec,
         managed_resolution: m.Infra.ProjectManagedArtifactsResolution,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve the modernizer tooling context for one existing repository.
 
@@ -313,6 +330,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         root = target.root
         repository = target.repository
+        project, metadata = identity
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
@@ -320,6 +338,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         return modernizer.resolve_tooling_context(
             m.Infra.ToolingContextRequest(
+                planned_sources={
+                    plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                    for plan in planned
+                    if plan.path.suffix == c.Infra.EXT_PYTHON
+                    and plan.desired_content is not None
+                },
                 project_name=repository.distribution,
                 package_name=metadata.package_name,
                 path=root / c.PYPROJECT_FILENAME,
@@ -553,7 +577,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 continue
             resolved = self._managed_render_entry(codegen, workspace, root, managed)
             if resolved.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(resolved)
+                self._record_file_failure(
+                    root / managed.path,
+                    resolved.error or "managed file resolution failed",
+                )
+                continue
             (entry, path), present = resolved.value
             if not present or entry is None or path is None:
                 continue
@@ -564,9 +592,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 # Conform, rather than a user, retires the generated orphan.
                 orphan = self._retired_workflow_orphan(render_inputs, managed, path)
                 if orphan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        orphan,
+                    self._record_file_failure(
+                        path,
+                        orphan.error or "managed file retirement failed",
                     )
+                    continue
                 orphan_plan = orphan.value[0]
                 if orphan.value[1] and orphan_plan is not None:
                     planned.append(
@@ -575,9 +605,22 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         ),
                     )
                 continue
-            rendered = self._rendered_managed_plan(render_inputs, managed, entry, path)
+            try:
+                rendered = self._rendered_managed_plan(
+                    render_inputs,
+                    managed,
+                    entry,
+                    path,
+                )
+            except (OSError, ValueError):
+                self._record_file_failure(path, traceback.format_exc())
+                continue
             if rendered.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
+                self._record_file_failure(
+                    path,
+                    rendered.error or "managed file rendering failed",
+                )
+                continue
             render_inputs, planned_file = rendered.value
             planned.append(planned_file)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -803,10 +846,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         plans: list[m.Infra.CodegenFilePlan] = []
         make_plan = self._validated_custom_make_plan(root, policy)
         if make_plan.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(make_plan)
-        make_plan_value, make_plan_present = make_plan.value
-        if make_plan_present and make_plan_value is not None:
-            plans.append(make_plan_value)
+            self._record_file_failure(
+                root / policy.filename,
+                make_plan.error or "custom Make planning failed",
+            )
+        else:
+            make_plan_value, make_plan_present = make_plan.value
+            if make_plan_present and make_plan_value is not None:
+                plans.append(make_plan_value)
         if root.is_dir():
             sources = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(root,)),
@@ -828,13 +875,33 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         layout is None or package_dir != layout.package_dir
                     ) and u.Infra.facade_module_path(package_dir, family) is None:
                         continue
-                    facade_plan = self._utility_facade_plan(root, package_dir, family)
-                    if facade_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            facade_plan,
-                        )
-                    plans.extend(facade_plan.value)
+                    plans.extend(self._captured_facade_plan(root, package_dir, family))
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
+
+    def _captured_facade_plan(
+        self,
+        root: Path,
+        package_dir: Path,
+        family: Literal["u", "p", "m"],
+    ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
+        """Retain the original diagnostic while collecting independent plans.
+
+        Returns:
+            The declared facade plans, or no effects for a recorded failure.
+        """
+        facade_path = u.Infra.facade_module_path(package_dir, family)
+        failure_path = facade_path if facade_path is not None else package_dir
+        try:
+            planned = self._utility_facade_plan(root, package_dir, family)
+        except (OSError, ValueError):
+            self._record_file_failure(failure_path, traceback.format_exc())
+            return ()
+        if planned.failure:
+            self._record_file_failure(
+                failure_path, planned.error or "facade planning failed"
+            )
+            return ()
+        return planned.value
 
     def _validated_custom_make_plan(
         self,

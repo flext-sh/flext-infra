@@ -10,15 +10,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import (
-    FlextInfraGateRegistry,
-    FlextInfraRuffFormatGate,
-    FlextInfraRuffLintGate,
-    FlextInfraWorkspaceChecker,
-    c,
-    m,
-    p,
-)
+from flext_infra import c, m, p
+from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from tests import tm, u
 
 if TYPE_CHECKING:

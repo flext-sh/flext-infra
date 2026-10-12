@@ -22,6 +22,34 @@ class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
+    class SourcePreview(Protocol):
+        """Consumer-owned capability for validating authenticated source views."""
+
+        def preview_sources[T](
+            self,
+            workspace: Path,
+            updates: t.MappingKV[Path, str],
+            validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        ) -> p.Result[T]:
+            """Validate staged candidates while preserving live sources."""
+            ...
+
+    class ExternalCacheDirectory(Protocol):
+        """Shared consumer contract for declared tool cache placement."""
+
+        @property
+        def data_home_environment_variable(self) -> str: ...
+
+        @property
+        def user_home_environment_variable(self) -> str: ...
+
+        @property
+        def home_cache_directory(self) -> Path: ...
+
+        @property
+        def external_storage_directory(self) -> Path: ...
+
+    @runtime_checkable
     class PytestStopController(Protocol):
         """Native distributed controller's mutable stop request."""
 
@@ -976,3 +1004,6 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
+
+
+__all__: list[str] = ["FlextInfraProtocolsBase"]

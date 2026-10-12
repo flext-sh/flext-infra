@@ -24,6 +24,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeResource(Protocol):
         """Rope project resource shape shared by files and folders."""
 
+        def is_folder(self) -> bool: ...
+
         @property
         def path(self) -> str: ...
 
@@ -275,7 +277,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             modname: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def find_relative_module(
             self,

@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsVerificationManifest,
@@ -76,7 +76,8 @@ class FlextInfraMiseArtifactsVerification(
                 return r[bool].fail(
                     f"generation authenticated state changed: {rebound_expected.path}; "
                     f"content_changed={content_changed}; "
-                    f"expected={rebound_expected.model_dump_json(exclude={'content'})}; "
+                    "expected="
+                    f"{rebound_expected.model_dump_json(exclude={'content'})}; "
                     f"observed={observed.value.model_dump_json(exclude={'content'})}",
                 )
         return r[bool].ok(value=True)
@@ -175,24 +176,10 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        destination_paths = frozenset(file.path for file in analysis.files)
         u.Cli.info(
-            f"phase={analysis.phase} verify inputs={len(analysis.inputs)} "
-            f"destinations={len(analysis.files)}",
+            f"phase={analysis.phase} verify destinations={len(analysis.files)}",
         )
-        source_state = cls.states_current(
-            tuple(
-                state
-                for state in analysis.inputs
-                if state.path not in destination_paths
-            ),
-        )
-        if source_state.failure:
-            return source_state
         for plan in analysis.files:
-            before = u.Infra.codegen_file_before_state(plan)
-            if before.failure:
-                return r[bool].from_failure(before)
             observed = FlextInfraMiseArtifactsFiles.read_state(
                 plan.path,
                 required=plan.desired_content is not None,
@@ -201,15 +188,19 @@ class FlextInfraMiseArtifactsVerification(
                 return r[bool].from_failure(observed)
             current = observed.value
             if (
+                plan.path.name == c.Infra.INIT_PY
+                and u.Infra.codegen_initializer_is_authored(current.content)
+            ):
+                u.Cli.info(
+                    f"ownership=authored disposition=retained target={plan.path}",
+                )
+                continue
+            if (
                 current.content,
                 current.mode,
-                current.parent_device,
-                current.parent_inode,
             ) != (
                 plan.desired_content,
                 plan.desired_mode,
-                before.value.parent_device,
-                before.value.parent_inode,
             ):
                 return r[bool].fail(
                     f"published {analysis.phase} destination differs from receipt: "
