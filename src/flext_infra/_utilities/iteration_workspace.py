@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import multiprocessing
+import time
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -15,11 +16,11 @@ from flext_cli import u as cli_u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesIterationDirectory,
-    FlextInfraUtilitiesRefactor,
 )
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 
 
 class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
@@ -31,6 +32,8 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         scope: c.Infra.CodegenConformScope,
         operation: str,
         task: Callable[[Path], p.Result[t.SequenceOf[Path]]],
+        *,
+        mutating: bool = False,
     ) -> p.Result[t.SequenceOf[Path]]:
         """Attempt a discovered repository scope serially through its original owner.
 
@@ -38,25 +41,45 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             Original returned paths, or the first causal failure after reporting.
         """
         resolved = root.expanduser().resolve()
-        if scope == c.Infra.CodegenConformScope.SELF:
-            roots = (resolved,)
-        elif scope == c.Infra.CodegenConformScope.ALL:
-            declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
-            if declared.failure:
-                return r[t.SequenceOf[Path]].from_failure(declared)
-            roots = (
-                resolved,
-                *(resolved / declaration.path for declaration in declared.value),
-            )
-        else:
-            return r[t.SequenceOf[Path]].fail(
-                f"{operation} scope must be self or all, received {scope}",
-            )
+        discovered = FlextInfraUtilitiesProjectDiscovery.repository_operation_targets(
+            resolved,
+            scope,
+        )
+        if discovered.failure:
+            return r[t.SequenceOf[Path]].from_failure(discovered)
+        roots = tuple(target.root for target in discovered.value)
         receipts: list[m.Infra.WorkspaceOperationReceipt] = []
         files: list[Path] = []
         first_failure: p.Result[t.SequenceOf[Path]] | None = None
-        for repository_root in roots:
-            result = task(repository_root)
+        for target in discovered.value:
+            repository_root = target.root
+            start = time.monotonic()
+            applicability = (
+                FlextInfraUtilitiesProjectDiscovery.repository_operation_applicability(
+                    target,
+                    mutating=mutating,
+                )
+            )
+            if applicability.success and not applicability.value.applicable:
+                receipts.append(
+                    m.Infra.WorkspaceOperationReceipt(
+                        root=repository_root,
+                        executed=False,
+                        outcome=None,
+                        applicability=applicability.value.reason,
+                    ),
+                )
+                cli_u.Cli.info(
+                    f"{operation} {repository_root}: NOT APPLICABLE: "
+                    f"{applicability.value.reason}",
+                )
+                continue
+            executed = applicability.success
+            result = (
+                task(repository_root)
+                if executed
+                else r[t.SequenceOf[Path]].from_failure(applicability)
+            )
             issues = (
                 (
                     m.Infra.Issue(
@@ -64,7 +87,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                         line=0,
                         column=0,
                         code=c.Infra.ToolOutcome.ERROR.value,
-                        message=result.error or f"{operation} failed",
+                        message=result.error or "",
                         severity="error",
                     ),
                 )
@@ -76,7 +99,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             receipts.append(
                 m.Infra.WorkspaceOperationReceipt(
                     root=repository_root,
-                    executed=True,
+                    executed=executed,
                     outcome=(
                         c.Infra.ToolOutcome.ERROR
                         if result.failure
@@ -86,7 +109,12 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                     issues=issues,
                 ),
             )
-            cli_u.Cli.status(operation, repository_root.name, result=result.success)
+            cli_u.Cli.status(
+                operation,
+                repository_root.name,
+                result=result.success,
+                elapsed=time.monotonic() - start,
+            )
             if result.failure and first_failure is None:
                 first_failure = result
         published = FlextInfraUtilitiesRefactor.publish_refactor_report_evidence(
@@ -110,6 +138,10 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             return r[t.SequenceOf[Path]].from_failure(published)
         if first_failure is not None:
             return r[t.SequenceOf[Path]].from_failure(first_failure)
+        if not any(receipt.executed for receipt in receipts):
+            return r[t.SequenceOf[Path]].fail(
+                f"{operation} executed no applicable repository operation",
+            )
         return r[t.SequenceOf[Path]].ok(tuple(files))
 
     @staticmethod
