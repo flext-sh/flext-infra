@@ -37,6 +37,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         phase: str,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
+        issues: t.VariadicTuple[m.Infra.Issue] = (),
         staged_validator: Callable[
             [
                 m.Infra.CodegenTransactionSession,
@@ -53,6 +54,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        if issues:
+            session = session.model_copy(
+                update={"issues": (*session.issues, *issues)},
+            )
         changed = tuple(
             plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
         )
@@ -131,7 +136,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if published.failure:
             return result_type.from_failure(published)
         journal, journal_state = current.journal, current.journal_state
-        return result_type.ok(
+        return self.record_publication(
             m.Infra.CodegenTransactionSession(
                 plan=prepared.value.plan,
                 journal=journal,
@@ -140,6 +145,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 issues=(*session.issues, *published.value.issues),
                 exception=session.exception or published.value.exception,
             ),
+            phase=phase,
         )
 
     def _validate_staged_consumer(
@@ -501,7 +507,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
     ) -> p.Result[
         t.Pair[t.VariadicTuple[tuple[Path, bytes, int]], t.VariadicTuple[Path]]
     ]:
-        """Plan ordered replacement and backup writes without creating artifacts.
+        """Plan ordered replacement writes without destination preimages.
 
         Returns:
             The ordered writes and sorted transaction directories they require.
@@ -521,24 +527,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             if present:
                 root, content, mode = replacement
                 writes.append((root / f"{index:06d}.replacement", content, mode))
-            if before.content is not None:
-                participant = next(
-                    item
-                    for item in files.transaction_participants(layout)
-                    if item.root == plan.project
-                )
-                if participant.transaction_root is None:
-                    return result_type.fail(
-                        "backup participant has no transaction root",
-                    )
-                recovery_root = participant.transaction_root / "recovery"
-                directories.add(recovery_root)
-                writes.append((
-                    recovery_root
-                    / f"{len(session.journal.entries) + index:06d}.original",
-                    before.content,
-                    c.Infra.JOURNAL_MODE,
-                ))
         return result_type.ok((tuple(writes), tuple(sorted(directories))))
 
     def _persist_staging_intents(
@@ -871,7 +859,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
     def commit_locked(
         self,
         session: m.Infra.CodegenTransactionSession,
-        validator: Callable[[], p.Result[bool]],
+        validator: Callable[[], p.Result[bool]] | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Report every target, preserve gains, and settle the publication cursor.
 
@@ -879,30 +867,24 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        outcome = m.Infra.CodegenPhaseOutcome(
-            written_files=session.written_files,
-            issues=session.issues,
-            exception=session.exception,
-        )
-        evidence = u.Infra.publish_refactor_report_evidence(
-            session.plan.layout.scope_root,
-            outcome,
-            relative_path=c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH,
-        )
+        evidence = self.record_publication(session)
         if evidence.failure:
             return r[t.VariadicTuple[Path]].from_failure(evidence)
-        validated = validator()
-        if validated.failure or not validated.value:
-            cleaned = self._recover_prepared(session.plan.layout)
-            return r[t.VariadicTuple[Path]].fail(
-                validated.error or "generation fixed-point validation failed",
-                exception=validated.exception,
-                error_data={
-                    "written_files": tuple(str(path) for path in session.written_files),
-                    "issues": tuple(issue.model_dump() for issue in session.issues),
-                    "cleanup_error": cleaned.error if cleaned.failure else None,
-                },
-            )
+        if validator is not None:
+            validated = validator()
+            if validated.failure or not validated.value:
+                cleaned = self._recover_prepared(session.plan.layout)
+                return r[t.VariadicTuple[Path]].fail(
+                    validated.error or "explicit publication validation failed",
+                    exception=validated.exception,
+                    error_data={
+                        "written_files": tuple(
+                            str(path) for path in session.written_files
+                        ),
+                        "issues": tuple(issue.model_dump() for issue in session.issues),
+                        "cleanup_error": cleaned.error if cleaned.failure else None,
+                    },
+                )
         committed = self._verified_commit(session)
         if committed.failure:
             return r[t.VariadicTuple[Path]].from_failure(committed)
@@ -917,6 +899,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if cleaned.failure:
             return r[t.VariadicTuple[Path]].from_failure(cleaned)
         self._journal_receipts.pop(session.plan.layout.journal_path, None)
+        completed = self.record_publication(session, completed=True)
+        if completed.failure:
+            return r[t.VariadicTuple[Path]].from_failure(completed)
         if session.issues:
             return r[t.VariadicTuple[Path]].fail(
                 "\n".join(issue.formatted for issue in session.issues),

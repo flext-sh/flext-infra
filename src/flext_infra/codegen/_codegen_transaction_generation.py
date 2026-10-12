@@ -546,7 +546,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         )
         if finalized.failure:
             return result_type.from_failure(finalized)
-        return result_type.ok(
+        return self.record_publication(
             m.Infra.CodegenTransactionSession(
                 plan=plan,
                 journal=manifested,
@@ -555,6 +555,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
                 issues=finalized.value.issues,
                 exception=finalized.value.exception,
             ),
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
         )
 
 

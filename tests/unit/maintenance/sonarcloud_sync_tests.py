@@ -17,7 +17,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraSonarcloudSettingsSync, c, config, m
+from flext_infra import c, config, m
+from flext_infra.maintenance import FlextInfraSonarcloudSettingsSync
 from tests import tm, u
 
 if TYPE_CHECKING:

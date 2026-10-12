@@ -220,8 +220,16 @@ The default `make gen` handler passes explicit `--scope all` to conform at
 `PROJECT_ROOT`: a workspace invocation covers its root and every declared member,
 while a standalone repository has only itself. The request model's default remains
 `SELF` for callers that do not select a scope, including file-only surfaces.
-Generation owns one transaction for ordinary projections, Mise artifacts, lazy
-exports and docs; no additional writer runs before or after its journal.
+Generation publishes ordinary projections, Mise artifacts, lazy exports and docs
+independently through the existing atomic file owner. Immediately before each write,
+the publisher reads that destination's current state; an external edit before the
+write is input rather than a campaign-wide failure. The atomic write still protects
+a race during that individual operation. Every target is attempted and failed targets
+are reported alongside successfully published paths.
+The journal authorizes temporary staging cleanup. It never restores destination
+preimages or deletes generated directories after a later phase fails. Accepted changes
+and unrelated external edits remain intact. Phase diagnostics accumulate into the
+publication report, and the final error verdict retains the original causal exception.
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.

@@ -7,9 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+import traceback
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
+
+from jinja2 import TemplateError
+from rope.base.exceptions import RopeError
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
@@ -577,7 +581,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 continue
             resolved = self._managed_render_entry(codegen, workspace, root, managed)
             if resolved.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(resolved)
+                self._record_file_failure(
+                    root / managed.path,
+                    resolved.error or "managed file resolution failed",
+                )
+                continue
             (entry, path), present = resolved.value
             if not present or entry is None or path is None:
                 continue
@@ -588,9 +596,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 # Conform, rather than a user, retires the generated orphan.
                 orphan = self._retired_workflow_orphan(render_inputs, managed, path)
                 if orphan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        orphan,
+                    self._record_file_failure(
+                        path,
+                        orphan.error or "managed file retirement failed",
                     )
+                    continue
                 orphan_plan = orphan.value[0]
                 if orphan.value[1] and orphan_plan is not None:
                     planned.append(
@@ -599,9 +609,29 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         ),
                     )
                 continue
-            rendered = self._rendered_managed_plan(render_inputs, managed, entry, path)
+            try:
+                rendered = self._rendered_managed_plan(
+                    render_inputs,
+                    managed,
+                    entry,
+                    path,
+                )
+            except (
+                SyntaxError,
+                ValueError,
+                TypeError,
+                OSError,
+                RopeError,
+                TemplateError,
+            ):
+                self._record_file_failure(path, traceback.format_exc())
+                continue
             if rendered.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
+                self._record_file_failure(
+                    path,
+                    rendered.error or "managed file rendering failed",
+                )
+                continue
             render_inputs, planned_file = rendered.value
             planned.append(planned_file)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -827,10 +857,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         plans: list[m.Infra.CodegenFilePlan] = []
         make_plan = self._validated_custom_make_plan(root, policy)
         if make_plan.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(make_plan)
-        make_plan_value, make_plan_present = make_plan.value
-        if make_plan_present and make_plan_value is not None:
-            plans.append(make_plan_value)
+            self._record_file_failure(
+                root / policy.filename,
+                make_plan.error or "custom Make planning failed",
+            )
+        else:
+            make_plan_value, make_plan_present = make_plan.value
+            if make_plan_present and make_plan_value is not None:
+                plans.append(make_plan_value)
         if root.is_dir():
             sources = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(root,)),
@@ -852,11 +886,25 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         layout is None or package_dir != layout.package_dir
                     ) and u.Infra.facade_module_path(package_dir, family) is None:
                         continue
-                    facade_plan = self._utility_facade_plan(root, package_dir, family)
-                    if facade_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            facade_plan,
+                    facade_path = u.Infra.facade_module_path(package_dir, family)
+                    try:
+                        facade_plan = self._utility_facade_plan(
+                            root,
+                            package_dir,
+                            family,
                         )
+                    except (SyntaxError, ValueError, TypeError, OSError, RopeError):
+                        self._record_file_failure(
+                            facade_path if facade_path is not None else package_dir,
+                            traceback.format_exc(),
+                        )
+                        continue
+                    if facade_plan.failure:
+                        self._record_file_failure(
+                            facade_path if facade_path is not None else package_dir,
+                            facade_plan.error or "facade planning failed",
+                        )
+                        continue
                     plans.extend(facade_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 

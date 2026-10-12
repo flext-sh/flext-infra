@@ -39,6 +39,35 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
 
+    def record_publication(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        *,
+        phase: str | None = None,
+        completed: bool = False,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Persist cumulative gains before any subsequent phase can fail.
+
+        Returns:
+            The session whose published paths and issues have been recorded.
+        """
+        outcome = m.Infra.CodegenPhaseOutcome(
+            root=session.plan.layout.scope_root,
+            phase=phase,
+            completed=completed,
+            written_files=session.written_files,
+            issues=session.issues,
+            exception=session.exception,
+        )
+        evidence = u.Infra.publish_refactor_report_evidence(
+            session.plan.layout.scope_root,
+            outcome,
+            relative_path=c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH,
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
+        return r[m.Infra.CodegenTransactionSession].ok(session)
+
     def participant_policy(
         self,
         *,
@@ -275,8 +304,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 for entry in journal.entries
                 for selector in (
                     entry.desired_staging,
-                    entry.original_backup,
-                    entry.rollback_staging,
                 )
                 if selector is not None
             ),

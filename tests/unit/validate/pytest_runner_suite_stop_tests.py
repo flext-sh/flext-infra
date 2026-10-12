@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraPytestRunner, config
+from flext_infra import config
+from flext_infra.validate import FlextInfraPytestRunner
 from tests import c, m, t, tm, u
 
 

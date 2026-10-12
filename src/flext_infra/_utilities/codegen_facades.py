@@ -695,9 +695,10 @@ class FlextInfraUtilitiesCodegenFacades:
                         resource = project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix(),
                         )
-                        pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        pymodule = FlextInfraUtilitiesRopeRuntime.build_string_module(
                             project,
-                            resource,
+                            source,
+                            resource=resource,
                         )
                     offset = sum(map(len, lines[: receiver.lineno - 1]))
                     offset += len(

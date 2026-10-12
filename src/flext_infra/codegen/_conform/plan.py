@@ -536,10 +536,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             files.extend(outcome.files)
             if outcome.environment is not None:
                 environments.append(outcome.environment)
+            for issue in outcome.issues:
+                u.Cli.error(issue.formatted)
             u.Cli.status(
                 "conform",
                 outcome.repository,
-                result=True,
+                result=not outcome.issues,
                 elapsed=outcome.elapsed,
             )
         return result_type.ok((files, environments, issues))

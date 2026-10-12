@@ -81,6 +81,10 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
         ] = ()
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Target planning failures retained beside valid file plans",
+        )
 
         @m.model_validator(mode="after")
         def _validate_unique_paths(self) -> Self:
@@ -129,6 +133,18 @@ class FlextInfraModelsCodegenPipelineModels:
             default=None,
             exclude=True,
             description="First native cause retained for causal Result propagation",
+        )
+        root: Path | None = m.Field(
+            default=None,
+            description="Actual publication scope when supplied by its owner",
+        )
+        phase: str | None = m.Field(
+            default=None,
+            description="Last completed publication phase",
+        )
+        completed: bool = m.Field(
+            default=False,
+            description="Whether the entire invocation reached final accounting",
         )
 
     class CodegenConformPorts(m.ArbitraryTypesModel):

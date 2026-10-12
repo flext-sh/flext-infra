@@ -28,11 +28,11 @@ class TestsFlextInfraTransactionStaging:
 
     @staticmethod
     @pytest.mark.parametrize("mutation", ["content", "inode", "unchanged"])
-    def test_semantic_commit_reports_exact_publication_identity_drift(
+    def test_semantic_commit_preserves_external_changes_after_publication(
         tmp_path: Path,
         mutation: str,
     ) -> None:
-        """Accept untouched publication, rejecting validator writes with detail."""
+        """Settle publication without treating later external edits as failure."""
         root = u.Tests.git_repository(tmp_path)
         target = root / "sample.py"
         target.write_bytes(b"value = 1\n")
@@ -70,21 +70,17 @@ class TestsFlextInfraTransactionStaging:
             repository_root=root,
             validator=validate,
         )
-        if mutation == "unchanged":
-            tm.ok(outcome)
-            tm.that(target.read_bytes(), eq=desired)
-        else:
-            tm.fail(outcome, has="published generation identity changed")
-            tm.fail(outcome, has="phase=semantic")
-            tm.fail(outcome, has="expected=")
-            tm.fail(outcome, has="observed=")
-            tm.fail(outcome, has="sha256:" if mutation == "content" else "inode:")
+        tm.ok(outcome)
+        tm.that(
+            target.read_bytes(),
+            eq=b"value = 3\n" if mutation == "content" else desired,
+        )
 
     @staticmethod
     @pytest.mark.parametrize("inside", [False, True])
     @pytest.mark.parametrize("boundary", ["managed", "file"])
     @pytest.mark.parametrize(
-        "state", ["staging", "prepared", "recovering", "committed"]
+        "state", ["staging", "prepared", "committed"]
     )
     def test_request_authorization_preserves_foreign_pending_journal(
         tmp_path: Path,

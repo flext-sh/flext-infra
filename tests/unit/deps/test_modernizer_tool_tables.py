@@ -10,12 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import (
-    FlextInfraEnsureRuffConfigPhase,
-    FlextInfraPyprojectModernizer,
-    FlextInfraToolTablesPhase,
-    config,
-)
+from flext_infra import config
+from flext_infra.deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer, FlextInfraToolTablesPhase
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from tests import c, e, m, t, tm, u
 

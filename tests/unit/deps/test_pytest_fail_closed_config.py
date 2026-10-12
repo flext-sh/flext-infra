@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraToolTablesPhase, config
+from flext_infra import config
+from flext_infra.deps import FlextInfraToolTablesPhase
 from tests import t, tm, u
 
 if TYPE_CHECKING:

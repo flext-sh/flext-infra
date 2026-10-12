@@ -20,7 +20,8 @@ import sysconfig
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraFlextBindingService, c, config
+from flext_infra import c, config
+from flext_infra.workspace import FlextInfraFlextBindingService
 from tests import m, t, tm, u
 
 if TYPE_CHECKING:

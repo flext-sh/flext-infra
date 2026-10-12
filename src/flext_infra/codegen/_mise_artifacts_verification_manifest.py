@@ -16,7 +16,7 @@ from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 if TYPE_CHECKING:
     from flext_infra import p
 
-type _JournalFileRole = Literal["desired", "backup", "rollback", "restore"]
+type _JournalFileRole = Literal["desired"]
 
 
 class FlextInfraMiseArtifactsVerificationManifest:
@@ -258,11 +258,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         file_specs = cls._journal_file_specs(layout, journal)
         if file_specs.failure:
             return r[bool].from_failure(file_specs)
-        consumable = {
-            path
-            for path, (role, _entry) in file_specs.value.items()
-            if role in {"desired", "rollback", "restore"}
-        }
+        consumable = set(file_specs.value)
         expected_check = cls._verified_expected_entries(expected, current, consumable)
         if expected_check.failure:
             return expected_check
@@ -503,18 +499,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
         for entry in journal.entries:
             selectors: t.VariadicTuple[t.Pair[_JournalFileRole, str | None]] = (
                 ("desired", entry.desired_staging),
-                ("backup", entry.original_backup),
-                ("rollback", entry.rollback_staging),
-                (
-                    "restore",
-                    (
-                        Path(entry.original_backup).with_suffix(".restore").as_posix()
-                        if entry.original_backup is not None
-                        and entry.rollback_staging is None
-                        and journal.state in {"prepared", "recovering"}
-                        else None
-                    ),
-                ),
             )
             for role, selector in selectors:
                 if selector is None:
@@ -538,41 +522,20 @@ class FlextInfraMiseArtifactsVerificationManifest:
     def _matches_journal_file(
         cls,
         observed: m.Cli.AtomicPhysicalTreeEntry,
-        role: _JournalFileRole,
+        _role: _JournalFileRole,
         entry: m.Infra.CodegenJournalEntry,
     ) -> bool:
         if observed.kind != "file":
             return False
-        if role == "desired":
-            expected = (
-                entry.desired_sha256,
-                entry.desired_mode,
-                entry.desired_device,
-                entry.desired_inode,
-                entry.desired_link_count,
-                entry.desired_file_attributes,
-                entry.desired_reparse_tag,
-            )
-        elif role == "rollback":
-            expected = (
-                entry.rollback_sha256,
-                entry.rollback_mode,
-                entry.rollback_device,
-                entry.rollback_inode,
-                entry.rollback_link_count,
-                entry.rollback_file_attributes,
-                entry.rollback_reparse_tag,
-            )
-        else:
-            expected = (
-                entry.original_sha256,
-                entry.original_mode if role == "restore" else c.Infra.JOURNAL_MODE,
-                observed.device,
-                observed.inode,
-                1,
-                observed.file_attributes,
-                observed.reparse_tag,
-            )
+        expected = (
+            entry.desired_sha256,
+            entry.desired_mode,
+            entry.desired_device,
+            entry.desired_inode,
+            entry.desired_link_count,
+            entry.desired_file_attributes,
+            entry.desired_reparse_tag,
+        )
         actual = (
             observed.sha256,
             observed.mode,

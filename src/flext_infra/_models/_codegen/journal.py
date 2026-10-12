@@ -474,10 +474,6 @@ class FlextInfraModelsCodegenJournalModels:
             int,
             m.Field(gt=0, strict=True, description="Original parent inode"),
         ]
-        original_backup: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Workspace-relative original-byte backup"),
-        ] = None
         original_sha256: Annotated[
             str | None,
             m.Field(
@@ -562,59 +558,10 @@ class FlextInfraModelsCodegenJournalModels:
             int | None,
             m.Field(ge=0, strict=True, description="Staged reparse tag"),
         ] = None
-        rollback_exists: Annotated[
-            bool | None,
-            m.Field(
-                strict=True,
-                description="Recovery target presence once rollback is durable",
-            ),
-        ] = None
-        rollback_parent_device: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback live parent device"),
-        ] = None
-        rollback_parent_inode: Annotated[
-            int | None,
-            m.Field(gt=0, strict=True, description="Rollback live parent inode"),
-        ] = None
-        rollback_sha256: Annotated[
-            str | None,
-            m.Field(pattern=r"^[0-9a-f]{64}$", description="Rollback bytes identity"),
-        ] = None
-        rollback_mode: Annotated[
-            int | None,
-            m.Field(ge=0, le=0o7777, strict=True, description="Rollback mode"),
-        ] = None
-        rollback_device: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback staged device"),
-        ] = None
-        rollback_inode: Annotated[
-            int | None,
-            m.Field(gt=0, strict=True, description="Rollback staged inode"),
-        ] = None
-        rollback_link_count: Annotated[
-            Literal[1] | None,
-            m.Field(description="Rollback staged unique link count"),
-        ] = None
-        rollback_file_attributes: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback host attributes"),
-        ] = None
-        rollback_reparse_tag: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback reparse tag"),
-        ] = None
-        rollback_staging: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Workspace-relative durable rollback candidate path"),
-        ] = None
 
         @m.field_validator(
             "path",
-            "original_backup",
             "desired_staging",
-            "rollback_staging",
         )
         @classmethod
         def _validate_relative_file_path(cls, value: str | None) -> str | None:
@@ -646,7 +593,6 @@ class FlextInfraModelsCodegenJournalModels:
             populated = tuple(
                 value is not None
                 for value in (
-                    self.original_backup,
                     self.original_sha256,
                     self.original_mode,
                     self.original_device,
@@ -707,61 +653,6 @@ class FlextInfraModelsCodegenJournalModels:
             return self
 
         @m.model_validator(mode="after")
-        def _validate_rollback_tuple(self) -> Self:
-            """Require the rollback identity to match its declared presence state.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If codegen journal rollback identity has no presence state;
-                    or if codegen journal rollback parent identity is incomplete; or if
-                    codegen journal rollback identity is incomplete; or if codegen
-                    journal rollback staging path is inconsistent; or if absent codegen
-                    rollback cannot contain file identity; or if absent codegen rollback
-                    cannot contain host metadata.
-
-            """
-            rollback_populated = tuple(
-                value is not None
-                for value in (
-                    self.rollback_sha256,
-                    self.rollback_mode,
-                    self.rollback_device,
-                    self.rollback_inode,
-                    self.rollback_link_count,
-                )
-            )
-            parent_populated = tuple(
-                value is not None
-                for value in (self.rollback_parent_device, self.rollback_parent_inode)
-            )
-            if self.rollback_exists is None and (
-                any(rollback_populated) or any(parent_populated)
-            ):
-                msg = "codegen journal rollback identity has no presence state"
-                raise ValueError(msg)
-            if self.rollback_exists is not None and not all(parent_populated):
-                msg = "codegen journal rollback parent identity is incomplete"
-                raise ValueError(msg)
-            if self.rollback_exists is True and not all(rollback_populated):
-                msg = "codegen journal rollback identity is incomplete"
-                raise ValueError(msg)
-            if (self.rollback_exists is True) != (self.rollback_staging is not None):
-                msg = "codegen journal rollback staging path is inconsistent"
-                raise ValueError(msg)
-            if self.rollback_exists is False and any(rollback_populated):
-                msg = "absent codegen rollback cannot contain file identity"
-                raise ValueError(msg)
-            if self.rollback_exists is False and (
-                self.rollback_file_attributes is not None
-                or self.rollback_reparse_tag is not None
-            ):
-                msg = "absent codegen rollback cannot contain host metadata"
-                raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
         def _validate_reparse_absence(self) -> Self:
             """Reject any reparse identity in the journal's file states.
 
@@ -776,7 +667,6 @@ class FlextInfraModelsCodegenJournalModels:
             physical = (
                 (self.original_file_attributes, self.original_reparse_tag),
                 (self.desired_file_attributes, self.desired_reparse_tag),
-                (self.rollback_file_attributes, self.rollback_reparse_tag),
             )
             if any(
                 reparse not in {None, 0}
@@ -786,24 +676,6 @@ class FlextInfraModelsCodegenJournalModels:
                 msg = f"codegen journal contains a reparse identity: {self.path}"
                 raise ValueError(msg)
             return self
-
-    class CodegenRecoveryAction(m.ArbitraryTypesModel):
-        """One preclassified recovery decision with no live effect applied."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        entry: Annotated[
-            FlextInfraModelsCodegenJournalModels.CodegenJournalEntry,
-            m.Field(description="Journal entry owning the recovery decision"),
-        ]
-        current: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact live target state used for classification"),
-        ]
-        operation: Annotated[
-            Literal["noop", "delete", "restore"],
-            m.Field(description="Only authorized recovery effect for the target"),
-        ]
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenJournalModels"]

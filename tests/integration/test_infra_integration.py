@@ -15,7 +15,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraMarkdownGate, FlextInfraRefactorCensus, c, infra, m
+from flext_infra import c, infra, m
+from flext_infra.gates import FlextInfraMarkdownGate
+from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import tm, u
 
 if TYPE_CHECKING:
