@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
     from flext_infra._models._config.static import FlextInfraConfigModelsStatic
     from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
+    from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
     from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
     from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
     from flext_infra._models._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
@@ -133,6 +134,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsStatic",
     "FlextInfraConfigModelsTemplates",
     "FlextInfraConfigModelsWorkspace",
+    "FlextInfraConfigVocabulary",
     "FlextInfraExternalCacheDirectorySpec",
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
@@ -212,6 +214,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsStatic": "._config.static",
         "FlextInfraConfigModelsTemplates": "._config.templates",
         "FlextInfraConfigModelsWorkspace": "._config.workspace",
+        "FlextInfraConfigVocabulary": "._config.vocabulary",
         "FlextInfraExternalCacheDirectorySpec": "._config.external_cache",
         "FlextInfraModelsBase": ".base",
         "FlextInfraModelsCensus": ".census",

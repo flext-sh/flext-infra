@@ -362,7 +362,8 @@ MYPY_PATHS := $(strip $(foreach d,src tests examples{% if script_dispatch %} scr
 # Every tool resolves from the mise-managed PATH (direnv activation shims, or
 # the CI provisioned PATH); _builtin_require_mise guards the running mise
 # against the committed mise.lock pin.
-override UV = "$$(mise -C "$(RUNTIME_ROOT)" which uv --tool uv)"
+{% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
+override UV = "$$(mise -C "$(RUNTIME_ROOT)" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@$$(mise -C "$(RUNTIME_ROOT)" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)")"
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner

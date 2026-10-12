@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import shlex
 import sys
 import time
@@ -78,9 +79,17 @@ class FlextInfraPytestRunnerExecution(
                 msg = "test target has no declared project owner"
                 raise ValueError(msg)
             source_root = target_root
+        inherited_path = u.Cli.process_env().get(
+            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
+        )
         overrides = {
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                source_root / c.Infra.DEFAULT_SRC_DIR,
+            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: os.pathsep.join(
+                path
+                for path in (
+                    str(source_root / c.Infra.DEFAULT_SRC_DIR),
+                    inherited_path,
+                )
+                if path
             ),
         }
         if not coverage:

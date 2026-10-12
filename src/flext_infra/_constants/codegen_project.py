@@ -21,12 +21,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_infra._constants import FlextInfraConstantsSharedInfra
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsCodegenProject:
+class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
     CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
@@ -52,20 +53,6 @@ class FlextInfraConstantsCodegenProject:
         SELF = "self"
         DECLARED = "declared_repositories"
         ALL = "all"
-
-    @unique
-    class CodegenConformSurface(StrEnum):
-        """Managed file selection accepted by ``codegen conform``."""
-
-        ALL = "all"
-        DEPENDENCIES = "dependencies"
-        DOCS_CONFIG = "docs-config"
-        ENVRC = "envrc"
-        FACADES = "facades"
-        LAZY_INIT = "lazy-init"
-        MAKEFILE = "makefile"
-        MISE_CONFIG = "mise-config"
-        PYPROJECT = "pyproject"
 
     @unique
     class CodegenConformMode(StrEnum):
@@ -244,7 +231,6 @@ class FlextInfraConstantsCodegenProject:
     """Emitted by ``snapshot_config_sources`` when the ``config/*.yaml`` set
     changes while its managed-artifact config is snapshotted."""
     WORKSPACE_MANIFEST_FILENAME: ClassVar[str] = "workspace.yaml"
-    WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
     UV_LOCK_FILENAME: ClassVar[str] = "uv.lock"
     MISE_LOCK_FILENAME: ClassVar[str] = "mise.lock"
     MISE_LOCK_JOURNAL_FILENAME: ClassVar[str] = "transaction.json"

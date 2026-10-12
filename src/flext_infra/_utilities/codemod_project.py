@@ -1048,7 +1048,9 @@ class FlextInfraUtilitiesCodemodProject(
         Raises:
             ValueError: If the project's layout cannot be resolved.
         """
-        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(root, file_path)
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            root, file_path
+        )
         layout = FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
         if layout is None:
             msg = f"project layout is unresolved: {file_path}"

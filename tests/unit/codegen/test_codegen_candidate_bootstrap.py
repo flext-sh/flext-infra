@@ -26,7 +26,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             "path": ".",
             "what": c.Infra.CodegenConformSurface.MAKEFILE,
         })
-        tm.that(target.path, eq=Path("."))
+        tm.that(target.path, eq=Path())
         for invalid in ("", " ", Path.cwd()):
             with pytest.raises(m.ValidationError):
                 m.Infra.CandidateBootstrapTargetSpec.model_validate({

@@ -302,12 +302,16 @@ class TestsFlextInfraBindingInstall:
             from pathlib import Path
             from sys import argv
 
+            from flext_cli import FlextCliConfig
             from flext_infra import (
                 FlextInfraWorkspaceDetector,
                 FlextInfraWorkspaceEnvironmentProvenance,
                 c, config, m, u,
             )
 
+            cli_config = FlextCliConfig.fetch_global()
+            cli_roundtrip = FlextCliConfig.model_validate(cli_config.model_dump())
+            assert cli_roundtrip.Cli == cli_config.Cli
             root = Path(argv[1])
             workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root).unwrap()
             for repository in (workspace.repository, *workspace.subprojects):
@@ -315,7 +319,9 @@ class TestsFlextInfraBindingInstall:
                     artifact = distribution(repository.distribution)
                     raw = artifact.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
                     receipt = (
-                        m.Infra.DirectUrlReceipt.model_validate_json(raw) if raw else None
+                        m.Infra.DirectUrlReceipt.model_validate_json(raw)
+                        if raw
+                        else None
                     )
                     print(repository.distribution, artifact.version,
                           artifact.locate_file(""),
@@ -363,6 +369,7 @@ class TestsFlextInfraBindingInstall:
                 ),
             ),
         )
+        u.Tests.record_dependency_command_output(outcome)
         tm.that(
             u.Cli.process_succeeded(outcome.outcome),
             eq=True,

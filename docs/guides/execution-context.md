@@ -175,11 +175,14 @@ order, it stops at the first defect:
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
    carries a checksum for the current platform when `lock_checksum` requires one;
 2. `mise where <key>@<version>` names the install root;
-3. `mise which <binary>`, and every symlink hop it resolves through, stays inside that
-   root;
+3. `mise which <binary> --tool <key>@<version>`, and every symlink hop it resolves
+   through, stays inside that root;
 4. the tool's declared `version_probe` reports the locked version.
 
 The proof has no fallback, retry, or warning-only mode.
+Executable resolution selects the declared tool explicitly. A binary bundled by
+another tool, such as UV inside a Python installation, cannot replace the declared
+producer. The proof also checks the executable the Make consumer actually invokes.
 
 A project `bin/` never enters PATH (shell, `BASH_ENV`, or CI `GITHUB_PATH`): Mise binds
 the shared shims to the first `mise` on PATH. Caches and installations stay out of Git.

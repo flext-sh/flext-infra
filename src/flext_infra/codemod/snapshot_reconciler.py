@@ -205,18 +205,26 @@ class FlextInfraCodemodSnapshotReconciler:
         """
         cases: MutableMapping[str, frozenset[str]] = {}
         for test_file in sorted(test_dir.glob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")):
-            payload = u.Cli.yaml_safe_load(test_file).unwrap()
-            rule_id = payload.get(c.Infra.CODEMOD_RULE_TEST_ID_KEY)
-            invalid = payload.get(c.Infra.CODEMOD_RULE_TEST_INVALID_KEY, ())
-            if (
-                not isinstance(rule_id, str)
-                or not isinstance(invalid, Sequence)
-                or isinstance(invalid, str)
-                or not all(isinstance(case, str) for case in invalid)
-            ):
-                msg = f"invalid ast-grep rule-test contract: {test_file}"
+            documents = u.Cli.yaml_parse_documents(
+                u.Cli.files_read_text(test_file).unwrap()
+            ).unwrap()
+            if not documents:
+                msg = f"empty ast-grep rule-test document stream: {test_file}"
                 raise TypeError(msg)
-            cases[rule_id] = frozenset(str(case) for case in invalid)
+            for payload in documents:
+                rule_id = payload.get(c.Infra.CODEMOD_RULE_TEST_ID_KEY)
+                invalid = payload.get(c.Infra.CODEMOD_RULE_TEST_INVALID_KEY, ())
+                if (
+                    not isinstance(rule_id, str)
+                    or not isinstance(invalid, Sequence)
+                    or isinstance(invalid, str)
+                    or not all(isinstance(case, str) for case in invalid)
+                ):
+                    msg = f"invalid ast-grep rule-test contract: {test_file}"
+                    raise TypeError(msg)
+                cases[rule_id] = cases.get(rule_id, frozenset()) | frozenset(
+                    str(case) for case in invalid
+                )
         return cases
 
     @staticmethod

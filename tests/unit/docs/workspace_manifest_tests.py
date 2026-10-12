@@ -37,16 +37,28 @@ class TestsFlextInfraWorkspaceManifest:
     ) -> None:
         """Topology paths stay relative and discovery does not expand YAML inputs."""
         manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
-        tm.ok(u.Cli.yaml_dump(manifest, {
-            **tm.ok(u.Cli.yaml_safe_load(manifest)),
-            "candidate_bootstrap_targets": [{
-                "path": target_path,
-                "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
-            }],
-        }))
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
+                    "candidate_bootstrap_targets": [
+                        {
+                            "path": target_path,
+                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
+                        },
+                    ],
+                },
+            ),
+        )
 
         loaded = tm.ok(u.Infra.load_workspace_manifest(tmp_path))[0]
         tm.that(loaded.candidate_bootstrap_targets[0].path, eq=Path(target_path))
+        tm.that(
+            loaded.candidate_bootstrap_targets[0].what
+            is c.Infra.CodegenConformSurface.MAKEFILE,
+            eq=True,
+        )
         tm.that(u.Infra.manifest_nonparticipant_paths(tmp_path), empty=True)
         tm.that(
             u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
@@ -61,13 +73,20 @@ class TestsFlextInfraWorkspaceManifest:
     ) -> None:
         """Empty and absolute paths fail before discovery can consume topology."""
         manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
-        tm.ok(u.Cli.yaml_dump(manifest, {
-            **tm.ok(u.Cli.yaml_safe_load(manifest)),
-            "candidate_bootstrap_targets": [{
-                "path": target_path,
-                "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
-            }],
-        }))
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
+                    "candidate_bootstrap_targets": [
+                        {
+                            "path": target_path,
+                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
+                        },
+                    ],
+                },
+            ),
+        )
 
         tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
         with pytest.raises(c.ValidationError):

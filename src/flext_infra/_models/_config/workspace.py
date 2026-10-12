@@ -10,12 +10,12 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, t
 
-from flext_infra import c, t
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
 class FlextInfraConfigModelsWorkspace:
@@ -30,7 +30,7 @@ class FlextInfraConfigModelsWorkspace:
 
         path: Annotated[Path, m.Field(description="Relative candidate worktree path")]
         what: Annotated[
-            c.Infra.CodegenConformSurface,
+            FlextInfraConfigVocabulary.CodegenConformSurface,
             m.Field(description="Canonical generator surface for this target"),
         ]
 
@@ -75,7 +75,10 @@ class FlextInfraConfigModelsWorkspace:
             if not self.url.startswith("https://") or not self.url.endswith(".git"):
                 msg = "dependency commit source URL must be canonical HTTPS Git"
                 raise ValueError(msg)
-            if c.Infra.GIT_COMMIT_OID_RE.fullmatch(self.commit) is None:
+            if (
+                FlextInfraConfigVocabulary.GIT_COMMIT_OID_RE.fullmatch(self.commit)
+                is None
+            ):
                 msg = "dependency commit source must pin a full Git OID"
                 raise ValueError(msg)
             return self
@@ -105,7 +108,7 @@ class FlextInfraConfigModelsWorkspace:
         dependency_groups: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
-                validation_alias=c.Infra.DEPENDENCY_GROUPS,
+                validation_alias=FlextInfraConfigVocabulary.DEPENDENCY_GROUPS,
                 description="PEP 735 dependency groups (dev, codegen, ...)",
             ),
         ] = m.Field(
@@ -220,8 +223,8 @@ class FlextInfraConfigModelsWorkspace:
         version: Annotated[
             int,
             m.Field(
-                ge=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                le=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                ge=FlextInfraConfigVocabulary.WORKSPACE_MANIFEST_VERSION,
+                le=FlextInfraConfigVocabulary.WORKSPACE_MANIFEST_VERSION,
                 description="Workspace manifest schema version",
             ),
         ]
