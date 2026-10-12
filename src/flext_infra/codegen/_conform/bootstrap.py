@@ -119,22 +119,29 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     ) -> t.VariadicTuple[t.Pair[str, Path]]:
         """Resolve diagnostic package identities from their declared projects.
 
+        Paths stay relative to the target root so the rendered Makefile is
+        environment-independent: an absolute root would embed the generating
+        checkout's path and drift against CI's different workspace path.
+
         Returns:
-            Package names and exact project roots, without guessing distribution names.
+            Package names and project roots relative to the target root, without
+            guessing distribution names.
 
         Raises:
             ValueError: If declared package namespace is unresolved.
         """
         roots = (
-            *((target.root,) if target.repository.package else ()),
+            *((Path(),) if target.repository.package else ()),
             *(
-                target.root / member.path
+                member.path
                 for member in workspace.subprojects
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 and member.package
             ),
         )
-        imports = tuple((u.Infra.project_package_name(root), root) for root in roots)
+        imports = tuple(
+            (u.Infra.project_package_name(target.root / root), root) for root in roots
+        )
         if any(not name for name, _root in imports):
             msg = f"declared package namespace is unresolved: {target.root}"
             raise ValueError(msg)

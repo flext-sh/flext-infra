@@ -207,9 +207,6 @@ class FlextInfraCodegenTransaction(
         authorized = self._authorize_roots(tuple(roots.values()))
         if authorized.failure:
             return r[m.Infra.GitIdentityReport].from_failure(authorized)
-        preflight = self._preflight_journal(identity.value)
-        if preflight.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(preflight)
         return identity
 
     def _file_recovery_participants(
@@ -547,9 +544,6 @@ class FlextInfraCodegenTransaction(
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[T].from_failure(identity)
-        preflight = self._preflight_journal(identity.value)
-        if preflight.failure:
-            return r[T].from_failure(preflight)
         with u.Infra.codegen_transaction_lease(
             self._planner.journal_path(identity.value),
         ):
