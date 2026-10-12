@@ -372,7 +372,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             for repository in workspace.subprojects
             if repository.package
         }
-        if workspace.repository.package:
+        if workspace.repository.package or any(
+            item.name == workspace.repository.distribution
+            and (item.source.editable is not None or item.source.directory is not None)
+            for item in locked.package
+        ):
             members[workspace.repository.distribution] = (
                 workspace.repository.model_copy(
                     update={"path": Path()},
