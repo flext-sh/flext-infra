@@ -65,14 +65,20 @@ known_first_party = ["flext_core", "flext_infra"]
 pep621_dev_dependency_groups = ["dev"]
 
 # [MANAGED] tool.hatch
+# Why (fix/wheel-config-include-20261012): the wheel must ship the packaged
+# base config (config/*.yaml → flext_infra/config) — _config_dir resolves the
+# base layer from the packaged copy first, and a wheel without it starves
+# every standalone consumer's gen with the 79-field "Infra.* required"
+# ValidationError (config only exists in source-tree checkouts).
 [tool.hatch.build.targets.sdist]
-only-include = ["src/flext_infra"]
+include = ["/src/flext_infra/**", "/config/**"]
 
 [tool.hatch.build.targets.wheel]
-only-include = ["src/flext_infra"]
+include = ["/src/flext_infra/**", "/config/**"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/flext_infra" = "flext_infra"
+config = "flext_infra/config"
 
 [tool.hatch.metadata]
 allow-direct-references = true
