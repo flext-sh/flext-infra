@@ -12,6 +12,10 @@ import pytest
 
 import flext_infra
 from flext_infra import c, m
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -171,7 +175,10 @@ class TestsFlextInfraRefactorCensusPreview:
                 rope,
                 repository_root,
                 candidate,
-                gates=("lint",),
+                options=m.Infra.RemovalPreviewOptions(gates=("lint",)),
+                source_preview=FlextInfraCodegenTransaction(
+                    FlextInfraCodegenMiseArtifacts(repository_root=repository_root)
+                ),
             )
 
         tm.ok(preview)

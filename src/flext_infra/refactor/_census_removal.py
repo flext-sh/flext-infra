@@ -44,6 +44,8 @@ class FlextInfraRefactorCensusRemovalMixin(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         project_reports: t.VariadicTuple[m.Infra.ProjectReport],
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> t.VariadicTuple[m.Infra.ProjectReport]:
         """Keep only removal candidates that pass the configured dry-run gates.
 
@@ -71,8 +73,11 @@ class FlextInfraRefactorCensusRemovalMixin(
                     rope,
                     self.root,
                     candidate,
-                    gates=self.dry_run_gate_names,
-                    source_cache=source_cache,
+                    options=m.Infra.RemovalPreviewOptions(
+                        gates=self.dry_run_gate_names,
+                        source_cache=source_cache,
+                    ),
+                    source_preview=source_preview,
                 )
                 if preview_result.failure:
                     msg = (

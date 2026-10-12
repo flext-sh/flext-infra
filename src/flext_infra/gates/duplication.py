@@ -53,7 +53,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         started = time.monotonic()
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet
-        scan = self._scan_project(project_dir, fleet_enabled)
+        scan = self._scan_project(project_dir, fleet_enabled=fleet_enabled)
         parsed = self._issues_from_report(scan, project_dir, fleet=fleet_enabled)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)

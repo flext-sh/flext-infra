@@ -10,7 +10,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import c, m, tm, u
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -250,11 +254,55 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         result = u.Infra.preview_source_writes(
             {py_file: updated_source},
             workspace=tmp_path,
+            source_preview=FlextInfraCodegenTransaction(
+                FlextInfraCodegenMiseArtifacts(repository_root=tmp_path)
+            ),
             gates=("lint",),
         )
 
         tm.that(result, eq=(True, []))
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original_source)
+        tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
+
+    @staticmethod
+    def test_staged_source_consumer_reads_candidate_without_live_writes(
+        tmp_path: Path,
+    ) -> None:
+        """The public staging capability exposes candidate bytes to the real consumer."""
+        package = u.Tests.src_package(
+            tmp_path,
+            "sample",
+            pyproject="[project]\nname = 'sample'\n",
+        )
+        py_file = package / "sample.py"
+        original = "VALUE = 1\n"
+        updated = "VALUE = 2\n"
+        py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
+        before_modified_ns = py_file.stat().st_mtime_ns
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=tmp_path)
+        )
+
+        def consume_candidate(
+            view_root: Path,
+            candidates: t.MappingKV[Path, Path],
+        ) -> t.Triple[str, str, int]:
+            candidate = candidates[py_file.resolve()]
+            tm.that(candidate.is_relative_to(view_root), eq=True)
+            return (
+                candidate.read_text(encoding=c.DEFAULT_ENCODING),
+                py_file.read_text(encoding=c.DEFAULT_ENCODING),
+                py_file.stat().st_mtime_ns,
+            )
+
+        observed = transaction.preview_sources(
+            tmp_path,
+            {py_file.resolve(): updated},
+            consume_candidate,
+        )
+        tm.ok(observed)
+        tm.that(observed.value, eq=(updated, original, before_modified_ns))
+        tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 
     def test_protected_source_write_skips_pytest_for_non_test_file(

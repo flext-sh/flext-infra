@@ -12,6 +12,10 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_cli import cli
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraAccessorMigrationRewriteMixin,
@@ -89,10 +93,10 @@ class FlextInfraAccessorMigrationOrchestrator(
             The resulting ``p.Result[m.Infra.AccessorMigrationReport]``.
 
         """
-        selected_projects: t.StrSequence = (
-            self.project_names if self.project_names is not None else ()
+        resolved = u.Infra.resolve_projects(
+            self.repository_root,
+            self.project_names if self.project_names is not None else (),
         )
-        resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[m.Infra.AccessorMigrationReport].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
@@ -118,6 +122,9 @@ class FlextInfraAccessorMigrationOrchestrator(
         lint_before_totals: MutableMapping[str, int] = {}
         lint_after_totals: MutableMapping[str, int] = {}
         new_lint_error_totals: MutableMapping[str, int] = {}
+        source_preview = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=self.repository_root)
+        )
         with u.Infra.open_project(self.repository_root) as rope_project:
             for py_file in scoped_files:
                 read = u.Cli.files_read_text(py_file)
@@ -128,6 +135,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                     py_file,
                     read.value,
                     preview_available=len(previews) < self.preview_limit,
+                    source_preview=source_preview,
                 )
                 automated_change_count += len(file_report.automated_changes)
                 warning_count += len(file_report.warnings)

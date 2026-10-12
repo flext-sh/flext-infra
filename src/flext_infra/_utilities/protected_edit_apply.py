@@ -215,14 +215,27 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         Returns:
             The resulting ``t.Infra.EditResult``.
 
+        Raises:
+            ValueError: If the protected source has no authenticated bytes or mode.
         """
-        original_source = py_file.read_text(encoding=c.DEFAULT_ENCODING)
+        before_state = u.Cli.atomic_read_binary_file_state(
+            py_file, required=True
+        ).unwrap()
+        if before_state.content is None or before_state.mode is None:
+            msg = f"protected source has no authenticated bytes or mode: {py_file}"
+            raise ValueError(msg)
+        original_source = before_state.content.decode(c.DEFAULT_ENCODING)
+        permission_mode = before_state.mode
         if request.updated_source == original_source:
             return (True, [])
 
         def _write_updated() -> None:
             """Write updated."""
-            py_file.write_text(request.updated_source, encoding=c.DEFAULT_ENCODING)
+            u.Cli.atomic_write_binary_file_guarded(
+                before_state,
+                request.updated_source.encode(c.DEFAULT_ENCODING),
+                permission_mode=permission_mode,
+            ).unwrap()
 
         return FlextInfraUtilitiesProtectedEditApply.protected_file_edit(
             py_file,
@@ -277,16 +290,55 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 gates=request.gates,
             )
         )
-        for path, updated_source in normalized_updates.items():
+        before_states: dict[Path, m.Cli.AtomicFileState] = {}
+        for path in normalized_updates:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(updated_source, encoding=c.DEFAULT_ENCODING)
-        if request.post_write is not None:
+            observed = u.Cli.atomic_read_binary_file_state(
+                path, required=False
+            ).unwrap()
+            observed_source = (
+                observed.content.decode(c.DEFAULT_ENCODING)
+                if observed.content is not None
+                else None
+            )
+            if observed_source != before_sources[path]:
+                return (
+                    False,
+                    [f"source changed during protected write planning: {path}"],
+                )
+            before_states[path] = observed
+        publication_errors: list[str] = []
+        written_updates: dict[Path, str] = {}
+        for path, updated_source in normalized_updates.items():
+            before_state = before_states[path]
+            published = u.Cli.atomic_write_binary_file_guarded(
+                before_state,
+                updated_source.encode(c.DEFAULT_ENCODING),
+                permission_mode=(
+                    before_state.mode
+                    if before_state.mode is not None
+                    else c.Infra.CONFIG_SPEC[1]
+                ),
+            )
+            if published.failure:
+                publication_errors.append(
+                    f"PUBLICATION FAILED {path}: {published.error}"
+                )
+                continue
+            written_updates[path] = updated_source
+        if request.post_write is not None and not publication_errors:
             request.post_write()
-        return FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
-            normalized_updates,
-            before_sources,
-            before_lints,
-            request,
+        valid, validation_reports = (
+            FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
+                written_updates,
+                before_sources,
+                before_lints,
+                request,
+            )
+        )
+        return (
+            valid and not publication_errors,
+            [*publication_errors, *validation_reports],
         )
 
 

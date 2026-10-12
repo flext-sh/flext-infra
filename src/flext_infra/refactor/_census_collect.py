@@ -26,6 +26,8 @@ class FlextInfraRefactorCensusCollectMixin:
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             project_reports: t.VariadicTuple[m.Infra.ProjectReport],
+            *,
+            source_preview: p.Infra.SourcePreview,
         ) -> t.VariadicTuple[m.Infra.ProjectReport]: ...
 
         @staticmethod
@@ -93,6 +95,7 @@ class FlextInfraRefactorCensusCollectMixin:
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         *,
+        source_preview: p.Infra.SourcePreview,
         findings: m.Infra.ScanFindings,
         scan_config: m.Infra.ScanConfig,
     ) -> m.Infra.WorkspaceReport:
@@ -123,7 +126,9 @@ class FlextInfraRefactorCensusCollectMixin:
             )
         )
         if self.effective_dry_run:
-            project_reports = self._validated_project_reports(rope, project_reports)
+            project_reports = self._validated_project_reports(
+                rope, project_reports, source_preview=source_preview
+            )
         return m.Infra.WorkspaceReport(
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),

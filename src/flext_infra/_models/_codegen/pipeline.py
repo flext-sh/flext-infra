@@ -127,11 +127,16 @@ class FlextInfraModelsCodegenPipelineModels:
         )
         retained_files: t.VariadicTuple[Path] = m.Field(
             default=(),
-            description="Authored destinations retained because generation does not own their bodies",
+            description=(
+                "Authored destinations retained because generation does not own "
+                "their bodies"
+            ),
         )
         effect_targets: t.VariadicTuple[Path] = m.Field(
             default=(),
-            description="Destinations authorized for effects by this invocation's journal",
+            description=(
+                "Destinations authorized for effects by this invocation's journal"
+            ),
         )
         attempted_files: t.VariadicTuple[Path] = m.Field(
             default=(),
@@ -156,7 +161,9 @@ class FlextInfraModelsCodegenPipelineModels:
         )
         transaction_id: str | None = m.Field(
             default=None,
-            description="Identity of the publication invocation that produced this receipt",
+            description=(
+                "Identity of the publication invocation that produced this receipt"
+            ),
         )
         phase: str | None = m.Field(
             default=None,

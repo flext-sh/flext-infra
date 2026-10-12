@@ -67,6 +67,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             *,
+            source_preview: p.Infra.SourcePreview,
             findings: m.Infra.ScanFindings,
             scan_config: m.Infra.ScanConfig,
         ) -> m.Infra.WorkspaceReport:
@@ -124,6 +125,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     def _collect_report(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> m.Infra.WorkspaceReport:
         """Inventory the selected modules then assemble the census report.
 
@@ -152,7 +155,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
                     current_project = module.project_root
                     cli.display_text(f"census: scan {current_project}")
                 self._scan_module(rope, module, scan_config, findings=findings)
-        return self._assemble_report(rope, findings=findings, scan_config=scan_config)
+        return self._assemble_report(
+            rope,
+            source_preview=source_preview,
+            findings=findings,
+            scan_config=scan_config,
+        )
 
 
 __all__: list[str] = ["FlextInfraRefactorCensusCollectHelpersMixin"]

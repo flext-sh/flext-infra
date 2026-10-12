@@ -20,6 +20,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification as verify,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -33,26 +34,33 @@ class FlextInfraCodegenTransaction(
 
     def preview_sources[T](
         self,
-        plan: m.Infra.StageSourcePlan,
+        workspace: Path,
+        updates: t.MappingKV[Path, str],
         validator: Callable[[Path, t.MappingKV[Path, Path]], T],
     ) -> p.Result[T]:
         """Validate a journal-owned source view without publishing live files.
 
         Args:
-            plan: The stage source plan to preview.
+            workspace: The declared source workspace.
+            updates: Desired source content keyed by live paths.
             validator: A callable that validates the source view.
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
         """
+        planned = FlextInfraStagedPackage.plan_sources(workspace, updates)
+        if planned.failure:
+            return r[T].from_failure(planned)
+        plan = planned.value
         roots = {
-            "."
-            if root == plan.workspace
-            else str(root.relative_to(plan.workspace)): root
-            for root in plan.roots
+            f"@stage-inputs-{index}": root
+            for index, root in enumerate(sorted(plan.roots))
         }
 
         def validate_locked(scope_root: Path) -> p.Result[T]:
+            source_barrier = verify.states_current(plan.inputs)
+            if source_barrier.failure:
+                return r[T].from_failure(source_barrier)
             started = self.begin_files_locked(scope_root, roots, plan.inputs)
             if started.failure:
                 return r[T].from_failure(started)

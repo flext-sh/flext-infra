@@ -13,6 +13,10 @@ from typing import Annotated, override
 from flext_cli import cli
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraRefactorCensusCollectHelpersMixin,
@@ -143,6 +147,9 @@ class FlextInfraRefactorCensus(
 
         """
         started = time.monotonic()
+        source_preview = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=self.root)
+        )
         with FlextInfraRopeWorkspace.open_workspace(
             self.root,
             rope_repository_root=self._rope_root_for_selection(),
@@ -163,14 +170,14 @@ class FlextInfraRefactorCensus(
                     f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
                     f"applied={self.apply_changes and not self.effective_dry_run}",
                 )
-            impact_report = self._collect_report(rope)
+            impact_report = self._collect_report(rope, source_preview=source_preview)
             report = impact_report
             if (
                 self.apply_changes
                 and not self.effective_dry_run
                 and self._apply_removal_candidates(rope, impact_report)
             ):
-                report = self._collect_report(rope)
+                report = self._collect_report(rope, source_preview=source_preview)
         finalized = report.model_copy(
             update={
                 "scan_duration_seconds": time.monotonic() - started,

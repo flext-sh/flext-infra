@@ -57,7 +57,7 @@ class FlextInfraModelsCodegenTransactionModels:
         )
 
     class StageSourcePlan(m.ArbitraryTypesModel):
-        """Pinned project closure and desired source bytes for effect-free validation."""
+        """Pinned project closure and desired bytes for effect-free validation."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         workspace: Path = m.Field(description="Canonical source workspace root")

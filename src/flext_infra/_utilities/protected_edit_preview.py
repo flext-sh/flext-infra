@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t
-from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
+from flext_infra._utilities.protected_edit_linting import (
+    FlextInfraUtilitiesProtectedEditLinting,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -40,7 +42,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     def _preview_write_baselines(
         updates: t.MappingKV[Path, str],
         workspace: Path,
-        source_preview: p.Infra.SourcePreview,
         gates: t.StrSequence | None = None,
     ) -> t.Pair[
         MutableMapping[Path, str | None],
@@ -154,6 +155,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         updates: t.MappingKV[Path, str],
         *,
         workspace: Path,
+        source_preview: p.Infra.SourcePreview,
         gates: t.StrSequence | None = None,
     ) -> t.Infra.EditResult:
         """Validate a journal-owned source view without writing live destinations.
@@ -218,6 +220,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             py_file: The Python file to lint.
             workspace: The root of the workspace containing the file.
             updated_source: The updated source code for the file.
+            source_preview: The injected staged-source preview collaborator.
             gates: Optional sequence of gate names to apply during linting.
 
         Returns:
@@ -232,6 +235,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             return before, before
 
         path = py_file.resolve()
+
         def validate(
             view_root: Path,
             candidates: t.MappingKV[Path, Path],
