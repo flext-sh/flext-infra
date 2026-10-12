@@ -111,11 +111,11 @@ class FlextInfraModelsCore:
         mypy_hints: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Install-package hints extracted from mypy output"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         internal_missing: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Missing internal imports"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         unresolved_missing: Annotated[
             t.MutableSequenceOf[str],
             m.Field(
@@ -123,7 +123,7 @@ class FlextInfraModelsCore:
                     "Missing external imports without an installed typed dependency"
                 ),
             ),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         total_missing: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total missing imports"),
@@ -163,16 +163,12 @@ class FlextInfraModelsCore:
         )
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
-                default_factory=u.empty(
-                    TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
-                    )
-                ),
+                default_factory=list,
                 description="Observed pre-selection items",
             )
         )
         deselected: t.MutableSequenceOf[str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])),
+            default_factory=list,
             description="Public pytest deselection notifications",
         )
 
@@ -512,23 +508,17 @@ class FlextInfraModelsCore:
         """
 
         reported_phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(
-            default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[str, t.MutableStrMapping])
-            ),
+            default_factory=dict,
             description="Runtest phase outcomes keyed by TestReport node ID",
         )
         connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])),
+            default_factory=list,
             description="Shared-plugin prerequisite skips retained in JUnit",
         )
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
-            default_factory=u.empty(
-                TypeForm(
-                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
-                )
-            ),
+            default_factory=list,
             description="Call-phase attempt observations",
         )
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
@@ -542,38 +532,38 @@ class FlextInfraModelsCore:
             )
         )
         collection_failed_cases: t.MutableSequenceOf[str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])),
+            default_factory=list,
             description="Node IDs with failed collection reports",
         )
         collection_skip_cases: t.MutableSequenceOf[str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])),
+            default_factory=list,
             description="Node IDs with skipped collection reports",
         )
 
         failed_cases: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected failed test-case labels"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         error_cases: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected error test-case labels"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         error_traces: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected error trace chunks"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         skip_cases: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected skipped test-case labels"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         warning_lines: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected warning lines"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
         slow_entries: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected slow-test entries"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
 
     class InventoryReport(m.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""
@@ -585,7 +575,7 @@ class FlextInfraModelsCore:
         reports_written: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Written report file paths"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])))
+        ] = m.Field(default_factory=list)
 
     class NamespaceValidateCommand(m.ContractModel):
         """CLI payload for ``flext-infra validate namespace``.

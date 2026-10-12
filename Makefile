@@ -1827,6 +1827,10 @@ export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,format,pyrefly,mypy,pyright,codemod" --file "$$FLEXT_FILE_GATE_FILE"
 
+_builtin_tests_all: _builtin_require_environment
+	+@$(SELF_MAKE) test
+	@$(UV_RUN) python -m flext_infra._pytest_entry full
+
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
 # lint repair belongs to `make fix`. Only a real tool failure (exit >= 2)

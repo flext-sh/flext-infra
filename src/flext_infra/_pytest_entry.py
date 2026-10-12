@@ -38,6 +38,8 @@ class FlextInfraPytestEntry:
         """
         # The clock module captures startup before these runtime imports.
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
+        slow_phase = mode == "full-slow"
+        runner_module = importlib.import_module("flext_infra.validate.pytest_runner")
         if mode == "profile":
             profiler = FlextInfraPytestClock.profiler
             if profiler is None:
