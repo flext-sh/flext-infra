@@ -51,6 +51,26 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             ),
         ),
     ] = None
+    planning_issues: Annotated[
+        list[m.Infra.Issue],
+        m.Field(
+            default_factory=list,
+            exclude=True,
+            description="Native file planning failures retained by this invocation",
+        ),
+    ]
+
+    def _record_file_failure(self, path: Path, error: str) -> None:
+        """Retain an actual target failure through the shared diagnostic model."""
+        self.planning_issues.append(
+            m.Infra.Issue(
+                file=str(path),
+                line=0,
+                column=0,
+                code=c.Infra.ToolOutcome.ERROR.value,
+                message=error,
+            ),
+        )
 
     @staticmethod
     def link_mode(

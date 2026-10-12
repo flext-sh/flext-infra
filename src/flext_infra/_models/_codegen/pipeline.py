@@ -17,6 +17,7 @@ from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
 from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
 from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
 from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -116,6 +117,19 @@ class FlextInfraModelsCodegenPipelineModels:
             str,
             m.Field(description="Phase failure, empty on success"),
         ] = ""
+        written_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Destinations successfully published despite target failures",
+        )
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Native publication failures keyed to their actual targets",
+        )
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native cause retained for causal Result propagation",
+        )
 
     class CodegenConformPorts(m.ArbitraryTypesModel):
         """Collaborators the complete conform crosses into, wired by the facade.

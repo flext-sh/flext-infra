@@ -18,7 +18,6 @@ from flext_infra.codegen import (
     FlextInfraMiseRecovery,
     FlextInfraMiseWorkspacePlanner,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
@@ -510,33 +509,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         if observed_snapshot is None or observed_snapshot.content is None:
             return r[bool].fail(f"{failure}; durable journal disappeared")
         return self._recover_failure(layout, failure)
-
-    def _verified_prepublication_barriers(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
-        all_sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]],
-        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-    ) -> p.Result[bool]:
-        """Re-verify every pre-publication barrier, recovering on the first breach.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        barriers = FlextInfraCodegenPreconditions.prepublication_barriers(
-            plan,
-            tuple(source for _phase, source in all_sources),
-            tuple(item.before for item in publications),
-        )
-        if barriers.failure:
-            return r[bool].from_failure(
-                self._recover_failure(
-                    layout,
-                    barriers.error or "generation barrier failed",
-                ),
-            )
-        return r[bool].ok(value=True)
 
     def _recover_failure(
         self,

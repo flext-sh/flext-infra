@@ -44,8 +44,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         root = request.root.expanduser().resolve()
-        bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
-        initialized_git = False
         prelude = cls._validated_request_prelude(root, initial_workspace)
         if prelude.failure:
             return r[m.Infra.CodegenResult].from_failure(prelude)
@@ -53,42 +51,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             created = cls._bootstrap_request_root(root)
             if created.failure:
                 return r[m.Infra.CodegenResult].from_failure(created)
-            bootstrap = tuple(created.value)
         if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
             initialized = cls._initialize_request_git(root, initial_workspace)
             if initialized.failure:
                 return r[m.Infra.CodegenResult].from_failure(initialized)
-            initialized_git = True
         service = cls(
             repository_root=root,
             request=request,
             initial_workspace=initial_workspace,
             ports=ports,
         )
-        try:
-            result = service.execute()
-        except Exception as exc:
-            rollback = cls._rollback_request_bootstrap(
-                root,
-                initialized_git=initialized_git,
-                directories=bootstrap,
-            )
-            if rollback.failure:
-                exc.add_note(f"scaffold bootstrap rollback failed: {rollback.error}")
-            raise
-        if result.success:
-            return result
-        rollback = cls._rollback_request_bootstrap(
-            root,
-            initialized_git=initialized_git,
-            directories=bootstrap,
-        )
-        if rollback.failure:
-            return r[m.Infra.CodegenResult].fail(
-                f"{result.error or 'generation failed'}; "
-                f"scaffold bootstrap rollback failed: {rollback.error}",
-            )
-        return result
+        return service.execute()
 
     @staticmethod
     def _validated_request_prelude(
@@ -249,29 +222,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if committed.failure:
             return r[bool].from_failure(committed)
         return r[bool].ok(value=True)
-
-    @classmethod
-    def _rollback_request_bootstrap(
-        cls,
-        root: Path,
-        *,
-        initialized_git: bool,
-        directories: t.VariadicTuple[m.Cli.AtomicDirectoryState],
-    ) -> p.Result[bool]:
-        """Undo only Git and root directories created by this invocation.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if initialized_git:
-            inventory = u.Cli.atomic_inventory_physical_tree(root / c.Infra.GIT_DIR)
-            if inventory.failure:
-                return r[bool].fail(f"Git rollback inventory failed: {inventory.error}")
-            cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
-            if cleaned.failure:
-                return r[bool].fail(f"Git rollback failed: {cleaned.error}")
-        return cls._rollback_scaffold_directories(directories)
 
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
@@ -669,27 +619,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         prepared = self._prepare_scaffold_directories(request)
         if prepared.failure:
             return r[m.Infra.CodegenResult].from_failure(prepared)
-        try:
-            result = self._execute_managed_locked_prepared(
-                request,
-                scope_root,
-                transaction,
-                ports,
-            )
-        except Exception as exc:
-            rollback = self._rollback_scaffold_directories(prepared.value)
-            if rollback.failure:
-                exc.add_note(f"scaffold directory rollback failed: {rollback.error}")
-            raise
-        if result.success:
-            return result
-        rollback = self._rollback_scaffold_directories(prepared.value)
-        if rollback.failure:
-            return r[m.Infra.CodegenResult].fail(
-                f"{result.error or 'generation failed'}; "
-                f"scaffold directory rollback failed: {rollback.error}",
-            )
-        return result
+        return self._execute_managed_locked_prepared(
+            request,
+            scope_root,
+            transaction,
+            ports,
+        )
 
     @staticmethod
     def lazy_repository_task(root: Path) -> m.Infra.CodegenPhaseOutcome:

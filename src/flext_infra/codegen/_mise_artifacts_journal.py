@@ -588,7 +588,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         directories = journal_state.cleanup_journaled_directories(
             layout,
             journal,
-            include_generated=journal.state != "committed",
+            include_generated=False,
         )
         if directories.failure:
             return directories

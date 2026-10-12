@@ -15,6 +15,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import (
+    FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsDepsToolConfigProjectArtifacts,
     FlextInfraModelsLayout,
@@ -874,6 +875,10 @@ class FlextInfraConfigModelsArtifact:
             str,
             m.Field(description="Original planning traceback, without local variables"),
         ] = ""
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(description="Native failures attributed to individual targets"),
+        ] = ()
         elapsed: Annotated[
             float,
             m.Field(ge=0, description="Planning wall seconds"),
@@ -917,6 +922,10 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
             m.Field(description="All render results validated before application"),
         ]
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(description="Planning failures retained alongside valid outputs"),
+        ] = ()
 
     class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
         """Public conformance outcome for check and apply modes."""

@@ -90,7 +90,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
-        files, environments = gathered.value
+        files, environments, issues = gathered.value
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -99,6 +99,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 make_spec=config_spec.make,
                 uv_environments=tuple(environments),
                 files=tuple(files),
+                issues=tuple(issues),
             ),
         )
 
@@ -453,7 +454,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         selected: t.VariadicTuple[m.Infra.RepositoryRef],
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[
-        t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.UvEnvironmentPlan]]
+        t.Triple[
+            list[m.Infra.CodegenFilePlan],
+            list[m.Infra.UvEnvironmentPlan],
+            list[m.Infra.Issue],
+        ]
     ]:
         """Plan every selected repository and collect its governed file plans.
 
@@ -463,7 +468,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[
-            t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.UvEnvironmentPlan]]
+            t.Triple[
+                list[m.Infra.CodegenFilePlan],
+                list[m.Infra.UvEnvironmentPlan],
+                list[m.Infra.Issue],
+            ]
         ]
         u.Cli.info(f"stage=plan repositories={len(selected)}")
         tasks: list[m.Infra.CodegenRepositoryPlanTask] = []
@@ -497,8 +506,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.from_failure(published)
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
-        failed: list[m.Infra.CodegenRepositoryPlanOutcome] = []
+        issues: list[m.Infra.Issue] = []
+        repository_paths = {
+            repository.name: root / repository.path for repository in selected
+        }
         for index, outcome in enumerate(outcomes, start=1):
+            issues.extend(outcome.issues)
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
             if outcome.error or outcome.error_type:
                 u.Cli.status(
@@ -510,7 +523,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 u.Cli.error(
                     f"{outcome.repository}: {outcome.error_type}: {outcome.error}",
                 )
-                failed.append(outcome)
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(repository_paths[outcome.repository]),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=outcome.error_traceback or outcome.error,
+                    ),
+                )
                 continue
             files.extend(outcome.files)
             if outcome.environment is not None:
@@ -521,14 +542,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 result=True,
                 elapsed=outcome.elapsed,
             )
-        if failed:
-            first = failed[0]
-            return result_type.fail(
-                f"{len(failed)} repository planning failure(s); "
-                f"first={first.repository}: {first.error_type}: {first.error}; "
-                f"report={root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH}",
-            )
-        return result_type.ok((files, environments))
+        return result_type.ok((files, environments, issues))
 
     @classmethod
     def plan_repository_task(
@@ -614,6 +628,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 config=config.Infra.codegen,
             ),
             elapsed=time.monotonic() - started,
+            issues=tuple(planner.planning_issues),
         )
 
     def _repository_planning_inputs(

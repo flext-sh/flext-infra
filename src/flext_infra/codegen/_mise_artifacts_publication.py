@@ -44,7 +44,7 @@ class FlextInfraMisePublication:
         """
         if not u.Infra.codegen_file_requires_effect(plan):
             return r[bool].ok(value=True)
-        before = u.Infra.codegen_file_before_state(plan)
+        before = files.read_state(plan.path, required=False)
         if before.failure:
             return r[bool].from_failure(before)
         staged_publication = cls._staged_publication(
@@ -117,25 +117,51 @@ class FlextInfraMisePublication:
     @staticmethod
     def publish(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Apply an already durable phase through full-state guarded primitives.
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Publish every target independently and retain all native failures.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+            The complete written paths and target issues.
 
         """
         written: list[Path] = []
+        issues: list[m.Infra.Issue] = []
+        exception: BaseException | None = None
         total = len(publications)
         for index, publication in enumerate(publications, start=1):
             u.Cli.emit_raw(f"  publish [{index}/{total}] {publication.before.path}\n")
-            changed = files.write_publication(publication)
+            observed = files.read_state(publication.before.path, required=False)
+            changed = (
+                files.write_publication(
+                    publication.model_copy(update={"before": observed.value}),
+                )
+                if observed.success
+                else r[bool].from_failure(observed)
+            )
             if changed.failure:
-                return r[t.VariadicTuple[Path]].from_failure(changed)
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(publication.before.path),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=changed.error or "publication failed",
+                    ),
+                )
+                if exception is None:
+                    exception = changed.exception
+                continue
             FlextInfraMisePublication._invalidate_project_document(
                 publication.before.path,
             )
             written.append(publication.before.path)
-        return r[t.VariadicTuple[Path]].ok(tuple(written))
+        return r[m.Infra.CodegenPhaseOutcome].ok(
+            m.Infra.CodegenPhaseOutcome(
+                written_files=tuple(written),
+                issues=tuple(issues),
+                exception=exception,
+            ),
+        )
 
 
 __all__: list[str] = ["FlextInfraMisePublication"]

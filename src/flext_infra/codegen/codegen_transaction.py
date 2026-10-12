@@ -238,9 +238,6 @@ class FlextInfraCodegenTransaction(
             )
         if state.transaction_residue(layout):
             return result_type.fail("file transaction has unowned staging residue")
-        stable = verify.states_current(inputs)
-        if stable.failure:
-            return result_type.from_failure(stable)
         directories = state.plan_transaction_directories(layout)
         if directories.failure:
             return result_type.from_failure(directories)

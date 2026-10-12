@@ -15,6 +15,7 @@ from flext_cli import m
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
+from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsCodegenTransactionModels:
@@ -346,6 +347,15 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Publication failures retained across successful phases",
+        )
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native publication cause",
+        )
 
         @m.model_validator(mode="after")
         def _validate_cursor(self) -> Self:

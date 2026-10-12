@@ -309,8 +309,9 @@ export traversal must not replace that scalar with the imported child module.
 
 Repository generation plans treat malformed source as a failed input. The
 planning report at `.reports/codegen-plan.json` records each selected repository's
-outcome, exception type and original traceback. A failed required plan prevents
-publication of the generation transaction; the command retains a failing result.
+outcome, exception type and original traceback. Generation reports failures at
+their affected files and retains successfully generated files. Changes made
+outside the generator do not authorize restoration of earlier workspace bytes.
 Lazy binding discovery parses package initializers only, so unrelated malformed
 consumer code cannot invalidate an otherwise valid declaration projection.
 
