@@ -150,10 +150,24 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if pth_result.failure:
             return r[bool].from_failure(pth_result)
-        return (
+        source_result = (
             cls._validate_import_source(repository, expected_root)
             if metadata_paths is None
             else r[bool].ok(value=True)
+        )
+        if source_result.failure:
+            return r[bool].from_failure(source_result)
+        if repository.checkout is not c.Infra.CheckoutKind.SUBMODULE:
+            return source_result
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=expected_root),
+        )
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        return cls._workspace_gitlink_verdict(
+            repository,
+            resolved_root,
+            identity.value.head_oid,
         )
 
     @classmethod
