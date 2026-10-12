@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 
 from flext_infra import c, config, t
@@ -113,12 +114,19 @@ class FlextInfraUtilitiesImportLaw:
         )
 
     @staticmethod
-    def import_lazy_exports(project_root: Path, package: str) -> t.StrMapping | None:
+    @cache
+    def import_lazy_exports(
+        project_root: Path,
+        package: str,
+    ) -> t.StrMapping | None:
         """Map each name one owned package ``__init__`` publishes to its module.
 
         The package resolves under ``src/`` or the project root (internal
         tiers). Relative targets resolve against the package; a target naming
-        another distribution (``flext_cli``) stays absolute.
+        another distribution (``flext_cli``) stays absolute. The parse is
+        memoized per ``(project_root, package)``: one governed-file scan
+        resolves the same root exports once per namespace, never once per
+        module.
 
         Returns:
             The published name to absolute defining module mapping, or
