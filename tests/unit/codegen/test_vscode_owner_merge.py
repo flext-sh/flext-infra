@@ -37,7 +37,19 @@ class TestsFlextInfraVscodeOwnerMerge:
             tm.ok(u.Cli.json_parse(result.value)),
         )
         for key, expected_value in config.Infra.codegen.vscode.scalar_settings.items():
-            tm.that(doc[key], eq=expected_value)
+            if key == "python.defaultInterpreterPath":
+                interpreter = u.type_adapter(str).validate_python(doc[key])
+                projected = root / interpreter.removeprefix("${workspaceFolder}/")
+                tm.that(projected.resolve(), eq=u.Infra.runtime_python(root))
+            elif key == "pyrefly.lspPath":
+                executable = u.type_adapter(str).validate_python(doc[key])
+                projected = root / executable.removeprefix("${workspaceFolder}/")
+                tm.that(
+                    projected.parent.resolve(),
+                    eq=u.Infra.runtime_python(root).parent,
+                )
+            else:
+                tm.that(doc[key], eq=expected_value)
         for stripped in config.Infra.codegen.vscode.stripped_keys:
             tm.that(stripped in doc, eq=False)
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
@@ -143,4 +155,10 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         projected = member / interpreter.removeprefix("${workspaceFolder}/")
         tm.that(projected.resolve(), eq=u.Infra.runtime_python(member))
+        executable = u.type_adapter(str).validate_python(doc["pyrefly.lspPath"])
+        projected_tool = member / executable.removeprefix("${workspaceFolder}/")
+        tm.that(
+            projected_tool.parent.resolve(),
+            eq=u.Infra.runtime_python(member).parent,
+        )
         tm.that(str(tmp_path) in rendered, eq=False)

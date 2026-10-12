@@ -23,7 +23,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -417,6 +417,28 @@ class TestsFlextInfraCodegenConform:
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
         )
 
+    @staticmethod
+    def _assert_editor_settings(
+        settings_path: Path,
+        root: Path,
+        tmp_path: Path,
+        editor_settings: t.JsonMapping,
+    ) -> None:
+        """Assert the projected VS Code editor settings are workspace-relative."""
+        interpreter = u.type_adapter(str).validate_python(
+            editor_settings["python.defaultInterpreterPath"],
+        )
+        projected_python = root / interpreter.removeprefix("${workspaceFolder}/")
+        tm.that(
+            projected_python.resolve(),
+            eq=u.Infra.runtime_python(root, runtime_root=root),
+        )
+        tm.that(editor_settings["editor.wordWrap"], eq="on")
+        tm.that(
+            str(tmp_path) in settings_path.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=False,
+        )
+
     # This end-to-end scenario scaffolds a project and runs its console entry
     # point in a fresh interpreter. The slow marker opts into the single
     # config-owned slow-item budget; tests must not restate that policy locally.
@@ -432,6 +454,13 @@ class TestsFlextInfraCodegenConform:
         # rows prove the result does not depend on the distribution name.
         """Test new project is complete and idempotent."""
         root = tmp_path / name
+        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        settings_path.parent.mkdir(parents=True)
+        settings_path.write_text(
+            '{"editor.wordWrap": "on"}\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that((root / c.Infra.GIT_DIR).exists(), eq=False)
         # The governed tree above the scaffold carries the committed Mise
         # declaration and lock that activate its locked tools.
         u.Tests.copy_tracked_mise_seeds(tmp_path)
@@ -454,6 +483,17 @@ class TestsFlextInfraCodegenConform:
         )
         first = infra.codegen_new(service)
         first_result = tm.ok(first)
+        editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(
+                u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
+            ),
+        )
+        TestsFlextInfraCodegenConform._assert_editor_settings(
+            settings_path,
+            root,
+            tmp_path,
+            editor_settings,
+        )
         tm.that(bool(first_result.written_files), eq=True)
         tm.that(first_result.written_files.count(root / "README.md"), eq=1)
         tm.that(

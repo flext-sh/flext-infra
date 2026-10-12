@@ -84,7 +84,14 @@ class FlextInfraWorkspaceLifecycle:
                 command=receipt.command,
                 cwd=receipt.cwd,
                 output_file=receipt.output_file,
-                exit_code=exit_code,
+                outcome=(
+                    None
+                    if run.failure
+                    else m.Cli.ProcessOutcome.model_validate(
+                        run.value,
+                        from_attributes=True,
+                    )
+                ),
                 error=error,
             )
             report = m.Infra.LifecycleReport(

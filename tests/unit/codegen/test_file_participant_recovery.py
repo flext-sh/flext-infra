@@ -334,6 +334,57 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.that(session.journal_state.path.exists(), eq=True)
 
     @staticmethod
+    def test_owned_cleanup_rejects_a_different_transaction_layout(
+        tmp_path: Path,
+    ) -> None:
+        """A foreign cleanup capability cannot retire the owned staging receipt."""
+        root = u.Tests.git_repository(tmp_path)
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@docs-0": root}
+        live = root / "source.txt"
+        live.write_text("preserve", encoding=c.DEFAULT_ENCODING)
+        modified_ns = live.stat().st_mtime_ns
+
+        def exercise(scope_root: Path) -> p.Result[bool]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, ()))
+            layout = session.plan.layout
+            identifier = tm.not_none(layout.transaction_id)
+            other_identifier = ("0" if identifier[0] != "0" else "1") + identifier[1:]
+            foreign = session.model_copy(
+                update={
+                    "plan": session.plan.model_copy(
+                        update={
+                            "layout": layout.model_copy(
+                                update={"transaction_id": other_identifier},
+                            ),
+                        },
+                    ),
+                },
+            )
+            rejected = owner.abort_locked(foreign, "consumer failed")
+            tm.fail(rejected)
+            tm.that(session.journal_state.path.is_file(), eq=True)
+            tm.that(live.read_text(encoding=c.DEFAULT_ENCODING), eq="preserve")
+            tm.that(live.stat().st_mtime_ns, eq=modified_ns)
+            retired = owner.abort_locked(session, "consumer failed")
+            tm.fail(retired)
+            tm.that(session.journal_state.path.exists(), eq=False)
+            return r[bool].ok(value=True)
+
+        tm.ok(owner.run_files_locked(roots, exercise))
+        tm.ok(
+            owner.run_files_locked(
+                roots,
+                lambda _scope: r[bool].ok(value=True),
+                prepare=False,
+            ),
+        )
+        tm.that(live.read_text(encoding=c.DEFAULT_ENCODING), eq="preserve")
+        tm.that(live.stat().st_mtime_ns, eq=modified_ns)
+
+    @staticmethod
     @pytest.mark.parametrize("with_foreign_file", [False, True])
     @pytest.mark.parametrize("journal_state", ["staging", "prepared"])
     def test_unmanifested_created_directory_owns_no_descendants(

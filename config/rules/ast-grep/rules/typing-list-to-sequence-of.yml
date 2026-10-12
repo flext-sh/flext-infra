@@ -14,6 +14,9 @@
 # contract. The retired regex transformer instead injected the import itself
 # (`required_alias: t`), which is why it could rewrite first and discover the
 # broken module afterwards.
+#
+# The three generic shapes are owned once by the `typing-list-generic` util; both
+# this rule and its auto-fixing peer select them through `matches`.
 id: typing-list-missing-t-import
 language: python
 severity: error
@@ -21,37 +24,15 @@ files:
   - "src/**/*.py"
   - "tests/**/*.py"
 rule:
-  any:
-    - all:
-        - pattern:
-            context: "def f(x: List[$T]) -> None: ..."
-            selector: generic_type
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: list-imported-from-typing
-    - all:
-        - pattern:
-            context: "ALIAS = List[$T]"
-            selector: subscript
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: list-imported-from-typing
-    - pattern:
-        context: "ALIAS = typing.List[$T]"
-        selector: subscript
-  inside:
-    stopBy: end
-    kind: module
-    not:
-      has:
+  all:
+    - matches: typing-list-generic
+    - inside:
         stopBy: end
-        matches: t-locally-bound
+        kind: module
+        not:
+          has:
+            stopBy: end
+            matches: t-locally-bound
 message: >-
   typing.List must become t.SequenceOf[T], but this module does not import `t`.
   Add the typings import first, then typing-list-to-sequence-of rewrites it. No
@@ -59,7 +40,12 @@ message: >-
 ---
 # Family file for the typing.List modernization pair: the auto-fixing rewrite
 # and its detection-only missing-import companion select the same three
-# generic shapes and differ only in the `t` binding guard.
+# generic shapes (owned by the `typing-list-generic` util) and differ only in the
+# `t` binding guard.
+#
+# ast-grep metavariables never cross a `matches` boundary, so the rule re-binds
+# the matched node with its own `pattern: $WHOLE` and derives the canonical text
+# with a `replace` transform rather than the retired `t.SequenceOf[$T]` fix.
 id: typing-list-to-sequence-of
 language: python
 severity: error
@@ -67,36 +53,21 @@ files:
   - "src/**/*.py"
   - "tests/**/*.py"
 rule:
-  any:
-    - all:
-        - pattern:
-            context: "def f(x: List[$T]) -> None: ..."
-            selector: generic_type
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: list-imported-from-typing
-    - all:
-        - pattern:
-            context: "ALIAS = List[$T]"
-            selector: subscript
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: list-imported-from-typing
-    - pattern:
-        context: "ALIAS = typing.List[$T]"
-        selector: subscript
-  inside:
-    stopBy: end
-    kind: module
-    has:
-      stopBy: end
-      matches: t-locally-bound
-fix: "t.SequenceOf[$T]"
+  all:
+    - matches: typing-list-generic
+    - pattern: $WHOLE
+    - inside:
+        stopBy: end
+        kind: module
+        has:
+          stopBy: end
+          matches: t-locally-bound
+transform:
+  NEW:
+    replace:
+      source: $WHOLE
+      replace: "^(?:typing\\.)?List"
+      by: "t.SequenceOf"
+fix: $NEW
 message: >-
   typing.List is retired; the canonical sequence annotation is t.SequenceOf[T].

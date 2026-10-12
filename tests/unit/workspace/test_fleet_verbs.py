@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from shlex import quote
+from signal import SIGTERM
 
 import pytest
 
@@ -19,7 +20,12 @@ class TestsFlextInfraWorkspaceFleetVerbs:
     """A workspace verb reaches every governed member through its own Make."""
 
     @staticmethod
-    def _workspace(root: Path, *, exit_code: int = 0) -> Path:
+    def _workspace(
+        root: Path,
+        *,
+        exit_code: int = 0,
+        signal_make: bool = False,
+    ) -> Path:
         """Compose a governed workspace whose member records each fleet verb.
 
         Returns:
@@ -28,12 +34,14 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
         log = quote(str(root / "fleet.log"))
         verbs = " ".join(verb.value for verb in c.Infra.FleetVerb)
+        signal_command = 'kill -TERM "$$PPID"; ' if signal_make else ""
         (member / "Makefile").write_text(
             f".PHONY: {verbs}\n"
             f"{verbs}:\n"
             f"\t@printf '%s|%s|%s\\n' '$(CURDIR)' '$@' \"$${{MAKELEVEL:-0}}\""
             f" >> {log}; "
             "printf 'fleet-fixture-output\\n'; "
+            f"{signal_command}"
             f"exit {exit_code}\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -88,7 +96,11 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             tuple((row.cwd, row.command) for row in report.receipts),
             eq=((member, (c.Infra.MAKE, verb.value)),),
         )
-        tm.that(all(row.exit_code == 0 for row in report.receipts), eq=True)
+        for row in report.receipts:
+            assert row.outcome is not None
+            tm.that(row.outcome.raw_return_code, eq=0)
+            tm.that(row.outcome.timed_out, eq=False)
+            tm.that(row.outcome.forwarded_signal, eq=None)
         tm.that(all(row.error is None for row in report.receipts), eq=True)
         tm.that(
             report.receipts[0].output_file.read_text(
@@ -114,12 +126,33 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         tm.that(self._run(root, c.Infra.FleetVerb.FIX) != 0, eq=True)
 
         failed = self._report(root).receipts[0]
-        tm.that(failed.exit_code not in {None, 0}, eq=True)
+        assert failed.outcome is not None
+        tm.that(failed.outcome.raw_return_code != 0, eq=True)
+        tm.that(failed.outcome.timed_out, eq=False)
+        tm.that(failed.outcome.forwarded_signal, eq=None)
         tm.that(failed.error is not None, eq=True)
         tm.that(
             failed.output_file.read_text(encoding=c.DEFAULT_ENCODING),
             has="fleet-fixture-output",
         )
+
+    def test_member_make_signal_retains_the_native_negative_return_code(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A real terminated Make process remains distinct from recipe findings."""
+        root = tmp_path / "workspace"
+        self._workspace(root, signal_make=True)
+
+        tm.that(self._run(root, c.Infra.FleetVerb.FIX) != 0, eq=True)
+
+        failed = self._report(root).receipts[0]
+        assert failed.outcome is not None
+        tm.that(failed.outcome.raw_return_code, eq=-int(SIGTERM))
+        tm.that(failed.outcome.timed_out, eq=False)
+        # The child terminated Make; the operator forwarded no signal.
+        tm.that(failed.outcome.forwarded_signal, eq=None)
+        tm.that(failed.error is not None, eq=True)
 
     def test_standalone_rejects_before_any_member_effect(
         self,

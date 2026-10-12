@@ -34,7 +34,7 @@ class FlextInfraModelsWorkspace:
         repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class LifecycleReceipt(m.ContractModel):
-        """One public Make invocation; an absent exit is never a green receipt."""
+        """One public Make invocation; an absent outcome is never a green receipt."""
 
         command: Annotated[
             t.VariadicTuple[str], m.Field(description="Public Make argv")
@@ -44,10 +44,13 @@ class FlextInfraModelsWorkspace:
             Path,
             m.Field(description="Durable combined stdout/stderr for reached steps"),
         ]
-        exit_code: Annotated[
-            int | None,
+        outcome: Annotated[
+            m.Cli.ProcessOutcome | None,
             m.Field(
-                description="Observed exit; absent when unreached or launch failed"
+                description=(
+                    "Original reaped process outcome; absent when unreached or "
+                    "launch failed"
+                )
             ),
         ] = None
         error: Annotated[

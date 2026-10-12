@@ -930,7 +930,7 @@ class FlextInfraConfigModelsArtifact:
         candidate_dirty: Annotated[
             bool | None,
             m.Field(
-                description="Candidate worktree state; absent without Git ownership"
+                description=("Candidate worktree state; absent without Git ownership")
             ),
         ]
         files: Annotated[
@@ -944,12 +944,6 @@ class FlextInfraConfigModelsArtifact:
         error: Annotated[str, m.Field(description="Original planning failure message")]
         error_type: Annotated[str, m.Field(description="Original exception identity")]
         elapsed: Annotated[float, m.Field(ge=0, description="Planning wall seconds")]
-
-        @m.computed_field
-        @property
-        def planned_file_count(self) -> int:
-            """Count the published target inventory."""
-            return len(self.files)
 
     class CodegenPlanningReport(FlextInfraConfigModelsContract.ConfigContract):
         """Candidate and target evidence excluding source snapshots and commands."""

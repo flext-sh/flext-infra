@@ -21,20 +21,8 @@ metadata:
   owner: flext-core
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:pydantic|pydantic_core)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:pydantic|pydantic_core)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:pydantic|pydantic_core)(?:\\.|$)"
 message: >-
   pydantic is owned by flext-core: use m.BaseModel, m.ConfigDict, m.TypeAdapter, u.Field and the other m/t/u facade members, and close a missing member at flext-core.
 ---
@@ -50,20 +38,8 @@ metadata:
   owner: flext-core
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:structlog)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:structlog)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:structlog)(?:\\.|$)"
 message: >-
   structlog is owned by flext-core: obtain loggers through u.fetch_logger(__name__).
 ---
@@ -79,20 +55,8 @@ metadata:
   owner: flext-core
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:dependency_injector|returns|yaml)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:dependency_injector|returns|yaml)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:dependency_injector|returns|yaml)(?:\\.|$)"
 message: >-
   dependency_injector, returns and yaml are owned by flext-core: route through its c/t/p/m/u facades and close a missing member at flext-core.
 ---
@@ -108,20 +72,8 @@ metadata:
   owner: flext-core
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:pydantic_settings)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:pydantic_settings)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:pydantic_settings)(?:\\.|$)"
 message: >-
   pydantic_settings is owned by flext-core: only settings modules declare `class X(FlextSettings, BaseSettings)`; every other module uses the settings facade.
 ---
@@ -134,20 +86,8 @@ metadata:
   owner: flext-cli
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:rich|orjson|click)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:rich|orjson|click)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:rich|orjson|click)(?:\\.|$)"
 message: >-
   rich, orjson and click are owned by flext-cli: use its Cli facade members.
 ---
@@ -160,20 +100,8 @@ metadata:
   owner: flext-infra
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:rope)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:rope)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:rope)(?:\\.|$)"
 message: >-
   rope is owned by flext-infra: use its refactor and codemod facades.
 ---
@@ -186,20 +114,8 @@ metadata:
   owner: flext-ldap
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:ldap3)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:ldap3)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:ldap3)(?:\\.|$)"
 message: >-
   ldap3 is owned by flext-ldap: use its LDAP facade.
 ---
@@ -212,20 +128,8 @@ metadata:
   owner: flext-meltano
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:singer_sdk)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:singer_sdk)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:singer_sdk)(?:\\.|$)"
 message: >-
   singer_sdk is owned by flext-meltano: build taps and targets on its bases.
 ---
@@ -238,20 +142,8 @@ metadata:
   owner: flext-db-oracle
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:oracledb)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:oracledb)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:oracledb)(?:\\.|$)"
 message: >-
   oracledb is owned by flext-db-oracle: use its database facade.
 ---
@@ -264,20 +156,8 @@ metadata:
   owner: flext-db-oracle
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:sqlalchemy)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:sqlalchemy)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:sqlalchemy)(?:\\.|$)"
 message: >-
   sqlalchemy is owned by flext-db-oracle: use its database facade.
 ---
@@ -290,20 +170,8 @@ metadata:
   owner: flext-grpc
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:grpc)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:grpc)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:grpc)(?:\\.|$)"
 message: >-
   grpc is owned by flext-grpc: use its gRPC facade.
 ---
@@ -316,20 +184,8 @@ metadata:
   owner: flext-web
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:fastapi)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:fastapi)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:fastapi)(?:\\.|$)"
 message: >-
   fastapi is owned by flext-web: use its web facade.
 ---
@@ -342,19 +198,7 @@ metadata:
   owner: flext-api
 rule:
   all:
-    - any:
-        - all:
-            - kind: import_statement
-            - has:
-                stopBy: end
-                kind: dotted_name
-                regex: "^(?:httpx)(?:\\.|$)"
-        - all:
-            - kind: import_from_statement
-            - has:
-                field: module_name
-                regex: "^(?:httpx)(?:\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
+    - matches: library-import-name
+    - regex: "^(?:httpx)(?:\\.|$)"
 message: >-
   httpx is owned by flext-api: use its HTTP client facade.

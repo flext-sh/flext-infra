@@ -29,11 +29,12 @@ class TestsFlextInfraCProfileReport:
     ) -> None:
         """Test real profile renders bounded text."""
         policy = config.Infra.tooling.tools.pytest
-        report_dir = tmp_path / ".reports" / "tests" / "profile"
+        repository_root = tmp_path / "project[scope]"
+        report_dir = repository_root / ".reports" / "tests" / "profile"
         report_dir.mkdir(parents=True)
         profile_path = report_dir / "profile.pstats"
         output_path = report_dir / "profile.txt"
-        profile_target = tmp_path / "profile_target.py"
+        profile_target = repository_root / "profile_target.py"
         profile_target.write_text("_ = sum(range(10))\n", encoding="utf-8")
         profiled = u.Cli.run_checked(
             [
@@ -44,7 +45,7 @@ class TestsFlextInfraCProfileReport:
                 str(profile_path),
                 str(profile_target),
             ],
-            cwd=tmp_path,
+            cwd=repository_root,
         )
         tm.ok(profiled)
         context = m.Infra.PytestRunContext(
@@ -90,7 +91,7 @@ class TestsFlextInfraCProfileReport:
         )
 
         result = FlextInfraCProfileReport(
-            repository_root=tmp_path,
+            repository_root=repository_root,
             profile=profile_path,
             output=output_path,
             sort=policy.profile_sort,
@@ -101,6 +102,7 @@ class TestsFlextInfraCProfileReport:
         tm.ok(result)
         tm.that(output_path.read_text(encoding="utf-8"), has="function calls")
         rendered = output_path.read_text(encoding="utf-8")
+        tm.that(rendered, has=f"{profile_target}:1(<module>)")
         tm.that(rendered.count(f"Profile: {inventory}\n"), eq=1)
         tm.that(
             rendered.count(f"Profile: {selection}\n"), eq=0 if inventory_only else 1

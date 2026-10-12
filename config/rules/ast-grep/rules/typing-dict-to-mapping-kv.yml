@@ -11,6 +11,9 @@
 # textual `fix`, and `ruff --fix` only removes unused imports (never adds a
 # missing one). So an import-unsafe rewrite is emitted as a detection, per the
 # library's "detection only when a generic textual fix would be unsafe" contract.
+#
+# The three generic shapes are owned once by the `typing-dict-generic` util; both
+# this rule and its auto-fixing peer select them through `matches`.
 id: typing-dict-missing-t-import
 language: python
 severity: error
@@ -18,45 +21,28 @@ files:
   - "src/**/*.py"
   - "tests/**/*.py"
 rule:
-  any:
-    - all:
-        - pattern:
-            context: "def f(x: Dict[$K, $V]) -> None: ..."
-            selector: generic_type
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: dict-imported-from-typing
-    - all:
-        - pattern:
-            context: "ALIAS = Dict[$K, $V]"
-            selector: subscript
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: dict-imported-from-typing
-    - pattern:
-        context: "ALIAS = typing.Dict[$K, $V]"
-        selector: subscript
-  inside:
-    stopBy: end
-    kind: module
-    not:
-      has:
+  all:
+    - matches: typing-dict-generic
+    - inside:
         stopBy: end
-        matches: t-locally-bound
+        kind: module
+        not:
+          has:
+            stopBy: end
+            matches: t-locally-bound
 message: >-
   typing.Dict must become t.MappingKV[K, V], but this module does not import `t`.
   Add the typings import first, then typing-dict-to-mapping-kv rewrites it. No
   auto-fix here to avoid emitting an undefined name (Ruff F821 / Pyrefly).
 ---
 # Family file for the typing.Dict modernization pair: the auto-fixing rewrite
-# and its detection-only missing-import companion select the same three
-# generic shapes and differ only in the `t` binding guard.
+# and its detection-only missing-import companion select the same three generic
+# shapes (owned by the `typing-dict-generic` util) and differ only in the `t`
+# binding guard.
+#
+# ast-grep metavariables never cross a `matches` boundary, so the rule re-binds
+# the matched node with its own `pattern: $WHOLE` and derives the canonical text
+# with a `replace` transform rather than the retired `t.MappingKV[$K, $V]` fix.
 id: typing-dict-to-mapping-kv
 language: python
 severity: error
@@ -64,36 +50,21 @@ files:
   - "src/**/*.py"
   - "tests/**/*.py"
 rule:
-  any:
-    - all:
-        - pattern:
-            context: "def f(x: Dict[$K, $V]) -> None: ..."
-            selector: generic_type
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: dict-imported-from-typing
-    - all:
-        - pattern:
-            context: "ALIAS = Dict[$K, $V]"
-            selector: subscript
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: dict-imported-from-typing
-    - pattern:
-        context: "ALIAS = typing.Dict[$K, $V]"
-        selector: subscript
-  inside:
-    stopBy: end
-    kind: module
-    has:
-      stopBy: end
-      matches: t-locally-bound
-fix: "t.MappingKV[$K, $V]"
+  all:
+    - matches: typing-dict-generic
+    - pattern: $WHOLE
+    - inside:
+        stopBy: end
+        kind: module
+        has:
+          stopBy: end
+          matches: t-locally-bound
+transform:
+  NEW:
+    replace:
+      source: $WHOLE
+      replace: "^(?:typing\\.)?Dict"
+      by: "t.MappingKV"
+fix: $NEW
 message: >-
   typing.Dict is retired; the canonical mapping annotation is t.MappingKV[K, V].

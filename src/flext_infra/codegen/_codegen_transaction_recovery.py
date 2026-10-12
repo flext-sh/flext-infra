@@ -640,7 +640,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         if authorized.failure:
             return authorized
         if journal.file_participants:
-            return self._recover_file_participants(layout, journal, journal_state)
+            return self._recover_file_participants(
+                layout,
+                journal,
+                journal_state,
+                owned_receipt=expected is not None,
+            )
         return self._recover_project_selectors(layout, journal, journal_state)
 
     def _recover_file_participants(
@@ -648,6 +653,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
+        *,
+        owned_receipt: bool,
     ) -> p.Result[bool]:
         """Recover a file-only journal under its participants' leases.
 
@@ -659,18 +666,29 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[bool].fail(
                 "mixed Mise and file-only recovery requires explicit composition",
             )
-        recovery_layout = self._planner.file_layout(
-            layout.scope_root,
-            {item.selector: item.root for item in journal.file_participants},
-            transaction_id=journal.transaction_id,
-        )
-        if recovery_layout.failure:
-            return r[bool].from_failure(recovery_layout)
-        if recovery_layout.value.journal_path != layout.journal_path:
+        if owned_receipt:
+            if (
+                layout.transaction_id != journal.transaction_id
+                or layout.file_participants != journal.file_participants
+            ):
+                return r[bool].fail(
+                    "owned file cleanup layout differs from authenticated journal",
+                )
+            recovery_layout = layout
+        else:
+            reconstructed = self._planner.file_layout(
+                layout.scope_root,
+                {item.selector: item.root for item in journal.file_participants},
+                transaction_id=journal.transaction_id,
+            )
+            if reconstructed.failure:
+                return r[bool].from_failure(reconstructed)
+            recovery_layout = reconstructed.value
+        if recovery_layout.journal_path != layout.journal_path:
             return r[bool].fail("file journal identity changed during recovery")
         with self._lease_file_participants(journal.file_participants):
             recovered = self._recovery.execute(
-                recovery_layout.value,
+                recovery_layout,
                 journal,
                 journal_state,
             )

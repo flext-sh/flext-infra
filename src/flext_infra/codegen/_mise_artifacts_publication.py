@@ -48,7 +48,8 @@ class FlextInfraMisePublication:
         if before.failure:
             return r[bool].from_failure(before)
         if (
-            plan.path.name == c.Infra.INIT_PY
+            phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
+            and plan.path.name == c.Infra.INIT_PY
             and u.Infra.codegen_initializer_is_authored(before.value.content)
         ):
             u.Cli.info(
@@ -58,7 +59,11 @@ class FlextInfraMisePublication:
         staged_publication = cls._staged_publication(
             plan,
             phase=phase,
-            before=before.value,
+            before=(
+                plan.before
+                if phase == c.Infra.CodegenStagedFilePhase.SEMANTIC
+                else before.value
+            ),
         )
         if staged_publication.failure:
             return r[bool].from_failure(staged_publication)
@@ -142,6 +147,7 @@ class FlextInfraMisePublication:
             observed = files.read_state(publication.before.path, required=False)
             if (
                 observed.success
+                and publication.phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
                 and publication.before.path.name == c.Infra.INIT_PY
                 and u.Infra.codegen_initializer_is_authored(observed.value.content)
             ):
@@ -153,7 +159,9 @@ class FlextInfraMisePublication:
                 continue
             changed = (
                 files.write_publication(
-                    publication.model_copy(update={"before": observed.value}),
+                    publication
+                    if publication.phase == c.Infra.CodegenStagedFilePhase.SEMANTIC
+                    else publication.model_copy(update={"before": observed.value}),
                 )
                 if observed.success
                 else r[bool].from_failure(observed)

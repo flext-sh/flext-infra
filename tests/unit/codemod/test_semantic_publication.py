@@ -1,4 +1,4 @@
-"""Real public semantic publication, identity and rollback contracts.
+"""Real public semantic publication, identity and fix-forward contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,7 +22,7 @@ from flext_infra.transformers import FlextInfraSemanticPublication
 
 
 class TestsFlextInfraSemanticPublication:
-    """All files remain recoverable until the semantic consumer accepts them."""
+    """Preserve successful effects and report each unsafe semantic target."""
 
     @staticmethod
     def test_no_effect_publication_requires_true_acceptance(
@@ -135,7 +135,8 @@ class TestsFlextInfraSemanticPublication:
             + '__all__ = ["FlextTestProjectService"]\n'
         )
         path.write_text(source, encoding="utf-8")
-        initializer = package / "__init__.py"
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
         report = m.Infra.ModScanReport(
             findings=0,
@@ -148,27 +149,31 @@ class TestsFlextInfraSemanticPublication:
         with infra.rope_workspace(root) as rope:
             result = FlextInfraCodemodSemanticApply.apply(root, report, rope)
         if rejected:
-            tm.fail(result, has="quality")
-            tm.that(initializer.read_bytes(), eq=original)
+            tm.fail(result)
         else:
             tm.ok(result)
-            consumer = tm.ok(
-                u.Cli.run(
+        tm.that(initializer.read_bytes() != original, eq=True)
+        consumer = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
                     (
-                        sys.executable,
-                        "-c",
-                        (
-                            f"from {package.name} import FlextTestProjectService; "
-                            "assert FlextTestProjectService.execute()"
-                        ),
-                    ),
-                    cwd=root,
-                    options=m.Cli.ProcessOptions(
-                        env={"PYTHONPATH": str(package.parent)},
+                        f"from {package.name} import FlextTestProjectService; "
+                        "assert FlextTestProjectService.execute()"
                     ),
                 ),
-            )
-            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                    },
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=not rejected)
+        if rejected:
+            tm.that(consumer.stderr, has="consumer rejected")
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
@@ -183,23 +188,26 @@ class TestsFlextInfraSemanticPublication:
         declaration = package / "service.py"
         source = "class DeclaredService:\n    pass\n\n__all__ = ['DeclaredService']\n"
         declaration.write_text(source, encoding="utf-8")
-        initializer = package / "__init__.py"
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
+        command = (
+            sys.executable,
+            "-c",
+            (
+                f"from {mod_workspace.name} import DeclaredService; "
+                "assert isinstance(DeclaredService(), DeclaredService)"
+            ),
+        )
+        options = m.Cli.ProcessOptions(
+            env={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent)},
+        )
 
         def validate() -> p.Result[bool]:
             consumer = u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {mod_workspace.name} import DeclaredService; "
-                        "assert isinstance(DeclaredService(), DeclaredService)"
-                    ),
-                ),
+                command,
                 cwd=mod_workspace,
-                options=m.Cli.ProcessOptions(
-                    env={"PYTHONPATH": str(package.parent)},
-                ),
+                options=options,
             )
             tm.ok(consumer)
             tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
@@ -213,16 +221,22 @@ class TestsFlextInfraSemanticPublication:
         )
         if accepted:
             tm.ok(published)
-            tm.that(initializer.read_bytes() != original, eq=True)
         else:
             tm.fail(published, has="consumer rejected")
-            tm.that(initializer.read_bytes(), eq=original)
+        tm.that(initializer.read_bytes() != original, eq=True)
+        consumer = tm.ok(
+            u.Cli.run(command, cwd=mod_workspace, options=options),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
         tm.that(declaration.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    def _plans(root: Path) -> t.VariadicTuple[m.Infra.SemanticFilePlan]:
+    def _plans(
+        root: Path,
+        names: t.StrTuple = ("first.py", "second.py"),
+    ) -> t.VariadicTuple[m.Infra.SemanticFilePlan]:
         plans: list[m.Infra.SemanticFilePlan] = []
-        for name in ("first.py", "second.py"):
+        for name in names:
             path = root / name
             u.Cli.atomic_write_text_file(path, 'value = "before"\n').unwrap()
             before = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -239,13 +253,13 @@ class TestsFlextInfraSemanticPublication:
         return tuple(plans)
 
     @pytest.mark.parametrize("raises", [False, True])
-    def test_rejected_semantic_acceptance_rolls_back_every_file(
+    def test_rejected_semantic_acceptance_preserves_published_files(
         self,
         mod_workspace: Path,
         *,
         raises: bool,
     ) -> None:
-        """Test rejected semantic acceptance rolls back every file."""
+        """Consumer rejection reports failure without erasing successful writes."""
         plans = self._plans(mod_workspace)
         failure = RuntimeError("semantic acceptance rejected")
 
@@ -274,8 +288,8 @@ class TestsFlextInfraSemanticPublication:
                 has=str(failure),
             )
         for plan in plans:
-            tm.that(plan.path.read_bytes(), eq=plan.before.content)
-        # Recovery leaves the same public operation available, not a poisoned journal.
+            tm.that(plan.path.read_bytes(), eq=plan.desired_content)
+        # A subsequent explicitly accepted operation can publish a new candidate.
         fresh = tuple(
             plan.model_copy(
                 update={
@@ -283,6 +297,7 @@ class TestsFlextInfraSemanticPublication:
                         plan.path,
                         required=True,
                     ).unwrap(),
+                    "desired_content": b'value = "accepted"\n',
                 },
             )
             for plan in plans
@@ -295,14 +310,17 @@ class TestsFlextInfraSemanticPublication:
         )
 
     @pytest.mark.parametrize("linked", [False, True])
-    def test_changed_later_identity_prevents_earlier_publication(
+    def test_changed_middle_identity_preserves_other_publications(
         self,
         mod_workspace: Path,
         *,
         linked: bool,
     ) -> None:
-        """Test changed later identity prevents earlier publication."""
-        first, second = self._plans(mod_workspace)
+        """A stale middle target never overwrites WIP or cancels valid writes."""
+        first, second, third = self._plans(
+            mod_workspace,
+            ("first.py", "second.py", "third.py"),
+        )
         if linked:
             actual = second.path.with_suffix(".actual")
             second.path.rename(actual)
@@ -312,12 +330,56 @@ class TestsFlextInfraSemanticPublication:
         observed = second.path.read_bytes()
         tm.fail(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
-                (first, second),
+                (first, second, third),
                 repository_root=mod_workspace,
             ),
         )
-        tm.that(first.path.read_bytes(), eq=first.before.content)
+        tm.that(first.path.read_bytes(), eq=first.desired_content)
+        tm.that(third.path.read_bytes(), eq=third.desired_content)
         tm.that(second.path.read_bytes(), eq=observed)
+
+    @staticmethod
+    def test_semantic_publication_changes_authored_initializer(
+        mod_workspace: Path,
+    ) -> None:
+        """An explicit semantic plan owns its authored initializer transformation."""
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
+        initializer = package / c.Infra.INIT_PY
+        source = 'VALUE = "before"\n__all__ = ("VALUE",)\n'
+        initializer.write_text(source, encoding="utf-8")
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(initializer, required=True),
+        )
+        plan = m.Infra.SemanticFilePlan(
+            project=mod_workspace,
+            path=initializer,
+            before=before,
+            desired_content=source.replace('"before"', '"after"').encode(),
+            desired_mode=before.mode,
+        )
+        published = tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (plan,),
+                repository_root=mod_workspace,
+            ),
+        )
+        tm.that(published, eq=(initializer,))
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    f"from {mod_workspace.name} import VALUE; assert VALUE == 'after'",
+                ),
+                cwd=mod_workspace,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                    },
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
 
     def test_generated_later_plan_rejects_authored_earlier_plan(
         self,

@@ -127,7 +127,13 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             )
         )
         return receipt.model_copy(
-            update={"exit_code": run.value.raw_return_code, "error": error},
+            update={
+                "outcome": m.Cli.ProcessOutcome.model_validate(
+                    run.value,
+                    from_attributes=True,
+                ),
+                "error": error,
+            },
         )
 
     @staticmethod

@@ -493,7 +493,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                             desired_digest=(
                                 None
                                 if file.desired_content is None
-                                else f"sha256:{u.Cli.sha256_bytes(file.desired_content)}"
+                                else (
+                                    f"sha256:{u.Cli.sha256_bytes(file.desired_content)}"
+                                )
                             ),
                             desired_mode=file.desired_mode,
                             owner=file.owner,

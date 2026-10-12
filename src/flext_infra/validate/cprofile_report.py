@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import pstats
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
@@ -154,10 +155,7 @@ class FlextInfraCProfileReport(s[bool]):
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
         try:
             stream = io.StringIO()
-            for profile in self._run_profiles():
-                stream.write(f"Profile: {profile}\n")
-                stats = pstats.Stats(str(profile), stream=stream)
-                stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
+            self._render_profiles(stream)
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except (OSError, ValueError, TypeError) as exc:
             return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)
@@ -165,6 +163,16 @@ class FlextInfraCProfileReport(s[bool]):
         if written.failure:
             return r[bool].from_failure(written)
         return r[bool].ok(value=True)
+
+    def _render_profiles(self, stream: io.StringIO) -> None:
+        """Render every cProfile artifact into the shared stream."""
+        root_prefix = re.escape(str(self.repository_root.resolve()) + "/")
+        for profile in self._run_profiles():
+            stream.write(f"Profile: {profile}\n")
+            stream.write(f"Project scope: {self.repository_root.resolve()}\n")
+            stats = pstats.Stats(str(profile), stream=stream)
+            stats.sort_stats(self.sort).print_stats(root_prefix, self.limit)
+            stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
 
 
 __all__: list[str] = ["FlextInfraCProfileReport"]

@@ -560,6 +560,11 @@ and leave live source bytes and modification times unchanged. Native Ruff uses t
 declared external project cache so its cache files never enter the authenticated
 source view.
 
+Protected compilation and pytest validation use the same environment boundary as
+lint validation: the child keeps its project's working directory and configured
+plugins while removing the orchestrator's `PYTHONPATH` and forced-color setting.
+An importing parent cannot supply source modules or startup hooks to that child.
+
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases
 or inheritance, and it does not rewrite initializer projections.

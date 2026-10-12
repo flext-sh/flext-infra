@@ -30,7 +30,12 @@ class FlextInfraCodegenVscodeMixin:
     """Produce the canonical ``.vscode/settings.json`` document for one root."""
 
     @classmethod
-    def render_vscode_settings(cls, repository_root: Path) -> p.Result[str]:
+    def render_vscode_settings(
+        cls,
+        repository_root: Path,
+        *,
+        runtime_root: Path | None = None,
+    ) -> p.Result[str]:
         """Return the canonical-merged ``settings.json`` document for one root.
 
         Returns:
@@ -47,7 +52,11 @@ class FlextInfraCodegenVscodeMixin:
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
-        applied = cls._apply_canonical_settings(settings, repository_root)
+        applied = cls._apply_canonical_settings(
+            settings,
+            repository_root,
+            runtime_root=runtime_root,
+        )
         if applied.failure:
             return r[str].from_failure(applied)
         serialized = u.Cli.json_dumps(dict(settings), indent=2)
@@ -197,6 +206,8 @@ class FlextInfraCodegenVscodeMixin:
         cls,
         settings: t.MutableJsonMapping,
         repository_root: Path,
+        *,
+        runtime_root: Path | None = None,
     ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping.
 
@@ -210,6 +221,7 @@ class FlextInfraCodegenVscodeMixin:
             scalar_settings=spec.scalar_settings,
             list_settings=spec.list_settings,
             repository_root=repository_root,
+            runtime_root=runtime_root,
         )
         if changed.failure:
             return r[bool].from_failure(changed)
@@ -271,6 +283,7 @@ class FlextInfraCodegenVscodeMixin:
         scalar_settings: Mapping[str, str | bool | int],
         list_settings: Mapping[str, t.VariadicTuple[str]],
         repository_root: Path,
+        runtime_root: Path | None = None,
     ) -> p.Result[bool]:
         """Enforce exact scalar and list VS Code keys from the codegen config.
 
@@ -279,36 +292,14 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         changed = False
-        runtime_prefix = f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}/bin/"
-        resolved_scalars: MutableMapping[str, str | bool | int] = dict(scalar_settings)
-        if any(
-            isinstance(value, str) and value.startswith(runtime_prefix)
-            for value in scalar_settings.values()
-        ):
-            runtime = u.Infra.git_repository_root(
-                m.Infra.GitRepoRequest(repo_root=repository_root),
-            )
-            if runtime.failure:
-                return r[bool].from_failure(runtime)
-            python = u.Infra.runtime_python(
-                repository_root,
-                runtime_root=runtime.value.repository_root,
-            )
-            runtime_directory = python.parent.relative_to(
-                repository_root.resolve(),
-                walk_up=True,
-            ).as_posix()
-            for key, value in scalar_settings.items():
-                if isinstance(value, str) and value.startswith(runtime_prefix):
-                    binary = value.removeprefix(runtime_prefix)
-                    if binary == c.Infra.PYTHON:
-                        binary = python.name
-                    elif python.suffix and not binary.endswith(python.suffix):
-                        binary += python.suffix
-                    resolved_scalars[key] = (
-                        f"${{workspaceFolder}}/{runtime_directory}/{binary}"
-                    )
-        for key, value in resolved_scalars.items():
+        resolved = cls._resolve_runtime_scalars(
+            scalar_settings,
+            repository_root,
+            runtime_root,
+        )
+        if resolved.failure:
+            return r[bool].from_failure(resolved)
+        for key, value in resolved.value.items():
             normalized = u.normalize_to_json_value(value)
             if settings.get(key) == normalized:
                 continue
@@ -330,6 +321,51 @@ class FlextInfraCodegenVscodeMixin:
             settings[key] = canonical
             changed = True
         return r[bool].ok(changed)
+
+    @classmethod
+    def _resolve_runtime_scalars(
+        cls,
+        scalar_settings: Mapping[str, str | bool | int],
+        repository_root: Path,
+        runtime_root: Path | None,
+    ) -> p.Result[Mapping[str, str | bool | int]]:
+        """Rewrite workspace-runtime scalars to the resolved interpreter path.
+
+        Returns:
+            The resulting ``p.Result[Mapping[str, str | bool | int]]``.
+
+        """
+        runtime_prefix = f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}/bin/"
+        resolved: MutableMapping[str, str | bool | int] = dict(scalar_settings)
+        if not any(
+            isinstance(value, str) and value.startswith(runtime_prefix)
+            for value in scalar_settings.values()
+        ):
+            return r[Mapping[str, str | bool | int]].ok(resolved)
+        if runtime_root is None:
+            runtime = u.Infra.git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=repository_root),
+            )
+            if runtime.failure:
+                return r[Mapping[str, str | bool | int]].from_failure(runtime)
+            runtime_root = runtime.value.repository_root
+        python = u.Infra.runtime_python(
+            repository_root,
+            runtime_root=runtime_root,
+        )
+        runtime_directory = python.parent.relative_to(
+            repository_root.resolve(),
+            walk_up=True,
+        ).as_posix()
+        for key, value in scalar_settings.items():
+            if isinstance(value, str) and value.startswith(runtime_prefix):
+                binary = value.removeprefix(runtime_prefix)
+                if binary == c.Infra.PYTHON:
+                    binary = python.name
+                elif python.suffix and not binary.endswith(python.suffix):
+                    binary += python.suffix
+                resolved[key] = f"${{workspaceFolder}}/{runtime_directory}/{binary}"
+        return r[Mapping[str, str | bool | int]].ok(resolved)
 
     @staticmethod
     def _apply_union_settings(
