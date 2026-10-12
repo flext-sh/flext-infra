@@ -406,13 +406,5 @@ class FlextInfraModelsCodegenRender:
             description="Immutable elected export-to-target installer argument.",
         )
 
-    class StaticPackageInitRender(m.ArbitraryTypesModel):
-        """Template context for a non-root static ``__init__.py``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-
 
 __all__: list[str] = ["FlextInfraModelsCodegenRender"]

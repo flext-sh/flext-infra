@@ -12,16 +12,7 @@ from typing import Annotated, override
 
 from flext_cli import cli
 
-from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
-    FlextInfraRopeWorkspace,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraRefactorCensusCollectHelpersMixin,
@@ -32,6 +23,7 @@ from flext_infra.refactor import (
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(

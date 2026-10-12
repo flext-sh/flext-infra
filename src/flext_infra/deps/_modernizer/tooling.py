@@ -8,16 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraEnsurePyrightConfigPhase,
-    FlextInfraExtraPathsManager,
-    c,
-    config,
-    m,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, config, m, r, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -204,7 +197,7 @@ class FlextInfraPyprojectModernizerTooling:
                 # its planned sources before its final pyproject render.
                 "mypy_facade_rebind_modules": u.Infra.facade_rebind_modules(
                     project_dir,
-                    {},
+                    request.planned_sources,
                 ),
                 "mypy_generated_source_modules": tuple(
                     pattern
@@ -214,7 +207,7 @@ class FlextInfraPyprojectModernizerTooling:
                 "ruff_runtime_evaluated_base_classes": (
                     u.Infra.runtime_evaluated_base_classes(
                         project_dir,
-                        {},
+                        request.planned_sources,
                         config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
                     )
                 ),

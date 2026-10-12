@@ -10,7 +10,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraGate, c, config, m, u
+from flext_infra import c, config, m, u
+from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:

@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import c, m, s, t
+from flext_infra import c, m, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -90,6 +90,34 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             if entry.is_dir() and (entry / "all.sh").is_file()
         ]
         return tuple(discovered)
+
+    @staticmethod
+    def _declared_environment_imports(
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> t.VariadicTuple[t.Pair[str, Path]]:
+        """Resolve diagnostic package identities from their declared projects.
+
+        Returns:
+            Package names and exact project roots, without guessing distribution names.
+
+        Raises:
+            ValueError: If declared package namespace is unresolved.
+        """
+        roots = (
+            *((target.root,) if target.repository.package else ()),
+            *(
+                target.root / member.path
+                for member in workspace.subprojects
+                if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+                and member.package
+            ),
+        )
+        imports = tuple((u.Infra.project_package_name(root), root) for root in roots)
+        if any(not name for name, _root in imports):
+            msg = f"declared package namespace is unresolved: {target.root}"
+            raise ValueError(msg)
+        return imports
 
     @staticmethod
     def _merge_extra_verbs(

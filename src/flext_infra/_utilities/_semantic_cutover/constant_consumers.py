@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
@@ -42,8 +42,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         facade_owner = FlextInfraUtilitiesPrivateImportFacades
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
-        statements = tuple(
-            ast.unparse(node)
+        imports = tuple(
+            node
             for path, source in cls._editable_sources(sources)
             for node in ast.walk(ast.parse(source, filename=str(path)))
             if isinstance(node, ast.ImportFrom)
@@ -51,6 +51,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             and node.module.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
             and not node.level
         )
+        if not any(
+            imported.name not in c.Infra.ALIAS_NAMES
+            or (imported.name == "c" and imported.asname is not None)
+            for node in imports
+            for imported in node.names
+        ):
+            # Canonical non-constant facade letters and unrenamed c require no
+            # constant-owner cutover; their identities are already explicit.
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
+        statements = tuple(ast.unparse(node) for node in imports)
         modules = facade_owner.source_modules(sources, statements)
         cli.display_text(f"census: indexed {len(modules)} source identities")
         discovered = facade_owner.discover(modules)

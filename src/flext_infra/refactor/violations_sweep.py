@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import override
 
-from flext_infra import FlextInfraModGateEngine, c, m, p, r, s, u
+from flext_infra import c, m, p, r, s, u
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 
 
 class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):

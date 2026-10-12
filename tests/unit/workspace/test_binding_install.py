@@ -282,8 +282,13 @@ class TestsFlextInfraBindingInstall:
 
     @staticmethod
     @pytest.mark.slow
-    def test_checkout_generator_consumes_the_provisioned_public_sdk() -> None:
-        """Exercise real TOML generation and authenticate its declared sources.
+    @pytest.mark.parametrize("attached", [False, True])
+    @pytest.mark.parametrize("origin_case", ["compiler", "nested", "valid"])
+    def test_checkout_generator_consumes_the_provisioned_public_sdk(
+        attached: bool,
+        origin_case: str,
+    ) -> None:
+        """Exercise real YAML/TOML generation and authenticate loaded suppliers.
 
         Only the generator checkout is selected, as in the native Make owner.
         Its upstream SDK must come from the provisioned environment, not an
@@ -291,18 +296,18 @@ class TestsFlextInfraBindingInstall:
         """
         checkout = Path(__file__).resolve().parents[3]
         root = u.Infra.runtime_environment_dir(checkout).parent
-        status = tm.ok(u.Tests.run_isolated_make(["status"], cwd=checkout))
-        tm.that(
-            u.Cli.process_succeeded(status.outcome),
-            eq=True,
-            msg=status.stdout + status.stderr,
-        )
+        context = checkout if attached else root
+        status = tm.ok(u.Tests.run_isolated_make(["status"], cwd=root))
         consumer = dedent("""\
+            import inspect
+            import sys
+            from dataclasses import dataclass
             from importlib.metadata import distribution
             from pathlib import Path
             from sys import argv
 
             from flext_cli import FlextCliConfig
+            from flext_core import m as core_models
             from flext_infra import (
                 FlextInfraWorkspaceDetector,
                 FlextInfraWorkspaceEnvironmentProvenance,
@@ -314,8 +319,13 @@ class TestsFlextInfraBindingInstall:
             assert cli_roundtrip.Cli == cli_config.Cli
             root = Path(argv[1])
             workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root).unwrap()
+            declared_sources = {}
             for repository in (workspace.repository, *workspace.subprojects):
                 if repository.package:
+                    expected = (root / repository.path).resolve()
+                    package = u.Infra.project_package_name(expected)
+                    if repository.editable:
+                        declared_sources[package] = expected
                     artifact = distribution(repository.distribution)
                     raw = artifact.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
                     receipt = (
@@ -328,6 +338,29 @@ class TestsFlextInfraBindingInstall:
                           receipt.vcs_info if receipt else None,
                           receipt.dir_info if receipt else None,
                           flush=True)
+            origins = []
+            for supplier in u.Cli.__mro__:
+                package = supplier.__module__.split(".")[0]
+                if package in declared_sources:
+                    module = sys.modules[supplier.__module__]
+                    origin = Path(inspect.getfile(supplier)).resolve()
+                    print("supplier", supplier, "module", module.__file__,
+                          "definition", origin, "expected", declared_sources[package],
+                          flush=True)
+                    origins.append((origin, declared_sources[package]))
+            documents = u.Cli.yaml_parse_documents(
+                "first: value\\n---\\nsecond: value\\n"
+            ).unwrap()
+            assert tuple(documents) == ({"first": "value"}, {"second": "value"})
+            yaml_origin = Path(
+                inspect.getfile(inspect.unwrap(u.Cli.yaml_parse_documents))
+            ).resolve()
+            print("yaml definition", yaml_origin, flush=True)
+            assert not declared_sources or origins
+            assert all(origin.is_relative_to(expected) for origin, expected in origins)
+            yaml_package = u.Cli.yaml_parse_documents.__module__.split(".")[0]
+            if yaml_package in declared_sources:
+                assert yaml_origin.is_relative_to(declared_sources[yaml_package])
             source = u.Cli.files_read_text(root / c.PYPROJECT_FILENAME).unwrap()
             document = u.Cli.toml_parse_text(source)
             assert document is not None
@@ -357,15 +390,44 @@ class TestsFlextInfraBindingInstall:
                 ),
             ).unwrap()
             assert u.Cli.toml_parse_text(rendered) is not None
-            FlextInfraWorkspaceEnvironmentProvenance.validate(root).unwrap()
+            builder_type = dataclass(init=False, unsafe_hash=True)(core_models.Base)
+            builder_type.Recursive = builder_type
+            state = core_models.ContractModel.model_validate({})
+            builder = core_models.Identity(state=state)
+            assert builder.build() == state
+            print("native generated", repr(builder), hash(builder), flush=True)
+            origin_case = argv[2]
+            if origin_case == "nested":
+                function = inspect.unwrap(builder_type.build)
+                external = inspect.getfile(inspect.unwrap(FlextCliConfig.model_validate))
+                function.__code__ = function.__code__.replace(co_filename=external)
+                print("external nested definition", function.__code__.co_filename,
+                      flush=True)
+            elif origin_case == "compiler":
+                module = sys.modules[builder_type.__module__]
+                recipient = vars(module)[builder_type.__qualname__.split(".")[0]]
+                recipient.__hash__ = builder_type.__hash__
+                print("transplanted compiler definition", recipient,
+                      builder_type.__hash__.__qualname__, flush=True)
+            provenance = FlextInfraWorkspaceEnvironmentProvenance.validate(root)
+            if origin_case == "valid":
+                provenance.unwrap()
+            else:
+                assert provenance.failure, "Wrong defining owner was authenticated"
+                print("rejected", provenance.error, flush=True)
             """)
         outcome = tm.ok(
             u.Cli.run_raw(
-                (sys.executable, "-c", consumer, str(root)),
-                cwd=checkout,
+                (sys.executable, "-c", consumer, str(root), origin_case),
+                cwd=context,
                 options=m.Cli.ProcessOptions(
                     env={"PYTHONPATH": str(checkout / c.Infra.DEFAULT_SRC_DIR)},
-                    remove_env_keys=("MYPYPATH", "VIRTUAL_ENV", "UV_PROJECT"),
+                    remove_env_keys=(
+                        "MYPYPATH",
+                        "VIRTUAL_ENV",
+                        "UV_PROJECT",
+                        "UV_PROJECT_ENVIRONMENT",
+                    ),
                 ),
             ),
         )
@@ -374,4 +436,20 @@ class TestsFlextInfraBindingInstall:
             u.Cli.process_succeeded(outcome.outcome),
             eq=True,
             msg=outcome.stdout + outcome.stderr,
+        )
+        namespace = u.Infra.project_package_name(root)
+        tm.that(
+            u.Cli.process_succeeded(status.outcome),
+            eq=True,
+            msg=status.stdout + status.stderr,
+        )
+        tm.that(
+            status.stdout,
+            has=[
+                f"runtime-import-module name={namespace!r} origin=",
+                f"runtime-import-code module={namespace!r}",
+                "co_filename=",
+                "cached=",
+                "path=",
+            ],
         )

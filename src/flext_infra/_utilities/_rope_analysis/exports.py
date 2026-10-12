@@ -12,10 +12,14 @@ from typing import ClassVar
 
 from flext_infra import c, m, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeAnalysisAstHelpers,
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._rope_analysis.asthelpers import (
+    FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
+from flext_infra._utilities._rope_analysis.sourcescan import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 
 
@@ -174,14 +178,6 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         assignments = inventory[0]
         definitions = inventory[1]
         explicit_all = inventory[2]
-        if resolved_options.include_dunder:
-            return tuple(
-                dict.fromkeys(
-                    name
-                    for name in assignments
-                    if name.startswith("__") and name.endswith("__")
-                ),
-            )
         if explicit_all:
             return tuple(
                 dict.fromkeys(
@@ -193,6 +189,14 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             )
         if resolved_options.require_explicit_all:
             return ()
+        if resolved_options.include_dunder:
+            return tuple(
+                dict.fromkeys(
+                    name
+                    for name in assignments
+                    if name.startswith("__") and name.endswith("__")
+                ),
+            )
         implicit_names: t.MutableSequenceOf[str] = [
             name
             for name, is_class in definitions
@@ -237,11 +241,6 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         attributes = pymodule.get_attributes()
-        if export_options.include_dunder:
-            return FlextInfraUtilitiesRopeAnalysisExports._dunder_export_names(
-                attributes=attributes,
-                resource=resource,
-            )
         explicit_all = FlextInfraUtilitiesRopeAnalysisExports._explicit_export_names(
             attributes=attributes,
             pymodule=pymodule,
@@ -251,6 +250,11 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             return tuple(dict.fromkeys(explicit_all))
         if export_options.require_explicit_all:
             return ()
+        if export_options.include_dunder:
+            return FlextInfraUtilitiesRopeAnalysisExports._dunder_export_names(
+                attributes=attributes,
+                resource=resource,
+            )
         return FlextInfraUtilitiesRopeAnalysisExports._implicit_export_names(
             attributes=attributes,
             export_options=export_options,

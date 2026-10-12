@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
+import shlex
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m
@@ -73,17 +73,29 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         return (marker, stripped[3:].strip().partition(" ")[0].lower())
 
     @staticmethod
-    def _make_selector_issue(selector: re.Match[str] | None) -> str:
-        """Return the issue of one forbidden Make selector, else empty text.
+    def _make_selector_issue(
+        arguments: str,
+        verb: m.Infra.MakeVerbSpec,
+    ) -> str:
+        """Return the first named input absent from the operation's contract.
 
         Returns:
             The resulting ``str``.
 
         """
-        if selector is None:
-            return ""
-        selector_name = selector.group(0).split("=", maxsplit=1)[0].strip()
-        return f"invented Make selector `{selector_name}`"
+        allowed = frozenset((
+            *config.Infra.codegen.make.common_arguments,
+            config.Infra.codegen.make.ci.variable,
+            *verb.arguments,
+        ))
+        for token in shlex.split(arguments, comments=True):
+            selector = c.Infra.MAKE_ASSIGNMENT_RE.match(token)
+            if selector is None:
+                continue
+            selector_name = selector.group(0).split("=", maxsplit=1)[0].rstrip(":?+")
+            if selector_name not in allowed:
+                return f"invented Make selector `{selector_name}`"
+        return ""
 
     @staticmethod
     def _candidate_issue(
@@ -103,9 +115,6 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             return "direct tool command bypasses the root Make dispatcher"
         if make_match is None:
             return ""
-        selector = c.Infra.DOCS_FORBIDDEN_MAKE_SELECTOR_RE.search(
-            make_match.group("args"),
-        )
         verb = make_match.group("verb").lower()
         verb_spec = next(
             (spec for spec in effective_verbs if spec.name == verb),
@@ -119,7 +128,8 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         if verb_spec is None:
             return f"Make verb `{verb}` is not declared by the config SSOT"
         return FlextInfraUtilitiesDocsCommandContractMixin._make_selector_issue(
-            selector,
+            make_match.group("args"),
+            verb_spec,
         )
 
     @classmethod

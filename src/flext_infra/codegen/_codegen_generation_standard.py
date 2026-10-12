@@ -8,32 +8,17 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from operator import itemgetter
-from sys import stdlib_module_names
 
-from flext_infra import FlextInfraToolTablesPhase, c, config, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.codegen import FlextInfraCodegenGenerationRenderersMixin
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
-# Keep lazy loading only at the public package root and
-# bind Ruff validation to each target project's real initializer path.
+# Bind validation to each owning directory's real initializer path.
 class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin,
 ):
-    """Render the two canonical generated initializer forms."""
-
-    @staticmethod
-    def _is_stdlib_import(target: t.StrPair) -> bool:
-        """Return whether an absolute import target belongs to the stdlib.
-
-        Returns:
-            Whether an absolute import target belongs to the stdlib.
-
-        """
-        module = target[0]
-        return (
-            not module.startswith(".")
-            and module.partition(".")[0] in stdlib_module_names
-        )
+    """Render the canonical declared-export lazy initializer."""
 
     @staticmethod
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
@@ -51,14 +36,8 @@ class FlextInfraCodegenGenerationStandardMixin(
         """
         source = plan.lazy_map
         public_names = frozenset(plan.exports)
-        # Direct imports outside __all__ remain statically
-        # declared because they are part of the established root interface.
         filtered: MutableMapping[str, t.StrPair] = {
-            name: target
-            for name, target in source.items()
-            if name in public_names
-            and name not in c.Infra.ROOT_TEMPLATE_BINDINGS
-            and not FlextInfraCodegenGenerationStandardMixin._is_stdlib_import(target)
+            name: target for name, target in source.items() if name in public_names
         }
         return filtered
 
@@ -256,6 +235,12 @@ class FlextInfraCodegenGenerationStandardMixin(
         lazy_map = cls._lazy_export_map(plan)
         current_pkg = plan.context.current_pkg
         public_type_checking_imports = cls._type_checking_filtered(plan)
+        if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE:
+            public_type_checking_imports = {
+                name: target
+                for name, target in public_type_checking_imports.items()
+                if name not in c.Infra.LAZY_BOOTSTRAP_HELPERS
+            }
         # The generated blocks rank imports by the project's ruff isort
         # sections, so they read the one owner that projects known-first-party
         # into the same pyproject (FlextInfraToolTablesPhase); the package
@@ -281,14 +266,6 @@ class FlextInfraCodegenGenerationStandardMixin(
             ),
         )
         runtime_import_lines = cls._runtime_import_lines(plan, type_checking_root_names)
-        # The bootstrap owner's packages import the helpers from the module
-        # that defines them; every other distribution imports them from the
-        # bootstrap root, which therefore publishes them in its __all__.
-        published_helpers = (
-            c.Infra.LAZY_BOOTSTRAP_HELPERS
-            if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
-            else ()
-        )
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(
@@ -300,7 +277,6 @@ class FlextInfraCodegenGenerationStandardMixin(
             exports_tuple=cls._format_exports_tuple(
                 cls._build_published_exports(
                     (
-                        *published_helpers,
                         *(
                             name
                             for name in plan.exports
@@ -314,25 +290,6 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _static_context(
-        cls,
-        plan: m.Infra.LazyInitPlan,
-    ) -> m.Infra.StaticPackageInitRender:
-        """Build a side-effect-free private or non-production initializer.
-
-        Returns:
-            The resulting ``m.Infra.StaticPackageInitRender``.
-
-        """
-        return m.Infra.StaticPackageInitRender(
-            autogen_header=c.Infra.AUTOGEN_HEADER,
-            docstring=cls._format_root_package_docstring(
-                plan.context.current_pkg.rsplit(".", maxsplit=1)[-1],
-                u.Infra.copyright_notice(plan.context.pkg_dir),
-            ),
-        )
-
-    @classmethod
     def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render one inline lazy public-root initializer.
 
@@ -343,20 +300,6 @@ class FlextInfraCodegenGenerationStandardMixin(
         return cls._render_model(
             c.Infra.TEMPLATE_ROOT_INIT,
             cls._root_context(plan),
-            target_filename=str(plan.context.init_path),
-        )
-
-    @classmethod
-    def _render_static(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render one explicit static or empty subpackage initializer.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return cls._render_model(
-            c.Infra.TEMPLATE_STATIC_INIT,
-            cls._static_context(plan),
             target_filename=str(plan.context.init_path),
         )
 

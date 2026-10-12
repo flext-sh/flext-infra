@@ -192,6 +192,25 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     ) -> None:
         """Classify targets before publishing one captured value reference."""
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        if (
+            spec.allow_conditional
+            and targets
+            and all(isinstance(target, ast.Tuple | ast.List) for target in targets)
+            and all(
+                isinstance(
+                    part, ast.Name | ast.Tuple | ast.List | ast.Starred | ast.Store
+                )
+                for target in targets
+                for part in ast.walk(target)
+            )
+        ):
+            # Unpacking a provider iterable binds its elements, not the iterable's
+            # class identity. Never retain an earlier class under those names.
+            for target in targets:
+                for part in ast.walk(target):
+                    if isinstance(part, ast.Name):
+                        bindings[part.id] = None
+            return
         if any(not isinstance(target, ast.Name) for target in targets):
             cls._non_name_assignment(spec, node, targets, bindings)
             return
@@ -425,19 +444,22 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             node, targets, visible
         ):
             return False
-        resolved = cls._inventoried_receiver_update(
-            spec, node, targets, visible, spec.module
-        )
-        if resolved is None:
+        target = targets[0]
+        if not isinstance(target, ast.Attribute):
+            return False
+        receiver = cls._reference(target.value, visible, spec.module)
+        owner = cls._nested_class_receiver(receiver, spec.definitions)
+        if owner is None:
             return False
         definition = spec.definitions[owner.target]
+        members = dict(definition.members)
+        assigned = cls._name_assignment(spec, node, visible)
+        if assigned is None:
+            members.pop(target.attr, None)
+        else:
+            members[target.attr] = assigned
         spec.definitions[owner.target] = definition.model_copy(
-            update={
-                "members": {
-                    **definition.members,
-                    target.attr: visible[value.id],
-                },
-            },
+            update={"members": members},
         )
         return True
 

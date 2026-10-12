@@ -6,16 +6,77 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Sequence
+from typing import cast
 
 from flext_cli import u
 
-from flext_infra import m, p, t
+from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope refactor helpers behind protocols."""
+
+    @classmethod
+    def patched_ast(cls, source: str) -> ast.AST:
+        """Parse the real SDK patched AST and validate its native result.
+
+        Returns:
+            The SDK AST with source-order information attached.
+
+        Raises:
+            TypeError: If the native parser does not return an AST.
+        """
+        value = cls.runtime_callable(
+            "rope.refactor.patchedast",
+            "get_patched_ast",
+        )(source, sorted_children=True)
+        if not isinstance(value, ast.AST):
+            msg = "Rope patched AST parser did not return an AST"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
+    def write_patched_ast(cls, tree: ast.AST) -> str:
+        """Render the real SDK patched AST without replacing its writer.
+
+        Returns:
+            The source emitted by the native patched-AST writer.
+
+        Raises:
+            TypeError: If the native writer does not return source text.
+        """
+        value = cls.runtime_callable(
+            "rope.refactor.patchedast",
+            "write_ast",
+        )(tree)
+        if not isinstance(value, str):
+            msg = "Rope patched AST writer did not return source text"
+            raise TypeError(msg)
+        return value
+
+    @staticmethod
+    def change_set_members(
+        value: p.AttributeProbe,
+        invalid_result: str,
+    ) -> p.Result[t.SequenceOf[p.Infra.RopeChangeContents]]:
+        """Validate a native content-change list once at the Rope SDK boundary.
+
+        Returns:
+            Typed content changes, or a failure for malformed lists or members.
+
+        """
+        if not isinstance(value, list):
+            return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
+        members = cast("list[p.AttributeProbe]", value)
+        validated: list[p.Infra.RopeChangeContents] = []
+        for member in members:
+            if not isinstance(member, p.Infra.RopeChangeContents):
+                return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
+            validated.append(member)
+        return r[t.SequenceOf[p.Infra.RopeChangeContents]].ok(tuple(validated))
 
     @classmethod
     def unwrap_class_rewrites(
@@ -190,7 +251,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        offset: int,
+        offset: int | None,
     ) -> t.Infra.RopeMoveGlobal:
         create = cls.runtime_callable("rope.refactor.move", "create_move")
         mover = create(rope_project, resource, offset)
@@ -207,7 +268,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         offset: int,
         new_name: str,
         *,
-        resources: t.SequenceOf[t.Infra.RopeResource],
+        options: m.Infra.RopeRenameOptions,
     ) -> t.Infra.RopeChangeSet:
         renamer_factory = cls.runtime_callable("rope.refactor.rename", "Rename")
         renamer = renamer_factory(rope_project, resource, offset)
@@ -215,7 +276,11 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not callable(get_changes):
             msg = "rope Rename does not expose callable get_changes"
             raise TypeError(msg)
-        changes = get_changes(new_name, resources=list(resources))
+        changes = get_changes(
+            new_name,
+            resources=list(options.resources),
+            in_hierarchy=options.in_hierarchy,
+        )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             msg = "rope Rename returned invalid ChangeSet"
             raise TypeError(msg)

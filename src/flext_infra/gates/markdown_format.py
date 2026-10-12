@@ -19,7 +19,8 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraMarkdownGateBase, c, m
+from flext_infra import c, m
+from flext_infra.gates.markdown_support import FlextInfraMarkdownGateBase
 
 if TYPE_CHECKING:
     from flext_infra import p, t

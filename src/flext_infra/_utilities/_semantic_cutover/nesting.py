@@ -12,10 +12,13 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import libcst as cst
+
 from flext_infra import m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -327,13 +330,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         merged = {edit.file_path: edit for edit in promoted}
         for edit in promoted:
             proposed[edit.file_path] = edit.updated_source
+        consolidated = cls._facade_namespace_edits(rope_workspace, proposed)
+        for edit in consolidated:
+            proposed[edit.file_path] = edit.updated_source
         flattened = cls._family_flatten_edits(rope_workspace, proposed)
         for edit in flattened:
             proposed[edit.file_path] = edit.updated_source
         nested = cls._plan_orphan_nesting(rope_workspace, proposed)
         if nested.failure:
             return planned.from_failure(nested)
-        for edit in (*flattened, *nested.value):
+        for edit in (*consolidated, *flattened, *nested.value):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
@@ -346,6 +352,111 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 else edit.changes,
             )
         return planned.ok(tuple(merged[path] for path in sorted(merged)))
+
+    @classmethod
+    def _facade_namespace_edits(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Move duplicate facade namespaces to their declared inherited owners.
+
+        The canonical namespace's base identities elect destinations. No symbol
+        catalog participates; an occupied declaration owner is never overwritten.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        project = runtime.snapshot_project(workspace.rope_project, sources)
+        root = Path(project.root.real_path)
+        working = dict(sources)
+        try:
+            for path, source in cls._editable_sources(sources):
+                policy = workspace.convention(path).module_policy
+                if not policy.is_internal_namespace or policy.expected_alias is None:
+                    continue
+                tree = ast.parse(source)
+                facade = next((node for node in tree.body if isinstance(node, ast.ClassDef)
+                               and node.name == policy.expected_family), None)
+                if facade is None:
+                    continue
+                children = [node for node in facade.body if isinstance(node, ast.ClassDef)]
+                composed = [node for node in children if node.bases]
+                if len(composed) != 1:
+                    continue
+                namespace = composed[0]
+                resource = project.get_resource(path.relative_to(root).as_posix())
+                owner = project.get_pymodule(resource).get_attribute(facade.name).get_object()
+                target = owner.get_attribute(namespace.name).get_object()
+                rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
+                for child in children:
+                    if child is namespace or child.bases or child.decorator_list:
+                        continue
+                    destinations = [base for base in target.get_superclasses()
+                                    if base.get_name() == child.name]
+                    if len(destinations) != 1:
+                        continue
+                    destination = destinations[0]
+                    scope = destination.get_scope()
+                    if scope is None:
+                        raise ValueError("namespace declaration owner has no source scope")
+                    module = destination.get_module()
+                    if module is None or (destination_resource := module.get_resource()) is None:
+                        msg = "namespace declaration owner has no module resource"
+                        raise ValueError(msg)
+                    destination_path = Path(destination_resource.real_path).resolve()
+                    if destination_path not in sources or destination_path == path:
+                        raise ValueError("namespace declaration owner is outside the editable inventory")
+                    declaration = next(node for node in ast.parse(sources[destination_path]).body
+                                       if isinstance(node, ast.ClassDef) and node.name == child.name)
+                    if declaration.bases or any(not isinstance(node, ast.Pass)
+                        and not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
+                                 and isinstance(node.value.value, str)) for node in declaration.body):
+                        raise ValueError("namespace declaration owner is already occupied")
+                    binding = owner.get_attribute(child.name)
+                    finder = refactors.create_occurrence_finder(project, child.name, binding,
+                                                               imports=True, in_hierarchy=False)
+                    for consumer, _consumer_source in cls._editable_sources(sources):
+                        consumer_resource = project.get_resource(consumer.relative_to(root).as_posix())
+                        for occurrence in finder.find_occurrences(resource=consumer_resource):
+                            if occurrence.is_defined():
+                                continue
+                            start, end = occurrence.get_word_range()
+                            rewrites.setdefault(consumer, []).append(
+                                m.Infra.SourceRewrite(start=start, end=end, text=namespace.name))
+                    parsed = cst.parse_module(source)
+                    facade_cst = next(node for node in parsed.body if isinstance(node, cst.ClassDef)
+                                      and node.name.value == facade.name)
+                    if not isinstance(facade_cst.body, cst.IndentedBlock):
+                        raise ValueError("namespace facade requires an indented declaration")
+                    child_cst = next(node for node in facade_cst.body.body if isinstance(node, cst.ClassDef)
+                                     and node.name.value == child.name)
+                    used = {node.id for node in ast.walk(child) if isinstance(node, ast.Name)}
+                    imports = [node for node in tree.body if isinstance(node, ast.Import | ast.ImportFrom)
+                               and any((alias.asname or alias.name.partition('.')[0]) in used
+                                       for alias in node.names)]
+                    working[destination_path] = (
+                        "from __future__ import annotations\n\n"
+                        + "\n".join(ast.unparse(node) for node in imports)
+                        + "\n\n" + cst.Module(body=(child_cst,)).code
+                        + f"\n__all__ = [{child.name!r}]\n"
+                    )
+                    if child.end_lineno is None:
+                        msg = "namespace declaration has no complete source range"
+                        raise ValueError(msg)
+                    lines = source.splitlines(keepends=True)
+                    start = sum(map(len, lines[:child.lineno - 1]))
+                    end = sum(map(len, lines[:child.end_lineno]))
+                    rewrites.setdefault(path, []).append(m.Infra.SourceRewrite(start=start, end=end, text=""))
+                for consumer, changes in rewrites.items():
+                    consumer_resource = project.get_resource(consumer.relative_to(root).as_posix())
+                    working[consumer] = refactors.content_change(
+                        consumer_resource, sources[consumer], changes).new_contents
+            return tuple(m.Infra.SemanticMigrationEdit(
+                file_path=path, original_source=source, updated_source=working[path],
+                changes=("consolidated facade namespace through declaration-owner inheritance",))
+                for path, source in sources.items() if working[path] != source)
+        finally:
+            project.close()
 
     @classmethod
     def _plan_orphan_nesting(

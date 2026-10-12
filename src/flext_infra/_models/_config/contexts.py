@@ -39,6 +39,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
+        environment_imports: Annotated[
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, Path]],
+            m.Field(
+                description="Declared package names and source roots for diagnostics"
+            ),
+        ]
         pytest: Annotated[
             FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),

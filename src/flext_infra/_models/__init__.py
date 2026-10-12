@@ -22,36 +22,15 @@ if TYPE_CHECKING:
     from flext_infra._models._codegen.lazy_init import (
         FlextInfraModelsCodegenLazyInitModels,
     )
-    from flext_infra._models._codegen.pipeline import (
-        FlextInfraModelsCodegenPipelineModels,
-    )
     from flext_infra._models._codegen.scaffold import (
         FlextInfraModelsCodegenScaffoldModels,
     )
-    from flext_infra._models._codegen.transaction import (
-        FlextInfraModelsCodegenTransactionModels,
-    )
-    from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
     from flext_infra._models._config.base import FlextInfraConfigModels
-    from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-    from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-    from flext_infra._models._config.contract import FlextInfraConfigModelsContract
     from flext_infra._models._config.external_cache import (
         FlextInfraExternalCacheDirectorySpec,
     )
-    from flext_infra._models._config.make import FlextInfraConfigModelsMake
-    from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
     from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
-    from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-    from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-    from flext_infra._models._config.render import FlextInfraConfigModelsRender
-    from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
     from flext_infra._models._config.root import FlextInfraConfigModelsRoot
-    from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-    from flext_infra._models._config.static import FlextInfraConfigModelsStatic
-    from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-    from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
-    from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
     from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
     from flext_infra._models._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
     from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
@@ -118,23 +97,8 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraCodegen",
     "FlextInfraConfigModels",
-    "FlextInfraConfigModelsArtifact",
-    "FlextInfraConfigModelsBeads",
-    "FlextInfraConfigModelsContexts",
-    "FlextInfraConfigModelsContract",
-    "FlextInfraConfigModelsMake",
-    "FlextInfraConfigModelsMakeClean",
     "FlextInfraConfigModelsMakeDocs",
-    "FlextInfraConfigModelsProvider",
-    "FlextInfraConfigModelsRelease",
-    "FlextInfraConfigModelsRender",
-    "FlextInfraConfigModelsRepository",
     "FlextInfraConfigModelsRoot",
-    "FlextInfraConfigModelsScaffold",
-    "FlextInfraConfigModelsStatic",
-    "FlextInfraConfigModelsTemplates",
-    "FlextInfraConfigModelsWorkspace",
-    "FlextInfraConfigVocabulary",
     "FlextInfraExternalCacheDirectorySpec",
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
@@ -142,11 +106,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCodegenFixModels",
     "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",
-    "FlextInfraModelsCodegenPipelineModels",
     "FlextInfraModelsCodegenRender",
     "FlextInfraModelsCodegenScaffoldModels",
     "FlextInfraModelsCodegenToolchain",
-    "FlextInfraModelsCodegenTransactionModels",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
@@ -198,23 +160,8 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodegen": "._codegen.base",
         "FlextInfraConfigModels": "._config.base",
-        "FlextInfraConfigModelsArtifact": "._config.artifact",
-        "FlextInfraConfigModelsBeads": "._config.beads",
-        "FlextInfraConfigModelsContexts": "._config.contexts",
-        "FlextInfraConfigModelsContract": "._config.contract",
-        "FlextInfraConfigModelsMake": "._config.make",
-        "FlextInfraConfigModelsMakeClean": "._config.make_clean",
         "FlextInfraConfigModelsMakeDocs": "._config.make_docs",
-        "FlextInfraConfigModelsProvider": "._config.provider",
-        "FlextInfraConfigModelsRelease": "._config.release",
-        "FlextInfraConfigModelsRender": "._config.render",
-        "FlextInfraConfigModelsRepository": "._config.repository",
         "FlextInfraConfigModelsRoot": "._config.root",
-        "FlextInfraConfigModelsScaffold": "._config.scaffold",
-        "FlextInfraConfigModelsStatic": "._config.static",
-        "FlextInfraConfigModelsTemplates": "._config.templates",
-        "FlextInfraConfigModelsWorkspace": "._config.workspace",
-        "FlextInfraConfigVocabulary": "._config.vocabulary",
         "FlextInfraExternalCacheDirectorySpec": "._config.external_cache",
         "FlextInfraModelsBase": ".base",
         "FlextInfraModelsCensus": ".census",
@@ -222,11 +169,9 @@ install_lazy_exports(
         "FlextInfraModelsCodegenFixModels": "._codegen.fix",
         "FlextInfraModelsCodegenJournalModels": "._codegen.journal",
         "FlextInfraModelsCodegenLazyInitModels": "._codegen.lazy_init",
-        "FlextInfraModelsCodegenPipelineModels": "._codegen.pipeline",
         "FlextInfraModelsCodegenRender": ".codegen_render",
         "FlextInfraModelsCodegenScaffoldModels": "._codegen.scaffold",
         "FlextInfraModelsCodegenToolchain": ".codegen_toolchain",
-        "FlextInfraModelsCodegenTransactionModels": "._codegen.transaction",
         "FlextInfraModelsCodemod": ".codemod",
         "FlextInfraModelsCore": ".validate",
         "FlextInfraModelsDeps": ".deps",

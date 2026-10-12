@@ -419,8 +419,30 @@ class FlextInfraMiseArtifactsVerificationTopology:
                 entry.desired_reparse_tag,
             )
             if identity != expected:
+                fields = (
+                    "parent_device",
+                    "parent_inode",
+                    "sha256",
+                    "mode",
+                    "device",
+                    "inode",
+                    "link_count",
+                    "file_attributes",
+                    "reparse_tag",
+                )
+                differences = "; ".join(
+                    f"{field}: expected={wanted!r}, observed={actual!r}"
+                    for field, wanted, actual in zip(
+                        fields,
+                        expected,
+                        identity,
+                        strict=True,
+                    )
+                    if wanted != actual
+                )
                 return r[bool].fail(
-                    f"published generation identity changed: {entry.path}",
+                    f"published generation identity changed: {entry.path}; "
+                    f"phase={entry.phase}; {differences}",
                 )
         return r[bool].ok(value=True)
 

@@ -976,3 +976,6 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
+
+
+__all__: list[str] = ["FlextInfraProtocolsBase"]

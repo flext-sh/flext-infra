@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, p, r, u
-from tests import tm
+from flext_infra import c, config, infra, m, p, r
+from tests import tm, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -22,6 +23,201 @@ from flext_infra.transformers import FlextInfraSemanticPublication
 
 class TestsFlextInfraSemanticPublication:
     """All files remain recoverable until the semantic consumer accepts them."""
+
+    @staticmethod
+    def test_no_effect_publication_requires_true_acceptance(
+        mod_workspace: Path,
+    ) -> None:
+        """A successful false result rejects publication without filesystem effects."""
+        before = tuple(
+            (path, path.stat().st_mode, path.read_bytes() if path.is_file() else None)
+            for path in sorted(mod_workspace.rglob("*"))
+        )
+        calls = 0
+        accepted = False
+
+        def validate() -> p.Result[bool]:
+            nonlocal calls
+            calls += 1
+            return r[bool].ok(accepted)
+
+        rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            (),
+            repository_root=mod_workspace,
+            validator=validate,
+        )
+        tm.that(calls, eq=1)
+        accepted = True
+        published = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            (),
+            repository_root=mod_workspace,
+            validator=validate,
+        )
+        tm.that(calls, eq=2)
+        tm.that(
+            tuple(
+                (
+                    path,
+                    path.stat().st_mode,
+                    path.read_bytes() if path.is_file() else None,
+                )
+                for path in sorted(mod_workspace.rglob("*"))
+            ),
+            eq=before,
+        )
+        tm.that(tm.ok(published), eq=())
+        tm.fail(rejected)
+
+    @staticmethod
+    @pytest.mark.parametrize("raises", [False, True])
+    def test_no_effect_publication_retains_validator_failure(
+        mod_workspace: Path,
+        *,
+        raises: bool,
+    ) -> None:
+        """An explicit consumer rejection cannot become a no-effect success."""
+        path = mod_workspace / "consumer.py"
+        source = 'raise RuntimeError("consumer rejected")\n'
+        path.write_text(source, encoding="utf-8")
+        failure = RuntimeError("consumer rejected")
+
+        def reject() -> p.Result[bool]:
+            consumer = tm.ok(u.Cli.run_raw((sys.executable, str(path))))
+            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=False)
+            if raises:
+                raise failure
+            return r[bool].fail(str(failure), exception=failure)
+
+        if raises:
+            with pytest.raises(RuntimeError) as raised:
+                FlextInfraSemanticPublication.publish_semantic_file_plans(
+                    (),
+                    repository_root=mod_workspace,
+                    validator=reject,
+                )
+            tm.that(raised.value is failure, eq=True)
+        else:
+            rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=mod_workspace,
+                validator=reject,
+            )
+            tm.fail(rejected, has=str(failure))
+            tm.that(rejected.exception is failure, eq=True)
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("rejected", [False, True])
+    def test_unchanged_semantic_entry_validates_generated_public_consumer(
+        tmp_path: Path,
+        *,
+        rejected: bool,
+    ) -> None:
+        """The real semantic entry cannot accept stale exports without its gates."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        notice = u.Infra.copyright_notice(root)
+        path = package / "service.py"
+        source = (
+            f'"""Public candidate service.\n\n{notice}\n"""\n\n'
+            "from __future__ import annotations\n\n\n"
+            "class FlextTestProjectService:\n"
+            '    """Execute the fixture consumer contract."""\n\n'
+            "    @staticmethod\n"
+            "    def execute() -> bool:\n"
+            '        """Return the fixture service health.\n\n'
+            "        Returns:\n"
+            "            Whether the fixture service is healthy.\n\n"
+            '        """\n'
+            "        return True\n\n\n"
+            + ('raise RuntimeError("consumer rejected")\n\n' if rejected else "")
+            + '__all__ = ["FlextTestProjectService"]\n'
+        )
+        path.write_text(source, encoding="utf-8")
+        initializer = package / "__init__.py"
+        original = initializer.read_bytes()
+        report = m.Infra.ModScanReport(
+            findings=0,
+            actionable=0,
+            detection_only=0,
+            non_actionable_with_fix=0,
+            files=frozenset(),
+            entries=(),
+        )
+        with infra.rope_workspace(root) as rope:
+            result = FlextInfraCodemodSemanticApply.apply(root, report, rope)
+        if rejected:
+            tm.fail(result, has="quality")
+            tm.that(initializer.read_bytes(), eq=original)
+        else:
+            tm.ok(result)
+            consumer = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            f"from {package.name} import FlextTestProjectService; "
+                            "assert FlextTestProjectService.execute()"
+                        ),
+                    ),
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        env={"PYTHONPATH": str(package.parent)},
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("accepted", [False, True])
+    def test_projection_only_candidate_validates_real_public_consumer(
+        mod_workspace: Path,
+        *,
+        accepted: bool,
+    ) -> None:
+        """Generate declared exports before acceptance without changing authored WIP."""
+        package = mod_workspace / "src" / mod_workspace.name
+        declaration = package / "service.py"
+        source = "class DeclaredService:\n    pass\n\n__all__ = ['DeclaredService']\n"
+        declaration.write_text(source, encoding="utf-8")
+        initializer = package / "__init__.py"
+        original = initializer.read_bytes()
+
+        def validate() -> p.Result[bool]:
+            consumer = u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {mod_workspace.name} import DeclaredService; "
+                        "assert isinstance(DeclaredService(), DeclaredService)"
+                    ),
+                ),
+                cwd=mod_workspace,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            )
+            tm.ok(consumer)
+            tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
+            return r[bool].ok(True) if accepted else r[bool].fail("consumer rejected")
+
+        published = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            (),
+            repository_root=mod_workspace,
+            projection_roots=(mod_workspace,),
+            validator=validate,
+        )
+        if accepted:
+            tm.ok(published)
+            tm.that(initializer.read_bytes() != original, eq=True)
+        else:
+            tm.fail(published, has="consumer rejected")
+            tm.that(initializer.read_bytes(), eq=original)
+        tm.that(declaration.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
     def _plans(root: Path) -> t.VariadicTuple[m.Infra.SemanticFilePlan]:

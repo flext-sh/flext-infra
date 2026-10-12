@@ -13,6 +13,7 @@ import pytest
 
 from flext_infra import m
 from flext_infra.refactor import FlextInfraImportNormalization
+from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import t, tm, u
 
 if TYPE_CHECKING:
@@ -21,6 +22,93 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
+
+    @classmethod
+    def test_eager_root_dependencies_preserve_bootstrap_imports(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A loader's dependency stays direct before the root publishes exports."""
+        project, package = cls._project(tmp_path)
+        initializer = package / "__init__.py"
+        initializer.write_text(
+            "from demo_pkg.loader import install\n"
+            + initializer.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        (package / "loader.py").write_text(
+            "from demo_pkg.bootstrap import Bootstrap\n\ninstall = Bootstrap\n",
+            encoding="utf-8",
+        )
+        source = "from demo_pkg._models.record import DemoRecord\n\n"
+        source += "class Bootstrap(DemoRecord):\n    pass\n"
+        target = package / "bootstrap.py"
+        target.write_text(source, encoding="utf-8")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=source,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    @pytest.mark.parametrize("destination", ["missing", "stale"])
+    def test_declared_destination_precedes_initializer_projection(
+        cls,
+        tmp_path: Path,
+        destination: str,
+    ) -> None:
+        """Normalize, generate and consume the same declaration without an old ABI."""
+        project, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        cls._lazy_init(package, {"FlextTestProjectService": ".services.runner"})
+        services = package / "services"
+        services.mkdir()
+        if destination == "stale":
+            cls._lazy_init(services, {"OtherService": ".other"})
+        declaration = services / "runner.py"
+        declaration.write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextTestProjectService:\n    pass\n\n"
+            "__all__ = ['FlextTestProjectService']\n",
+            encoding="utf-8",
+        )
+        module = package / "consumer.py"
+        normalized = cls._normalize(
+            project,
+            module,
+            f"from {package.name} import FlextTestProjectService\n\n"
+            "instance = FlextTestProjectService()\n",
+        )
+        module.write_text(normalized, encoding="utf-8")
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=project,
+                projection_roots=(project,),
+            ),
+        )
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.consumer import instance; "
+                        f"from {package.name}.services import FlextTestProjectService; "
+                        f"from {package.name}.services.runner import "
+                        "FlextTestProjectService as provider; "
+                        "assert type(instance) is FlextTestProjectService is provider"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     def test_generic_bound_retains_its_declared_provider(
@@ -188,7 +276,7 @@ class TestsFlextInfraRefactorImportNormalization:
         package: Path = u.Tests.src_package(
             project,
             "demo_pkg",
-            pyproject="[project]\nname='demo'\n",
+            pyproject="[project]\nname='demo'\nversion='1.0.0'\n",
         )
         cls._lazy_init(
             package,
@@ -221,6 +309,46 @@ class TestsFlextInfraRefactorImportNormalization:
         )
         tm.that(normalized is not None, eq=True)
         return normalized or ""
+
+    @classmethod
+    @pytest.mark.parametrize("stale_root_export", [False, True])
+    def test_root_import_selects_declared_subpackage_owner(
+        cls,
+        tmp_path: Path,
+        *,
+        stale_root_export: bool,
+    ) -> None:
+        """A retired root export resolves to its declared public service owner."""
+        project, package = cls._project(tmp_path)
+        if stale_root_export:
+            cls._lazy_init(package, {"DemoRunner": ".services.runner"})
+        (package / "services" / "runner.py").write_text(
+            "class DemoRunner:\n    pass\n\n__all__ = ['DemoRunner']\n",
+            encoding="utf-8",
+        )
+        module = package / "consumer.py"
+        normalized = cls._normalize(
+            project,
+            module,
+            "from demo_pkg import DemoRunner\n\ninstance = DemoRunner()\n",
+        )
+        module.write_text(normalized, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg.consumer import instance; "
+                        "from demo_pkg.services import DemoRunner; "
+                        "assert type(instance) is DemoRunner"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     def test_forward_inline_import_is_hoisted(cls, tmp_path: Path) -> None:
@@ -332,6 +460,92 @@ class TestsFlextInfraRefactorImportNormalization:
         tm.that(result, eq=None)
 
     @classmethod
+    @pytest.mark.parametrize("local_alias", ["tm", "u", "payload_models"])
+    @pytest.mark.parametrize("imported_name", ["m", "FlextTestsModels"])
+    def test_renamed_model_letter_preserves_public_payload_identity(
+        cls,
+        tmp_path: Path,
+        local_alias: str,
+        imported_name: str,
+    ) -> None:
+        """An imported model alias never becomes the root's unrelated receiver."""
+        project, package = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(
+            tier,
+            {"m": ".models", "tm": "flext_tests", "u": "flext_tests"},
+        )
+        (tier / "models.py").write_text(
+            "from flext_tests import FlextTestsModels\n\n"
+            "class LocalModels(FlextTestsModels):\n"
+            "    class Tests(FlextTestsModels.Tests):\n"
+            "        class User(FlextTestsModels.Tests.User):\n"
+            "            local: bool = True\n\n"
+            "m = LocalModels\n__all__ = ['LocalModels', 'm']\n",
+            encoding="utf-8",
+        )
+        module = tier / "consumer.py"
+        source = (
+            "from __future__ import annotations\n"
+            "from tests import m\n"
+            f"from flext_tests import {imported_name} as {local_alias}\n\n"
+            "local_models = m\n"
+            "class ClassScope:\n    m = 'class-local'\n\n"
+            "def local(m: str = 'default-local') -> str:\n    return m\n\n"
+            f"def sibling({local_alias}: str) -> str:\n"
+            f"    return {local_alias}\n\n"
+            f"def build(value: '{local_alias}.Tests.User') "
+            f"-> '{local_alias}.Tests.User':\n"
+            f"    return {local_alias}.Tests.User.model_validate(value.model_dump())\n"
+        )
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source,
+            encoding="utf-8",
+        )
+        tm.that(normalized, eq=None)
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from typing import get_type_hints; "
+                        "from flext_tests import m, tm; "
+                        "from tests import m as local_m; "
+                        "from tests.consumer import "
+                        "ClassScope, build, local, local_models, sibling; "
+                        "user = m.Tests.User.model_validate("
+                        "{'id': 'user-1', 'name': 'Native User', "
+                        "'email': 'native@example.test'}); "
+                        "assert type(build(user)) is m.Tests.User; "
+                        "assert build(user).model_dump() == user.model_dump(); "
+                        "assert get_type_hints(build)['value'] is m.Tests.User; "
+                        "assert get_type_hints(build)['return'] is m.Tests.User; "
+                        "assert local_models is local_m and local_m is not m; "
+                        "assert local_models.Tests.User is not m.Tests.User; "
+                        "local_user = local_models.Tests.User.model_validate("
+                        "user.model_dump()); "
+                        "assert type(local_user) is local_models.Tests.User; "
+                        "assert tm is not m; "
+                        "assert ClassScope.m == 'class-local'; "
+                        "assert local() == 'default-local'; "
+                        "assert sibling('sibling-local') == 'sibling-local'"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": f"{project}:{package.parent}"},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @classmethod
     def test_leaf_object_routes_through_lazy_package(cls, tmp_path: Path) -> None:
         """A leaf-module object binds through the package that publishes it."""
         project, package = cls._project(tmp_path)
@@ -349,6 +563,153 @@ class TestsFlextInfraRefactorImportNormalization:
 
         tm.that(normalized, has="from demo_pkg._models import DemoRecord\n")
         tm.that(normalized, lacks="demo_pkg._models.record")
+
+    @classmethod
+    @pytest.mark.parametrize("reexport", [True, False])
+    def test_published_package_binding_preserves_provider_identity(
+        cls,
+        tmp_path: Path,
+        *,
+        reexport: bool,
+    ) -> None:
+        """Reexports share identity; independent declarations remain conflicts."""
+        project, package = cls._project(tmp_path)
+        family = package / "_models"
+        cls._lazy_init(family / "parts", {"DemoRecord": ".record"})
+        (family / "parts" / "record.py").write_text(
+            "class DemoRecord:\n    pass\n\n__all__ = ['DemoRecord']\n",
+            encoding="utf-8",
+        )
+        (family / "record.py").write_text(
+            (
+                "from demo_pkg._models.parts.record import DemoRecord\n"
+                if reexport
+                else "class DemoRecord:\n    pass\n"
+            )
+            + "\n__all__ = ['DemoRecord']\n",
+            encoding="utf-8",
+        )
+        source = "from demo_pkg._models import DemoRecord\n\nvalue = DemoRecord\n"
+        if not reexport:
+            with pytest.raises(ValueError, match="Ambiguous declared public import"):
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project,
+                    file_path=package / "consumer.py",
+                    source=source,
+                )
+            return
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=package / "consumer.py",
+            source=source,
+        )
+        tm.that(normalized, eq=None)
+
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg._models import DemoRecord; "
+                        "from demo_pkg._models.record import DemoRecord as provider; "
+                        "assert DemoRecord is provider"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @classmethod
+    @pytest.mark.parametrize("base_binding", ["module", "direct", "alias", "generic"])
+    def test_exception_factory_mro_reexports_have_one_terminal_owner(
+        cls,
+        tmp_path: Path,
+        *,
+        base_binding: str,
+    ) -> None:
+        """An explicit MRO chain and its reexport route to one canonical class."""
+        project, package = cls._project(tmp_path)
+        family = package / "exceptions"
+        parts = family / "parts"
+        cls._lazy_init(family, {"FlextExceptionsFactories": ".factories"})
+        cls._lazy_init(parts, {"FlextExceptionsFactories": ".second"})
+        (parts / "first.py").write_text(
+            (
+                "class FlextExceptionsFactories[T]:\n"
+                if base_binding == "generic"
+                else "class FlextExceptionsFactories:\n"
+            )
+            + "    pass\n\n__all__ = ['FlextExceptionsFactories']\n",
+            encoding="utf-8",
+        )
+        (parts / "second.py").write_text(
+            (
+                "from demo_pkg.exceptions.parts.first import "
+                "FlextExceptionsFactories as Previous\n\n"
+                "class FlextExceptionsFactories(Previous):\n"
+                if base_binding == "direct"
+                else "from demo_pkg.exceptions.parts import first\n\n"
+                "previous = first\n\n"
+                "class FlextExceptionsFactories(previous.FlextExceptionsFactories):\n"
+                if base_binding == "alias"
+                else "from demo_pkg.exceptions.parts import first\n\n"
+                "class FlextExceptionsFactories[T]("
+                "first.FlextExceptionsFactories[T]):\n"
+                if base_binding == "generic"
+                else "from demo_pkg.exceptions.parts import first\n\n"
+                "class FlextExceptionsFactories(first.FlextExceptionsFactories):\n"
+            )
+            + "    pass\n\n__all__ = ['FlextExceptionsFactories']\n",
+            encoding="utf-8",
+        )
+        (family / "factories.py").write_text(
+            "from demo_pkg.exceptions.parts import FlextExceptionsFactories\n\n"
+            "__all__ = ['FlextExceptionsFactories']\n",
+            encoding="utf-8",
+        )
+        source = (
+            "from demo_pkg.exceptions import FlextExceptionsFactories\n\n"
+            "value = FlextExceptionsFactories\n"
+        )
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=package / "consumer.py",
+                source=source,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    @pytest.mark.parametrize("same_package", [False, True])
+    def test_unpublished_name_rejects_competing_descendant_declarations(
+        cls,
+        tmp_path: Path,
+        *,
+        same_package: bool,
+    ) -> None:
+        """Without a package binding, independent public declarations stay ambiguous."""
+        project, package = cls._project(tmp_path)
+        for child in ("first", "second"):
+            directory = (
+                package / "services" if same_package else package / "services" / child
+            )
+            filename = child if same_package else "record"
+            cls._lazy_init(directory, {"DemoRecord": f".{filename}"})
+            (directory / f"{filename}.py").write_text(
+                "class DemoRecord:\n    pass\n\n__all__ = ['DemoRecord']\n",
+                encoding="utf-8",
+            )
+        source = "from demo_pkg.services import DemoRecord\n\nvalue = DemoRecord\n"
+        with pytest.raises(ValueError, match="Ambiguous declared public import"):
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=package / "consumer.py",
+                source=source,
+            )
 
     @classmethod
     def test_tier_long_letter_forms_collapse_to_tier_root(

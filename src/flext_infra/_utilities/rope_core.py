@@ -76,13 +76,23 @@ class FlextInfraUtilitiesRopeCore(
             The resulting ``t.Infra.RopeProject``.
 
         """
-        source_folders = sorted({
-            str(scan_path.relative_to(resolved_root))
-            for project_root in project_roots
-            for dir_name in config.Infra.source_scan.roots
-            if (scan_path := project_root / dir_name).is_dir()
-            and scan_path.resolve().is_relative_to(resolved_root)
-        })
+        source_folders = sorted(
+            {
+                str(scan_path.relative_to(resolved_root))
+                for project_root in project_roots
+                for dir_name in config.Infra.source_scan.roots
+                if (scan_path := project_root / dir_name).is_dir()
+                and scan_path.resolve().is_relative_to(resolved_root)
+            }
+            | {
+                ""
+                if project_root == resolved_root
+                else str(project_root.relative_to(resolved_root))
+                for project_root in project_roots
+                if project_root.is_dir()
+                and project_root.resolve().is_relative_to(resolved_root)
+            },
+        )
         return FlextInfraUtilitiesRopeRuntime.new_project(
             str(resolved_root),
             ropefolder="",

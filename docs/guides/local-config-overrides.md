@@ -5,6 +5,7 @@
 - [Contract](#contract)
 - [Mandatory Mypy policy](#mandatory-mypy-policy)
 - [List-typed registries](#list-typed-registries)
+- [Repository-owned Ruff additions](#repository-owned-ruff-additions)
 - [Example](#example)
 - [Local dependency binding](#local-dependency-binding)
 - [Candidate dependency commits](#candidate-dependency-commits)

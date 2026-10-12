@@ -78,6 +78,91 @@ class TestsFlextInfraAuditorCommandContract:
         tm.that(issues, eq=[])
 
     @staticmethod
+    def test_accepts_declared_named_inputs_from_each_verb() -> None:
+        """The same typed verb declaration owns its documented named inputs."""
+        verbs = config.Infra.codegen.make.verbs
+        commands = "\n".join(
+            f"make {verb.name} {argument}=tests/unit/consumer.py"
+            for verb in verbs
+            for argument in verb.arguments
+        )
+        issues = u.Infra.docs_command_contract_content_issues(
+            f"```bash\n{commands}\n```\n",
+            relative_path="docs/guides/testing.md",
+            effective_verbs=verbs,
+        )
+        tm.that(issues, empty=True)
+
+    @staticmethod
+    def test_accepts_common_controls_from_the_make_contract() -> None:
+        """Shared controls and the configured CI name belong to every verb."""
+        policy = config.Infra.codegen.make
+        commands = "\n".join(
+            f"make {verb.name} {argument}=Y"
+            for verb in policy.verbs
+            for argument in (*policy.common_arguments, policy.ci.variable)
+        )
+        issues = u.Infra.docs_command_contract_content_issues(
+            f"```bash\n{commands}\n```\n",
+            relative_path="docs/guides/testing.md",
+            effective_verbs=policy.verbs,
+        )
+        tm.that(issues, empty=True)
+
+    @staticmethod
+    def test_named_input_is_not_borrowed_from_another_verb() -> None:
+        """A declared file input cannot authorize a different operation."""
+        owner = m.Infra.MakeVerbSpec(
+            name="with-input",
+            description="An operation with a named file input.",
+            arguments=("FILE",),
+        )
+        independent = m.Infra.MakeVerbSpec(
+            name="without-input",
+            description="An operation without a named file input.",
+        )
+        issues = u.Infra.docs_command_contract_content_issues(
+            "```bash\nmake without-input FILE=tests/unit/consumer.py\n```\n",
+            relative_path="docs/guides/testing.md",
+            effective_verbs=(owner, independent),
+        )
+        tm.that(issues, len=1)
+        tm.that(issues[0].message, has="invented Make selector `FILE`")
+
+    @staticmethod
+    def test_malformed_named_input_retains_the_shell_parse_failure() -> None:
+        """An unterminated input never becomes an accepted documentation command."""
+        verb = m.Infra.MakeVerbSpec(
+            name="with-input",
+            description="An operation with a named file input.",
+            arguments=("FILE",),
+        )
+        with pytest.raises(ValueError, match="No closing quotation"):
+            u.Infra.docs_command_contract_content_issues(
+                "```bash\nmake with-input FILE='unterminated\n```\n",
+                relative_path="docs/guides/testing.md",
+                effective_verbs=(verb,),
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("name", ["MATCH", "UNDECLARED_ARGUMENT"])
+    def test_allowed_input_does_not_hide_a_later_forbidden_selector(name: str) -> None:
+        """All documented assignments are checked after an accepted input."""
+        verb = m.Infra.MakeVerbSpec(
+            name="with-input",
+            description="An operation with a named file input.",
+            arguments=("FILE",),
+        )
+        issues = u.Infra.docs_command_contract_content_issues(
+            f"```bash\nmake with-input FILE='tests/unit/my consumer.py' "
+            f"{name}=unit\n```\n",
+            relative_path="docs/guides/testing.md",
+            effective_verbs=(verb,),
+        )
+        tm.that(issues, len=1)
+        tm.that(issues[0].message, has=f"invented Make selector `{name}`")
+
+    @staticmethod
     def test_ignores_prose_that_begins_with_make() -> None:
         """Test ignores prose that begins with make."""
         content = """# Scope

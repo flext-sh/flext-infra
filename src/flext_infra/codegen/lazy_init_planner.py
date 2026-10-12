@@ -55,24 +55,23 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool],
         t.LazyAliasMap,
-    ] = u.PrivateAttr(default_factory=dict)
+    ] = u.PrivateAttr(
+        default_factory=dict[tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap],
+    )
     _package_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, frozenset[str]],
     )
     _source_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, frozenset[str]],
     )
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, m.Infra.LazyInitPlan],
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, t.StrSequence],
     )
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
-        default_factory=dict,
-    )
-    _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        u.PrivateAttr(default_factory=dict)
+        default_factory=dict[str, Path],
     )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
@@ -133,27 +132,30 @@ class FlextInfraCodegenLazyInitPlanner(
             )
         )
         lazy_map = self._package_exports(context)
-        version_map = self._module_exports(
-            context.pkg_dir / self._version_module_name,
-            f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-            export_options=m.Infra.ExportOptions(include_dunder=True),
-        )
+        if (context.pkg_dir / self._version_module_name).is_file():
+            lazy_map.update(
+                self._module_exports(
+                    context.pkg_dir / self._version_module_name,
+                    f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
+                    export_options=m.Infra.ExportOptions(
+                        include_dunder=True,
+                        require_explicit_all=True,
+                    ),
+                ),
+            )
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
-        # Version-submodule dunders are emitted as eager imports rather than
-        # lazy. The submodule shares its name (``__version__``) with the dunder
-        # string it exports; lazy resolution would let Python's import
-        # machinery shadow the dunder with the submodule object on first
-        # access. Eager binding at __init__.py load time pins the canonical
-        # strings in the package dict permanently.
-        eager_dunders = dict(version_map)
-        for name in eager_dunders:
-            lazy_map.pop(name, None)
         self._resolve_aliases(
             lazy_map,
             current_pkg=context.current_pkg,
             pkg_dir=context.pkg_dir,
             surface=context.surface,
         )
+        eager_dunders: t.MutableLazyAliasMap = {
+            name: lazy_map.pop(name)
+            for name in (c.Infra.DUNDER_VERSION,)
+            if lazy_map.get(name)
+            == (f"{context.current_pkg}.{Path(self._version_module_name).stem}", name)
+        }
         # Inject test runtime aliases (tm, td, tf, tk, etc.) for the tests facade root.
         # The tests package (e.g., flext_api.tests) is a facade root that should
         # publish these aliases from flext_tests.
@@ -166,9 +168,6 @@ class FlextInfraCodegenLazyInitPlanner(
             for alias_name, target in c.Infra.TEST_RUNTIME_ALIAS_TARGETS.items():
                 if alias_name not in lazy_map:
                     lazy_map[alias_name] = target
-        for name in c.Infra.INFRA_ONLY_EXPORTS:
-            lazy_map.pop(name, None)
-            eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
             return self._publish_plan(
                 m.Infra.LazyInitPlan(
@@ -243,18 +242,6 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
-        if (
-            context.current_pkg.split(".", maxsplit=1)[0]
-            == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
-            and frozenset(context.current_pkg.split("."))
-            & c.Infra.BOOTSTRAP_CYCLE_EXCEPTION_SEGMENTS
-        ):
-            # Bootstrap-cycle exception (see _codegen_generation_file): these
-            # initializers render side-effect-free and publish nothing. The
-            # discovered lazy map stays so parent resolution and dir_exports
-            # are unchanged; exports=() is the publication contract the
-            # fresh-import probe validates against the empty static init.
-            plan = plan.model_copy(update={"exports": ()})
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return self._publish_plan(plan)
 

@@ -17,18 +17,9 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import (
-    FlextInfraCodemodSemanticApply,
-    FlextInfraModGateEngine,
-    FlextInfraModTextGateEngine,
-    FlextInfraServiceBase,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -112,7 +103,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         root: Path,
         rules: t.SequenceOf[Path],
     ) -> p.Result[t.Cli.ResultValue]:
-        """Drive both mechanical cascades, publishing nothing when the run fails.
+        """Drive both mechanical cascades while retaining accepted progress.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
@@ -121,12 +112,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        return FlextInfraCodemodSemanticApply.run_restoring(
-            root,
-            current,
-            FlextInfraModTextGateEngine.source_paths(root).unwrap(),
-            lambda: cls._converge(root, current),
-        )
+        return cls._converge(root, current)
 
     @staticmethod
     def _converge(

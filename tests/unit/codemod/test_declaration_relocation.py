@@ -632,10 +632,10 @@ class TestsFlextInfraDeclarationRelocation:
 
     @staticmethod
     @pytest.mark.slow
-    def test_uncomposed_model_owner_is_a_finding_and_other_rules_apply(
+    def test_uncomposed_model_owner_preserves_findings_and_failed_publication(
         tmp_path: Path,
     ) -> None:
-        """Zero composed model owners report the declaration; mod still rewrites."""
+        """An unresolved owner stays visible; failed candidate gates publish nothing."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             variants=frozenset({"uncomposed"}),
@@ -677,7 +677,141 @@ class TestsFlextInfraDeclarationRelocation:
         tm.that(findings[0].declaration, eq=f"{stem}UtilitiesPayload.Payload")
         tm.that(findings[0].expected_owner, has="one authored model owner")
         tm.that(findings[0].reason, has="found []")
-        tm.ok(applied)
-        published = origin.read_text(encoding="utf-8")
-        tm.that(published, has="from __future__ import annotations")
-        tm.that(published, has="class Payload(")
+        tm.fail(applied)
+        tm.that(applied.error, has="quality checks failed")
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("split", [False, True])
+    def test_public_preset_dependency_moves_without_self_facade_cycle(
+        tmp_path: Path,
+        *,
+        split: bool,
+    ) -> None:
+        """The public model consumer loads the relocated payload and its preset."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
+        stem = u.derive_class_stem(root.name)
+        target = next(path for path in sources if path.parent.name == "_models")
+        owner = f"{stem}ModelsPayload"
+        sources[target] = (
+            "from pydantic import BaseModel, Field\n"
+            f"class {owner}:\n    Field = Field\n"
+            "    class Preset(BaseModel):\n        pass\n"
+            f"__all__ = ['{owner}']\n"
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        sources[origin] = f"from {target.parent.parent.name} import m\n" + sources[
+            origin
+        ].replace("class Payload(PayloadBase)", "class Payload(m.Preset)").replace(
+            "Field(default=", "m.Field(default="
+        )
+        sources[origin] = sources[origin].replace(
+            "\ndef local():",
+            "\n    @staticmethod\n    def consume(value: Payload) -> str:\n"
+            "        return value.value\n\ndef local():",
+        )
+        if split:
+            parts = origin.parent / "_payload_parts"
+            parts.mkdir()
+            (parts / "__init__.py").write_text("", encoding="utf-8")
+            sources[parts / "payload_part.py"] = sources.pop(origin)
+            sources[origin] = (
+                f"from {target.parent.parent.name}._utilities."
+                "_payload_parts.payload_part "
+                f"import {stem}UtilitiesPayload\n"
+                f"__all__ = ['{stem}UtilitiesPayload']\n"
+            )
+            sources[target.parent.parent / "utilities.py"] = (
+                f"from {target.parent.parent.name}._utilities.payload "
+                f"import {stem}UtilitiesPayload\n"
+                f"class {stem}Utilities({stem}UtilitiesPayload):\n    pass\n"
+                f"u = {stem}Utilities\n__all__ = ['u', '{stem}Utilities']\n"
+            )
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+        for edit in planned:
+            edit.file_path.write_text(edit.updated_source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name}._utilities.payload "
+                        f"import {stem}UtilitiesPayload; "
+                        "from typing import get_type_hints; "
+                        f"assert get_type_hints({stem}UtilitiesPayload.consume)"
+                        "['value'] is m.Payload; "
+                        "assert issubclass(m.Payload, m.Preset); "
+                        "assert m.Payload.model_validate("
+                        "{'value': 'consumer'}).value == 'consumer'"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)}
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("competing", [False, True])
+    def test_composed_preset_identity_resolves_local_model_owner(
+        tmp_path: Path,
+        *,
+        competing: bool,
+    ) -> None:
+        """Unrelated composition parts do not compete with the preset owner."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
+        stem = u.derive_class_stem(root.name)
+        target = next(path for path in sources if path.parent.name == "_models")
+        owner = f"{stem}ModelsPayload"
+        sources[target] = (
+            "from pydantic import BaseModel\n"
+            f"class {owner}:\n    class Preset(BaseModel):\n        pass\n"
+            f"__all__ = ['{owner}']\n"
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        sources[origin] = (
+            f"from {target.parent.parent.name}._models.payload import {owner}\n"
+            + sources[origin].replace(
+                "class Payload(PayloadBase)", f"class Payload({owner}.Preset)"
+            )
+        )
+        other = target.with_name("other.py")
+        other_owner = f"{stem}ModelsOther"
+        sources[other] = (
+            f"from {target.parent.parent.name}._models.payload import {owner}\n"
+            f"class {other_owner}{f'({owner})' if competing else ''}:\n    pass\n"
+            f"__all__ = ['{other_owner}']\n"
+        )
+        facade = target.parent.parent / "models.py"
+        sources[facade] = (
+            f"from {target.parent.parent.name}._models.other import {other_owner}\n"
+            + sources[facade].replace(f"({owner})", f"({owner}, {other_owner})")
+        )
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            findings = u.Infra.declaration_relocation_findings(rope, sources)
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        tm.that(len(findings), eq=1 if competing else 0)
+        tm.that(bool(planned), eq=not competing)

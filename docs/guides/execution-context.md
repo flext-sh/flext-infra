@@ -11,6 +11,7 @@
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
 - [Check gate partitions](#check-gate-partitions)
+- [Census consumer evidence](#census-consumer-evidence)
 - [Bounded Mypy failure status](#bounded-mypy-failure-status)
 - [Abstraction-boundary project identity](#abstraction-boundary-project-identity)
 - [Codemod scanner contract](#codemod-scanner-contract)
@@ -46,6 +47,12 @@ and keeps the command red, so `make gen` can repair a broken generated activatio
 without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
+
+The `flext_core.lazy` loader imports its implementation from root-level source
+modules, never through a generated child initializer. This keeps generation's
+own loader available before child projections are repaired. Recovery uses the
+same guarded `make gen` transaction and its post-generation runtime provenance
+check; it does not disable the environment guard or replace the generator.
 
 Activation loads the native `mise env --shell bash` output, which puts the
 installed tool directories ahead of the host's shared shims. This includes the
@@ -125,6 +132,13 @@ local source overlay and the shared runtime environment. Regenerate that root wi
 `make gen` and reconcile its lock with `make upg` when the local binding changes.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
+
+Operational Make prerequisites also verify that provenance before dispatch. An
+executable interpreter alone does not establish a valid development runtime.
+Run runtime actions through the root Make dispatcher. Its recipes use the
+setup-owned interpreter without selecting a member's lock for synchronization. Only
+setup and upgrade provision dependencies. A provenance failure is repaired through setup,
+not through a `--no-sync` override or a source-path injection.
 
 ## Runtime environment
 
@@ -281,6 +295,18 @@ codemod gate is their one verdict. Preserve mutability, inheritance, imports, an
 collection; validate the transformation through the public interface before widening
 the batch. Structural refactors go through `make mod`.
 
+Typing-alias relocation plans the declaration, destination and consumer changes
+before one protected publication. Explicit imports retain their lexical scopes
+and local bindings. Unsupported references, ambiguous bindings and uncertain
+star exports reject the entire move before publication, including creation of a
+previously absent destination. Quoted type expressions participate in semantic
+identity checks; ordinary strings, `Literal` values and `Annotated` metadata do not.
+
+Lazy initializer planning keeps facade exports lazy. A version metadata export
+whose name collides with its child module uses the existing eager-dunder contract:
+the scalar is bound before lazy installation and omitted from the lazy map. Public
+export traversal must not replace that scalar with the imported child module.
+
 ## Check gate partitions
 
 `make file-gate FILE=<repository-relative path>` delegates to the existing
@@ -294,8 +320,8 @@ Pyright and codemod gates through the existing typed `RunCommand.gates` owner an
 `resolve_gates`; no separate gate vocabulary or configuration is introduced.
 The public `check run --file` requires explicit `--gates`, never silently falls
 back to whole-project gates, and rejects unknown names before scanner execution.
-Mypy and Pyright findings retain the existing informative SSOT policy; native
-errors, missing tools/configuration and malformed reports remain blocking.
+Every selected gate retains its native diagnostics and verdict; failures, missing
+tools/configuration and malformed reports remain blocking.
 Codemod uses its elected, staged provider configurations and native report owner.
 
 The former bare `typos` hook existed only in the Make recipe, help and tests,
@@ -456,6 +482,11 @@ whole-project checks and `check_files` scan every elected provider rule.
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
+Failed AST or semantic passes retain accepted writes for fix-forward. They propagate
+the operation's failure or first exception without restoring an earlier repository
+inventory. Each publication still validates its planned files and expected source
+identities before writing; a stale later batch cannot replace newer independent edits
+or undo an earlier accepted batch.
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases
 or inheritance, and it does not rewrite initializer projections.

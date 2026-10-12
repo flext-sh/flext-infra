@@ -76,7 +76,8 @@ class FlextInfraMiseArtifactsVerification(
                 return r[bool].fail(
                     f"generation authenticated state changed: {rebound_expected.path}; "
                     f"content_changed={content_changed}; "
-                    f"expected={rebound_expected.model_dump_json(exclude={'content'})}; "
+                    "expected="
+                    f"{rebound_expected.model_dump_json(exclude={'content'})}; "
                     f"observed={observed.value.model_dump_json(exclude={'content'})}",
                 )
         return r[bool].ok(value=True)

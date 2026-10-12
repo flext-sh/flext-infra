@@ -8,15 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraExtraPathsManager,
-    FlextInfraToolTablesPhase,
-    FlextInfraWorkspaceDetector,
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra import c, m, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraEnsureRuffConfigPhase:

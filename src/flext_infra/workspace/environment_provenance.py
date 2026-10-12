@@ -7,19 +7,21 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from inspect import getfile, isclass, isfunction, unwrap
 from json import dumps
 from pathlib import Path
-from sys import prefix
+from sys import modules, prefix
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, r, u
+from flext_infra import c, config, m, r, t, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraWorkspaceEnvironmentProvenance:
@@ -154,12 +156,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             else r[bool].ok(value=True)
         )
 
-    @staticmethod
+    @classmethod
     def _validate_import_source(
+        cls,
         repository: m.Infra.RepositoryRef,
         expected_root: Path,
     ) -> p.Result[bool]:
-        """Authenticate the actual import resolver against the declared build source."""
+        """Authenticate loaded modules and owned code against the declared source.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
         package_name = u.Infra.project_package_name(expected_root)
         package = u.Infra.declared_package_dir(package_name)
         if (
@@ -176,7 +183,154 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             f"environment distribution={repository.distribution} "
             f"import_source={package.resolve()}",
         )
+        sources = cls._loaded_import_sources(package_name)
+        if sources.failure:
+            return r[bool].from_failure(sources)
+        if not sources.value:
+            u.Cli.info(
+                f"environment distribution={repository.distribution} "
+                "loaded_code=unobserved resolver_only=True",
+            )
+            return r[bool].ok(value=False)
+        for definition_name, source, class_source in sources.value:
+            if source.startswith("<") and source.endswith(">"):
+                if not class_source:
+                    return r[bool].fail(
+                        "editable provenance generated code has no class owner: "
+                        f"definition={definition_name} compiler={source}",
+                    )
+                # Compiler labels are not paths; authenticate their class owner.
+                u.Cli.info(
+                    f"environment generated_definition={definition_name} "
+                    f"compiler_label={source} class_source={class_source}",
+                )
+                actual = Path(class_source).resolve()
+            else:
+                actual = Path(source).resolve()
+            if not actual.is_relative_to(expected_root):
+                return r[bool].fail(
+                    "editable provenance loaded code differs from declaration: "
+                    f"distribution={repository.distribution} expected={expected_root} "
+                    f"actual={actual} definition={definition_name}",
+                )
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _loaded_import_sources(
+        cls,
+        package_name: str,
+    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
+        """Collect actual module, function and generated class-owner sources.
+
+        Returns:
+            Observed sources without importing dormant package capabilities.
+        """
+        source_files: t.MutableSequenceOf[t.Triple[str, str, str]] = []
+        for name in tuple(modules):
+            if name != package_name and not name.startswith(f"{package_name}."):
+                continue
+            module = modules.get(name)
+            if module is None:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    f"editable provenance module is unavailable: {name}",
+                )
+            if module.__file__ is not None:
+                source_files.append((name, module.__file__, ""))
+            definitions = cls._declaration_sources(name)
+            if definitions.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
+                    definitions
+                )
+            source_files.extend(definitions.value)
+        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
+
+    @classmethod
+    def _declaration_sources(
+        cls,
+        module_name: str,
+    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
+        """Walk loaded declarations without resolving attributes or capabilities.
+
+        Returns:
+            Code sources whose generated definitions have authenticated owners.
+        """
+        pending = [(value, 0) for value in tuple(vars(modules[module_name]).values())]
+        visited: set[int] = set()
+        sources: t.MutableSequenceOf[t.Triple[str, str, str]] = []
+        while pending:
+            definition, receiver = pending.pop()
+            if isclass(definition):
+                if (
+                    definition.__module__ == module_name
+                    and id(definition) not in visited
+                ):
+                    visited.add(id(definition))
+                    pending.extend(
+                        (value, id(definition))
+                        for value in tuple(vars(definition).values())
+                    )
+                continue
+            outer = (
+                definition.__func__
+                if type(definition) in {classmethod, staticmethod}
+                else definition
+            )
+            if not isfunction(outer) or outer.__module__ != module_name:
+                continue
+            function = unwrap(outer)
+            source = function.__code__.co_filename
+            class_source = ""
+            if source.startswith("<") and source.endswith(">"):
+                owner = cls._compiler_definition_owner(
+                    module_name,
+                    outer.__qualname__,
+                    id(outer),
+                    receiver,
+                )
+                if owner.failure:
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(owner)
+                class_source = owner.value
+            sources.append((outer.__qualname__, source, class_source))
+        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(sources)
+
+    @staticmethod
+    def _compiler_definition_owner(
+        module_name: str,
+        qualified_name: str,
+        definition_identity: int,
+        receiver_identity: int,
+    ) -> p.Result[str]:
+        """Authenticate the defining descriptor before trusting generated code.
+
+        Returns:
+            The physical declaration file of the identity-matched class owner.
+        """
+        namespace = vars(modules[module_name])
+        owner_path, separator, attribute = qualified_name.rpartition(".")
+        owner = None
+        for component in owner_path.split("."):
+            candidate = namespace.get(component)
+            if not isclass(candidate) or candidate.__module__ != module_name:
+                return r[str].fail(
+                    f"generated definition owner is unresolved: {qualified_name}",
+                )
+            owner = candidate
+            namespace = vars(candidate)
+        if not separator or owner is None or id(owner) != receiver_identity:
+            return r[str].fail(
+                f"generated definition owner differs from receiver: {qualified_name}",
+            )
+        descriptor = namespace.get(attribute)
+        outer = (
+            descriptor.__func__
+            if type(descriptor) in {classmethod, staticmethod}
+            else descriptor
+        )
+        if not isfunction(outer) or id(outer) != definition_identity:
+            return r[str].fail(
+                f"generated definition descriptor identity differs: {qualified_name}",
+            )
+        return r[str].ok(getfile(owner))
 
     @classmethod
     def validate_locked(

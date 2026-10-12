@@ -13,16 +13,9 @@ from collections.abc import MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING, override
 
-from flext_infra import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraRefactorCensus,
-    c,
-    m,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, r, s, t, u
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.refactor.census import FlextInfraRefactorCensus
 
 if TYPE_CHECKING:
     from pathlib import Path

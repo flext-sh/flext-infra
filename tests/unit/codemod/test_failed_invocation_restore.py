@@ -1,4 +1,4 @@
-"""A failed rewriting invocation publishes nothing on disk.
+"""Failed codemod passes retain accepted writes for fix-forward.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,118 +6,133 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import m, p, r, t, tm, u
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
+from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
+from flext_infra.transformers import FlextInfraSemanticPublication
+from tests import m, tm, u
 
 
-class TestsFlextInfraFailedInvocationRestore:
-    """Record governed sources first; restore them when the run fails."""
+class TestsFlextInfraFailedInvocationProgress:
+    """Failures preserve accepted progress and newer independent source states."""
 
-    ORIGINAL = (
-        '"""Probe module."""\n\nfrom __future__ import annotations\n\nLIMIT = 3\n'
-    )
-    REWRITTEN = (
-        '"""Probe module."""\n\nfrom __future__ import annotations\n\nLIMIT = (\n'
-    )
-    EMPTY_REPORT = m.Infra.ModScanReport(
-        findings=0,
-        actionable=0,
-        detection_only=0,
-        non_actionable_with_fix=0,
-        files=frozenset(),
-        entries=(),
-    )
+    @staticmethod
+    @pytest.mark.slow
+    def test_failed_mechanical_cycle_retains_accepted_rewrite(
+        mod_workspace: Path,
+    ) -> None:
+        """A real syntax cycle fails without restoring its initial source."""
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                name: (
+                    f"id: {name}\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n"
+                    f"  pattern: value = {before}()\n"
+                    f"fix: value = {after}()\n"
+                )
+                for name, before, after in (
+                    ("start", "dict", "list"),
+                    ("forward", "list", "tuple"),
+                    ("cycle", "tuple", "list"),
+                )
+            },
+        )
+        module = mod_workspace / "sample.py"
+        tm.ok(u.Cli.atomic_write_text_file(module, "value = dict()\n"))
 
-    @classmethod
-    def _workspace(cls, tmp_path: Path) -> t.Pair[Path, Path]:
-        """Write one governed probe module into a Git-rooted workspace.
+        outcome = FlextInfraCodemodAstScan(
+            repository_root=mod_workspace,
+            apply_changes=True,
+        ).execute()
 
-        Returns:
-            The repository root and the probe module path.
+        tm.fail(outcome, has="made no progress")
+        retained = module.read_text(encoding="utf-8")
+        tm.that(retained, lacks="value = dict()")
+        tm.that(retained, has="value = list()")
 
-        """
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        module = package / "restore_probe.py"
-        tm.ok(u.Cli.atomic_write_text_file(module, cls.ORIGINAL))
-        # Publication runs through the codegen transaction, which coordinates
-        # only inside an exact Git worktree root, exactly as in production.
-        u.Tests.initialize_git_repo(root)
-        return root, module
-
-    @classmethod
-    def _rewrite(
-        cls,
-        module: Path,
-        outcome: p.Result[t.Cli.ResultValue],
-    ) -> Callable[[], p.Result[t.Cli.ResultValue]]:
-        """Return an operation that rewrites ``module`` and yields ``outcome``.
-
-        Returns:
-            The rewriting operation.
-
-        """
-
-        def operation() -> p.Result[t.Cli.ResultValue]:
-            tm.ok(u.Cli.atomic_write_text_file(module, cls.REWRITTEN))
-            return outcome
-
-        return operation
-
-    def test_failed_result_restores_rewritten_sources(self, tmp_path: Path) -> None:
-        """A failed verdict restores the recorded bytes and names the restore."""
-        root, module = self._workspace(tmp_path)
-
-        result = FlextInfraCodemodSemanticApply.run_restoring(
-            root,
-            self.EMPTY_REPORT,
-            (),
-            self._rewrite(module, r[t.Cli.ResultValue].fail("phase verdict failed")),
+    @staticmethod
+    def test_failed_publication_preserves_progress_and_newer_source(
+        mod_workspace: Path,
+    ) -> None:
+        """A stale next batch cannot undo an accepted batch or a newer edit."""
+        accepted = mod_workspace / "accepted.py"
+        unrelated = mod_workspace / "unrelated.py"
+        for path in (accepted, unrelated):
+            tm.ok(u.Cli.atomic_write_text_file(path, 'value = "original"\n'))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(accepted, required=True))
+        stale = tm.ok(u.Cli.atomic_read_binary_file_state(unrelated, required=True))
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (
+                    m.Infra.SemanticFilePlan(
+                        project=mod_workspace,
+                        path=accepted,
+                        before=before,
+                        desired_content=b'value = "accepted"\n',
+                        desired_mode=before.mode,
+                    ),
+                ),
+                repository_root=mod_workspace,
+            ),
+        )
+        newer = 'value = "newer independent edit"\n'
+        tm.ok(u.Cli.atomic_write_text_file(unrelated, newer))
+        published = accepted.read_bytes()
+        next_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(accepted, required=True),
         )
 
-        tm.fail(result, has="phase verdict failed")
-        tm.fail(result, has="restored 1 rewritten source(s)")
-        tm.that(module.read_text(encoding="utf-8"), eq=self.ORIGINAL)
+        outcome = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            (
+                m.Infra.SemanticFilePlan(
+                    project=mod_workspace,
+                    path=accepted,
+                    before=next_before,
+                    desired_content=b'value = "next pass"\n',
+                    desired_mode=next_before.mode,
+                ),
+                m.Infra.SemanticFilePlan(
+                    project=mod_workspace,
+                    path=unrelated,
+                    before=stale,
+                    desired_content=b'value = "stale replacement"\n',
+                    desired_mode=stale.mode,
+                ),
+            ),
+            repository_root=mod_workspace,
+        )
 
-    def test_raised_failure_restores_and_stays_the_raised_one(
-        self,
-        tmp_path: Path,
+        tm.fail(outcome)
+        tm.that(accepted.read_bytes(), eq=published)
+        tm.that(unrelated.read_text(encoding="utf-8"), eq=newer)
+
+    @staticmethod
+    def test_formatter_exception_preserves_preexisting_accepted_progress(
+        mod_workspace: Path,
     ) -> None:
-        """An exception restores the sources and escapes unchanged."""
-        root, module = self._workspace(tmp_path)
+        """A later formatter failure leaves accepted and unrelated files intact."""
+        accepted = mod_workspace / "accepted.py"
+        unrelated = mod_workspace / "unrelated.py"
+        source = 'value = "accepted"\n'
+        newer = 'value = "newer independent edit"\n'
+        tm.ok(u.Cli.atomic_write_text_file(accepted, source))
+        tm.ok(u.Cli.atomic_write_text_file(unrelated, newer))
 
-        def operation() -> p.Result[t.Cli.ResultValue]:
-            tm.ok(u.Cli.atomic_write_text_file(module, self.REWRITTEN))
-            msg = "phase raised"
-            raise ValueError(msg)
-
-        with pytest.raises(ValueError, match="phase raised"):
-            FlextInfraCodemodSemanticApply.run_restoring(
-                root,
-                self.EMPTY_REPORT,
-                (),
-                operation,
+        with pytest.raises(RuntimeError, match="failed"):
+            FlextInfraCodemodSemanticApply.apply_transaction_paths(
+                mod_workspace,
+                (
+                    m.Infra.SemanticMigrationEdit(
+                        file_path=accepted,
+                        original_source=source,
+                        updated_source="value = (\n",
+                        changes=("real formatter rejection",),
+                    ),
+                ),
             )
 
-        tm.that(module.read_text(encoding="utf-8"), eq=self.ORIGINAL)
-
-    def test_successful_run_keeps_its_rewrites(self, tmp_path: Path) -> None:
-        """A successful run publishes its rewrites unchanged."""
-        root, module = self._workspace(tmp_path)
-
-        result = FlextInfraCodemodSemanticApply.run_restoring(
-            root,
-            self.EMPTY_REPORT,
-            (),
-            self._rewrite(module, r[t.Cli.ResultValue].ok(value=True)),
-        )
-
-        tm.ok(result)
-        tm.that(module.read_text(encoding="utf-8"), eq=self.REWRITTEN)
+        tm.that(accepted.read_text(encoding="utf-8"), eq=source)
+        tm.that(unrelated.read_text(encoding="utf-8"), eq=newer)

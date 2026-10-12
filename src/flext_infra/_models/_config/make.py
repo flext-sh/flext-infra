@@ -101,6 +101,10 @@ class FlextInfraConfigModelsMake(
         """One selector-free public Make operation."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
+        arguments: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Named Make inputs consumed by this operation"),
+        ] = ()
         description: Annotated[
             t.NonEmptyStr,
             m.Field(description="Operator-facing help text"),
@@ -782,6 +786,10 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(description="Ordered canonical public verbs"),
         ]
+        common_arguments: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Named controls accepted by every generated Make verb"),
+        ] = ()
         clean: Annotated[
             FlextInfraConfigModelsMake.MakeCleanSpec,
             m.Field(description="Disposable artifacts removed by the clean verb"),

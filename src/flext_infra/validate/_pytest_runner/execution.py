@@ -15,11 +15,12 @@ from typing import TYPE_CHECKING, override
 
 import pytest
 
-from flext_infra import FlextInfraTestmonDbInspector, c, config, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
 )
+from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
     from flext_infra import p

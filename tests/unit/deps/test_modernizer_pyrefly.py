@@ -275,6 +275,7 @@ class TestsFlextInfraModernizerPyrefly:
                 skip_check=True,
             ).resolve_tooling_context(
                 m.Infra.ToolingContextRequest(
+                    planned_sources={},
                     project_name="flext-consumer",
                     package_name="flext_consumer",
                     path=project_dir / c.PYPROJECT_FILENAME,

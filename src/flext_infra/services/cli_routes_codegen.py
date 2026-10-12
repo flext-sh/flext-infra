@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import (
+from flext_infra import c, infra, m
+from flext_infra.codegen import (
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLayout,
     FlextInfraCodegenLazyInit,
@@ -21,14 +22,13 @@ from flext_infra import (
     FlextInfraCodegenQualityGate,
     FlextInfraCodegenScaffolder,
     FlextInfraCodegenVersionFile,
+)
+from flext_infra.deps import (
     FlextInfraConfigFixer,
     FlextInfraExtraPathsManager,
     FlextInfraLockIntegrityVerifier,
     FlextInfraPyprojectModernizer,
     FlextInfraRuntimeDevDependencyDetector,
-    c,
-    infra,
-    m,
 )
 
 if TYPE_CHECKING:

@@ -206,12 +206,6 @@ class FlextInfraConstantsDocs:
         "zsh",
     })
     """Markdown fence languages whose lines are executable shell commands."""
-    DOCS_FORBIDDEN_MAKE_SELECTOR_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"\b(?:PROJECTS?|MATCH|WHAT|FILES?|FIX|CHANGED_ONLY|CHECK_GATES|"
-        r"DOCS_PHASE|VALIDATE_SCOPE)\s*=",
-        re.IGNORECASE,
-    )
-    """Match selectors outside the canonical root Make grammar."""
     DOCS_APPLY_RE: ClassVar[t.RegexPattern] = re.compile(r"\bAPPLY\s*=")
     """Reject the removed mutation selector for every supplied value."""
     DOCS_COMMAND_CONTRACT_DIRNAMES: ClassVar[frozenset[str]] = frozenset({

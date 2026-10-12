@@ -124,45 +124,62 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         """
         if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
-            envrc_context = m.Infra.EnvrcRenderSpec(
+            context = m.Infra.EnvrcRenderSpec(
                 repository_root_rel=self._repository_root_rel(workspace),
                 environment_path_prepends=codegen.toolchain.environment_path_prepends,
             )
-            planned = self._bootstrap_destination_plan(
-                target,
-                codegen,
-                envrc_context,
-                c.Infra.ENVRC_FILENAME,
-            )
-            if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
-        if contract.destinations == frozenset({c.Infra.MISE_TOML_FILENAME}):
+            destination = c.Infra.ENVRC_FILENAME
+        elif contract.destinations == frozenset({c.Infra.MISE_TOML_FILENAME}):
             context = m.Infra.ToolchainSpec(**{
                 name: value
                 for name, value in codegen.toolchain.model_dump().items()
                 if name in m.Infra.ToolchainSpec.model_fields
             })
-            planned = self._bootstrap_destination_plan(
-                target,
-                codegen,
-                context,
-                c.Infra.MISE_TOML_FILENAME,
-            )
-            if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
-        if contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
+            destination = c.Infra.MISE_TOML_FILENAME
+        elif contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
             return self._plan_existing_bootstrap(target, workspace, codegen)
-        if (
+        elif (
             contract.destinations == frozenset({c.PYPROJECT_FILENAME})
             and not contract.templates
         ):
             return self._plan_existing_pyproject_bootstrap(target, codegen)
-        return None
+        else:
+            return None
+        planned = self._bootstrap_destination_plan(
+            target, codegen, context, destination
+        )
+        if planned.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
 
     @staticmethod
+    def _bootstrap_pyproject_source(
+        path: Path,
+    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, str]]:
+        """Recover owned TOML while retaining the exact authenticated before state.
+
+        Returns:
+            The original file identity and its recovered regeneration source.
+        """
+        result_type = r[t.Pair[m.Cli.AtomicFileState, str]]
+        before = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if before.failure:
+            return result_type.from_failure(before)
+        if before.value.content is None:
+            return result_type.fail(f"pyproject is absent: {path}")
+        recovered = u.Infra.recover_live_pyproject_text(
+            before.value.content.decode(c.DEFAULT_ENCODING),
+        )
+        if recovered.failure:
+            return result_type.from_failure(recovered)
+        source = u.Infra.pyproject_regeneration_source(recovered.value)
+        if source.failure:
+            return result_type.from_failure(source)
+        return result_type.ok((before.value, source.value))
+
+    @classmethod
     def _plan_existing_pyproject_bootstrap(
+        cls,
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -178,19 +195,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         path = target.root / c.PYPROJECT_FILENAME
-        before = u.Cli.atomic_read_binary_file_state(path, required=True)
-        if before.failure:
-            return result_type.from_failure(before)
-        if before.value.content is None:
-            return result_type.fail(f"pyproject is absent: {path}")
-        recovered = u.Infra.recover_live_pyproject_text(
-            before.value.content.decode(c.DEFAULT_ENCODING),
-        )
-        if recovered.failure:
-            return result_type.from_failure(recovered)
-        source = u.Infra.pyproject_regeneration_source(recovered.value)
-        if source.failure:
-            return result_type.from_failure(source)
+        prepared = cls._bootstrap_pyproject_source(path)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        before, source = prepared.value
         owners = u.Infra.snapshot_config_sources(config.ssot_config_dir().parent)
         if owners.failure:
             return result_type.from_failure(owners)
@@ -203,7 +211,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             managed_artifacts=artifacts.value.resolution,
         )
         rendered = modernizer.conform_source(
-            source.value,
+            source,
             path=path,
             format_source=False,
             topology=m.Infra.PyprojectDeclaredTopology(
@@ -224,7 +232,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         planned = m.Infra.CodegenFilePlan(
             project=target.root,
             path=path,
-            before=before.value,
+            before=before,
             desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
             desired_mode=managed[0].mode,
             source_states=(*owners.value, *artifacts.value.sources),
@@ -259,12 +267,20 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             f"elapsed={time.monotonic() - managed_started:.2f}s",
         )
         tooling_started = time.monotonic()
+        custom_result = (
+            self._plan_existing_custom(root, codegen, profile=target.make_profile.value)
+            if contract.custom
+            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+        )
+        if custom_result.failure:
+            return result_type.from_failure(custom_result)
         tooling_context = self._existing_tooling_context(
             target,
             project,
             metadata,
             codegen,
             managed_artifacts.value.resolution,
+            custom_result.value,
         )
         if tooling_context.failure:
             return result_type.from_failure(tooling_context)
@@ -286,15 +302,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         if managed_result.failure:
             return result_type.from_failure(managed_result)
         planned = list(managed_result.value)
-        if contract.custom:
-            custom_result = self._plan_existing_custom(
-                root,
-                codegen,
-                profile=target.make_profile.value,
+        planned.extend(custom_result.value)
+        final_inputs = self.planned_source_render_inputs(render_inputs, planned)
+        if contract.pyproject and final_inputs is not render_inputs:
+            final_templates = self._plan_existing_templates(
+                render_inputs=final_inputs,
+                contract=contract,
             )
-            if custom_result.failure:
-                return result_type.from_failure(custom_result)
-            planned.extend(custom_result.value)
+            if final_templates.failure:
+                return result_type.from_failure(final_templates)
+            planned = [*final_templates.value, *planned[len(managed_result.value) :]]
         return result_type.ok(tuple(planned))
 
     def _existing_tooling_context(
@@ -304,6 +321,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         metadata: p.ProjectMetadata,
         codegen: m.Infra.CodegenConfigSpec,
         managed_resolution: m.Infra.ProjectManagedArtifactsResolution,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve the modernizer tooling context for one existing repository.
 
@@ -320,6 +338,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         return modernizer.resolve_tooling_context(
             m.Infra.ToolingContextRequest(
+                planned_sources={
+                    plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                    for plan in planned
+                    if plan.path.suffix == c.Infra.EXT_PYTHON
+                    and plan.desired_content is not None
+                },
                 project_name=repository.distribution,
                 package_name=metadata.package_name,
                 path=root / c.PYPROJECT_FILENAME,

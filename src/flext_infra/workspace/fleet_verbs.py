@@ -11,7 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, p, r, s, u
+from flext_infra import c, config, m, p, r, s, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):

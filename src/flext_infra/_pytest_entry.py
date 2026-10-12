@@ -11,6 +11,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra._pytest_clock import FlextInfraPytestClock
+from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 
 
 class FlextInfraPytestEntry:
@@ -54,7 +55,7 @@ class FlextInfraPytestEntry:
             return status
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
-        runner = flext_infra.FlextInfraPytestRunner.from_environment(
+        runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             slow_phase=slow_phase,
             unbounded=mode in {"full", "full-slow"},

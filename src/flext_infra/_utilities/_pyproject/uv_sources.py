@@ -306,8 +306,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     ) -> None:
         """Replace native workspace identity with the declared root path overlay.
 
-        Raises:
-            TypeError: If the UV sources table is not a TOML mapping.
+        The native TOML mapping validator propagates malformed source-table input.
         """
         u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")

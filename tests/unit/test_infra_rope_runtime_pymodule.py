@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import closing
 from typing import TYPE_CHECKING
 
 import pytest
@@ -24,6 +25,38 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
+
+    @staticmethod
+    def test_declared_package_root_resolves_its_qualified_name(
+        tmp_path: Path,
+    ) -> None:
+        """A declared package folder exposes its real qualified import.
+
+        Raises:
+            AssertionError: If declared package root did not resolve its qualified name.
+        """
+        package = tmp_path / "qualified_package"
+        initializer = package / c.Infra.INIT_PY
+        source = "class PublishedContract:\n    pass\n"
+        package.mkdir()
+        initializer.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
+        with closing(
+            FlextInfraRopeProject.from_snapshot(
+                str(tmp_path),
+                {initializer: source},
+                source_folders=[package.name],
+            ),
+        ) as project:
+            resource = project.find_module(package.name)
+            tm.that(resource, none=False)
+            if resource is None:
+                msg = "declared package root did not resolve its qualified name"
+                raise AssertionError(msg)
+            module = u.Infra.resolve_pymodule(project, resource)
+            tm.that(
+                module.get_attribute("PublishedContract").get_object().get_name(),
+                eq="PublishedContract",
+            )
 
     @staticmethod
     @pytest.mark.parametrize("regular_package", [False, True])

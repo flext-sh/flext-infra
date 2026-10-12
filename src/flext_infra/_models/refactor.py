@@ -83,6 +83,28 @@ class FlextInfraModelsRefactor(
     class ModTextCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Repository-scoped request for authenticated Sed rule replay."""
 
+    class ModuleMoveCommand(m.ContractModel):
+        """Move a declared source module and its semantic import references."""
+
+        repository_root: Annotated[Path, m.Field(description="Owning repository root")]
+        source_file: Annotated[Path, m.Field(description="Existing Python module")]
+        destination_directory: Annotated[
+            Path,
+            m.Field(description="Existing destination package directory"),
+        ]
+
+    class RopeRenameOptions(m.ArbitraryTypesModel):
+        """Declared search scope and hierarchy policy for one semantic rename."""
+
+        resources: Annotated[
+            t.SequenceOf[t.Infra.RopeResource],
+            m.Field(description="Resources included in the semantic rename scope"),
+        ]
+        in_hierarchy: Annotated[
+            bool,
+            m.Field(description="Whether the rename includes inherited declarations"),
+        ] = False
+
     class ViolationsTotals(m.ContractModel):
         """One mod scan's violation totals as the sweep compares them."""
 

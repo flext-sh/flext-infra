@@ -8,18 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraPyprojectModernizer,
-    FlextInfraToolTablesPhase,
-    c,
-    config,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
@@ -86,6 +77,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         # root aggregates subproject trees it has not declared here.
         tooling_result = modernizer.resolve_tooling_context(
             m.Infra.ToolingContextRequest(
+                planned_sources={},
                 project_name=target.repository.distribution,
                 package_name=project.package_name,
                 path=root / c.PYPROJECT_FILENAME,
@@ -307,7 +299,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        root = render_inputs.target.root
         pyproject_entry = next(
             (
                 entry
@@ -318,57 +309,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         )
         if pyproject_entry is None:
             return result_type.ok(planned)
-        python_plans = tuple(
-            plan
-            for plan in planned
-            if plan.path.suffix == c.Infra.EXT_PYTHON
-            and plan.desired_content is not None
-        )
-        planned_sources = {
-            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
-            for plan in python_plans
-            if plan.desired_content is not None
-        }
-        tooling = render_inputs.tooling_runtime
-        rebinds = u.Infra.facade_rebind_modules(root, planned_sources)
-        type_checking = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
-        # The tooling context derived the runtime bases from the tree on disk.
-        # When no planned Python source changes that tree, the overlay is the
-        # same input, and the Rope pass would recompute the identical answer.
-        runtime_bases = (
-            tuple(tooling.ruff_runtime_evaluated_base_classes)
-            if not any(
-                u.Infra.codegen_file_requires_effect(plan) for plan in python_plans
-            )
-            else u.Infra.runtime_evaluated_base_classes(
-                root,
-                planned_sources,
-                type_checking.runtime_evaluated_roots,
-            )
-        )
-        first_party = tuple(
-            FlextInfraToolTablesPhase.first_party_namespaces(
-                path=root,
-                planned_sources=tuple(planned_sources),
-            ),
-        )
-        if (
-            rebinds == tuple(tooling.mypy_facade_rebind_modules)
-            and first_party == tuple(tooling.first_party)
-            and runtime_bases == tuple(tooling.ruff_runtime_evaluated_base_classes)
-        ):
+        final_inputs = self.planned_source_render_inputs(render_inputs, planned)
+        if final_inputs is render_inputs:
             return result_type.ok(planned)
-        final_inputs = render_inputs.model_copy(
-            update={
-                "tooling_runtime": tooling.model_copy(
-                    update={
-                        "mypy_facade_rebind_modules": rebinds,
-                        "ruff_runtime_evaluated_base_classes": runtime_bases,
-                        "first_party": first_party,
-                    },
-                ),
-            },
-        )
         context = self._project_render_context(
             final_inputs,
             planned_data_files=tuple(

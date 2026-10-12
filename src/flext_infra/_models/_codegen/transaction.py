@@ -14,7 +14,7 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
-from flext_infra._models._codegen import FlextInfraModelsCodegenJournalModels
+from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 
 
 class FlextInfraModelsCodegenTransactionModels:

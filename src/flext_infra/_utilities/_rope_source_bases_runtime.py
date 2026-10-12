@@ -195,9 +195,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         alias_source,
                     )
                 ).items():
-                    if alias in self._modules or alias in self._namespaces:
+                    qualified_alias = f"{alias_module}.{alias}"
+                    if (
+                        qualified_alias in self._modules
+                        or qualified_alias in self._namespaces
+                    ):
                         continue
-                    self._module_aliases.setdefault(alias, absolute)
+                    self._module_aliases.setdefault(qualified_alias, absolute)
             for alias, absolute in (self._extra_module_aliases or {}).items():
                 if alias in self._modules or alias in self._namespaces:
                     continue
@@ -392,7 +396,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module: t.Infra.RopePyModule,
             line: int,
         ) -> str:
-            """Index the declaring module at the line and return the identity.
+            """Index the completed provider namespace and find its declaration.
 
             Returns:
                 The resolved declaration identity.
@@ -407,10 +411,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 if resource is None:
                     message = f"Module has no declared resource: {name}"
                     raise ValueError(message)
+                # Module execution can publish class members after the body's
+                # declaration line; its final bindings own the exported class.
                 self.inventory(
                     name,
                     (Path(resource.real_path), module.source_code),
-                    required_line=line,
                     allow_conditional=True,
                     provider=module,
                 )
@@ -711,23 +716,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             os.path) exist only through runtime module aliasing, so static file
             lookup cannot see them. Their declarations live in the backing real
             module, which rope resolves normally.
+            Native Rope resolution and attribute errors propagate unchanged.
 
             Returns:
                 The resolved declaration identity.
 
-            Raises:
-                ModuleNotFoundError: If the target has no virtual stdlib backing.
-                RefactoringError: If Rope cannot resolve the target or its backing.
-                ResourceNotFoundError: If Rope cannot locate the required resource.
-                AttributeError: If the provider lacks a required module attribute.
-
             """
-            try:
-                module = self._project.get_module(target)
-            except (
+            errors: t.VariadicTuple[type[BaseException]] = (
                 *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
                 ModuleNotFoundError,
-            ):
+            )
+            try:
+                module = self._project.get_module(target)
+            except errors:
                 real = self._stdlib_backing_module(target)
                 if real is None:
                     raise
@@ -899,7 +900,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if binding is None:
                 message = f"Unresolved planned base: {module}.{name}"
                 raise ValueError(message)
-            return self._resolve(binding, visiting | {key}, depth + 1), remaining
+            return self._resolve(
+                m.Infra.SourceClassReference(
+                    target=binding.target,
+                    attributes=(*binding.attributes, *remaining),
+                    qualified_base=binding.qualified_base,
+                ),
+                visiting | {key},
+                depth + 1,
+            ), []
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.

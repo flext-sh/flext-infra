@@ -11,7 +11,9 @@ from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import t
-from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysisAstHelpers
+from flext_infra._utilities._rope_analysis.asthelpers import (
+    FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
 
 
 class FlextInfraUtilitiesRopeAnalysisSourceScan:

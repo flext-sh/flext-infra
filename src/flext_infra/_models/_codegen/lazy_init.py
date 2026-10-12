@@ -108,3 +108,6 @@ class FlextInfraModelsCodegenLazyInitModels:
             bool,
             m.Field(description="Whether validator passed"),
         ]
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenLazyInitModels"]

@@ -804,3 +804,6 @@ class FlextInfraModelsCodegenJournalModels:
             Literal["noop", "delete", "restore"],
             m.Field(description="Only authorized recovery effect for the target"),
         ]
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenJournalModels"]

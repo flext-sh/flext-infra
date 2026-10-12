@@ -229,9 +229,14 @@ class TestsFlextInfraModCliRoute:
             ).content,
         ).decode(c.DEFAULT_ENCODING)
 
-        tm.that(exit_code, eq=0)
+        report_path = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
+        evidence = m.Infra.ModScanEvidence.model_validate_json(report_path.read_bytes())
+        tm.that(evidence.actionable, eq=0)
+        tm.that(evidence.findings, gt=0)
+        tm.that(exit_code, ne=0)
         tm.that(console, has="detection-only")
         tm.that(console, has="owner repair")
+        tm.that(console, lacks="with zero findings")
         # Publication runs the canonical formatter, so the cascade's result is
         # already normalized: the rewrite landed and the module is formatted,
         # rather than leaving whitespace for a human to repair afterwards.

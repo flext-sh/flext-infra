@@ -473,6 +473,7 @@ Infra:
         discovery_scope: none
 
     make:
+      common_arguments: [HELP, OPTIONS]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
       # wave of concurrent clones submodule_timeout_seconds.
@@ -711,15 +712,23 @@ Infra:
         - name: test
           description: Run incremental tests through the persistent testmon cache.
         - name: test-full
+          arguments: [FILE]
           description: Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.
         - name: test-file
+          arguments: [FILE]
           description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
         - name: file-gate
+          arguments: [FILE]
           description: Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
         - name: profile-test
+          arguments: [FILE]
           description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
         - name: profile-test-report
           description: Render the parent pytest profile and the aggregated child profiles from that run.
+        - name: profile-mod
+          description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
+        - name: profile-mod-report
+          description: Render the canonical codemod profile from the last profiling invocation.
         - name: fmt
           description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
         - name: fix

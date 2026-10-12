@@ -10,24 +10,17 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraCodemodSemanticApply,
-    FlextInfraModGateEngine,
-    FlextInfraModReplacements,
-    FlextInfraModTextGateEngine,
-    FlextInfraRefactorCensus,
-    FlextInfraServiceBase,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra.codemod import FlextInfraImportNormalizationPhase
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
+from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
+from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra.refactor.census import FlextInfraRefactorCensus
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
-    """Apply every discovered rewrite; a failed invocation restores its sources."""
+    """Apply guarded rewrites and retain accepted progress for fix-forward."""
 
     rename_runner: t.Port[p.Infra.RenameCampaignRunner] = m.Field(
         exclude=True,
@@ -117,23 +110,23 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             fix=False,
         ).unwrap()
 
-        def apply_ast() -> p.Result[t.Cli.ResultValue]:
-            self._apply_ast_phase(self.repository_root, self.rope, initial)
-            return r[t.Cli.ResultValue].ok(value=True)
-
-        FlextInfraCodemodSemanticApply.run_restoring(
-            self.repository_root,
-            initial,
-            (),
-            apply_ast,
-        ).unwrap()
+        self._apply_ast_phase(self.repository_root, self.rope, initial)
         self.progress.emit("mod: apply declared consumer text cutovers")
         self._apply_text_phase(
             self.repository_root,
             text_precondition_pending=True,
         ).unwrap()
+        self.progress.emit(
+            "mod: normalize declared public imports before semantic publication",
+        )
+        FlextInfraImportNormalizationPhase.apply(
+            self.repository_root,
+            initial,
+            self.rope,
+        ).unwrap()
+        self.rope.refresh()
         self.progress.emit("mod: apply the workspace constants census")
-        census = FlextInfraRefactorCensus(
+        census_runner = FlextInfraRefactorCensus(
             repository_root=self.repository_root,
             apply_changes=True,
             families=("c",),
@@ -142,7 +135,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 c.Infra.CensusRule.DUPLICATE,
                 c.Infra.CensusRule.WRONG_TIER,
             ),
-        ).build_report()
+        )
+        census = census_runner.build_report()
         self.progress.emit(
             "mod: constants census "
             f"projects={len(census.projects)} "
@@ -151,7 +145,18 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"rewritten_files={census.constant_consumer_files} "
             f"rewritten_bindings={census.constant_consumer_bindings}",
         )
-        return self._execute_apply_cycle(text_precondition_pending=False)
+        result = self._execute_apply_cycle(text_precondition_pending=False)
+        if result.failure:
+            return result
+        final_census = census_runner.model_copy(
+            update={"apply_changes": False},
+        ).build_report()
+        if final_census.total_violations:
+            return r[t.Cli.ResultValue].fail(
+                "mod: constants census retains "
+                f"{final_census.total_violations} violation(s)"
+            )
+        return result
 
     @staticmethod
     def _apply_ast_phase(
@@ -310,14 +315,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         current: m.Infra.ModScanReport,
         current_text: m.Infra.ModTextReport,
     ) -> None:
-        """Emit the findings this repair verb does not own; check owns verdicts.
-
-        A generated file is never written here: its findings are repaired
-        by the canonical generator (make gen), never a reason for this
-        repair verb to fail (operator ruling 2026-10-02: repair verbs
-        never deadlock). Ruff, Pyrefly and Pyright findings are check's alone.
-
-        """
+        """Report residual owners without waiving their final gate failures."""
         generated = FlextInfraModReplacements.generator_owned(current.entries)
         if generated:
             self.progress.emit(
@@ -354,7 +352,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The fixed-point failure message, or ``None`` when the joint AST,
-            semantic, and text fixed point is verified with zero actionable
+            semantic, and text fixed point is verified with zero remaining
             findings and no new runtime import cycles.
 
         """
@@ -381,6 +379,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return "mod introduced new runtime import cycle(s): " + "; ".join(
                 " -> ".join(sorted(cycle)) for cycle in new_cycles
             )
+        if current.findings or current_text.findings:
+            return (
+                f"mod: fixed point retains {current.findings} AST finding(s) "
+                f"({current.detection_only} detection-only, "
+                f"{current.non_actionable_with_fix} non-actionable with fix) and "
+                f"{current_text.findings} text finding(s); owner repair required"
+            )
         return None
 
     def _execute_apply_cycle(
@@ -388,7 +393,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         *,
         text_precondition_pending: bool,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Converge every mod phase, publishing nothing when the run fails.
+        """Converge every mod phase while retaining accepted progress.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
@@ -396,15 +401,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """
         root = self.repository_root
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        return FlextInfraCodemodSemanticApply.run_restoring(
+        return self._converge(
             root,
             current,
-            FlextInfraModTextGateEngine.source_paths(root).unwrap(),
-            lambda: self._converge(
-                root,
-                current,
-                text_precondition_pending=text_precondition_pending,
-            ),
+            text_precondition_pending=text_precondition_pending,
         )
 
     def _converge(
@@ -464,7 +464,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].fail(message)
             self.progress.emit(
                 "mod: joint AST, semantic, and text fixed point verified "
-                "with zero actionable findings",
+                "with zero findings",
             )
             return r[t.Cli.ResultValue].ok(value=True)
 
@@ -477,7 +477,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """Report each unresolved declaration relocation as its own finding.
 
         An unresolved owner is a finding of that declaration, never a plan
-        crash; the failed invocation then restores every source it rewrote.
+        crash; accepted writes remain available for the next fix-forward pass.
 
         Returns:
             The failure message naming every unresolved declaration, or
