@@ -839,6 +839,51 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(output.stdout.strip(), eq="declared")
         tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=consumer_source)
 
+    def test_stale_projected_base_order_is_regenerated_from_owner_ancestry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An invalid old projection cannot override its valid source owners."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / family.directory / "base_owner.py",
+            "class BaseOwner:\n    value = 'base'\n__all__ = ['BaseOwner']\n",
+        )
+        self._write(
+            package / family.directory / "child_owner.py",
+            f"from flext_sample.{family.directory}.base_owner import BaseOwner\n"
+            "class ChildOwner(BaseOwner):\n    value = 'child'\n"
+            "__all__ = ['ChildOwner']\n",
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        self._write(
+            facade,
+            f"from flext_sample.{family.directory}.base_owner import BaseOwner\n"
+            f"from flext_sample.{family.directory}.child_owner import ChildOwner\n"
+            "class Facade:\n    class Sample(BaseOwner, ChildOwner):\n        pass\n"
+            "c = Facade\n__all__ = ['Facade', 'c']\n",
+        )
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        self._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
+                ),
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="child")
+        tm.that(
+            u.Infra.render_utility_facade(package, family="c"),
+            eq=rendered,
+        )
+
     @pytest.mark.parametrize("generated", [True, False])
     def test_initializer_ownership_controls_consumer_parsing(
         self,

@@ -122,10 +122,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_order(
             self,
-            namespace: m.Infra.SourceClassReference,
             declarations: t.SequenceOf[m.Infra.SourceClassReference],
         ) -> t.StrTuple:
-            """Order declared owners without weakening the namespace's C3.
+            """Order declared owners from their authoritative source ancestry.
 
             Returns:
                 Declaration spellings in consistent source precedence order.
@@ -146,10 +145,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = "Duplicate declared facade owner"
                 raise ValueError(message)
             lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
-                (
-                    self._linearize(self._resolve(namespace)),
-                    *(self._linearize(identity) for identity in identities),
-                ),
+                (*(self._linearize(identity) for identity in identities),),
                 message="Inconsistent declared facade owner precedence",
             )
             spellings = {
@@ -1123,19 +1119,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: t.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
-        namespace: m.Infra.SourceClassReference,
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> t.StrTuple:
-        """Order declared owners by the namespace's strict source-backed C3.
+        """Order declared owners by their strict source-backed C3.
 
-        Existing precedence wins; additional declarations contribute their real
-        ancestry. Resolution failures and contradictory precedence fail loudly.
+        A generated facade's previous base order is an output, never an input
+        authority. Resolution failures in the declared owners fail loudly.
 
         Returns:
             The declaration spellings in consistent precedence order.
         """
         return cls._RuntimeBaseResolver(project, sources, (), None).class_order(
-            namespace, declarations
+            declarations
         )
 
     @classmethod

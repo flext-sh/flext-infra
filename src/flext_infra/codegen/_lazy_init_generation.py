@@ -18,7 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import MutableMapping
     from pathlib import Path
 
-    from flext_infra import FlextInfraCodegenLazyInitPlanner, m, t
+    from flext_infra import m, t
+    from flext_infra.codegen import FlextInfraCodegenLazyInitPlanner
 
 
 # Root manifests and initializers are synchronized as one artifact set.

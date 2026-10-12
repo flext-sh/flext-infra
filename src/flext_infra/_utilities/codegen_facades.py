@@ -427,12 +427,6 @@ class FlextInfraUtilitiesCodegenFacades:
             ordered = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
                 project,
                 sources,
-                m.Infra.SourceClassReference(
-                    target=f"{pkg_dir.name}.{facade_path.stem}",
-                    attributes=(facade.name, namespace.name)
-                    if namespace is not facade
-                    else (facade.name,),
-                ),
                 declarations,
             )
         existing = tuple(cls._base_name(base) for base in namespace.bases)
