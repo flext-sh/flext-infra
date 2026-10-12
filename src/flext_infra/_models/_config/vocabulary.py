@@ -16,6 +16,9 @@ from flext_cli import t
 class FlextInfraConfigVocabulary:
     """Canonical closed contracts required before project facades initialize."""
 
+    RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
+    """Ruff's immutable external cache-directory environment contract."""
+
     DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
     """PEP 735 dependency-groups table key."""
 

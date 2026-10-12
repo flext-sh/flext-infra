@@ -325,7 +325,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> p.Result[t.SequenceOf[m.Infra.CensusReport]]:
+        def _action() -> p.Result[t.VariadicTuple[m.Infra.CensusReport]]:
             census = self._state.census_service
             if census is None:
                 census = FlextInfraCodegenCensus(repository_root=ctx.repository_root)

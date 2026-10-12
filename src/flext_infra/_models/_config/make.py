@@ -35,6 +35,17 @@ def _shared_mypy_cache_spec() -> FlextInfraConfigModelsMake.MypyCacheSpec:
     return FlextInfraConfigModelsMake.MypyCacheSpec()
 
 
+def _shared_ruff_cache_spec() -> FlextInfraExternalCacheDirectorySpec:
+    """Construct the declared external Ruff cache policy.
+
+    Returns:
+        The resulting ``FlextInfraExternalCacheDirectorySpec``.
+    """
+    return FlextInfraExternalCacheDirectorySpec(
+        external_storage_directory=Path("flext/infra/ruff")
+    )
+
+
 def _default_testmon_cache_policy() -> (
     FlextInfraConfigModelsMake.TestmonCachePolicySpec
 ):
@@ -774,6 +785,10 @@ class FlextInfraConfigModelsMake(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ] = m.Field(default_factory=_shared_mypy_cache_spec)
+        ruff_cache: Annotated[
+            FlextInfraExternalCacheDirectorySpec,
+            m.Field(description="External project-keyed native Ruff cache policy"),
+        ] = m.Field(default_factory=_shared_ruff_cache_spec)
         verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(description="Ordered canonical public verbs"),

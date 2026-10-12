@@ -266,7 +266,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         raise TypeError(msg)
 
     @classmethod
-    def _behavior_source_modules(
+    def behavior_source_modules(
         cls,
         sources: t.MappingKV[Path, str],
         typing_directory: str,
@@ -397,7 +397,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
 
     @classmethod
-    def _behavior_utility_owners(
+    def behavior_utility_owners(
         cls,
         modules: t.MappingKV[str, t.Pair[str, bool]],
         utility_directory: str,
@@ -601,10 +601,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         }
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for owner_sources in owners.values():
-            modules = cls._behavior_source_modules(
+            modules = cls.behavior_source_modules(
                 {**production, **owner_sources}, typing_directory
             )
-            ownership = cls._behavior_utility_owners(
+            ownership = cls.behavior_utility_owners(
                 modules,
                 FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                     c.Infra.UTILITIES_PY
@@ -613,7 +613,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             planned = cls._semantic_edits(
                 cls._editable_sources(owner_sources),
                 partial(
-                    cls._rewrite_behavior_consumer,
+                    cls.rewrite_behavior_consumer,
                     modules=modules,
                     typing_directory=typing_directory,
                     ownership=ownership,
@@ -705,7 +705,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         return expected is not None and effective == expected
 
     @classmethod
-    def _rewrite_behavior_consumer(
+    def rewrite_behavior_consumer(
         cls,
         path: Path,
         source: str,
@@ -716,6 +716,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
             frozenset[t.Quad[str, str, str, str]],
         ],
+        utility_imports: frozenset[t.Pair[str, str]] = frozenset(),
     ) -> t.Infra.TransformResult:
         """Rebind proven imported behavior and compose its semantic import edits.
 
@@ -747,19 +748,28 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
             if imported is None:
                 return None
+            if utility_imports and imported not in utility_imports:
+                return None
             module, receiver = imported
             if imported not in lineages:
-                lineages[imported] = cls._typing_behavior_lineage(
-                    modules, module, receiver, typing_directory
+                lineages[imported] = (
+                    cls._behavior_lineage(modules, module, receiver)
+                    if imported in utility_imports
+                    else cls._typing_behavior_lineage(
+                        modules, module, receiver, typing_directory
+                    )
                 )
             lineage = lineages[imported]
-            if cls._behavior_member_declared(
+            if imported not in utility_imports and cls._behavior_member_declared(
                 modules, lineage, qualified.rpartition(".")[2], ownership[0]
             ):
                 return None
             target = cls._behavior_reference_target(
                 qualified, path, lineage, modules, ownership
             )
+            if target is None and imported in utility_imports:
+                msg = f"self-facade callable owner is unresolved: {qualified}"
+                raise ValueError(msg)
             if target is not None:
                 obsolete.add(imported)
             return target

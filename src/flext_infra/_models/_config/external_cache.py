@@ -1,4 +1,4 @@
-"""Shared external-cache directory pair for tool cache specs.
+"""Shared external-cache placement contract for tool cache specs.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,12 +17,21 @@ from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 class FlextInfraExternalCacheDirectorySpec(
     FlextInfraConfigModelsContract.ConfigContract,
 ):
-    """External-cache path pair every tool cache spec owns identically."""
+    """One typed external-cache placement every tool cache consumes."""
+
+    data_home_environment_variable: Annotated[
+        str,
+        m.Field(min_length=1, description="XDG persistent cache-home variable"),
+    ] = "XDG_CACHE_HOME"
+    user_home_environment_variable: Annotated[
+        str,
+        m.Field(min_length=1, description="User home variable for the XDG default"),
+    ] = "HOME"
 
     home_cache_directory: Annotated[
         Path,
         m.Field(description="Standard cache directory below the user home"),
-    ]
+    ] = Path(".cache")
     external_storage_directory: Annotated[
         Path,
         m.Field(description="FLEXT-owned directory below the cache home"),

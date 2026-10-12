@@ -33,6 +33,21 @@ class FlextInfraProtocolsBase(Protocol):
             """Validate staged candidates while preserving live sources."""
             ...
 
+    class ExternalCacheDirectory(Protocol):
+        """Shared consumer contract for declared tool cache placement."""
+
+        @property
+        def data_home_environment_variable(self) -> str: ...
+
+        @property
+        def user_home_environment_variable(self) -> str: ...
+
+        @property
+        def home_cache_directory(self) -> Path: ...
+
+        @property
+        def external_storage_directory(self) -> Path: ...
+
     @runtime_checkable
     class PytestStopController(Protocol):
         """Native distributed controller's mutable stop request."""

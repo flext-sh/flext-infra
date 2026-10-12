@@ -455,11 +455,16 @@ class FlextInfraUtilitiesProtectedEditLinting:
             tool_name=tool_name,
             template=template,
         )
+        environment = dict(cls._command_env())
+        if tool_name == c.Infra.RUFF:
+            environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
+                FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+            )
         run_result = u.Cli.run_raw(
             cmd,
             cwd=command_cwd,
             options=m.Cli.ProcessOptions(
-                env=cls._command_env(),
+                env=environment,
                 remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
             ),
             timeout=cls._gate_deadline(tool_name),
