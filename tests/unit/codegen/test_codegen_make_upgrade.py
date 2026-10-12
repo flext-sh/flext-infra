@@ -240,6 +240,57 @@ class TestsFlextInfraCodegenMakeUpgrade:
             *converge.split("\n\n", 1)[0].splitlines(),
         ]
 
+    @staticmethod
+    def _assert_setup_recipe(
+        makefile: str,
+        profile: c.Infra.MakeProfile,
+        sync_flags_value: str,
+    ) -> None:
+        """Assert the setup recipe verifies the committed lock and never relocks."""
+        setup_recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=["$(UV) lock"])
+        tm.that(
+            setup_recipe,
+            has=[
+                "lock --check",
+                "$(UV_SYNC_FLAGS) --locked",
+                "ERROR[setup]",
+                "make upg",
+            ],
+        )
+        lock_check = setup_recipe.index("lock --check")
+        sync = setup_recipe.index("$(UV) sync")
+        tm.that(lock_check < setup_recipe.index("exit 2;", lock_check) < sync, eq=True)
+        admission = "codegen mise-artifacts"
+        tm.that(setup_recipe.count(admission), eq=2)
+        tm.that(lock_check < setup_recipe.index(admission) < sync, eq=True)
+        tm.that(setup_recipe.rindex(admission) < sync, eq=True)
+        tm.that(
+            setup_recipe,
+            has=[
+                '--repository-root "$(PROJECT_ROOT)" --config-only',
+                "for member in $(WORKSPACE_SUBPROJECTS); do",
+                '--repository-root "$(PROJECT_ROOT)/$$member" --config-only',
+            ],
+        )
+        tm.that(
+            setup_recipe,
+            lacks=[
+                "--frozen",
+                "WARNING[setup]",
+                "--requirements",
+                'rm -f "$(UV_PROJECT)/uv.lock"',
+                ">/dev/null",
+            ],
+        )
+        tm.that(
+            "--all-packages" in sync_flags_value,
+            eq=profile is c.Infra.MakeProfile.WORKSPACE,
+        )
+
     def test_upg_is_the_only_resolver_and_setup_requires_matching_lock(
         self,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],

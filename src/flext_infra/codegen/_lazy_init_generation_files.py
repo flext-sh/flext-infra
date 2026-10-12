@@ -211,16 +211,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 before=init_before,
                 desired_content=rendered,
             )
-        support_states = self._cleanup_generated_support_file_states(plan)
-        if support_states.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(support_states)
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
-            init_plan,
-            *(
-                self._file_plan(project=project, before=state, desired_content=None)
-                for state in support_states.value
-            ),
-        ))
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((init_plan,))
 
     def _generated_source_file_plans(
         self,
@@ -299,6 +290,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
         for plan in plans:
+            if plan.action in {
+                c.Infra.LazyInitAction.SKIP,
+                c.Infra.LazyInitAction.RETAIN,
+            }:
+                continue
+            package_entry = index.packages_by_dir.get(
+                str(plan.context.pkg_dir.resolve()),
+            )
+            if package_entry is None or package_entry.project_root is None:
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    f"lazy-init package has no physical project owner: "
+                    f"{plan.context.pkg_dir}",
+                )
+            support_states = self._cleanup_generated_support_file_states(plan)
+            if support_states.failure:
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(
+                    support_states,
+                )
+            for state in support_states.value:
+                by_path[state.path] = self._file_plan(
+                    project=package_entry.project_root.resolve(),
+                    before=state,
+                    desired_content=None,
+                )
+        retired_paths = frozenset(by_path)
+        for plan in plans:
             package_key = str(plan.context.pkg_dir.resolve())
             package_entry = index.packages_by_dir.get(package_key)
             if package_entry is None or package_entry.project_root is None:
@@ -311,10 +328,14 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                     f"lazy-init target was not snapshotted: {init_path}",
                 )
-            artifact_plans = self._artifact_file_plans(
-                plan,
-                project=package_entry.project_root.resolve(),
-                init_before=init_before,
+            artifact_plans = (
+                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
+                if init_path in retired_paths
+                else self._artifact_file_plans(
+                    plan,
+                    project=package_entry.project_root.resolve(),
+                    init_before=init_before,
+                )
             )
             if artifact_plans.failure:
                 return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(

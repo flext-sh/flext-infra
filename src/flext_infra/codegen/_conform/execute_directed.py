@@ -33,7 +33,19 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
         )
-        roots = {f"@{request.what}-0": request.root.expanduser().resolve()}
+        root = request.root.expanduser().resolve()
+        topology = self._planning_workspace(request, root)
+        if topology.failure:
+            return r[m.Infra.CodegenResult].from_failure(topology)
+        workspace, _target, repository = topology.value
+        selected = self._select_repositories(request, workspace, repository)
+        if selected.failure:
+            return r[m.Infra.CodegenResult].from_failure(selected)
+        roots = {
+            f"@{request.what}-{index}": (root / participant.path).resolve()
+            for index, participant in enumerate(selected.value)
+            if participant.kind is c.Infra.RepositoryKind.INTERNAL_FLEXT
+        }
         if request.what == c.Infra.CodegenConformSurface.FACADES:
             workspace = FlextInfraStagedPackage.workspace_root(request.root)
             if workspace.failure:
@@ -156,7 +168,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                         if not file.path.parent.is_dir()
                     }),
                 ),
-                validator=lambda: self._verify_lazy_init(request, analysis),
+                validator=lambda: transaction.validate_phase_analysis_locked(analysis),
             ),
             staged_validator=validate_stage if stage_plan is not None else None,
         )
@@ -242,28 +254,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if checked.failure:
             return result_type.from_failure(checked)
         return result_type.ok(current)
-
-    def _verify_lazy_init(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[bool]:
-        """Authenticate published bytes and require an initializer fixed point.
-
-        Returns:
-            Whether the unchanged sources reproduce every published initializer.
-
-        """
-        receipt = FlextInfraCodegenTransaction.validate_phase_analysis_locked(analysis)
-        if receipt.failure:
-            return receipt
-        planned = self._plan_single_surface(request)
-        if planned.failure:
-            return r[bool].from_failure(planned)
-        return u.Infra.codegen_fixed_point(
-            planned.value[1].files,
-            subject=str(request.what),
-        )
 
     @staticmethod
     def _drift_message(

@@ -88,14 +88,14 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             path.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
-    def _reverted_report_lines(
+    def _validation_failure_report_lines(
         path: Path,
         workspace: Path,
         before_source: str,
         new_errors: t.Infra.LintSnapshot,
         pytest_failure: str | None = None,
     ) -> list[str]:
-        """Reverted report lines.
+        """Describe the actual source delta and its validation failures.
 
         Returns:
             The resulting ``list[str]``.
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             tofile=f"b/{rel}",
             max_lines=c.Infra.EDIT_DIFF_PREVIEW_MAX_LINES,
         )
-        report_lines = [f"  REVERTED {rel}:"]
+        report_lines = [f"  VALIDATION FAILED {rel}:"]
         report_lines.extend(f"    {line.rstrip()}" for line in diff)
         for tool, messages in new_errors.items():
             report_lines.extend((
@@ -151,7 +151,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 continue
             failed = True
             reports.extend(
-                FlextInfraUtilitiesProtectedEditPreview._reverted_report_lines(
+                FlextInfraUtilitiesProtectedEditPreview._validation_failure_report_lines(
                     path,
                     workspace,
                     before_sources[path] or "",
