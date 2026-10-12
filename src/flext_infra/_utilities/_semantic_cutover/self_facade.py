@@ -17,6 +17,10 @@ from flext_infra._utilities._semantic_cutover.edits import (
 from flext_infra._utilities._semantic_cutover.facade_bases import (
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
 )
+from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
+from flext_infra._utilities.project_discovery import (
+    FlextInfraUtilitiesProjectDiscovery,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,6 +53,34 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
             }
             for finding in findings
         }
+        utility_directory = (
+            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
+                c.Infra.UTILITIES_PY,
+            ).directory
+        )
+        for path, source in sources.items():
+            if utility_directory not in path.parts:
+                continue
+            project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                root, path
+            )
+            if project is None:
+                continue
+            namespace = FlextInfraUtilitiesImportLaw.import_namespace(project, path)
+            if namespace is None:
+                continue
+            own_modules = {
+                node.module
+                for node in ast.parse(source, filename=str(path)).body
+                if isinstance(node, ast.ImportFrom)
+                and node.module == namespace[0].name
+                and not node.level
+                and any(
+                    alias.name == c.Infra.FacadeFamily.U for alias in node.names
+                )
+            }
+            if own_modules:
+                selected.setdefault(path.resolve(), set()).update(own_modules)
         behavior = FlextInfraUtilitiesSemanticCutoverFacadeBases
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(

@@ -170,6 +170,7 @@ class FlextInfraImportNormalization(
             lambda: cls._placement_edits(state, lines),
             lambda: cls._route_edits(state, lines),
             lambda: cls._root_alias_binding_edits(state, lines),
+            lambda: cls._layer_order_edits(state, lines),
         )
         for build in builders:
             edits = build()

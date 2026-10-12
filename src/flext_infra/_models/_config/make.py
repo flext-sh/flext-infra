@@ -766,6 +766,14 @@ class FlextInfraConfigModelsMake(
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
         ]
+        gate_acceptance_policy: Annotated[
+            c.Infra.GateAcceptancePolicy,
+            m.Field(description="Policy recorded by original gate execution receipts"),
+        ] = c.Infra.GateAcceptancePolicy.CLEAN
+        gate_receipts_directory: Annotated[
+            Path,
+            m.Field(description="Repository-relative immutable execution receipts"),
+        ] = Path(".reports/gates")
         testmon_cache_policy: Annotated[
             FlextInfraConfigModelsMake.TestmonCachePolicySpec,
             m.Field(

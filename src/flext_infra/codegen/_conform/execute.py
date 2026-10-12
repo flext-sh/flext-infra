@@ -298,6 +298,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
         )
         if mode is c.Infra.CodegenConformMode.CHECK:
+            if plan.issues:
+                return r[m.Infra.CodegenResult].fail(
+                    "\n".join(issue.formatted for issue in plan.issues),
+                    exception=plan.exception,
+                    error_data={
+                        "issues": tuple(issue.model_dump() for issue in plan.issues),
+                    },
+                )
             if changed:
                 paths = ", ".join(str(file.path) for file in changed)
                 return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
@@ -402,10 +410,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             for path in destinations
         }
         planned_paths = {file.path for file in plan.files}
-        if planned_paths != expected_paths:
+        failed_paths = {Path(issue.file).resolve() for issue in plan.issues}
+        unaccounted = expected_paths - planned_paths - failed_paths
+        if unaccounted or planned_paths - expected_paths:
             return r[t.VariadicTuple[Path]].fail(
                 f"bootstrap plan does not own the declared destinations for {surface}: "
-                f"missing={sorted(map(str, expected_paths - planned_paths))}; "
+                f"missing={sorted(map(str, unaccounted))}; "
                 f"unexpected={sorted(map(str, planned_paths - expected_paths))}",
             )
         changed = tuple(
@@ -419,6 +429,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 f"bootstrap cannot delete a declared destination for {surface}",
             )
         if not changed:
+            if plan.issues:
+                return r[t.VariadicTuple[Path]].fail(
+                    "\n".join(issue.formatted for issue in plan.issues),
+                    exception=plan.exception,
+                    error_data={
+                        "issues": tuple(issue.model_dump() for issue in plan.issues),
+                    },
+                )
             if surface is c.Infra.CodegenConformSurface.MISE_CONFIG:
                 checked = self._verify_bootstrap(request)
                 if checked.failure:
@@ -431,6 +449,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=plan.files,
             inputs=tuple(inputs.values()),
+            issues=plan.issues,
+            exception=plan.exception,
         )
         return transaction.publish_file_phase_locked(
             scope_root,
@@ -766,7 +786,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[m.Infra.CodegenResult].from_failure(session)
         recorded = transaction.record_publication(
             session.value.model_copy(
-                update={"issues": (*session.value.issues, *plan.issues)},
+                update={
+                    "issues": (*session.value.issues, *plan.issues),
+                    "exception": session.value.exception or plan.exception,
+                },
             ),
             phase=c.Infra.CodegenStagedFilePhase.CONFORM,
         )

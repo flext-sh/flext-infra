@@ -37,10 +37,10 @@ class TestsFlextInfraSemanticPhaseContract:
             "type Bag[T] = t.MutableSequenceOf[T]\n"
             "class ModelOwned(m.ContractModel):\n"
             "    values: Bag[str] = m.Field(default_factory=m.empty("
-            "TypeForm(Bag[str])))\n"
+            'TypeForm(Bag[str])), description="Consumer values")\n'
             "class UtilityProjected(m.ContractModel):\n"
             "    values: Bag[str] = m.Field(default_factory=u.empty("
-            "TypeForm(Bag[str])))\n"
+            'TypeForm(Bag[str])), description="Consumer values")\n'
             "def verify():\n"
             "    model_default = ModelOwned()\n"
             "    utility_default = UtilityProjected()\n"
