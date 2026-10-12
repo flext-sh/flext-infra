@@ -50,3 +50,4 @@ class FlextInfraConfigVocabulary:
         MAKEFILE = "makefile"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
+        RUNTIME_BINDINGS = "runtime-bindings"

@@ -85,6 +85,11 @@ class FlextInfraModelsCodegenPipelineModels:
             default=(),
             description="Target planning failures retained beside valid file plans",
         )
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native planning cause retained for publication",
+        )
 
         @m.model_validator(mode="after")
         def _validate_unique_paths(self) -> Self:

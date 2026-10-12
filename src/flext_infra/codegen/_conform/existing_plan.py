@@ -1070,11 +1070,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         planned = self._represent_ungoverned_artifacts(
             target,
             codegen,
-            {
-                item.path: item
-                for item in codegen.managed_files
-                if item.runtime_binding
-            },
+            {item.path: item for item in codegen.managed_files if item.runtime_binding},
             completed,
             vscode_spec=vscode_spec,
         )
@@ -1099,6 +1095,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         root = target.root
         profile = target.make_profile
+        vscode_spec = target.vscode_spec if vscode_spec is None else vscode_spec
         runtime_root = (
             root
             if self.initial_workspace is not None

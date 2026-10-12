@@ -32,7 +32,24 @@ class FlextInfraConstantsGit:
     class GateAttestationSchema(StrEnum):
         """Supported signed gate-attestation schema identities."""
 
-        V1 = "https://flext.sh/attestations/gates/v1"
+        V2 = "https://flext.sh/attestations/gates/v2"
+
+    @unique
+    class GateEvidenceReportKind(StrEnum):
+        """Canonical producer report contracts admitted by the signed owner."""
+
+        RECEIPT = "receipt"
+        CHECK_SARIF = "check_sarif"
+        PYTEST_PROCESS = "pytest_process"
+        PYTEST_ACCOUNTING = "pytest_accounting"
+        PYTEST_DIAGNOSTICS = "pytest_diagnostics"
+
+    @unique
+    class GateAcceptancePolicy(StrEnum):
+        """Whether the proof claims clean quality or complete diagnostic execution."""
+
+        CLEAN = "clean"
+        COMPLETE_EXECUTION = "complete_execution"
 
     # --- Index entry modes (git mode field, not POSIX st_mode) ---
 

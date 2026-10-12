@@ -199,6 +199,7 @@ class TestsFlextInfraSelfFacadeCutover:
                 ),
             )
         tm.fail(result, has=expected)
+        tm.that(isinstance(result.exception, ValueError), eq=True)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod

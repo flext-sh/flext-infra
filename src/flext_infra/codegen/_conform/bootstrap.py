@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, m, s, t, u
+from flext_infra import c, config, m, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -61,8 +61,22 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         ),
     ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[m.Infra.Issue])))
 
-    def _record_file_failure(self, path: Path, error: str) -> None:
+    planning_exception: BaseException | None = m.Field(
+        default=None,
+        exclude=True,
+        description="First native file planning cause",
+    )
+
+    def _record_file_failure(
+        self,
+        path: Path,
+        error: str,
+        *,
+        exception: BaseException | None = None,
+    ) -> None:
         """Retain an actual target failure through the shared diagnostic model."""
+        if self.planning_exception is None:
+            self.planning_exception = exception
         self.planning_issues.append(
             m.Infra.Issue(
                 file=str(path),
@@ -200,6 +214,19 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)
+            case c.Infra.CodegenConformSurface.RUNTIME_BINDINGS:
+                contract = m.Infra.CodegenConformSurfaceContract(
+                    destinations=frozenset(
+                        item.path.as_posix()
+                        for item in config.Infra.codegen.managed_files
+                        if item.runtime_binding
+                    ),
+                    runtime_bindings=True,
+                    delegates=False,
+                    pyproject=False,
+                    templates=False,
+                    custom=False,
+                )
             case (
                 c.Infra.CodegenConformSurface.LAZY_INIT
                 | c.Infra.CodegenConformSurface.FACADES

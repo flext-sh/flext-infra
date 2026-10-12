@@ -100,9 +100,7 @@ class FlextInfraModelsWorkspace:
         issues: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.Issue],
             m.Field(
-                description=(
-                    "Native failures attributed to their actual repository"
-                ),
+                description=("Native failures attributed to their actual repository"),
             ),
         ] = ()
 

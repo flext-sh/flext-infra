@@ -433,7 +433,9 @@ class FlextInfraCodegenTransaction(
         if started.failure:
             return result_type.from_failure(started)
         prepared = self.append_directories_locked(
-            started.value,
+            started.value.model_copy(
+                update={"exception": started.value.exception or analysis.exception},
+            ),
             analysis.phase,
             policy.directories,
         )
@@ -443,6 +445,7 @@ class FlextInfraCodegenTransaction(
             prepared.value,
             analysis.phase,
             analysis.files,
+            issues=analysis.issues,
             staged_validator=staged_validator,
         )
         if published.failure:

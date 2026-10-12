@@ -15,10 +15,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, MutableMapping
+from functools import partial
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
+from flext_core import FlextStrictYamlConfigSource
+from flext_infra import FlextInfraConfig, c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,6 +31,38 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenVscodeMixin:
     """Produce the canonical ``.vscode/settings.json`` document for one root."""
+
+    @classmethod
+    def load_vscode_spec(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.CodegenVscodeSpec]:
+        """Resolve a repository's typed editor declaration using the strict loader.
+
+        Returns:
+            Library defaults overlaid by this project's and local declarations.
+        """
+        return r[m.Infra.CodegenVscodeSpec].create_from_callable(
+            partial(cls._repository_vscode_spec, repository_root),
+        )
+
+    @staticmethod
+    def _repository_vscode_spec(repository_root: Path) -> m.Infra.CodegenVscodeSpec:
+        """Validate the selected namespace without mutating global configuration.
+
+        Returns:
+            The typed editor settings for the declared repository.
+        """
+        source = FlextStrictYamlConfigSource(
+            FlextInfraConfig,
+            yaml_file=FlextInfraConfig.config_sources_for_repository(
+                repository_root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            ),
+            deep_merge=True,
+        )
+        codegen = u.Cli.json_walk_path(source(), ("Infra", "codegen"))
+        return m.Infra.CodegenConfigSpec.model_validate(codegen).vscode
 
     @classmethod
     def render_vscode_settings(
@@ -57,15 +92,22 @@ class FlextInfraCodegenVscodeMixin:
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
+        if spec is None:
+            selected = cls.load_vscode_spec(repository_root)
+            if selected.failure:
+                return r[str].from_failure(selected)
+            spec = selected.value
         applied = cls._apply_canonical_settings(
             settings,
             repository_root,
-            runtime_root=runtime_root,
             spec=spec,
         )
         if applied.failure:
             return r[str].from_failure(applied)
-        serialized = u.Cli.json_dumps(dict(settings), indent=2)
+        bound = cls._bind_runtime_settings(settings, repository_root, runtime_root)
+        if bound.failure:
+            return r[str].from_failure(bound)
+        serialized = u.Cli.json_dumps(dict(bound.value), indent=2)
         if serialized.failure:
             return r[str].from_failure(serialized)
         return r[str].ok(serialized.value + "\n")
@@ -213,7 +255,6 @@ class FlextInfraCodegenVscodeMixin:
         settings: t.MutableJsonMapping,
         repository_root: Path,
         *,
-        runtime_root: Path | None = None,
         spec: m.Infra.CodegenVscodeSpec | None = None,
     ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping.
@@ -223,12 +264,17 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         spec = config.Infra.codegen.vscode if spec is None else spec
+        additional_changed = False
+        for key, value in spec.additional_settings.items():
+            normalized = u.normalize_to_json_value(value)
+            if settings.get(key) != normalized:
+                settings[key] = normalized
+                additional_changed = True
         changed = cls._apply_enforced_settings(
             settings,
             scalar_settings=spec.scalar_settings,
             list_settings=spec.list_settings,
             repository_root=repository_root,
-            runtime_root=runtime_root,
         )
         if changed.failure:
             return r[bool].from_failure(changed)
@@ -261,7 +307,8 @@ class FlextInfraCodegenVscodeMixin:
             cls._apply_union_settings(settings, spec.map_union_settings)
             or artifacts_changed
             or stripped_changed
-            or changed.value,
+            or changed.value
+            or additional_changed,
         )
 
     @staticmethod
@@ -290,7 +337,6 @@ class FlextInfraCodegenVscodeMixin:
         scalar_settings: Mapping[str, str | bool | int],
         list_settings: Mapping[str, t.VariadicTuple[str]],
         repository_root: Path,
-        runtime_root: Path | None = None,
     ) -> p.Result[bool]:
         """Enforce exact scalar and list VS Code keys from the codegen config.
 
@@ -299,14 +345,7 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         changed = False
-        resolved = cls._resolve_runtime_scalars(
-            scalar_settings,
-            repository_root,
-            runtime_root,
-        )
-        if resolved.failure:
-            return r[bool].from_failure(resolved)
-        for key, value in resolved.value.items():
+        for key, value in scalar_settings.items():
             normalized = u.normalize_to_json_value(value)
             if settings.get(key) == normalized:
                 continue
@@ -330,49 +369,90 @@ class FlextInfraCodegenVscodeMixin:
         return r[bool].ok(changed)
 
     @classmethod
-    def _resolve_runtime_scalars(
+    def _bind_runtime_settings(
         cls,
-        scalar_settings: Mapping[str, str | bool | int],
+        settings: t.JsonMapping,
         repository_root: Path,
         runtime_root: Path | None,
-    ) -> p.Result[Mapping[str, str | bool | int]]:
-        """Rewrite workspace-runtime scalars to the resolved interpreter path.
+    ) -> p.Result[t.JsonMapping]:
+        """Bind environment declarations throughout scalar, map and list settings.
 
         Returns:
-            The resulting ``p.Result[Mapping[str, str | bool | int]]``.
+            Settings bound to the physical checkout environment.
 
         """
-        runtime_prefix = f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}/bin/"
-        resolved: MutableMapping[str, str | bool | int] = dict(scalar_settings)
-        if not any(
-            isinstance(value, str) and value.startswith(runtime_prefix)
-            for value in scalar_settings.values()
-        ):
-            return r[Mapping[str, str | bool | int]].ok(resolved)
         if runtime_root is None:
             runtime = u.Infra.git_repository_root(
                 m.Infra.GitRepoRequest(repo_root=repository_root),
             )
             if runtime.failure:
-                return r[Mapping[str, str | bool | int]].from_failure(runtime)
+                return r[t.JsonMapping].from_failure(runtime)
             runtime_root = runtime.value.repository_root
         python = u.Infra.runtime_python(
             repository_root,
             runtime_root=runtime_root,
         )
-        runtime_directory = python.parent.relative_to(
-            repository_root.resolve(),
-            walk_up=True,
-        ).as_posix()
-        for key, value in scalar_settings.items():
-            if isinstance(value, str) and value.startswith(runtime_prefix):
-                binary = value.removeprefix(runtime_prefix)
-                if binary == c.Infra.PYTHON:
-                    binary = python.name
-                elif python.suffix and not binary.endswith(python.suffix):
-                    binary += python.suffix
-                resolved[key] = f"${{workspaceFolder}}/{runtime_directory}/{binary}"
-        return r[Mapping[str, str | bool | int]].ok(resolved)
+        root = repository_root.resolve()
+        environment = u.Infra.runtime_environment_dir(
+            repository_root,
+            runtime_root=runtime_root,
+        )
+        token = f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}"
+        substitutions = (
+            (
+                f"{token}/bin/{c.Infra.PYTHON}",
+                (
+                    f"${{workspaceFolder}}/"
+                    f"{python.relative_to(root, walk_up=True).as_posix()}"
+                ),
+            ),
+            (
+                f"{token}/bin",
+                (
+                    f"${{workspaceFolder}}/"
+                    f"{python.parent.relative_to(root, walk_up=True).as_posix()}"
+                ),
+            ),
+            (
+                token,
+                (
+                    f"${{workspaceFolder}}/"
+                    f"{environment.relative_to(root, walk_up=True).as_posix()}"
+                ),
+            ),
+        )
+        return r[t.JsonMapping].ok({
+            key: cls._bind_runtime_value(value, substitutions)
+            for key, value in settings.items()
+        })
+
+    @classmethod
+    def _bind_runtime_value(
+        cls,
+        value: t.JsonValue,
+        substitutions: t.VariadicTuple[t.Pair[str, str]],
+    ) -> t.JsonValue:
+        """Resolve declared environment tokens without changing unrelated content.
+
+        Returns:
+            The bound JSON value, preserving nested configuration structure.
+        """
+        if isinstance(value, str):
+            for token, replacement in substitutions:
+                value = re.sub(
+                    re.escape(token) + r"(?=$|[/\\:;\s])",
+                    lambda _match, replacement=replacement: replacement,
+                    value,
+                )
+            return value
+        if isinstance(value, Mapping):
+            return {
+                key: cls._bind_runtime_value(item, substitutions)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [cls._bind_runtime_value(item, substitutions) for item in value]
+        return value
 
     @staticmethod
     def _apply_union_settings(

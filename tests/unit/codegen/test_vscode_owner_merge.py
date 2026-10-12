@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, t
+from flext_infra import FlextInfraConfig, c, config, infra, t
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -19,6 +19,84 @@ from tests import m, tm, u
 
 class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
+
+    @staticmethod
+    def test_scoped_config_uses_project_then_local_layers(tmp_path: Path) -> None:
+        """Two injected repositories retain independent committed and local choices."""
+        key = "python.analysis.userFileIndexingLimit"
+        baseline = u.type_adapter(int).validate_python(
+            config.Infra.codegen.vscode.scalar_settings[key],
+        )
+        project_choice = baseline + 7
+        local_choice = baseline + 13
+        other_choice = baseline + 23
+        first = tmp_path / "first"
+        second = tmp_path / "second"
+        for root, chosen in ((first, project_choice), (second, other_choice)):
+            directory = root / c.CONFIG_DIR_NAME
+            directory.mkdir(parents=True)
+            tm.ok(
+                u.Cli.yaml_dump(
+                    directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                    {
+                        "Infra": {
+                            "codegen": {"vscode": {"scalar_settings": {key: chosen}}}
+                        }
+                    },
+                ),
+            )
+        local = (
+            first
+            / c.CONFIG_DIR_NAME
+            / Path(c.Infra.CODEGEN_CONFIG_FILENAME).with_name("codegen.local.yaml")
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                local,
+                {
+                    "Infra": {
+                        "codegen": {"vscode": {"scalar_settings": {key: local_choice}}}
+                    }
+                },
+            ),
+        )
+        chosen = tm.ok(FlextInfraCodegen.load_vscode_spec(first))
+        other = tm.ok(FlextInfraCodegen.load_vscode_spec(second))
+        tm.that(chosen.scalar_settings[key], eq=local_choice)
+        tm.that(other.scalar_settings[key], eq=other_choice)
+        tm.that(
+            FlextInfraConfig.config_sources_for_repository(
+                first,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            )[-2:],
+            eq=(first / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME, local),
+        )
+
+    @staticmethod
+    def test_runtime_surface_creates_only_declared_binding_outputs(
+        tmp_path: Path,
+    ) -> None:
+        """The real apply entry keeps setup binding separate from source generation."""
+        root = tmp_path / "project"
+        workspace = u.Tests.standalone_workspace(root)
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        published = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        targets = {
+            root / entry.path
+            for entry in config.Infra.codegen.managed_files
+            if entry.runtime_binding
+        }
+        tm.that({file.path for file in published.plan.files}, eq=targets)
+        tm.that(set(published.written_files).issubset(targets), eq=True)
+        checked = request.model_copy(
+            update={"mode": c.Infra.CodegenConformMode.CHECK},
+        )
+        tm.ok(infra.codegen_conform(checked, initial_workspace=workspace))
 
     @staticmethod
     def test_runtime_binding_rejects_versioned_policy() -> None:
@@ -85,9 +163,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         planner = FlextInfraCodegenConform(repository_root=root)
         plans = tm.ok(planner.plan_runtime_bindings(target, codegen))
-        expected = {
-            root / item.path for item in declared if item.runtime_binding
-        }
+        expected = {root / item.path for item in declared if item.runtime_binding}
         tm.that({plan.path for plan in plans}, eq=expected)
         for plan in plans:
             tm.that(plan.desired_content, is_=bytes)
@@ -253,6 +329,24 @@ class TestsFlextInfraVscodeOwnerMerge:
             distribution="fixture-member",
             relative_path=member.relative_to(parent).as_posix(),
         )
+        path = member / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                path,
+                tm.ok(
+                    u.Cli.json_dumps({
+                        "terminal.integrated.env.linux": {
+                            "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}",
+                            "VIRTUAL_ENV": "${workspaceFolder}/.venv",
+                        },
+                        "ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
+                        "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
+                        "operator.note": "${workspaceFolder}/.venv-is-not-the-environment",
+                    }),
+                ),
+            ),
+        )
         rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
         doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(u.Cli.json_parse(rendered)),
@@ -267,5 +361,26 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(
             projected_tool.parent.resolve(),
             eq=u.Infra.runtime_python(member).parent,
+        )
+        terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            doc["terminal.integrated.env.linux"],
+        )
+        environment = u.type_adapter(str).validate_python(terminal["VIRTUAL_ENV"])
+        tm.that(
+            (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
+            eq=u.Infra.runtime_environment_dir(member),
+        )
+        interpreter_list = u.type_adapter(t.StrSequence).validate_python(
+            doc["ruff.interpreter"],
+        )
+        tm.that(
+            (
+                member / interpreter_list[0].removeprefix("${workspaceFolder}/")
+            ).resolve(),
+            eq=u.Infra.runtime_python(member),
+        )
+        tm.that(
+            doc["operator.note"],
+            eq="${workspaceFolder}/.venv-is-not-the-environment",
         )
         tm.that(str(tmp_path) in rendered, eq=False)
