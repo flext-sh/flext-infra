@@ -252,9 +252,7 @@ class FlextInfraModelsCodegenTransactionModels:
             default=(),
             description="Physical roots authorized by current topology",
         )
-        journal_state: Literal[
-            "absent", "staging", "prepared", "committed"
-        ] = m.Field(
+        journal_state: Literal["absent", "staging", "prepared", "committed"] = m.Field(
             description="Observed durable state, never a readiness or green receipt",
         )
         pending_roots: t.VariadicTuple[Path] = m.Field(

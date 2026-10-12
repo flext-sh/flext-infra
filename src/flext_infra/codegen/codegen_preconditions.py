@@ -109,7 +109,7 @@ class FlextInfraCodegenPreconditions:
             return result_type.fail(
                 observed.error or changed_error,
                 error_data={
-                    "recovery_error": "journal authority mismatch vs session receipt",
+                    "cleanup_error": "journal authority mismatch vs session receipt",
                 },
             )
         return result_type.ok(session)

@@ -79,9 +79,7 @@ class TestsFlextInfraTransactionStaging:
     @staticmethod
     @pytest.mark.parametrize("inside", [False, True])
     @pytest.mark.parametrize("boundary", ["managed", "file"])
-    @pytest.mark.parametrize(
-        "state", ["staging", "prepared", "committed"]
-    )
+    @pytest.mark.parametrize("state", ["staging", "prepared", "committed"])
     def test_request_authorization_preserves_foreign_pending_journal(
         tmp_path: Path,
         boundary: str,

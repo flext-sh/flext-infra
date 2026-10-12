@@ -122,7 +122,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             checked = self._validate_staged_consumer(
                 current,
                 staged.value,
-                authorized_phase[2],
                 staged_validator,
             )
             if checked.failure:
@@ -152,7 +151,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         self,
         current: m.Infra.CodegenTransactionSession,
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         validator: Callable[
             [
                 m.Infra.CodegenTransactionSession,
@@ -523,7 +521,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         prepared, phase_roots = checked.value
         writes: list[tuple[Path, bytes, int]] = []
         directories = set(phase_roots)
-        for index, (plan, before, replacement, present) in enumerate(prepared):
+        for index, (_plan, _before, replacement, present) in enumerate(prepared):
             if present:
                 root, content, mode = replacement
                 writes.append((root / f"{index:06d}.replacement", content, mode))

@@ -11,8 +11,6 @@ import traceback
 from pathlib import Path
 from typing import Literal
 
-from rope.base.exceptions import RopeError
-
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -562,7 +560,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         started = time.monotonic()
         try:
             return cls._plan_repository_task(task)
-        except (SyntaxError, ValueError, TypeError, OSError, RopeError) as exc:
+        except Exception as exc:
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=task.repository.name,
                 error=str(exc),

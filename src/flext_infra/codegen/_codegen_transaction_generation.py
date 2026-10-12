@@ -467,9 +467,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
     def _publish_prepared_generation(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        mise_publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish the staged set and prove publication and real-consumer liveness.
 
@@ -540,9 +538,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         manifested, prepared_state = prepared.value
         finalized = self._publish_prepared_generation(
             layout,
-            plan,
             publications.value,
-            mise_publications,
         )
         if finalized.failure:
             return result_type.from_failure(finalized)

@@ -12,9 +12,6 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
 
-from jinja2 import TemplateError
-from rope.base.exceptions import RopeError
-
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -616,14 +613,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     entry,
                     path,
                 )
-            except (
-                SyntaxError,
-                ValueError,
-                TypeError,
-                OSError,
-                RopeError,
-                TemplateError,
-            ):
+            except Exception:
                 self._record_file_failure(path, traceback.format_exc())
                 continue
             if rendered.failure:
@@ -893,7 +883,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                             package_dir,
                             family,
                         )
-                    except (SyntaxError, ValueError, TypeError, OSError, RopeError):
+                    except Exception:
                         self._record_file_failure(
                             facade_path if facade_path is not None else package_dir,
                             traceback.format_exc(),

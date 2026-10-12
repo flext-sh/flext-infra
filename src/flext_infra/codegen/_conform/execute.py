@@ -10,8 +10,6 @@ import traceback
 from pathlib import Path
 from typing import Self, override
 
-from rope.base.exceptions import RopeError
-
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenTransaction
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
@@ -642,7 +640,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 repository_root=root,
                 project_scope_roots=(root,),
             ).plan_files()
-        except (SyntaxError, ValueError, TypeError, OSError, RopeError) as exc:
+        except Exception as exc:
             path = (
                 exc.filename
                 if isinstance(exc, SyntaxError) and exc.filename is not None
@@ -764,10 +762,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
             return r[m.Infra.CodegenResult].from_failure(session)
-        return transaction.publish_prepared_locked(
+        recorded = transaction.record_publication(
             session.value.model_copy(
                 update={"issues": (*session.value.issues, *plan.issues)},
             ),
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM,
+        )
+        if recorded.failure:
+            return r[m.Infra.CodegenResult].from_failure(recorded)
+        return transaction.publish_prepared_locked(
+            recorded.value,
             lambda current: self._publish_managed_locked(
                 request,
                 plan,

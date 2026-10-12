@@ -396,12 +396,12 @@ class TestsFlextInfraFileParticipantRecovery:
                 )
                 tm.fail(failed, has=str(cause))
                 tm.that(
-                    "recovery_error" in (failed.error_data or {}),
+                    (failed.error_data or {}).get("cleanup_error") is not None,
                     eq=journal_change != "unchanged",
                 )
             if journal_change == "unchanged":
                 tm.that(journal.exists(), eq=False)
-                tm.that(target.exists(), eq=False)
+                tm.that(target.read_bytes(), eq=b"prepared publication\n")
             else:
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),

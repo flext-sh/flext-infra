@@ -12,12 +12,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, t, u
-from flext_infra.workspace import FlextInfraRopeWorkspace
 from flext_infra._utilities import (
     FlextInfraRopeProject,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import tm
 
 if TYPE_CHECKING:

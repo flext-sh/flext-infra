@@ -210,7 +210,6 @@ class FlextInfraCodegenTransaction(
     @staticmethod
     def _file_transaction_guard(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[
         t.Pair[t.VariadicTuple[m.Infra.CodegenJournalDirectory], m.Cli.AtomicFileState]
     ]:
@@ -260,7 +259,7 @@ class FlextInfraCodegenTransaction(
         result_type = r[
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
         ]
-        guarded = self._file_transaction_guard(layout, inputs)
+        guarded = self._file_transaction_guard(layout)
         if guarded.failure:
             return result_type.from_failure(guarded)
         directories, before = guarded.value
@@ -493,8 +492,8 @@ class FlextInfraCodegenTransaction(
         A phase that fails or raises after the journal was prepared recovers
         that journal here, while the lease is still held, and keeps the cause:
         a failure is returned unchanged and an exception escapes unchanged.
-        A failure whose owner already attempted or refused recovery (it carries
-        ``recovery_error``) is returned as-is, never recovered twice.
+        A failure whose owner already attempted or refused cleanup (it carries
+        ``cleanup_error``) is returned as-is, never cleaned twice.
 
         Returns:
             The resulting ``p.Result[T]``.
@@ -509,16 +508,18 @@ class FlextInfraCodegenTransaction(
                 exc.add_note(f"generation recovery failed: {recovered.error}")
             raise
         if outcome.success or (
-            outcome.error_data is not None and "recovery_error" in outcome.error_data
+            outcome.error_data is not None and "cleanup_error" in outcome.error_data
         ):
             return outcome
         recovered = self._recover_prepared(layout)
         if recovered.failure:
             return r[T].fail(
                 outcome.error or "generation phase failed",
+                error_code=outcome.error_code,
+                exception=outcome.exception,
                 error_data={
                     **(outcome.error_data or {}),
-                    "recovery_error": recovered.error,
+                    "cleanup_error": recovered.error,
                 },
             )
         return outcome

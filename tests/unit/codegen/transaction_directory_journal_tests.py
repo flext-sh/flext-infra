@@ -282,6 +282,15 @@ class TestsFlextInfraTransactionDirectoryJournal:
                     owner=phase,
                 )
                 session = tm.ok(owner.append_phase_locked(session, phase, (plan,)))
+                checkpoint = m.Infra.CodegenPhaseOutcome.model_validate_json(
+                    (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_text(
+                        encoding=c.DEFAULT_ENCODING,
+                    ),
+                )
+                tm.that(checkpoint.completed, eq=False)
+                tm.that(checkpoint.root, eq=root)
+                tm.that(checkpoint.phase, eq=phase)
+                tm.that(checkpoint.written_files, eq=session.written_files)
             tm.that(
                 tuple(entry.original_sha256 for entry in session.journal.entries),
                 eq=tuple(
@@ -292,6 +301,13 @@ class TestsFlextInfraTransactionDirectoryJournal:
             return owner.commit_locked(session)
 
         tm.ok(owner.run_files_locked(roots, two_phases))
+        completed = m.Infra.CodegenPhaseOutcome.model_validate_json(
+            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_text(
+                encoding=c.DEFAULT_ENCODING,
+            ),
+        )
+        tm.that(completed.completed, eq=True)
+        tm.that(completed.written_files, eq=tuple(targets.values()))
         for phase, target in targets.items():
             tm.that(target.read_bytes(), eq=f"{phase} generated\n".encode())
 

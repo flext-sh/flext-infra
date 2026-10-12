@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, config
-from flext_infra.deps import FlextInfraEnsurePyreflyConfigPhase, FlextInfraExtraPathsManager, FlextInfraPyprojectModernizer
+from flext_infra.deps import (
+    FlextInfraEnsurePyreflyConfigPhase,
+    FlextInfraExtraPathsManager,
+    FlextInfraPyprojectModernizer,
+)
 from tests import m, t, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 

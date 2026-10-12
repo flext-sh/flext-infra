@@ -302,9 +302,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             *(
                 selector
                 for entry in journal.entries
-                for selector in (
-                    entry.desired_staging,
-                )
+                for selector in (entry.desired_staging,)
                 if selector is not None
             ),
         ):
@@ -541,12 +539,17 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         failure: str,
+        *,
+        exception: BaseException | None = None,
     ) -> p.Result[bool]:
         recovered = self._recover_prepared(layout)
-        if recovered.failure:
-            # Recovery must never replace the failure that initiated it.
-            return r[bool].fail(failure, error_data={"recovery_error": recovered.error})
-        return r[bool].fail(failure)
+        return r[bool].fail(
+            failure,
+            exception=exception,
+            error_data={
+                "cleanup_error": recovered.error if recovered.failure else None
+            },
+        )
 
     def _write_journal(
         self,

@@ -15,8 +15,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

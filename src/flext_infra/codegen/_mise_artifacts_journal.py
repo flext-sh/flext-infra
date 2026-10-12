@@ -12,7 +12,6 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles as files,
     FlextInfraMiseArtifactsJournalRelocation,
-    FlextInfraMiseArtifactsProcess as process,
     FlextInfraMiseArtifactsState as journal_state,
     FlextInfraMiseArtifactsVerification,
 )
@@ -406,7 +405,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
-
     @classmethod
     def write(
         cls,
@@ -621,9 +619,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         return result_type.ok(
             (project, selector.value),
         )
-
-
-
 
     @classmethod
     def _desired_staging_selector(
