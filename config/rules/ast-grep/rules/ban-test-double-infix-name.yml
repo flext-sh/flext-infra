@@ -1,0 +1,38 @@
+# Test law: the double's name cannot hide behind a project prefix.
+#
+# `ban-test-fakes` owns double names at the word boundaries (prefix `Fake…`,
+# suffix `…Fake`). The infix form slips past it: a project-prefixed class like
+# `AlgarOudMigFakeLdapClient` or `TestsFooSpyWriter` carries the double word in
+# the middle, where the prefix/suffix regexes cannot see it. The class is a
+# hand-rolled double whatever its prefix says — and its type never satisfies
+# the owner protocol, which is why these classes surface as type errors
+# against the production parameter.
+#
+# Matches a class definition inside a test tier whose name contains
+# Fake/Stub/Dummy/Mock/Spy as an infix component (lowercase-or-underscore on
+# the left, uppercase-or-underscore-or-digit on the right — the same word
+# boundary discipline as ban-test-fakes, extended inward).
+#
+# Detection-only: exercise the real owner through public fixtures, or delete
+# the test and its double.
+id: ban-test-double-infix-name
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/examples/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        regex: '.+(?:[a-z0-9_])(Fake|Stub|Dummy|Mock|Spy)(?:[A-Z0-9_]|$)'
+    - not:
+        has:
+          field: name
+          regex: '^_*Test'
+message: >-
+  Hand-rolled test double under a project-prefixed infix name (...Fake... /
+  ...Stub... / ...Mock...): the prefix does not make it real. Exercise the real
+  owner through public fixtures, or delete the test and its double.
