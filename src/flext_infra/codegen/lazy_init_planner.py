@@ -122,21 +122,9 @@ class FlextInfraCodegenLazyInitPlanner(
             context.surface == c.Infra.DIR_TESTS
             and context.current_pkg != c.Infra.DIR_TESTS
         )
-        # A package that owns live modules is a real package (FLEXT internal
-        # family shape: _constants/_typings/_protocols/_models/_utilities):
-        # it keeps a light lazy-init surface even when that surface is empty.
-        # Removing the initializer there would dissolve the package into a
-        # namespace package, breaking facade imports, ruff private-import
-        # analysis, and the declared family shape. An empty surface is a
-        # defect to fix by declaring exports, never a reason to delete the
-        # package initializer.
-        package_entry = self._package_entry(context.pkg_dir)
-        has_live_content = package_entry is not None and (
-            self._has_live_package_content(package_entry)
-        )
         empty_action: c.Infra.LazyInitAction = (
             c.Infra.LazyInitAction.WRITE
-            if is_test_child_package or has_live_content
+            if is_test_child_package or self._keeps_facade_when_empty(context)
             else (
                 c.Infra.LazyInitAction.REMOVE
                 if context.generated_init

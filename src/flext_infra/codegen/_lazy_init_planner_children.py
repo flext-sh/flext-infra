@@ -70,6 +70,29 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                     return True
         return False
 
+    def _keeps_facade_when_empty(
+        self,
+        context: m.Infra.LazyInitPackageContext,
+    ) -> bool:
+        """Return whether a package keeps its facade despite an empty surface.
+
+        A package that owns live modules is a real package (FLEXT internal
+        family shape: ``_constants/_typings/_protocols/_models/_utilities``)
+        and keeps a light lazy-init surface even when that surface is empty.
+        Removing the initializer there would dissolve the package into a
+        namespace package, breaking facade imports, ruff private-import
+        analysis, and the declared family shape. An empty surface is a defect
+        to fix by declaring exports, never a reason to delete the initializer.
+
+        Returns:
+            Whether the package owns live content and must keep its facade.
+
+        """
+        package_entry = self._package_entry(context.pkg_dir)
+        return package_entry is not None and self._has_live_package_content(
+            package_entry
+        )
+
     def _merge_children(
         self,
         pkg_dir: Path,

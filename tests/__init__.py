@@ -15,7 +15,6 @@ from flext_core.lazy import install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import api, d, e, h, r, td, tf, tk, tm, x
 
-    from tests import _models, fixtures, integration, refactor, unit
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScanMixin
@@ -63,17 +62,14 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesToolingFixtureMixin",
     "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
     "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
-    "_models",
     "api",
     "c",
     "d",
     "e",
-    "fixtures",
     "h",
     "m",
     "p",
     "r",
-    "refactor",
     "s",
     "t",
     "td",
@@ -81,7 +77,6 @@ __all__: tuple[str, ...] = (
     "tk",
     "tm",
     "u",
-    "unit",
     "x",
 )
 
@@ -108,18 +103,14 @@ install_lazy_exports(
         "TestsFlextInfraUtilitiesToolingFixtureMixin": ".utilities_fixture_tooling",
         "TestsFlextInfraUtilitiesWorkspaceEnvMixin": ".utilities_workspace_env",
         "TestsFlextInfraUtilitiesWorkspaceFixtureMixin": ".utilities_fixture_workspace",
-        "_models": "._models",
         "api": "flext_tests",
         "c": ".constants",
         "d": "flext_tests",
         "e": "flext_tests",
-        "fixtures": ".fixtures",
         "h": "flext_tests",
-        "integration": ".integration",
         "m": ".models",
         "p": ".protocols",
         "r": "flext_tests",
-        "refactor": ".refactor",
         "s": ".base",
         "t": ".typings",
         "td": "flext_tests",
@@ -127,7 +118,6 @@ install_lazy_exports(
         "tk": "flext_tests",
         "tm": "flext_tests",
         "u": ".utilities",
-        "unit": ".unit",
         "x": "flext_tests",
     }),
     public_exports=__all__,
