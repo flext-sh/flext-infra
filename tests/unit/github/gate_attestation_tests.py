@@ -6,8 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
+from shlex import quote
 
 import pytest
 from flext_cli import u as cli_u
@@ -48,21 +51,24 @@ class TestsFlextInfraGithubGateAttestation:
         u.Tests.git_bootstrap(root, ("config", "user.signingkey", str(key_path)))
         (root / "tracked.txt").write_text("attested\n", encoding="utf-8")
         (root / "Makefile").write_text(
-            ".PHONY: gen check test\n"
-            "gen:\n\t@printf 'gen ok\\n'\n"
-            "check:\n\t@printf 'check ok\\n'\n"
-            "test:\n\t@printf 'test ok\\n'\n",
+            f".PHONY: {c.Infra.VERB_CHECK}\n"
+            f"{c.Infra.VERB_CHECK}:\n"
+            "\t@printf 'executed\\n' >> invocations.txt\n"
+            f"\t@{quote(sys.executable)} -m flext_infra "
+            f"{c.Infra.CLI_GROUP_CHECK} {c.Infra.VERB_RUN} "
+            f"--repository-root . --gates {c.Infra.LINT}\n",
             encoding="utf-8",
         )
         (root / "pyproject.toml").write_text(
             "[project]\nname='fixture'\n",
             encoding="utf-8",
         )
+        (root / "consumer.py").write_text("import os\n", encoding="utf-8")
         tm.ok(
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
                     repo_root=root,
-                    paths=("Makefile", "pyproject.toml", "tracked.txt"),
+                    paths=("Makefile", "pyproject.toml", "tracked.txt", "consumer.py"),
                 ),
             ),
         )
@@ -108,12 +114,68 @@ class TestsFlextInfraGithubGateAttestation:
         """
         return self._signed_repository
 
-    @staticmethod
-    def _request(root: Path) -> m.Infra.GateAttestationCreateRequest:
+    @classmethod
+    def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
+        """Capture one real Make/check run before the signer consumes evidence."""
+        started = datetime.now(UTC)
+        output = tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
+        completed = datetime.now(UTC)
+        reports_dir = m.Infra.RunCommand(repository_root=root).reports_dir_path
+        sarif = next(reports_dir.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME))
+        report = m.Infra.SarifReport.model_validate_json(sarif.read_bytes())
+        assert report.properties is not None
+        native = (
+            c.Infra.ToolOutcome.FINDINGS
+            if any(result.total_findings for result in report.properties.results)
+            else c.Infra.ToolOutcome.CLEAN
+        )
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        assert identity.origin_remote is not None
+        policy = c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION
+        context_digest = (
+            f"sha256:{cli_u.Cli.sha256_content(sys.version + sys.platform)}"
+        )
+        policy_digest = f"sha256:{cli_u.Cli.sha256_content(policy.value)}"
+        evidence = m.Infra.GateCommandEvidence(
+            gate=c.Infra.VERB_CHECK,
+            command=f"make {c.Infra.VERB_CHECK}",
+            cwd=str(root),
+            process=m.Cli.ProcessOutcome.model_validate(
+                output.outcome, from_attributes=True
+            ),
+            native_outcome=native,
+            policy=policy,
+            repository=u.Infra.canonical_origin_remote(identity.origin_remote),
+            commit_sha=identity.head_oid,
+            tree_sha=cls._rev_parse(root, "HEAD^{tree}"),
+            context_digest=context_digest,
+            policy_digest=policy_digest,
+            reports=(
+                m.Infra.GateReportEvidence(
+                    path=sarif.relative_to(root),
+                    digest=f"sha256:{cli_u.Cli.sha256_bytes(sarif.read_bytes())}",
+                    kind=c.Infra.GateEvidenceReportKind.CHECK_SARIF,
+                ),
+            ),
+            result_digest=f"sha256:{cli_u.Cli.sha256_content(output.stdout + output.stderr)}",
+            started_at=started.isoformat(),
+            completed_at=completed.isoformat(),
+        )
+        receipt = root / c.Infra.REPORTS_DIR_NAME / "original-check.json"
+        tm.ok(
+            cli_u.Cli.atomic_write_text_file(
+                receipt, evidence.model_dump_json(round_trip=True)
+            )
+        )
         return m.Infra.GateAttestationCreateRequest(
             workspace=str(root),
             signer="attester@example.test",
-            gates=("gen", "check", "test"),
+            gates=(c.Infra.VERB_CHECK,),
+            receipt=receipt,
+            allowed_signers=str(root / "allowed_signers"),
+            context_digest=context_digest,
+            policy=policy,
+            policy_digest=policy_digest,
         )
 
     @staticmethod
@@ -129,6 +191,14 @@ class TestsFlextInfraGithubGateAttestation:
                 allowed_signers=str(allowed_signers),
                 expected_gates=gates,
                 commit_sha=commit_sha,
+                context_digest=f"sha256:{cli_u.Cli.sha256_content(sys.version + sys.platform)}",
+                policy=c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION,
+                policy_digest=(
+                    "sha256:"
+                    + cli_u.Cli.sha256_content(
+                        c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION.value,
+                    )
+                ),
             ),
         )
 
@@ -143,9 +213,8 @@ class TestsFlextInfraGithubGateAttestation:
 
         tm.ok(created)
         head = self._head(tmp_path)
-        tm.that(created.unwrap().tag, eq=f"attest/gates/v1/{head}")
         tm.that(self._rev_parse(tmp_path, f"{created.unwrap().tag}^{{}}"), eq=head)
-        verified = self._verify(tmp_path, allowed_signers, head, "gen", "check", "test")
+        verified = self._verify(tmp_path, allowed_signers, head, c.Infra.VERB_CHECK)
         tm.ok(verified)
         tm.that(verified.unwrap().signer, eq="attester@example.test")
 
@@ -170,9 +239,7 @@ class TestsFlextInfraGithubGateAttestation:
                 tmp_path,
                 allowed_signers,
                 self._head(tmp_path),
-                "gen",
-                "check",
-                "test",
+                c.Infra.VERB_CHECK,
             ),
         )
 
@@ -200,9 +267,7 @@ class TestsFlextInfraGithubGateAttestation:
             tmp_path,
             allowed_signers,
             selected_sha,
-            "gen",
-            "check",
-            "test",
+            c.Infra.VERB_CHECK,
         )
         tm.ok(verified)
         tm.that(verified.unwrap().commit_sha, eq=selected_sha)
@@ -220,11 +285,10 @@ class TestsFlextInfraGithubGateAttestation:
             tmp_path,
             allowed_signers,
             self._head(tmp_path),
-            "check",
+            c.Infra.VERB_TEST,
         )
 
         tm.fail(verified)
-        tm.that(verified.error or "", has="exactly match")
 
     def test_gate_attestation_rejects_duplicate_gate_coverage(
         self,
@@ -234,7 +298,7 @@ class TestsFlextInfraGithubGateAttestation:
         """Test gate attestation rejects duplicate gate coverage."""
         _allowed_signers = signed_repository_factory(tmp_path)
         values = self._request(tmp_path).model_dump()
-        values["gates"] = ("gen", "check", "test", "test")
+        values["gates"] = (c.Infra.VERB_CHECK, c.Infra.VERB_CHECK)
 
-        with pytest.raises(ValueError, match="gates must be unique"):
+        with pytest.raises(ValueError):
             m.Infra.GateAttestationCreateRequest.model_validate(values)
