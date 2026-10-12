@@ -175,6 +175,9 @@ print(json.dumps({
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
     )
+    WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
+    )
     CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
     )

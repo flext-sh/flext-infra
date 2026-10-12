@@ -13,6 +13,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
@@ -65,6 +66,38 @@ class FlextInfraModelsWorkspace:
         receipts: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleReceipt],
             m.Field(description="Ordered public command receipts for the entire scope"),
+        ]
+
+    class WorkspaceOperationReceipt(m.ContractModel):
+        """Original in-process repository operation, with its observed effects."""
+
+        root: Annotated[Path, m.Field(description="Repository actually attempted")]
+        executed: Annotated[bool, m.Field(description="Original operation was invoked")]
+        outcome: Annotated[
+            c.Infra.ToolOutcome,
+            m.Field(description="Native operation outcome; independent of report transport"),
+        ]
+        files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Validated or changed paths returned by the original owner"),
+        ] = ()
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(description="Native failures attributed to their actual repository"),
+        ] = ()
+
+    class WorkspaceOperationReport(m.ContractModel):
+        """Declared repository scope and original serial operation receipts."""
+
+        root: Annotated[Path, m.Field(description="Invoking repository root")]
+        operation: Annotated[t.NonEmptyStr, m.Field(description="Public operation name")]
+        scope: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Roots discovered once before the batch"),
+        ]
+        receipts: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
+            m.Field(description="Original outcomes in discovered order"),
         ]
 
     class SubprojectLoadContext(m.ContractModel):

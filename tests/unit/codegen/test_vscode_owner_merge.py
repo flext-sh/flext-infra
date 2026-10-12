@@ -8,13 +8,120 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, t
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import m, tm, u
 
 
 class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
+
+    @staticmethod
+    def test_runtime_binding_rejects_versioned_policy() -> None:
+        """A physical runtime binding cannot masquerade as a portable source."""
+        governed = next(
+            item
+            for item in config.Infra.codegen.managed_files
+            if item.owner == c.Infra.CODEGEN_OWNER_VSCODE
+        )
+        with pytest.raises(ValueError, match="runtime binding must be runtime-local"):
+            m.Infra.ManagedFileSpec.model_validate({
+                **governed.model_dump(),
+                "tracking": "versioned",
+                "runtime_binding": True,
+            })
+
+    @staticmethod
+    def test_runtime_ignore_projection_follows_declared_paths(tmp_path: Path) -> None:
+        """Git consumes a local-artifact rule derived from an arbitrary declaration."""
+        root = tmp_path / "project"
+        root.mkdir()
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
+        path = Path("generated") / "runtime.json"
+        artifact = m.Infra.ManagedFileSpec(
+            path=path,
+            owner=c.Infra.CODEGEN_OWNER_VSCODE,
+            policy="merge",
+            tracking="runtime-local",
+        )
+        codegen = config.Infra.codegen.model_copy(
+            update={"managed_files": (artifact,)},
+        )
+        rendered = tm.ok(
+            u.Infra.render_project_gitignore(
+                codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name=root.name,
+            ),
+        )
+        (root / c.Infra.GITIGNORE).write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        ignored = tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.GIT, "check-ignore", "--no-index", path.as_posix()),
+                cwd=root,
+            ),
+        )
+        tm.that(ignored.stdout.strip(), eq=path.as_posix())
+
+    @staticmethod
+    def test_runtime_selection_plans_missing_declared_bindings(
+        tmp_path: Path,
+    ) -> None:
+        """Binding-only planning creates absent outputs through their actual owner."""
+        root = tmp_path / "project"
+        workspace = u.Tests.standalone_workspace(root)
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root, workspace))
+        declared = tuple(
+            item
+            for item in config.Infra.codegen.managed_files
+            if item.owner == c.Infra.CODEGEN_OWNER_VSCODE
+        )
+        codegen = config.Infra.codegen.model_copy(
+            update={"managed_files": declared},
+        )
+        planner = FlextInfraCodegenConform(repository_root=root)
+        plans = tm.ok(planner.plan_runtime_bindings(target, codegen))
+        expected = {
+            root / item.path for item in declared if item.runtime_binding
+        }
+        tm.that({plan.path for plan in plans}, eq=expected)
+        for plan in plans:
+            tm.that(plan.desired_content, is_=bytes)
+            tm.that(u.Infra.codegen_file_requires_effect(plan), eq=True)
+
+    @staticmethod
+    def test_explicit_settings_preserve_local_custom_content(tmp_path: Path) -> None:
+        """A typed resolved project spec keeps local keys outside its ownership."""
+        root = tmp_path / "project"
+        path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        path.parent.mkdir(parents=True)
+        original = '{"workbench.colorTheme": "operator-theme"}\n'
+        path.write_text(original, encoding=c.DEFAULT_ENCODING)
+        spec = config.Infra.codegen.vscode.model_copy(
+            update={
+                "scalar_settings": {
+                    **config.Infra.codegen.vscode.scalar_settings,
+                    "editor.fontLigatures": True,
+                },
+            },
+        )
+        rendered = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(
+                root,
+                runtime_root=root,
+                spec=spec,
+            ),
+        )
+        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(rendered)),
+        )
+        tm.that(settings["editor.fontLigatures"], eq=True)
+        tm.that(settings["workbench.colorTheme"], eq="operator-theme")
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
     def test_merge_marks_drift_and_renders_canonical_content(

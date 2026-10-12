@@ -31,6 +31,19 @@ pytestmark = [pytest.mark.slow]
 _LIFECYCLE_EXCEPTION = OSError("conform operation raised after begin")
 
 
+def _assert_conform_check_reaches_fixed_point(root: Path) -> None:
+    """Run a SELF CHECK conform and assert it writes nothing new."""
+    fixed_point = infra.codegen_conform(
+        u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        ),
+    )
+    tm.ok(fixed_point)
+    tm.that(fixed_point.value.written_files, eq=())
+
+
 class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
     """Inject one public planning outcome after the real transaction begins."""
 
@@ -706,15 +719,7 @@ class TestsFlextInfraCodegenConform:
         )
         tm.ok(applied)
 
-        fixed_point = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
-        )
-        tm.ok(fixed_point)
-        tm.that(fixed_point.value.written_files, eq=())
+        _assert_conform_check_reaches_fixed_point(root)
 
     @staticmethod
     @pytest.mark.slow
@@ -810,15 +815,7 @@ class TestsFlextInfraCodegenConform:
             ),
         )
 
-        fixed_point = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
-        )
-        tm.ok(fixed_point)
-        tm.that(fixed_point.value.written_files, eq=())
+        _assert_conform_check_reaches_fixed_point(root)
 
     @staticmethod
     @pytest.mark.slow

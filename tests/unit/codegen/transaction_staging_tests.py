@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -25,6 +27,75 @@ from tests import t, tm, u
 
 class TestsFlextInfraTransactionStaging:
     """Exercise durable staging authority before publishing live destinations."""
+
+    @staticmethod
+    def test_footprint_authorization_observes_the_serialized_current_journal(
+        tmp_path: Path,
+    ) -> None:
+        """An independent writer's progress cannot invalidate an earlier observation."""
+        root = u.Tests.git_repository(tmp_path)
+        artifacts = FlextInfraCodegenMiseArtifacts(repository_root=root)
+        writer = transaction.FlextInfraCodegenTransaction(artifacts)
+        reader = transaction.FlextInfraCodegenTransaction(
+            artifacts,
+            participant_policy=m.Infra.CodegenParticipantPolicy(
+                scope_root=root,
+                roots=(tm.ok(u.Cli.atomic_plan_directory_chain(root)),),
+            ),
+        )
+        previous = tm.ok(reader.inspect_journal())
+        target = root / "concurrent.md"
+        target.write_bytes(b"before\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        roots = {"@docs-0": root}
+        prepared = Event()
+        observing = Event()
+        finish = Event()
+
+        def publish(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+            session = tm.ok(writer.begin_files_locked(scope_root, roots, (before,)))
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=before,
+                desired_content=b"accepted progress\n",
+                desired_mode=before.mode,
+                owner="docs",
+            )
+            advanced = writer.append_phase_locked(session, "docs", (plan,))
+            tm.ok(advanced)
+            prepared.set()
+            if not finish.wait(c.Infra.TIMEOUT_SHORT):
+                pytest.fail("concurrent journal writer was not released")
+            return advanced
+
+        def observe() -> p.Result[m.Infra.CodegenFootprint]:
+            observing.set()
+            return reader.validate_footprint(previous)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            writing = executor.submit(writer.run_files_locked, roots, publish)
+            try:
+                if not prepared.wait(c.Infra.TIMEOUT_SHORT):
+                    pytest.fail("concurrent journal writer did not prepare")
+                reading = executor.submit(observe)
+                if not observing.wait(c.Infra.TIMEOUT_SHORT):
+                    pytest.fail("concurrent journal observer did not start")
+            finally:
+                finish.set()
+            session = tm.ok(writing.result())
+            current = tm.ok(reading.result())
+
+        tm.that(current.transaction_id, eq=session.journal.transaction_id)
+        tm.that(current.snapshot, eq=session.journal_state)
+        tm.that(target.read_bytes(), eq=b"accepted progress\n")
+        tm.ok(
+            writer.run_files_locked(
+                roots,
+                lambda _scope: r[bool].ok(value=True),
+            ),
+        )
+        tm.that(target.read_bytes(), eq=b"accepted progress\n")
 
     @staticmethod
     @pytest.mark.parametrize("mutation", ["content", "inode", "unchanged"])
@@ -87,7 +158,7 @@ class TestsFlextInfraTransactionStaging:
         *,
         inside: bool,
     ) -> None:
-        """Reject undeclared capabilities before scope or destination leases exist."""
+        """Reject undeclared capabilities without recovery or destination publication."""
         root = u.Tests.git_repository(tmp_path / "source")
         foreign = root / "undeclared" if inside else tmp_path / "foreign"
         foreign.mkdir()
@@ -134,15 +205,26 @@ class TestsFlextInfraTransactionStaging:
         tm.that(observed.pending_roots, eq=(foreign,))
         tm.that(observed.journal_state, eq=state)
 
+        def publish_unapproved(scope_root: Path) -> p.Result[bool]:
+            """Exercise a real destination effect if authorization wrongly grants it.
+
+            Returns:
+                The actual publication outcome.
+            """
+            return u.Cli.atomic_write_text_file(
+                scope_root / "unauthorized.txt",
+                "unapproved publication\n",
+            )
+
         if boundary == "managed":
             result = owner.run_locked(
                 prepare=True,
-                operation=lambda _scope: r[bool].ok(value=True),
+                operation=publish_unapproved,
             )
         else:
             result = owner.run_files_locked(
                 {"@current-0": root},
-                lambda _scope: r[bool].ok(value=True),
+                publish_unapproved,
             )
 
         tm.fail(result, has="outside authorized roots")
@@ -159,10 +241,7 @@ class TestsFlextInfraTransactionStaging:
             tm.ok(u.Cli.atomic_read_binary_file_state(marker, required=True)),
             eq=marker_before,
         )
-        tm.that(
-            layout.journal_path.with_name(f"{layout.journal_path.name}.lock").exists(),
-            eq=False,
-        )
+        tm.that((root / "unauthorized.txt").exists(), eq=False)
         tm.that((foreign / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
         tm.that((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
 
@@ -196,10 +275,6 @@ class TestsFlextInfraTransactionStaging:
                 ),
             ),
             eq=corrupted,
-        )
-        tm.that(
-            absent.journal_path.with_name(f"{absent.journal_path.name}.lock").exists(),
-            eq=False,
         )
         tm.that((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
 

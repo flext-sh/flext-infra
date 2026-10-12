@@ -11,15 +11,106 @@ from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from flext_infra import c, config, p, r, t
+from flext_cli import u as cli_u
+
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesIterationDirectory,
+    FlextInfraUtilitiesRefactor,
 )
 
 
 class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
     """Static helpers for discovering Python files across workspace projects."""
+
+    @staticmethod
+    def repository_operation_batch(
+        root: Path,
+        scope: c.Infra.CodegenConformScope,
+        operation: str,
+        task: Callable[[Path], p.Result[t.SequenceOf[Path]]],
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Attempt a discovered repository scope serially through its original owner.
+
+        Returns:
+            Original returned paths, or the first causal failure after reporting.
+        """
+        resolved = root.expanduser().resolve()
+        if scope == c.Infra.CodegenConformScope.SELF:
+            roots = (resolved,)
+        elif scope == c.Infra.CodegenConformScope.ALL:
+            declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
+            if declared.failure:
+                return r[t.SequenceOf[Path]].from_failure(declared)
+            roots = (
+                resolved,
+                *(resolved / declaration.path for declaration in declared.value),
+            )
+        else:
+            return r[t.SequenceOf[Path]].fail(
+                f"{operation} scope must be self or all, received {scope}",
+            )
+        receipts: list[m.Infra.WorkspaceOperationReceipt] = []
+        files: list[Path] = []
+        first_failure: p.Result[t.SequenceOf[Path]] | None = None
+        for repository_root in roots:
+            result = task(repository_root)
+            issues = (
+                (
+                    m.Infra.Issue(
+                        file=str(repository_root),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=result.error or f"{operation} failed",
+                        severity="error",
+                    ),
+                )
+                if result.failure
+                else ()
+            )
+            observed = () if result.failure else tuple(result.value)
+            files.extend(observed)
+            receipts.append(
+                m.Infra.WorkspaceOperationReceipt(
+                    root=repository_root,
+                    executed=True,
+                    outcome=(
+                        c.Infra.ToolOutcome.ERROR
+                        if result.failure
+                        else c.Infra.ToolOutcome.CLEAN
+                    ),
+                    files=observed,
+                    issues=issues,
+                ),
+            )
+            cli_u.Cli.status(operation, repository_root.name, result=result.success)
+            if result.failure and first_failure is None:
+                first_failure = result
+        published = FlextInfraUtilitiesRefactor.publish_refactor_report_evidence(
+            resolved,
+            m.Infra.WorkspaceOperationReport(
+                root=resolved,
+                operation=operation,
+                scope=roots,
+                receipts=tuple(receipts),
+            ),
+            relative_path=(
+                c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY / f"{operation}.json"
+            ),
+        )
+        if published.failure:
+            if first_failure is not None:
+                cli_u.Cli.error(
+                    f"{operation} receipt publication failed: {published.error}",
+                )
+                return r[t.SequenceOf[Path]].from_failure(first_failure)
+            return r[t.SequenceOf[Path]].from_failure(published)
+        if first_failure is not None:
+            return r[t.SequenceOf[Path]].from_failure(first_failure)
+        return r[t.SequenceOf[Path]].ok(tuple(files))
 
     @staticmethod
     def fleet_map[TPayload, TResult](

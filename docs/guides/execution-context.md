@@ -560,6 +560,12 @@ and leave live source bytes and modification times unchanged. Native Ruff uses t
 declared external project cache so its cache files never enter the authenticated
 source view.
 
+Journal footprint inspection and authorization hold the same root journal lease
+as publication. Authorization observes the current journal under that lease;
+an earlier read-only snapshot does not become a global generation precondition.
+Planning releases the lease, then reports a newly authorized observation. Recovery
+and publication retain their own exact journal receipts and physical-state guards.
+
 Protected compilation and pytest validation use the same environment boundary as
 lint validation: the child keeps its project's working directory and configured
 plugins while removing the orchestrator's `PYTHONPATH` and forced-color setting.

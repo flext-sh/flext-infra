@@ -1265,6 +1265,8 @@ Infra:
     - path: .vscode/settings.json
       owner: vscode
       policy: merge
+      tracking: runtime-local
+      runtime_binding: true
     # Release build policies: fully generated fleet-wide bytes. The release
     # policy phase renders build constraints at build time from
     # config.Infra.release.build_constraints; no repository copy exists.

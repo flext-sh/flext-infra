@@ -365,7 +365,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         identity: m.Infra.GitIdentityReport,
     ) -> p.Result[bool]:
-        """Refuse foreign pending authority before opening even the scope lease.
+        """Refuse foreign pending authority while holding the scope journal lease.
 
         Returns:
             The resulting ``p.Result[bool]``.

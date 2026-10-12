@@ -165,17 +165,35 @@ class FlextInfraWorkspaceEnvironmentMixin:
         cls,
         request: m.Infra.WorkspaceEnvironmentSyncRequest,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Run one sync request through the public workspace owner.
+        """Run a serial sync scope through the public workspace owner.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        result = cls.sync_environment_files(request)
+        def sync_repository(repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
+            result = cls.sync_environment_files(
+                request.model_copy(
+                    update={
+                        "repository_root": repository_root,
+                        "scope": c.Infra.CodegenConformScope.SELF,
+                    },
+                ),
+            )
+            if result.failure:
+                return r[t.SequenceOf[Path]].from_failure(result)
+            return r[t.SequenceOf[Path]].ok(result.value.changed_files)
+
+        result = u.Infra.repository_operation_batch(
+            request.repository_root,
+            request.scope,
+            "sync-environment",
+            sync_repository,
+        )
         if result.failure:
             return r[t.Cli.ResultValue].from_failure(result)
         return r[t.Cli.ResultValue].ok(
-            tuple(str(path) for path in result.value.changed_files),
+            tuple(str(path) for path in result.value),
         )
 
     @classmethod

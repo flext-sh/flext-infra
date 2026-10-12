@@ -324,6 +324,18 @@ class FlextInfraUtilitiesGitignore:
                     patterns=tuple(project_patterns),
                 ),
             )
+        local_projections = tuple(
+            f"/{item.path.as_posix()}"
+            for item in sorted(codegen.managed_files, key=lambda item: item.path)
+            if item.tracking == "runtime-local"
+        )
+        if local_projections:
+            sections.append(
+                m.Infra.ScaffoldGitignoreSectionSpec(
+                    name="RUNTIME: local projections (derived)",
+                    patterns=local_projections,
+                ),
+            )
         return tuple(sections)
 
 

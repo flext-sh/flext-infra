@@ -35,8 +35,13 @@ class FlextInfraCodegenVscodeMixin:
         repository_root: Path,
         *,
         runtime_root: Path | None = None,
+        spec: m.Infra.CodegenVscodeSpec | None = None,
     ) -> p.Result[str]:
         """Return the canonical-merged ``settings.json`` document for one root.
+
+        ``spec`` is an explicitly resolved project configuration. Live custom
+        keys remain intact outside its declared ownership. ``runtime_root``
+        supplies a scaffold's declared environment before Git exists.
 
         Returns:
             The canonical-merged ``settings.json`` document for one root.
@@ -56,6 +61,7 @@ class FlextInfraCodegenVscodeMixin:
             settings,
             repository_root,
             runtime_root=runtime_root,
+            spec=spec,
         )
         if applied.failure:
             return r[str].from_failure(applied)
@@ -208,6 +214,7 @@ class FlextInfraCodegenVscodeMixin:
         repository_root: Path,
         *,
         runtime_root: Path | None = None,
+        spec: m.Infra.CodegenVscodeSpec | None = None,
     ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping.
 
@@ -215,7 +222,7 @@ class FlextInfraCodegenVscodeMixin:
             The resulting ``p.Result[bool]``.
 
         """
-        spec = config.Infra.codegen.vscode
+        spec = config.Infra.codegen.vscode if spec is None else spec
         changed = cls._apply_enforced_settings(
             settings,
             scalar_settings=spec.scalar_settings,
