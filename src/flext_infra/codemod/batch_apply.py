@@ -22,6 +22,10 @@ from flext_infra.refactor.census import FlextInfraRefactorCensus
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     """Apply guarded rewrites and retain accepted progress for fix-forward."""
 
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
     rename_runner: t.Port[p.Infra.RenameCampaignRunner] = m.Field(
         exclude=True,
         description="Injected CSV campaign execution port",
@@ -127,6 +131,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         self.rope.refresh()
         self.progress.emit("mod: apply the workspace constants census")
         census_runner = FlextInfraRefactorCensus(
+            source_preview=self.source_preview,
             repository_root=self.repository_root,
             apply_changes=True,
             families=("c",),

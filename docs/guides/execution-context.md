@@ -425,6 +425,24 @@ and exports the receipt. Cancelled, corrupt or incomplete runs cannot publish;
 a completed failing test run may save without changing its failing status, including
 when a later step fails. Publication never depends on a branch-name allowlist.
 
+CI uploads the reports that the original operations produced on every job outcome,
+including successful checks, completed failures and interrupted runs. The upload also
+runs when no test workflow row is selected, preserving the check reports independently.
+Its allowlist includes structured check summaries, coverage and JUnit artifacts, original
+suite/selection/inventory process outcomes, selection manifests, run context and
+accounting, cache integrity decisions and Markdown reconciliation. Raw process and test
+logs remain outside that artifact. Generation publication receipts include the latest
+receipt and immutable transaction history, retaining written, retained, attempted and
+pending targets without source snapshots. Planning evidence records candidate HEAD
+and dirty state when the selected root owns a Git repository, otherwise an explicit
+unversioned candidate, plus destination identities, planned modes and content digests,
+counts and native failures. It excludes desired source bytes, captured file state and
+environment command payloads. Original plan objects remain local to execution.
+An early failure publishes only the receipts reached
+by the operation; a missing report remains an artifact error, never a manufactured
+complete execution. Uploading reports does not change the native command status or
+authorize cache publication from an incomplete run.
+
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The
 `runtime-census` gate stays in `make check` and grades every runtime enforcement
@@ -532,6 +550,16 @@ the operation's failure or first exception without restoring an earlier reposito
 inventory. Each publication still validates its planned files and expected source
 identities before writing; a stale later batch cannot replace newer independent edits
 or undo an earlier accepted batch.
+
+Source previews use the mandatory `p.Infra.SourcePreview` capability composed by
+the public API. Census, accessor migration and codemod services receive that capability;
+they do not construct a generation transaction inside their execution. The existing
+transaction owner materializes authenticated candidate bytes and removes only its
+staging after validation. Parser or validator exceptions retain their original cause
+and leave live source bytes and modification times unchanged. Native Ruff uses the
+declared external project cache so its cache files never enter the authenticated
+source view.
+
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases
 or inheritance, and it does not rewrite initializer projections.

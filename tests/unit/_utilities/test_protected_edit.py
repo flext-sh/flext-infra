@@ -10,10 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
+from flext_infra import infra
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -37,7 +34,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     ) -> None:
         """The first callback exception escapes without undoing its writes."""
         project_config = (
-            "[project]\nname = 'sample'\n[tool.ruff.lint]\nselect = ['F401']\n"
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+            "[tool.ruff.lint]\nselect = ['F401']\n"
         )
         package = u.Tests.src_package(tmp_path, "sample", pyproject=project_config)
         py_file = package / "sample.py"
@@ -94,7 +92,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     ) -> None:
         """A native configuration error remains visible with the retained edit."""
         project_config = (
-            "[project]\nname = 'sample'\n[tool.ruff.lint]\nselect = ['F401']\n"
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+            "[tool.ruff.lint]\nselect = ['F401']\n"
         )
         package = u.Tests.src_package(tmp_path, "sample", pyproject=project_config)
         py_file = package / "sample.py"
@@ -155,7 +154,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tmp_path,
             "sample",
             pyproject=(
-                "[project]\nname = 'sample'\n"
+                "[project]\nname = 'sample'\nversion = '1.0.0'\n"
                 "[tool.ruff.lint]\nselect = ['F401', 'F821']\n"
             ),
         )
@@ -228,7 +227,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         source = project / "src" / "sample"
         source.mkdir(parents=True)
         config_path = project / "pyproject.toml"
-        config_path.write_text("[project]\nname = 'sample'\n", encoding="utf-8")
+        config_path.write_text(
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n",
+            encoding="utf-8",
+        )
         py_file = source / "module.py"
         py_file.write_text("VALUE = 1\n", encoding="utf-8")
         commands = dict(u.Infra.lint_commands(py_file, tmp_path, gates=("pyrefly",)))
@@ -243,7 +245,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         package = u.Tests.src_package(
             tmp_path,
             "sample",
-            pyproject="[project]\nname = 'sample'\n",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
         )
         py_file = package / "sample.py"
         original_source = "def value() -> int:\n    return 1\n"
@@ -254,9 +256,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         result = u.Infra.preview_source_writes(
             {py_file: updated_source},
             workspace=tmp_path,
-            source_preview=FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=tmp_path)
-            ),
+            source_preview=infra.source_preview(tmp_path),
             gates=("lint",),
         )
 
@@ -268,20 +268,18 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     def test_staged_source_consumer_reads_candidate_without_live_writes(
         tmp_path: Path,
     ) -> None:
-        """The public staging capability exposes candidate bytes to the real consumer."""
+        """Expose candidate bytes to the real consumer through public staging."""
         package = u.Tests.src_package(
             tmp_path,
             "sample",
-            pyproject="[project]\nname = 'sample'\n",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
         )
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         updated = "VALUE = 2\n"
         py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
         before_modified_ns = py_file.stat().st_mtime_ns
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=tmp_path)
-        )
+        transaction = infra.source_preview(tmp_path)
 
         def consume_candidate(
             view_root: Path,
@@ -302,6 +300,52 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         )
         tm.ok(observed)
         tm.that(observed.value, eq=(updated, original, before_modified_ns))
+        tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+        tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
+
+    @staticmethod
+    def test_source_preview_preserves_parser_exception_and_cleans_staging(
+        tmp_path: Path,
+    ) -> None:
+        """A real parser failure leaves live bytes untouched for a fresh view."""
+        package = u.Tests.src_package(
+            tmp_path,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
+        py_file = package / "sample.py"
+        original = "VALUE = 1\n"
+        invalid = "def value(:\n"
+        py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
+        before_modified_ns = py_file.stat().st_mtime_ns
+        preview = infra.source_preview(tmp_path)
+
+        def parse_candidate(
+            view_root: Path,
+            candidates: t.MappingKV[Path, Path],
+        ) -> str:
+            candidate = candidates[py_file.resolve()]
+            tm.that(candidate.is_relative_to(view_root), eq=True)
+            content = candidate.read_text(encoding=c.DEFAULT_ENCODING)
+            compile(content, str(candidate), "exec")
+            return content
+
+        with pytest.raises(SyntaxError) as raised:
+            preview.preview_sources(
+                tmp_path,
+                {py_file.resolve(): invalid},
+                parse_candidate,
+            )
+        tm.that(raised.value.text, eq=invalid)
+        tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+        tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
+        fresh = preview.preview_sources(
+            tmp_path,
+            {py_file.resolve(): "VALUE = 2\n"},
+            parse_candidate,
+        )
+        tm.ok(fresh)
+        tm.that(fresh.value, eq="VALUE = 2\n")
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 

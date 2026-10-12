@@ -12,10 +12,6 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_cli import cli
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraAccessorMigrationRewriteMixin,
@@ -33,6 +29,10 @@ class FlextInfraAccessorMigrationOrchestrator(
 ):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
 
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
     preview_limit: Annotated[
         int,
         m.Field(description="Maximum number of file previews to include in the report"),
@@ -122,9 +122,6 @@ class FlextInfraAccessorMigrationOrchestrator(
         lint_before_totals: MutableMapping[str, int] = {}
         lint_after_totals: MutableMapping[str, int] = {}
         new_lint_error_totals: MutableMapping[str, int] = {}
-        source_preview = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=self.repository_root)
-        )
         with u.Infra.open_project(self.repository_root) as rope_project:
             for py_file in scoped_files:
                 read = u.Cli.files_read_text(py_file)
@@ -135,7 +132,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                     py_file,
                     read.value,
                     preview_available=len(previews) < self.preview_limit,
-                    source_preview=source_preview,
+                    source_preview=self.source_preview,
                 )
                 automated_change_count += len(file_report.automated_changes)
                 warning_count += len(file_report.warnings)
@@ -180,6 +177,8 @@ class FlextInfraAccessorMigrationOrchestrator(
     def execute_payload(
         cls,
         params: m.Infra.AccessorMigrationInput,
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service.
 
@@ -188,6 +187,7 @@ class FlextInfraAccessorMigrationOrchestrator(
 
         """
         result = cls(
+            source_preview=source_preview,
             repository_root=params.repository_root,
             selected_projects=params.projects,
             apply_changes=params.apply,

@@ -173,6 +173,21 @@ class FlextInfraWorkspacePropagation(s[bool]):
                 return r[bool].from_failure(settled)
         return r[bool].ok(value=True)
 
+    def _report_directory(self) -> p.Result[Path]:
+        """Ensure and return the propagation report directory.
+
+        Returns:
+            The resulting ``p.Result[Path]``.
+
+        """
+        return u.Cli.ensure_dir(
+            u.Cli.resolve_report_dir(
+                self.root,
+                c.Infra.PROJECT,
+                c.Infra.PROPAGATION_REPORT_KEY,
+            ),
+        )
+
     def _write_external_body(
         self,
         workspace: m.Infra.WorkspaceSpec,
@@ -185,13 +200,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             The resulting ``p.Result[Path]``.
 
         """
-        directory = u.Cli.ensure_dir(
-            u.Cli.resolve_report_dir(
-                self.root,
-                c.Infra.PROJECT,
-                c.Infra.PROPAGATION_REPORT_KEY,
-            ),
-        )
+        directory = self._report_directory()
         if directory.failure:
             return r[Path].from_failure(directory)
         body = directory.value / f"external-{consumer.name}.md"
@@ -269,13 +278,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             The resulting ``p.Result[Path]``.
 
         """
-        directory = u.Cli.ensure_dir(
-            u.Cli.resolve_report_dir(
-                self.root,
-                c.Infra.PROJECT,
-                c.Infra.PROPAGATION_REPORT_KEY,
-            ),
-        )
+        directory = self._report_directory()
         if directory.failure:
             return directory
         body = directory.value / f"{member.name}.md"

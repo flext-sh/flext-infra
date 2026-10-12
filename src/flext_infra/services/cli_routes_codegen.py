@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseToolchainProof,
     FlextInfraCodegenProjectNew,
     FlextInfraCodegenPyTyped,
-    FlextInfraCodegenQualityGate,
     FlextInfraCodegenScaffolder,
     FlextInfraCodegenVersionFile,
 )
@@ -149,8 +148,8 @@ class FlextInfraCodegenRoutes:
                     (
                         "constants-quality-gate",
                         "Run constants migration quality gate",
-                        FlextInfraCodegenQualityGate,
-                        FlextInfraCodegenQualityGate.execute,
+                        m.Infra.CodegenCommand,
+                        infra.constants_quality_gate,
                         "constants quality gate passed",
                     ),
                     (

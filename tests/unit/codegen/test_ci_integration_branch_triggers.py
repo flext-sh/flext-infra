@@ -147,6 +147,70 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_ci_preserves_original_execution_receipts_on_every_outcome(
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """The rendered Actions upload preserves causal evidence without logs."""
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="receipt-consumer",
+            make_profile=profile,
+            repository_branch="integration/receipt-consumer",
+            ci_trigger_branches=(),
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
+                spec,
+            ),
+        )
+        steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
+        upload = next(
+            step
+            for step in steps
+            if step.get("uses")
+            == (
+                f"{spec.github_actions['upload-artifact'].repository}"
+                f"@{spec.github_actions['upload-artifact'].version}"
+            )
+        )
+        tm.that(upload["if"], eq="${{ always() }}")
+        inputs = u.Cli.json_as_mapping(upload["with"])
+        tm.that(inputs["if-no-files-found"], eq="error")
+        tm.that(inputs["include-hidden-files"], eq=True)
+        paths = str(inputs["path"]).splitlines()
+        for filename in (
+            "suite-outcome.json",
+            "selection-outcome.json",
+            "inventory-outcome.json",
+            "run-context.json",
+            "selection-plan.json",
+            "testmon-selection.json",
+            "testmon-inventory.json",
+            "run-accounting.json",
+            "cache-before.json",
+            "cache-after.json",
+            "cache-policy.json",
+            "markdown-reconciliation.json",
+        ):
+            tm.that(paths, has=f".reports/tests/**/{filename}")
+        tm.that(
+            paths,
+            has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
+        )
+        publication = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        tm.that(
+            paths,
+            has=[
+                c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix(),
+                publication.as_posix(),
+                f"{publication.with_suffix('').as_posix()}/**/*.json",
+            ],
+        )
+        tm.that(any(path.endswith(".log") for path in paths), eq=False)
+        tm.that(rendered, lacks=["continue-on-error"])
+
+    @staticmethod
     def test_testmon_save_requires_a_trusted_fresh_project_receipt() -> None:
         """Actions archives only the typed project database, never a cache tree."""
         spec = u.CodegenTestSupport.Ci.workflow_spec(

@@ -230,6 +230,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
+                source_preview=infra.source_preview(mod_workspace),
                 repository_root=mod_workspace,
                 apply_changes=True,
                 rename_runner=FlextInfraApplyRenames(),

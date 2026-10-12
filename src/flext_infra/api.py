@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import FlextInfraConfig, m, r, s, t, u
 from flext_infra._conform_wiring import FlextInfraConformWiring
+from flext_infra._preview_wiring import FlextInfraPreviewWiring
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
 class FlextInfra(
     FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraConformWiring,
+    FlextInfraPreviewWiring,
     s[t.JsonDict],
 ):
     """Thin public FLEXT facade over infra services."""
@@ -292,6 +294,7 @@ class FlextInfra(
             )
         with self.rope_workspace(root) as rope:
             return FlextInfraCodemodBatchApply(
+                source_preview=self.source_preview(root),
                 repository_root=root,
                 apply_changes=request.apply,
                 check_only=request.check,

@@ -888,13 +888,76 @@ class FlextInfraConfigModelsArtifact:
             m.Field(ge=0, description="Planning wall seconds"),
         ] = 0.0
 
+    class CodegenPlanningFileEvidence(FlextInfraConfigModelsContract.ConfigContract):
+        """One planned destination without source bytes or captured file state."""
+
+        path: Annotated[Path, m.Field(description="Actual destination identity")]
+        desired_digest: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Desired content digest; absent for planned removal",
+            ),
+        ]
+        desired_mode: Annotated[
+            int | None,
+            m.Field(ge=0, le=0o7777, description="Planned destination mode"),
+        ]
+        owner: Annotated[str, m.Field(description="Canonical artifact owner")]
+        policy: Annotated[
+            Literal["full", "merge"] | None,
+            m.Field(description="Governed artifact policy"),
+        ]
+
+    class CodegenPlanningRepositoryEvidence(
+        FlextInfraConfigModelsContract.ConfigContract,
+    ):
+        """Candidate and target inventory safe for report artifact publication."""
+
+        repository: Annotated[t.NonEmptyStr, m.Field(description="Repository identity")]
+        root: Annotated[Path, m.Field(description="Actual selected repository root")]
+        candidate_kind: Annotated[
+            Literal["git", "unversioned"],
+            m.Field(description="Whether this root owns an independent Git candidate"),
+        ]
+        candidate_sha: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Selected repository HEAD; absent without a Git candidate",
+            ),
+        ]
+        candidate_dirty: Annotated[
+            bool | None,
+            m.Field(
+                description="Candidate worktree state; absent without Git ownership"
+            ),
+        ]
+        files: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenPlanningFileEvidence],
+            m.Field(description="Planned destination identities and content digests"),
+        ]
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(description="Native target failures from original planning"),
+        ]
+        error: Annotated[str, m.Field(description="Original planning failure message")]
+        error_type: Annotated[str, m.Field(description="Original exception identity")]
+        elapsed: Annotated[float, m.Field(ge=0, description="Planning wall seconds")]
+
+        @m.computed_field
+        @property
+        def planned_file_count(self) -> int:
+            """Count the published target inventory."""
+            return len(self.files)
+
     class CodegenPlanningReport(FlextInfraConfigModelsContract.ConfigContract):
-        """Complete read-only planning outcomes before managed-file publication."""
+        """Candidate and target evidence excluding source snapshots and commands."""
 
         root: Annotated[Path, m.Field(description="Invoking generation scope")]
         outcomes: Annotated[
             t.VariadicTuple[
-                FlextInfraConfigModelsArtifact.CodegenRepositoryPlanOutcome
+                FlextInfraConfigModelsArtifact.CodegenPlanningRepositoryEvidence
             ],
             m.Field(description="Every selected repository's native planning outcome"),
         ]

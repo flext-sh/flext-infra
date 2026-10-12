@@ -27,6 +27,9 @@ files:
   - "**/_config*/**/*.py"
 ignores:
   - "**/__init__.py"
+  - "**/tests/**"
+  - "**/examples/**"
+  - "**/conftest.py"
 metadata:
   context:
     MODULE:

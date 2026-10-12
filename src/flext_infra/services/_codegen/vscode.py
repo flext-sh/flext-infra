@@ -4,9 +4,9 @@ This is the only place that knows how ``.vscode/settings.json`` is produced.
 It parses that explicitly JSONC document through the canonical string-aware
 normalizer, validates the resulting mapping, merges the config-driven canonical
 keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
-and serializes the result with ``u.Cli.json_dumps``. Rendering is deliberately
-independent of repository topology so opening a root or declared_repository produces the
-same document. Planning, atomic writes, and fixed-point verification stay owned
+and serializes the result with ``u.Cli.json_dumps``. Rendering derives environment
+executable paths from the checkout's canonical runtime owner.
+Planning, atomic writes, and fixed-point verification stay owned
 by ``FlextInfraCodegenConform``.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, r, t, u
+from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -279,7 +279,36 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         changed = False
-        for key, value in scalar_settings.items():
+        runtime_prefix = f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}/bin/"
+        resolved_scalars: MutableMapping[str, str | bool | int] = dict(scalar_settings)
+        if any(
+            isinstance(value, str) and value.startswith(runtime_prefix)
+            for value in scalar_settings.values()
+        ):
+            runtime = u.Infra.git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=repository_root),
+            )
+            if runtime.failure:
+                return r[bool].from_failure(runtime)
+            python = u.Infra.runtime_python(
+                repository_root,
+                runtime_root=runtime.value.repository_root,
+            )
+            runtime_directory = python.parent.relative_to(
+                repository_root.resolve(),
+                walk_up=True,
+            ).as_posix()
+            for key, value in scalar_settings.items():
+                if isinstance(value, str) and value.startswith(runtime_prefix):
+                    binary = value.removeprefix(runtime_prefix)
+                    if binary == c.Infra.PYTHON:
+                        binary = python.name
+                    elif python.suffix and not binary.endswith(python.suffix):
+                        binary += python.suffix
+                    resolved_scalars[key] = (
+                        f"${{workspaceFolder}}/{runtime_directory}/{binary}"
+                    )
+        for key, value in resolved_scalars.items():
             normalized = u.normalize_to_json_value(value)
             if settings.get(key) == normalized:
                 continue

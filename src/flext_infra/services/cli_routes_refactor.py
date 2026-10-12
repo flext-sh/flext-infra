@@ -17,9 +17,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodSnapshotRefresh,
 )
 from flext_infra.refactor import (
-    FlextInfraAccessorMigrationOrchestrator,
     FlextInfraNamespaceEnforcer,
-    FlextInfraRefactorCensus,
     FlextInfraRefactorViolationsSweep,
     FlextInfraWrapperRootNamespaceRefactor,
 )
@@ -124,14 +122,14 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
-            model_cls=FlextInfraRefactorCensus,
-            handler=FlextInfraRefactorCensus.execute_command,
+            model_cls=m.Infra.CensusInput,
+            handler=infra.census,
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
+            handler=infra.accessor_migrate,
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, infra
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -69,6 +69,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
         source_before = origin_file.read_text(encoding="utf-8")
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=False,
         )
@@ -85,6 +86,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         """Every run publishes the structured receipt under ``.reports``."""
         workspace, _origin_file, _foreign_file = _materialize_fixture(tmp_path)
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=False,
         )
@@ -107,6 +109,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         """Only occurrences defined inside the origin package are renamed."""
         workspace, origin_file, foreign_file = _materialize_fixture(tmp_path)
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=True,
         )
@@ -134,6 +137,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         """A second pass over the migrated tree finds nothing left to rename."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
         first = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=True,
         ).execute()
@@ -141,6 +145,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         migrated_source = origin_file.read_text(encoding="utf-8")
 
         second = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=True,
         ).execute()
@@ -154,12 +159,14 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         """``target_module`` keeps only files under the declared module path."""
         workspace, _origin_file, _foreign_file = _materialize_fixture(tmp_path)
         unfiltered = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=False,
         ).execute()
         tm.that(unfiltered.failure, eq=False)
 
         filtered = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=False,
             target_module="flext_core.legacy",
@@ -195,6 +202,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         )
         u.Tests.provision_checkout(workspace)
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=True,
         )

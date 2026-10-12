@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, m
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -21,7 +21,7 @@ from flext_infra._utilities._semantic_cutover.facade_bases import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesSemanticCutoverSelfFacade(
@@ -77,12 +77,13 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                 ).directory,
             )
             updated, changes = behavior.rewrite_behavior_consumer(
-                path,
-                source,
-                modules=modules,
-                typing_directory=typing_directory,
-                ownership=ownership,
-                utility_imports=elected,
+                m.Infra.SemanticBehaviorRewriteRequest(
+                    path=path,
+                    source=source,
+                    modules=modules,
+                    ownership=ownership,
+                    utility_imports=elected,
+                ),
             )
             for node in ast.parse(updated, filename=str(path)).body:
                 if (

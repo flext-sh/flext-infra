@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
+    @runtime_checkable
     class SourcePreview(Protocol):
         """Consumer-owned capability for validating authenticated source views."""
 

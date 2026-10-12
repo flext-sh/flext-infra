@@ -200,7 +200,8 @@ class FlextInfraUtilitiesResourceLimits:
 
         Args:
             project_dir: The path to the project whose cache is being namespaced.
-            cache_root: The root directory under which the project's cache will be stored.
+            cache_root: The root directory under which the project's cache will be
+                stored.
 
         Returns:
             The resulting ``Path``.

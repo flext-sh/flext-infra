@@ -112,22 +112,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             if not failure:
                 msg = "codemod rule planning failed without a diagnostic"
                 raise RuntimeError(msg)
-            return self._build_check_gate_execution(
-                project_dir,
-                passed=False,
-                issues=(
-                    m.Infra.Issue(
-                        file=c.PYPROJECT_FILENAME,
-                        line=1,
-                        column=0,
-                        code=self.gate_id,
-                        message=failure,
-                        severity=str(c.Infra.GateSeverity.ERROR.value),
-                    ),
-                ),
-                raw_output=failure,
-                started=started,
-            )
+            return self._failure_gate_execution(project_dir, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
         binary = u.Infra.managed_mise_binary(c.Infra.SG, self._repository_root)
@@ -136,22 +121,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             if not failure:
                 msg = "managed scanner resolution failed without a diagnostic"
                 raise RuntimeError(msg)
-            return self._build_check_gate_execution(
-                project_dir,
-                passed=False,
-                issues=(
-                    m.Infra.Issue(
-                        file=c.PYPROJECT_FILENAME,
-                        line=1,
-                        column=0,
-                        code=self.gate_id,
-                        message=failure,
-                        severity=str(c.Infra.GateSeverity.ERROR.value),
-                    ),
-                ),
-                raw_output=failure,
-                started=started,
-            )
+            return self._failure_gate_execution(project_dir, failure, started)
         findings: list[m.Infra.Issue] = []
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
@@ -274,6 +244,35 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 (f"{len(findings)} policy findings; {len(failures)} native failures"),
                 *raw_output,
             )),
+        )
+
+    def _failure_gate_execution(
+        self,
+        project_dir: Path,
+        failure: str,
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Record one native codemod failure as a failed gate execution.
+
+        Returns:
+            The resulting ``m.Infra.GateExecution``.
+
+        """
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=False,
+            issues=(
+                m.Infra.Issue(
+                    file=c.PYPROJECT_FILENAME,
+                    line=1,
+                    column=0,
+                    code=self.gate_id,
+                    message=failure,
+                    severity=str(c.Infra.GateSeverity.ERROR.value),
+                ),
+            ),
+            raw_output=failure,
+            started=started,
         )
 
     @staticmethod

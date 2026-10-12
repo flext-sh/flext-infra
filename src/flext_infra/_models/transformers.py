@@ -89,6 +89,27 @@ class FlextInfraModelsTransformers:
             m.Field(description="Recorded migration operations"),
         ] = ()
 
+    class SemanticBehaviorRewriteRequest(m.ArbitraryTypesModel):
+        """One consumer rewrite over its declared behavior owner facts."""
+
+        path: Annotated[Path, m.Field(description="Consumer source identity")]
+        source: Annotated[str, m.Field(description="Consumer source text")]
+        modules: Annotated[
+            t.MappingKV[str, t.Pair[str, bool]],
+            m.Field(description="Qualified source text and package identities"),
+        ]
+        ownership: Annotated[
+            t.Pair[
+                t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+                frozenset[t.Quad[str, str, str, str]],
+            ],
+            m.Field(description="Declared utility owners and facade dispatch needs"),
+        ]
+        utility_imports: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(description="Elected self-facade import identities"),
+        ] = m.Field(default_factory=frozenset)
+
     class DeclarationRelocationFinding(m.ContractModel):
         """One payload declaration whose relocation owner cannot be resolved."""
 

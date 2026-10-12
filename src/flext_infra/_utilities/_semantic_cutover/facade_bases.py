@@ -613,9 +613,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             planned = cls._semantic_edits(
                 cls._editable_sources(owner_sources),
                 partial(
-                    cls.rewrite_behavior_consumer,
+                    cls._rewrite_behavior_request,
                     modules=modules,
-                    typing_directory=typing_directory,
                     ownership=ownership,
                 ),
             )
@@ -705,18 +704,36 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         return expected is not None and effective == expected
 
     @classmethod
-    def rewrite_behavior_consumer(
+    def _rewrite_behavior_request(
         cls,
         path: Path,
         source: str,
         *,
         modules: t.MappingKV[str, t.Pair[str, bool]],
-        typing_directory: str,
         ownership: t.Pair[
             t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
             frozenset[t.Quad[str, str, str, str]],
         ],
-        utility_imports: frozenset[t.Pair[str, str]] = frozenset(),
+    ) -> t.Infra.TransformResult:
+        """Compose one typed rewrite request for a consumer source view.
+
+        Returns:
+            The rewritten source and its composed semantic import edits.
+
+        """
+        return cls.rewrite_behavior_consumer(
+            m.Infra.SemanticBehaviorRewriteRequest(
+                path=path,
+                source=source,
+                modules=modules,
+                ownership=ownership,
+            ),
+        )
+
+    @classmethod
+    def rewrite_behavior_consumer(
+        cls,
+        request: m.Infra.SemanticBehaviorRewriteRequest,
     ) -> t.Infra.TransformResult:
         """Rebind proven imported behavior and compose its semantic import edits.
 
@@ -724,6 +741,16 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             The rewritten source and its changes, without publishing effects.
 
         """
+        path = request.path
+        source = request.source
+        modules = request.modules
+        ownership = request.ownership
+        utility_imports = request.utility_imports
+        typing_directory = (
+            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
+                c.Infra.TYPINGS_PY
+            ).directory
+        )
         tree = ast.parse(source)
         identities = {
             (node.module, alias.name)

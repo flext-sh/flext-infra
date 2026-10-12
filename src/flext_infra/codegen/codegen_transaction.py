@@ -65,46 +65,74 @@ class FlextInfraCodegenTransaction(
             if started.failure:
                 return r[T].from_failure(started)
             session = started.value
-            participant = next(
-                item
-                for item in session.plan.layout.file_participants
-                if item.root == plan.workspace
-            )
-            view_root = participant.transaction_root / "source-view"
-            candidates = {
-                path: view_root / path.relative_to(plan.workspace)
-                for path in plan.updates
-            }
-            writes: list[tuple[Path, bytes, int]] = []
-            for before in plan.inputs:
-                content = (
-                    plan.updates[before.path].encode(c.DEFAULT_ENCODING)
-                    if before.path in plan.updates
-                    else before.content
+
+            def validate_prepared(
+                prepared: m.Infra.CodegenTransactionSession,
+            ) -> p.Result[T]:
+                participant = next(
+                    item
+                    for item in prepared.plan.layout.file_participants
+                    if item.root == plan.workspace
                 )
-                if content is None:
-                    continue
-                writes.append((
-                    view_root / before.path.relative_to(plan.workspace),
-                    content,
-                    before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
-                ))
-            materialized = self._materialize_package_writes(session, tuple(writes))
-            if materialized.failure:
-                return r[T].from_failure(materialized)
-            value = validator(view_root, candidates)
-            barrier = FlextInfraCodegenPreconditions.unchanged_journal(
-                materialized.value,
-                "source preview journal changed during validation",
-            )
-            if barrier.failure:
-                return r[T].from_failure(barrier)
-            cleaned = self._recover_prepared(session.plan.layout)
-            if cleaned.failure:
-                return r[T].from_failure(cleaned)
-            return r[T].ok(value)
+                view_root = participant.transaction_root / "source-view"
+                candidates = {
+                    path: view_root / path.relative_to(plan.workspace)
+                    for path in plan.updates
+                }
+                writes = self._source_preview_writes(plan, view_root)
+                materialized = self._materialize_package_writes(prepared, writes)
+                if materialized.failure:
+                    return r[T].from_failure(materialized)
+                value = validator(view_root, candidates)
+                barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+                    materialized.value,
+                    "source preview journal changed during validation",
+                )
+                if barrier.failure:
+                    return r[T].from_failure(barrier)
+                cleaned = self._recover_prepared(prepared.plan.layout)
+                if cleaned.failure:
+                    return r[T].fail(
+                        cleaned.error or "source preview staging cleanup failed",
+                        error_code=cleaned.error_code,
+                        exception=cleaned.exception,
+                        error_data={
+                            **(cleaned.error_data or {}),
+                            "cleanup_error": cleaned.error,
+                        },
+                    )
+                return r[T].ok(value)
+
+            return self.publish_prepared_locked(session, validate_prepared)
 
         return self.run_files_locked(roots, validate_locked)
+
+    @staticmethod
+    def _source_preview_writes(
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+    ) -> t.VariadicTuple[tuple[Path, bytes, int]]:
+        """Build the staged writes that materialize the previewed source view.
+
+        Returns:
+            One (destination, content, mode) write per changed source input.
+
+        """
+        writes: list[tuple[Path, bytes, int]] = []
+        for before in plan.inputs:
+            content = (
+                plan.updates[before.path].encode(c.DEFAULT_ENCODING)
+                if before.path in plan.updates
+                else before.content
+            )
+            if content is None:
+                continue
+            writes.append((
+                view_root / before.path.relative_to(plan.workspace),
+                content,
+                before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
+            ))
+        return tuple(writes)
 
     def run_files_locked[T](
         self,
