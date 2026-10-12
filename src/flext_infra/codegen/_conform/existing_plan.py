@@ -1105,16 +1105,25 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         for relative, governed in governed_by_path.items():
             path = root / relative
             if path.exists() and not path.is_file():
-                return r[bool].fail(
-                    f"governed artifact is not a regular file: {path}",
+                error = ValueError(f"governed artifact is not a regular file: {path}")
+                self._record_file_failure(
+                    path,
+                    str(error),
+                    exception=error,
                 )
+                continue
             if not self._governed_entry_reachable(codegen, profile, relative):
                 continue
             if not path.exists() and not governed.runtime_binding:
                 continue
             current = self._governed_current_text(path)
             if current.failure:
-                return r[bool].from_failure(current)
+                self._record_file_failure(
+                    path,
+                    current.error or "cannot read governed artifact",
+                    exception=current.exception,
+                )
+                continue
             decided = self._decide_governed_plan(
                 m.Infra.CodegenGovernedPlanRequest(
                     root=root,
@@ -1123,10 +1132,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     current=current.value,
                     runtime_root=runtime_root,
                     vscode_spec=vscode_spec,
+                    source_states=target.vscode_sources,
                 ),
             )
             if decided.failure:
-                return r[bool].from_failure(decided)
+                self._record_file_failure(
+                    path,
+                    decided.error or "cannot plan governed artifact",
+                    exception=decided.exception,
+                )
+                continue
             decided_value, decided_present = decided.value
             if decided_present and decided_value is not None:
                 completed.append(decided_value)
@@ -1255,20 +1270,27 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         """
         result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
+        spec = request.vscode_spec
+        sources = request.source_states
+        if spec is None:
+            loaded = FlextInfraCodegenVscodeMixin.load_vscode_inputs(request.root)
+            if loaded.failure:
+                return result_type.from_failure(loaded)
+            spec = loaded.value.spec
+            sources = loaded.value.sources
         merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
             request.root,
             runtime_root=request.runtime_root,
-            spec=request.vscode_spec,
+            spec=spec,
         )
         if merged.failure:
             return result_type.from_failure(merged)
-        if merged.value == request.current:
-            return result_type.ok((None, True))
         merged_plan = cls.file_plan(
             request.root,
             request.relative.as_posix(),
             merged.value,
             mode=request.governed.mode,
+            source_states=sources,
         )
         if merged_plan.failure:
             return result_type.from_failure(merged_plan)

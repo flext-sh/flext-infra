@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, config, m, u
+from flext_infra._pytest_clock import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
 
@@ -111,7 +112,7 @@ class FlextInfraPytestProfile:
 
     def _finish(self, profile: cProfile.Profile) -> None:
         """Keep raw profiles on early failure, but publish only this run's receipt."""
-        profile.dump_stats(str(self.output))
+        FlextInfraPytestClock.publish_profile(profile, self.output)
 
         policy = config.Infra.tooling.tools.pytest
         if self.output.name == policy.profile_suite_filename:

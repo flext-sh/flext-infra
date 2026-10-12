@@ -99,6 +99,74 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(infra.codegen_conform(checked, initial_workspace=workspace))
 
     @staticmethod
+    def test_invalid_member_config_keeps_valid_workspace_binding(
+        tmp_path: Path,
+    ) -> None:
+        """A rejected member declaration preserves the native cause and valid sibling."""
+        root = tmp_path / "parent"
+        member = u.Tests.WorktreeFixture.copied_member(
+            root,
+            "fixture-parent",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            root,
+            member,
+            distribution="fixture-member",
+            relative_path=member.relative_to(root).as_posix(),
+        )
+        directory = member / c.CONFIG_DIR_NAME
+        directory.mkdir(exist_ok=True)
+        local = directory / Path(c.Infra.CODEGEN_CONFIG_FILENAME).with_name(
+            "codegen.local.yaml",
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                local,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "vscode": {
+                                "scalar_settings": {
+                                    "operator.invalid": {"cannot": "be a scalar"},
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+        rejected = infra.codegen_conform(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+        )
+        tm.fail(rejected)
+        tm.that(rejected.exception, is_=ValueError)
+        with pytest.raises(RuntimeError) as raised:
+            rejected.unwrap()
+        tm.that(raised.value.__cause__, eq=rejected.exception)
+        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(
+                u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
+            ),
+        )
+        interpreter = u.type_adapter(str).validate_python(
+            settings["python.defaultInterpreterPath"],
+        )
+        tm.that(
+            (root / interpreter.removeprefix("${workspaceFolder}/")).resolve(),
+            eq=u.Infra.runtime_python(root),
+        )
+        tm.that(local.is_file(), eq=True)
+
+    @staticmethod
     def test_runtime_binding_rejects_versioned_policy() -> None:
         """A physical runtime binding cannot masquerade as a portable source."""
         governed = next(
@@ -342,7 +410,9 @@ class TestsFlextInfraVscodeOwnerMerge:
                         },
                         "ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
                         "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
-                        "operator.note": "${workspaceFolder}/.venv-is-not-the-environment",
+                        "operator.note": (
+                            "${workspaceFolder}/.venv-is-not-the-environment"
+                        ),
                     }),
                 ),
             ),

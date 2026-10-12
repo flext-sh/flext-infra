@@ -54,9 +54,11 @@ class TestsFlextInfraGithubGateAttestation:
             f".PHONY: {c.Infra.VERB_CHECK}\n"
             f"{c.Infra.VERB_CHECK}:\n"
             "\t@printf 'executed\\n' >> invocations.txt\n"
+            "\t@sleep $(ATTEST_PROBE_DELAY)\n"
             f"\t@{quote(sys.executable)} -m flext_infra "
             f"{c.Infra.CLI_GROUP_CHECK} {c.Infra.VERB_RUN} "
-            f"--repository-root . --gates {c.Infra.LINT}\n",
+            f"--repository-root . --gates {c.Infra.LINT}\n"
+            "ATTEST_PROBE_DELAY ?= 0\n",
             encoding="utf-8",
         )
         (root / "pyproject.toml").write_text(
@@ -124,11 +126,7 @@ class TestsFlextInfraGithubGateAttestation:
         sarif = next(reports_dir.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME))
         report = m.Infra.SarifReport.model_validate_json(sarif.read_bytes())
         assert report.properties is not None
-        native = (
-            c.Infra.ToolOutcome.FINDINGS
-            if any(result.total_findings for result in report.properties.results)
-            else c.Infra.ToolOutcome.CLEAN
-        )
+        native = report.properties.results[0].gates[c.Infra.LINT].outcome
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         assert identity.origin_remote is not None
         policy = c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION
@@ -218,6 +216,188 @@ class TestsFlextInfraGithubGateAttestation:
         tm.ok(verified)
         tm.that(verified.unwrap().signer, eq="attester@example.test")
 
+    def test_publication_reuses_original_proof_without_running_make_again(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Repeated publication verifies the same object and leaves execution untouched."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        before = (tmp_path / "invocations.txt").read_bytes()
+        created = tm.ok(u.Infra.git_create_gate_attestation(request))
+        reused = tm.ok(u.Infra.git_create_gate_attestation(request))
+
+        tm.that(created.reused, eq=False)
+        tm.that(reused.reused, eq=True)
+        tm.that(reused.tag, eq=created.tag)
+        tm.that((tmp_path / "invocations.txt").read_bytes(), eq=before)
+
+    def test_original_findings_keep_their_real_nonzero_exit_in_signed_evidence(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Completed Ruff findings prove execution without claiming quality passed."""
+        allowed = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        source = m.Infra.GateCommandEvidence.model_validate_json(
+            request.receipt.read_bytes()
+        )
+        tm.that(source.process.raw_return_code != 0, eq=True)
+        tm.that(source.native_outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.ok(u.Infra.git_create_gate_attestation(request))
+        destination = tmp_path / c.Infra.REPORTS_DIR_NAME / "verified-proof.json"
+        verified = u.Infra.git_verify_gate_attestation(
+            m.Infra.GateAttestationVerifyRequest(
+                workspace=str(tmp_path),
+                allowed_signers=str(allowed),
+                expected_gates=request.gates,
+                commit_sha=self._head(tmp_path),
+                context_digest=request.context_digest,
+                policy=request.policy,
+                policy_digest=request.policy_digest,
+                output=str(destination),
+            ),
+        )
+        tm.ok(verified)
+        predicate = m.Infra.GateAttestationPredicate.model_validate_json(
+            destination.read_bytes()
+        )
+        tm.that(
+            predicate.commands[0].process.raw_return_code,
+            eq=source.process.raw_return_code,
+        )
+        tm.that(predicate.commands[0].native_outcome, eq=source.native_outcome)
+        tm.that(destination.read_text(encoding="utf-8"), lacks=str(tmp_path))
+
+    def test_modified_original_report_cannot_publish_a_proof(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """The signer refuses changed producer bytes instead of recomputing a gate."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        source = m.Infra.GateCommandEvidence.model_validate_json(
+            request.receipt.read_bytes()
+        )
+        report = tmp_path / source.reports[0].path
+        report.write_text("{}\n", encoding="utf-8")
+
+        tm.fail(u.Infra.git_create_gate_attestation(request))
+        tm.that(
+            (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
+            eq=["executed"],
+        )
+
+    def test_context_change_does_not_reuse_the_original_stage(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """A proof for another exact context remains outside required coverage."""
+        allowed = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        tm.ok(u.Infra.git_create_gate_attestation(request))
+
+        tm.fail(
+            u.Infra.git_verify_gate_attestation(
+                m.Infra.GateAttestationVerifyRequest(
+                    workspace=str(tmp_path),
+                    allowed_signers=str(allowed),
+                    expected_gates=request.gates,
+                    commit_sha=self._head(tmp_path),
+                    context_digest=f"sha256:{cli_u.Cli.sha256_content('different runtime context')}",
+                    policy=request.policy,
+                    policy_digest=request.policy_digest,
+                ),
+            ),
+        )
+
+    def test_missing_original_report_cannot_reuse_a_signed_stage(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """A valid signature cannot replace the required original artifacts."""
+        allowed = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        source = m.Infra.GateCommandEvidence.model_validate_json(
+            request.receipt.read_bytes()
+        )
+        tm.ok(u.Infra.git_create_gate_attestation(request))
+        (tmp_path / source.reports[0].path).unlink()
+
+        tm.fail(
+            self._verify(tmp_path, allowed, self._head(tmp_path), c.Infra.VERB_CHECK)
+        )
+
+    def test_untrusted_signing_key_cannot_verify_an_existing_stage(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Native SSH verification rejects an unrelated key under the same principal."""
+        allowed = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        tm.ok(u.Infra.git_create_gate_attestation(request))
+        foreign = tmp_path / "foreign-signing-key"
+        tm.ok(
+            cli_u.Cli.run_raw(
+                ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(foreign)],
+                cwd=tmp_path,
+            ),
+        )
+        allowed.write_text(
+            "attester@example.test "
+            + foreign.with_suffix(".pub").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+        tm.fail(
+            self._verify(tmp_path, allowed, self._head(tmp_path), c.Infra.VERB_CHECK)
+        )
+
+    def test_real_make_timeout_cannot_borrow_an_earlier_complete_report(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Original reaped timeout state remains operational failure under either policy."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        source = m.Infra.GateCommandEvidence.model_validate_json(
+            request.receipt.read_bytes()
+        )
+        started = datetime.now(UTC)
+        command = ["make", c.Infra.VERB_CHECK, "ATTEST_PROBE_DELAY=2"]
+        interrupted = tm.ok(cli_u.Cli.run_raw(command, cwd=tmp_path, timeout=1))
+        tm.that(interrupted.outcome.timed_out, eq=True)
+        updated = source.model_copy(
+            update={
+                "command": " ".join(command),
+                "process": m.Cli.ProcessOutcome.model_validate(
+                    interrupted.outcome,
+                    from_attributes=True,
+                ),
+                "started_at": started.isoformat(),
+                "completed_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        tm.ok(
+            cli_u.Cli.atomic_write_text_file(
+                request.receipt,
+                updated.model_dump_json(round_trip=True),
+            ),
+        )
+
+        tm.fail(u.Infra.git_create_gate_attestation(request))
+        tm.that(
+            (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
+            eq=["executed", "executed"],
+        )
+
     def test_gate_attestation_normalizes_network_remote_git_suffix(
         self,
         tmp_path: Path,
@@ -272,7 +452,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.ok(verified)
         tm.that(verified.unwrap().commit_sha, eq=selected_sha)
 
-    def test_gate_attestation_rejects_incomplete_coverage(
+    def test_gate_attestation_keeps_an_unpublished_stage_out_of_coverage(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],

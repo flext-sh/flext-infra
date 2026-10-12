@@ -111,6 +111,12 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
             m.Field(description="Declared vscode settings spec when present"),
         ] = None
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True, description="Exact inputs of the injected declaration"
+            ),
+        ] = ()
 
     class CodegenLocCapSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Per-module logical-LOC ceiling policy (scc code lines)."""

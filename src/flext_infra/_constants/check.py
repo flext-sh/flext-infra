@@ -63,8 +63,9 @@ class FlextInfraConstantsCheck:
         "from importlib.util import module_from_spec\n"
         f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
         "clock.FlextInfraPytestClock.register_signal_checkpoint("
-        "output / f'{os.getpid()}.pstats')\n"
-        "atexit.register(profile.dump_stats, str(output / f'{os.getpid()}.pstats'))\n"
+        "profile, output / f'{os.getpid()}.pstats')\n"
+        "atexit.register(clock.FlextInfraPytestClock.publish_profile, "
+        "profile, output / f'{os.getpid()}.pstats')\n"
         "startup = str(Path(__file__).parent)\n"
         "original = PathFinder.find_spec('sitecustomize', "
         "[path for path in sys.path if path != startup])\n"
@@ -77,7 +78,7 @@ class FlextInfraConstantsCheck:
         PYTEST_PROFILE_BOOTSTRAP + "import os, runpy, sys\n"
         "from pathlib import Path\n"
         "output = sys.argv.pop(1)\n"
-        "clock.FlextInfraPytestClock.register_signal_checkpoint(Path(output))\n"
+        "clock.FlextInfraPytestClock.register_signal_checkpoint(profile, Path(output))\n"
         "try:\n"
         f"    directory = os.environ.get({PYTEST_PROFILE_PROCESS_DIRECTORY_ENV!r})\n"
         "    if directory is not None:\n"
@@ -98,7 +99,7 @@ class FlextInfraConstantsCheck:
         "(os.pathsep + inherited if inherited else '')\n"
         "    runpy.run_module('pytest', run_name='__main__', alter_sys=True)\n"
         "finally:\n"
-        "    profile.dump_stats(output)\n"
+        "    clock.FlextInfraPytestClock.publish_profile(profile, Path(output))\n"
     )
     """``python -c`` profiled pytest child: ``<output.pstats> <pytest args...>``.
 

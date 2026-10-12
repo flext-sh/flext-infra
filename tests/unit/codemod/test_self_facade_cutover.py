@@ -22,6 +22,77 @@ class TestsFlextInfraSelfFacadeCutover:
     """Preserve eager execution, lexical bindings and standalone consumers."""
 
     @staticmethod
+    def test_declaring_model_receiver_preserves_default_factory(
+        tmp_path: Path,
+    ) -> None:
+        """Execute the rewritten model declaration through a real package import."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        declarations = package / "_models"
+        declarations.mkdir()
+        (declarations / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        consumer = declarations / "consumer.py"
+        source = (
+            "from flext_core import m, t, u\n"
+            "from typing_extensions import TypeForm\n"
+            "type Bag[T] = t.MutableSequenceOf[T]\n"
+            "class Consumer(m.ContractModel):\n"
+            '    """Consumer-owned collection declaration."""\n'
+            "    values: Bag[str] = m.Field(default_factory=u.empty("
+            'TypeForm(Bag[str])), description="Consumer values")\n'
+        )
+        consumer.write_text(source, encoding="utf-8")
+        finding = TestsFlextInfraSelfFacadeCutover._finding(
+            consumer.relative_to(root), "flext_core"
+        )
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    rope_workspace=rope,
+                    sources={consumer: source},
+                    findings=(finding,),
+                )
+            )
+            tm.that(edits, empty=False)
+            for edit in edits:
+                tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
+            remaining = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    rope_workspace=rope,
+                    sources={consumer: consumer.read_text(encoding="utf-8")},
+                    findings=(finding,),
+                )
+            )
+        tm.that(remaining, empty=True)
+        output = tm.ok(
+            u.Cli.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}._models.consumer import Consumer; "
+                        "first, second = Consumer(), Consumer(); "
+                        "first.values.append('consumer'); "
+                        "assert second.values == []; "
+                        "assert Consumer.model_validate_json("
+                        "first.model_dump_json()).values == first.values; "
+                        "print('declaration contract accepted')"
+                    ),
+                ],
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                            root / c.Infra.DEFAULT_SRC_DIR
+                        )
+                    }
+                ),
+            )
+        )
+        tm.that(output.stdout.strip(), eq="declaration contract accepted")
+
+    @staticmethod
     @pytest.mark.parametrize(
         "declaration",
         [

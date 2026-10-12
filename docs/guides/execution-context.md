@@ -454,6 +454,24 @@ by the operation; a missing report remains an artifact error, never a manufactur
 complete execution. Uploading reports does not change the native command status or
 authorize cache publication from an incomplete run.
 
+The SSH gate-attestation owner consumes an original producer receipt and verifies its
+candidate, context, policy and report digests before signing. It does not invoke Make.
+Schema v2 addresses each immutable proof by repository, commit, effective runtime/policy
+context and stage. Repeated publication verifies the existing signed object and its
+original artifacts before reusing it. Signed public facts retain the actual process
+outcome and diagnostic classification; the private command and working directory remain
+in the digest-bound original receipt.
+
+Admission derives from the original typed reports rather than caller success flags.
+Checks require complete target and requested-gate coverage in SARIF. Tests require
+original process, accounting and diagnostics reports with complete positive execution.
+Timeouts, signals, collection errors, operational failures, missing artifacts and changed
+digests remain failures. The complete-execution policy may admit finished findings while
+preserving their nonzero status; the clean-quality policy rejects them. Original
+invocation capture, CI signing/restore wiring, zero-execution cache evidence and other
+stage adapters remain required integration work. Verifying a setup proof never
+provisions a fresh runner.
+
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The
 `runtime-census` gate stays in `make check` and grades every runtime enforcement
@@ -589,6 +607,10 @@ The shared profiler clock checkpoints measured progress on SIGTERM, then restore
 and delegates the previous native termination handling. Timed-out or signalled
 children therefore remain failures with their original outcomes; a partial profile
 does not become execution-completion evidence.
+All profiler output paths use one stdlib-only atomic publisher: native marshal
+data is staged on the destination filesystem, flushed and replaced atomically.
+An interrupted write preserves the previous readable profile. Corruption still
+fails the report reader explicitly; neither profiling nor reporting skips it.
 
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases

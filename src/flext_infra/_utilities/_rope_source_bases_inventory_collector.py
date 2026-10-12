@@ -770,9 +770,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                     f"{spec.package}.",
                 )
                 if governed:
-                    message = (
-                        f"Non-class binding used as a base in {module}: {name}"
-                    )
+                    message = f"Non-class binding used as a base in {module}: {name}"
                     raise ValueError(message)
                 binding = m.Infra.SourceClassReference(
                     target=module,

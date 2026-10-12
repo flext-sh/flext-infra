@@ -398,6 +398,12 @@ class FlextInfraConfigModelsRepository:
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
+        vscode_sources: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True, description="Exact consulted editor declaration inputs"
+            ),
+        ] = ()
         make_profile: Annotated[
             c.Infra.MakeProfile,
             m.Field(description="Make profile inferred from live Git topology"),

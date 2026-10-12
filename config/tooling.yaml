@@ -498,6 +498,26 @@ Infra:
                 required imports into TYPE_CHECKING can break model declaration.
                 No model or import workaround substitutes for this prohibition.
                 Canonical tracking remains flext-p7bxt and flext-4536i.
+            # The ruff isort sorting rule (unsorted-imports, I001) is DISABLED
+            # for every file: the import ORDER is owned by the import-law
+            # engine, which orders module-level imports by the declared
+            # import-layer-order (settings, config, c, t, p, m, u, other,
+            # base, services, api, cli) during make mod — a layer ordering
+            # isort's alphabetical sort cannot express (settings before
+            # config; t before m). The same pass re-emits the formatter
+            # sections (standard library, third party, own namespace), so
+            # section layout stays deterministic. One unscoped entry carries
+            # the rule exactly once, without a scoped substitute.
+            - rules: [unsorted-imports]
+              authority: operator-direct-order-2026-10-13-import-layer-order
+              reason: >-
+                Operator directive 2026-10-13: import order follows the
+                declared import-layer-order, which isort's alphabetical sort
+                cannot express (settings before config; t before m). The
+                import-law normalization phase owns the order and re-emits
+                the formatter sections; Ruff stops enforcing its
+                alphabetical form so both verbs converge on one fixed point.
+                Canonical tracking remains flext-itpd1.12.
             - files: "**/tests/**"
               rules: [ magic-value-comparison, private-member-access, compare-to-empty-string, too-many-public-methods, boolean-positional-value-in-call, boolean-type-hint-positional-argument, pytest-fixture-autouse, mutable-class-default, no-self-use, import-private-name ]
               authority: operator-ruling-2026-10-07-tests-family-consumption

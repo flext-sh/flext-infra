@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 import textwrap
 from collections.abc import MutableMapping
 
@@ -27,6 +28,10 @@ class FlextInfraImportNormalizationPlacementMixin(
     ``try/except ImportError`` guard around imports becomes the plain imports:
     a missing dependency fails loud at import time.
     """
+
+    _IMPORT_SECTION_STDLIB = 0
+    _IMPORT_SECTION_THIRD_PARTY = 1
+    _IMPORT_SECTION_OWN = 2
 
     # -- import guards ---------------------------------------------------------------
 
@@ -79,6 +84,128 @@ class FlextInfraImportNormalizationPlacementMixin(
                 isinstance(statement, ast.Import | ast.ImportFrom)
                 for statement in node.body
             )
+        )
+
+    # -- layer ordering ---------------------------------------------------------------
+
+    @classmethod
+    def _layer_order_edits(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        """Reorder module-level imports into the canonical layer groups.
+
+        The region between the first and the last module-level import
+        statement is rewritten only when it holds nothing but import
+        statements. The stable sort mirrors the formatter sections
+        (standard library, third party, own namespace) and orders the
+        own-namespace imports by the tooling import-layer order, then by
+        module path, so make mod and the formatter sections converge on
+        one layout.
+
+        Returns:
+            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+
+        """
+        statements = [
+            node
+            for node in state.tree.body
+            if isinstance(node, ast.Import | ast.ImportFrom)
+        ]
+        if len(statements) < 2:
+            return ()
+        start = statements[0].lineno
+        end = cls._end_line(statements[-1])
+        region = (
+            node
+            for node in state.tree.body
+            if node.lineno <= end and cls._end_line(node) >= start
+        )
+        if any(not isinstance(node, ast.Import | ast.ImportFrom) for node in region):
+            return ()
+        ordered = sorted(statements, key=lambda node: cls._import_sort_key(state, node))
+        if [id(node) for node in ordered] == [id(node) for node in statements]:
+            return ()
+        replacement: list[str] = []
+        previous_section: int | None = None
+        for node in ordered:
+            section = cls._import_section(state, node)
+            if previous_section is not None and section != previous_section:
+                replacement.append("")
+            replacement.extend(lines[node.lineno - 1 : cls._end_line(node)])
+            previous_section = section
+        return [(start, end, tuple(replacement))]
+
+    @classmethod
+    def _import_sort_key(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+    ) -> tuple[int, int, str, int]:
+        """Return the stable sort key of one module-level import statement.
+
+        A root import from the own namespace ranks by the earliest layer
+        letter it imports (``from ns import t, m`` ranks at ``t``); a
+        submodule import ranks by the module path; anything else ranks at
+        the ``other`` slot.
+
+        Returns:
+            The ``(section, layer rank, module path, source line)`` tuple.
+
+        """
+        section = cls._import_section(state, node)
+        root = state.scope.namespace_dir.name
+        if isinstance(node, ast.ImportFrom) and (node.module or root) == root:
+            layer = min(
+                (
+                    u.Infra.module_import_layer(f"{root}.{alias.name}")
+                    for alias in node.names
+                ),
+                default=u.Infra.module_import_layer(
+                    f"{root}.{c.Infra.IMPORT_LAW_OTHER_LAYER}",
+                ),
+            )
+            module = root
+        else:
+            module = (
+                node.module or ""
+                if isinstance(node, ast.ImportFrom)
+                else node.names[0].name
+            )
+            layer = (
+                u.Infra.module_import_layer(module)
+                if section == cls._IMPORT_SECTION_OWN
+                else 0
+            )
+        return (section, layer, module, node.lineno)
+
+    @classmethod
+    def _import_section(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+    ) -> int:
+        """Return the formatter section rank of one import statement.
+
+        Returns:
+            ``0`` for the standard library, ``1`` for third parties and
+            ``2`` for the module's own namespace.
+
+        """
+        root = (
+            (node.module or "").split(".")[0]
+            if isinstance(node, ast.ImportFrom) and not node.level
+            else node.names[0].name.split(".")[0]
+            if isinstance(node, ast.Import) and node.names
+            else ""
+        )
+        if not root or root == state.scope.namespace_dir.name:
+            return cls._IMPORT_SECTION_OWN
+        return (
+            cls._IMPORT_SECTION_STDLIB
+            if root in sys.stdlib_module_names
+            else cls._IMPORT_SECTION_THIRD_PARTY
         )
 
     # -- hoisting and direction ------------------------------------------------------

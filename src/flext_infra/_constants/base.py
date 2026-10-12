@@ -241,7 +241,6 @@ class FlextInfraConstantsBase(
         "--require-hashes",
     )
     "Fail-closed isolated build of one release artifact from staged source."
-    "Canonical schema identifier for signed gate attestations."
     UV_HTTP_CONNECT_TIMEOUT: ClassVar[str] = "UV_HTTP_CONNECT_TIMEOUT"
     "uv HTTP connection timeout environment key."
     UV_HTTP_TIMEOUT: ClassVar[str] = "UV_HTTP_TIMEOUT"

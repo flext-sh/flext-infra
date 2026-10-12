@@ -42,12 +42,56 @@ class FlextInfraCodegenVscodeMixin:
         Returns:
             Library defaults overlaid by this project's and local declarations.
         """
-        return r[m.Infra.CodegenVscodeSpec].create_from_callable(
-            partial(cls._repository_vscode_spec, repository_root),
+        return cls.load_vscode_inputs(repository_root).map(lambda inputs: inputs.spec)
+
+    @classmethod
+    def load_vscode_inputs(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.CodegenVscodeInputs]:
+        """Capture and validate exactly the configuration inputs of one binding.
+
+        Returns:
+            Typed configuration and verified atomic input snapshots.
+        """
+        result = r[m.Infra.CodegenVscodeInputs]
+        elected = r[tuple[Path, ...]].create_from_callable(
+            partial(
+                FlextInfraConfig.config_sources_for_repository,
+                repository_root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            ),
+        )
+        if elected.failure:
+            return result.from_failure(elected)
+        snapshots: list[m.Cli.AtomicFileState] = []
+        for path in elected.value:
+            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if observed.failure:
+                return result.from_failure(observed)
+            snapshots.append(observed.value)
+        loaded = r[m.Infra.CodegenVscodeSpec].create_from_callable(
+            partial(cls._repository_vscode_spec, elected.value),
+        )
+        if loaded.failure:
+            return result.from_failure(loaded)
+        for before in snapshots:
+            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
+            if observed.failure:
+                return result.from_failure(observed)
+            if observed.value != before:
+                error = ValueError(
+                    f"editor configuration changed during read: {before.path}"
+                )
+                return result.fail(str(error), exception=error)
+        return result.ok(
+            m.Infra.CodegenVscodeInputs(spec=loaded.value, sources=tuple(snapshots)),
         )
 
     @staticmethod
-    def _repository_vscode_spec(repository_root: Path) -> m.Infra.CodegenVscodeSpec:
+    def _repository_vscode_spec(
+        sources: tuple[Path, ...],
+    ) -> m.Infra.CodegenVscodeSpec:
         """Validate the selected namespace without mutating global configuration.
 
         Returns:
@@ -55,10 +99,7 @@ class FlextInfraCodegenVscodeMixin:
         """
         source = FlextStrictYamlConfigSource(
             FlextInfraConfig,
-            yaml_file=FlextInfraConfig.config_sources_for_repository(
-                repository_root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-            ),
+            yaml_file=sources,
             deep_merge=True,
         )
         codegen = u.Cli.json_walk_path(source(), ("Infra", "codegen"))

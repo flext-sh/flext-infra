@@ -22,6 +22,47 @@ class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
 
     @staticmethod
+    def test_interrupted_publication_preserves_the_previous_readable_profile(
+        tmp_path: Path,
+    ) -> None:
+        """A real SIGINT during serialization cannot truncate an earlier profile."""
+        output = tmp_path / "checkpoint.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal, sys, pstats\n"
+            "output = Path(sys.argv[1])\n"
+            "profile.runcall(sum, range(10))\n"
+            "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "before = output.read_bytes()\n"
+            "before_modified = output.stat().st_mtime_ns\n"
+            "def interrupt(event, arguments):\n"
+            "    if event == 'marshal.dumps':\n"
+            "        assert output.read_bytes() == before\n"
+            "        os.kill(os.getpid(), signal.SIGINT)\n"
+            "sys.addaudithook(interrupt)\n"
+            "try:\n"
+            "    clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "except KeyboardInterrupt:\n"
+            "    pass\n"
+            "else:\n"
+            "    raise AssertionError('native SIGINT did not escape publication')\n"
+            "assert output.read_bytes() == before\n"
+            "assert output.stat().st_mtime_ns == before_modified\n"
+            "assert pstats.Stats(str(output)).get_stats_profile().func_profiles\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output)),
+                cwd=tmp_path,
+                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("interruption", ["signal", "timeout"])
     def test_native_termination_keeps_a_readable_profile_checkpoint(
         tmp_path: Path,

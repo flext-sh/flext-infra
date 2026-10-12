@@ -75,6 +75,20 @@ class FlextInfraConfigModelsTemplates:
                 raise ValueError(msg)
             return self
 
+    class CodegenVscodeInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """Editor configuration and the exact atomic inputs consulted by its owner."""
+
+        spec: Annotated[
+            CodegenVscodeSpec,
+            m.Field(description="Validated effective editor declaration"),
+        ]
+        sources: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True, description="Exact consulted configuration snapshots"
+            ),
+        ] = ()
+
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold artifact and its typed rendering owner."""
 

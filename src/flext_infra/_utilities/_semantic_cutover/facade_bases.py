@@ -322,6 +322,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.UTILITIES_PY
             ).directory,
+            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
+                c.Infra.MODELS_PY
+            ).directory,
         ))
         # Provider discovery expands the inventory, never the owners eligible
         # for a reference. Its declared inheritance lineage elects those owners.
@@ -330,7 +333,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 statement
                 for module, (source, _package) in modules.items()
                 if directories.intersection(module.split("."))
-                or module.endswith((".typings", ".utilities"))
+                or module.endswith((".typings", ".models", ".utilities"))
                 for statement in cls._behavior_base_imports(source)
             )
             expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
@@ -692,8 +695,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             Whether both receivers reach the identical utility declaration.
         """
         module, receiver, member = target
-        if receiver != c.Infra.FacadeFamily.U:
-            return False
         expected = cls._behavior_effective_declaration(
             modules, cls._behavior_lineage(modules, module, receiver), member
         )
@@ -791,6 +792,51 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 modules, lineage, qualified.rpartition(".")[2], ownership[0]
             ):
                 return None
+            if imported in utility_imports:
+                member = qualified.rpartition(".")[2]
+                effective = cls._behavior_effective_declaration(
+                    modules, lineage, member
+                )
+                declaration = (
+                    next(
+                        node
+                        for node in ast.parse(modules[effective[0]][0]).body
+                        if isinstance(node, ast.ClassDef) and node.name == effective[1]
+                    )
+                    if effective is not None
+                    else None
+                )
+                binding = (
+                    cls._behavior_member_binding(declaration, member)
+                    if declaration is not None
+                    else None
+                )
+                context_free = isinstance(
+                    binding, ast.FunctionDef | ast.AsyncFunctionDef
+                ) and any(
+                    isinstance(decorator, ast.Name) and decorator.id == "staticmethod"
+                    for decorator in binding.decorator_list
+                )
+                lower = tuple(
+                    (candidate_module, candidate_receiver, member)
+                    for candidate_module, candidate_receiver in identities
+                    if candidate_receiver == c.Infra.FacadeFamily.M
+                    and context_free
+                    and cls._behavior_effective_declaration(
+                        modules,
+                        cls._behavior_lineage(
+                            modules, candidate_module, candidate_receiver
+                        ),
+                        member,
+                    )
+                    == effective
+                )
+                if len(lower) > 1:
+                    msg = f"ambiguous lower declaration receiver: {qualified}"
+                    raise ValueError(msg)
+                if lower:
+                    obsolete.add(imported)
+                    return lower[0]
             target = cls._behavior_reference_target(
                 qualified, path, lineage, modules, ownership
             )
