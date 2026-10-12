@@ -20,6 +20,12 @@ files:
   - "**/tests/**/*.py"
   - "**/examples/**/*.py"
   - "**/conftest.py"
+ignores:
+  # The tests tier's own private layer (tests/_utilities/**) is the private
+  # implementation OF the tests facade: its internal imports are its own
+  # layering, not a test coupling to a production module's shape.
+  - "**/tests/_utilities/**"
+  - "**/tests/_*/**"
 rule:
   kind: import_from_statement
   has:
