@@ -399,7 +399,8 @@ class TestsFlextInfraBindingInstall:
             origin_case = argv[2]
             if origin_case == "nested":
                 function = inspect.unwrap(builder_type.build)
-                external = inspect.getfile(inspect.unwrap(FlextCliConfig.model_validate))
+                unwrap_model = inspect.unwrap(FlextCliConfig.model_validate)
+                external = inspect.getfile(unwrap_model)
                 function.__code__ = function.__code__.replace(co_filename=external)
                 print("external nested definition", function.__code__.co_filename,
                       flush=True)

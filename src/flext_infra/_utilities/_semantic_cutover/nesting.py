@@ -363,6 +363,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         The canonical namespace's base identities elect destinations. No symbol
         catalog participates; an occupied declaration owner is never overwritten.
+
+        Returns:
+            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+
+        Raises:
+            ValueError: If namespace declaration owner has no source scope; or if
+                namespace declaration owner has no module resource; or if namespace
+                declaration owner is outside the editable inventory; or if namespace
+                declaration owner is already occupied; or if namespace facade requires
+                an indented declaration; or if namespace declaration has no complete
+                source range.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -426,7 +437,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         raise ValueError(msg)
                     destination_path = Path(destination_resource.real_path).resolve()
                     if destination_path not in sources or destination_path == path:
-                        msg_0 = "namespace declaration owner is outside the editable inventory"
+                        msg_0 = (
+                            "namespace declaration owner is outside the editable "
+                            "inventory"
+                        )
                         raise ValueError(msg_0)
                     declaration = next(
                         node
@@ -522,7 +536,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     original_source=source,
                     updated_source=working[path],
                     changes=(
-                        "consolidated facade namespace through declaration-owner inheritance",
+                        (
+                            "consolidated facade namespace through declaration-owner "
+                            "inheritance"
+                        ),
                     ),
                 )
                 for path, source in sources.items()

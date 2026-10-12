@@ -167,33 +167,129 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
         tm.that(bool(saves), eq=spec.make.testmon_cache_policy.save_enabled)
         if saves:
+            resolver = next(step for step in steps if step.get("id") == "testmon_path")
+            resolver_environment = u.Cli.json_as_mapping(resolver["env"])
             tm.that(
                 saves[0]["if"],
                 has=[
-                    "github.event_name == 'push'",
+                    "always()",
                     "!cancelled()",
+                    "steps.testmon_path.outputs.save_allowed == 'true'",
                     "testmon_saveable",
                     "testmon_digest",
-                    *spec.make.testmon_cache_policy.allowed_save_refs,
                 ],
             )
-            if (
-                spec.repository_branch
-                not in spec.make.testmon_cache_policy.allowed_save_refs
-            ):
-                tm.that(saves[0]["if"], lacks=spec.repository_branch)
+            tm.that(
+                resolver_environment["CACHE_WRITE_ALLOWED"],
+                has=[
+                    "github.event_name == 'push'",
+                    "startsWith(github.ref, 'refs/heads/')",
+                    "github.event_name == 'pull_request'",
+                    "github.event.pull_request.head.repo.full_name == github.repository",
+                ],
+            )
+            tm.that(
+                resolver_environment["CACHE_BRANCH"],
+                eq="${{ github.head_ref || github.ref_name }}",
+            )
             cache_input = u.Cli.json_as_mapping(saves[0]["with"])
             restore = next(
                 step for step in steps if step.get("name") == "Restore testmon database"
             )
+            test_step = next(
+                step
+                for step in steps
+                if step.get("run")
+                == f"{spec.make.ci.variable}={spec.make.ci.value} make "
+                f"{c.Infra.VERB_TEST}"
+            )
             tm.that(
                 cache_input["path"],
-                eq="${{ steps.approval.outputs.testmon_database }}",
+                eq=f"${{{{ steps.{test_step['id']}.outputs.testmon_database }}}}",
             )
             tm.that(
                 cache_input["key"],
                 eq=u.Cli.json_as_mapping(restore["with"])["key"],
             )
+            restore_inputs = u.Cli.json_as_mapping(restore["with"])
+            tm.that(
+                str(restore_inputs["restore-keys"]).splitlines(),
+                eq=[
+                    (
+                        "${{ steps.testmon_path.outputs.namespace }}"
+                        "${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-"
+                    ),
+                    "${{ steps.testmon_path.outputs.namespace }}",
+                    "${{ steps.testmon_path.outputs.seed_namespace }}",
+                ],
+            )
+
+    @staticmethod
+    def test_testmon_resolver_keeps_branch_and_generation_identity(
+        tmp_path: Path,
+    ) -> None:
+        """Run the rendered cache resolver with distinct inputs and branches."""
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="cache-consumer",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="integration/cache-consumer",
+            ci_trigger_branches=(),
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
+                spec,
+            ),
+        )
+        resolver = next(
+            step
+            for step in u.CodegenTestSupport.Ci.ci_job_steps(rendered)
+            if step.get("id") == "testmon_path"
+        )
+        receipts: list[str] = []
+        for index, (branch, inputs) in enumerate((
+            ("feature/cache", "before"),
+            ("feature/cache", "after"),
+            ("feature/other-cache", "after"),
+        )):
+            output = tmp_path / f"output-{index}"
+            outcome = tm.ok(
+                u.Cli.run(
+                    ["bash", "-c", str(resolver["run"])],
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            "CACHE_BRANCH": branch,
+                            "CACHE_SEED_BRANCH": spec.repository_branch,
+                            "CACHE_WRITE_ALLOWED": "true",
+                            "CACHE_INPUTS": inputs,
+                            "CACHE_PLATFORM": "fixture-platform",
+                            "CACHE_GENERATION": str(index),
+                            "GITHUB_OUTPUT": str(output),
+                            spec.make.testmon_cache.data_home_environment_variable: str(
+                                tmp_path,
+                            ),
+                        },
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+            receipts.append(output.read_text(encoding="utf-8"))
+        namespaces = tuple(
+            next(line for line in receipt.splitlines() if line.startswith("namespace="))
+            for receipt in receipts
+        )
+        seeds = tuple(
+            next(
+                line
+                for line in receipt.splitlines()
+                if line.startswith("seed_namespace=")
+            )
+            for receipt in receipts
+        )
+        tm.that(namespaces[0], eq=namespaces[1])
+        tm.that(namespaces[1] != namespaces[2], eq=True)
+        tm.that(len(set(seeds)), eq=1)
+        tm.that(len(set(receipts)), eq=len(receipts))
 
     @staticmethod
     @pytest.mark.parametrize("missing", ["setup", "audit", "check", "test"])

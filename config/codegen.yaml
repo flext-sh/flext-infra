@@ -545,7 +545,6 @@ Infra:
         warning_threshold_percent: 80
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
-        allowed_save_refs: [main, 0.12.0-dev, develop]
         key_prefix: flext-testmon
       # The Mypy gate shares one analysis per project name across checkouts
       # (u.Infra.mypy_cache_directory). Relocks retain the directory; Mypy

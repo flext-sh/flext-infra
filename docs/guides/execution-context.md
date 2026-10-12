@@ -374,11 +374,17 @@ The explicit single-file operation runs incremental selection followed by comple
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-Actions restores only that project database and saves only on an allowed integration
-push with a fresh completed-run path/digest/saveability receipt. The SQLite owner
-checkpoints and checks integrity before the runner releases its lease and exports
-the receipt. PRs, forks, cancelled or incomplete runs cannot publish cache state;
-a completed failing test run may save without changing its failing status.
+Actions restores only that project database. Keys separate project, operating system,
+architecture, Python runtime and branch; generation IDs remain immutable. Restore first
+prefers matching lock/config inputs, then earlier generations in the branch, then the
+PR base or repository default branch seed within GitHub's cache visibility rules.
+Testmon revalidates restored inputs rather than discarding history on every lock change.
+Branch pushes and same-origin PRs may save with a fresh completed-run
+path/digest/saveability receipt. Fork PRs and other events remain restore-only. The
+SQLite owner checkpoints and checks integrity before the runner releases its lease
+and exports the receipt. Cancelled, corrupt or incomplete runs cannot publish;
+a completed failing test run may save without changing its failing status, including
+when a later step fails. Publication never depends on a branch-name allowlist.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The

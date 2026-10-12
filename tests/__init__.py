@@ -70,7 +70,6 @@ __all__: tuple[str, ...] = (
     "e",
     "fixtures",
     "h",
-    "integration",
     "m",
     "p",
     "r",
