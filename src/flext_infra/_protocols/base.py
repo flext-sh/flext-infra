@@ -21,6 +21,18 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
+    class SourcePreview(Protocol):
+        """Consumer-owned capability for validating authenticated source views."""
+
+        def preview_sources[T](
+            self,
+            workspace: Path,
+            updates: t.MappingKV[Path, str],
+            validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        ) -> p.Result[T]:
+            """Validate staged candidates while preserving live sources."""
+            ...
+
     @runtime_checkable
     class PytestStopController(Protocol):
         """Native distributed controller's mutable stop request."""

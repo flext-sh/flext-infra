@@ -9,14 +9,13 @@ from __future__ import annotations
 import operator
 from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    FlextInfraStagedPackage,
-)
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):
@@ -41,6 +40,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     def _preview_write_baselines(
         updates: t.MappingKV[Path, str],
         workspace: Path,
+        source_preview: p.Infra.SourcePreview,
         gates: t.StrSequence | None = None,
     ) -> t.Pair[
         MutableMapping[Path, str | None],
@@ -176,10 +176,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             )
         )
 
-        plan = FlextInfraStagedPackage.plan_sources(
-            workspace, normalized_updates
-        ).unwrap()
-
         def validate(
             view_root: Path,
             candidates: t.MappingKV[Path, Path],
@@ -203,13 +199,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 gates=gates,
             )
 
-        return (
-            FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=workspace),
-            )
-            .preview_sources(plan, validate)
-            .unwrap()
-        )
+        return source_preview.preview_sources(
+            workspace, normalized_updates, validate
+        ).unwrap()
 
     @staticmethod
     def preview_source_lint(
@@ -217,6 +209,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         workspace: Path,
         *,
         updated_source: str,
+        source_preview: p.Infra.SourcePreview,
         gates: t.StrSequence | None = None,
     ) -> t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
         """Compare live and staged lint snapshots without changing live source.
@@ -239,10 +232,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             return before, before
 
         path = py_file.resolve()
-        plan = FlextInfraStagedPackage.plan_sources(
-            workspace, {path: updated_source}
-        ).unwrap()
-
         def validate(
             view_root: Path,
             candidates: t.MappingKV[Path, Path],
@@ -251,13 +240,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 candidates[path], view_root, gates=gates
             )
 
-        after = (
-            FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=workspace),
-            )
-            .preview_sources(plan, validate)
-            .unwrap()
-        )
+        after = source_preview.preview_sources(
+            workspace, {path: updated_source}, validate
+        ).unwrap()
         return before, after
 
 
