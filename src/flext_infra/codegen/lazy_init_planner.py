@@ -97,6 +97,34 @@ class FlextInfraCodegenLazyInitPlanner(
 
         """
         context = self.context(pkg_dir)
+        current = u.Cli.atomic_read_binary_file_state(
+            context.init_path,
+            required=False,
+        ).unwrap()
+        if u.Infra.codegen_initializer_is_authored(current.content):
+            exports = self._module_exports(
+                context.init_path,
+                context.current_pkg,
+                export_options=m.Infra.ExportOptions(
+                    include_dunder=True,
+                    allow_assignments=True,
+                    allow_functions=True,
+                    require_explicit_all=True,
+                ),
+            )
+            self._source_exports_cache[context.current_pkg] = frozenset(exports)
+            return self._publish_plan(
+                m.Infra.LazyInitPlan(
+                    context=context,
+                    action=c.Infra.LazyInitAction.RETAIN,
+                    ownership="authored",
+                    disposition="retained",
+                    exports=tuple(sorted(exports)),
+                    lazy_map=exports,
+                    eager_dunders={},
+                    inline_constants={},
+                ),
+            )
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
             # No generated content can repair a package name that
             # shadows a stdlib module, so the plan removes generator-owned
@@ -230,6 +258,8 @@ class FlextInfraCodegenLazyInitPlanner(
         plan = m.Infra.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
+            ownership="generator",
+            disposition="planned",
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,
@@ -258,6 +288,13 @@ class FlextInfraCodegenLazyInitPlanner(
             The resulting ``m.Infra.LazyInitPlan``.
 
         """
+        if plan.ownership is None and plan.action in {
+            c.Infra.LazyInitAction.WRITE,
+            c.Infra.LazyInitAction.REMOVE,
+        }:
+            plan = plan.model_copy(
+                update={"ownership": "generator", "disposition": "planned"},
+            )
         self._source_plan_cache[str(plan.context.pkg_dir.resolve())] = plan
         return plan
 

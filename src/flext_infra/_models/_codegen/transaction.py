@@ -326,6 +326,10 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
+        retained_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Authored destinations retained during per-file election",
+        )
         issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
             default=(),
             description="Publication failures retained across successful phases",

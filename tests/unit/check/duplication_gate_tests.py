@@ -199,3 +199,90 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.issues, eq=())
+
+    _PYTHON_BEHAVIOR_BLOCK = """\
+def normalize_records(records: list[str]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for record in records:
+        candidate = record.strip().casefold()
+        if not candidate:
+            continue
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        normalized.append(candidate)
+    ordered = sorted(normalized)
+    return tuple(ordered)
+"""
+
+    @staticmethod
+    def _governed_with_python_clone(tmp_path: Path, *, same_file: bool) -> Path:
+        """One governed checkout whose only duplication is Python behavior.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "python-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-python-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="python-clone-workspace",
+                database="python_clone_database",
+                issue_prefix="python-clone",
+            ),
+        )
+        package = root / "src" / "fixture_python_clone"
+        package.mkdir(parents=True, exist_ok=True)
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        if same_file:
+            (package / "duplicated.py").write_text(
+                f"{block}\n\n{block}",
+                encoding="utf-8",
+            )
+        else:
+            (package / "first.py").write_text(block, encoding="utf-8")
+            (package / "second.py").write_text(block, encoding="utf-8")
+        return root
+
+    def test_scope_renders_each_directory_exactly_once(self, tmp_path: Path) -> None:
+        """The resolved scope never hands the same directory to jscpd twice.
+
+        A duplicated scope entry makes jscpd clone every file against itself,
+        which is the false double-scan artifact; the union must be unique.
+        """
+        root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
+
+        scope = FlextInfraDuplicationGate(root)._render_scope_dirs(root)
+
+        tm.that(scope.success, eq=True)
+        directories = tuple(scope.value)
+        tm.that(len(directories), eq=len(set(directories)))
+
+    def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
+        """A clone between two distinct files is a blocking finding."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(len(execution.issues) >= 1, eq=True)
+
+    def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
+        """A file that duplicates a block inside itself is a finding.
+
+        The identical file/span pair from the double-scan is dropped, but a
+        same-file clone with two distinct spans is genuine duplication and
+        must never be hidden.
+        """
+        root = self._governed_with_python_clone(tmp_path, same_file=True)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(
+            {issue.file for issue in execution.issues},
+            eq={"src/fixture_python_clone/duplicated.py"},
+        )

@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 class FlextInfraMiseRecovery:
     """Preserve every live destination while retiring owned staging."""
 
+    @staticmethod
     def execute(
-        self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,

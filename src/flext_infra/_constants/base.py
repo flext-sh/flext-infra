@@ -323,6 +323,7 @@ class FlextInfraConstantsBase(
 
         WRITE = "write"
         REMOVE = "remove"
+        RETAIN = "retain"
         SKIP = "skip"
 
     @unique

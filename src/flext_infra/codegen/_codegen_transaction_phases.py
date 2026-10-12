@@ -115,6 +115,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             journal=persisted.value[0],
             journal_state=persisted.value[1],
             written_files=prepared.value.written_files,
+            retained_files=prepared.value.retained_files,
             issues=prepared.value.issues,
             exception=prepared.value.exception,
         )
@@ -141,6 +142,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=journal,
                 journal_state=journal_state,
                 written_files=(*session.written_files, *published.value.written_files),
+                retained_files=(
+                    *session.retained_files,
+                    *published.value.retained_files,
+                ),
                 issues=(*session.issues, *published.value.issues),
                 exception=session.exception or published.value.exception,
             ),
@@ -367,6 +372,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             journal=materialized.value[0],
             journal_state=materialized.value[1],
             written_files=session.written_files,
+            retained_files=session.retained_files,
             issues=session.issues,
             exception=session.exception,
         )
@@ -407,6 +413,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             journal=recorded.value,
             journal_state=durable.value,
             written_files=session.written_files,
+            retained_files=session.retained_files,
             issues=session.issues,
             exception=session.exception,
         )
@@ -492,6 +499,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=recorded.value[0],
                 journal_state=recorded.value[1],
                 written_files=session.written_files,
+                retained_files=session.retained_files,
                 issues=session.issues,
                 exception=session.exception,
             )
@@ -576,6 +584,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=journal,
                 journal_state=persisted.value,
                 written_files=session.written_files,
+                retained_files=session.retained_files,
                 issues=session.issues,
                 exception=session.exception,
             ),
@@ -803,6 +812,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=recorded,
                 journal_state=recorded_state,
                 written_files=session.written_files,
+                retained_files=session.retained_files,
                 issues=session.issues,
                 exception=session.exception,
             ),
@@ -883,34 +893,47 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                         "cleanup_error": cleaned.error if cleaned.failure else None,
                     },
                 )
+        return self._settle_publication(session)
+
+    def _settle_publication(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Verify the commit, settle the cursor, and report residual issues.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
         committed = self._verified_commit(session)
         if committed.failure:
-            return r[t.VariadicTuple[Path]].from_failure(committed)
+            return result_type.from_failure(committed)
         authorized = self._authorize_journal(session.plan.layout, committed.value[0])
         if authorized.failure:
-            return r[t.VariadicTuple[Path]].from_failure(authorized)
+            return result_type.from_failure(authorized)
         cleaned = journal_io.cleanup(
             session.plan.layout,
             committed.value[0],
             committed.value[1],
         )
         if cleaned.failure:
-            return r[t.VariadicTuple[Path]].from_failure(cleaned)
+            return result_type.from_failure(cleaned)
         self._journal_receipts.pop(session.plan.layout.journal_path, None)
         completed = self.record_publication(session, completed=True)
         if completed.failure:
-            return r[t.VariadicTuple[Path]].from_failure(completed)
-        if session.issues:
-            return r[t.VariadicTuple[Path]].fail(
-                "\n".join(issue.formatted for issue in session.issues),
-                error_code=c.Infra.ToolOutcome.ERROR.value,
-                exception=session.exception,
-                error_data={
-                    "written_files": tuple(str(path) for path in session.written_files),
-                    "issues": tuple(issue.model_dump() for issue in session.issues),
-                },
-            )
-        return r[t.VariadicTuple[Path]].ok(session.written_files)
+            return result_type.from_failure(completed)
+        if not session.issues:
+            return result_type.ok(session.written_files)
+        return result_type.fail(
+            "\n".join(issue.formatted for issue in session.issues),
+            error_code=c.Infra.ToolOutcome.ERROR.value,
+            exception=session.exception,
+            error_data={
+                "written_files": tuple(str(path) for path in session.written_files),
+                "issues": tuple(issue.model_dump() for issue in session.issues),
+            },
+        )
 
     def _verified_commit(
         self,

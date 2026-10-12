@@ -32,6 +32,24 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
+    @staticmethod
+    def codegen_initializer_is_authored(content: bytes | None) -> bool:
+        """Elect initializer ownership from content and declared generator markers.
+
+        Returns:
+            Whether a nonempty existing initializer belongs to its author.
+        """
+        return (
+            content is not None
+            and bool(content.strip())
+            and not content.startswith(
+                tuple(
+                    header.encode(c.DEFAULT_ENCODING)
+                    for header in c.Infra.AUTOGEN_HEADERS
+                ),
+            )
+        )
+
     class JournalLeaseTimeoutError(TimeoutError):
         """Another process held the journal lease past the acquisition deadline."""
 

@@ -47,6 +47,14 @@ class FlextInfraMisePublication:
         before = files.read_state(plan.path, required=False)
         if before.failure:
             return r[bool].from_failure(before)
+        if (
+            plan.path.name == c.Infra.INIT_PY
+            and u.Infra.codegen_initializer_is_authored(before.value.content)
+        ):
+            u.Cli.info(
+                f"ownership=authored disposition=retained target={plan.path}",
+            )
+            return r[bool].ok(value=False)
         staged_publication = cls._staged_publication(
             plan,
             phase=phase,
@@ -125,12 +133,24 @@ class FlextInfraMisePublication:
 
         """
         written: list[Path] = []
+        retained: list[Path] = []
         issues: list[m.Infra.Issue] = []
         exception: BaseException | None = None
         total = len(publications)
         for index, publication in enumerate(publications, start=1):
             u.Cli.emit_raw(f"  publish [{index}/{total}] {publication.before.path}\n")
             observed = files.read_state(publication.before.path, required=False)
+            if (
+                observed.success
+                and publication.before.path.name == c.Infra.INIT_PY
+                and u.Infra.codegen_initializer_is_authored(observed.value.content)
+            ):
+                retained.append(publication.before.path)
+                u.Cli.info(
+                    "ownership=authored disposition=retained "
+                    f"target={publication.before.path}",
+                )
+                continue
             changed = (
                 files.write_publication(
                     publication.model_copy(update={"before": observed.value}),
@@ -158,6 +178,7 @@ class FlextInfraMisePublication:
         return r[m.Infra.CodegenPhaseOutcome].ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
+                retained_files=tuple(retained),
                 issues=tuple(issues),
                 exception=exception,
             ),

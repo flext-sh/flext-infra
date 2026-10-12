@@ -254,6 +254,9 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"
                 raise OSError(message)
+            if not written.value:
+                files_skipped.append(str(filepath))
+                continue
             files_created.append(str(filepath))
         return files_created, files_skipped
 

@@ -25,6 +25,37 @@ class TestsFlextInfraFileParticipantRecovery:
     """Recover prepared file-only journals through their physical owners."""
 
     @staticmethod
+    def test_late_authored_initializer_is_retained_instead_of_overwritten(
+        tmp_path: Path,
+    ) -> None:
+        """Reelect ownership from the current target before its single write."""
+        target = tmp_path / c.Infra.INIT_PY
+        target.write_text(f"{c.Infra.AUTOGEN_HEADER}\n", encoding=c.DEFAULT_ENCODING)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        replacement = tmp_path / "replacement.py"
+        replacement.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n__all__ = []\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publication = m.Infra.CodegenStagedFile(
+            phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+            project=tmp_path,
+            before=before,
+            replacement=tm.ok(
+                u.Cli.atomic_read_binary_file_state(replacement, required=True),
+            ),
+        )
+        authored = b"VALUE = 'authored behavior'\n"
+        target.write_bytes(authored)
+
+        outcome = tm.ok(FlextInfraMisePublication.publish((publication,)))
+
+        tm.that(outcome.written_files, eq=())
+        tm.that(outcome.retained_files, eq=(target,))
+        tm.that(outcome.issues, eq=())
+        tm.that(target.read_bytes(), eq=authored)
+
+    @staticmethod
     def test_publication_adopts_current_destination_before_one_write(
         tmp_path: Path,
     ) -> None:

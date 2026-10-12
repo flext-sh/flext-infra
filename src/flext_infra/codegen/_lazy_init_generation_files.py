@@ -144,18 +144,6 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         )
 
     @staticmethod
-    def _verify_snapshots(
-        snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Verify the captured source identities through the atomic file owner.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        return u.Cli.atomic_verify_binary_file_states(tuple(snapshots.values()))
-
-    @staticmethod
     def _file_plan(
         *,
         project: Path,
@@ -203,16 +191,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        if plan.action is c.Infra.LazyInitAction.SKIP:
+        if plan.action in {
+            c.Infra.LazyInitAction.SKIP,
+            c.Infra.LazyInitAction.RETAIN,
+        } or u.Infra.codegen_initializer_is_authored(init_before.content):
             return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
         if plan.action is c.Infra.LazyInitAction.REMOVE:
-            # D1: generation owns every init in scanned surfaces;
-            # residue adoption cutover accepts non-generated content.
-            # Generated content removes as before; a foreign marker is
-            # caught by the snapshot comparison in the enclosing
-            # transaction. Marker guard narrowed to generated-only to
-            # permit residue removal; this extension is bounded to the
-            # no-exports cutover and documented in the codegen plan.
             init_plan = self._file_plan(
                 project=project,
                 before=init_before,
@@ -264,6 +248,11 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                     f"lazy-init target was not snapshotted: {init_path}",
                 )
+            if u.Infra.codegen_initializer_is_authored(init_before.content):
+                u.Cli.info(
+                    f"ownership=authored disposition=retained target={init_path}",
+                )
+                continue
             if self._generated_source_modules(generated_dir):
                 generated_plan = m.Infra.LazyInitPlan(
                     context=m.Infra.LazyInitPackageContext(

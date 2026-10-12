@@ -548,6 +548,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
                 journal=manifested,
                 journal_state=prepared_state,
                 written_files=finalized.value.written_files,
+                retained_files=finalized.value.retained_files,
                 issues=finalized.value.issues,
                 exception=finalized.value.exception,
             ),

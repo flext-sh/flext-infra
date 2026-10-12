@@ -257,7 +257,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         root = target.root
         repository = target.repository
-        project, metadata = identity
+        _project, _metadata = identity
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
@@ -277,8 +277,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(custom_result)
         tooling_context = self._existing_tooling_context(
             target,
-            project,
-            metadata,
+            identity,
             codegen,
             managed_artifacts.value.resolution,
             custom_result.value,
@@ -318,8 +317,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _existing_tooling_context(
         self,
         target: m.Infra.RepositoryConformTarget,
-        project: m.Infra.ProjectSpec,
-        metadata: p.ProjectMetadata,
+        identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
         codegen: m.Infra.CodegenConfigSpec,
         managed_resolution: m.Infra.ProjectManagedArtifactsResolution,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
@@ -332,6 +330,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         root = target.root
         repository = target.repository
+        project, metadata = identity
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
@@ -613,7 +612,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     entry,
                     path,
                 )
-            except Exception:
+            except (OSError, ValueError):
                 self._record_file_failure(path, traceback.format_exc())
                 continue
             if rendered.failure:
@@ -876,27 +875,33 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         layout is None or package_dir != layout.package_dir
                     ) and u.Infra.facade_module_path(package_dir, family) is None:
                         continue
-                    facade_path = u.Infra.facade_module_path(package_dir, family)
-                    try:
-                        facade_plan = self._utility_facade_plan(
-                            root,
-                            package_dir,
-                            family,
-                        )
-                    except Exception:
-                        self._record_file_failure(
-                            facade_path if facade_path is not None else package_dir,
-                            traceback.format_exc(),
-                        )
-                        continue
-                    if facade_plan.failure:
-                        self._record_file_failure(
-                            facade_path if facade_path is not None else package_dir,
-                            facade_plan.error or "facade planning failed",
-                        )
-                        continue
-                    plans.extend(facade_plan.value)
+                    plans.extend(self._captured_facade_plan(root, package_dir, family))
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
+
+    def _captured_facade_plan(
+        self,
+        root: Path,
+        package_dir: Path,
+        family: Literal["u", "p", "m"],
+    ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
+        """Retain the original diagnostic while collecting independent plans.
+
+        Returns:
+            The declared facade plans, or no effects for a recorded failure.
+        """
+        facade_path = u.Infra.facade_module_path(package_dir, family)
+        failure_path = facade_path if facade_path is not None else package_dir
+        try:
+            planned = self._utility_facade_plan(root, package_dir, family)
+        except (OSError, ValueError):
+            self._record_file_failure(failure_path, traceback.format_exc())
+            return ()
+        if planned.failure:
+            self._record_file_failure(
+                failure_path, planned.error or "facade planning failed"
+            )
+            return ()
+        return planned.value
 
     def _validated_custom_make_plan(
         self,

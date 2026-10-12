@@ -132,8 +132,8 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             tuple(sorted(directories, key=u.Infra.path_depth)),
         )
 
+    @staticmethod
     def _create_scaffold_directories(
-        self,
         directories: t.VariadicTuple[Path],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Materialize the planned scaffold chains, rolling back on any failure.

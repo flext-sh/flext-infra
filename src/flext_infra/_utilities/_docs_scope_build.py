@@ -100,15 +100,8 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         has_child_projects = any(
             project.path.resolve() != resolved_root for project in discovered
         )
-        # Why (README-drop fix): "config/beads.yaml" is a per-project beads
-        # override every project may carry, standalone or not — it is not a
-        # fleet-topology signal. The handwritten workspace manifest
-        # ("config/workspace.yaml", see docs_scope_policy's
-        # manifest_excluded_roots and workspace/detector.py) is the actual SSOT
-        # for "this repository is itself a fleet umbrella". Using the beads
-        # override here misrouted every scaffolded standalone project into
-        # `_workspace_scopes`, collapsing its own docs scope onto an identical
-        # root scope and silently dropping README.md/docs/index.md/guides.
+        # Git declarations own workspace composition. A standalone project's
+        # configuration cannot turn its documentation into an aggregate scope.
         has_workspace_topology = FlextInfraUtilitiesWorkspaceManifest.fleet_umbrella(
             resolved_root,
         )

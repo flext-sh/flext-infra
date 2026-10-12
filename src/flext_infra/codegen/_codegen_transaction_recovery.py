@@ -39,8 +39,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
 
+    @staticmethod
     def record_publication(
-        self,
         session: m.Infra.CodegenTransactionSession,
         *,
         phase: str | None = None,
@@ -53,16 +53,31 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         """
         outcome = m.Infra.CodegenPhaseOutcome(
             root=session.plan.layout.scope_root,
+            transaction_id=session.journal.transaction_id,
             phase=phase,
             completed=completed,
             written_files=session.written_files,
+            retained_files=session.retained_files,
             issues=session.issues,
             exception=session.exception,
         )
+        report_path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        digest = u.Cli.sha256_content(outcome.model_dump_json())
         evidence = u.Infra.publish_refactor_report_evidence(
             session.plan.layout.scope_root,
             outcome,
-            relative_path=c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH,
+            relative_path=(
+                report_path.with_suffix("")
+                / session.journal.transaction_id
+                / f"{digest}{report_path.suffix}"
+            ),
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
+        evidence = u.Infra.publish_refactor_report_evidence(
+            session.plan.layout.scope_root,
+            outcome,
+            relative_path=report_path,
         )
         if evidence.failure:
             return r[m.Infra.CodegenTransactionSession].from_failure(evidence)

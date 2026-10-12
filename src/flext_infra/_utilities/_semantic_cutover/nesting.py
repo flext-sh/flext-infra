@@ -368,12 +368,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
 
         Raises:
+            TypeError: If the namespace facade requires an indented declaration.
             ValueError: If namespace declaration owner has no source scope; or if
                 namespace declaration owner has no module resource; or if namespace
                 declaration owner is outside the editable inventory; or if namespace
-                declaration owner is already occupied; or if namespace facade requires
-                an indented declaration; or if namespace declaration has no complete
-                source range.
+                declaration owner is already occupied; or if namespace declaration
+                has no complete source range.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -459,24 +459,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         msg_0 = "namespace declaration owner is already occupied"
                         raise ValueError(msg_0)
                     binding = owner.get_attribute(child.name)
-                    finder = refactors.create_occurrence_finder(
-                        project, child.name, binding, imports=True, in_hierarchy=False
+                    cls._collect_namespace_occurrence_rewrites(
+                        project,
+                        refactors,
+                        binding,
+                        child.name,
+                        namespace.name,
+                        sources,
+                        root,
+                        rewrites,
                     )
-                    for consumer, _consumer_source in cls._editable_sources(sources):
-                        consumer_resource = project.get_resource(
-                            consumer.relative_to(root).as_posix()
-                        )
-                        for occurrence in finder.find_occurrences(
-                            resource=consumer_resource
-                        ):
-                            if occurrence.is_defined():
-                                continue
-                            start, end = occurrence.get_word_range()
-                            rewrites.setdefault(consumer, []).append(
-                                m.Infra.SourceRewrite(
-                                    start=start, end=end, text=namespace.name
-                                )
-                            )
                     parsed = cst.parse_module(source)
                     facade_cst = next(
                         node
@@ -486,7 +478,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     )
                     if not isinstance(facade_cst.body, cst.IndentedBlock):
                         msg_0 = "namespace facade requires an indented declaration"
-                        raise ValueError(msg_0)
+                        raise TypeError(msg_0)
                     child_cst = next(
                         node
                         for node in facade_cst.body.body
@@ -547,6 +539,43 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             )
         finally:
             project.close()
+
+    @classmethod
+    def _collect_namespace_occurrence_rewrites(
+        cls,
+        project: t.Infra.RopeProject,
+        refactors: type[FlextInfraUtilitiesRopeRuntimeRefactors],
+        binding: t.Infra.RopePyName,
+        child_name: str,
+        namespace_name: str,
+        sources: t.MappingKV[Path, str],
+        root: Path,
+        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
+    ) -> None:
+        """Collect consumer rewrites for one duplicate namespace declaration.
+
+        Every non-defining occurrence of the duplicate child name across the
+        editable sources is rewritten to the canonical namespace name.
+
+        """
+        finder = refactors.create_occurrence_finder(
+            project,
+            child_name,
+            binding,
+            imports=True,
+            in_hierarchy=False,
+        )
+        for consumer, _consumer_source in cls._editable_sources(sources):
+            consumer_resource = project.get_resource(
+                consumer.relative_to(root).as_posix()
+            )
+            for occurrence in finder.find_occurrences(resource=consumer_resource):
+                if occurrence.is_defined():
+                    continue
+                start, end = occurrence.get_word_range()
+                rewrites.setdefault(consumer, []).append(
+                    m.Infra.SourceRewrite(start=start, end=end, text=namespace_name)
+                )
 
     @classmethod
     def _plan_orphan_nesting(

@@ -125,6 +125,10 @@ class FlextInfraModelsCodegenPipelineModels:
             default=(),
             description="Destinations successfully published despite target failures",
         )
+        retained_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Authored destinations retained because generation does not own their bodies",
+        )
         issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
             default=(),
             description="Native publication failures keyed to their actual targets",
@@ -137,6 +141,10 @@ class FlextInfraModelsCodegenPipelineModels:
         root: Path | None = m.Field(
             default=None,
             description="Actual publication scope when supplied by its owner",
+        )
+        transaction_id: str | None = m.Field(
+            default=None,
+            description="Identity of the publication invocation that produced this receipt",
         )
         phase: str | None = m.Field(
             default=None,

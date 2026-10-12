@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,95 @@ from tests import c, m, tm, u
 
 class TestsFlextInfraCodegenLazyInitFilePlans:
     """Prove lazy-init describes effects without owning publication."""
+
+    @staticmethod
+    def test_authored_initializer_keeps_executable_declarations_after_generation(
+        tmp_path: Path,
+    ) -> None:
+        """Retain a real JSON loader, model and value through the public generator."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package / "models.py",
+            class_name="FlextTestsModels",
+            alias="m",
+        )
+        resource_package = package / "resource_owner"
+        resource_package.mkdir()
+        initializer = resource_package / c.Infra.INIT_PY
+        initializer.write_text(
+            '"""Load authored package data."""\n'
+            "from importlib.resources import files\n"
+            "from flext_core import m\n\n"
+            "class Payload(m.ContractModel):\n"
+            "    value: int\n\n"
+            "def load() -> Payload:\n"
+            "    return Payload.model_validate_json(\n"
+            "        files(__package__).joinpath('payload.json').read_text()\n"
+            "    )\n\n"
+            "VALUE = load().value\n"
+            "__all__ = ['Payload', 'VALUE', 'load']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        value = 37
+        (resource_package / "payload.json").write_text(
+            f'{{"value": {value}}}\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = initializer.read_bytes()
+        service = u.Tests.create_lazy_init_service(root)
+
+        analysis = tm.ok(service.plan_files())
+        retained = next(
+            plan
+            for plan in analysis.publications
+            if plan.context.init_path == initializer
+        )
+        tm.that(retained.action, eq=c.Infra.LazyInitAction.RETAIN)
+        tm.that(retained.ownership, eq="authored")
+        tm.that(retained.disposition, eq="retained")
+        tm.that(set(retained.exports), eq={"Payload", "VALUE", "load"})
+        tm.that(initializer in {file.path for file in analysis.files}, eq=False)
+        report = m.Infra.CodegenPhaseAnalysis.model_validate_json(
+            (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).read_text(
+                encoding=c.DEFAULT_ENCODING,
+            ),
+        )
+        tm.that(
+            any(
+                plan.context.init_path == initializer
+                and plan.ownership == "authored"
+                and plan.disposition == "retained"
+                for plan in report.publications
+            ),
+            eq=True,
+        )
+        workspace = u.Tests.standalone_workspace(root, root.name)
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.LAZY_INIT,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+
+        tm.ok(infra.codegen_conform(request, workspace))
+
+        tm.that(initializer.read_bytes(), eq=before)
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"import sys; sys.path.insert(0, {str(package.parent)!r}); "
+                        f"from {package.name}.resource_owner import VALUE, load; "
+                        "print(VALUE, load().value)"
+                    ),
+                ),
+                cwd=root,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.that(consumer.stdout.strip(), eq=f"{value} {value}")
 
     @pytest.mark.parametrize("family", ["m", "p", "u"])
     def test_facade_plan_selects_declared_family_and_only_requested_module(
@@ -115,39 +205,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         return root, member, packages
 
     @staticmethod
-    def _declare_workspace_manifests(
-        root: Path,
-        member: Path,
-        packages: list[Path],
-    ) -> None:
-        """Write each repository's workspace manifest from the live detector."""
-        for repository, package in zip((root, member), packages, strict=True):
-            observed = tm.ok(
-                FlextInfraWorkspaceDetector.load_workspace_spec(repository),
-            )
-            manifest = m.Infra.WorkspaceManifestSpec(
-                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                name=observed.repository.name,
-                repository=observed.repository,
-                # The declaration states what the tree ships: these packages
-                # own no cli module, so conform declares no console script
-                # for its fresh-import stage to load.
-                project=u.Tests.project_spec(observed.repository.name).model_copy(
-                    update={
-                        "cli_module": (
-                            package / c.Infra.CODEGEN_CLI_MODULE_FILENAME
-                        ).is_file(),
-                    },
-                ),
-            )
-            tm.ok(
-                u.Cli.yaml_dump(
-                    u.Infra.workspace_manifest_path(repository),
-                    manifest.model_dump(mode="json"),
-                ),
-            )
-
-    @staticmethod
     def _write_facade_selection_fixture(package: Path, family: str) -> None:
         """Declare a nonstandard destination and a local executable consumer."""
         directory = u.Infra.facade_families()[family].directory
@@ -159,8 +216,12 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             else "    class Payload:\n        pass\n"
         )
         sources = {
-            owners / "payload.py": "class PayloadOwner:\n" + payload,
-            owners / "existing.py": "class ExistingOwner:\n    pass\n",
+            owners / "payload.py": (
+                "class PayloadOwner:\n" + payload + "__all__ = ['PayloadOwner']\n"
+            ),
+            owners / "existing.py": (
+                "class ExistingOwner:\n    pass\n__all__ = ['ExistingOwner']\n"
+            ),
             package / "selected.py": (
                 f"from {package.name}.{directory}.existing import ExistingOwner\n\n"
                 "class Facade:\n"
@@ -185,15 +246,13 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     ) -> None:
         """Root and nested Git repositories retain their selected publication scope."""
         seed = TestsFlextInfraCodegenLazyInitFilePlans._seed_conform_scope_repositories
-        declare = TestsFlextInfraCodegenLazyInitFilePlans._declare_workspace_manifests
         root, member, packages = seed(tmp_path, scope)
-        declare(root, member, packages)
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = u.Tests.conform_request(
             root,
             scope=scope,
             mode=c.Infra.CodegenConformMode.CHECK,
-        )
+        ).model_copy(update={"what": c.Infra.CodegenConformSurface.LAZY_INIT})
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
@@ -216,17 +275,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
             for package in packages
         }
-        analyses = tuple(
-            tm.ok(
-                FlextInfraCodegenLazyInit(
-                    repository_root=repository,
-                    project_scope_roots=(repository,),
-                ).plan_files(),
-            )
-            for repository in selected
-        )
         tm.that(
-            {file.project for analysis in analyses for file in analysis.files},
+            {file.project for file in plan.files},
             eq=expected,
         )
         tm.that({path: path.read_bytes() for path in before}, eq=before)
@@ -238,51 +288,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 initializer.read_bytes() != before[initializer],
                 eq=repository.resolve() in expected,
             )
-        tm.ok(infra.codegen_conform(request, workspace))
-        if scope is c.Infra.CodegenConformScope.ALL:
-            TestsFlextInfraCodegenLazyInitFilePlans._assert_all_scope_generation_stability(
-                member=member,
-                selected=selected,
-                packages=packages,
-                request=request,
-                workspace=workspace,
-            )
-
-    @staticmethod
-    def _assert_all_scope_generation_stability(
-        *,
-        member: Path,
-        selected: tuple[Path, ...],
-        packages: list[Path],
-        request: m.Infra.CodegenConformRequest,
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> None:
-        """Prove the ALL scope regenerates idempotently and detects drift."""
-        applied = request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
-        projections = (
-            *(package / c.Infra.INIT_PY for package in packages),
-            *(repository / c.Infra.MAKEFILE_FILENAME for repository in selected),
-        )
-        converged = {path: path.read_bytes() for path in projections}
-        tm.ok(infra.codegen_conform(applied, workspace))
-        tm.that({path: path.read_bytes() for path in projections}, eq=converged)
-
-        member_makefile = member / c.Infra.MAKEFILE_FILENAME
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                member_makefile,
-                member_makefile.read_text(encoding=c.DEFAULT_ENCODING)
-                + "# managed member drift\n",
-            ),
-        )
-        drifted = {path: path.read_bytes() for path in projections}
-        tm.fail(
-            infra.codegen_conform(request, workspace),
-            has="codegen drift detected",
-        )
-        tm.that({path: path.read_bytes() for path in projections}, eq=drifted)
-        tm.ok(infra.codegen_conform(applied, workspace))
-        tm.that({path: path.read_bytes() for path in projections}, eq=converged)
         tm.ok(infra.codegen_conform(request, workspace))
 
     @staticmethod

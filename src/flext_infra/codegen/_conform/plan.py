@@ -345,7 +345,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.from_failure(selected)
         planned = FlextInfraCodegenLazyInit(
             repository_root=root,
-            project_scope_roots=(root,),
+            project_scope_roots=tuple(
+                (root / participant.path).resolve()
+                for participant in selected.value
+                if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            ),
             target_module=request.module,
         ).plan_files()
         if planned.failure:
@@ -555,12 +559,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             task: The repository planning task to be executed.
 
         Returns:
-            The outcome of the repository planning task, including any failure information.
+            The outcome of the repository planning task, including any failure
+            information.
         """
         started = time.monotonic()
         try:
             return cls._plan_repository_task(task)
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=task.repository.name,
                 error=str(exc),

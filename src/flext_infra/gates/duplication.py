@@ -156,6 +156,12 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         ``[tool.flext.project]`` scope keys that exist on disk. Other projects
         are libraries, never scanned from here.
 
+        Each resolved directory appears exactly once. The check directories
+        (``source_scan.roots``) and the declared scope keys overlap, so the
+        union must be de-duplicated: handing jscpd the same directory twice
+        makes it clone every file against itself, which is the double-scan
+        artifact (a false 50%-duplication report), never real duplication.
+
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
 
@@ -167,23 +173,23 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         declared_trees = self._declared_duplication_trees()
         if declared_trees.failure:
             return r[t.StrSequence].from_failure(declared_trees)
-        return r[t.StrSequence].ok(
-            tuple(
-                str(project_dir / candidate)
-                for candidate in (
-                    *self._existing_check_dirs(project_dir),
-                    *(
-                        tree
-                        for tree in declared_trees.value
-                        if (project_dir / tree).is_dir()
-                    ),
-                    *(
-                        dirname
-                        for dirname in scope_dirnames
-                        if (project_dir / dirname).is_dir()
-                    ),
-                )
+        candidates: t.MutableSequenceOf[str] = []
+        seen: set[str] = set()
+        for candidate in (
+            *self._existing_check_dirs(project_dir),
+            *(tree for tree in declared_trees.value if (project_dir / tree).is_dir()),
+            *(
+                dirname
+                for dirname in scope_dirnames
+                if (project_dir / dirname).is_dir()
             ),
+        ):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            candidates.append(candidate)
+        return r[t.StrSequence].ok(
+            tuple(str(project_dir / candidate) for candidate in candidates),
         )
 
     @staticmethod
@@ -272,7 +278,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
-            formatsExts={
+            formats_exts={
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
@@ -280,11 +286,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 *c.Infra.JSCPD_IGNORE_PATTERNS,
                 *config.Infra.codegen.generated_source_globs,
             ),
-            minLines=overrides.min_lines,
-            minTokens=overrides.min_tokens,
+            min_lines=overrides.min_lines,
+            min_tokens=overrides.min_tokens,
             mode=overrides.mode,
-            noColors=True,
-            noTips=True,
+            no_colors=True,
+            no_tips=True,
             reporters=(c.Infra.OUTPUT_JSON,),
             threshold=overrides.threshold_percent,
         )
@@ -363,7 +369,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if parsed.failure:
             return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)
-        issues: list[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        seen_clones: set[str] = set()
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             first = u.Cli.json_deep_mapping(duplicate, "firstFile")
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
@@ -371,16 +378,31 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second_name = cls._report_file_name(second)
             if not cls._is_semantic_clone(duplicate, first, second):
                 continue
+            first_span = cls._side_span_key(first)
+            second_span = cls._side_span_key(second)
+            # The two sides of a clone are the same span only when the same
+            # directory reached jscpd twice (the double-scan artifact): that is
+            # never an owned clone. The same file with two different spans is
+            # genuine intra-file duplication and must be reported.
+            if first_span == second_span:
+                continue
             # Ownership is path containment, never a string prefix: a sibling
             # project whose directory name extends this one (``flext-x`` vs
             # ``flext-x-extra``) shares the prefix but owns its own clones.
             # ``startswith`` claimed those siblings and then raised ValueError
             # from ``relative_to``, turning a real cross-project clone into a
             # crashed gate.
-            if (
-                Path(first_name).is_relative_to(project_dir)
-                and first_name != second_name
-            ):
+            first_owned = Path(first_name).is_relative_to(project_dir)
+            second_owned = Path(second_name).is_relative_to(project_dir)
+            if not (first_owned or second_owned):
+                continue
+            # jscpd can emit both A->B and B->A for one clone; publish one
+            # finding per unordered span pair.
+            mirror = "|".join(sorted((first_span, second_span)))
+            if mirror in seen_clones:
+                continue
+            seen_clones.add(mirror)
+            if first_owned:
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate,
@@ -390,10 +412,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                         project_dir,
                     ),
                 )
-            elif (
-                Path(second_name).is_relative_to(project_dir)
-                and second_name != first_name
-            ):
+            else:
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate,
@@ -434,6 +453,19 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
         """
         return cls._report_name_parts(side)[0]
+
+    @classmethod
+    def _side_span_key(cls, side: t.JsonMapping) -> str:
+        """Return one clone side's on-disk span identity.
+
+        Returns:
+            The clone side's ``<file>:<start-line>:<end-line>`` identity.
+
+        """
+        name = cls._report_file_name(side)
+        start = u.Cli.json_nested_int(side, "startLoc", "line", default=0)
+        end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
+        return f"{name}:{start}:{end}"
 
     @classmethod
     def _issue_from_duplicate(

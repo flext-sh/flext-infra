@@ -314,6 +314,17 @@ Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public
 export traversal must not replace that scalar with the imported child module.
+Initializer ownership is elected from actual content and the accepted generator
+markers. Absent or empty initializers and explicitly marked projections may be
+generated. A nonempty authored initializer is retained in full, including executable
+loaders, declarations and constants; its public exports remain part of discovery.
+The lazy planning report records `ownership=authored`, `disposition=retained` and the
+existing RETAIN action. Publication reelects ownership from the current target before
+its single write, so a later authored replacement is retained and is not counted as
+a generated file. No directory-name exemption list selects this behavior.
+Shared input snapshots document the planner's inputs; later source edits do not
+invalidate an entire generation. Directed validation checks the actual generated
+targets rather than comparing every source with an earlier workspace snapshot.
 
 Repository generation plans treat malformed source as a failed input. The
 planning report at `.reports/codegen-plan.json` records each selected repository's

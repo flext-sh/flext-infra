@@ -640,7 +640,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 repository_root=root,
                 project_scope_roots=(root,),
             ).plan_files()
-        except Exception as exc:
+        except (OSError, SyntaxError, ValueError) as exc:
             path = (
                 exc.filename
                 if isinstance(exc, SyntaxError) and exc.filename is not None
