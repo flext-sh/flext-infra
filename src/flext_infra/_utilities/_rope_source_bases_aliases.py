@@ -10,6 +10,8 @@ import ast
 import importlib.util
 from pathlib import Path
 
+from flext_infra import c
+
 
 class FlextInfraUtilitiesRopeSourceBasesAliases:
     """Alias and lazy-module resolution part of the source-bases composite."""
@@ -64,10 +66,14 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             Alias name to absolute provider module path.
 
         """
-        # A generated module that does not parse is a defect to surface, never
-        # an empty alias map (fail loud).
+        # Lazy package propagation belongs to initializers. Ordinary module
+        # bindings are resolved by the lexical inventory, so their executable
+        # bodies are not inputs to this package-alias reader.
+        if path.name != c.Infra.INIT_PY:
+            return {}
+        # A required initializer that does not parse remains a real input error.
         parsed = ast.parse(source, filename=str(path))
-        package = module if path.name == "__init__.py" else module.rpartition(".")[0]
+        package = module
         aliases: dict[str, str] = {}
         for node in ast.walk(parsed):
             if not (

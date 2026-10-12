@@ -307,6 +307,17 @@ whose name collides with its child module uses the existing eager-dunder contrac
 the scalar is bound before lazy installation and omitted from the lazy map. Public
 export traversal must not replace that scalar with the imported child module.
 
+Repository generation plans treat malformed source as a failed input. The
+planning report at `.reports/codegen-plan.json` records each selected repository's
+outcome, exception type and original traceback. A failed required plan prevents
+publication of the generation transaction; the command retains a failing result.
+Lazy binding discovery parses package initializers only, so unrelated malformed
+consumer code cannot invalidate an otherwise valid declaration projection.
+
+Text codemods validate replacement Python before publishing any planned writes.
+An invalid replacement returns a failed result carrying the original `SyntaxError`,
+including its filename and source text. The complete batch remains unchanged.
+
 ## Check gate partitions
 
 `make file-gate FILE=<repository-relative path>` delegates to the existing

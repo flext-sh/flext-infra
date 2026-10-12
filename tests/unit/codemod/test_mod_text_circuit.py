@@ -314,8 +314,14 @@ class TestsFlextInfraModTextGateEngine:
         ).unwrap()
         originals = (first.read_bytes(), second.read_bytes())
 
-        with pytest.raises(SyntaxError):
-            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        tm.fail(rejected, has=str(first))
+        native = tm.not_none(rejected.exception)
+        tm.that(isinstance(native, SyntaxError), eq=True)
+        if isinstance(native, SyntaxError):
+            tm.that(native.filename, eq=str(first))
+            tm.that(native.text, has="value =")
+        tm.that(native.__traceback__ is not None, eq=True)
 
         tm.that((first.read_bytes(), second.read_bytes()), eq=originals)
 
@@ -399,8 +405,14 @@ class TestsFlextInfraModTextGateEngine:
             ),
         )
 
-        with pytest.raises(SyntaxError):
-            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        tm.fail(rejected, has=str(second))
+        native = tm.not_none(rejected.exception)
+        tm.that(isinstance(native, SyntaxError), eq=True)
+        if isinstance(native, SyntaxError):
+            tm.that(native.filename, eq=str(second))
+            tm.that(native.text, has="value = (")
+        tm.that(native.__traceback__ is not None, eq=True)
 
         tm.that(first.read_bytes(), eq=original_first)
         tm.that(second.read_bytes(), eq=original_second)

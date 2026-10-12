@@ -866,10 +866,29 @@ class FlextInfraConfigModelsArtifact:
             str,
             m.Field(description="Planning failure, empty on success"),
         ] = ""
+        error_type: Annotated[
+            str,
+            m.Field(description="Original qualified exception type, when raised"),
+        ] = ""
+        error_traceback: Annotated[
+            str,
+            m.Field(description="Original planning traceback, without local variables"),
+        ] = ""
         elapsed: Annotated[
             float,
             m.Field(ge=0, description="Planning wall seconds"),
         ] = 0.0
+
+    class CodegenPlanningReport(FlextInfraConfigModelsContract.ConfigContract):
+        """Complete read-only planning outcomes before managed-file publication."""
+
+        root: Annotated[Path, m.Field(description="Invoking generation scope")]
+        outcomes: Annotated[
+            t.VariadicTuple[
+                FlextInfraConfigModelsArtifact.CodegenRepositoryPlanOutcome
+            ],
+            m.Field(description="Every selected repository's native planning outcome"),
+        ]
 
     class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""

@@ -7,8 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+import traceback
 from pathlib import Path
 from typing import Literal
+
+from rope.base.exceptions import RopeError
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
@@ -485,12 +488,30 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         # plans them across worker processes; the results keep declaration
         # order, and publication stays serial under the generation lease.
         outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
+        published = u.Infra.publish_refactor_report_evidence(
+            root,
+            m.Infra.CodegenPlanningReport(root=root, outcomes=outcomes),
+            relative_path=c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH,
+        )
+        if published.failure:
+            return result_type.from_failure(published)
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
+        failed: list[m.Infra.CodegenRepositoryPlanOutcome] = []
         for index, outcome in enumerate(outcomes, start=1):
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
-            if outcome.error:
-                return result_type.fail(outcome.error)
+            if outcome.error or outcome.error_type:
+                u.Cli.status(
+                    "conform",
+                    outcome.repository,
+                    result=False,
+                    elapsed=outcome.elapsed,
+                )
+                u.Cli.error(
+                    f"{outcome.repository}: {outcome.error_type}: {outcome.error}",
+                )
+                failed.append(outcome)
+                continue
             files.extend(outcome.files)
             if outcome.environment is not None:
                 environments.append(outcome.environment)
@@ -500,10 +521,42 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 result=True,
                 elapsed=outcome.elapsed,
             )
+        if failed:
+            first = failed[0]
+            return result_type.fail(
+                f"{len(failed)} repository planning failure(s); "
+                f"first={first.repository}: {first.error_type}: {first.error}; "
+                f"report={root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH}",
+            )
         return result_type.ok((files, environments))
 
     @classmethod
     def plan_repository_task(
+        cls,
+        task: m.Infra.CodegenRepositoryPlanTask,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Preserve a worker's failure as data without retry or publication.
+
+        Args:
+            task: The repository planning task to be executed.
+
+        Returns:
+            The outcome of the repository planning task, including any failure information.
+        """
+        started = time.monotonic()
+        try:
+            return cls._plan_repository_task(task)
+        except (SyntaxError, ValueError, TypeError, OSError, RopeError) as exc:
+            return m.Infra.CodegenRepositoryPlanOutcome(
+                repository=task.repository.name,
+                error=str(exc),
+                error_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
+                error_traceback=traceback.format_exc(),
+                elapsed=time.monotonic() - started,
+            )
+
+    @classmethod
+    def _plan_repository_task(
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:

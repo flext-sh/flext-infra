@@ -794,6 +794,51 @@ class TestsFlextInfraUtilityFacadeProjection:
         (package / "_utilities").mkdir(parents=True)
         tm.that(u.Infra.render_utility_facade(package), eq=None)
 
+    @pytest.mark.parametrize(
+        "consumer_source",
+        ["def invalid(:\n", "class TestInvalid(\n"],
+    )
+    def test_unrelated_malformed_consumer_does_not_block_declared_projection(
+        self,
+        tmp_path: Path,
+        consumer_source: str,
+    ) -> None:
+        """Compose valid declarations without analyzing unrelated test bodies."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / family.directory / "owner.py",
+            "class Owner:\n    value = 'declared'\n__all__ = ['Owner']\n",
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        source = (
+            f"from flext_sample.{family.directory}.owner import Owner\n"
+            "class Facade:\n    class Sample(Owner):\n        pass\n"
+            "c = Facade\n__all__ = ['Facade', 'c']\n"
+        )
+        self._write(facade, source)
+        consumer = package / "unit" / "test_incomplete.py"
+        self._write(consumer, consumer_source)
+
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        self._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
+                ),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="declared")
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=consumer_source)
+
     @pytest.mark.parametrize("generated", [True, False])
     def test_initializer_ownership_controls_consumer_parsing(
         self,
