@@ -654,6 +654,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 examples_module=target.repository.examples_module,
                 make_profile=target.make_profile,
                 package=target.repository.package,
+                workspace_repositories=tuple(workspace.subprojects),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 repository_root_rel=self._repository_root_rel(workspace),
                 workspace_subprojects=tuple(

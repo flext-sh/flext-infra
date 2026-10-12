@@ -362,7 +362,8 @@ MYPY_PATHS := $(strip $(foreach d,src tests examples{% if script_dispatch %} scr
 # Every tool resolves from the mise-managed PATH (direnv activation shims, or
 # the CI provisioned PATH); _builtin_require_mise guards the running mise
 # against the committed mise.lock pin.
-override UV = "$$(mise -C "$(RUNTIME_ROOT)" which uv)"
+{% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
+override UV = "$$(mise -C "$(RUNTIME_ROOT)" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@$$(mise -C "$(RUNTIME_ROOT)" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)")"
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
@@ -488,6 +489,20 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		mise -C "$(PROJECT_ROOT)/$$member" config ls --json; \
 	done; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"; \
+	if [ "$(strip $({{ make.ci.variable }}))" != "{{ make.ci.value }}" ]; then \
+		set --{% if package %} --editable "$(PROJECT_ROOT)"{% endif %}; \
+		for member in{% for member in workspace_repositories if member.package and member.editable %} "{{ member.path }}"{% endfor %}; do \
+			if [ ! -f "$(PROJECT_ROOT)/$$member/pyproject.toml" ]; then \
+				printf 'ERROR[setup] declared member metadata is missing: %s\n' "$(PROJECT_ROOT)/$$member/pyproject.toml" >&2; exit 2; \
+			fi; \
+			set -- "$$@" --editable "$(PROJECT_ROOT)/$$member"; \
+		done; \
+		if [ "$$\#" -gt 0 ]; then \
+			$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --link-mode "$(UV_LINK_MODE)" "$$@"; \
+		fi; \
+		$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
+	fi; \
+	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only; \
 	for member in $(WORKSPACE_SUBPROJECTS); do \
 		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)/$$member" --config-only; \
@@ -785,7 +800,11 @@ endif
 # different workspace and break the gen fixed point. Provisioned
 # members are read as libraries; no verb gates them from here.
 _builtin_setup_environment: $(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),,_builtin_setup_submodules)
-	@$(SETUP_ENVIRONMENT_RECIPE)
+	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
+		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(RUNTIME_ROOT)/Makefile" setup; \
+	else \
+		$(SETUP_ENVIRONMENT_RECIPE); \
+	fi
 ifeq ($(MAKE_PROFILE),workspace)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 endif
@@ -1196,7 +1215,7 @@ ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-lanes --repo-root "$(PROJECT_ROOT)"
 endif
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
-	@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(PROJECT_ROOT)",:)
+	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 _builtin-status: _builtin_status_diagnostics
 _builtin-verify-clean: _builtin_require_environment

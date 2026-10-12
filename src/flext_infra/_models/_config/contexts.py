@@ -35,6 +35,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr | None,
             m.Field(description="Repository-declared public examples module"),
         ] = None
+        workspace_repositories: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
+            m.Field(description="Ordered workspace subproject records"),
+        ] = ()
         pytest: Annotated[
             FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
@@ -214,10 +218,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         workspace_subprojects: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Ordered workspace subproject paths"),
-        ] = ()
-        workspace_repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
-            m.Field(description="Ordered workspace subproject records"),
         ] = ()
         workspace_gitlinks: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],

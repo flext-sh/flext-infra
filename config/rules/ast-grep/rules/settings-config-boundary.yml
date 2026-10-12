@@ -96,7 +96,8 @@ files:
 metadata:
   context:
     MODULE:
-      is: own-package
+      - is: own-package
+      - is: family-base-file
 rule:
   all:
     - kind: import_from_statement

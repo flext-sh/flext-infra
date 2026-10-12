@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pstats
+import signal
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,39 @@ from tests import c, m, t, tm, u
 
 class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_interrupted_profile_preserves_the_child_process_failure(
+        cached_runner_project: Path,
+    ) -> None:
+        """A killed real child keeps its signal instead of a missing-profile error."""
+        cache = config.Infra.codegen.make.testmon_cache
+        target = Path(cache.target_directory) / "test_runtime.py"
+        (cached_runner_project / target).write_text(
+            "import os\n"
+            "import signal\n"
+            "def test_runtime():\n"
+            "    os.kill(os.getpid(), signal.SIGKILL)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=target
+        ).model_copy(update={"profile_enabled": True})
+        tm.that(tm.ok(runner.execute()), eq=-signal.SIGKILL)
+        reports = cached_runner_project / runner.reports
+        contexts = tuple(reports.glob("*/run-context.json"))
+        tm.that(len(contexts), eq=1)
+        directory = contexts[0].parent
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            (directory / "suite-outcome.json").read_text(encoding=c.DEFAULT_ENCODING)
+        )
+        tm.that(outcome.raw_return_code, eq=-signal.SIGKILL)
+        tm.that(outcome.timed_out, eq=False)
+        tm.that(outcome.forwarded_signal, eq=None)
+        profile = directory / config.Infra.tooling.tools.pytest.profile_suite_filename
+        tm.that(profile.exists(), eq=False)
+        tm.that((directory / "run-accounting.json").exists(), eq=False)
 
     @staticmethod
     @pytest.mark.slow

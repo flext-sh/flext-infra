@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
+from flext_infra import FlextInfraWorkspaceDetector, config
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, tm, u
 
@@ -26,6 +26,62 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
+
+    @staticmethod
+    def test_real_checkout_runtime_has_declared_provenance() -> None:
+        """Authenticate actual PEP 610 and RECORD metadata for the full workspace."""
+        tm.ok(
+            FlextInfraWorkspaceEnvironmentProvenance.validate(Path(__file__).parent),
+        )
+
+    @staticmethod
+    def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+        """Derive independent runtime probes from the real typed topology."""
+        if "live_repository" not in metafunc.fixturenames:
+            return
+        runtime = tm.ok(
+            u.Infra.git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).parent),
+            ),
+        ).repository_root
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(runtime))
+        repositories = tuple(
+            repository
+            for repository in (workspace.repository, *workspace.subprojects)
+            if repository.package and repository.editable
+        )
+        metafunc.parametrize(
+            "live_repository",
+            repositories,
+            ids=tuple(repository.distribution for repository in repositories),
+        )
+
+    @staticmethod
+    def test_real_checkout_runtime_uses_declared_source(
+        live_repository: m.Infra.RepositoryRef,
+    ) -> None:
+        """Authenticate each actual public import resolver without synthetic packages."""
+        checkout = tm.ok(
+            u.Infra.git_identity(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).resolve().parent),
+            ),
+        ).repo_root
+        runtime = tm.ok(
+            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=checkout)),
+        ).repository_root
+        ci = config.Infra.codegen.make.ci
+        if u.Infra.env_value(ci.variable).strip() == ci.value:
+            return
+        member_root = (runtime / live_repository.path).resolve()
+        metadata = tm.ok(u.Infra.read_project_metadata_result(member_root))
+        package = u.Infra.declared_package_dir(metadata.package_name)
+        tm.that(package is not None, eq=True, msg=live_repository.distribution)
+        if package is not None:
+            tm.that(
+                package.resolve().is_relative_to(member_root),
+                eq=True,
+                msg=f"{live_repository.distribution}: {package} outside {member_root}",
+            )
 
     @pytest.fixture
     def ci_mode(self) -> bool:

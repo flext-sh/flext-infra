@@ -49,10 +49,20 @@ class FlextInfraUtilitiesPyproject:
         reader = shutil.which(c.Infra.MISE)
         if reader is None:
             return r[Path].fail("Mise executable is absent; run make setup")
+        selector = tool.selector or tool.name
+        requested = FlextInfraUtilitiesPyproject._committed_mise_tool_request(
+            owner_root,
+            selector,
+        )
+        if requested.failure:
+            return r[Path].from_failure(requested)
+        if requested.value is None:
+            return r[Path].fail(f"runtime manifest does not declare {selector}")
         return FlextInfraUtilitiesPyproject._managed_mise_path(
             tool.version_probe.binary,
             owner_root,
             Path(reader),
+            f"{selector}@{requested.value}",
         )
 
     @staticmethod
@@ -111,6 +121,7 @@ class FlextInfraUtilitiesPyproject:
                         c.Infra.MISE,
                         owner_root,
                         qualified,
+                        f"{config.Infra.codegen.toolchain.mise_selector}@{pinned}",
                     ),
                 )
                 .flat_map(
@@ -140,6 +151,30 @@ class FlextInfraUtilitiesPyproject:
         )
         if manifest is None or not manifest.is_file():
             return r[str | None].ok(None)
+        return FlextInfraUtilitiesPyproject._committed_mise_tool_request(
+            manifest.parent,
+            config.Infra.codegen.toolchain.mise_selector,
+        )
+
+    @staticmethod
+    def _committed_mise_tool_request(
+        owner_root: Path, selector: str
+    ) -> p.Result[str | None]:
+        """Read the runtime owner's current request, independently of codegen targets.
+
+        Returns:
+            The scalar or table version request, or absence of a declaration.
+        """
+        manifest = next(
+            (
+                candidate / c.Infra.MISE_TOML_FILENAME
+                for candidate in (owner_root, *owner_root.parents)
+                if (candidate / c.Infra.MISE_TOML_FILENAME).is_file()
+            ),
+            None,
+        )
+        if manifest is None:
+            return r[str | None].ok(None)
         payload = u.Cli.toml_mapping_from_text(
             manifest.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -148,12 +183,15 @@ class FlextInfraUtilitiesPyproject:
         tools = payload.get("tools", {})
         if not isinstance(tools, Mapping):
             return r[str | None].fail(f"{manifest} has a malformed [tools] table")
-        release = tools.get(config.Infra.codegen.toolchain.mise_selector)
+        release = tools.get(selector)
         if release is None:
             return r[str | None].ok(None)
+        if isinstance(release, Mapping):
+            release = release.get("version")
         if not isinstance(release, str) or not release:
             return r[str | None].fail(
-                f"{manifest} declares a malformed self-managed Mise entry: {release!r}",
+                f"{manifest} declares a malformed Mise entry for "
+                f"{selector}: {release!r}",
             )
         return r[str | None].ok(release)
 
@@ -186,9 +224,11 @@ class FlextInfraUtilitiesPyproject:
         return r[Path].ok(binary)
 
     @staticmethod
-    def _managed_mise_path(name: str, owner_root: Path, reader: Path) -> p.Result[Path]:
+    def _managed_mise_path(
+        name: str, owner_root: Path, reader: Path, selector: str
+    ) -> p.Result[Path]:
         located = u.Cli.run_raw(
-            (str(reader), "-C", str(owner_root), "which", name),
+            (str(reader), "-C", str(owner_root), "which", name, "--tool", selector),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )

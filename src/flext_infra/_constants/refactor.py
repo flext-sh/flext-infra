@@ -199,6 +199,9 @@ class FlextInfraConstantsRefactor:
         - ``family-base``: the private family package holding the finding's
           module begins with ``base.py``.
 
+        ``family-base-file`` proves that the finding is the immediate base
+        leaf of a private family with a declared sibling facade.
+
         ``later-layer`` compares with the layer the rule names in ``arg`` when
         it names one.
         """
@@ -220,6 +223,7 @@ class FlextInfraConstantsRefactor:
         PACKAGE_LAYERS = "package-layers"
         PACKAGE_ROOT_INIT = "package-root-init"
         FAMILY_BASE = "family-base"
+        FAMILY_BASE_FILE = "family-base-file"
         PAYLOAD_DECLARATION = "payload-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
         SAME_BINDING = "same-binding"
@@ -292,10 +296,6 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_ALIASES: ClassVar[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: ClassVar[str] = "allow_target_suffixes"
     CODEMOD_RULE_SUFFIX: ClassVar[str] = ".yml"
-    CODEMOD_DOCUMENT_SEPARATOR_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^---\s*$",
-        re.MULTILINE,
-    )
     CODEMOD_CONFIG_FILENAME: ClassVar[str] = "sgconfig.yml"
     # Static rules are data under the one rule root, config/rules: the
     # ast-grep corpus (sgconfig, rules, utils, tests with snapshots) and the

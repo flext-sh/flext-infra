@@ -51,7 +51,12 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[int]``.
 
         """
-        resolved_root = repository_root.resolve()
+        runtime_root = u.Infra.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=repository_root),
+        )
+        if runtime_root.failure:
+            return r[int].from_failure(runtime_root)
+        resolved_root = runtime_root.value.repository_root.resolve()
         ci = config.Infra.codegen.make.ci
         if u.Infra.env_value(ci.variable).strip() == ci.value:
             return cls.validate_locked(resolved_root, metadata_paths=metadata_paths)
@@ -62,7 +67,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[int].from_failure(workspace_result)
         repositories = tuple(
             repository
-            for repository in workspace_result.value.subprojects
+            for repository in (
+                workspace_result.value.repository,
+                *workspace_result.value.subprojects,
+            )
             if repository.package and repository.editable
         )
         validated = 0
@@ -103,6 +111,18 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         distribution = matches[0]
         expected_root = (resolved_root / repository.path).resolve()
+        files = distribution.files
+        if files is None:
+            return r[bool].fail(
+                "editable provenance has no installed file inventory: "
+                f"distribution={repository.distribution}",
+            )
+        u.Cli.info(
+            f"environment distribution={repository.distribution} "
+            f"installed_version={distribution.version} "
+            f"installed_location={distribution.locate_file('')} "
+            f"record_files={len(files)} expected_source={expected_root}",
+        )
         direct_url_result = cls._validate_direct_url(
             repository.distribution,
             distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
@@ -110,12 +130,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if direct_url_result.failure:
             return r[bool].from_failure(direct_url_result)
-        files = distribution.files
-        if files is None:
-            return r[bool].fail(
-                "editable provenance has no installed file inventory: "
-                f"distribution={repository.distribution}",
-            )
         pth_files = tuple(
             Path(str(distribution.locate_file(file)))
             for file in files
@@ -134,6 +148,34 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if pth_result.failure:
             return r[bool].from_failure(pth_result)
+        return (
+            cls._validate_import_source(repository, expected_root)
+            if metadata_paths is None
+            else r[bool].ok(value=True)
+        )
+
+    @staticmethod
+    def _validate_import_source(
+        repository: m.Infra.RepositoryRef,
+        expected_root: Path,
+    ) -> p.Result[bool]:
+        """Authenticate the actual import resolver against the declared build source."""
+        package_name = u.Infra.project_package_name(expected_root)
+        package = u.Infra.declared_package_dir(package_name)
+        if (
+            package is None
+            or not package.is_dir()
+            or not package.resolve().is_relative_to(expected_root)
+        ):
+            return r[bool].fail(
+                "editable provenance import source differs from declaration: "
+                f"distribution={repository.distribution} expected={expected_root} "
+                f"actual={package}",
+            )
+        u.Cli.info(
+            f"environment distribution={repository.distribution} "
+            f"import_source={package.resolve()}",
+        )
         return r[bool].ok(value=True)
 
     @classmethod
@@ -529,7 +571,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"distribution={distribution} expected={expected_root}",
             )
         try:
-            payload = m.Infra.EditableDirectUrl.model_validate_json(
+            payload = m.Infra.DirectUrlReceipt.model_validate_json(
                 raw_payload,
                 strict=True,
             )
@@ -539,10 +581,19 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 exc,
             )
         parsed = urlparse(payload.url)
-        if parsed.scheme != "file" or not payload.dir_info.editable:
+        if (
+            parsed.scheme != "file"
+            or payload.dir_info is None
+            or not payload.dir_info.editable
+            or payload.vcs_info is not None
+        ):
+            revision = (
+                payload.vcs_info.commit_id if payload.vcs_info is not None else None
+            )
             return r[int].fail(
                 "editable provenance is not an editable file URL: "
-                f"distribution={distribution} url={payload.url}",
+                f"distribution={distribution} expected={expected_root} "
+                f"url={payload.url} installed_revision={revision}",
             )
         actual_root = Path(url2pathname(unquote(parsed.path))).resolve()
         if actual_root != expected_root:
@@ -591,6 +642,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     "editable provenance pth mismatch: "
                     f"distribution={distribution} expected_root={expected_root} "
                     f"actual={actual_source}",
+                )
+            if not actual_source.is_dir():
+                return r[int].fail(
+                    "editable provenance source directory is not live: "
+                    f"distribution={distribution} path={actual_source}",
                 )
         return r[int].ok(1)
 

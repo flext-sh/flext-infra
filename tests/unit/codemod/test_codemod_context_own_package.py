@@ -10,12 +10,60 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from tests import t, tm, u
 
 
 class TestsFlextInfraCodemodContextOwnPackage:
     """An import between a project's own namespaces never crosses an owner."""
+
+    @pytest.mark.parametrize(
+        ("relative", "admitted"),
+        [("_utilities/base.py", True), ("_utilities/_behavior/base.py", False)],
+    )
+    def test_family_base_role_requires_the_immediate_declared_facade(
+        self, mod_workspace: Path, relative: str, *, admitted: bool
+    ) -> None:
+        """Nested behavior bases never borrow their ancestor's family role."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        export = config.Infra.tooling.lazy_init.import_layer_order[0]
+        (package / "utilities.py").write_text(
+            f"__all__ = [{export!r}]\n", encoding="utf-8"
+        )
+        path = package / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.parent.parent != package:
+            (path.parent.parent / "behavior.py").write_text(
+                f"__all__ = [{export!r}]\n", encoding="utf-8"
+            )
+        path.write_text("from flext_core import c\n", encoding="utf-8")
+        rule = self._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="MOD",
+                        predicate=c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE,
+                        holds=True,
+                    ),
+                )
+            }
+        )
+        with u.Infra.codemod_binding_project(
+            mod_workspace, m.Infra.CodemodBindingSnapshot(states=())
+        ) as (project, sources):
+            verdict = u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=path,
+                    captures={"MOD": {"text": "flext_core"}},
+                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                ),
+                project=project,
+                sources=sources,
+            )
+        tm.that(verdict, eq=admitted)
 
     @staticmethod
     def _private_import_rule() -> m.Infra.CodemodRule:

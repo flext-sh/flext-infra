@@ -80,6 +80,11 @@ and inline instructions; descriptions of internal tools are not shell guidance.
 
 ## Codemod rule fixtures
 
+Rule and test files may contain multiple YAML documents. Their readers use
+`u.Cli.yaml_parse_documents`, backed by the same canonical YAML engine as single
+document parsing. Reconciliation includes every document's invalid cases; an empty
+test stream or a malformed later document fails before native fixture execution.
+
 Every ast-grep rule has a test (`<rule-id>-test.yml` with `valid` and `invalid` cases)
 and, for each invalid case, a committed snapshot of what the rule reports and rewrites.
 `make mod` verifies them with `ast-grep test` and never rewrites a snapshot: a changed

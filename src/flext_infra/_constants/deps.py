@@ -9,11 +9,13 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsDeps:
+class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     """Deps infrastructure constants."""
 
     # NOTE: Hardcoded base path constants removed.
@@ -47,9 +49,6 @@ class FlextInfraConstantsDeps:
     )
     # An internal requirement declares its integration line; the commit it
     # resolves to is recorded only in uv.lock, written by `make upg`.
-    GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
-    )
     BANNER: ClassVar[str] = (
         "# @flext-generated: continuous\n"
         "# @flext-owner: flext-infra/config/codegen.yaml"

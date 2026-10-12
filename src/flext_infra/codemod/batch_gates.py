@@ -307,24 +307,6 @@ class FlextInfraModGateEngine:
                 follow_symlinks=False,
             )
 
-    @staticmethod
-    def _rule_documents(rule: Path) -> t.VariadicTuple[str]:
-        """Return every non-empty YAML document in one rule file.
-
-        Returns:
-            Every non-empty YAML document in one rule file.
-
-        """
-        documents = tuple(rule.read_text(encoding="utf-8").split("\n---"))
-        return tuple(
-            document.strip("\n")
-            for document in documents
-            if any(
-                line.strip() and not line.lstrip().startswith("#")
-                for line in document.splitlines()
-            )
-        )
-
     @classmethod
     def _materialize_split_rule_files(
         cls,
@@ -347,23 +329,22 @@ class FlextInfraModGateEngine:
         for directory in (*directories.rule_dirs, *directories.util_dirs):
             source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
         for rule in sorted(source_rules):
-            documents = cls._rule_documents(rule)
+            documents = u.Cli.yaml_parse_documents(
+                u.Cli.files_read_text(rule).unwrap()
+            ).unwrap()
             if len(documents) <= 1:
                 continue
             temp_rule = temp_root / rule.relative_to(config_root)
             temp_rule.unlink()
             for document in documents:
-                parsed = u.Cli.yaml_parse(document)
-                if parsed.failure:
-                    raise RuntimeError(parsed.error or str(rule))
-                rule_id = parsed.value.get("id")
+                rule_id = document.get(c.Infra.CODEMOD_RULE_TEST_ID_KEY)
                 if not isinstance(rule_id, str) or not rule_id:
                     msg = f"ast-grep rule document missing required id: {rule}"
                     raise RuntimeError(msg)
-                temp_rule.with_name(f"{rule_id}.yml").write_text(
+                u.Cli.yaml_dump(
+                    temp_rule.with_name(f"{rule_id}{c.Infra.CODEMOD_RULE_SUFFIX}"),
                     document,
-                    encoding="utf-8",
-                )
+                ).unwrap()
 
     @staticmethod
     def _publish_regenerated_snapshots(

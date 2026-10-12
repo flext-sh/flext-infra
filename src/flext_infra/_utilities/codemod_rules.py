@@ -725,32 +725,6 @@ class FlextInfraUtilitiesCodemodRules:
         )
 
     @classmethod
-    def _parsed_document_rule(
-        cls,
-        provider: str,
-        resource: Path,
-        raw_document: str,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
-        """Parse one rule document into its zero or one contained rules.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
-
-        """
-        if not any(
-            line.strip() and not line.lstrip().startswith("#")
-            for line in raw_document.splitlines()
-        ):
-            return r[t.SequenceOf[m.Infra.CodemodRule]].ok(())
-        parsed_rule = u.Cli.yaml_parse(raw_document)
-        if parsed_rule.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(parsed_rule)
-        validated = cls._validated_document_rule(provider, resource, parsed_rule.value)
-        if validated.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(validated)
-        return r[t.SequenceOf[m.Infra.CodemodRule]].ok((validated.value,))
-
-    @classmethod
     def _parse_rules(
         cls,
         provider: str,
@@ -764,12 +738,14 @@ class FlextInfraUtilitiesCodemodRules:
         """
         rules: list[m.Infra.CodemodRule] = []
         for resource, text in sources:
-            documents = c.Infra.CODEMOD_DOCUMENT_SEPARATOR_RE.split(text)
-            for raw_document in documents:
-                parsed = cls._parsed_document_rule(provider, resource, raw_document)
-                if parsed.failure:
-                    return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(parsed)
-                rules.extend(parsed.value)
+            documents = u.Cli.yaml_parse_documents(text)
+            if documents.failure:
+                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(documents)
+            for payload in documents.value:
+                validated = cls._validated_document_rule(provider, resource, payload)
+                if validated.failure:
+                    return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(validated)
+                rules.append(validated.value)
         return r[t.SequenceOf[m.Infra.CodemodRule]].ok(tuple(rules))
 
     @classmethod

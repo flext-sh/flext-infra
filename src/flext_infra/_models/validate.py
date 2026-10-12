@@ -163,7 +163,11 @@ class FlextInfraModelsCore:
         )
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
-                default_factory=list,
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                    )
+                ),
                 description="Observed pre-selection items",
             )
         )
@@ -518,7 +522,11 @@ class FlextInfraModelsCore:
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
-            default_factory=list,
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
+                )
+            ),
             description="Call-phase attempt observations",
         )
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (

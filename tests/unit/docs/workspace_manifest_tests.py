@@ -16,21 +16,83 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from flext_infra import c
+from flext_infra import c, config
 from tests import tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _PROBE = "flext-probe"
 
 
 class TestsFlextInfraWorkspaceManifest:
     """Classification of a checkout as a fleet umbrella."""
+
+    @staticmethod
+    @pytest.mark.parametrize("target_path", [".", "nested/candidate", "${HOME}"])
+    def test_relative_bootstrap_paths_survive_public_manifest_loading(
+        tmp_path: Path,
+        target_path: str,
+    ) -> None:
+        """Topology paths stay relative and discovery does not expand YAML inputs."""
+        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
+                    "candidate_bootstrap_targets": [
+                        {
+                            "path": target_path,
+                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
+                        },
+                    ],
+                },
+            ),
+        )
+
+        loaded = tm.ok(u.Infra.load_workspace_manifest(tmp_path))[0]
+        tm.that(loaded.candidate_bootstrap_targets[0].path, eq=Path(target_path))
+        tm.that(
+            loaded.candidate_bootstrap_targets[0].what
+            is c.Infra.CodegenConformSurface.MAKEFILE,
+            eq=True,
+        )
+        tm.that(u.Infra.manifest_nonparticipant_paths(tmp_path), empty=True)
+        tm.that(
+            u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
+            eq=config.Infra.source_scan.roots,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("target_path", ["", " ", "/absolute/candidate"])
+    def test_invalid_bootstrap_paths_fail_public_manifest_loading(
+        tmp_path: Path,
+        target_path: str,
+    ) -> None:
+        """Empty and absolute paths fail before discovery can consume topology."""
+        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
+                    "candidate_bootstrap_targets": [
+                        {
+                            "path": target_path,
+                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
+                        },
+                    ],
+                },
+            ),
+        )
+
+        tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
+        with pytest.raises(c.ValidationError):
+            u.Infra.manifest_nonparticipant_paths(tmp_path)
+        with pytest.raises(c.ValidationError):
+            u.Infra.load_refactor_config(tmp_path)
 
     @staticmethod
     def test_invalid_manifest_cannot_expand_discovery(tmp_path: Path) -> None:

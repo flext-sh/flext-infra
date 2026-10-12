@@ -210,15 +210,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
 
     @staticmethod
-    def _facade_family(source: str) -> p.Result[Literal["t", "u", "p", "m"]]:
+    def _facade_family(source: str) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
         """Identify the selected renderer from the module's published declaration.
 
         Returns:
             The unique supported facade family or a declaration failure.
 
         """
-        result_type = r[Literal["t", "u", "p", "m"]]
+        result_type = r[Literal["c", "t", "u", "p", "m"]]
         match tuple(sorted(u.Infra.facade_letter_names_source(source))):
+            case ("c",):
+                return result_type.ok("c")
             case ("t",):
                 return result_type.ok("t")
             case ("u",):
@@ -239,7 +241,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         destination: Path,
     ) -> p.Result[
         t.Triple[
-            Literal["t", "u", "p", "m"],
+            Literal["c", "t", "u", "p", "m"],
             list[m.Cli.AtomicFileState],
             t.MappingKV[Path, str],
         ]
@@ -252,7 +254,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         result_type = r[
             t.Triple[
-                Literal["t", "u", "p", "m"],
+                Literal["c", "t", "u", "p", "m"],
                 list[m.Cli.AtomicFileState],
                 t.MappingKV[Path, str],
             ]
@@ -308,7 +310,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     @staticmethod
     def _render_facade(
         destination: Path,
-        family: Literal["t", "u", "p", "m"],
+        family: Literal["c", "t", "u", "p", "m"],
         sources: t.MappingKV[Path, str],
     ) -> p.Result[str]:
         """Reuse the canonical renderer without selecting a different destination.

@@ -8,7 +8,7 @@ at the first defect, that what runs is what the lock pins:
    toolchain selector accepts and, unless the tool declares that its upstream
    publishes none, carries a checksum for the current platform;
 2. install root — ``mise where <key>@<version>`` names the install root;
-3. self-containment — ``mise which <binary>`` and every symlink hop it
+3. self-containment — ``mise which <binary> --tool <key>@<version>`` and every symlink hop it
    resolves through stay inside that root;
 4. real version — the tool's declared ``version_probe`` reports the locked
    version.
@@ -301,7 +301,13 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         )
         if root.failure:
             return r[str].from_failure(root)
-        binary = self._mise_line(mise_binary, "which", entry.version_probe.binary)
+        binary = self._mise_line(
+            mise_binary,
+            "which",
+            entry.version_probe.binary,
+            "--tool",
+            f"{entry.selector or entry.name}@{version}",
+        )
         if binary.failure:
             return r[str].from_failure(binary)
         receipt = self.installation(
