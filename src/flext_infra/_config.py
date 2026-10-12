@@ -11,8 +11,8 @@ from typing import override
 
 from flext_cli import FlextCliConfig
 
-from flext_infra import c
 from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
 class FlextInfraConfig(FlextCliConfig):
@@ -52,15 +52,18 @@ class FlextInfraConfig(FlextCliConfig):
         files = [
             item
             for item in super()._config_files()
-            if item.name != c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME
+            if item.name != FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
         ]
-        local = cls._config_dir() / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME
+        local = (
+            cls._config_dir()
+            / FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
+        )
         if local.is_file():
             files.append(local)
         org = (
             Path.cwd()
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.CODEGEN_ORG_OVERRIDES_FILENAME
+            / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+            / FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME
         )
         if org.is_file():
             files.append(org)

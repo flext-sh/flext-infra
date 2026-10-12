@@ -21,6 +21,15 @@ class FlextInfraConfigVocabulary:
 
     WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
 
+    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
+    """Directory name for flext-infra config files relative to the package root."""
+
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
+    """Local operator override file name, excluded from the tracked baseline."""
+
+    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
+    """Governed repository org overrides file name."""
+
     GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
     )
