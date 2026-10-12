@@ -21,7 +21,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
-    def _recorded_activation_env(tmp_path: Path) -> t.Pair[dict[str, str], Path]:
+    def _recorded_activation_env(tmp_path: Path) -> t.Pair[t.StrMapping, Path]:
         """Record the local-context activation instead of entering a host shell.
 
         ``make upg`` is a local verb (CI forbids resolution), so its lifecycle
@@ -209,7 +209,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         dry run enters that lifecycle directly, and its recursive ``+``
         activation re-enters the checkout through ``direnv exec``.
         """
-        repository_root, activations, execution = _run_isolated_upg_lifecycle(
+        repository_root, activations, execution = self._run_upg_lifecycle(
             tmp_path,
         )
 
@@ -240,7 +240,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         gen's activation half demands the pinned Mise release, then checks
         uv.lock before post-upg.
         """
-        _, activations, execution = _run_isolated_upg_lifecycle(
+        _, activations, execution = self._run_upg_lifecycle(
             tmp_path,
         )
         tm.that(
@@ -417,32 +417,30 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         return repository_root
 
+    @classmethod
+    def _run_upg_lifecycle(
+        cls,
+        tmp_path: Path,
+    ) -> t.Triple[Path, Path, p.Cli.CommandOutput]:
+        """Render the workspace root and dry-run the canonical ``upg`` lifecycle.
 
-def _run_isolated_upg_lifecycle(
-    tmp_path: Path,
-) -> t.Triple[Path, Path, p.Cli.CommandOutput]:
-    """Render the workspace root and dry-run the canonical ``upg`` lifecycle.
+        Every ``upg`` recipe assertion shares the same premise: a rendered
+        workspace Makefile whose ``_upg_lifecycle`` re-enters through the
+        recorded direnv activation. Running the isolated dry run once keeps the
+        two tests on a single owner.
 
-    Every ``upg`` recipe assertion shares the same premise: a rendered
-    workspace Makefile whose ``_upg_lifecycle`` re-enters through the recorded
-    direnv activation. Running the isolated dry run once keeps the two tests
-    on a single owner.
+        Returns:
+            The repository root, the recorded activation log, and the dry-run
+            output.
 
-    Returns:
-        The repository root, the recorded activation log, and the dry-run output.
-
-    """
-    repository_root = TestsFlextInfraCodegenRepositoryRootScope._render_root_makefile(
-        tmp_path,
-    )
-    env, activations = (
-        TestsFlextInfraCodegenRepositoryRootScope._recorded_activation_env(tmp_path)
-    )
-    execution = tm.ok(
-        u.Tests.run_isolated_make(
-            ["--dry-run", "_upg_lifecycle"],
-            cwd=repository_root,
-            env=env,
-        ),
-    )
-    return repository_root, activations, execution
+        """
+        repository_root = cls._render_root_makefile(tmp_path)
+        env, activations = cls._recorded_activation_env(tmp_path)
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle"],
+                cwd=repository_root,
+                env=env,
+            ),
+        )
+        return repository_root, activations, execution

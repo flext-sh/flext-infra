@@ -571,6 +571,13 @@ class FlextInfraModelsCheck:
     class CheckReportSummary(m.ContractModel):
         """Invocation-owned execution facts retained by the published SARIF."""
 
+        requested_gates: Annotated[
+            t.StrSequence,
+            m.Field(
+                min_length=1,
+                description="Resolved gate inventory requested before execution",
+            ),
+        ]
         targets: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget],
             m.Field(description="Canonical project roots selected for this invocation"),

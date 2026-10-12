@@ -161,9 +161,7 @@ class FlextInfraModelsCodegenTransactionModels:
                     generate a transaction root; or if codegen journal destination paths
                     must be unique; or if codegen journal entry has no project
                     participant; or if codegen journal directory paths must be unique;
-                    or if codegen journal directory has no project participant; or if
-                    recovering codegen journal lacks rollback identities; or if
-                    non-recovering codegen journal contains rollback identities.
+                    or if codegen journal directory has no project participant.
 
             """
             participants: t.VariadicTuple[

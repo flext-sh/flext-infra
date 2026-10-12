@@ -263,6 +263,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 c.Infra.CodegenConformSurface.ENVRC,
                 c.Infra.CodegenConformSurface.PYPROJECT,
                 c.Infra.CodegenConformSurface.MISE_CONFIG,
+                c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
             }:
                 return self._execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
@@ -314,6 +315,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             c.Infra.CodegenConformSurface.ENVRC,
             c.Infra.CodegenConformSurface.PYPROJECT,
             c.Infra.CodegenConformSurface.MISE_CONFIG,
+            c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
         }:
             return r[m.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",

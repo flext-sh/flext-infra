@@ -87,32 +87,6 @@ class FlextInfraConfigModelsArtifact:
                 raise ValueError(msg)
             return self
 
-    class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Fully modeled ``vscode`` section of ``config/codegen.yaml``."""
-
-        scalar_settings: Annotated[
-            Mapping[str, str | bool | int],
-            m.Field(description="VS Code scalar keys enforced on every project"),
-        ]
-        list_settings: Annotated[
-            Mapping[str, t.VariadicTuple[str]],
-            m.Field(description="VS Code list keys enforced on every project"),
-        ]
-        map_union_settings: Annotated[
-            Mapping[str, Mapping[str, str | bool | int]],
-            m.Field(description="VS Code map keys union-merged over project settings"),
-        ]
-        stripped_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "VS Code keys actively stripped from the settings projection "
-                    "because they conflict with a pyrightconfig.json/pyproject.toml "
-                    "owner (Pylance settingsNotOverridable)."
-                ),
-            ),
-        ] = ()
-
     class CodegenGovernedPlanRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Resolved inputs for planning one governed artifact's file plan."""
 
@@ -134,7 +108,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Runtime root when the artifact belongs to the root"),
         ] = None
         vscode_spec: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenVscodeSpec | None,
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
             m.Field(description="Declared vscode settings spec when present"),
         ] = None
 
@@ -332,7 +306,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Canonical Make contract"),
         ]
         vscode: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenVscodeSpec,
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
         artifacts: Annotated[
@@ -619,6 +593,10 @@ class FlextInfraConfigModelsArtifact:
             bool,
             m.Field(description="Whether planning is dependency-only"),
         ] = False
+        runtime_bindings: Annotated[
+            bool,
+            m.Field(description="Select only declared checkout-local runtime bindings"),
+        ] = False
         delegates: Annotated[
             bool,
             m.Field(description="Whether delegated templates are planned"),
@@ -880,6 +858,12 @@ class FlextInfraConfigModelsArtifact:
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's planned files and environment, or its failure."""
 
+        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native target planning cause",
+        )
         repository: Annotated[
             t.NonEmptyStr,
             m.Field(description="Planned repository name"),
@@ -984,6 +968,12 @@ class FlextInfraConfigModelsArtifact:
     class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""
 
+        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native target failure carried into publication",
+        )
         request: Annotated[
             FlextInfraConfigModelsArtifact.CodegenConformRequest,
             m.Field(description="Validated public request"),

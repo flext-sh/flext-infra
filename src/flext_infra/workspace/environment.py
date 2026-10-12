@@ -173,6 +173,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
+
         def sync_repository(repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
             result = cls.sync_environment_files(
                 request.model_copy(

@@ -61,6 +61,76 @@ class TestsFlextInfraUtilityFacadeProjection:
             ),
         }
 
+    @staticmethod
+    def _converged_projection(
+        root: Path,
+        sources: t.MutableMappingKV[Path, str],
+        *,
+        relocated: bool,
+    ) -> t.MutableMappingKV[Path, str]:
+        """Plan the declaration relocation and prove the result needs no further edit.
+
+        Returns:
+            The projected sources: the planned edits applied to a copy of
+            ``sources`` when ``relocated``; otherwise ``sources`` itself, after
+            proving the sources already plan no edit.
+        """
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+            if not relocated:
+                tm.that(edits, empty=True)
+                return dict(sources)
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=proposed,
+                    )
+                ),
+                empty=True,
+            )
+        return proposed
+
+    @classmethod
+    def _render_and_execute_constants_consumer(
+        cls,
+        package: Path,
+        facade: Path,
+        *,
+        expected_stdout: str,
+    ) -> str:
+        """Render the ``c`` family facade and read it back from a real consumer.
+
+        Returns:
+            The rendered facade source that was projected and executed.
+        """
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        cls._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
+                ),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq=expected_stdout)
+        return rendered
+
     @pytest.mark.parametrize("relation", ["isolated", "inherited", "foreign-only"])
     def test_behavior_owners_follow_the_imported_package_lineage(
         self,
@@ -122,31 +192,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         for path, source in sources.items():
             self._write(path, source)
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
-            )
-            proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in edits})
-            if relation == "foreign-only":
-                tm.that(proposed[consumer], has="return shared.value_adapter()")
-            else:
-                tm.that(proposed[consumer], has=f"{first.name}.u.value_adapter()")
-            tm.that(proposed[consumer], has=f"{second.name}.u.value_adapter()")
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=proposed,
-                    )
-                ),
-                empty=True,
-            )
+        proposed = self._converged_projection(root, sources, relocated=True)
+        if relation == "foreign-only":
+            tm.that(proposed[consumer], has="return shared.value_adapter()")
+        else:
+            tm.that(proposed[consumer], has=f"{first.name}.u.value_adapter()")
+        tm.that(proposed[consumer], has=f"{second.name}.u.value_adapter()")
         for path, source in proposed.items():
             self._write(path, source)
         first_contract = (
@@ -200,17 +251,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         for path, source in sources.items():
             self._write(path, source)
-        with infra.rope_workspace(root) as rope:
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=sources,
-                    )
-                ),
-                empty=True,
-            )
+        self._converged_projection(root, sources, relocated=False)
         tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
 
     def test_existing_contextual_u_call_keeps_facade_dispatch(
@@ -238,17 +279,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         for path, source in sources.items():
             self._write(path, source)
-        with infra.rope_workspace(root) as rope:
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=sources,
-                    )
-                ),
-                empty=True,
-            )
+        self._converged_projection(root, sources, relocated=False)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -329,31 +360,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         sources[facade] = rendered
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         sources = {path: tm.ok(u.Cli.files_read_text(path)) for path in sources}
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
-            )
-            proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in edits})
-            tm.that(
-                proposed[runtime],
-                has=f"from {package.name}.{owners.name}.adapter import AdapterOwner",
-            )
-            tm.that(proposed[runtime], has="return t.value_adapter()")
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=proposed,
-                    )
-                ),
-                empty=True,
-            )
+        proposed = self._converged_projection(root, sources, relocated=True)
+        tm.that(
+            proposed[runtime],
+            has=f"from {package.name}.{owners.name}.adapter import AdapterOwner",
+        )
+        tm.that(proposed[runtime], has="return t.value_adapter()")
         for path, source in proposed.items():
             self._write(path, source)
         rendered = u.Infra.render_utility_facade(package)
@@ -821,22 +833,11 @@ class TestsFlextInfraUtilityFacadeProjection:
         consumer = package / "unit" / "test_incomplete.py"
         self._write(consumer, consumer_source)
 
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
-        self._write(facade, rendered)
-        output = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
-                ),
-                options=m.Cli.ProcessOptions(
-                    env={"PYTHONPATH": str(package.parent)},
-                ),
-            ),
+        self._render_and_execute_constants_consumer(
+            package,
+            facade,
+            expected_stdout="declared",
         )
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
-        tm.that(output.stdout.strip(), eq="declared")
         tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=consumer_source)
 
     def test_stale_projected_base_order_is_regenerated_from_owner_ancestry(
@@ -865,20 +866,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             "class Facade:\n    class Sample(BaseOwner, ChildOwner):\n        pass\n"
             "c = Facade\n__all__ = ['Facade', 'c']\n",
         )
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
-        self._write(facade, rendered)
-        output = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    "from flext_sample.constants import c\nprint(c.Sample.value)\n",
-                ),
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
+        rendered = self._render_and_execute_constants_consumer(
+            package,
+            facade,
+            expected_stdout="child",
         )
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
-        tm.that(output.stdout.strip(), eq="child")
         tm.that(
             u.Infra.render_utility_facade(package, family="c"),
             eq=rendered,

@@ -15,6 +15,7 @@ from flext_infra import c
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
 
 
 class FlextInfraConfigModelsRepository:
@@ -393,6 +394,10 @@ class FlextInfraConfigModelsRepository:
                 description="Composition root owning the active generation toolchain"
             ),
         ]
+        vscode_spec: Annotated[
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
+            m.Field(description="Repository-rooted resolved editor declarations"),
+        ] = None
         make_profile: Annotated[
             c.Infra.MakeProfile,
             m.Field(description="Make profile inferred from live Git topology"),

@@ -412,9 +412,7 @@ class FlextInfraCodemodSemanticApply:
             index=rope_workspace.workspace_index,
         )
         if planned.failure:
-            return planned_edits.fail(
-                f"import-alignment failed to plan: {planned.error}",
-            )
+            return planned_edits.from_failure(planned)
         return planned_edits.ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(

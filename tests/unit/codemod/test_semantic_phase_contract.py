@@ -26,6 +26,50 @@ class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
 
     @staticmethod
+    def test_declaring_model_factory_preserves_public_empty_roundtrips(
+        tmp_path: Path,
+    ) -> None:
+        """The model primitive and projected utility preserve real consumer defaults."""
+        consumer = tmp_path / "declaration_factory_consumer.py"
+        consumer.write_text(
+            "from flext_core import m, t, u\n"
+            "from typing_extensions import TypeForm\n"
+            "type Bag[T] = t.MutableSequenceOf[T]\n"
+            "class ModelOwned(m.ContractModel):\n"
+            "    values: Bag[str] = m.Field(default_factory=m.empty("
+            "TypeForm(Bag[str])))\n"
+            "class UtilityProjected(m.ContractModel):\n"
+            "    values: Bag[str] = m.Field(default_factory=u.empty("
+            "TypeForm(Bag[str])))\n"
+            "def verify():\n"
+            "    model_default = ModelOwned()\n"
+            "    utility_default = UtilityProjected()\n"
+            "    assert model_default.model_dump_json() == "
+            "utility_default.model_dump_json()\n"
+            "    for model in (ModelOwned, UtilityProjected):\n"
+            "        first, second = model(), model()\n"
+            "        explicit = model.model_validate_json('{\"values\": []}')\n"
+            "        first.values.append('consumer value')\n"
+            "        assert second.model_dump_json() == explicit.model_dump_json()\n"
+            "        restored = model.model_validate_json(first.model_dump_json())\n"
+            "        assert restored.values == first.values\n"
+            "verify()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        specification = importlib.util.spec_from_file_location(
+            consumer.stem,
+            consumer,
+        )
+        if specification is None or specification.loader is None:
+            pytest.fail("real declaration consumer has no import loader")
+        module = importlib.util.module_from_spec(specification)
+        sys.modules[specification.name] = module
+        try:
+            specification.loader.exec_module(module)
+        finally:
+            sys.modules.pop(specification.name)
+
+    @staticmethod
     @pytest.mark.parametrize("shadowed", [False, True])
     def test_member_contextual_packages_keep_independent_owners(
         tmp_path: Path, *, shadowed: bool

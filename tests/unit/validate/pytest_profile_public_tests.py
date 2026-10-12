@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pstats
 import signal
+import sys
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,55 @@ from tests import c, m, t, tm, u
 
 class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
+
+    @staticmethod
+    @pytest.mark.parametrize("interruption", ["signal", "timeout"])
+    def test_native_termination_keeps_a_readable_profile_checkpoint(
+        tmp_path: Path,
+        interruption: str,
+    ) -> None:
+        """Preserve native SIGTERM and timeout outcomes alongside measured progress."""
+        deadline = max(
+            1,
+            config.Infra.tooling.tools.pytest.case_timeout_seconds // 4,
+        )
+        probe = tmp_path / "termination_probe.py"
+        action = (
+            "os.kill(os.getpid(), signal.SIGTERM)"
+            if interruption == "signal"
+            else f"time.sleep({deadline * 2!r})"
+        )
+        probe.write_text(
+            "import os\nimport signal\nimport time\n"
+            "def interrupt_import():\n"
+            f"    {action}\n"
+            "interrupt_import()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        output = tmp_path / "terminated.pstats"
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    c.Infra.PYTEST_PROFILE_LAUNCHER,
+                    str(output),
+                    "-p",
+                    probe.stem,
+                    "--version",
+                ),
+                cwd=tmp_path,
+                timeout=deadline,
+            ),
+        )
+        tm.that(result.outcome.raw_return_code, eq=-signal.SIGTERM)
+        tm.that(result.outcome.timed_out, eq=interruption == "timeout")
+        tm.that(result.outcome.forwarded_signal, eq=None)
+        measured = pstats.Stats(str(output)).get_stats_profile().func_profiles
+        tm.that(
+            any(Path(function.file_name) == probe for function in measured.values()),
+            eq=True,
+        )
 
     @staticmethod
     @pytest.mark.slow

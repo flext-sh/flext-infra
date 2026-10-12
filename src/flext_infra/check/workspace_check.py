@@ -373,6 +373,7 @@ class FlextInfraWorkspaceChecker(
                 "gate context fail_fast disagrees with the requested project policy",
             )
         effective_ctx = effective_ctx.model_copy(update={"reports_dir": report_base})
+        requested_gates = tuple(resolved_gates)
         outcome = self._run_project_loop(
             targets,
             resolved_gates,
@@ -384,6 +385,7 @@ class FlextInfraWorkspaceChecker(
             report_base,
             outcome,
             m.Infra.CheckReportSummary(
+                requested_gates=requested_gates,
                 targets=tuple(
                     m.Infra.CheckProjectTarget(
                         name=target.path.name,

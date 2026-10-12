@@ -585,6 +585,10 @@ When canonical child profiling is selected, pytest runs through the existing
 explicit profiler launcher and records a unique artifact in the run's child
 profile directory. Profiling does not reintroduce the parent's import path or
 change plugin selection, native arguments, or validation deadlines.
+The shared profiler clock checkpoints measured progress on SIGTERM, then restores
+and delegates the previous native termination handling. Timed-out or signalled
+children therefore remain failures with their original outcomes; a partial profile
+does not become execution-completion evidence.
 
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases

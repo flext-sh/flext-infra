@@ -27,6 +27,47 @@ class TestsFlextInfraTransactionLease:
     """Keep live journal recovery behind the shared physical scope lease."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "imports",
+        [
+            "from flext_cli import u\nfrom flext_infra import m, u\n",
+            "from flext_infra import m, u\nfrom flext_cli import u\n",
+        ],
+    )
+    def test_fresh_facade_import_orders_execute_the_public_cli(
+        tmp_path: Path,
+        imports: str,
+    ) -> None:
+        """Fresh consumers compose models and execute CLI behavior in either order."""
+        script = (
+            "from pathlib import Path\nimport sys\n"
+            + imports
+            + "from flext_cli import cli\n"
+            "request = m.Infra.GitRepoRequest(repo_root=Path(sys.argv[1]))\n"
+            "assert request.repo_root == Path(sys.argv[1])\n"
+            "app = cli.create_app_with_common_params("
+            "name='import-probe', help_text='Public import probe')\n"
+            "def ready():\n"
+            "    print('public import ready')\n"
+            "cli.register_command(app, name='ready',"
+            " help_text='Run the public probe', command=ready)\n"
+            "result = cli.invoke_app(app, args=['ready'])\n"
+            "assert result.outcome.raw_return_code == 0\n"
+            "assert 'public import ready' in result.stdout\n"
+        )
+        output = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(tmp_path)),
+                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+
+    @staticmethod
     def test_native_acquisition_denial_escapes_without_waiting(
         tmp_path: Path,
     ) -> None:

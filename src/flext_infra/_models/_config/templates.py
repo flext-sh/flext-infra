@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
+from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
@@ -18,6 +20,60 @@ from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 class FlextInfraConfigModelsTemplates:
     """Managed file and template entry specification models."""
+
+    class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed editor declarations shared by target and artifact planning."""
+
+        scalar_settings: Annotated[
+            Mapping[str, str | bool | int],
+            m.Field(description="VS Code scalar keys enforced on every project"),
+        ]
+        list_settings: Annotated[
+            Mapping[str, t.VariadicTuple[str]],
+            m.Field(description="VS Code list keys enforced on every project"),
+        ]
+        map_union_settings: Annotated[
+            Mapping[str, Mapping[str, str | bool | int]],
+            m.Field(description="VS Code map keys union-merged over project settings"),
+        ]
+        additional_settings: Annotated[
+            t.JsonMapping,
+            m.Field(description="Portable project-owned extension declarations"),
+        ] = m.Field(default_factory=m.empty(TypeForm(t.JsonMapping)))
+        stripped_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "VS Code keys actively stripped from the settings projection "
+                    "because they conflict with a pyrightconfig.json/pyproject.toml "
+                    "owner (Pylance settingsNotOverridable)."
+                ),
+            ),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_setting_ownership(self) -> Self:
+            """Reject extension declarations that compete with managed ownership.
+
+            Returns:
+                The editor specification with one owner per setting.
+
+            Raises:
+                ValueError: If an additional setting redeclares a managed key.
+            """
+            managed = (
+                set(self.scalar_settings)
+                | set(self.list_settings)
+                | set(self.map_union_settings)
+                | set(self.stripped_keys)
+            )
+            conflicting = managed.intersection(self.additional_settings)
+            if conflicting:
+                msg = "additional editor settings duplicate managed keys: " + ", ".join(
+                    sorted(conflicting),
+                )
+                raise ValueError(msg)
+            return self
 
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold artifact and its typed rendering owner."""
