@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_cli import u
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
@@ -22,13 +22,94 @@ from flext_infra._utilities import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesProjectDiscovery(
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 ):
     """Static helpers for discovering governed project roots in a workspace."""
+
+    @staticmethod
+    def repository_operation_targets(
+        root: Path,
+        scope: c.Infra.CodegenConformScope,
+    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]:
+        """Retain declared roots, including missing checkouts, in discovery order.
+
+        Returns:
+            The declared roots in discovery order.
+
+        """
+        resolved = root.expanduser().resolve()
+        result_type = r[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]
+        if not resolved.is_dir():
+            return result_type.fail(f"operation root does not exist: {resolved}")
+        target = m.Infra.WorkspaceOperationTarget(root=resolved)
+        if scope == c.Infra.CodegenConformScope.SELF:
+            return result_type.ok((target,))
+        if scope != c.Infra.CodegenConformScope.ALL:
+            return result_type.fail(f"operation scope must be self or all: {scope}")
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
+        if declared.failure:
+            return result_type.from_failure(declared)
+        return result_type.ok((
+            target,
+            *(
+                m.Infra.WorkspaceOperationTarget(
+                    root=resolved / declaration.path,
+                    managed=declaration.managed,
+                )
+                for declaration in declared.value
+            ),
+        ))
+
+    @staticmethod
+    def repository_operation_applicability(
+        target: m.Infra.WorkspaceOperationTarget,
+        *,
+        mutating: bool,
+    ) -> p.Result[m.Infra.WorkspaceOperationApplicability]:
+        """Read the target's own policy without reintroducing a workspace roster.
+
+        Returns:
+            The target's own applicability policy.
+
+        """
+        result_type = r[m.Infra.WorkspaceOperationApplicability]
+        if target.managed is False:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Git declaration disables workspace management",
+                ),
+            )
+        if not target.root.is_dir():
+            return result_type.fail(
+                f"required operation root is missing: {target.root}",
+            )
+        loaded = FlextInfraUtilitiesWorkspaceManifest.load_workspace_manifest(
+            target.root,
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        for manifest in loaded.value:
+            repository = manifest.repository
+            if repository.codegen == c.Infra.CodegenKind.NONE:
+                return result_type.ok(
+                    m.Infra.WorkspaceOperationApplicability(
+                        applicable=False,
+                        reason="Repository declaration disables code generation",
+                    ),
+                )
+            if mutating and repository.read_only:
+                return result_type.ok(
+                    m.Infra.WorkspaceOperationApplicability(
+                        applicable=False,
+                        reason="Repository declaration is read-only",
+                    ),
+                )
+        return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
 
     @classmethod
     @lru_cache(maxsize=1)

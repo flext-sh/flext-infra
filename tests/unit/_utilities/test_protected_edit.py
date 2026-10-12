@@ -6,15 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
+from flext_infra import infra, settings
 from tests import c, m, t, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def _provision_edited_sample(
@@ -398,6 +395,17 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             f"Path({str(marker)!r}).write_text('inherited', encoding='utf-8')\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        selected_profile = settings.env_lookup(
+            c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV,
+        )
+        profile_directory = (
+            Path(selected_profile) if selected_profile is not None else None
+        )
+        previous_profiles = (
+            set(profile_directory.glob("*.pstats"))
+            if profile_directory is not None
+            else set()
+        )
         with u.Tests.env_vars_context({
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(inherited),
         }):
@@ -413,6 +421,11 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(result[1], empty=False)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
         tm.that(marker.exists(), eq=False)
+        if collectable and profile_directory is not None:
+            tm.that(
+                set(profile_directory.glob("*.pstats")) - previous_profiles,
+                empty=False,
+            )
 
     @staticmethod
     def test_protected_source_writes_applies_request_options(

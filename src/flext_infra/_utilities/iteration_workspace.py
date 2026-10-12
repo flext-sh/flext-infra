@@ -52,71 +52,18 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         files: list[Path] = []
         first_failure: p.Result[t.SequenceOf[Path]] | None = None
         for target in discovered.value:
-            repository_root = target.root
-            start = time.monotonic()
-            applicability = (
-                FlextInfraUtilitiesProjectDiscovery.repository_operation_applicability(
+            receipt, observed, failure = (
+                FlextInfraUtilitiesIterationWorkspace._operation_target_outcome(
                     target,
+                    operation,
+                    task,
                     mutating=mutating,
                 )
             )
-            if applicability.success and not applicability.value.applicable:
-                receipts.append(
-                    m.Infra.WorkspaceOperationReceipt(
-                        root=repository_root,
-                        executed=False,
-                        outcome=None,
-                        applicability=applicability.value.reason,
-                    ),
-                )
-                cli_u.Cli.info(
-                    f"{operation} {repository_root}: NOT APPLICABLE: "
-                    f"{applicability.value.reason}",
-                )
-                continue
-            executed = applicability.success
-            result = (
-                task(repository_root)
-                if executed
-                else r[t.SequenceOf[Path]].from_failure(applicability)
-            )
-            issues = (
-                (
-                    m.Infra.Issue(
-                        file=str(repository_root),
-                        line=0,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=result.error or "",
-                        severity="error",
-                    ),
-                )
-                if result.failure
-                else ()
-            )
-            observed = () if result.failure else tuple(result.value)
+            receipts.append(receipt)
             files.extend(observed)
-            receipts.append(
-                m.Infra.WorkspaceOperationReceipt(
-                    root=repository_root,
-                    executed=executed,
-                    outcome=(
-                        c.Infra.ToolOutcome.ERROR
-                        if result.failure
-                        else c.Infra.ToolOutcome.CLEAN
-                    ),
-                    files=observed,
-                    issues=issues,
-                ),
-            )
-            cli_u.Cli.status(
-                operation,
-                repository_root.name,
-                result=result.success,
-                elapsed=time.monotonic() - start,
-            )
-            if result.failure and first_failure is None:
-                first_failure = result
+            if failure is not None and first_failure is None:
+                first_failure = failure
         published = FlextInfraUtilitiesRefactor.publish_refactor_report_evidence(
             resolved,
             m.Infra.WorkspaceOperationReport(
@@ -143,6 +90,93 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                 f"{operation} executed no applicable repository operation",
             )
         return r[t.SequenceOf[Path]].ok(tuple(files))
+
+    @staticmethod
+    def _operation_target_outcome(
+        target: m.Infra.WorkspaceOperationTarget,
+        operation: str,
+        task: Callable[[Path], p.Result[t.SequenceOf[Path]]],
+        *,
+        mutating: bool,
+    ) -> tuple[
+        m.Infra.WorkspaceOperationReceipt,
+        tuple[Path, ...],
+        p.Result[t.SequenceOf[Path]] | None,
+    ]:
+        """Run one discovered target through its original owner and report it.
+
+        Returns:
+            The receipt, the observed files, and the original failure if any.
+
+        Raises:
+            ValueError: If the original operation failed without its native error.
+
+        """
+        repository_root = target.root
+        start = time.monotonic()
+        applicability = (
+            FlextInfraUtilitiesProjectDiscovery.repository_operation_applicability(
+                target,
+                mutating=mutating,
+            )
+        )
+        if applicability.success and not applicability.value.applicable:
+            cli_u.Cli.info(
+                f"{operation} {repository_root}: NOT APPLICABLE: "
+                f"{applicability.value.reason}",
+            )
+            return (
+                m.Infra.WorkspaceOperationReceipt(
+                    root=repository_root,
+                    executed=False,
+                    outcome=None,
+                    applicability=applicability.value.reason,
+                ),
+                (),
+                None,
+            )
+        executed = applicability.success
+        result = (
+            task(repository_root)
+            if executed
+            else r[t.SequenceOf[Path]].from_failure(applicability)
+        )
+        if result.failure:
+            error = result.error
+            if error is None:
+                msg = f"{operation} failed without its native error: {repository_root}"
+                raise ValueError(msg)
+            issues = (
+                m.Infra.Issue(
+                    file=str(repository_root),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message=error,
+                    severity="error",
+                ),
+            )
+        else:
+            issues = ()
+        observed = () if result.failure else tuple(result.value)
+        cli_u.Cli.status(
+            operation,
+            repository_root.name,
+            result=result.success,
+            elapsed=time.monotonic() - start,
+        )
+        receipt = m.Infra.WorkspaceOperationReceipt(
+            root=repository_root,
+            executed=executed,
+            outcome=(
+                c.Infra.ToolOutcome.ERROR
+                if result.failure
+                else c.Infra.ToolOutcome.CLEAN
+            ),
+            files=observed,
+            issues=issues,
+        )
+        return receipt, observed, (result if result.failure else None)
 
     @staticmethod
     def fleet_map[TPayload, TResult](

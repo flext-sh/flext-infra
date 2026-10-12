@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
@@ -209,15 +209,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         dry run enters that lifecycle directly, and its recursive ``+``
         activation re-enters the checkout through ``direnv exec``.
         """
-        repository_root = self._render_root_makefile(tmp_path)
-        env, activations = self._recorded_activation_env(tmp_path)
-
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
+        repository_root, activations, execution = _run_isolated_upg_lifecycle(
+            tmp_path,
         )
 
         tm.that(
@@ -247,14 +240,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         gen's activation half demands the pinned Mise release, then checks
         uv.lock before post-upg.
         """
-        repository_root = self._render_root_makefile(tmp_path)
-        env, activations = self._recorded_activation_env(tmp_path)
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
+        _, activations, execution = _run_isolated_upg_lifecycle(
+            tmp_path,
         )
         tm.that(
             activations.read_text(encoding="utf-8"),
@@ -429,3 +416,33 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         return repository_root
+
+
+def _run_isolated_upg_lifecycle(
+    tmp_path: Path,
+) -> t.Triple[Path, Path, p.Cli.CommandOutput]:
+    """Render the workspace root and dry-run the canonical ``upg`` lifecycle.
+
+    Every ``upg`` recipe assertion shares the same premise: a rendered
+    workspace Makefile whose ``_upg_lifecycle`` re-enters through the recorded
+    direnv activation. Running the isolated dry run once keeps the two tests
+    on a single owner.
+
+    Returns:
+        The repository root, the recorded activation log, and the dry-run output.
+
+    """
+    repository_root = TestsFlextInfraCodegenRepositoryRootScope._render_root_makefile(
+        tmp_path,
+    )
+    env, activations = (
+        TestsFlextInfraCodegenRepositoryRootScope._recorded_activation_env(tmp_path)
+    )
+    execution = tm.ok(
+        u.Tests.run_isolated_make(
+            ["--dry-run", "_upg_lifecycle"],
+            cwd=repository_root,
+            env=env,
+        ),
+    )
+    return repository_root, activations, execution

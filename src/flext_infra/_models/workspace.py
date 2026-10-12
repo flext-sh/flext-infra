@@ -13,10 +13,10 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsWorkspace:
@@ -74,23 +74,66 @@ class FlextInfraModelsWorkspace:
         root: Annotated[Path, m.Field(description="Repository actually attempted")]
         executed: Annotated[bool, m.Field(description="Original operation was invoked")]
         outcome: Annotated[
-            c.Infra.ToolOutcome,
-            m.Field(description="Native operation outcome; independent of report transport"),
+            c.Infra.ToolOutcome | None,
+            m.Field(
+                description=(
+                    "Native operation outcome; independent of report transport"
+                ),
+            ),
         ]
+        applicability: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Explicit reason when declaration policy prevents execution"
+                ),
+            ),
+        ] = ""
         files: Annotated[
             t.VariadicTuple[Path],
-            m.Field(description="Validated or changed paths returned by the original owner"),
+            m.Field(
+                description=(
+                    "Validated or changed paths returned by the original owner"
+                ),
+            ),
         ] = ()
         issues: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.Issue],
-            m.Field(description="Native failures attributed to their actual repository"),
+            m.Field(
+                description=(
+                    "Native failures attributed to their actual repository"
+                ),
+            ),
         ] = ()
+
+    class WorkspaceOperationTarget(m.ContractModel):
+        """One discovered root and its original Git management declaration."""
+
+        root: Annotated[Path, m.Field(description="Actual declared repository root")]
+        managed: Annotated[
+            bool | None,
+            m.Field(
+                description="Explicit Git management policy; absent when undeclared",
+            ),
+        ] = None
+
+    class WorkspaceOperationApplicability(m.ContractModel):
+        """Repository-owned policy applied before an operation's real effects."""
+
+        applicable: Annotated[bool, m.Field(description="Original owner may execute")]
+        reason: Annotated[
+            str,
+            m.Field(description="Declared reason when inapplicable"),
+        ] = ""
 
     class WorkspaceOperationReport(m.ContractModel):
         """Declared repository scope and original serial operation receipts."""
 
         root: Annotated[Path, m.Field(description="Invoking repository root")]
-        operation: Annotated[t.NonEmptyStr, m.Field(description="Public operation name")]
+        operation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public operation name"),
+        ]
         scope: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Roots discovered once before the batch"),

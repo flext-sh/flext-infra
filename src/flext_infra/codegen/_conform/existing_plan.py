@@ -996,11 +996,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         completed, represented = bound.value
         if not contract.complete_governed:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
+        pending_artifacts = {
+            path: item
+            for path, item in governed_by_path.items()
+            if path not in represented
+        }
         represented_set = self._represent_ungoverned_artifacts(
             target,
             codegen,
-            governed_by_path,
-            represented,
+            pending_artifacts,
             completed,
         )
         if represented_set.failure:
@@ -1066,8 +1070,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         planned = self._represent_ungoverned_artifacts(
             target,
             codegen,
-            {item.path: item for item in codegen.managed_files if item.runtime_binding},
-            set(),
+            {
+                item.path: item
+                for item in codegen.managed_files
+                if item.runtime_binding
+            },
             completed,
             vscode_spec=vscode_spec,
         )
@@ -1080,12 +1087,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
         governed_by_path: t.MappingKV[Path, m.Infra.ManagedFileSpec],
-        represented: set[Path],
         completed: list[m.Infra.CodegenFilePlan],
         *,
         vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
     ) -> p.Result[bool]:
-        """Append a plan for every governed artifact no planner represented.
+        """Append a plan for every unrepresented governed artifact in the mapping.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -1100,8 +1106,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             else None
         )
         for relative, governed in governed_by_path.items():
-            if relative in represented:
-                continue
             path = root / relative
             if path.exists() and not path.is_file():
                 return r[bool].fail(
@@ -1115,12 +1119,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if current.failure:
                 return r[bool].from_failure(current)
             decided = self._decide_governed_plan(
-                root,
-                relative,
-                governed,
-                current.value,
-                runtime_root=runtime_root,
-                vscode_spec=vscode_spec,
+                m.Infra.CodegenGovernedPlanRequest(
+                    root=root,
+                    relative=relative,
+                    governed=governed,
+                    current=current.value,
+                    runtime_root=runtime_root,
+                    vscode_spec=vscode_spec,
+                ),
             )
             if decided.failure:
                 return r[bool].from_failure(decided)
@@ -1171,13 +1177,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     @classmethod
     def _decide_governed_plan(
         cls,
-        root: Path,
-        relative: Path,
-        governed: m.Infra.ManagedFileSpec,
-        current: str,
-        *,
-        runtime_root: Path | None = None,
-        vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
+        request: m.Infra.CodegenGovernedPlanRequest,
     ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
         """Decide the representing plan: owner merge first, plain content next.
 
@@ -1186,35 +1186,32 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             bool]]`` with its presence flag.
 
         """
-        special = cls._special_governed_plan(
-            root,
-            relative,
-            governed,
-            current,
-            runtime_root=runtime_root,
-            vscode_spec=vscode_spec,
-        )
+        special = cls._special_governed_plan(request)
         if special.failure:
             return special
         if special.value[0] is not None:
             return special
-        if governed.runtime_binding and not special.value[1]:
+        if request.governed.runtime_binding and not special.value[1]:
             return r[t.Pair[m.Infra.CodegenFilePlan | None, bool]].fail(
-                f"runtime binding has no declared renderer: {governed.owner} {relative}",
+                "runtime binding has no declared renderer: "
+                f"{request.governed.owner} {request.relative}",
             )
         result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
         current_plan = cls.file_plan(
-            root,
-            relative.as_posix(),
-            current,
-            mode=governed.mode,
+            request.root,
+            request.relative.as_posix(),
+            request.current,
+            mode=request.governed.mode,
         )
         if current_plan.failure:
             return result_type.from_failure(current_plan)
         return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok(
             (
                 current_plan.value.model_copy(
-                    update={"owner": governed.owner, "policy": governed.policy},
+                    update={
+                        "owner": request.governed.owner,
+                        "policy": request.governed.policy,
+                    },
                 ),
                 True,
             ),
@@ -1223,13 +1220,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     @classmethod
     def _special_governed_plan(
         cls,
-        root: Path,
-        relative: Path,
-        governed: m.Infra.ManagedFileSpec,
-        current: str,
-        *,
-        runtime_root: Path | None = None,
-        vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
+        request: m.Infra.CodegenGovernedPlanRequest,
     ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
         """Plan owner-specific merge behavior for special governed artifacts.
 
@@ -1238,40 +1229,26 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             bool]]`` where the boolean identifies a declared rendering owner.
 
         """
-        path = root / relative
-        vscode_merge = governed.policy == "merge" and (
-            governed.owner == c.Infra.CODEGEN_OWNER_VSCODE
+        vscode_merge = request.governed.policy == "merge" and (
+            request.governed.owner == c.Infra.CODEGEN_OWNER_VSCODE
         )
         if vscode_merge:
             # Owner-merge dispatch: owners with a canonical document merge
             # (vscode settings today) produce their rendered content here.
-            return cls._vscode_merged_plan(
-                root,
-                relative,
-                governed,
-                current,
-                runtime_root=runtime_root,
-                vscode_spec=vscode_spec,
-            )
-        if governed.policy == "merge" and relative.as_posix() == (
+            return cls._vscode_merged_plan(request)
+        if request.governed.policy == "merge" and request.relative.as_posix() == (
             c.Infra.ENVRC_LOCAL_RELPATH
         ):
             # Local overrides never carry generated content: the merge strips
             # stale generated sections and deletes the file when nothing
             # custom remains, so `.envrc` stays the single beads owner.
-            return cls._envrc_local_plan(root, path, relative, governed, current)
+            return cls._envrc_local_plan(request)
         return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok((None, False))
 
     @classmethod
     def _vscode_merged_plan(
         cls,
-        root: Path,
-        relative: Path,
-        governed: m.Infra.ManagedFileSpec,
-        current: str,
-        *,
-        runtime_root: Path | None = None,
-        vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
+        request: m.Infra.CodegenGovernedPlanRequest,
     ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
         """Render the canonical vscode settings merge when it diverges.
 
@@ -1282,26 +1259,29 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
         merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            root,
-            runtime_root=runtime_root,
-            spec=vscode_spec,
+            request.root,
+            runtime_root=request.runtime_root,
+            spec=request.vscode_spec,
         )
         if merged.failure:
             return result_type.from_failure(merged)
-        if merged.value == current:
+        if merged.value == request.current:
             return result_type.ok((None, True))
         merged_plan = cls.file_plan(
-            root,
-            relative.as_posix(),
+            request.root,
+            request.relative.as_posix(),
             merged.value,
-            mode=governed.mode,
+            mode=request.governed.mode,
         )
         if merged_plan.failure:
             return result_type.from_failure(merged_plan)
         return result_type.ok(
             (
                 merged_plan.value.model_copy(
-                    update={"owner": governed.owner, "policy": governed.policy},
+                    update={
+                        "owner": request.governed.owner,
+                        "policy": request.governed.policy,
+                    },
                 ),
                 True,
             ),
@@ -1310,11 +1290,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     @classmethod
     def _envrc_local_plan(
         cls,
-        root: Path,
-        path: Path,
-        relative: Path,
-        governed: m.Infra.ManagedFileSpec,
-        current: str,
+        request: m.Infra.CodegenGovernedPlanRequest,
     ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
         """Normalize the local envrc overrides or plan the file's deletion.
 
@@ -1324,22 +1300,28 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         """
         result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
+        root = request.root
+        relative = request.relative
+        path = root / relative
         normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-            current,
+            request.current,
         )
-        if normalized == current:
+        if normalized == request.current:
             current_plan = cls.file_plan(
                 root,
                 relative.as_posix(),
-                current,
-                mode=governed.mode,
+                request.current,
+                mode=request.governed.mode,
             )
             if current_plan.failure:
                 return result_type.from_failure(current_plan)
             return result_type.ok(
                 (
                     current_plan.value.model_copy(
-                        update={"owner": governed.owner, "policy": governed.policy},
+                        update={
+                            "owner": request.governed.owner,
+                            "policy": request.governed.policy,
+                        },
                     ),
                     True,
                 ),
@@ -1356,8 +1338,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         before=before.value,
                         desired_content=None,
                         desired_mode=None,
-                        owner=governed.owner,
-                        policy=governed.policy,
+                        owner=request.governed.owner,
+                        policy=request.governed.policy,
                     ),
                     True,
                 ),
@@ -1366,14 +1348,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             root,
             relative.as_posix(),
             normalized,
-            mode=governed.mode,
+            mode=request.governed.mode,
         )
         if merged_plan.failure:
             return result_type.from_failure(merged_plan)
         return result_type.ok(
             (
                 merged_plan.value.model_copy(
-                    update={"owner": governed.owner, "policy": governed.policy},
+                    update={
+                        "owner": request.governed.owner,
+                        "policy": request.governed.policy,
+                    },
                 ),
                 True,
             ),

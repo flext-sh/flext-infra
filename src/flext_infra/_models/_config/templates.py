@@ -158,7 +158,11 @@ class FlextInfraConfigModelsTemplates:
             Raises:
                 ValueError: If a path escapes its repository or a binding is versioned.
             """
-            if self.path.is_absolute() or ".." in self.path.parts or self.path == Path():
+            if (
+                self.path.is_absolute()
+                or ".." in self.path.parts
+                or self.path == Path()
+            ):
                 msg = f"managed artifact path must be repository-relative: {self.path}"
                 raise ValueError(msg)
             if self.runtime_binding and self.tracking != "runtime-local":

@@ -407,6 +407,17 @@ sibling manifests. Local setup without the CI token retains local source routing
 Only local upgrade resolves or writes locks; setup preserves the first install error
 without retrying under a different lock mode.
 
+After installation, setup validates Mise declarations and synchronizes environment
+files through two in-process batch calls. Local workspaces select `all`; attached
+members, standalone repositories and CI select `self`. Git declarations own discovery
+order, and each operation runs serially through its original validator or writer.
+Missing required roots remain failed inventory entries. Explicit Git management,
+repository code-generation and read-only policies determine applicability; inapplicable
+entries retain their reason and receive no successful native outcome. Independent roots
+continue after a returned failure, and the original first failure remains the command
+result. The typed receipts in `.reports/setup-operations/` record actual roots, execution,
+native outcomes, returned paths and central issues; CI preserves those reports.
+
 Normal test verbs remain incremental testmon only and omit the configured slow
 markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
 The explicit single-file operation runs incremental selection followed by complete
@@ -570,6 +581,10 @@ Protected compilation and pytest validation use the same environment boundary as
 lint validation: the child keeps its project's working directory and configured
 plugins while removing the orchestrator's `PYTHONPATH` and forced-color setting.
 An importing parent cannot supply source modules or startup hooks to that child.
+When canonical child profiling is selected, pytest runs through the existing
+explicit profiler launcher and records a unique artifact in the run's child
+profile directory. Profiling does not reintroduce the parent's import path or
+change plugin selection, native arguments, or validation deadlines.
 
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases

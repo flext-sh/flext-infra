@@ -54,9 +54,12 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
 
         """
         request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
-            params.model_dump(),
+            params.model_dump(exclude={"scope"}),
         )
-        return FlextInfraWorkspaceEnvironmentMixin.execute_request(request)
+        return FlextInfraWorkspaceEnvironmentMixin.execute_request(
+            request,
+            scope=params.scope,
+        )
 
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]

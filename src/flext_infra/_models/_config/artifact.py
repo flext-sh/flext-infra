@@ -113,6 +113,31 @@ class FlextInfraConfigModelsArtifact:
             ),
         ] = ()
 
+    class CodegenGovernedPlanRequest(FlextInfraConfigModelsContract.ConfigContract):
+        """Resolved inputs for planning one governed artifact's file plan."""
+
+        root: Annotated[Path, m.Field(description="Repository root of the artifact")]
+        relative: Annotated[
+            Path,
+            m.Field(description="Artifact path relative to the repository root"),
+        ]
+        governed: Annotated[
+            FlextInfraConfigModelsTemplates.ManagedFileSpec,
+            m.Field(description="Declared governance for the artifact"),
+        ]
+        current: Annotated[
+            str,
+            m.Field(description="Current on-disk text; empty when absent"),
+        ]
+        runtime_root: Annotated[
+            Path | None,
+            m.Field(description="Runtime root when the artifact belongs to the root"),
+        ] = None
+        vscode_spec: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenVscodeSpec | None,
+            m.Field(description="Declared vscode settings spec when present"),
+        ] = None
+
     class CodegenLocCapSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Per-module logical-LOC ceiling policy (scc code lines)."""
 

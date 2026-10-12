@@ -158,7 +158,7 @@ class TestsFlextInfraTransactionStaging:
         *,
         inside: bool,
     ) -> None:
-        """Reject undeclared capabilities without recovery or destination publication."""
+        """Reject undeclared capabilities without recovery or publication."""
         root = u.Tests.git_repository(tmp_path / "source")
         foreign = root / "undeclared" if inside else tmp_path / "foreign"
         foreign.mkdir()
@@ -505,15 +505,15 @@ class TestsFlextInfraTransactionStaging:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("created_count", [0, 1, 2])
+    @pytest.mark.parametrize("materialized", [False, True])
     @pytest.mark.parametrize("relocated", [False, True])
     def test_write_ahead_intentions_recover_before_physical_finalization(
         tmp_path: Path,
-        created_count: int,
         *,
+        materialized: bool,
         relocated: bool,
     ) -> None:
-        """Recover only declared bytes when interrupted before prepared entries."""
+        """Retire declared desired staging without changing unpublished live bytes."""
         root = u.Tests.git_repository(tmp_path)
         target = root / "generated.md"
         target.write_bytes(b"original document\n")
@@ -548,8 +548,9 @@ class TestsFlextInfraTransactionStaging:
                 all(intent.created is None for intent in durable.staging_intents),
                 eq=True,
             )
-            payloads = (planned.desired_content, original.content)
+            payloads = (planned.desired_content,)
             tm.that(len(durable.staging_intents), eq=len(payloads))
+            created_count = len(durable.staging_intents) if materialized else 0
             for intent, content in zip(
                 durable.staging_intents[:created_count],
                 payloads[:created_count],
@@ -662,9 +663,17 @@ class TestsFlextInfraTransactionStaging:
     ) -> None:
         """Reject substitution after intention instead of rereading new authority."""
         root = u.Tests.git_repository(tmp_path)
-        target = root / "generated.md"
-        target.write_bytes(b"original document\n")
-        original = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        targets = (root / "generated.md", root / "second-generated.md")
+        for target, content in zip(
+            targets,
+            (b"original document\n", b"second original document\n"),
+            strict=True,
+        ):
+            target.write_bytes(content)
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            for target in targets
+        )
         owner = transaction.FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
@@ -672,17 +681,26 @@ class TestsFlextInfraTransactionStaging:
 
         def substituted(scope_root: Path) -> p.Result[bool]:
             session = tm.ok(owner.begin_files_locked(scope_root, roots, ()))
-            planned = m.Infra.CodegenFilePlan(
-                project=root,
-                path=target,
-                before=original,
-                desired_content=b"generated document\n",
-                desired_mode=original.mode,
-                owner="docs",
+            planned = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=target,
+                    before=original,
+                    desired_content=desired,
+                    desired_mode=original.mode,
+                    owner="docs",
+                )
+                for target, original, desired in zip(
+                    targets,
+                    originals,
+                    (b"generated document\n", b"second generated document\n"),
+                    strict=True,
+                )
             )
             prepared = tm.ok(
-                owner.prepare_phase_staging_locked(session, "docs", (planned,)),
+                owner.prepare_phase_staging_locked(session, "docs", planned),
             )
+            tm.that(len(prepared.journal.staging_intents), eq=len(planned))
             intent = prepared.journal.staging_intents[index]
             path = intent.before.path
             if substitution == "parent":
@@ -693,7 +711,7 @@ class TestsFlextInfraTransactionStaging:
             else:
                 path.write_bytes(b"foreign leaf\n")
             tampered = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False))
-            content = (planned.desired_content, original.content)[index]
+            content = planned[index].desired_content
             assert content is not None
             failed = FlextInfraMiseArtifactsProcess.write_new(
                 path,
@@ -706,10 +724,11 @@ class TestsFlextInfraTransactionStaging:
                 tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False)),
                 eq=tampered,
             )
-            tm.that(
-                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
-                eq=original,
-            )
+            for target, original in zip(targets, originals, strict=True):
+                tm.that(
+                    tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+                    eq=original,
+                )
             return r[bool].ok(value=True)
 
         tm.ok(owner.run_files_locked(roots, substituted))

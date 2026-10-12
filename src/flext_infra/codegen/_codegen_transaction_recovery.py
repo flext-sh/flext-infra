@@ -142,7 +142,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
 
     def inspect_journal(self) -> p.Result[m.Infra.CodegenFootprint]:
-        """Read the typed journal under its lease without recovery or destination writes.
+        """Read the typed journal under its lease without recovery or writes.
+
+        Inspects the journal in place; it neither recovers it nor writes any
+        destination.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenFootprint]``.

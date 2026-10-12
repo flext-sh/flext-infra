@@ -174,7 +174,10 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
         return r[bool].ok(value=True)
 
     @classmethod
-    def _validate_repository(cls, repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
+    def _validate_repository(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[t.SequenceOf[Path]]:
         """Validate the original declaration and retain its actual file identity.
 
         Returns:

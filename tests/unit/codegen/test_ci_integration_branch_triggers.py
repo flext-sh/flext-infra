@@ -205,6 +205,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix(),
                 publication.as_posix(),
                 f"{publication.with_suffix('').as_posix()}/**/*.json",
+                f"{c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY.as_posix()}/*.json",
             ],
         )
         tm.that(any(path.endswith(".log") for path in paths), eq=False)

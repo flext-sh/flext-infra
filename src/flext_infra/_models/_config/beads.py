@@ -181,10 +181,6 @@ class FlextInfraConfigModelsBeads:
             Path,
             m.Field(description="Repository root receiving the sync"),
         ]
-        scope: Annotated[
-            c.Infra.CodegenConformScope,
-            m.Field(description="Sync this root or all Git-declared repository roots"),
-        ] = c.Infra.CodegenConformScope.SELF
         apply: Annotated[
             bool,
             m.Field(description="Write changes instead of reporting them"),

@@ -247,13 +247,14 @@ class FlextInfraUtilitiesRefactor:
 
         Mirrors the mod evidence receipt's write discipline (ensure directory,
         guarded atomic write, byte-exact read-back) for the refactor verbs that
-        own a single report document.
+        own a single report document. Persist reconstructable facts; computed
+        views are derived by the typed report consumer.
 
         Returns:
             The resulting ``p.Result[Path]``.
 
         """
-        content = (report.model_dump_json(indent=2) + "\n").encode(
+        content = (report.model_dump_json(indent=2, round_trip=True) + "\n").encode(
             c.DEFAULT_ENCODING,
         )
         report_path = root.resolve() / relative_path
