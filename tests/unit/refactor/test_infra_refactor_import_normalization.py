@@ -252,7 +252,7 @@ class TestsFlextInfraRefactorImportNormalization:
             f"    {name!r}: {module!r},\n" for name, module in exports.items()
         )
         (package_dir / "__init__.py").write_text(
-            "from flext_core import install_lazy_exports\n"
+            "from flext_core.lazy import install_lazy_exports\n"
             "\n"
             "install_lazy_exports(\n"
             "    __name__,\n"

@@ -405,7 +405,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             c.Infra.AUTOGEN_HEADERS[0]
             + "\nfrom types import MappingProxyType\n"
             + "from typing import TYPE_CHECKING\n"
-            + "from flext_core import install_lazy_exports\n"
+            + "from flext_core.lazy import install_lazy_exports\n"
             + "if TYPE_CHECKING:\n    from .models import m\n"
             + "install_lazy_exports(__name__, __file__, "
             'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
@@ -448,7 +448,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             c.Infra.AUTOGEN_HEADERS[0]
             + "\nfrom types import MappingProxyType\n"
             + "from typing import TYPE_CHECKING\n"
-            + "from flext_core import install_lazy_exports\n"
+            + "from flext_core.lazy import install_lazy_exports\n"
             + "if TYPE_CHECKING:\n    from .models import m\n"
             + "install_lazy_exports(__name__, __file__, "
             'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
