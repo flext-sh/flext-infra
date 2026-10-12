@@ -1,0 +1,19 @@
+id: ban-declaration-utility-facade-import
+language: python
+severity: error
+files:
+  - "**/src/*/_constants/**/*.py"
+  - "**/src/*/_typings/**/*.py"
+  - "**/src/*/_protocols/**/*.py"
+  - "**/src/*/_models/**/*.py"
+  - "**/src/*/_config/**/*.py"
+  - "**/src/*/_settings/**/*.py"
+rule:
+  all:
+    - kind: import_from_statement
+    - regex: "^from [A-Za-z_][A-Za-z_0-9.]* import[\\s\\S]*\\bu\\b"
+    - inside:
+        kind: module
+message: >-
+  A declaration cannot depend on the higher utility facade at module scope.
+  Resolve its real declaring owner through the semantic self-facade phase.

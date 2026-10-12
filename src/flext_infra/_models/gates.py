@@ -376,14 +376,49 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         @m.model_validator(mode="after")
         def _validate_command(self) -> Self:
             command = shlex.split(self.command)
+            canonical_cli = (
+                len(command) >= 5
+                and command[1:4] == ["-m", "flext_infra", "check"]
+                and command[4] == "run"
+                and self.gate == c.Infra.VERB_CHECK
+            )
             if (
                 not command
-                or Path(command[0]).name != c.Infra.MAKE
-                or self.gate not in command[1:]
+                or not (
+                    canonical_cli
+                    or (
+                        Path(command[0]).name == c.Infra.MAKE
+                        and self.gate in command[1:]
+                    )
+                )
             ):
-                msg = "gate evidence command must use canonical make <gate>"
+                msg = "gate evidence command must use its canonical producer"
                 raise ValueError(msg)
             return self
+
+    class GateCaptureRequest(m.ContractModel):
+        """Capture the original read-only checker invocation exactly once."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Actual root selected by the public Make verb")
+        ]
+        gates: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved native checker gate inventory")
+        ]
+
+    class GateCaptureReport(m.ContractModel):
+        """Original process and publication outcome, independent of acceptance."""
+
+        process: Annotated[
+            m.Cli.ProcessOutcome, m.Field(description="Reaped original producer outcome")
+        ]
+        receipt: Annotated[
+            Path | None, m.Field(description="Published immutable original receipt")
+        ]
+        issues: Annotated[
+            t.VariadicTuple[m.Infra.Issue],
+            m.Field(description="Actual capture or candidate eligibility failures"),
+        ] = ()
 
     class GateAttestationPredicate(m.ContractModel):
         """Canonical signed statement for locally completed gates."""

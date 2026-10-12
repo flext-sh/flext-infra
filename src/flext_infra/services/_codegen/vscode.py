@@ -18,14 +18,13 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, MutableMapping
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import FlextStrictYamlConfigSource
 from flext_infra import FlextInfraConfig, c, config, m, r, t, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p
 
 

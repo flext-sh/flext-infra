@@ -48,7 +48,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         local = (
             first
             / c.CONFIG_DIR_NAME
-            / Path(c.Infra.CODEGEN_CONFIG_FILENAME).with_name("codegen.local.yaml")
+            / Path(c.Infra.CODEGEN_CONFIG_FILENAME).with_name(
+                f"{Path(c.Infra.CODEGEN_CONFIG_FILENAME).stem}.local.yaml",
+            )
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -206,7 +208,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         (root / c.Infra.GITIGNORE).write_text(rendered, encoding=c.DEFAULT_ENCODING)
         ignored = tm.ok(
-            u.Cli.run_checked(
+            u.Cli.run(
                 (c.Infra.GIT, "check-ignore", "--no-index", path.as_posix()),
                 cwd=root,
             ),

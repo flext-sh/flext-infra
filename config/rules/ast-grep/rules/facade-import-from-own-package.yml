@@ -24,10 +24,9 @@
 # duplicate flext_infra import line this produces is merged by `make fix`.
 #
 # The private utilities tree is excluded: a member of `u.Infra` cannot bind its
-# own still-assembling facade at module import time, so there the canonical form
-# is a method-local import and ban-infra-utility-module-self-facade-import is
-# the owner of that contract. A module-level rewrite there would trade a wrong
-# facade for an import cycle.
+# own still-assembling facade at module import time. The namespace-aware
+# self-facade semantic operation binds those imports to their declared leaves.
+# A rewrite to the assembling facade would introduce an import cycle.
 id: facade-import-from-own-package
 language: python
 severity: error
