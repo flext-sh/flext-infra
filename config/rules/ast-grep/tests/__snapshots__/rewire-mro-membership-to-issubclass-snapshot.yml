@@ -1,0 +1,37 @@
+id: rewire-mro-membership-to-issubclass
+snapshots:
+  assert FlextLdapService in FlextLdap.__mro__:
+    fixed: assert issubclass(FlextLdap, FlextLdapService)
+    labels:
+    - source: FlextLdapService in FlextLdap.__mro__
+      style: primary
+      start: 7
+      end: 44
+  assert FlextMeltanoTypes in t.__mro__:
+    fixed: assert issubclass(t, FlextMeltanoTypes)
+    labels:
+    - source: FlextMeltanoTypes in t.__mro__
+      style: primary
+      start: 7
+      end: 37
+  tm.that(FlextPluginTypes in t.__mro__, eq=True):
+    fixed: tm.that(issubclass(t, FlextPluginTypes), eq=True)
+    labels:
+    - source: FlextPluginTypes in t.__mro__
+      style: primary
+      start: 8
+      end: 37
+  tm.that(c in c.__mro__, eq=True):
+    fixed: tm.that(issubclass(c, c), eq=True)
+    labels:
+    - source: c in c.__mro__
+      style: primary
+      start: 8
+      end: 22
+  tm.that(cli_t in FlextPluginTypes.__mro__, eq=True):
+    fixed: tm.that(issubclass(FlextPluginTypes, cli_t), eq=True)
+    labels:
+    - source: cli_t in FlextPluginTypes.__mro__
+      style: primary
+      start: 8
+      end: 41

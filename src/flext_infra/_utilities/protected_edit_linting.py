@@ -329,31 +329,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             for entry in cls._selected_lint_tools(gates)
         )
 
-    @classmethod
-    def _new_file_lint_baseline(
-        cls,
-        py_file: Path,
-        workspace: Path,
-        *,
-        gates: t.StrSequence | None = None,
-    ) -> t.Infra.LintSnapshot:
-        """Compute the lint baseline for a new file.
-
-        Returns:
-            The resulting ``t.Infra.LintSnapshot``.
-
-        """
-        py_file.parent.mkdir(parents=True, exist_ok=True)
-        py_file.write_text(
-            f"{c.Infra.FUTURE_ANNOTATIONS}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        try:
-            return cls.lint_snapshot(py_file, workspace, gates=gates)
-        finally:
-            if py_file.exists():
-                py_file.unlink()
-
     _snapshot_cache: ClassVar[
         MutableMapping[t.Triple[str, str, t.StrSequence], t.Infra.LintSnapshot]
     ] = {}
@@ -647,39 +622,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ]
             )
         }
-
-    @staticmethod
-    def preview_source_lint(
-        py_file: Path,
-        workspace: Path,
-        *,
-        updated_source: str,
-        gates: t.StrSequence | None = None,
-    ) -> t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
-        """Preview lint output for ``updated_source`` while restoring the file.
-
-        Returns:
-            The resulting ``t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]``.
-
-        """
-        original_source = py_file.read_text(encoding=c.DEFAULT_ENCODING)
-        before = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(
-            py_file,
-            workspace,
-            gates=gates,
-        )
-        if updated_source == original_source:
-            return before, before
-        py_file.write_text(updated_source, encoding=c.DEFAULT_ENCODING)
-        try:
-            after = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(
-                py_file,
-                workspace,
-                gates=gates,
-            )
-        finally:
-            py_file.write_text(original_source, encoding=c.DEFAULT_ENCODING)
-        return before, after
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProtectedEditLinting"]

@@ -122,16 +122,12 @@ class FlextInfraModelsBase:
         ]
         before_source: Annotated[
             str,
-            m.Field(description="Original source text used for diff and restore"),
+            m.Field(description="Original source text used for validation evidence"),
         ]
         edit_fn: Annotated[
             Callable[[], None],
             m.Field(description="Callback that applies the file mutation"),
         ]
-        restore_fn: Annotated[
-            Callable[[], None] | None,
-            m.Field(description="Optional callback that restores the original file"),
-        ] = None
         gates: Annotated[
             t.StrSequence | None,
             m.Field(description="Optional lint gate selection for validation"),

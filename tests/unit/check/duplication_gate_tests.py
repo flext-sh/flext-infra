@@ -286,3 +286,75 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             {issue.file for issue in execution.issues},
             eq={"src/fixture_python_clone/duplicated.py"},
         )
+
+    @staticmethod
+    def _governed_with_fleet_members(tmp_path: Path, *, enable_fleet: bool) -> Path:
+        """One governed root plus two declared members sharing a Python block.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "fleet-duplication"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-fleet",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fleet-workspace",
+                database="fleet_database",
+                issue_prefix="fleet",
+            ),
+        )
+        root_package = root / "src" / "fixture_fleet"
+        root_package.mkdir(parents=True, exist_ok=True)
+        (root_package / "unique.py").write_text(
+            "ROOT_ONLY_MARKER = 'canonical-root-only'\n",
+            encoding="utf-8",
+        )
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        for name in ("alpha", "beta"):
+            member = root / f"peer-{name}"
+            package = member / "src" / f"peer_{name}"
+            package.mkdir(parents=True, exist_ok=True)
+            (member / "pyproject.toml").write_text(
+                f'[project]\nname = "peer-{name}"\nversion = "0"\n',
+                encoding="utf-8",
+            )
+            (package / "duplicated.py").write_text(block, encoding="utf-8")
+        (root / ".gitmodules").write_text(
+            '[submodule "peer-alpha"]\n'
+            "\tpath = peer-alpha\n"
+            "\turl = https://example.invalid/peer-alpha\n"
+            '[submodule "peer-beta"]\n'
+            "\tpath = peer-beta\n"
+            "\turl = https://example.invalid/peer-beta\n",
+            encoding="utf-8",
+        )
+        if enable_fleet:
+            pyproject = root / "pyproject.toml"
+            pyproject.write_text(
+                f"{pyproject.read_text(encoding='utf-8')}\n"
+                "[tool.flext.project.duplication]\n"
+                "fleet = true\n",
+                encoding="utf-8",
+            )
+        return root
+
+    def test_fleet_scope_reports_a_cross_project_clone(self, tmp_path: Path) -> None:
+        """Two declared members sharing a block are one cross-project finding."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=True)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.that(text, has="peer-alpha")
+        tm.that(text, has="peer-beta")
+
+    def test_fleet_disabled_ignores_member_projects(self, tmp_path: Path) -> None:
+        """Without the fleet declaration, member projects stay out of scope."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=False)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=True)

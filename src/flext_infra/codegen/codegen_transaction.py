@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
     FlextInfraCodegenTransactionPhases,
@@ -19,6 +19,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsState as state,
     FlextInfraMiseArtifactsVerification as verify,
 )
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -29,6 +30,73 @@ class FlextInfraCodegenTransaction(
     FlextInfraCodegenTransactionPhases,
 ):
     """Keep every generation phase recoverable until one final fixed point."""
+
+    def preview_sources[T](
+        self,
+        plan: m.Infra.StageSourcePlan,
+        validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+    ) -> p.Result[T]:
+        """Validate a journal-owned source view without publishing live files.
+
+        Args:
+            plan: The stage source plan to preview.
+            validator: A callable that validates the source view.
+
+        Returns:
+            A result wrapping the validation outcome or the first failure encountered.
+        """
+        roots = {
+            "."
+            if root == plan.workspace
+            else str(root.relative_to(plan.workspace)): root
+            for root in plan.roots
+        }
+
+        def validate_locked(scope_root: Path) -> p.Result[T]:
+            started = self.begin_files_locked(scope_root, roots, plan.inputs)
+            if started.failure:
+                return r[T].from_failure(started)
+            session = started.value
+            participant = next(
+                item
+                for item in session.plan.layout.file_participants
+                if item.root == plan.workspace
+            )
+            view_root = participant.transaction_root / "source-view"
+            candidates = {
+                path: view_root / path.relative_to(plan.workspace)
+                for path in plan.updates
+            }
+            writes: list[tuple[Path, bytes, int]] = []
+            for before in plan.inputs:
+                content = (
+                    plan.updates[before.path].encode(c.DEFAULT_ENCODING)
+                    if before.path in plan.updates
+                    else before.content
+                )
+                if content is None:
+                    continue
+                writes.append((
+                    view_root / before.path.relative_to(plan.workspace),
+                    content,
+                    before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
+                ))
+            materialized = self._materialize_package_writes(session, tuple(writes))
+            if materialized.failure:
+                return r[T].from_failure(materialized)
+            value = validator(view_root, candidates)
+            barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+                materialized.value,
+                "source preview journal changed during validation",
+            )
+            if barrier.failure:
+                return r[T].from_failure(barrier)
+            cleaned = self._recover_prepared(session.plan.layout)
+            if cleaned.failure:
+                return r[T].from_failure(cleaned)
+            return r[T].ok(value)
+
+        return self.run_files_locked(roots, validate_locked)
 
     def run_files_locked[T](
         self,

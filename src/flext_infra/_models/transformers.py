@@ -344,14 +344,6 @@ class FlextInfraModelsTransformers:
             tuple[ast.ClassDef, ...],
             m.Field(description="Facade body classes"),
         ]
-        owner: Annotated[
-            t.Infra.RopePyObject,
-            m.Field(description="Facade declaration owner"),
-        ]
-        target: Annotated[
-            t.Infra.RopePyObject,
-            m.Field(description="Namespace declaration owner"),
-        ]
         tree: Annotated[ast.Module, m.Field(description="Parsed source module")]
 
 

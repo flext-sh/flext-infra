@@ -44,14 +44,14 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         roots = {
             f"@{request.what}-{index}": (root / participant.path).resolve()
             for index, participant in enumerate(selected.value)
-            if participant.kind is c.Infra.RepositoryKind.INTERNAL_FLEXT
+            if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
         }
         if request.what == c.Infra.CodegenConformSurface.FACADES:
-            workspace = FlextInfraStagedPackage.workspace_root(request.root)
-            if workspace.failure:
-                return r[m.Infra.CodegenResult].from_failure(workspace)
-            if workspace.value != request.root.expanduser().resolve():
-                roots["@stage-inputs-0"] = workspace.value
+            stage_workspace = FlextInfraStagedPackage.workspace_root(request.root)
+            if stage_workspace.failure:
+                return r[m.Infra.CodegenResult].from_failure(stage_workspace)
+            if stage_workspace.value != request.root.expanduser().resolve():
+                roots["@stage-inputs-0"] = stage_workspace.value
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             if request.what != c.Infra.CodegenConformSurface.FACADES:
                 return self._execute_lazy_init_locked(

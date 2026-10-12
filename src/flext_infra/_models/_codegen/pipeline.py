@@ -221,3 +221,10 @@ class FlextInfraModelsCodegenPipelineModels:
             t.SequenceOf[FlextInfraModelsCodegenFixModels.AutoFixResult],
             m.Field(description="Auto-fix stage results"),
         ] = ()
+        lazy_unmapped_count: Annotated[
+            int | None,
+            m.Field(
+                ge=0,
+                description="Observed lazy drift, absent before that stage executes",
+            ),
+        ] = None

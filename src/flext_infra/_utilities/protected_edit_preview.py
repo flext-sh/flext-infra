@@ -1,4 +1,4 @@
-"""Preview and reverted-report flows for protected edit workflows.
+"""Staged previews and validation reports for protected edit workflows.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,15 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
-from collections.abc import Callable, MutableMapping
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+    FlextInfraStagedPackage,
+)
 
 
 class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):
-    """Preview and revert-report helpers for protected edit workflows."""
+    """Validate staged source candidates without modifying live destinations."""
 
     @staticmethod
     def _normalized_source_updates(
@@ -68,24 +73,8 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         for path in updates:
             if before_sources[path] is not None:
                 continue
-            before_lints[path] = (
-                FlextInfraUtilitiesProtectedEditPreview._new_file_lint_baseline(
-                    path,
-                    workspace,
-                    gates=gates,
-                )
-            )
+            before_lints[path] = {}
         return before_sources, before_lints
-
-    @staticmethod
-    def _restore_preview_sources(before_sources: t.MappingKV[Path, str | None]) -> None:
-        """Restore preview sources."""
-        for path, original_source in before_sources.items():
-            if original_source is None:
-                if path.exists():
-                    path.unlink()
-                continue
-            path.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
     def _validation_failure_report_lines(
@@ -115,7 +104,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         for tool, messages in new_errors.items():
             report_lines.extend((
                 f"    NEW {tool} errors:",
-                *(f"      {message}" for message in messages[:5]),
+                *(f"      {message}" for message in messages),
             ))
         if pytest_failure:
             report_lines.append(f"    pytest failure: {pytest_failure}")
@@ -123,7 +112,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
     @staticmethod
     def _preview_write_reports(
-        updates: t.MappingKV[Path, str],
+        candidates: t.MappingKV[Path, Path],
         before_sources: t.MappingKV[Path, str | None],
         before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
         workspace: Path,
@@ -138,21 +127,21 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         reports: list[str] = []
         failed = False
         after_lints = FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
-            tuple(updates),
+            tuple(candidates.values()),
             workspace,
             gates=gates,
         )
-        for path in updates:
+        for path, candidate in candidates.items():
             new_errors = FlextInfraUtilitiesProtectedEditPreview.lint_new_errors(
                 before_lints[path],
-                after_lints[path],
+                after_lints[candidate],
             )
             if not new_errors:
                 continue
             failed = True
             reports.extend(
                 FlextInfraUtilitiesProtectedEditPreview._validation_failure_report_lines(
-                    path,
+                    candidate,
                     workspace,
                     before_sources[path] or "",
                     new_errors,
@@ -166,9 +155,8 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         *,
         workspace: Path,
         gates: t.StrSequence | None = None,
-        post_write: Callable[[], None] | None = None,
     ) -> t.Infra.EditResult:
-        """Preview multiple file writes transactionally and always restore sources.
+        """Validate a journal-owned source view without writing live destinations.
 
         Returns:
             The resulting ``t.Infra.EditResult``.
@@ -188,23 +176,89 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             )
         )
 
-        try:
-            for path, updated_source in normalized_updates.items():
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(updated_source, encoding=c.DEFAULT_ENCODING)
-            if post_write is not None:
-                post_write()
+        plan = FlextInfraStagedPackage.plan_sources(
+            workspace, normalized_updates
+        ).unwrap()
+
+        def validate(
+            view_root: Path,
+            candidates: t.MappingKV[Path, Path],
+        ) -> t.Infra.EditResult:
+            """Run the real configured validators against the staged candidate.
+
+            Args:
+                view_root: The root directory of the staged source view.
+                candidates: A mapping from original file paths to their staged
+                counterparts.
+
+            Returns:
+                A result indicating whether the staged changes pass validation and any
+                associated reports.
+            """
             return FlextInfraUtilitiesProtectedEditPreview._preview_write_reports(
-                normalized_updates,
+                candidates,
                 before_sources,
                 before_lints,
-                workspace,
+                view_root,
                 gates=gates,
             )
-        finally:
-            FlextInfraUtilitiesProtectedEditPreview._restore_preview_sources(
-                before_sources,
+
+        return (
+            FlextInfraCodegenTransaction(
+                FlextInfraCodegenMiseArtifacts(repository_root=workspace),
             )
+            .preview_sources(plan, validate)
+            .unwrap()
+        )
+
+    @staticmethod
+    def preview_source_lint(
+        py_file: Path,
+        workspace: Path,
+        *,
+        updated_source: str,
+        gates: t.StrSequence | None = None,
+    ) -> t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
+        """Compare live and staged lint snapshots without changing live source.
+
+        Args:
+            py_file: The Python file to lint.
+            workspace: The root of the workspace containing the file.
+            updated_source: The updated source code for the file.
+            gates: Optional sequence of gate names to apply during linting.
+
+        Returns:
+            A pair of lint snapshots, the first for the original source and the second
+              for the updated source.
+        """
+        original_source = py_file.read_text(encoding=c.DEFAULT_ENCODING)
+        before = FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
+            py_file, workspace, gates=gates
+        )
+        if updated_source == original_source:
+            return before, before
+
+        path = py_file.resolve()
+        plan = FlextInfraStagedPackage.plan_sources(
+            workspace, {path: updated_source}
+        ).unwrap()
+
+        def validate(
+            view_root: Path,
+            candidates: t.MappingKV[Path, Path],
+        ) -> t.Infra.LintSnapshot:
+            return FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
+                candidates[path], view_root, gates=gates
+            )
+
+        after = (
+            FlextInfraCodegenTransaction(
+                FlextInfraCodegenMiseArtifacts(repository_root=workspace),
+            )
+            .preview_sources(plan, validate)
+            .unwrap()
+        )
+        return before, after
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProtectedEditPreview"]

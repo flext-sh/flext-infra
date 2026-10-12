@@ -331,7 +331,46 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 f"template={template_relpath}: "
                 f"{rendered.error or 'template render failed'}",
             )
-        return rendered
+        return self._require_rendered_content(
+            rendered.value,
+            template_relpath=template_relpath,
+            destination=destination,
+            failure_prefix=failure_prefix,
+        )
+
+    @staticmethod
+    def _require_rendered_content(
+        content: str,
+        *,
+        template_relpath: Path,
+        destination: str,
+        failure_prefix: str = "",
+    ) -> p.Result[str]:
+        """Refuse to publish a successful render that produced no content.
+
+        A template whose condition renders the whole body away (for example a
+        workflow fragment gated on an undeclared capability layer) would
+        otherwise surface as a 0-byte artifact — indistinguishable from a
+        fragment with nothing to do, silently dropping the steps a consumer
+        believes it selected. An empty render is a declaration error: the
+        consumer must declare the layer or retire the selection, and the
+        generator must fail loud instead of writing the empty file.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+
+        """
+        if content.strip():
+            return r[str].ok(content)
+        return r[str].fail(
+            f"{failure_prefix}"
+            f"template={template_relpath}: destination={destination}: "
+            "render produced no content: the template condition rendered "
+            "empty, which is a consumer declaration error (a selected "
+            "artifact whose data layer is undeclared); declare the missing "
+            "layer or retire the selection — publishing a 0-byte artifact "
+            "is forbidden",
+        )
 
     def _artifact_render_context(
         self,

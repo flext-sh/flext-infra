@@ -56,6 +56,21 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Workspace namespaces requiring sealed origins"
         )
 
+    class StageSourcePlan(m.ArbitraryTypesModel):
+        """Pinned project closure and desired source bytes for effect-free validation."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        workspace: Path = m.Field(description="Canonical source workspace root")
+        roots: t.VariadicTuple[Path] = m.Field(
+            description="Discovered project roots covering the pinned source closure"
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Exact source and configuration observations"
+        )
+        updates: t.MappingKV[Path, str] = m.Field(
+            description="Desired source updates keyed by live destination"
+        )
+
     class StagePackageView(m.ArbitraryTypesModel):
         """Journal-owned materialized package view, never another source of truth."""
 

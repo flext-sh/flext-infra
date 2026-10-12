@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
@@ -39,7 +39,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         def _run_stage[V](
             self,
             stage_id: str,
-            action: Callable[[], V],
+            action: Callable[[], p.Result[V]],
             emit: Callable[[V], t.JsonMapping],
         ) -> p.Result[m.Cli.PipelineStageResult]: ...
 
@@ -59,12 +59,15 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> t.VariadicTuple[m.Infra.ProjectInfo]:
+        def _action() -> p.Result[t.VariadicTuple[m.Infra.ProjectInfo]]:
             projects_result = u.Infra.projects(ctx.repository_root)
             if projects_result.failure:
-                msg = projects_result.error or "project discovery failed"
-                raise RuntimeError(msg)
-            return tuple(projects_result.unwrap())
+                return r[t.VariadicTuple[m.Infra.ProjectInfo]].from_failure(
+                    projects_result,
+                )
+            return r[t.VariadicTuple[m.Infra.ProjectInfo]].ok(
+                tuple(projects_result.value),
+            )
 
         def _emit(discovered: t.VariadicTuple[m.Infra.ProjectInfo]) -> t.JsonMapping:
             self._state.discovered_projects = discovered
@@ -84,9 +87,9 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> m.Infra.CodegenResult:
+        def _action() -> p.Result[m.Infra.CodegenResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            result = FlextInfraCodegenConform.execute_request(
+            return FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
                     root=ctx.repository_root,
                     what=c.Infra.CodegenConformSurface.ALL,
@@ -99,11 +102,6 @@ class FlextInfraCodegenPipelineStagesMixin:
                 ),
                 ports=self.conform_collaborators,
             )
-            if result.failure:
-                msg = result.error or "toolchain conform failed"
-                raise RuntimeError(msg)
-            conformed: m.Infra.CodegenResult = result.unwrap()
-            return conformed
 
         return self._run_stage(
             c.Infra.PipelineStage.TOOLCHAIN,
@@ -131,7 +129,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> bool:
+        def _action() -> p.Result[bool]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects
             selected = tuple(project.path.name for project in projects)
@@ -143,10 +141,10 @@ class FlextInfraCodegenPipelineStagesMixin:
             )
             result = detector.execute()
             if result.failure:
-                msg = result.error or "dependency conform failed"
-                raise RuntimeError(msg)
-            applied: bool = t.Infra.BOOL_ADAPTER.validate_python(result.unwrap())
-            return applied
+                return r[bool].from_failure(result)
+            return r[bool].ok(
+                t.Infra.BOOL_ADAPTER.validate_python(result.value),
+            )
 
         return self._run_stage(
             c.Infra.PipelineStage.DEPS,
@@ -166,9 +164,9 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> int:
+        def _action() -> p.Result[int]:
             py_typed = FlextInfraCodegenPyTyped(repository_root=ctx.repository_root)
-            return py_typed.run()
+            return r[int].ok(py_typed.run())
 
         return self._run_stage(
             c.Infra.PipelineStage.PY_TYPED,
@@ -188,16 +186,19 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> t.Pair[
-            FlextInfraCodegenCensus,
-            t.SequenceOf[m.Infra.CensusReport],
+        def _action() -> p.Result[
+            t.Pair[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]]
         ]:
             census = FlextInfraCodegenCensus(repository_root=ctx.repository_root)
             projects = self._state.discovered_projects
             reports_result = census.run(projects=projects)
             if reports_result.failure:
-                raise RuntimeError(reports_result.error or "census failed")
-            return census, reports_result.value
+                return r[
+                    t.Pair[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]]
+                ].from_failure(reports_result)
+            return r[
+                t.Pair[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]]
+            ].ok((census, reports_result.value))
 
         def _emit(
             payload: t.Pair[
@@ -227,12 +228,14 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> t.SequenceOf[m.Infra.ScaffoldResult]:
+        def _action() -> p.Result[t.SequenceOf[m.Infra.ScaffoldResult]]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects
-            return FlextInfraCodegenScaffolder(repository_root=ctx.repository_root).run(
-                dry_run=dry_run,
-                projects=projects,
+            return r[t.SequenceOf[m.Infra.ScaffoldResult]].ok(
+                FlextInfraCodegenScaffolder(repository_root=ctx.repository_root).run(
+                    dry_run=dry_run,
+                    projects=projects,
+                ),
             )
 
         def _emit(results: t.SequenceOf[m.Infra.ScaffoldResult]) -> t.JsonMapping:
@@ -256,13 +259,15 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> t.SequenceOf[m.Infra.AutoFixResult]:
+        def _action() -> p.Result[t.SequenceOf[m.Infra.AutoFixResult]]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects
-            return FlextInfraCodegenFixer(
-                repository_root=ctx.repository_root,
-                dry_run=dry_run,
-            ).fix_workspace(projects=projects)
+            return r[t.SequenceOf[m.Infra.AutoFixResult]].ok(
+                FlextInfraCodegenFixer(
+                    repository_root=ctx.repository_root,
+                    dry_run=dry_run,
+                ).fix_workspace(projects=projects),
+            )
 
         def _emit(results: t.SequenceOf[m.Infra.AutoFixResult]) -> t.JsonMapping:
             self._state.fix_results = results
@@ -285,20 +290,27 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> int:
-            analysis = (
-                FlextInfraCodegenLazyInit(repository_root=ctx.repository_root)
-                .plan_files()
-                .unwrap()
+        def _action() -> p.Result[int]:
+            planned = FlextInfraCodegenLazyInit(
+                repository_root=ctx.repository_root,
+            ).plan_files()
+            if planned.failure:
+                return r[int].from_failure(planned)
+            return r[int].ok(
+                sum(
+                    u.Infra.codegen_file_requires_effect(plan)
+                    for plan in planned.value.files
+                ),
             )
-            return sum(
-                u.Infra.codegen_file_requires_effect(plan) for plan in analysis.files
-            )
+
+        def _emit(count: int) -> t.JsonMapping:
+            self._state.lazy_unmapped_count = count
+            return {"unmapped_count": count}
 
         return self._run_stage(
             c.Infra.PipelineStage.LAZY_INIT,
             _action,
-            lambda count: {"unmapped_count": count},
+            _emit,
         )
 
     def _stage_census_after(
@@ -313,15 +325,12 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> t.SequenceOf[m.Infra.CensusReport]:
+        def _action() -> p.Result[t.SequenceOf[m.Infra.CensusReport]]:
             census = self._state.census_service
             if census is None:
                 census = FlextInfraCodegenCensus(repository_root=ctx.repository_root)
             projects = self._state.discovered_projects
-            reports_result = census.run(projects=projects)
-            if reports_result.failure:
-                raise RuntimeError(reports_result.error or "census failed")
-            return reports_result.value
+            return census.run(projects=projects)
 
         def _emit(reports: t.SequenceOf[m.Infra.CensusReport]) -> t.JsonMapping:
             self._state.reports_after = reports

@@ -380,7 +380,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
         try:
             for path, source in cls._editable_sources(sources):
-                site = cls._facade_namespace_site(workspace, cutover, path, source)
+                site = cls._facade_namespace_site(workspace, path, source)
                 if site is not None:
                     cls._apply_facade_namespace_site(cutover, site)
             return cls._facade_namespace_result(cutover)
@@ -391,7 +391,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _facade_namespace_site(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        cutover: m.Infra.FacadeNamespaceCutover,
         path: Path,
         source: str,
     ) -> m.Infra.FacadeNamespaceSite | None:
@@ -422,24 +421,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if len(composed) != 1:
             return None
         namespace = composed[0]
-        resource = cutover.project.get_resource(
-            path.relative_to(cutover.root).as_posix()
-        )
-        owner = (
-            cutover.project
-            .get_pymodule(resource)
-            .get_attribute(facade.name)
-            .get_object()
-        )
-        target = owner.get_attribute(namespace.name).get_object()
         return m.Infra.FacadeNamespaceSite(
             path=path,
             source=source,
             facade=facade,
             namespace=namespace,
             children=tuple(children),
-            owner=owner,
-            target=target,
             tree=tree,
         )
 
@@ -476,10 +463,18 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
     ) -> None:
         """Move one duplicate child declaration and record its consumer rewrites."""
+        resource = cutover.project.get_resource(
+            site.path.relative_to(cutover.root).as_posix()
+        )
+        owner = (
+            cutover.project
+            .get_pymodule(resource)
+            .get_attribute(site.facade.name)
+            .get_object()
+        )
+        target = owner.get_attribute(site.namespace.name).get_object()
         destinations = [
-            base
-            for base in site.target.get_superclasses()
-            if base.get_name() == child.name
+            base for base in target.get_superclasses() if base.get_name() == child.name
         ]
         if len(destinations) != 1:
             return
@@ -489,7 +484,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             child,
             destinations[0],
         )
-        binding = site.owner.get_attribute(child.name)
+        binding = owner.get_attribute(child.name)
         for consumer, rewrite in cls._collect_namespace_occurrence_rewrites(
             cutover,
             binding,

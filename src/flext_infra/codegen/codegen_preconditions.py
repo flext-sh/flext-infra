@@ -113,3 +113,6 @@ class FlextInfraCodegenPreconditions:
                 },
             )
         return result_type.ok(session)
+
+
+__all__: list[str] = ["FlextInfraCodegenPreconditions"]

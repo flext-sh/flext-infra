@@ -51,8 +51,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         _ = ctx
         started = time.monotonic()
-        scan = self._scan_project(project_dir)
-        parsed = self._issues_from_report(scan, project_dir)
+        overrides = self._read_project_config(project_dir)
+        fleet_enabled = overrides.success and overrides.value.fleet
+        scan = self._scan_project(project_dir, fleet_enabled)
+        parsed = self._issues_from_report(scan, project_dir, fleet=fleet_enabled)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
@@ -66,7 +68,12 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             started=started,
         )
 
-    def _scan_project(self, project_dir: Path) -> p.Cli.CommandOutput:
+    def _scan_project(
+        self,
+        project_dir: Path,
+        *,
+        fleet_enabled: bool = False,
+    ) -> p.Cli.CommandOutput:
         """Create one fresh report; tool, scope, and report failures escape.
 
         Returns:
@@ -92,7 +99,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     forwarded_signal=None,
                 ),
             )
-        scope = self._render_scope_dirs(project_dir)
+        scope = (
+            self._render_fleet_scope_dirs(project_dir)
+            if fleet_enabled
+            else self._render_scope_dirs(project_dir)
+        )
         if scope.failure:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -191,6 +202,38 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return r[t.StrSequence].ok(
             tuple(str(project_dir / candidate) for candidate in candidates),
         )
+
+    def _render_fleet_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
+        """Union this project's scope with every declared member's scope.
+
+        The cross-project view scans every member this workspace declares (the
+        canonical member enumerator, derived from the workspace composition —
+        never a hand-listed set) in ONE jscpd run, so a clone shared between two
+        projects is reported instead of hidden behind per-project scoping.
+        Ownership stays path containment under the invoking project, which is
+        the governed workspace root.
+
+        Returns:
+            The resulting ``p.Result[t.StrSequence]``.
+
+        """
+        base = self._render_scope_dirs(project_dir)
+        if base.failure:
+            return r[t.StrSequence].from_failure(base)
+        candidates: t.MutableSequenceOf[str] = list(base.value)
+        seen: set[str] = set(candidates)
+        for member in u.Infra.discover_project_roots(project_dir):
+            if member == project_dir:
+                continue
+            member_scope = self._render_scope_dirs(member)
+            if member_scope.failure:
+                return r[t.StrSequence].from_failure(member_scope)
+            for candidate in member_scope.value:
+                if candidate in seen:
+                    continue
+                seen.add(candidate)
+                candidates.append(candidate)
+        return r[t.StrSequence].ok(tuple(candidates))
 
     @staticmethod
     def _read_project_config(
@@ -350,6 +393,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         cls,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
+        *,
+        fleet: bool = False,
     ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per clone side that falls inside ``project_dir``.
 
@@ -376,7 +421,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
             first_name = cls._report_file_name(first)
             second_name = cls._report_file_name(second)
-            if not cls._is_semantic_clone(duplicate, first, second):
+            if not fleet and not cls._is_semantic_clone(duplicate, first, second):
                 continue
             first_span = cls._side_span_key(first)
             second_span = cls._side_span_key(second)

@@ -58,8 +58,7 @@ class FlextInfraRefactorCensusRemovalMixin(
 
         """
         validated_reports: list[m.Infra.ProjectReport] = []
-        # Preview writes are restored before the next candidate, so one shared
-        # source cache stays valid for the entire dry-run validation pass.
+        # Previews validate staged bytes, so the live source cache remains valid.
         source_cache: MutableMapping[Path, str] = {}
         for report in project_reports:
             if not report.removal_candidates:

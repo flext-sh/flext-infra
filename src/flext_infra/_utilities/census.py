@@ -796,13 +796,12 @@ class FlextInfraUtilitiesRefactorCensus:
             if planned.error_code == c.Infra.CENSUS_UNSUPPORTED_SIMPLE_REMOVAL_CODE:
                 return r[bool].ok(value=False)
             return r[bool].from_failure(planned)
-        updates, post_write = planned.unwrap()
+        updates = planned.unwrap()[0]
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
                 updates,
                 workspace=workspace,
                 gates=gates,
-                post_write=post_write,
             )
         except RuntimeError as exc:
             FlextInfraUtilitiesRefactorCensus._census_log.warning(
