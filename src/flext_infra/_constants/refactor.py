@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
@@ -118,6 +119,18 @@ class FlextInfraConstantsRefactor:
         DETECTION_ONLY = "detection_only"
         NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
         DEFERRED_SOURCE_DRIFT = "deferred_source_drift"
+
+    MOD_SCAN_CLASS_COUNT_FIELDS: ClassVar[Mapping[ModScanFindingClass, str]] = {
+        ModScanFindingClass.ACTIONABLE: "actionable",
+        ModScanFindingClass.DETECTION_ONLY: "detection_only",
+        ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: "non_actionable_with_fix",
+        ModScanFindingClass.DEFERRED_SOURCE_DRIFT: "deferred",
+    }
+    """Sole authority mapping one finding class to its report count field.
+
+    Every count writer and validator derives from this map; adding a class
+    member extends this map once, never a second hand-written list.
+    """
 
     @unique
     class CodemodRelocation(StrEnum):

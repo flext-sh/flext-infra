@@ -718,11 +718,9 @@ class FlextInfraUtilitiesRefactor:
                 MutableMapping[c.Infra.ModScanFindingClass, int],
             ]
         ]
-        classified = (
-            report.actionable
-            + report.detection_only
-            + report.non_actionable_with_fix
-            + report.deferred
+        classified = sum(
+            getattr(report, field)
+            for field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.values()
         )
         if classified != report.findings or report.findings != len(report.entries):
             return result_type.fail(
@@ -735,12 +733,8 @@ class FlextInfraUtilitiesRefactor:
         class_totals = Counter(dict.fromkeys(c.Infra.ModScanFindingClass, 0))
         class_totals.update(entry.classification for entry in report.entries)
         expected_class_totals = {
-            c.Infra.ModScanFindingClass.ACTIONABLE: report.actionable,
-            c.Infra.ModScanFindingClass.DETECTION_ONLY: report.detection_only,
-            c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: (
-                report.non_actionable_with_fix
-            ),
-            c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT: report.deferred,
+            member: getattr(report, field)
+            for member, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items()
         }
         if class_totals != expected_class_totals:
             return result_type.fail(

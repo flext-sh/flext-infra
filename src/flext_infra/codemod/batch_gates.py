@@ -623,12 +623,10 @@ class FlextInfraModGateEngine:
         classes = [entry.classification for entry in entries]
         return m.Infra.ModScanReport(
             findings=len(entries),
-            actionable=classes.count(c.Infra.ModScanFindingClass.ACTIONABLE),
-            detection_only=classes.count(c.Infra.ModScanFindingClass.DETECTION_ONLY),
-            non_actionable_with_fix=classes.count(
-                c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX,
-            ),
-            deferred=classes.count(c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT),
+            **{
+                field: classes.count(member)
+                for member, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items()
+            },
             files=frozenset(entry.file for entry in entries),
             entries=entries,
         )
@@ -750,6 +748,11 @@ class FlextInfraModGateEngine:
             )
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure:
+            if not resolved_file.exists():
+                return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
+                    f"finding source vanished during scanning: {resolved_file}",
+                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+                )
             return r[t.Pair[Path, m.Cli.AtomicFileState]].from_failure(observed)
         if observed.value.content != snapshot.content:
             return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
@@ -956,12 +959,10 @@ class FlextInfraModGateEngine:
         return r.ok(
             m.Infra.ModScanReport(
                 findings=len(entries),
-                actionable=counts[c.Infra.ModScanFindingClass.ACTIONABLE],
-                detection_only=counts[c.Infra.ModScanFindingClass.DETECTION_ONLY],
-                non_actionable_with_fix=counts[
-                    c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
-                ],
-                deferred=counts[c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT],
+                **{
+                    field: counts[member]
+                    for member, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items()
+                },
                 files=frozenset(files),
                 entries=tuple(entries),
             ),
