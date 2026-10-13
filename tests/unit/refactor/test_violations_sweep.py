@@ -593,9 +593,14 @@ class TestsFlextInfraRefactorViolationsSweep:
             root, makefile=".PHONY: audit\naudit:\n\t@true\n", local_rule=True
         )
         members = (root / "member-fails", root / "member-passes")
+        layout = u.Infra.layout(root)
+        assert layout is not None
         declarations: list[str] = []
         for member in members:
             tm.ok(u.Cli.ensure_dir(member / c.Infra.DEFAULT_SRC_DIR))
+            package = member / c.Infra.DEFAULT_SRC_DIR / layout.package_name
+            tm.ok(u.Cli.ensure_dir(package))
+            tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
             tm.ok(
                 u.Cli.atomic_write_text_file(
                     member / c.PYPROJECT_FILENAME,

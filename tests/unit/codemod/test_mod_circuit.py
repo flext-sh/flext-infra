@@ -32,6 +32,63 @@ class TestsFlextInfraModCliRoute:
     """
 
     @staticmethod
+    def test_workspace_rule_ownership_matches_member_scan(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Shared scans exempt the declared library owner, never its consumers."""
+        rule_id = "ban-direct-pydantic-import"
+        plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
+        owner_name = tm.not_none(plan.rules[0].owner)
+        owner = u.Tests.mk_project(
+            mod_workspace,
+            owner_name,
+            pyproject=f'[project]\nname = "{owner_name}"\ndependencies = []\n',
+            with_src=True,
+        )
+        consumer = u.Tests.mk_project(
+            mod_workspace,
+            "library-consumer",
+            pyproject='[project]\nname = "library-consumer"\ndependencies = []\n',
+            with_src=True,
+        )
+        for project in (owner, consumer):
+            u.Tests.initialize_git_repo(project)
+            tm.ok(u.Cli.atomic_write_text_file(
+                project / "library_use.py",
+                "from __future__ import annotations\nimport pydantic\n",
+            ))
+        u.Tests.declare_workspace_projects(
+            mod_workspace,
+            (owner.name, consumer.name),
+        )
+        planned = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
+        tm.that(rule_id in planned.project_rule_ids[owner.resolve()], eq=False)
+        tm.that(rule_id in planned.project_rule_ids[consumer.resolve()], eq=True)
+        for root in (mod_workspace, consumer):
+            exit_code = main([
+                "refactor", "ast",
+                "--repository-root", str(root),
+                "--rules", rule_id,
+            ])
+            console = capsys.readouterr()
+            state = tm.ok(u.Cli.atomic_read_binary_file_state(
+                root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
+                required=True,
+            ))
+            evidence = m.Infra.ModScanEvidence.model_validate_json(
+                tm.not_none(state.content),
+            )
+            tm.that(exit_code, ne=0, msg=console.out + console.err)
+            tm.that(evidence.totals_by_repository[consumer.name], eq=1)
+            tm.that(evidence.totals_by_repository.get(owner.name, 0), eq=0)
+            tm.that(
+                any(entry.file == (consumer / "library_use.py").relative_to(root)
+                    for entry in evidence.entries),
+                eq=True,
+            )
+
+    @staticmethod
     def _run_mod_scan(
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],

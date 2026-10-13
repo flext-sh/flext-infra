@@ -482,6 +482,46 @@ class FlextInfraModGateEngine:
         root: Path,
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
+        project_rule_ids: t.MappingKV[Path, t.StrSequence],
+    ) -> m.Infra.ModScanReport:
+        """Evaluate each source against its nearest governed project's plan.
+
+        Returns:
+            Findings admitted by their own project's rules and semantic context.
+        """
+        projects = sorted(
+            project_rule_ids, key=FlextInfraModGateEngine._path_depth, reverse=True
+        )
+        grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
+        for entry in report.entries:
+            source = u.Infra.codemod_source_path(root, entry.file)
+            owner = next(
+                project for project in projects if source.is_relative_to(project)
+            )
+            if entry.rule_id in project_rule_ids[owner]:
+                grouped.setdefault(owner, []).append(
+                    entry.model_copy(update={"file": source})
+                )
+        admitted: list[m.Infra.ModScanFinding] = []
+        for project, entries in grouped.items():
+            selected = FlextInfraModGateEngine._admitted_project(
+                project,
+                FlextInfraModGateEngine.recounted(tuple(entries)),
+                rules_by_id,
+            )
+            admitted.extend(
+                entry.model_copy(
+                    update={"file": entry.file.relative_to(root.resolve())}
+                )
+                for entry in selected.entries
+            )
+        return FlextInfraModGateEngine.recounted(tuple(admitted))
+
+    @staticmethod
+    def _admitted_project(
+        root: Path,
+        report: m.Infra.ModScanReport,
+        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -945,6 +985,7 @@ class FlextInfraModGateEngine:
         rule_files_by_id: t.MappingKV[str, Path],
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         targets: t.StrSequence,
+        project_rule_ids: t.MappingKV[Path, t.StrSequence],
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan one elected ruleset over the governed targets, then admit.
 
@@ -994,7 +1035,9 @@ class FlextInfraModGateEngine:
                 entry.payload.get("severity") == "error" for entry in report.entries
             )
             cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
-        return r[m.Infra.ModScanReport].ok(cls._admitted(root, report, rules_by_id))
+        return r[m.Infra.ModScanReport].ok(
+            cls._admitted(root, report, rules_by_id, project_rule_ids),
+        )
 
     @classmethod
     def scan(
@@ -1038,6 +1081,7 @@ class FlextInfraModGateEngine:
                 rule_files_by_id,
                 rules_by_id,
                 targets,
+                plan.project_rule_ids,
             )
             if ruleset_run.failure:
                 return r[m.Infra.ModScanReport].from_failure(ruleset_run)
@@ -1056,6 +1100,8 @@ class FlextInfraModGateEngine:
                     c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
                 ),
                 scope=targets,
+                repositories=tuple(project.name for project in plan.project_rule_ids),
+                rule_ids=tuple(rules_by_id),
             ),
         )
         if receipt.failure:

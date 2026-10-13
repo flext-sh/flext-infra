@@ -172,6 +172,12 @@ class FlextInfraModelsRefactorGrep:
             t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRuleset],
             m.Field(description="Executable provider configs in precedence order"),
         ]
+        project_rule_ids: Annotated[
+            t.MappingKV[Path, t.StrSequence],
+            m.Field(
+                description="Absolute governed roots and their applicable rule IDs"
+            ),
+        ]
 
     class CodemodProjectFacts(m.ArbitraryTypesModel):
         """Project facts one admission pass reads, built from the current tree.

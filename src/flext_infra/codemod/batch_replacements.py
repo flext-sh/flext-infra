@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -95,6 +96,10 @@ class FlextInfraModReplacements:
                 exact_replacements=exact_replacements,
             )
             if plan.failure:
+                if plan.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                    sys.stderr.write(f"mod: publish deferred drifted source: {path}\n")
+                    sys.stderr.flush()
+                    continue
                 return r[bool].from_failure(plan)
             plans.append(plan.value)
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -135,6 +140,7 @@ class FlextInfraModReplacements:
             ):
                 return r[m.Infra.SemanticFilePlan].fail(
                     f"inconsistent actionable finding source: {path}",
+                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
                 )
             coordinates = cls._finding_replacement(
                 before.content,

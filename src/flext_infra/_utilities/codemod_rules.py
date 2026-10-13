@@ -22,6 +22,7 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesResourceLimits,
 )
 
@@ -45,6 +46,69 @@ class FlextInfraUtilitiesCodemodRules:
         Returns:
             The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
 
+        """
+        plans: list[m.Infra.CodemodRulePlan] = []
+        for project_root in FlextInfraUtilitiesProjectDiscovery.governed_project_roots(
+            root
+        ):
+            planned = cls._project_rule_plan(project_root)
+            if planned.failure:
+                return r[m.Infra.CodemodRulePlan].from_failure(planned)
+            plans.append(planned.value)
+        composed = cls._union_plans(tuple(plans))
+        if composed.failure or rule_ids is None:
+            return composed
+        if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "codemod rule selection requires non-empty exact rule IDs",
+            )
+        selected = frozenset(rule_ids)
+        if len(selected) != len(rule_ids):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "duplicate codemod rule IDs in selection",
+            )
+        plan = composed.value
+        unknown = selected.difference(rule.id for rule in plan.rules)
+        if unknown:
+            return r[m.Infra.CodemodRulePlan].fail(
+                "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
+            )
+        rulesets = tuple(
+            ruleset.model_copy(
+                update={
+                    "rule_ids": tuple(
+                        rule_id for rule_id in ruleset.rule_ids if rule_id in selected
+                    ),
+                    "fixable_rule_ids": tuple(
+                        rule_id
+                        for rule_id in ruleset.fixable_rule_ids
+                        if rule_id in selected
+                    ),
+                }
+            )
+            for ruleset in plan.rulesets
+            if selected.intersection(ruleset.rule_ids)
+        )
+        return r[m.Infra.CodemodRulePlan].ok(
+            plan.model_copy(
+                update={
+                    "provider_order": tuple(ruleset.provider for ruleset in rulesets),
+                    "rules": tuple(rule for rule in plan.rules if rule.id in selected),
+                    "rulesets": rulesets,
+                    "project_rule_ids": {
+                        project: tuple(rule for rule in rules if rule in selected)
+                        for project, rules in plan.project_rule_ids.items()
+                    },
+                }
+            ),
+        )
+
+    @classmethod
+    def _project_rule_plan(cls, root: Path) -> p.Result[m.Infra.CodemodRulePlan]:
+        """Elect providers against one project's declared runtime dependencies.
+
+        Returns:
+            The project's applicable rule plan.
         """
         project = cls.codemod_project_requirements(root)
         if project.failure:
@@ -81,45 +145,60 @@ class FlextInfraUtilitiesCodemodRules:
         local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
         if local_config.is_file():
             providers.append((f"{root_name}:local", local_config))
-        composed = cls._compose(tuple(providers), root_name, runtime_closure)
-        if composed.failure or rule_ids is None:
-            return composed
-        if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
-            return r[m.Infra.CodemodRulePlan].fail(
-                "codemod rule selection requires non-empty exact rule IDs",
-            )
-        selected = frozenset(rule_ids)
-        if len(selected) != len(rule_ids):
-            return r[m.Infra.CodemodRulePlan].fail(
-                "duplicate codemod rule IDs in selection",
-            )
-        plan = composed.value
-        unknown = selected.difference(rule.id for rule in plan.rules)
-        if unknown:
-            return r[m.Infra.CodemodRulePlan].fail(
-                "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
-            )
-        rulesets = tuple(
-            m.Infra.CodemodRuleset(
-                provider=ruleset.provider,
-                config=ruleset.config,
-                rule_ids=tuple(
-                    rule_id for rule_id in ruleset.rule_ids if rule_id in selected
-                ),
-                fixable_rule_ids=tuple(
-                    rule_id
-                    for rule_id in ruleset.fixable_rule_ids
-                    if rule_id in selected
-                ),
-            )
-            for ruleset in plan.rulesets
-            if selected.intersection(ruleset.rule_ids)
-        )
+        return cls._compose(tuple(providers), root_name, runtime_closure, root)
+
+    @staticmethod
+    def _union_plans(
+        plans: t.SequenceOf[m.Infra.CodemodRulePlan],
+    ) -> p.Result[m.Infra.CodemodRulePlan]:
+        """Scan shared catalogs once while retaining each project's election.
+
+        Returns:
+            The conflict-free union with project-specific applicability.
+        """
+        rules: t.MutableMappingKV[str, m.Infra.CodemodRule] = {}
+        rulesets: t.MutableMappingKV[Path, m.Infra.CodemodRuleset] = {}
+        projects: t.MutableMappingKV[Path, t.StrSequence] = {}
+        for plan in plans:
+            projects.update(plan.project_rule_ids)
+            for rule in plan.rules:
+                previous = rules.get(rule.id)
+                if previous is not None and previous.digest != rule.digest:
+                    return r[m.Infra.CodemodRulePlan].fail(
+                        f"conflicting governed codemod rule {rule.id}: "
+                        f"{previous.resource} != {rule.resource}",
+                    )
+                rules.setdefault(rule.id, rule)
+            for ruleset in plan.rulesets:
+                key = ruleset.config.resolve()
+                previous = rulesets.get(key)
+                rulesets[key] = (
+                    ruleset
+                    if previous is None
+                    else previous.model_copy(
+                        update={
+                            "rule_ids": tuple(
+                                dict.fromkeys(
+                                    (*previous.rule_ids, *ruleset.rule_ids),
+                                )
+                            ),
+                            "fixable_rule_ids": tuple(
+                                dict.fromkeys(
+                                    (
+                                        *previous.fixable_rule_ids,
+                                        *ruleset.fixable_rule_ids,
+                                    ),
+                                )
+                            ),
+                        }
+                    )
+                )
         return r[m.Infra.CodemodRulePlan].ok(
             m.Infra.CodemodRulePlan(
-                provider_order=tuple(ruleset.provider for ruleset in rulesets),
-                rules=tuple(rule for rule in plan.rules if rule.id in selected),
-                rulesets=rulesets,
+                provider_order=tuple(ruleset.provider for ruleset in rulesets.values()),
+                rules=tuple(rules.values()),
+                rulesets=tuple(rulesets.values()),
+                project_rule_ids=projects,
             ),
         )
 
@@ -510,6 +589,7 @@ class FlextInfraUtilitiesCodemodRules:
         providers: t.SequenceOf[t.Pair[str, Path]],
         root_name: str,
         runtime_closure: frozenset[str],
+        root: Path,
     ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Elect every provider rule once, honouring each rule's declared scope.
 
@@ -543,6 +623,7 @@ class FlextInfraUtilitiesCodemodRules:
                 provider_order=tuple(provider_order),
                 rules=tuple(selected.values()),
                 rulesets=tuple(rulesets),
+                project_rule_ids={root.resolve(): tuple(selected)},
             ),
         )
 
