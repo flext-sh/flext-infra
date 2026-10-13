@@ -7,9 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from sys import prefix
 from time import monotonic
-from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace import (
@@ -64,7 +62,7 @@ class FlextInfraWorkspaceLifecycle:
         )
         output_dir = root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH.with_suffix("")
         ci = make.ci
-        context: Literal["local", "ci"] = (
+        context: t.Infra.LifecycleContext = (
             "ci" if u.Infra.env_value(ci.variable).strip() == ci.value else "local"
         )
         scoped_members = context == "local"
@@ -73,7 +71,10 @@ class FlextInfraWorkspaceLifecycle:
                 command=command,
                 cwd=root,
                 repository_root=repository,
-                environment_root=Path(prefix).resolve(),
+                environment_root=u.Infra.runtime_environment_dir(
+                    root,
+                    runtime_root=root if context == "ci" else None,
+                ).resolve(),
                 execution_context=context,
                 applicable=(
                     None
@@ -282,6 +283,12 @@ class FlextInfraWorkspaceLifecycle:
                 "before_files": before.value,
                 "after_files": () if after.failure else after.value,
                 "elapsed_seconds": elapsed,
+                "environment_root": u.Infra.runtime_environment_dir(
+                    receipt.cwd,
+                    runtime_root=(
+                        receipt.cwd if receipt.execution_context == "ci" else None
+                    ),
+                ).resolve(),
                 "outcome": outcome,
                 "error": error,
             },

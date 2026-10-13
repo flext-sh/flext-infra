@@ -252,7 +252,20 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class DocsArtifactPlanner(Protocol):
-        """Docs render planner the complete conform transaction publishes."""
+        """Captured scope batches published by the owning docs service."""
+
+        def prepare_batches(
+            self,
+        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+            """Capture the next scope after the preceding batch settles."""
+            ...
+
+        def publish_batch(
+            self,
+            bundle: m.Infra.DocsGenerationBundle,
+        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+            """Admit, publish and settle one captured scope batch."""
+            ...
 
         def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze the configured render and its authenticated inputs."""

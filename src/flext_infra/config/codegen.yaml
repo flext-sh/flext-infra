@@ -561,8 +561,8 @@ Infra:
       violations_sweep_repair_verbs: [ fix, fmt, mod ]
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local, ci ] }
       - { verb: audit, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local ] }
       - { verb: fmt, contexts: [ local ] }
       - { verb: fix, contexts: [ local ] }
       - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }

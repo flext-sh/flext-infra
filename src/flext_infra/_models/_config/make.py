@@ -891,8 +891,11 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(partial_workflow)}"
                 )
                 raise ValueError(msg)
+            producers = {verb.name for verb in self.verbs if verb.produces_activation}
             approval = tuple(
-                step.verb for step in self.workflow if "ci" in step.contexts
+                step.verb
+                for step in self.workflow
+                if "ci" in step.contexts and step.verb not in producers
             )
             if approval != ("setup", "audit", "check", "test", "verify-clean"):
                 msg = "CI requires the setup/audit/check/test/verify-clean workflow"

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 
@@ -79,7 +79,7 @@ class FlextInfraModelsWorkspace:
         ] = None
         environment_root: Annotated[
             Path | None,
-            m.Field(description="Physical interpreter environment observed"),
+            m.Field(description="Target environment resolved by canonical ownership"),
         ] = None
         before_files: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
@@ -103,7 +103,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Observed reason a dependency stays a library"),
         ] = None
         execution_context: Annotated[
-            Literal["local", "ci"] | None,
+            t.Infra.LifecycleContext | None,
             m.Field(
                 description="Declared lifecycle context, absent for other receipts"
             ),
