@@ -165,9 +165,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         names: t.Infra.StrSet,
         gates: t.StrSequence | None,
     ) -> None:
-        """Move named top-level protocol classes into the canonical protocols module.
-
-        """
+        """Move named protocols and their consumers in one protected transaction."""
         source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
         blocks, ranges, moved = (
             FlextInfraUtilitiesRefactorNamespaceMoves._moved_block_facts(
@@ -641,7 +639,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             RuntimeError: If the destination imports conflict.
         """
         source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
-        moved_lines, kept_lines, first_moved_line = cls._split_alias_lines(
+        moved_lines, kept_lines, _first_moved_line = cls._split_alias_lines(
             source.splitlines(),
             alias_names,
         )
@@ -682,11 +680,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             cls._missing_target_imports(
                 cls._deduplicated_imports((
                     *required_imports,
-                    *cls._collect_orphaned_import_lines(
-                        source=source,
-                        kept_source=kept_source,
-                        max_line=first_moved_line,
-                    ),
                     *FlextInfraUtilitiesRefactorNamespaceMoves.collect_missing_runtime_alias_imports(
                         target_source=target_source,
                         blocks=moved_lines,
@@ -931,57 +924,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return [
             f"from {c.Infra.PKG_CORE_UNDERSCORE} import {', '.join(missing_aliases)}",
         ]
-
-    @staticmethod
-    def _collect_orphaned_import_lines(
-        *,
-        source: str,
-        kept_source: str,
-        max_line: int,
-    ) -> t.StrSequence:
-        """Collect orphaned import lines via rope-parsed bodies.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        source_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
-            source_pymodule.get_ast(),
-        )
-        source_lines = source.splitlines()
-        kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
-        kept_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
-            kept_pymodule.get_ast(),
-        )
-        kept_names: set[str] = set()
-        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(kept_ast):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) == "Name":
-                name = getattr(sub, "id", "")
-                if name:
-                    kept_names.add(name)
-        import_lines: t.MutableSequenceOf[str] = []
-        for node in getattr(source_ast, "body", []) or []:
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) not in {
-                "Import",
-                "ImportFrom",
-            }:
-                continue
-            lineno = getattr(node, "lineno", 0)
-            if lineno >= max_line:
-                continue
-            bound_names = {
-                getattr(alias, "asname", None)
-                or getattr(alias, "name", "").split(".", maxsplit=1)[0]
-                for alias in getattr(node, "names", []) or []
-            }
-            if bound_names & kept_names:
-                continue
-            end_lineno = getattr(node, "end_lineno", None) or lineno
-            import_lines.append(
-                "\n".join(source_lines[lineno - 1 : end_lineno]).strip(),
-            )
-        return import_lines
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceMoves"]

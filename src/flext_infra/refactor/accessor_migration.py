@@ -15,7 +15,6 @@ from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraAccessorMigrationRewriteMixin,
-    FlextInfraImportNormalization,
 )
 
 if TYPE_CHECKING:
@@ -107,14 +106,6 @@ class FlextInfraAccessorMigrationOrchestrator(
         if iter_result.failure:
             return r[m.Infra.AccessorMigrationReport].from_failure(iter_result)
         scoped_files = self._scope_selected(iter_result.value)
-        if not self.effective_dry_run:
-            # The same canonical import-form pass fix-namespace and the mod
-            # loop own: a migrated accessor lands in a file whose imports
-            # already hold the canonical forms.
-            FlextInfraImportNormalization.apply_files(
-                self.repository_root,
-                scoped_files,
-            )
         previews: t.MutableSequenceOf[m.Infra.AccessorMigrationFile] = []
         files_with_changes = 0
         automated_change_count = 0

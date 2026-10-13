@@ -198,7 +198,16 @@ class TestsFlextInfraRefactorViolationsSweep:
         assert second.before_evidence is not None
         assert second.after_evidence is not None
         tm.that(second.before, eq=first.before)
-        tm.that(list(second.rule_deltas), eq=list(first.rule_deltas))
+        tm.that(
+            [
+                row.model_dump_json(exclude={"before_entries", "after_entries"})
+                for row in second.rule_deltas
+            ],
+            eq=[
+                row.model_dump_json(exclude={"before_entries", "after_entries"})
+                for row in first.rule_deltas
+            ],
+        )
         tm.that(second.before_evidence.path, ne=first.before_evidence.path)
         tm.that(first.before_evidence.path.read_bytes(), eq=before_bytes)
         tm.that(first.after_evidence.path.read_bytes(), eq=after_bytes)

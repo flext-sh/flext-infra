@@ -1,17 +1,28 @@
 id: ban-config-own-letter-import
 snapshots:
   ? |
+    def load() -> None:
+        from ai_hub import config
+  : labels:
+    - source: config
+      style: primary
+      start: 43
+      end: 49
+    - source: ai_hub
+      style: secondary
+      start: 29
+      end: 35
+    - source: from ai_hub import config
+      style: secondary
+      start: 24
+      end: 49
+  ? |
     from ai_hub import config
   : labels:
     - source: config
       style: primary
       start: 19
       end: 25
-    - source: |
-        from ai_hub import config
-      style: secondary
-      start: 0
-      end: 26
     - source: ai_hub
       style: secondary
       start: 5
@@ -21,17 +32,27 @@ snapshots:
       start: 0
       end: 25
   ? |
+    from ai_hub import config as aliased
+  : labels:
+    - source: config
+      style: primary
+      start: 19
+      end: 25
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import config as aliased
+      style: secondary
+      start: 0
+      end: 36
+  ? |
     from ai_hub import config, m
   : labels:
     - source: config
       style: primary
       start: 19
       end: 25
-    - source: |
-        from ai_hub import config, m
-      style: secondary
-      start: 0
-      end: 29
     - source: ai_hub
       style: secondary
       start: 5
@@ -40,6 +61,23 @@ snapshots:
       style: secondary
       start: 0
       end: 28
+  ? |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import config
+  : labels:
+    - source: config
+      style: primary
+      start: 74
+      end: 80
+    - source: ai_hub
+      style: secondary
+      start: 60
+      end: 66
+    - source: from ai_hub import config
+      style: secondary
+      start: 55
+      end: 80
   ? |
     import ai_hub.config
   : labels:
