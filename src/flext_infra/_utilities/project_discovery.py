@@ -367,8 +367,10 @@ class FlextInfraUtilitiesProjectDiscovery(
                 for path in source_files
             }
             if not selected or selected - eligible:
-                msg = (f"native source scope is outside governed inventory: "
-                       f"{sorted(selected - eligible)}")
+                msg = (
+                    f"native source scope is outside governed inventory: "
+                    f"{sorted(selected - eligible)}"
+                )
                 raise ValueError(msg)
             eligible.intersection_update(selected)
         return tuple(sorted(eligible))

@@ -81,7 +81,7 @@ class FlextInfraConfigModelsProvider:
             m.Field(
                 default=None,
                 description="Explicit host coordination SSOT, unavailable when "
-                            "undeclared",
+                "undeclared",
             ),
         ]
         ci_trigger_branches: Annotated[

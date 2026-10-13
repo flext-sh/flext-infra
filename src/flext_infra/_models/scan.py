@@ -258,7 +258,7 @@ class FlextInfraModelsScan:
             tuple[m.Cli.AtomicFileState, ...] | None,
             m.Field(
                 description="Complete authenticated scan inventory, including zero "
-                            "findings"
+                "findings"
             ),
         ] = None
         files: Annotated[

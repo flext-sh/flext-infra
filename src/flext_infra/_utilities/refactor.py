@@ -105,8 +105,10 @@ class FlextInfraUtilitiesRefactor:
                         entry.source_state is None
                         or indexed.get(entry.source_state.path) != entry.source_state
                     ):
-                        msg = (f"finding differs from complete scan inventory: "
-                               f"{entry.file}")
+                        msg = (
+                            f"finding differs from complete scan inventory: "
+                            f"{entry.file}"
+                        )
                         raise ValueError(msg)
                 sources.append(indexed)
             for receipt in publication_chain:
@@ -149,14 +151,18 @@ class FlextInfraUtilitiesRefactor:
         proven: set[tuple[str, str]] = set()
         topology = sorted(projects, key=lambda item: len(item.parts), reverse=True)
         counters: t.ListOf[
-            t.MutableMappingKV[t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]]
+            t.MutableMappingKV[
+                t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
+            ]
         ] = []
         indexes: t.ListOf[t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]]] = []
         for report in (before, after):
             occurrences: t.MutableMappingKV[
                 t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
             ] = defaultdict(Counter)
-            positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = defaultdict(list)
+            positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = (
+                defaultdict(list)
+            )
             for index, entry in enumerate(report.entries):
                 if isinstance(entry, m.Infra.ModScanFinding):
                     repository = entry.repository

@@ -167,8 +167,10 @@ class FlextInfraUtilitiesRepository:
             return r[t.StrSequence].ok(())
         source[reference_key] = migration.target_ref
         return r[t.StrSequence].ok((
-            (f"Git {reference_key} {migration.source_ref} -> {migration.target_ref}: "
-            f"{name}"),
+            (
+                f"Git {reference_key} {migration.source_ref} -> {migration.target_ref}: "
+                f"{name}"
+            ),
         ))
 
     @staticmethod

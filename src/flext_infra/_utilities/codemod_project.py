@@ -991,7 +991,9 @@ class FlextInfraUtilitiesCodemodProject(
                 root,
                 file_path,
             )
-            layout = FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+            layout = (
+                FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+            )
             return (
                 layout is not None
                 and (layout.package_dir / f"{leaf}{c.Infra.EXT_PYTHON}").is_file()
