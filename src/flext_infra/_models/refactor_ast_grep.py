@@ -80,6 +80,20 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
+    class CodemodEnsureImport(m.ArbitraryTypesModel):
+        """One module import a rule's applied rewrites require in the file."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Dotted module path the name must be bound from"),
+        ]
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Top-level name the applied rewrite references"),
+        ]
+
     class CodemodRule(m.ArbitraryTypesModel):
         """One validated ast-grep rule document from a composed provider."""
 
@@ -154,6 +168,15 @@ class FlextInfraModelsRefactorGrep:
                 ),
             ),
         ] = ()
+        ensure_imports: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodEnsureImport],
+            m.Field(
+                description=(
+                    "Module imports every applied rewrite of this rule requires "
+                    "in the rewritten file; empty when the fix is self-contained"
+                ),
+            ),
+        ] = ()
 
     class CodemodRuleset(m.ArbitraryTypesModel):
         """One provider config and its elected, conflict-free rule IDs."""
@@ -219,6 +242,14 @@ class FlextInfraModelsRefactorGrep:
         predicates: Annotated[
             frozenset[c.Infra.CodemodContextPredicate],
             m.Field(description="Context predicates these facts were built for"),
+        ]
+        binding_rule_ids: Annotated[
+            frozenset[str],
+            m.Field(description="Elected rules requiring occurrence source proof"),
+        ]
+        binding_modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Elected semantic owner modules"),
         ]
         import_graph: Annotated[
             t.MappingKV[str, frozenset[str]],

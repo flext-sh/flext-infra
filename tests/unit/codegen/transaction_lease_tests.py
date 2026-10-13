@@ -59,7 +59,6 @@ class TestsFlextInfraTransactionLease:
         output = tm.ok(
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(tmp_path)),
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(
@@ -135,7 +134,6 @@ class TestsFlextInfraTransactionLease:
         outcome = tm.ok(
             u.Cli.run_raw(
                 [sys.executable, "-c", script, str(root)],
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(

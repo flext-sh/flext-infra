@@ -122,16 +122,21 @@ class FlextInfraUtilitiesCodemodRules:
         # the provider's own home repository included. Runtime scope is
         # consumer-targeting (see the provider sgconfig contract), so a
         # distribution never elects itself through its consumers' graph.
-        universal = cls._providers(
+        universal_result = cls._providers(
             discovered,
             scope=c.Infra.CODEMOD_SCOPE_UNIVERSAL,
             selected=frozenset(indexed),
         )
-        runtime = cls._providers(
+        if universal_result.failure:
+            return r[m.Infra.CodemodRulePlan].from_failure(universal_result)
+        runtime_result = cls._providers(
             discovered,
             scope=c.Infra.CODEMOD_SCOPE_RUNTIME,
             selected=runtime_closure.difference({root_name}),
         )
+        if runtime_result.failure:
+            return r[m.Infra.CodemodRulePlan].from_failure(runtime_result)
+        universal, runtime = universal_result.value, runtime_result.value
         universal_order = cls._provider_order(universal, indexed)
         runtime_order = cls._provider_order(runtime, indexed)
         providers: list[t.Pair[str, Path]] = []
@@ -398,7 +403,7 @@ class FlextInfraUtilitiesCodemodRules:
         *,
         scope: str,
         selected: frozenset[str],
-    ) -> MutableMapping[str, Path]:
+    ) -> p.Result[t.MappingKV[str, Path]]:
 
         providers: MutableMapping[str, Path] = {}
         for name in sorted(selected):
@@ -407,12 +412,10 @@ class FlextInfraUtilitiesCodemodRules:
                 continue
             declared_scope = cls._config_scope(provider_config)
             if declared_scope.failure:
-                raise ValueError(
-                    declared_scope.error or f"resolve codemod scope: {provider_config}",
-                )
+                return r[t.MappingKV[str, Path]].from_failure(declared_scope)
             if declared_scope.value == scope:
                 providers[name] = provider_config
-        return providers
+        return r[t.MappingKV[str, Path]].ok(providers)
 
     @classmethod
     def _provider_order(
@@ -837,6 +840,11 @@ class FlextInfraUtilitiesCodemodRules:
         )
         if context.failure:
             return r[m.Infra.CodemodRule].fail(f"{context.error}: {resource}")
+        ensure_imports = cls._declared_ensure_imports(
+            declared_metadata.get(c.Infra.CODEMOD_RULE_ENSURE_IMPORTS_KEY),
+        )
+        if ensure_imports.failure:
+            return r[m.Infra.CodemodRule].fail(f"{ensure_imports.error}: {resource}")
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")
@@ -884,8 +892,56 @@ class FlextInfraUtilitiesCodemodRules:
                     c.Infra.CODEMOD_RULE_RELOCATION_KEY,
                 ),
                 "context": context.value,
+                "ensure_imports": ensure_imports.value,
             }),
         )
+
+    @classmethod
+    def _declared_ensure_imports(
+        cls,
+        declared: object,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]:
+        """Validate the rule's declared required module imports.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]``.
+
+        """
+        if declared is None:
+            return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].ok(value=())
+        if not isinstance(declared, Sequence) or isinstance(declared, str):
+            return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                f"ensure-imports must be a list of {{module, name}} mappings, "
+                f"got {type(declared).__name__}",
+            )
+        entries: list[m.Infra.CodemodEnsureImport] = []
+        for item in declared:
+            if not isinstance(item, Mapping):
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    f"ensure-imports entry must be a {{module, name}} mapping, "
+                    f"got {type(item).__name__}",
+                )
+            unknown = sorted(set(item) - {"module", "name"})
+            if unknown:
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    f"ensure-imports entry has unknown keys {unknown}",
+                )
+            module = item.get("module")
+            name = item.get("name")
+            if not isinstance(module, str) or not module.strip():
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    "ensure-imports entry requires a non-empty module",
+                )
+            if not isinstance(name, str) or not name.strip():
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    "ensure-imports entry requires a non-empty name",
+                )
+            model = m.Infra.CodemodEnsureImport.model_validate({
+                "module": module,
+                "name": name,
+            })
+            entries.append(model)
+        return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].ok(value=tuple(entries))
 
     @classmethod
     def _parse_rules(

@@ -222,6 +222,14 @@ class FlextInfraConstantsRefactor:
 
         ``later-layer`` compares with the layer the rule names in ``arg`` when
         it names one.
+
+        ``compose-module`` (the family-shape amendment): the captured dotted
+        module is exactly ``<package>.<leaf>`` where ``leaf`` is one of the
+        canonical public family compose modules (``FAMILY_COMPOSE_MODULES``).
+        For the own package the leaf module file must exist beside the
+        package's private family packages; for a foreign package the module
+        must belong to the project's runtime closure, where the family shape
+        is the fleet-wide contract the compose modules implement.
         """
 
         STDLIB_MODULE = "stdlib-module"
@@ -243,6 +251,7 @@ class FlextInfraConstantsRefactor:
         FAMILY_BASE = "family-base"
         FAMILY_BASE_FILE = "family-base-file"
         LAYER_ZERO_FILE = "layer-zero-file"
+        COMPOSE_MODULE = "compose-module"
         PAYLOAD_DECLARATION = "payload-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"
@@ -254,9 +263,19 @@ class FlextInfraConstantsRefactor:
         frozenset({
             CodemodContextPredicate.RUNTIME_PACKAGE,
             CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.COMPOSE_MODULE,
         })
     )
     "Predicates evaluated against the project's runtime dependency closure."
+
+    FAMILY_COMPOSE_MODULES: ClassVar[t.StrSequence] = (
+        "constants",
+        "models",
+        "protocols",
+        "typings",
+        "utilities",
+    )
+    "Public family compose module leaves the family-shape amendment sanctions."
 
     CODEMOD_PACKAGE_CONTEXT_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({
@@ -266,6 +285,7 @@ class FlextInfraConstantsRefactor:
             CodemodContextPredicate.FACADE_PACKAGE,
             CodemodContextPredicate.RUNTIME_ALIAS,
             CodemodContextPredicate.LOCAL_ALIAS,
+            CodemodContextPredicate.COMPOSE_MODULE,
         })
     )
     "Package predicates consume one declared namespace per admission pass."
@@ -370,6 +390,11 @@ class FlextInfraConstantsRefactor:
     # metavariable, the context predicate the engine checks on each finding
     # (`metadata.context: {VAR: {is|not: predicate}}`).
     CODEMOD_RULE_CONTEXT_KEY: ClassVar[str] = "context"
+    # A rule whose applied rewrites reference names the rewritten file must
+    # bind declares them under `metadata.ensure-imports` as
+    # `[{module: <dotted module>, name: <top-level name>}]`; the publisher
+    # completes the module imports after the fix bytes are applied.
+    CODEMOD_RULE_ENSURE_IMPORTS_KEY: ClassVar[str] = "ensure-imports"
     CODEMOD_CONTEXT_HOLDS_KEY: ClassVar[str] = "is"
     CODEMOD_CONTEXT_FAILS_KEY: ClassVar[str] = "not"
     CODEMOD_CONTEXT_OF_KEY: ClassVar[str] = "of"

@@ -26,6 +26,9 @@ class TestsFlextInfraBatchReplacements:
         content: bytes,
         *,
         generated: bool = False,
+        replacement: bytes = b"after",
+        matched: bytes = b"before",
+        rule_id: str = "fixture-rewrite",
     ) -> m.Infra.ModScanReport:
         policy = path.parent / "pyproject.toml"
         if not policy.exists():
@@ -35,18 +38,18 @@ class TestsFlextInfraBatchReplacements:
             )
         path.write_bytes(content)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-        start = content.index(b"before")
-        offsets: t.JsonDict = {"start": start, "end": start + len(b"before")}
+        start = content.index(matched)
+        offsets: t.JsonDict = {"start": start, "end": start + len(matched)}
         finding = m.Infra.ModScanFinding(
             rule_file=str(path.parent / "rule.yaml"),
-            rule_id="fixture-rewrite",
+            rule_id=rule_id,
             repository=path.parent.name,
             file=path,
             source_owner="generator" if generated else "authored",
             source_state=state,
             range={"byteOffset": offsets},
-            text="before",
-            replacement="after",
+            text=matched.decode(),
+            replacement=replacement.decode(),
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
             payload={"replacementOffsets": offsets, "severity": "error"},
@@ -194,9 +197,18 @@ class TestsFlextInfraBatchReplacements:
         )
         tm.that(receipt.command, eq=c.Infra.ModScanCommand.APPLY)
         tm.that(receipt.totals_by_rule[rule_id], eq=2)
+        expected = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                applied,
+                publication=m.Infra.ModScanPublication(
+                    command=receipt.command, scope=receipt.scope
+                ),
+            )
+        ).evidence
         tm.that(
             tuple(entry for entry in receipt.entries if entry.rule_id == rule_id),
-            eq=entries,
+            eq=tuple(entry for entry in expected.entries if entry.rule_id == rule_id),
         )
         authored = mod_workspace / "authored.py"
         generated = mod_workspace / "generated.py"
@@ -369,3 +381,32 @@ class TestsFlextInfraBatchReplacements:
             path.read_bytes(),
             eq=b'"""Demo."""\n\n\ndef t() -> None:\n    assert True\n',
         )
+
+    @pytest.mark.parametrize(
+        ("replacement", "accepted"),
+        [
+            (b"from pathlib import Path\nvalue = Path('after')", True),
+            (b"value = Path('after')", False),
+        ],
+    )
+    def test_candidate_owns_its_import_bindings(
+        self, tmp_path: Path, replacement: bytes, *, accepted: bool
+    ) -> None:
+        """Publish complete imports; reject unbound names without invented bindings."""
+        root = u.Tests.git_repository(tmp_path)
+        path = root / "subject.py"
+        original = b'value = "before"\n'
+        report = self._report(
+            path, original, matched=original.strip(), replacement=replacement
+        )
+        result = FlextInfraModReplacements.publish(root, report)
+        tm.that(result.success, eq=accepted)
+        if not accepted:
+            tm.that(result.error, has="F821")
+            tm.that(path.read_bytes(), eq=original)
+            return
+        published = path.read_bytes()
+        tm.that(published.count(b"from pathlib import Path"), eq=1)
+        tm.ok(u.Cli.run([sys.executable, "-I", str(path)]))
+        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.that(path.read_bytes(), eq=published)

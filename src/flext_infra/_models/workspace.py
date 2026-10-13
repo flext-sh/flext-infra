@@ -85,7 +85,7 @@ class FlextInfraModelsWorkspace:
             int | None,
             m.Field(
                 description="Observed shell exit status; absent for in-process "
-                            "operations"
+                "operations"
             ),
         ] = None
         stage: Annotated[
@@ -160,7 +160,7 @@ class FlextInfraModelsWorkspace:
             m.Field(
                 pattern=c.Infra.GIT_COMMIT_OID_RE.pattern,
                 description="Observed Git candidate; absent when no candidate could be "
-                            "read",
+                "read",
             ),
         ] = None
         candidate_read_exit_code: Annotated[

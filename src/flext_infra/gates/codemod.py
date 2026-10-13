@@ -175,12 +175,11 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 break
             facts = u.Infra.codemod_project_facts(
                 project_dir,
-                tuple(rules_by_id[finding.rule_id] for finding in report.root),
-            )
-            binding_ids, binding_modules = u.Infra.codemod_binding_requirements(
                 tuple(
                     rules_by_id[rule_id]
-                    for rule_id in sorted({finding.rule_id for finding in report.root})
+                    for rule_id in dict.fromkeys(
+                        finding.rule_id for finding in report.root
+                    )
                 ),
             )
             snapshot = (
@@ -194,12 +193,12 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         for path in dict.fromkeys(
                             u.Infra.codemod_source_path(project_dir, Path(finding.file))
                             for finding in report.root
-                            if finding.rule_id in binding_ids
+                            if finding.rule_id in facts.binding_rule_ids
                         )
                     ),
-                    binding_modules,
+                    facts.binding_modules,
                 )
-                if binding_ids
+                if facts.binding_rule_ids
                 else m.Infra.CodemodBindingSnapshot(states=())
             )
             with u.Infra.codemod_binding_project(project_dir, snapshot) as (

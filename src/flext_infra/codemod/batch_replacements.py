@@ -76,6 +76,10 @@ class FlextInfraModReplacements:
     ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
 
+        Args:
+            root: Repository root the finding paths are relative to.
+            report: The scanned findings whose actionable fixes publish.
+
         Returns:
             The resulting ``p.Result[bool]``.
 

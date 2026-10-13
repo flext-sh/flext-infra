@@ -116,51 +116,24 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
     return u.Tests.tool_config_document()
 
 
-_DETECTOR_PROJECT_NAME = "detector-fixture"
-_DETECTOR_UPGRADE_RECEIPT = "upgrade-receipt.json"
+_CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
 
 
-def _detector_template_parent(run_root: Path, modules: t.StrSequence) -> Path:
-    """Return the run-scoped home of one resolved detector consumer.
+def _provision_consumer_template(parent: Path) -> Path:
+    """Upgrade and set up the shared worker consumer once through real Make.
 
-    The pytest invocation's temporary root is shared by every worker of one
-    run and removed with it, so each run resolves its own environment once.
+    The installed session owner keeps this physical checkout at a stable path,
+    preserving its editable source binding while restoring each case's data.
 
     Returns:
-        The run-scoped home of one resolved detector consumer.
-
+        The provisioned consumer with committed locks and a physical environment.
     """
-    return run_root / "detector-templates" / "-".join(modules)
-
-
-def _provision_detector_template(run_root: Path, modules: t.StrSequence) -> None:
-    """Resolve the detector consumer using the shared locked-template lifecycle."""
-    _provision_consumer_template(
-        _detector_template_parent(run_root, modules),
-        modules,
-        distribution=_DETECTOR_PROJECT_NAME,
-    )
-
-
-def _provision_consumer_template(
-    parent: Path,
-    modules: t.StrSequence,
-    *,
-    distribution: str,
-) -> None:
-    """Resolve one declared consumer through ``make upg`` and commit its locks.
-
-    ``make upg`` is the sole writer of a new consumer's locks; it resolves over
-    the network, so it runs once per run and dependency set when first consumed.
-    The command output is kept as the receipt every consumer asserts.
-    """
-    distributions = {"requests": "requests", "pytz": "pytz", "six": "six"}
+    distribution = "flext-demo"
+    modules = c.Tests.CONSUMER_MODULES
     # A governed FLEXT consumer declares exactly one runtime upstream profile;
     # conform derives its project spec from it (context_render.py).
     upstream = u.Tests.flext_source("flext-core")
-    dependencies = ", ".join(
-        f'"{name}"' for name in (upstream, *(distributions[name] for name in modules))
-    )
+    dependencies = ", ".join(f'"{name}"' for name in (upstream, *modules))
     infrastructure = tm.ok(
         u.Infra.configured_repository_ref(
             codegen=config.Infra.codegen,
@@ -246,18 +219,31 @@ def _provision_consumer_template(
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
-    upgrade = tm.ok(
-        u.Tests.run_isolated_make(
-            ["upg"],
-            cwd=root,
-            env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
-            capture=False,
-        ),
-    )
-    if u.Cli.process_succeeded(upgrade.outcome):
-        u.Tests.git_bootstrap(root, ("add", "-A"))
-        u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
-    _write_receipt(parent / _DETECTOR_UPGRADE_RECEIPT, upgrade)
+    for verb, receipt in (
+        ("upg", _CONSUMER_UPGRADE_RECEIPT),
+        ("setup", _INFRA_SETUP_RECEIPT),
+    ):
+        output = tm.ok(
+            u.Tests.run_isolated_make(
+                [verb],
+                cwd=root,
+                env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+                capture=False,
+            ),
+        )
+        _write_receipt(parent / receipt, output)
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+        if verb == "upg":
+            u.Tests.git_bootstrap(root, ("add", "-A"))
+            u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
+    environment = u.Infra.runtime_environment_dir(root)
+    tm.that(environment.is_symlink(), eq=False)
+    tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+    return root
 
 
 _MAKE_UPGRADE_RECEIPT = c.Tests.MAKE_TEMPLATE_UPG_RECEIPT
@@ -377,7 +363,7 @@ def _ensure_provisioned(
     run_root: Path,
     parent: Path,
     receipt: str,
-    key: c.Infra.MakeProfile | str | t.StrSequence,
+    key: c.Infra.MakeProfile | str,
 ) -> None:
     """Provision only a consumed fixture under the canonical filesystem lease.
 
@@ -394,8 +380,6 @@ def _ensure_provisioned(
                 _provision_make_template(run_root, key)
             case str():
                 _provision_infra_checkout(run_root, key)
-            case _:
-                _provision_detector_template(run_root, key)
 
 
 @pytest.fixture
@@ -503,82 +487,64 @@ def provisioned_infra_checkout(
     return scenario, root
 
 
-@pytest.fixture(params=[("requests",)])
+@pytest.fixture(params=c.Tests.DETECTOR_MODULE_SCENARIOS[:1])
 def real_detector_project(
-    tmp_path: Path,
     request: pytest.FixtureRequest,
-    tmp_path_factory: pytest.TempPathFactory,
-) -> Path:
-    """Check out the run's resolved detector consumer and set it up from its locks.
+    session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease the worker consumer with case-local declarations and environment state.
 
-    The consumer clones the committed template exactly as a developer clones a
-    reviewed repository, then ``make setup`` provisions its own environment
-    from the committed locks without resolving anything new.
-
-    Returns:
-        The resulting ``Path``.
-
+    Yields:
+        The shared physical checkout restored after dependency mutation.
     """
     modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
-    run_root = _run_root(tmp_path_factory)
-    parent = _detector_template_parent(run_root, modules)
-    _ensure_provisioned(run_root, parent, _DETECTOR_UPGRADE_RECEIPT, modules)
-    upgrade = m.Cli.CommandOutput.model_validate_json(
-        (parent / _DETECTOR_UPGRADE_RECEIPT).read_text(encoding="utf-8"),
-    )
-    tm.that(u.Cli.process_succeeded(upgrade.outcome), eq=True, msg=upgrade.stderr)
-    root = u.Tests.provision_locked_project_checkout(
-        parent / _DETECTOR_PROJECT_NAME,
-        tmp_path / _DETECTOR_PROJECT_NAME,
-        origin_url=u.Tests.repository_ref(
-            _DETECTOR_PROJECT_NAME,
-            role=c.Infra.MakeProfile.STANDALONE,
-        ).url,
-    )
-    runtime = u.Infra.runtime_environment_dir(root)
-    executable = c.Infra.DEPTRY + (".exe" if os.name == "nt" else "")
-    tool_path = runtime / ("Scripts" if os.name == "nt" else "bin") / executable
-    tm.that(tool_path.is_file(), eq=True)
-    (root / "limits.toml").write_text(
-        "[typing_libraries]\nexclude = []\n",
-        encoding="utf-8",
-    )
-    return root
+    with session_runtime.lease(
+        _provision_consumer_template, mutable_environment=True
+    ) as root:
+        manifest = root / c.PYPROJECT_FILENAME
+        payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
+        project = u.Tests.toml_mapping(payload["project"])
+        dependencies = [
+            requirement
+            for requirement in u.Tests.toml_strings(project["dependencies"])
+            if (name := u.Infra.dep_name(requirement)) not in c.Tests.CONSUMER_MODULES
+            or name in modules
+        ]
+        tm.ok(
+            u.Cli.toml_write_mapping(
+                manifest,
+                {**payload, "project": {**project, "dependencies": dependencies}},
+            )
+        )
+        (root / "src" / root.name.replace("-", "_") / "__init__.py").write_text(
+            "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+            encoding="utf-8",
+        )
+        runtime = u.Infra.runtime_environment_dir(root)
+        executable = c.Infra.DEPTRY + (".exe" if os.name == "nt" else "")
+        tm.that(
+            (
+                runtime / ("Scripts" if os.name == "nt" else "bin") / executable
+            ).is_file(),
+            eq=True,
+        )
+        (root / "limits.toml").write_text(
+            "[typing_libraries]\nexclude = []\n", encoding="utf-8"
+        )
+        yield root
 
 
 @pytest.fixture
 def duplicate_project(
-    tmp_path: Path,
-    tmp_path_factory: pytest.TempPathFactory,
-) -> Path:
-    """Prepare a duplicate-cure consumer from one run-scoped resolved template.
+    session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease isolated case sources in the worker's once-provisioned consumer.
 
-    Returns:
-        A physical checkout with its declared dependencies and managed tools.
+    Yields:
+        The stable editable checkout with case-local source, Git and report state.
     """
-    distribution = "flext-demo"
-    parent = _run_scoped(
-        _run_root(tmp_path_factory), "consumer-templates", distribution
-    )
-    parent.mkdir(parents=True, exist_ok=True)
-    receipt = parent / _DETECTOR_UPGRADE_RECEIPT
-    with u.Infra.codegen_transaction_lease(receipt):
-        if not receipt.is_file():
-            _provision_consumer_template(parent, (), distribution=distribution)
-    upgrade = u.Tests.command_receipt(receipt)
-    tm.that(
-        u.Cli.process_succeeded(upgrade.outcome),
-        eq=True,
-        msg=upgrade.stdout + upgrade.stderr,
-    )
-    return u.Tests.provision_locked_project_checkout(
-        parent / distribution,
-        tmp_path / distribution,
-        origin_url=u.Tests.repository_ref(
-            distribution,
-            role=c.Infra.MakeProfile.STANDALONE,
-        ).url,
-    )
+    with session_runtime.lease(_provision_consumer_template) as root:
+        yield root
 
 
 @pytest.fixture

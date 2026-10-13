@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING
 
 from flext_infra import m, r, u
 from flext_infra.codegen import (
-    FlextInfraMiseArtifactsFiles as files,
-    FlextInfraMiseArtifactsJournal as journal_io,
-    FlextInfraMiseArtifactsState as state,
-    FlextInfraMiseArtifactsVerification as verify,
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
 )
 
 if TYPE_CHECKING:
@@ -35,10 +35,12 @@ class FlextInfraMiseRecovery:
         Returns:
             The cleanup outcome, preserving its original failure.
         """
-        topology = verify.journal_topology(layout, journal)
+        topology = FlextInfraMiseArtifactsVerification.journal_topology(layout, journal)
         if topology.failure:
             return topology
-        authorized = state.validate_transaction_roots(layout, journal)
+        authorized = FlextInfraMiseArtifactsState.validate_transaction_roots(
+            layout, journal
+        )
         if authorized.failure:
             return authorized
         if journal.state == "prepared":
@@ -64,14 +66,16 @@ class FlextInfraMiseRecovery:
                         ),
                     }
                 )
-                persisted = journal_io.write(layout, journal, expected=journal_state)
+                persisted = FlextInfraMiseArtifactsJournal.write(
+                    layout, journal, expected=journal_state
+                )
                 if persisted.failure:
                     return r[bool].from_failure(persisted)
                 journal_state = persisted.value
                 recovered = FlextInfraMiseRecovery.restore_groups(layout, journal)
                 if recovered.failure:
                     return recovered
-        return journal_io.cleanup(layout, journal, journal_state)
+        return FlextInfraMiseArtifactsJournal.cleanup(layout, journal, journal_state)
 
     @staticmethod
     def restore_groups(
@@ -104,19 +108,21 @@ class FlextInfraMiseRecovery:
         Returns:
             Whether this authenticated destination required compensation.
         """
-        path = files.resolve_transaction(
+        path = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout, entry.path, purpose="dependent-group recovery"
         )
         if path.failure:
             return r[bool].from_failure(path)
-        observed = files.read_state(path.value, required=False)
+        observed = FlextInfraMiseArtifactsFiles.read_state(path.value, required=False)
         if observed.failure:
             return r[bool].from_failure(observed)
         current = observed.value
         identity = (
             current.parent_device,
             current.parent_inode,
-            files.digest(current.content) if current.content is not None else None,
+            FlextInfraMiseArtifactsFiles.digest(current.content)
+            if current.content is not None
+            else None,
             current.mode,
             current.device,
             current.inode,
@@ -157,7 +163,7 @@ class FlextInfraMiseRecovery:
                     if entry.group_admitted
                     else r[bool].ok(value=False)
                 )
-            return files.delete_state(current)
+            return FlextInfraMiseArtifactsFiles.delete_state(current)
         return FlextInfraMiseRecovery._restore_original(
             layout,
             journal,
@@ -182,7 +188,7 @@ class FlextInfraMiseRecovery:
         """
         if entry.original_staging is None or entry.original_content_hex is None:
             return r[bool].fail(f"group preimage missing: {entry.path}")
-        backup_path = files.resolve_transaction(
+        backup_path = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout, entry.original_staging, purpose="group preimage"
         )
         if backup_path.failure:
@@ -208,7 +214,9 @@ class FlextInfraMiseRecovery:
             current.device,
             current.inode,
             current.mode,
-            files.digest(current.content) if current.content is not None else None,
+            FlextInfraMiseArtifactsFiles.digest(current.content)
+            if current.content is not None
+            else None,
             current.link_count,
             current.file_attributes,
             current.reparse_tag,
@@ -256,7 +264,7 @@ class FlextInfraMiseRecovery:
         Returns:
             The authenticated physical preimage snapshot.
         """
-        backup = files.read_state(path, required=True)
+        backup = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
         if backup.failure:
             return r[m.Cli.AtomicFileState].from_failure(backup)
         preimage = backup.value
@@ -271,7 +279,7 @@ class FlextInfraMiseRecovery:
                 preimage.device,
                 preimage.inode,
                 preimage.mode,
-                files.digest(preimage.content)
+                FlextInfraMiseArtifactsFiles.digest(preimage.content)
                 if preimage.content is not None
                 else None,
                 preimage.link_count,

@@ -350,6 +350,14 @@ message: >-
 # `c.Infra.LAZY_BOOTSTRAP_MODULE` (flext-infra
 # src/flext_infra/_constants/codegen_lazy.py, value "flext_core.lazy");
 # change the two together.
+#
+# Family-shape amendment (cosmos-h5y3o): the package's public family compose
+# modules (`<facade-package>.{constants,models,protocols,typings,utilities}`
+# — the compose-module context) are the sanctioned static import surface a
+# consumer may reach below the root: the compose classes are the only form
+# the type checkers resolve through the generated lazy root, and the lazy
+# root keeps re-exporting them for runtime. Every other submodule path stays
+# banned.
 id: ban-consumer-submodule-import
 language: python
 severity: error
@@ -364,6 +372,7 @@ metadata:
     MODULE:
       - not: own-package
       - is: facade-package
+      - not: compose-module
     NAME:
       not: runtime-alias
       of: MODULE

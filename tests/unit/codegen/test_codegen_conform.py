@@ -427,7 +427,7 @@ class TestsFlextInfraCodegenConform:
         ]
         tm.that(
             addopts,
-            has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+            eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
         )
 
     @staticmethod
@@ -757,8 +757,7 @@ class TestsFlextInfraCodegenConform:
             lacks="scripts",
         )
 
-    # Why (suite budget): two conform apply cycles plus a check over a full
-    # managed tree on a real git repo; the per-case wall only holds idle.
+    # Two conform apply cycles plus a check exercise the slow integration harness.
     @staticmethod
     @pytest.mark.slow
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
@@ -869,9 +868,7 @@ class TestsFlextInfraCodegenConform:
             u.Tests.codegen_file_text(second_pyproject),
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
-        tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
-        tm.that(addopts, lacks="--session-timeout")
-        tm.that(set(addopts) >= set(pytest_policy.standard_addopts), eq=True)
+        tm.that(addopts, eq=list(pytest_policy.standard_addopts))
         tm.that(report, lacks="fail_under")
 
     @staticmethod

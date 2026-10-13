@@ -355,6 +355,7 @@ class FlextInfraUtilitiesCodemodProject(
         modules: t.MappingKV[Path, str] = {}
         if c.Infra.CodemodContextPredicate.IMPORT_CYCLE in predicates:
             graph, modules = cls.project_import_graph(resolved)
+        binding_rule_ids, binding_modules = cls.codemod_binding_requirements(rules)
         return m.Infra.CodemodProjectFacts(
             own_package=(
                 FlextInfraUtilitiesPyproject.project_package_name(resolved)
@@ -362,6 +363,8 @@ class FlextInfraUtilitiesCodemodProject(
                 else None
             ),
             predicates=predicates,
+            binding_rule_ids=binding_rule_ids,
+            binding_modules=binding_modules,
             import_graph=graph,
             import_modules=modules,
             import_cycles=cls.project_import_cycles(graph),
@@ -528,8 +531,10 @@ class FlextInfraUtilitiesCodemodProject(
         root: Path,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         modules: t.StrSequence = (),
+        *,
+        projects: t.SequenceOf[m.Infra.CodemodBindingProject] | None = None,
     ) -> m.Infra.CodemodBindingSnapshot:
-        """Capture Python owners and their static import closure before inference.
+        """Capture every selected project's owners once before inference.
 
         Returns:
             The resulting ``m.Infra.CodemodBindingSnapshot``.
@@ -541,53 +546,67 @@ class FlextInfraUtilitiesCodemodProject(
             state.path.resolve(): state
             for state in m.Infra.CodemodBindingSnapshot(states=source_states).states
         }
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as project,
-            project.frozen_layout(),
-        ):
-            lookup = m.Infra.CodemodImportResources(
-                modules={
-                    (name, None, 0): project.find_module(name)
-                    for name in dict.fromkeys(modules)
-                },
+        selections = (
+            projects
+            if projects is not None
+            else (
+                m.Infra.CodemodBindingProject(
+                    root=root, source_paths=tuple(states), modules=modules
+                ),
             )
-            pending = [
-                project.get_resource(path.relative_to(root.resolve()).as_posix())
-                for path in states
-            ]
-            pending.extend(
-                resource for resource in lookup.modules.values() if resource is not None
-            )
-            scheduled = {resource.real_path for resource in pending}
-            visited: set[Path] = set()
-            while pending:
-                fetched = cls._snapshot_module_tree(
-                    states,
-                    visited,
-                    pending.pop(),
+        )
+        imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]] = {}
+        for selection in selections:
+            with (
+                FlextInfraUtilitiesRopeCore.open_project(selection.root) as project,
+                project.frozen_layout(),
+            ):
+                lookup = m.Infra.CodemodImportResources(
+                    modules={
+                        (name, None, 0): project.find_module(name)
+                        for name in dict.fromkeys(selection.modules)
+                    },
                 )
-                if fetched is None:
-                    continue
-                path, resource, tree = fetched
-                visited.add(path)
-                for imported in cls._snapshot_import_resources(
-                    project,
-                    resource,
-                    tree,
-                    lookup,
-                ):
-                    if imported.real_path not in scheduled:
-                        scheduled.add(imported.real_path)
-                        pending.append(imported)
+                pending = [
+                    project.get_resource(
+                        path.relative_to(selection.root.resolve()).as_posix()
+                    )
+                    for path in selection.source_paths
+                ]
+                pending.extend(
+                    resource
+                    for resource in lookup.modules.values()
+                    if resource is not None
+                )
+                scheduled = {resource.real_path for resource in pending}
+                visited: set[Path] = set()
+                while pending:
+                    fetched = cls._snapshot_module_imports(
+                        states, imports, visited, pending.pop()
+                    )
+                    if fetched is None:
+                        continue
+                    path, resource, statements = fetched
+                    visited.add(path)
+                    for imported in cls._snapshot_import_resources(
+                        project, resource, statements, lookup
+                    ):
+                        if imported.real_path not in scheduled:
+                            scheduled.add(imported.real_path)
+                            pending.append(imported)
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
-    def _snapshot_module_tree(
+    def _snapshot_module_imports(
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]],
         visited: set[Path],
         resource: t.Infra.RopeResource,
-    ) -> t.Triple[Path, t.Infra.RopeResource, ast.Module] | None:
-        """Authenticate one pending module and parse its snapshot source.
+    ) -> (
+        t.Triple[Path, t.Infra.RopeResource, tuple[ast.Import | ast.ImportFrom, ...]]
+        | None
+    ):
+        """Authenticate one module and retain only its static import statements.
 
         Returns:
             The resolved path, live resource, and parsed tree, or ``None``
@@ -632,18 +651,28 @@ class FlextInfraUtilitiesCodemodProject(
         if state.content is None:
             msg = f"binding source is absent: {path}"
             raise ValueError(msg)
-        return (
-            path,
-            resource,
-            ast.parse(state.content.decode("utf-8"), filename=str(path)),
-        )
+        if path not in imports:
+            tree = ast.parse(state.content.decode("utf-8"), filename=str(path))
+            pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
+            statements: list[ast.Import | ast.ImportFrom] = []
+            while pending:
+                node = pending.popleft()
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    statements.append(node)
+                pending.extend(
+                    child
+                    for child in ast.iter_child_nodes(node)
+                    if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+                )
+            imports[path] = tuple(statements)
+        return path, resource, imports[path]
 
     @classmethod
     def _snapshot_import_resources(
         cls,
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        tree: ast.Module,
+        imports: t.SequenceOf[ast.Import | ast.ImportFrom],
         lookup: m.Infra.CodemodImportResources,
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of every import inside one module tree.
@@ -653,25 +682,9 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         found: list[t.Infra.RopeResource] = []
-        pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
-        while pending:
-            node = pending.popleft()
-            if isinstance(node, ast.Import | ast.ImportFrom):
-                found.extend(
-                    cls._snapshot_node_import_resources(
-                        project,
-                        resource,
-                        node,
-                        lookup,
-                    ),
-                )
-            # Imports are statements. Exception handlers and match cases are
-            # the two non-statement owners of statement suites; expression and
-            # annotation trees cannot contain an import.
-            pending.extend(
-                child
-                for child in ast.iter_child_nodes(node)
-                if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+        for node in imports:
+            found.extend(
+                cls._snapshot_node_import_resources(project, resource, node, lookup)
             )
         return found
 
@@ -858,6 +871,7 @@ class FlextInfraUtilitiesCodemodProject(
                     captured,
                     own,
                     facts,
+                    file_path,
                 )
             case (
                 c.Infra.CodemodContextPredicate.MODULE_EXPORT
@@ -914,6 +928,7 @@ class FlextInfraUtilitiesCodemodProject(
         captured: t.Pair[str, str | None],
         own: str,
         facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
     ) -> bool:
         """Evaluate one package-scope predicate.
 
@@ -952,9 +967,51 @@ class FlextInfraUtilitiesCodemodProject(
                     msg = f"project layout is unresolved: {root}"
                     raise ValueError(msg)
                 return value in layout.runtime_aliases
+            case c.Infra.CodemodContextPredicate.COMPOSE_MODULE:
+                return cls._compose_module_holds(root, value, own, facts, file_path)
             case _:
                 message = f"predicate is not package-scoped: {predicate}"
                 raise ValueError(message)
+
+    @classmethod
+    def _compose_module_holds(
+        cls,
+        root: Path,
+        value: str,
+        own: str,
+        facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
+    ) -> bool:
+        """Evaluate the ``compose-module`` predicate (the family-shape amendment).
+
+        The captured dotted module is a sanctioned public family compose
+        module when it is exactly ``<package>.<leaf>`` for a canonical
+        compose leaf: the own package must declare the leaf module file
+        beside its private family packages, and a foreign package must belong
+        to the project's runtime closure, where the family shape is the
+        fleet-wide contract.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        parts = value.split(".")
+        if len(parts) != 2 or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES:
+            return False
+        top, leaf = parts
+        if top == own:
+            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                root,
+                file_path,
+            )
+            layout = (
+                FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+            )
+            return (
+                layout is not None
+                and (layout.package_dir / f"{leaf}{c.Infra.EXT_PYTHON}").is_file()
+            )
+        return top in facts.runtime_modules
 
     @classmethod
     def _context_module_holds(
