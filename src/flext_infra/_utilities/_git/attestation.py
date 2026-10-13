@@ -255,9 +255,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         """
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-        policy = c.Infra.GateAcceptancePolicy(
-            inputs.spec.make.gate_acceptance_policy
-        )
+        policy = c.Infra.GateAcceptancePolicy(inputs.spec.make.gate_acceptance_policy)
         return m.Infra.GateCaptureStart(
             repository_root=root,
             gate=gate,
@@ -275,7 +273,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
             issue=identity.error if identity.failure else None,
             context_digest=cls._gate_capture_context_digest(
-                gate, intent, inputs, runtime_identity,
+                gate,
+                intent,
+                inputs,
+                runtime_identity,
             ),
             policy=policy,
             policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",
@@ -294,7 +295,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             f"{source.path.name}:"
             + (
                 u.Cli.sha256_bytes(source.content)
-                if source.content is not None else "absent"
+                if source.content is not None
+                else "absent"
             )
             for source in inputs.sources
         )
@@ -366,10 +368,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             issue = (
                 "original gate candidate is dirty, changed or has no declared origin"
             )
-        elif issue is None and started.context_digest != cls._gate_capture_context_digest(
-            started.gate, started.intent, inputs.value, runtime_identity,
+        elif (
+            issue is None
+            and started.context_digest
+            != cls._gate_capture_context_digest(
+                started.gate,
+                started.intent,
+                inputs.value,
+                runtime_identity,
+            )
         ):
-            issue = "original gate configuration or native runtime changed during execution"
+            issue = (
+                "original gate configuration or native runtime changed during execution"
+            )
         receipt: Path | None = None
         if issue is None:
             captured = cls._captured_gate_evidence(started, process, reports)

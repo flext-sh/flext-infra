@@ -127,16 +127,20 @@ class TestsFlextInfraGithubGateAttestation:
             repository_root=tmp_path,
             gates=c.Infra.LINT,
         )
-        first = tm.ok(u.Infra.git_capture_gate(
-            request,
-            inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
-            load_inputs=u.Infra.load_codegen_inputs,
-        ))
-        second = tm.ok(u.Infra.git_capture_gate(
-            request,
-            inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
-            load_inputs=u.Infra.load_codegen_inputs,
-        ))
+        first = tm.ok(
+            u.Infra.git_capture_gate(
+                request,
+                inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
+                load_inputs=u.Infra.load_codegen_inputs,
+            )
+        )
+        second = tm.ok(
+            u.Infra.git_capture_gate(
+                request,
+                inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
+                load_inputs=u.Infra.load_codegen_inputs,
+            )
+        )
         assert first.receipt is not None
         assert second.receipt is not None
         assert first.receipt != second.receipt
@@ -205,7 +209,8 @@ class TestsFlextInfraGithubGateAttestation:
         config_dir.mkdir()
         declaration = config_dir / c.Infra.CODEGEN_CONFIG_FILENAME
         request = m.Infra.GateCaptureRequest(
-            repository_root=tmp_path, gates=c.Infra.LINT,
+            repository_root=tmp_path,
+            gates=c.Infra.LINT,
         )
         observed: list[m.Infra.GateCommandEvidence] = []
         for policy in c.Infra.GateAcceptancePolicy:
@@ -216,11 +221,13 @@ class TestsFlextInfraGithubGateAttestation:
                 encoding="utf-8",
             )
             inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
-            captured = tm.ok(u.Infra.git_capture_gate(
-                request,
-                inputs=inputs,
-                load_inputs=u.Infra.load_codegen_inputs,
-            ))
+            captured = tm.ok(
+                u.Infra.git_capture_gate(
+                    request,
+                    inputs=inputs,
+                    load_inputs=u.Infra.load_codegen_inputs,
+                )
+            )
             assert captured.receipt is not None
             assert captured.receipt.is_relative_to(
                 tmp_path / inputs.spec.make.gate_receipts_directory,
@@ -296,7 +303,10 @@ class TestsFlextInfraGithubGateAttestation:
         Returns:
             The resulting ``m.Infra.GateAttestationCreateRequest``.
         """
-        receipts = root / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
+        receipts = (
+            root
+            / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
+        )
         previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
         tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
         published = (
@@ -323,7 +333,10 @@ class TestsFlextInfraGithubGateAttestation:
         commit_sha: str,
         *gates: str,
     ) -> p.Result[m.Infra.GateAttestationReport]:
-        receipts = root / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
+        receipts = (
+            root
+            / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
+        )
         evidence = tuple(
             record
             for path in receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)

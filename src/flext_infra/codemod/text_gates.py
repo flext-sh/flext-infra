@@ -717,11 +717,13 @@ class FlextInfraModTextGateEngine:
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
                 files=tuple(plans),
-                inputs=tuple({
-                    state.path: state
-                    for plan in plans
-                    for state in plan.source_states
-                }.values()),
+                inputs=tuple(
+                    {
+                        state.path: state
+                        for plan in plans
+                        for state in plan.source_states
+                    }.values()
+                ),
                 issues=tuple(issues),
                 exception=first_exception,
             ),
@@ -766,7 +768,9 @@ class FlextInfraModTextGateEngine:
         for project in u.Infra.governed_project_roots(root):
             try:
                 outcome = cls._scan_project(
-                    project, fix=fix, validate_receipts=validate_receipts,
+                    project,
+                    fix=fix,
+                    validate_receipts=validate_receipts,
                 )
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 issues.append(cls._source_issue(project, str(exc), exception=exc))
@@ -788,24 +792,31 @@ class FlextInfraModTextGateEngine:
             files.update(prefix / path for path in report.files)
             plans.extend(project_plans)
             actionable += report.actionable
-            for state in (project_inputs if project_plans else ()):
+            for state in project_inputs if project_plans else ():
                 previous = inputs.setdefault(state.path, state)
                 if previous != state:
                     conflicting_dependencies.add(state.path)
         if conflicting_dependencies:
             affected = tuple(
-                plan for plan in plans
-                if any(state.path in conflicting_dependencies for state in plan.source_states)
+                plan
+                for plan in plans
+                if any(
+                    state.path in conflicting_dependencies
+                    for state in plan.source_states
+                )
             )
             for plan in affected:
                 dependencies = tuple(
-                    str(state.path) for state in plan.source_states
+                    str(state.path)
+                    for state in plan.source_states
                     if state.path in conflicting_dependencies
                 )
-                issues.append(cls._source_issue(
-                    plan.path,
-                    f"text dependency identity changed during planning: {dependencies}",
-                ))
+                issues.append(
+                    cls._source_issue(
+                        plan.path,
+                        f"text dependency identity changed during planning: {dependencies}",
+                    )
+                )
             plans = [plan for plan in plans if plan not in affected]
             inputs = {
                 state.path: state for plan in plans for state in plan.source_states
@@ -818,8 +829,10 @@ class FlextInfraModTextGateEngine:
         )
         analysis = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
-            files=tuple(plans), inputs=tuple(inputs.values()),
-            issues=tuple(issues), exception=first_exception,
+            files=tuple(plans),
+            inputs=tuple(inputs.values()),
+            issues=tuple(issues),
+            exception=first_exception,
         )
         if fix and plans:
             published = cls._publish(root, analysis)
@@ -830,7 +843,8 @@ class FlextInfraModTextGateEngine:
                 if published.error_data is not None:
                     details.update(published.error_data)
                 return r[m.Infra.ModTextReport].fail(
-                    str(published.error), exception=published.exception,
+                    str(published.error),
+                    exception=published.exception,
                     error_code=published.error_code,
                     error_data=details,
                 )
@@ -913,19 +927,23 @@ class FlextInfraModTextGateEngine:
                 allowed = tuple(
                     plan for plan in analysis.files if plan.path not in blocked
                 )
-                analysis = analysis.model_copy(update={
-                    "files": allowed,
-                    "inputs": tuple({
-                        state.path: state
-                        for plan in allowed
-                        for state in plan.source_states
-                    }.values()),
-                    "issues": (*analysis.issues, *receipt_issues),
-                    "exception": first_exception,
-                })
-                return r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok(
-                    (report, analysis)
+                analysis = analysis.model_copy(
+                    update={
+                        "files": allowed,
+                        "inputs": tuple(
+                            {
+                                state.path: state
+                                for plan in allowed
+                                for state in plan.source_states
+                            }.values()
+                        ),
+                        "issues": (*analysis.issues, *receipt_issues),
+                        "exception": first_exception,
+                    }
                 )
+                return r[
+                    t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]
+                ].ok((report, analysis))
         return scanned
 
     @classmethod
@@ -945,7 +963,9 @@ class FlextInfraModTextGateEngine:
         )
         roots = {
             f"@mod-text-{index}": project
-            for index, project in enumerate(sorted({plan.project for plan in analysis.files}))
+            for index, project in enumerate(
+                sorted({plan.project for plan in analysis.files})
+            )
         }
 
         def validate_published() -> p.Result[bool]:
@@ -953,7 +973,9 @@ class FlextInfraModTextGateEngine:
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
             return transaction.publish_file_phase_locked(
-                scope_root, roots, analysis,
+                scope_root,
+                roots,
+                analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(), validator=validate_published
                 ),
