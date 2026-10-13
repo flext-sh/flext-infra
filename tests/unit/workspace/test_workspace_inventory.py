@@ -8,32 +8,42 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, m, u
+import pytest
+
+from flext_infra import config, e, m, u
 from tests import tm
 
 
 class TestsFlextInfraWorkspaceInventory:
-    """An unselected host has no transport or external participant contract."""
+    """Host selection and typed ingress retain native failures."""
 
-    def test_unselected_host_returns_no_external_participants(
+    @pytest.mark.parametrize("payload", [None, '{"entries":[]}', "{", "[]", ""])
+    def test_host_selection_preserves_native_failures(
         self,
         tmp_path: Path,
+        payload: str | None,
     ) -> None:
-        """An empty inventory command leaves the host unselected."""
+        """Validate real host stdout and preserve native transport/ingress failures."""
+        command = (
+            ("printf", "%s", payload)
+            if payload
+            else ("false",)
+            if payload == ""
+            else ()
+        )
         inputs = m.Infra.CodegenInputs(
             spec=m.Infra.CodegenConfigSpec.model_validate(
                 config.Infra.codegen.model_dump(
                     by_alias=True, exclude_computed_fields=True
                 )
-                | {"repository": {"workspace_inventory_command": []}},
+                | {"repository": {"workspace_inventory_command": command}},
             ),
         )
 
-        participants = tm.ok(
-            u.Infra.discover_external_consumers(
-                tmp_path,
-                inputs,
-            ),
-        )
-
-        tm.that(participants, empty=True)
+        discovered = u.Infra.discover_external_consumers(tmp_path, inputs)
+        if payload in {"{", "[]", ""}:
+            tm.fail(discovered)
+            exception = discovered.exception
+            assert payload == "" or isinstance(exception, e.PydanticValidationError)
+        else:
+            tm.that(tm.ok(discovered), empty=True)

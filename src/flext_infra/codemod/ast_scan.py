@@ -69,9 +69,12 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         planned = u.Infra.codemod_rule_plan(self.repository_root, rule_ids=rule_ids)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
-        rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
         if not self.effective_dry_run:
-            return self._execute_apply(self.repository_root, rules, rule_ids=rule_ids)
+            return self._execute_apply(
+                self.repository_root,
+                tuple(dict.fromkeys(rule.resource for rule in planned.value.rules)),
+                rule_ids=rule_ids,
+            )
         ast_report = FlextInfraModGateEngine.scan(
             self.repository_root,
             fix=False,

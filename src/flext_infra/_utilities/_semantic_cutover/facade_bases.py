@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from functools import partial
+from functools import lru_cache, partial
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -615,10 +615,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
             planned = cls._semantic_edits(
                 cls._editable_sources(owner_sources),
-                partial(
-                    cls._rewrite_behavior_request,
-                    modules=modules,
-                    ownership=ownership,
+                lambda path, source, modules=modules, ownership=ownership: (
+                    cls.rewrite_behavior_consumer(
+                        m.Infra.SemanticBehaviorRewriteRequest(
+                            path=path,
+                            source=source,
+                            modules=modules,
+                            ownership=ownership,
+                        ),
+                    )
                 ),
             )
             if planned.failure:
@@ -705,33 +710,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         return expected is not None and effective == expected
 
     @classmethod
-    def _rewrite_behavior_request(
-        cls,
-        path: Path,
-        source: str,
-        *,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        ownership: t.Pair[
-            t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
-            frozenset[t.Quad[str, str, str, str]],
-        ],
-    ) -> t.Infra.TransformResult:
-        """Compose one typed rewrite request for a consumer source view.
-
-        Returns:
-            The rewritten source and its composed semantic import edits.
-
-        """
-        return cls.rewrite_behavior_consumer(
-            m.Infra.SemanticBehaviorRewriteRequest(
-                path=path,
-                source=source,
-                modules=modules,
-                ownership=ownership,
-            ),
-        )
-
-    @classmethod
     def rewrite_behavior_consumer(
         cls,
         request: m.Infra.SemanticBehaviorRewriteRequest,
@@ -766,6 +744,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
         ] = {}
 
+        # Owner facts are immutable for this request; lexical checks still run
+        # for every reference. A new source/candidate creates a fresh resolver.
+        @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
         def resolve(qualified: str) -> t.Triple[str, str, str] | None:
             imported = next(
                 (

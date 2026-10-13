@@ -29,7 +29,7 @@ class TestsFlextInfraModEvidenceInputs:
         evidence = m.Infra.ModScanEvidence.model_validate_json(
             (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
         )
-        tm.that(console.err.count("mod: start ast-grep scan"), eq=1)
+        tm.that(console.err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
         tm.that(console.err.count("mod: capture bindings projects="), eq=1)
         if evidence.findings:
             tm.that(exit_code, ne=0)

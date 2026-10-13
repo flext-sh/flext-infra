@@ -555,7 +555,7 @@ class FlextInfraUtilitiesCodemodProject(
                 ),
             )
         )
-        trees: t.MutableMappingKV[Path, ast.Module] = {}
+        imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]] = {}
         for selection in selections:
             with (
                 FlextInfraUtilitiesRopeCore.open_project(selection.root) as project,
@@ -581,15 +581,15 @@ class FlextInfraUtilitiesCodemodProject(
                 scheduled = {resource.real_path for resource in pending}
                 visited: set[Path] = set()
                 while pending:
-                    fetched = cls._snapshot_module_tree(
-                        states, trees, visited, pending.pop()
+                    fetched = cls._snapshot_module_imports(
+                        states, imports, visited, pending.pop()
                     )
                     if fetched is None:
                         continue
-                    path, resource, tree = fetched
+                    path, resource, statements = fetched
                     visited.add(path)
                     for imported in cls._snapshot_import_resources(
-                        project, resource, tree, lookup
+                        project, resource, statements, lookup
                     ):
                         if imported.real_path not in scheduled:
                             scheduled.add(imported.real_path)
@@ -597,13 +597,16 @@ class FlextInfraUtilitiesCodemodProject(
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
-    def _snapshot_module_tree(
+    def _snapshot_module_imports(
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-        trees: t.MutableMappingKV[Path, ast.Module],
+        imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]],
         visited: set[Path],
         resource: t.Infra.RopeResource,
-    ) -> t.Triple[Path, t.Infra.RopeResource, ast.Module] | None:
-        """Authenticate one pending module and parse its snapshot source.
+    ) -> (
+        t.Triple[Path, t.Infra.RopeResource, tuple[ast.Import | ast.ImportFrom, ...]]
+        | None
+    ):
+        """Authenticate one module and retain only its static import statements.
 
         Returns:
             The resolved path, live resource, and parsed tree, or ``None``
@@ -648,16 +651,28 @@ class FlextInfraUtilitiesCodemodProject(
         if state.content is None:
             msg = f"binding source is absent: {path}"
             raise ValueError(msg)
-        if path not in trees:
-            trees[path] = ast.parse(state.content.decode("utf-8"), filename=str(path))
-        return path, resource, trees[path]
+        if path not in imports:
+            tree = ast.parse(state.content.decode("utf-8"), filename=str(path))
+            pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
+            statements: list[ast.Import | ast.ImportFrom] = []
+            while pending:
+                node = pending.popleft()
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    statements.append(node)
+                pending.extend(
+                    child
+                    for child in ast.iter_child_nodes(node)
+                    if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+                )
+            imports[path] = tuple(statements)
+        return path, resource, imports[path]
 
     @classmethod
     def _snapshot_import_resources(
         cls,
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        tree: ast.Module,
+        imports: t.SequenceOf[ast.Import | ast.ImportFrom],
         lookup: m.Infra.CodemodImportResources,
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of every import inside one module tree.
@@ -667,25 +682,9 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         found: list[t.Infra.RopeResource] = []
-        pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
-        while pending:
-            node = pending.popleft()
-            if isinstance(node, ast.Import | ast.ImportFrom):
-                found.extend(
-                    cls._snapshot_node_import_resources(
-                        project,
-                        resource,
-                        node,
-                        lookup,
-                    ),
-                )
-            # Imports are statements. Exception handlers and match cases are
-            # the two non-statement owners of statement suites; expression and
-            # annotation trees cannot contain an import.
-            pending.extend(
-                child
-                for child in ast.iter_child_nodes(node)
-                if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+        for node in imports:
+            found.extend(
+                cls._snapshot_node_import_resources(project, resource, node, lookup)
             )
         return found
 

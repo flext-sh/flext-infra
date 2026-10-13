@@ -602,7 +602,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tmp_path: Path,
         inherited_import: bool,
     ) -> None:
-        """Typing facade imports are removed while the utility behavior runs."""
+        """Repeated typing references relocate while the real utility runs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         typing_family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
         utility_family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
@@ -636,7 +636,7 @@ class TestsFlextInfraSemanticPhaseContract:
             ),
             package / "consumer.py": (
                 f"from {package.name}.typings import {typing_owner}\n"
-                f"value = {typing_owner}.parse('aligned')\n"
+                f"value = {typing_owner}.parse({typing_owner}.parse('aligned'))\n"
             ),
             package / "unrelated.py": (
                 f"from {package.name}.typings import {typing_owner}\n"
@@ -657,7 +657,7 @@ class TestsFlextInfraSemanticPhaseContract:
             sources[package / "consumer.py"] = (
                 f"from {consumer_package.name} import u\n"
                 f"from {package.name}.typings import {typing_owner}\n"
-                f"value = {typing_owner}.parse('aligned')\n"
+                f"value = {typing_owner}.parse({typing_owner}.parse('aligned'))\n"
                 "existing = u.parse('existing')\n"
             )
         for path, source in sources.items():
