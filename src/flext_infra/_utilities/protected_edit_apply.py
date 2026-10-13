@@ -23,7 +23,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def _protected_write_test_failure(
         path: Path,
         request: m.Infra.ProtectedSourceWritesRequest,
-        new_errors: t.Infra.LintSnapshot,
+        new_errors: t.Infra.LintSnapshot[t.StrSequence],
     ) -> str | None:
         """Protected write test failure.
 
@@ -46,7 +46,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def _protected_write_reports(
         updates: t.MappingKV[Path, str],
         before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
+        before_lints: t.MappingKV[
+            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
+        ],
         request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports.

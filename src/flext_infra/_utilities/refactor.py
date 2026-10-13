@@ -333,7 +333,7 @@ class FlextInfraUtilitiesRefactor:
                 else "NOT_EXECUTED",
                 cause=(
                     "lint snapshots lack complete native rule IDs "
-                    "and execution receipts"
+                    "and per-project zero-rule applicability metadata"
                 ),
             ),
             m.Infra.ViolationsEngineCoverage(

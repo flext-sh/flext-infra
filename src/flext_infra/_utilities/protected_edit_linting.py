@@ -23,8 +23,9 @@ from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_cli import u
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
 if TYPE_CHECKING:
@@ -449,6 +450,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 m.Infra.MypyInvocation(
                     targets=(py_file.resolve(),),
                     workspace=workspace,
+                    report_json=True,
                 ),
             )
         command: t.StrSequence = (
@@ -456,7 +458,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
         if tool_name == c.Infra.RUFF:
-            command = (*command, "--output-format", "concise")
+            command = (*command, "--output-format", c.Infra.OUTPUT_JSON)
+        elif tool_name == c.Infra.PYRIGHT:
+            command = (*command, "--outputjson")
+        elif tool_name == c.Infra.PYREFLY:
+            command = (
+                *command, "--output-format", c.Infra.OUTPUT_JSON,
+                "-o", "-", "--summary=none",
+            )
         if (
             tool_name == c.Infra.PYREFLY
             and (project_config := command_cwd / c.PYPROJECT_FILENAME).is_file()
@@ -494,7 +503,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
 
     _snapshot_cache: ClassVar[
-        MutableMapping[t.Triple[str, str, t.StrSequence], t.Infra.LintSnapshot]
+        MutableMapping[
+            t.Triple[str, str, t.StrSequence],
+            t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        ]
     ] = {}
 
     @classmethod
@@ -522,7 +534,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path,
         workspace: Path,
         selected_tools: t.StrSequencePairTuple,
-    ) -> t.Infra.LintSnapshot:
+    ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
         """Execute selected lint tools.
 
         Returns:
@@ -564,18 +576,18 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 tuple(futures_by_tool),
                 timeout=timeout_budget,
             )
-            results.extend(future.result() for future in done)
+            results.extend(
+                future.result() for future in futures_by_tool if future in done
+            )
             for future in not_done:
                 tool_name = futures_by_tool[future]
                 _ = future.cancel()
                 results.append(
                     m.Infra.LintGateResult(
                         tool_name=tool_name,
-                        errors=(
-                            (
-                                f"timeout {timeout_budget}s: lint gate "
-                                f"'{tool_name}' did not finish"
-                            ),
+                        execution_error=(
+                            f"timeout {timeout_budget}s: lint gate "
+                            f"'{tool_name}' did not finish; native outcome unavailable"
                         ),
                     ),
                 )
@@ -641,53 +653,170 @@ class FlextInfraUtilitiesProtectedEditLinting:
             ),
             timeout=cls._gate_deadline(tool_name),
         )
-        if run_result.failure:
-            error = run_result.error or f"{tool_name} failed"
-            gate_errors: t.StrSequence = (
-                FlextInfraUtilitiesResourceLimits.mypy_launch_failure_diagnostic(error)
-                if tool_name == c.Infra.MYPY
-                else error,
+        return cls.lint_gate_result(tool_name, run_result)
+
+    @staticmethod
+    def lint_gate_result(
+        tool_name: str,
+        executed: p.Result[p.Cli.CommandOutput],
+    ) -> m.Infra.LintGateResult:
+        """Retain the native receipt without turning an absent report into success.
+
+        Returns:
+            Diagnostic evidence and the independent first execution failure.
+        """
+        if executed.failure:
+            return m.Infra.LintGateResult(
+                tool_name=tool_name,
+                execution_error=str(executed.error),
             )
-        elif run_result.success and not u.Cli.process_succeeded(
-            run_result.value.outcome,
-        ):
-            resource_diagnostic = (
-                FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(
-                    run_result.value,
+        output = m.Cli.CommandOutput.model_validate(
+            executed.value, from_attributes=True
+        )
+        parsed = FlextInfraUtilitiesProtectedEditLinting._lint_report_errors(
+            tool_name, output.stdout
+        )
+        lines = parsed.value if parsed.success else ()
+        classification = FlextInfraUtilitiesProcess.tool_outcome(
+            output.outcome,
+            findings=len(lines),
+            findings_exit_codes=(
+                config.Infra.tooling.tools.ruff.findings_exit_codes
+                if tool_name == c.Infra.RUFF
+                else (c.Cli.EXIT_CODE_ERROR,)
+            ),
+        )
+        resource_error = (
+            FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(output)
+            if tool_name == c.Infra.MYPY
+            else None
+        )
+        failure = resource_error
+        if classification is c.Infra.ToolOutcome.ERROR:
+            failure = failure or (
+                f"{tool_name} execution failed: "
+                f"exit={output.outcome.raw_return_code}, "
+                f"timed_out={output.outcome.timed_out}, "
+                f"forwarded_signal={output.outcome.forwarded_signal}: "
+                f"{(output.stderr or output.stdout).strip()}"
+            )
+        failure = failure or (str(parsed.error) if parsed.failure else None)
+        if output.stderr.strip():
+            failure = failure or output.stderr.strip()
+        return m.Infra.LintGateResult(
+            tool_name=tool_name,
+            errors=lines,
+            output=output,
+            execution_error=failure,
+        )
+
+    @staticmethod
+    def _lint_report_errors(tool_name: str, source: str) -> p.Result[t.StrSequence]:
+        """Validate the selected tool's native machine report before counting findings.
+
+        Returns:
+            Complete diagnostic lines, or the original malformed-report failure.
+        """
+        result = r[t.StrSequence]
+        if tool_name == c.Infra.MYPY:
+            lines: list[str] = []
+            for line in source.splitlines():
+                if not line.strip():
+                    continue
+                diagnostic = u.validate_value(
+                    m.Infra.MypyDiagnostic, line, from_json=True, strict=True
                 )
-                if tool_name == c.Infra.MYPY
-                else None
-            )
-            output = (
-                resource_diagnostic
-                or (run_result.value.stdout + run_result.value.stderr).strip()
-            )
-            gate_errors = tuple(line for line in output.splitlines() if line.strip())
-        elif run_result.value.stderr.strip():
-            gate_errors = tuple(
-                line
-                for line in run_result.value.stderr.splitlines()
-                if line.strip()
-                and not (
-                    tool_name == c.Infra.PYREFLY
-                    and line.strip() == c.Infra.PYREFLY_ZERO_ERRORS_RECEIPT
+                if diagnostic.failure:
+                    return result.from_failure(diagnostic)
+                entry = diagnostic.value
+                lines.append(
+                    f"{entry.file}:{entry.line}:{entry.column}: "
+                    f"{entry.severity}: {entry.message} [{entry.code or ''}]"
+                    + (f"\n{entry.hint}" if entry.hint else "")
                 )
+            return result.ok(tuple(lines))
+        if tool_name == c.Infra.PYRIGHT:
+            report = u.validate_value(
+                m.Infra.PyrightReport, source, from_json=True, strict=True
             )
-        else:
-            gate_errors = ()
-        return m.Infra.LintGateResult(tool_name=tool_name, errors=gate_errors)
+            if report.failure:
+                return result.from_failure(report)
+            if not report.value.summary.files_analyzed:
+                return result.fail("pyright analyzed no files for the selected source")
+            return result.ok(tuple(
+                f"{entry.file}:"
+                f"{entry.range.start.line + 1 if entry.range else 0}:"
+                f"{entry.range.start.character + 1 if entry.range else 0}: "
+                f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
+                for entry in report.value.general_diagnostics
+            ))
+        if tool_name == c.Infra.PYREFLY:
+            pyrefly = u.validate_value(
+                m.Infra.PyreflyReport, source, from_json=True, strict=True
+            )
+            if pyrefly.failure:
+                return result.from_failure(pyrefly)
+            return result.ok(tuple(
+                f"{entry.path}:{entry.line}:{entry.column}: "
+                f"{entry.severity}: {entry.description} [{entry.name}]"
+                for entry in pyrefly.value.errors
+            ))
+        if tool_name != c.Infra.RUFF:
+            return result.fail(f"unsupported lint report contract: {tool_name}")
+        loaded = u.Cli.json_parse(source)
+        if loaded.failure:
+            return result.from_failure(loaded)
+        if not isinstance(loaded.value, list):
+            return result.fail("Ruff JSON report is not a list of findings")
+        errors: list[str] = []
+        for finding in loaded.value:
+            if not isinstance(finding, dict):
+                return result.fail("Ruff JSON finding is not an object")
+            location = finding.get("location")
+            if not isinstance(location, dict):
+                return result.fail("Ruff JSON finding lacks its native location")
+            issue = u.validate_value(
+                m.Infra.Issue,
+                {
+                    "file": finding.get("filename"),
+                    "line": location.get("row"),
+                    "column": location.get("column"),
+                    "code": finding.get("name"),
+                    "message": finding.get("message"),
+                },
+                strict=True,
+            )
+            if issue.failure:
+                return result.from_failure(issue)
+            errors.append(issue.value.formatted)
+        return result.ok(tuple(errors))
+
+    @staticmethod
+    def lint_execution_errors(
+        snapshot: t.Infra.LintSnapshot[m.Infra.LintGateResult],
+    ) -> t.StrSequence:
+        """Return execution failures independently of diagnostic occurrence deltas.
+
+        Returns:
+            Every native execution failure in declared tool order.
+        """
+        return tuple(
+            result.execution_error
+            for result in snapshot.values()
+            if result.execution_error is not None
+        )
 
     @staticmethod
     def _lint_snapshot_from_results(
         results: t.SequenceOf[m.Infra.LintGateResult],
-    ) -> t.Infra.LintSnapshot:
+    ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
         """Convert validated lint gate results into the public snapshot contract.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.
 
         """
-        return {result.tool_name: result.errors for result in results if result.errors}
+        return {result.tool_name: result for result in results}
 
     @classmethod
     def lint_snapshot(
@@ -697,7 +826,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         gates: t.StrSequence | None = None,
         source: str | None = None,
-    ) -> t.Infra.LintSnapshot:
+    ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
         """Run selected tools, or uncached Ruff on candidate source at *py_file*.
 
         Candidate stdin retains the destination's filename and configuration;
@@ -739,7 +868,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             workspace=workspace,
             selected_tools=selected_tools,
         )
-        if cache_key is not None:
+        if cache_key is not None and not cls.lint_execution_errors(result):
             cls._snapshot_cache[cache_key] = dict(result)
         return result
 
@@ -750,7 +879,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         workspace: Path,
         *,
         gates: t.StrSequence | None = None,
-    ) -> MutableMapping[Path, t.Infra.LintSnapshot]:
+    ) -> MutableMapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
         """Validate files in order while each file runs its tools concurrently.
 
         Returns:
@@ -764,7 +893,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             path = ordered_paths[0]
             return {path: cls.lint_snapshot(path, workspace, gates=gates)}
 
-        snapshots_by_path: MutableMapping[Path, t.Infra.LintSnapshot] = {}
+        snapshots_by_path: MutableMapping[
+            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
+        ] = {}
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=max(
                 1, min(config.Infra.codegen.lint_snapshot_workers, len(ordered_paths))
@@ -781,9 +912,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def lint_new_errors(
-        before: t.Infra.LintSnapshot,
-        after: t.Infra.LintSnapshot,
-    ) -> t.Infra.LintSnapshot:
+        before: t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        after: t.Infra.LintSnapshot[m.Infra.LintGateResult],
+    ) -> t.Infra.LintSnapshot[t.StrSequence]:
         """Return introduced diagnostic occurrences, ignoring shifted coordinates.
 
         Matching consumes each baseline occurrence once; resolving another rule
@@ -795,10 +926,19 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         introduced: t.MutableMappingKV[str, t.StrSequence] = {}
         normalize = FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line
-        for tool, lines in after.items():
-            remaining = Counter(normalize(line) for line in before.get(tool, ()))
+        for tool in dict.fromkeys((*before, *after)):
+            baseline = before.get(tool)
+            candidate = after.get(tool)
+            failures = tuple(
+                result.execution_error
+                for result in (baseline, candidate)
+                if result is not None and result.execution_error is not None
+            )
+            remaining = Counter(
+                normalize(line) for line in baseline.errors
+            ) if baseline is not None else Counter[str]()
             added: list[str] = []
-            for line in lines:
+            for line in candidate.errors if candidate is not None else ():
                 identity = normalize(line)
                 if not identity:
                     continue
@@ -806,8 +946,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     remaining[identity] -= 1
                 else:
                     added.append(line)
-            if added:
-                introduced[tool] = added
+            if failures or added:
+                introduced[tool] = (*failures, *added)
         return introduced
 
 

@@ -101,11 +101,12 @@ class FlextInfraSemanticPublication:
                     desired_content=plan.desired_content,
                     desired_mode=plan.desired_mode,
                     changes=plan.changes,
-                    source_states=candidate.inputs,
+                    source_states=(*candidate.inputs, *plan.source_states),
                 )
                 for plan in plans
             ),
             None,
+            inputs=candidate.inputs,
         )
         if analysis.failure:
             return r[tuple[Path, ...]].from_failure(analysis)
@@ -114,9 +115,10 @@ class FlextInfraSemanticPublication:
             repository_root=candidate.workspace,
             projection_roots=(),
             validator=None,
-            source_guard=lambda: FlextInfraStagedPackage.source_inputs_current(
-                candidate
-            ),
+            source_guard=lambda: u.Cli.atomic_verify_binary_file_states(
+                analysis.value.inputs
+            ).flat_map(lambda _: FlextInfraStagedPackage.source_inputs_current(candidate)),
+            input_roots=candidate.roots,
         )
 
     @classmethod
@@ -124,6 +126,8 @@ class FlextInfraSemanticPublication:
         cls,
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         codegen: m.Infra.CodegenConfigSpec | None,
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Build the same authenticated analysis for both publication inputs.
 
@@ -133,20 +137,21 @@ class FlextInfraSemanticPublication:
         files = cls._concrete_file_plans(plans, codegen)
         if files.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(files)
-        inputs = cls._semantic_input_snapshots(plans)
-        if inputs.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(inputs)
+        snapshots = cls._semantic_input_snapshots(plans, inputs=inputs)
+        if snapshots.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 files=tuple(files.value),
-                inputs=inputs.value,
+                inputs=snapshots.value,
             )
         )
 
     @staticmethod
     def _guard_source_inputs(
         source_guard: Callable[[], p.Result[bool]] | None,
+        input_roots: t.VariadicTuple[Path] = (),
     ) -> p.Result[bool]:
         """Preserve native pre-publication refusal and reject a false verdict.
 
@@ -178,7 +183,9 @@ class FlextInfraSemanticPublication:
             Published paths after phase receipts and consumer acceptance.
         """
         projection_analyses: list[m.Infra.CodegenPhaseAnalysis] = []
-        roots = cls._semantic_phase_roots(analysis.files, projection_roots)
+        roots = cls._semantic_phase_roots(
+            analysis.files, (*projection_roots, *input_roots)
+        )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
         )
@@ -195,6 +202,9 @@ class FlextInfraSemanticPublication:
             )
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
+            guarded = cls._guard_source_inputs(source_guard)
+            if guarded.failure:
+                return r[tuple[Path, ...]].from_failure(guarded)
             started = transaction.begin_files_locked(scope_root, roots, analysis.inputs)
             if started.failure:
                 return r[tuple[Path, ...]].from_failure(started)
@@ -254,6 +264,8 @@ class FlextInfraSemanticPublication:
     def _semantic_input_snapshots(
         cls,
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Authenticate one snapshot per semantic input path.
 
@@ -262,6 +274,11 @@ class FlextInfraSemanticPublication:
 
         """
         snapshots: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        for state in inputs:
+            if snapshots.setdefault(state.path, state) != state:
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
+                    f"semantic input snapshots disagree: {state.path}"
+                )
         for plan in plans:
             for state in (plan.before, *plan.source_states):
                 if snapshots.setdefault(state.path, state) != state:

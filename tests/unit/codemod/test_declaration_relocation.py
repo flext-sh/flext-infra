@@ -26,13 +26,13 @@ class TestsFlextInfraDeclarationRelocation:
     @staticmethod
     @pytest.mark.parametrize("lazy", [False, True])
     @pytest.mark.parametrize("consumer_name", ["_config.py", "_settings.py"])
-    def test_settings_imports_resolve_existing_boundary_owners(
+    def test_settings_imports_do_not_promote_family_payload_to_layer_zero(
         tmp_path: Path,
         consumer_name: str,
         *,
         lazy: bool,
     ) -> None:
-        """Reexports bind to legal owners, preserving aliases and runtime identity."""
+        """Family payloads retain their finding, never gaining a leaf-import bypass."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         family = package / "_models"
         family.mkdir()
@@ -73,8 +73,9 @@ class TestsFlextInfraDeclarationRelocation:
             tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
             tm.that(
                 proposed[consumer],
-                has="._models.config import ConfigPayload as Payload",
+                lacks="._models.config import ConfigPayload as Payload",
             )
+            tm.that(proposed[consumer], has="._models import ConfigPayload as Payload")
             tm.that(proposed[consumer], has="._models.base import ModelsBase")
             repeated = tm.ok(
                 u.Infra.plan_semantic_cutover(
@@ -530,11 +531,13 @@ class TestsFlextInfraDeclarationRelocation:
                 proposed = dict(sources)
                 proposed.update({edit.file_path: edit.updated_source for edit in planned})
                 tm.that(
-                    tm.ok(u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=proposed,
-                    )),
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                            rope_workspace=rope,
+                            sources=proposed,
+                        ),
+                    ),
                     eq=(),
                 )
         for path, source in sources.items():
@@ -550,8 +553,12 @@ class TestsFlextInfraDeclarationRelocation:
                     "-c",
                     (
                         f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name}.consumer import build; "
                         f"from {target.parent.parent.name}._utilities.payload import shadow; "
                         "from decimal import Decimal; "
+                        "from typing import get_type_hints; "
+                        "assert get_type_hints(build)['return'] is m.Payload; "
+                        "assert m.Payload.model_fields['amount'].annotation is Decimal; "
                         "assert m.Payload.model_validate({'amount': '2.5'}).amount "
                         "== Decimal('2.5'); "
                         "assert m.Payload.model_validate({'amount': '2.5'}).model_dump_json() "
@@ -566,6 +573,35 @@ class TestsFlextInfraDeclarationRelocation:
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("guard", ["TYPE_CHECKING", "Checking"])
+    def test_unrelated_type_checking_guard_refuses_without_mutation(
+        tmp_path: Path,
+        guard: str,
+    ) -> None:
+        """A same-spelled local flag is not the typing module's guard identity."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body="amount: 'Amount'",
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        sources[origin] = (
+            f"{guard} = False\nif {guard}:\n"
+            "    from decimal import Decimal as Amount\n" + sources[origin]
+        )
+        origin.write_text(sources[origin], encoding="utf-8")
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match="unresolved/outer dependency.*Amount"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:

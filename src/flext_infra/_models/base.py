@@ -142,8 +142,16 @@ class FlextInfraModelsBase:
         ]
         errors: Annotated[
             t.StrSequence,
-            m.Field(description="Error lines reported by the lint tool"),
+            m.Field(description="Diagnostic lines reported by the lint tool"),
         ] = m.Field(default_factory=tuple)
+        output: Annotated[
+            m.Cli.CommandOutput | None,
+            m.Field(description="Original native streams, duration and process outcome"),
+        ] = None
+        execution_error: Annotated[
+            str | None,
+            m.Field(description="Execution or report failure, independent of findings"),
+        ] = None
 
     class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""

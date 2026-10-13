@@ -671,6 +671,11 @@ class FlextInfraRefactorViolationsSweep(
             lint={str(path): findings for path, findings in lint.items()},
             observation_errors=tuple(snapshot.observation_errors)
             + tuple(
+                f"{path}: {error}"
+                for path, receipt in lint.items()
+                for error in u.Infra.lint_execution_errors(receipt)
+            )
+            + tuple(
                 str(result.error)
                 for result in (ast_scan, text_scan, validated)
                 if result.failure

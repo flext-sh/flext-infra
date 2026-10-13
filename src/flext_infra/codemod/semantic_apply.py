@@ -166,6 +166,14 @@ class FlextInfraCodemodSemanticApply:
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         artifact, driver = pair
+        if artifact.candidate.workspace != root:
+            return r[bool].fail("semantic rename candidate belongs to another workspace")
+        authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
+        if authenticated.failure:
+            return r[bool].from_failure(authenticated)
+        current = FlextInfraStagedPackage.source_inputs_current(artifact.candidate)
+        if current.failure:
+            return r[bool].from_failure(current)
         rebuilt = cls.build_rename_plan(
             root,
             workspace,

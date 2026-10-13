@@ -194,7 +194,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 ),
             ).unwrap()
             cli.display_text(
-                f"ast: whole-catalog before evidence={receipt.path} sha256={receipt.sha256}",
+                f"ast: whole-catalog before evidence={receipt.path} "
+                f"sha256={receipt.sha256}",
             )
         current = (
             FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids).unwrap()
@@ -279,7 +280,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @classmethod
     def _converge(
-        cls: Path,
+        cls,
+        root: Path,
         current: m.Infra.ModScanReport,
         *,
         rule_ids: t.StrSequence | None = None,
@@ -314,12 +316,12 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
-            applied = FlextInfraModGateEngine.scan(cls, fix=True, rule_ids=rule_ids)
+            applied = FlextInfraModGateEngine.scan(root, fix=True, rule_ids=rule_ids)
             if rule_ids is None:
                 applied.unwrap()
             if applied.failure:
                 return r[t.Cli.ResultValue].from_failure(applied)
-            scanned = FlextInfraModGateEngine.scan(cls, fix=False, rule_ids=rule_ids)
+            scanned = FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids)
             if rule_ids is None:
                 scanned.unwrap()
             if scanned.failure:
@@ -328,19 +330,19 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         if rule_ids is not None:
             return cls._selected_fixed_point(current)
         text = FlextInfraModTextGateEngine.scan(
-            cls,
+            root,
             fix=False,
             validate_receipts=True,
         ).unwrap()
         while text.actionable:
             cli.display_text("ast: apply sed-by-list cascade")
-            FlextInfraModTextGateEngine.scan(cls, fix=True).unwrap()
+            FlextInfraModTextGateEngine.scan(root, fix=True).unwrap()
             text = FlextInfraModTextGateEngine.scan(
-                cls,
+                root,
                 fix=False,
                 validate_receipts=True,
             ).unwrap()
-        remaining_ast = FlextInfraModGateEngine.scan(cls, fix=False).unwrap()
+        remaining_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         if remaining_ast.findings or text.findings:
             return r[t.Cli.ResultValue].fail(
                 f"ast fixed point retains findings: {remaining_ast.findings} "

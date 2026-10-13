@@ -41,6 +41,9 @@ class FlextInfraRefactorRoutes:
         target = (root / request.output).resolve()
         if not target.is_relative_to(root):
             return r[t.Cli.ResultValue].fail("rename plan output escapes workspace")
+        observed = u.Cli.atomic_read_binary_file_state(root / request.output)
+        if observed.failure:
+            return r[t.Cli.ResultValue].from_failure(observed)
         selections = m.Infra.SemanticRenameSelections.model_validate_json(
             request.decisions
         )
@@ -50,12 +53,35 @@ class FlextInfraRefactorRoutes:
             )
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
+        before = observed.value
+        if any(
+            state.path == target
+            or (
+                before.inode is not None
+                and (state.device, state.inode) == (before.device, before.inode)
+            )
+            for state in planned.value.candidate.inputs
+        ):
+            return r[t.Cli.ResultValue].fail(
+                "rename plan output aliases a governed candidate input"
+            )
+        if before.content is not None:
+            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
+            if previous.candidate.workspace != root:
+                return r[t.Cli.ResultValue].fail(
+                    "rename plan output belongs to another workspace"
+                )
         content = planned.value.model_dump_json(indent=2, round_trip=True)
         if m.Infra.SemanticRenamePlan.model_validate_json(content) != planned.value:
             return r[t.Cli.ResultValue].fail(
                 "rename artifact did not round-trip exactly"
             )
-        written = u.Cli.atomic_write_text_file(target, content + "\n")
+        authenticated = u.Cli.atomic_verify_binary_file_states(
+            planned.value.candidate.inputs
+        )
+        if authenticated.failure:
+            return r[t.Cli.ResultValue].from_failure(authenticated)
+        written = u.Cli.atomic_write_text_file_guarded(before, content + "\n")
         if written.failure:
             return r[t.Cli.ResultValue].from_failure(written)
         cli.display_text(

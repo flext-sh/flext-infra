@@ -45,11 +45,11 @@ class FlextInfraAccessorMigrationReportMixin:
     @staticmethod
     def _accumulate_lint_totals(
         totals: MutableMapping[str, int],
-        snapshot: t.Infra.LintSnapshot,
+        snapshot: t.Infra.LintSnapshot[m.Infra.LintGateResult],
     ) -> None:
         """Accumulate lint totals."""
-        for tool, lines in snapshot.items():
-            totals[tool] = totals.get(tool, 0) + len(tuple(lines))
+        for tool, receipt in snapshot.items():
+            totals[tool] = totals.get(tool, 0) + len(receipt.errors)
 
     def _plan_files(
         self,
@@ -189,8 +189,8 @@ class FlextInfraAccessorMigrationReportMixin:
     def _candidate_reports(
         reports: t.SequenceOf[m.Infra.AccessorMigrationFile],
         evidence: t.Pair[
-            t.MappingKV[Path, t.Infra.LintSnapshot],
-            t.MappingKV[Path, t.Infra.LintSnapshot],
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         ],
         gates: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.AccessorMigrationFile]:
@@ -229,8 +229,8 @@ class FlextInfraAccessorMigrationReportMixin:
         gates: t.StrSequence,
     ) -> p.Result[
         t.Pair[
-            t.MappingKV[Path, t.Infra.LintSnapshot],
-            t.MappingKV[Path, t.Infra.LintSnapshot],
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         ]
     ]:
         """Validate changed and unchanged Python consumers in one staged view.
@@ -249,7 +249,7 @@ class FlextInfraAccessorMigrationReportMixin:
         def validate(
             view_root: Path,
             candidates: t.MappingKV[Path, Path],
-        ) -> t.MappingKV[Path, t.Infra.LintSnapshot]:
+        ) -> t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
             staged_paths = {
                 path: candidates.get(path, view_root / path.relative_to(plan.workspace))
                 for path in paths
@@ -271,8 +271,8 @@ class FlextInfraAccessorMigrationReportMixin:
         if previewed.failure:
             return r[
                 t.Pair[
-                    t.MappingKV[Path, t.Infra.LintSnapshot],
-                    t.MappingKV[Path, t.Infra.LintSnapshot],
+                    t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                    t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
                 ]
             ].from_failure(previewed)
         errors = tuple(
@@ -285,8 +285,8 @@ class FlextInfraAccessorMigrationReportMixin:
         )
         result_type = r[
             t.Pair[
-                t.MappingKV[Path, t.Infra.LintSnapshot],
-                t.MappingKV[Path, t.Infra.LintSnapshot],
+                t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
             ]
         ]
         if errors:
@@ -356,7 +356,12 @@ class FlextInfraAccessorMigrationReportMixin:
                 lines.append(f"  warn:{warning.line} {warning.original_name}{target}")
                 lines.append(f"    {warning.reason}")
             for tool in file_report.lint_tools:
-                issues = tuple(file_report.lint_after.get(tool, ()))
+                receipt = file_report.lint_after.get(tool)
+                issues = (
+                    (*receipt.errors, *((receipt.execution_error,) if receipt.execution_error else ()))
+                    if receipt is not None
+                    else ("not executed",)
+                )
                 lines.append(f"  lint-after:{tool}")
                 lines.extend(
                     tuple(f"    {issue}" for issue in issues[:4]) or ("    ok",)

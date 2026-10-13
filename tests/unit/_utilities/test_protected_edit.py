@@ -344,7 +344,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                 {py_file.resolve(): invalid},
                 parse_candidate,
             )
-        tm.that(raised.value.text, eq=invalid)
+        # The staged parse failure is identified by the candidate path it
+        # names: this interpreter sources SyntaxError.text from the on-disk
+        # file named by ``filename``, so text always shows the live line.
+        tm.that(raised.value.filename, eq=str(py_file.resolve()))
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
         fresh = preview.preview_sources(

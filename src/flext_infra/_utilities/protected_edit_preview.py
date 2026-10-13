@@ -11,7 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         gates: t.StrSequence | None = None,
     ) -> t.Pair[
         MutableMapping[Path, str | None],
-        MutableMapping[Path, t.Infra.LintSnapshot],
+        MutableMapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
     ]:
         """Preview write baselines.
 
@@ -55,7 +55,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
         """
         before_sources: MutableMapping[Path, str | None] = {}
-        before_lints: MutableMapping[Path, t.Infra.LintSnapshot] = {}
+        before_lints: MutableMapping[
+            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
+        ] = {}
         existing_paths: list[Path] = []
         for path in updates:
             if path.exists():
@@ -82,7 +84,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         path: Path,
         workspace: Path,
         before_source: str,
-        new_errors: t.Infra.LintSnapshot,
+        new_errors: t.Infra.LintSnapshot[t.StrSequence],
         pytest_failure: str | None = None,
     ) -> list[str]:
         """Describe the actual source delta and its validation failures.
@@ -115,7 +117,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     def _preview_write_reports(
         candidates: t.MappingKV[Path, Path],
         before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
+        before_lints: t.MappingKV[
+            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
+        ],
         workspace: Path,
         gates: t.StrSequence | None = None,
     ) -> t.Infra.EditResult:
@@ -213,7 +217,10 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         updated_source: str,
         source_preview: p.Infra.SourcePreview,
         gates: t.StrSequence | None = None,
-    ) -> t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
+    ) -> t.Pair[
+        t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        t.Infra.LintSnapshot[m.Infra.LintGateResult],
+    ]:
         """Compare live and staged lint snapshots without changing live source.
 
         Args:
@@ -239,7 +246,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         def validate(
             view_root: Path,
             candidates: t.MappingKV[Path, Path],
-        ) -> t.Infra.LintSnapshot:
+        ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
             return FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
                 candidates[path], view_root, gates=gates
             )

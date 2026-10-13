@@ -424,7 +424,7 @@ class FlextInfraModGateEngine:
         output = run.value
         sys.stderr.write(
             f"mod: finish {command[0]} exit={output.outcome.raw_return_code} "
-            f"duration={output.duration:.2f}s\n",
+            f"duration={output.duration:.2f}s stdout_chars={len(output.stdout)}\n",
         )
         sys.stderr.flush()
         if output.outcome.raw_return_code != 0:
@@ -551,6 +551,11 @@ class FlextInfraModGateEngine:
                 if entry.rule_id in selected_ids and entry.source_state is not None
             }.values(),
         )
+        sys.stderr.write(
+            f"mod: binding snapshot repository={root.name} "
+            f"findings={report.findings} sources={len(states)}\n",
+        )
+        sys.stderr.flush()
         snapshot = (
             u.Infra.codemod_binding_snapshot(
                 root,
@@ -1009,6 +1014,10 @@ class FlextInfraModGateEngine:
         )
         if run.failure:
             return r[m.Infra.ModScanReport].from_failure(run)
+        sys.stderr.write(
+            f"mod: parse native JSONL chars={len(run.value.stdout)}\n",
+        )
+        sys.stderr.flush()
         report = cls._parse_findings(
             run.value.stdout,
             root,
@@ -1016,6 +1025,8 @@ class FlextInfraModGateEngine:
             frozenset(ruleset.fixable_rule_ids),
             source_states,
         ).unwrap()
+        sys.stderr.write(f"mod: admit native findings={report.findings}\n")
+        sys.stderr.flush()
         if run.value.outcome.raw_return_code != 0:
             error_findings = sum(
                 entry.payload.get("severity") == "error" for entry in report.entries
@@ -1076,6 +1087,10 @@ class FlextInfraModGateEngine:
         declared = cls._validate_expected_receipts(plan.rules, complete_report)
         if declared.failure:
             return r[m.Infra.ModScanReport].from_failure(declared)
+        sys.stderr.write(
+            f"mod: publish evidence findings={complete_report.findings}\n",
+        )
+        sys.stderr.flush()
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             complete_report,

@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsCodemod
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
 class FlextInfraModelsRefactorGrep:
@@ -388,11 +388,11 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Unified diff preview for the file"),
         ] = ""
         lint_before: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             m.Field(description="Lint output before the proposed rewrite"),
         ]
         lint_after: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             m.Field(description="Lint output after the proposed rewrite"),
         ]
         new_lint_errors: Annotated[
