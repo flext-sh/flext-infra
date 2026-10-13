@@ -407,7 +407,7 @@ class FlextInfraRefactorViolationsSweep(
             verdict = r[bool].fail(stage.error)
         return stage, verdict
 
-    @staticmethod
+    @classmethod
     def _scan_evidence(
         root: Path,
         destination: Path,
@@ -453,21 +453,9 @@ class FlextInfraRefactorViolationsSweep(
                 "native finding outside effective project rule plan: "
                 f"{sorted(unexpected)}",
             )
-        for entry in snapshot.ast_report.entries:
-            state = entry.source_state
-            if (
-                state is None
-                or state.content is None
-                or snapshot.sha256.get(str(state.path))
-                != u.Cli.sha256_bytes(state.content)
-            ):
-                return result.fail(
-                    f"native finding lacks authenticated source digest: {entry.file}",
-                )
-        if not snapshot.source_verified:
-            return result.fail(
-                "; ".join(snapshot.observation_errors) or "native inputs unverified",
-            )
+        digests = cls._verify_entry_digests(snapshot.ast_report, snapshot)
+        if digests.failure:
+            return result.from_failure(digests)
         repositories = tuple(project.name for project in snapshot.repository_roots)
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
@@ -487,6 +475,34 @@ class FlextInfraRefactorViolationsSweep(
             receipt.value,
             snapshot,
         ))
+
+    @staticmethod
+    def _verify_entry_digests(
+        report: m.Infra.ModScanReport,
+        snapshot: m.Infra.ViolationsSweepSources,
+    ) -> p.Result[bool]:
+        """Require every native finding to carry its authenticated source digest.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        for entry in report.entries:
+            state = entry.source_state
+            if (
+                state is None
+                or state.content is None
+                or snapshot.sha256.get(str(state.path))
+                != u.Cli.sha256_bytes(state.content)
+            ):
+                return r[bool].fail(
+                    f"native finding lacks authenticated source digest: {entry.file}",
+                )
+        if not snapshot.source_verified:
+            return r[bool].fail(
+                "; ".join(snapshot.observation_errors) or "native inputs unverified",
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def _source_snapshot(

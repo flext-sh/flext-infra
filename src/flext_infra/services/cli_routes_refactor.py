@@ -158,13 +158,19 @@ class FlextInfraRefactorRoutes:
     refactor_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
         m.Cli.ResultCommandRoute(
             name="rename-plan",
-            help_text="Generate a native semantic rename artifact from explicit domain decisions",
+            help_text=(
+                "Generate a native semantic rename artifact "
+                "from explicit domain decisions"
+            ),
             model_cls=m.Infra.SemanticRenamePlanCommand,
             handler=execute_rename_plan,
         ),
         m.Cli.ResultCommandRoute(
             name="rename-preview",
-            help_text="Validate an authenticated rename artifact in the native candidate runtime",
+            help_text=(
+                "Validate an authenticated rename artifact "
+                "in the native candidate runtime"
+            ),
             model_cls=m.Infra.SemanticRenamePreviewCommand,
             handler=execute_rename_preview,
         ),

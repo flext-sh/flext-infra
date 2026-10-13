@@ -219,6 +219,8 @@ class TestsFlextInfraSemanticPublication:
         plans: list[m.Infra.SemanticFilePlan] = []
         for path in (previous, current):
             before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            outgoing = ["DeclaredService"] if path == previous else []
+            incoming = [] if path == previous else ["DeclaredService"]
             plans.append(
                 m.Infra.SemanticFilePlan(
                     project=mod_workspace,
@@ -228,8 +230,8 @@ class TestsFlextInfraSemanticPublication:
                     .not_none(before.content)
                     .decode(c.DEFAULT_ENCODING)
                     .replace(
-                        f"__all__ = {['DeclaredService'] if path == previous else []!r}",
-                        f"__all__ = {[] if path == previous else ['DeclaredService']!r}",
+                        f"__all__ = {outgoing!r}",
+                        f"__all__ = {incoming!r}",
                     )
                     .encode(c.DEFAULT_ENCODING),
                     desired_mode=before.mode,
@@ -260,8 +262,11 @@ class TestsFlextInfraSemanticPublication:
                         "-c",
                         (
                             "from pathlib import Path\n"
-                            "from flext_infra.refactor import FlextInfraImportNormalization\n"
-                            "normalized = FlextInfraImportNormalization.normalize_source(\n"
+                            "from flext_infra.refactor import (\n"
+                            "    FlextInfraImportNormalization,\n"
+                            ")\n"
+                            "normalized = FlextInfraImportNormalization"
+                            ".normalize_source(\n"
                             f"    project_root=Path({str(mod_workspace)!r}),\n"
                             f"    file_path=Path({str(consumer_path)!r}),\n"
                             f"    source={candidate!r},\n"

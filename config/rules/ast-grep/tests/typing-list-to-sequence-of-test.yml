@@ -186,15 +186,16 @@ invalid:
     value: Annotated[int, List[str]]
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
-    from flext_core import m, t
+    from flext_core import m, t, u
     from typing import List, TypeAliasType, get_args, get_origin
+    from typing_extensions import TypeForm
     LEGACY = List[str]
     FACTORY = list[str]
     type Contract = List[str]
     class LegacyBase(List[str]): ...
-    class Payload(m.BaseModel):
-        values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
-    def make(values: t.SequenceOf[str] = u.empty(TypeForm(t.SequenceOf[str]))) -> t.SequenceOf[str]:
+    class Payload(m.ArbitraryTypesModel):
+        values: List[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.ListOf[str])))
+    def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
         return values
     assert get_origin(LEGACY) is list
     assert FACTORY() == []

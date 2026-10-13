@@ -197,15 +197,16 @@ invalid:
     value: Annotated[int, Dict[str, int]]
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
-    from flext_core import m, t
+    from flext_core import m, t, u
     from typing import Dict, TypeAliasType, get_args, get_origin
+    from typing_extensions import TypeForm
     LEGACY = Dict[str, int]
     FACTORY = dict[str, int]
     type Contract = Dict[str, int]
     class LegacyBase(Dict[str, int]): ...
-    class Payload(m.BaseModel):
-        values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
-    def make(values: t.MappingKV[str, int] = u.empty(TypeForm(t.MappingKV[str, int]))) -> t.MappingKV[str, int]:
+    class Payload(m.ArbitraryTypesModel):
+        values: Dict[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.DictKV[str, int])))
+    def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
         return values
     assert get_origin(LEGACY) is dict
     assert FACTORY() == {}

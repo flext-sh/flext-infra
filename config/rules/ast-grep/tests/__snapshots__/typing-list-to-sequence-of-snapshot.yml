@@ -1,15 +1,16 @@
 id: typing-list-to-sequence-of
 snapshots:
   ? |
-    from flext_core import m, t
+    from flext_core import m, t, u
     from typing import List, TypeAliasType, get_args, get_origin
+    from typing_extensions import TypeForm
     LEGACY = List[str]
     FACTORY = list[str]
     type Contract = List[str]
     class LegacyBase(List[str]): ...
     class Payload(m.ArbitraryTypesModel):
-        values: List[str] = m.Field(default_factory=list[str])
-    def make(values: List[str] = list[str]()) -> List[str]:
+        values: List[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.ListOf[str])))
+    def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
         return values
     assert get_origin(LEGACY) is list
     assert FACTORY() == []
@@ -34,15 +35,16 @@ snapshots:
         assert origin is get_origin(LEGACY)
         assert get_args(annotation) == get_args(LEGACY)
   : fixed: |
-      from flext_core import m, t
+      from flext_core import m, t, u
       from typing import List, TypeAliasType, get_args, get_origin
+      from typing_extensions import TypeForm
       LEGACY = List[str]
       FACTORY = list[str]
       type Contract = t.ListOf[str]
       class LegacyBase(List[str]): ...
       class Payload(m.ArbitraryTypesModel):
-          values: List[str] = m.Field(default_factory=list[str])
-      def make(values: List[str] = list[str]()) -> List[str]:
+          values: List[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.ListOf[str])))
+      def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
           return values
       assert get_origin(LEGACY) is list
       assert FACTORY() == []
@@ -69,22 +71,23 @@ snapshots:
     labels:
     - source: List[str]
       style: primary
-      start: 144
-      end: 153
-    - source: from flext_core import m, t
+      start: 186
+      end: 195
+    - source: from flext_core import m, t, u
       style: secondary
       start: 0
-      end: 27
+      end: 30
     - source: |
-        from flext_core import m, t
+        from flext_core import m, t, u
         from typing import List, TypeAliasType, get_args, get_origin
+        from typing_extensions import TypeForm
         LEGACY = List[str]
         FACTORY = list[str]
         type Contract = List[str]
         class LegacyBase(List[str]): ...
         class Payload(m.ArbitraryTypesModel):
-            values: List[str] = m.Field(default_factory=list[str])
-        def make(values: List[str] = list[str]()) -> List[str]:
+            values: List[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.ListOf[str])))
+        def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
             return values
         assert get_origin(LEGACY) is list
         assert FACTORY() == []
@@ -110,7 +113,7 @@ snapshots:
             assert get_args(annotation) == get_args(LEGACY)
       style: secondary
       start: 0
-      end: 1379
+      end: 1494
   ? |
     from flext_core import t
     from typing import Annotated as Metadata, List

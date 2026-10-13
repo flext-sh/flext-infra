@@ -215,7 +215,7 @@ class FlextInfraAccessorOriginResolver:
                     pending.append((child, (*chain, name)))
                 elif child.get_kind() == "Function":
                     pending.append((child, (*chain, name)))
-                    binding = current.get_defined_names().get(name)
+                    binding = current.get_names().get(name)
                     if binding is None:
                         msg = f"accessor declaration has no binding: {py_file}:{name}"
                         raise ValueError(msg)
@@ -235,7 +235,6 @@ class FlextInfraAccessorOriginResolver:
                             name in candidates
                             and name not in inherited
                             and u.Infra.py_function(binding.get_object())
-                            and binding.get_object().get_kind() != "classmethod"
                         ):
                             introduced.append(
                                 m.Infra.Object(

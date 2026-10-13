@@ -272,7 +272,7 @@ class FlextInfraModelsRefactor(
         @m.computed_field
         @property
         def has_violations(self) -> bool:
-            """Whether any catalog finding remains or a new occurrence was introduced."""
+            """Whether catalog findings remain or new occurrences appeared."""
             return any(row.after or row.introduced for row in self.rule_deltas)
 
     class WorkspaceEnforcementReport(m.ArbitraryTypesModel):

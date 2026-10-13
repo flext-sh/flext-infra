@@ -111,26 +111,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             ):
                 return True
             if condition.predicate is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL:
-                if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
-                    message = "emitted-symbol requires a lexical expression, module and target"
-                    raise ValueError(message)
-                expression = ast.parse(condition.arg[0], mode="eval").body
-                if not cls._stable_binding_chain(
+                return cls._emitted_symbol_holds(
                     (project, module, scope),
-                    expression,
-                    start,
-                    sources,
-                ):
-                    return False
-                return cls._resolved_expression_holds(
-                    (project, module, scope),
-                    condition.model_copy(
-                        update={
-                            "predicate": c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                            "arg": condition.arg[1:],
-                        }
-                    ),
-                    condition.arg[0],
+                    condition,
                     start,
                     sources,
                 )
@@ -138,6 +121,53 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 (project, module, scope),
                 condition,
                 capture.text,
+                start,
+                sources,
+            )
+
+        @classmethod
+        def _emitted_symbol_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            start: int,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Resolve an emitted-symbol predicate through its module target.
+
+            Returns:
+                Whether the rewritten expression keeps a stable binding chain.
+
+            Raises:
+                ValueError: If emitted-symbol lacks a lexical expression, module
+                    and target.
+
+            """
+            if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
+                message = (
+                    "emitted-symbol requires a lexical expression, "
+                    "module and target"
+                )
+                raise ValueError(message)
+            expression = ast.parse(condition.arg[0], mode="eval").body
+            if not cls._stable_binding_chain(
+                frame,
+                expression,
+                start,
+                sources,
+            ):
+                return False
+            return cls._resolved_expression_holds(
+                frame,
+                condition.model_copy(
+                    update={
+                        "predicate": c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                        "arg": condition.arg[1:],
+                    }
+                ),
+                condition.arg[0],
                 start,
                 sources,
             )

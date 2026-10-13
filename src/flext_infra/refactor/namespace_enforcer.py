@@ -107,9 +107,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
             workspace=str(self._repository_root),
             projects=tuple(
                 self._enforce_project(
-                    scan_root=self._repository_root,
                     project_root=root,
-                    project_name=root.name,
                     py_files=py_files,
                     before=before,
                     after=after,
@@ -156,6 +154,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
 
         """
         projects = report.projects
+        rows = tuple(row for project in projects for row in project.rule_deltas)
         lines = [
             "Namespace Enforcement Report",
             f"Workspace: {report.workspace}",
@@ -163,13 +162,13 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
             f"Violations: {'YES' if report.has_violations else 'NO'}",
             (
                 f"Catalog findings: "
-                f"{sum(row.before for project in projects for row in project.rule_deltas)}"
+                f"{sum(row.before for row in rows)}"
                 " -> "
-                f"{sum(row.after for project in projects for row in project.rule_deltas)}"
+                f"{sum(row.after for row in rows)}"
             ),
             (
                 "Introduced occurrences: "
-                f"{sum(row.introduced for project in projects for row in project.rule_deltas)}"
+                f"{sum(row.introduced for row in rows)}"
             ),
             (
                 f"Relocation findings: "

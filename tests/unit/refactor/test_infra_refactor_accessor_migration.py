@@ -336,8 +336,10 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(warning_names, lacks="get_source_folders")
 
     @staticmethod
+    @pytest.mark.parametrize("decorator", ("", "@staticmethod\n    ", "@classmethod\n    "))
     def test_core_prefix_policy_discovers_methods_outside_legacy_catalog(
         tmp_path: Path,
+        decorator: str,
     ) -> None:
         """The canonical prefix policy, not seventeen names, owns discovery."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
@@ -346,7 +348,12 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         )
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
         tm.that(name in c.ENFORCEMENT_ACCESSOR_RENAMES, eq=False)
-        source = f"class Owned:\n    def {name}(self) -> bool:\n        return True\n"
+        source = (
+            f"class Owned:\n    {decorator}def {name}(self) -> bool:\n"
+            "        return True\n"
+            f"\nclass Derived(Owned):\n    {decorator}def {name}(self) -> bool:\n"
+            "        return False\n"
+        )
         _ = origin_file.write_text(source, encoding="utf-8")
         result = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
@@ -364,6 +371,75 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(findings, len=1)
         tm.that(findings[0].reason, has=f"flext_core.legacy.Owned.{name}")
         tm.that(findings[0].replacement_name, eq="")
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_local_functions_retain_nested_class_method_discovery(
+        tmp_path: Path,
+    ) -> None:
+        """Local bindings and nested introducing classes remain in the same inventory."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        policy = m.MethodShapeParams.model_validate(
+            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        )
+        name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
+        source = (
+            "def factory(flag: bool):\n"
+            "    def process_single_item(value: bool) -> bool:\n"
+            "        return value\n"
+            f"    def {_SOURCE_NAME}(value: bool) -> bool:\n"
+            "        return process_single_item(value)\n"
+            "    class Owned:\n"
+            "        class Nested:\n"
+            f"            def {name}(self) -> bool:\n"
+            "                return True\n"
+            f"    return {_SOURCE_NAME}(flag), Owned.Nested\n"
+        )
+        _ = origin_file.write_text(source, encoding="utf-8")
+        result = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+        ).execute()
+
+        tm.that(result.failure, eq=False)
+        changes = tuple(
+            change
+            for file in result.value.files
+            for change in file.automated_changes
+            if change.original_name == _SOURCE_NAME
+        )
+        tm.that(changes, len=2)
+        findings = tuple(
+            warning
+            for file in result.value.files
+            for warning in file.warnings
+            if warning.original_name == name
+        )
+        tm.that(findings, len=1)
+        tm.that(findings[0].reason, has=f"factory.Owned.Nested.{name}")
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_unresolved_owned_accessor_ancestry_fails_before_changes(
+        tmp_path: Path,
+    ) -> None:
+        """A genuinely unresolved introducing contract never becomes empty coverage."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        policy = m.MethodShapeParams.model_validate(
+            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        )
+        name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
+        source = f"class Owned(MissingBase):\n    def {name}(self):\n        return True\n"
+        _ = origin_file.write_text(source, encoding="utf-8")
+
+        with pytest.raises(ValueError, match="unresolved accessor class ancestry: Owned"):
+            _ = FlextInfraAccessorMigrationOrchestrator(
+                source_preview=infra.source_preview(workspace),
+                repository_root=workspace,
+                apply_changes=False,
+            ).execute()
+
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod

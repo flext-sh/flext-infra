@@ -991,7 +991,6 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         ruleset: m.Infra.CodemodRuleset,
-        rule_files_by_id: t.MappingKV[str, Path],
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         targets: t.StrSequence,
         project_rule_ids: t.MappingKV[Path, t.StrSequence],
@@ -1017,7 +1016,7 @@ class FlextInfraModGateEngine:
             for path in sorted(source_paths)
         }
         ruleset_files = {
-            rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
+            rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
         scan_command = u.Infra.ast_grep_scan_command(
             ruleset.config,
@@ -1070,7 +1069,6 @@ class FlextInfraModGateEngine:
             return r[m.Infra.ModScanReport].from_failure(planned)
         plan = planned.value
         reports: list[m.Infra.ModScanReport] = []
-        rule_files_by_id = {rule.id: rule.resource for rule in plan.rules}
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root)
         sys.stderr.write(
@@ -1087,7 +1085,6 @@ class FlextInfraModGateEngine:
             ruleset_run = cls._ruleset_report(
                 root,
                 ruleset,
-                rule_files_by_id,
                 rules_by_id,
                 targets,
                 plan.project_rule_ids,

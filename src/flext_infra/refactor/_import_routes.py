@@ -185,6 +185,9 @@ class FlextInfraImportNormalizationRoutesMixin(
         Returns:
             The resulting ``frozenset[str]``.
 
+        Raises:
+            ValueError: If a loaded alias requires a forbidden reverse import.
+
         """
         scope = state.scope
         loaded: set[str] = set()

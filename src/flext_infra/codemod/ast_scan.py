@@ -78,28 +78,56 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             rule_ids=rule_ids,
         ).unwrap()
         if rule_ids is not None:
-            for entry in ast_report.entries:
-                cli.display_text(
-                    f"ast: {entry.rule_id} {entry.file.as_posix()} "
-                    f"[{entry.text!r}] "
-                    f"{'actionable' if entry.actionable else 'detection-only'}",
-                )
+            return self._selected_scan_outcome(planned.value, ast_report)
+        return self._full_scan_outcome(self.repository_root, planned.value, rules)
+
+    @staticmethod
+    def _selected_scan_outcome(
+        planned: m.Infra.CodemodRulePlan,
+        ast_report: m.Infra.ModScanReport,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Render a selected-rules scan and refuse any remaining finding.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        """
+        for entry in ast_report.entries:
             cli.display_text(
-                f"ast: selected {len(planned.value.rules)} exact rule(s) from "
-                f"{len(planned.value.rulesets)} provider(s); "
-                f"{ast_report.findings} finding(s) "
-                f"({ast_report.actionable} actionable); "
-                "text phases=0 semantic callbacks=0; corpus=full",
+                f"ast: {entry.rule_id} {entry.file.as_posix()} "
+                f"[{entry.text!r}] "
+                f"{'actionable' if entry.actionable else 'detection-only'}",
             )
-            if ast_report.findings:
-                return r[t.Cli.ResultValue].fail(
-                    f"{ast_report.findings} selected ast-grep finding(s) "
-                    f"({ast_report.actionable} actionable, "
-                    f"{ast_report.detection_only} detection-only)",
-                )
-            return r[t.Cli.ResultValue].ok(value=True)
+        cli.display_text(
+            f"ast: selected {len(planned.rules)} exact rule(s) from "
+            f"{len(planned.rulesets)} provider(s); "
+            f"{ast_report.findings} finding(s) "
+            f"({ast_report.actionable} actionable); "
+            "text phases=0 semantic callbacks=0; corpus=full",
+        )
+        if ast_report.findings:
+            return r[t.Cli.ResultValue].fail(
+                f"{ast_report.findings} selected ast-grep finding(s) "
+                f"({ast_report.actionable} actionable, "
+                f"{ast_report.detection_only} detection-only)",
+            )
+        return r[t.Cli.ResultValue].ok(value=True)
+
+    @staticmethod
+    def _full_scan_outcome(
+        root: Path,
+        planned: m.Infra.CodemodRulePlan,
+        rules: t.SequenceOf[Path],
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Render both full-corpus cascades and refuse any remaining finding.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        """
+        ast_report = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         text_report = FlextInfraModTextGateEngine.scan(
-            self.repository_root,
+            root,
             fix=False,
             validate_receipts=True,
         ).unwrap()
@@ -116,7 +144,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
         cli.display_text(
             f"ast: scanned {len(rules)} rule file(s) from "
-            f"{len(planned.value.rulesets)} provider(s); "
+            f"{len(planned.rulesets)} provider(s); "
             f"{ast_report.findings} ast-grep finding(s) "
             f"({ast_report.actionable} actionable), "
             f"{text_report.findings} sed-by-list finding(s) "
@@ -232,6 +260,24 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         return outcome
 
     @staticmethod
+    def _selected_fixed_point(
+        current: m.Infra.ModScanReport,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Reject a selected-cascade fixed point that retains findings.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        """
+        if current.findings:
+            return r[t.Cli.ResultValue].fail(
+                f"ast: selected fixed point retains {current.findings} finding(s) "
+                f"({current.detection_only} detection-only)",
+            )
+        cli.display_text("ast: selected AST fixed point verified")
+        return r[t.Cli.ResultValue].ok(value=True)
+
+    @classmethod
     def _converge(
         root: Path,
         current: m.Infra.ModScanReport,
@@ -280,13 +326,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].from_failure(scanned)
             current = scanned.value
         if rule_ids is not None:
-            if current.findings:
-                return r[t.Cli.ResultValue].fail(
-                    f"ast: selected fixed point retains {current.findings} finding(s) "
-                    f"({current.detection_only} detection-only)",
-                )
-            cli.display_text("ast: selected AST fixed point verified")
-            return r[t.Cli.ResultValue].ok(value=True)
+            return cls._selected_fixed_point(current)
         text = FlextInfraModTextGateEngine.scan(
             root,
             fix=False,

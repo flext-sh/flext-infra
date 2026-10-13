@@ -462,7 +462,8 @@ class TestsFlextInfraApplyRenames:
             "    csv=str(root / 'renames.csv'), roots=(str(root),), apply=True,"
             " text_globs=('**/*.md',)))\n"
             "assert changed\nassert result.failure\n"
-            "assert 'rename campaign driver changed during publish' in result.error, result.error\n"
+            "msg = result.error\n"
+            "assert 'rename campaign driver changed during publish' in msg, msg\n"
         )
         tm.ok(u.Cli.run_checked((sys.executable, "-c", script, str(mod_workspace))))
         tm.that(target.read_bytes(), eq=original)

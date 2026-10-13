@@ -177,7 +177,7 @@ class FlextInfraUtilitiesCodemodRules:
                 )
                 if not elected:
                     continue
-                ruleset = ruleset.model_copy(
+                elected_ruleset = ruleset.model_copy(
                     update={
                         "rule_ids": elected,
                         "fixable_rule_ids": tuple(
@@ -187,23 +187,23 @@ class FlextInfraUtilitiesCodemodRules:
                         ),
                     }
                 )
-                key = ruleset.config.resolve()
+                key = elected_ruleset.config.resolve()
                 previous = rulesets.get(key)
                 rulesets[key] = (
-                    ruleset
+                    elected_ruleset
                     if previous is None
                     else previous.model_copy(
                         update={
                             "rule_ids": tuple(
                                 dict.fromkeys(
-                                    (*previous.rule_ids, *ruleset.rule_ids),
+                                    (*previous.rule_ids, *elected_ruleset.rule_ids),
                                 )
                             ),
                             "fixable_rule_ids": tuple(
                                 dict.fromkeys(
                                     (
                                         *previous.fixable_rule_ids,
-                                        *ruleset.fixable_rule_ids,
+                                        *elected_ruleset.fixable_rule_ids,
                                     ),
                                 )
                             ),

@@ -26,12 +26,14 @@ class FlextInfraNamespaceEnforcerProjectMixin:
     Both snapshots bracket all repairs, including cross-project consumer rewires.
     """
 
-    @staticmethod
+    if TYPE_CHECKING:
+
+        _repository_root: Path
+
     def _enforce_project(
+        self,
         *,
-        scan_root: Path,
         project_root: Path,
-        project_name: str,
         py_files: t.SequenceOf[Path],
         before: m.Infra.ModScanReport,
         after: m.Infra.ModScanReport,
@@ -43,6 +45,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             The resulting ``m.Infra.ProjectEnforcementReport``.
 
         """
+        scan_root = self._repository_root
         cascade = FlextInfraNamespaceRelocationCascade()
         findings = cascade.findings_from_report(
             project_root, py_files, before.entries, scan_root=scan_root
@@ -60,7 +63,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             ),
         )
         return m.Infra.ProjectEnforcementReport(
-            project=project_name,
+            project=project_root.name,
             project_root=str(project_root),
             rule_deltas=rule_deltas,
             relocation_findings=len(after_findings),

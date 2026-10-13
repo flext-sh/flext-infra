@@ -103,7 +103,8 @@ class TestsFlextInfraCodegenUpgWorkspace:
         custom.write_text(
             custom.read_text(encoding="utf-8") + "post-upg:\n"
             '\t@set -eu; for project in "$(PROJECT_ROOT)" '
-            '$(foreach member,$(WORKSPACE_SUBPROJECTS),"$(PROJECT_ROOT)/$(member)"); do '
+            '$(foreach member,$(WORKSPACE_SUBPROJECTS),'
+            '"$(PROJECT_ROOT)/$(member)"); do '
             'owner="$$($(UV) workspace dir --project "$$project")"; '
             'test "$$owner" = "$$project"; '
             '$(UV) lock --check --project "$$project"; '
