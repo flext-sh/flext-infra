@@ -514,7 +514,6 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.refactor.CensusOptions",
   "flext_infra._models.scan.ModScanCounts",
   "flext_infra._models.scan.ModScanFinding",
-  "flext_infra._models.scan.ModScanFinding",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",
@@ -684,9 +683,6 @@ whitelines = 1
 constraint-dependencies = ["mypy<2.4.0"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
-
-[tool.uv.sources.flext-infra]
-workspace = true
 
 [tool.interrogate]
 fail-under = 70

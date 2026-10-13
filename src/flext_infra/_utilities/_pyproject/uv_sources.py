@@ -277,7 +277,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
         cls._sync_uv_candidates(
             uv,
             candidate_sources,
-            tuple(member.distribution for member in members),
             local_requirements,
             resolution,
         )

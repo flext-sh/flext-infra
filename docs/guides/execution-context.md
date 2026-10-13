@@ -468,6 +468,12 @@ planning report at `.reports/codegen-plan.json` records each selected repository
 outcome, exception type and original traceback. Generation reports failures at
 their affected files and retains successfully generated files. Changes made
 outside the generator do not authorize restoration of earlier workspace bytes.
+Transaction recovery and public `abort_locked` consume native `p.FailureLike` values,
+not error strings. A successful result is rejected before journal inspection or cleanup;
+an empty failure remains a failure. The initiating exception, error code and metadata
+survive recovery, while `cleanup_error`, `recovery_context` and exception notes record
+secondary diagnostics. A validator's `ok(False)` is an explicit publication rejection,
+not a native failure whose metadata may be reconstructed from its message.
 Lazy binding discovery parses package initializers only, so unrelated malformed
 consumer code cannot invalidate an otherwise valid declaration projection.
 

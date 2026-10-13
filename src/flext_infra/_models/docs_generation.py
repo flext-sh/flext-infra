@@ -188,6 +188,14 @@ class FlextInfraModelsDocsGeneration:
             t.VariadicTuple[cli_m.Cli.AtomicFileState],
             m.Field(min_length=1, description="Exact sources consumed by rendering"),
         ]
+        source_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Exact roots elected for this batch source topology"),
+        ] = ()
+        source_directories: Annotated[
+            t.VariadicTuple[cli_m.Cli.AtomicDirectoryChainPlan],
+            m.Field(description="Physical directory presence consumed by the batch"),
+        ] = ()
         # Why (X-47): the physical workspace root is required for source
         # verification even when the root is excluded from `scopes` (DECLARED
         # conform scope), so it can no longer be inferred from `scopes[0]`.

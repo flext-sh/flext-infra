@@ -185,7 +185,11 @@ class FlextInfraUtilitiesDocsContract:
             )
 
     @staticmethod
-    def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
+    def docs_workspace_contract(
+        repository_root: Path,
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+    ) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata.
 
         Returns:
@@ -195,12 +199,15 @@ class FlextInfraUtilitiesDocsContract:
         return FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             repository_root,
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python({}),
+            source_states=source_states,
         )
 
     @staticmethod
     def docs_current_project_contract(
         project_root: Path,
         rendered_contract: t.JsonMapping,
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Bind rendered API analysis to the current authenticated pyproject bytes.
 
@@ -211,7 +218,10 @@ class FlextInfraUtilitiesDocsContract:
             TypeError: If docs project metadata is missing.
 
         """
-        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(
+            project_root,
+            source_states=source_states,
+        )
         project_value = payload.get(c.Infra.PROJECT)
         if not isinstance(project_value, Mapping):
             msg = f"docs project metadata is missing: {project_root}"

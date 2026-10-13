@@ -538,12 +538,13 @@ class TestsFlextInfraFileParticipantRecovery:
                     ),
                 },
             )
-            rejected = owner.abort_locked(foreign, "consumer failed")
+            failure = r[bool].fail("consumer failed")
+            rejected = owner.abort_locked(foreign, failure)
             tm.fail(rejected)
             tm.that(session.journal_state.path.is_file(), eq=True)
             tm.that(live.read_text(encoding=c.DEFAULT_ENCODING), eq="preserve")
             tm.that(live.stat().st_mtime_ns, eq=modified_ns)
-            retired = owner.abort_locked(session, "consumer failed")
+            retired = owner.abort_locked(session, failure)
             tm.fail(retired)
             tm.that(session.journal_state.path.exists(), eq=False)
             return r[bool].ok(value=True)
@@ -611,12 +612,18 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.that(session.journal_state.path.exists(), eq=False)
 
     @staticmethod
-    @pytest.mark.parametrize("journal_change", ["unchanged", "replaced", "missing"])
-    @pytest.mark.parametrize("failure_kind", ["validator", "exception", "abort"])
+    @pytest.mark.parametrize(
+        "journal_change", ["unchanged", "replaced", "missing", "directory"]
+    )
+    @pytest.mark.parametrize(
+        "failure_kind", ["validator", "exception", "abort", "false"]
+    )
+    @pytest.mark.parametrize("error", [None, "", "consumer rejected publication"])
     def test_session_failure_never_recovers_changed_journal(
         tmp_path: Path,
         failure_kind: str,
         journal_change: str,
+        error: str | None,
     ) -> None:
         """Retain the causal failure and publications when journal authority changes."""
         root = u.Tests.git_repository(tmp_path)
@@ -626,11 +633,17 @@ class TestsFlextInfraFileParticipantRecovery:
         roots = {"@docs-0": root}
         target = root / "generated.md"
         cause = OSError("validator failed after journal replacement")
+        original = r[bool].fail(
+            error,
+            exception=cause,
+            error_code="PUBLICATION_REJECTED",
+            error_data={"consumer": "native-validator", "context": "primary context"},
+        )
 
         def fail_validator() -> p.Result[bool]:
             if failure_kind == "exception":
                 raise cause
-            return r[bool].fail(str(cause))
+            return r[bool].ok(value=False) if failure_kind == "false" else original
 
         def fail_session(scope: Path) -> p.Result[bool]:
             session = tm.ok(owner.begin_files_locked(scope, roots, ()))
@@ -654,8 +667,12 @@ class TestsFlextInfraFileParticipantRecovery:
             if journal_change == "replaced":
                 journal.write_bytes(saved.read_bytes())
                 journal.chmod(saved.stat().st_mode)
-            foreign = tm.ok(
-                u.Cli.atomic_read_binary_file_state(journal, required=False),
+            if journal_change == "directory":
+                journal.mkdir()
+            foreign = (
+                None
+                if journal_change == "directory"
+                else tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False))
             )
             if failure_kind == "exception":
                 with pytest.raises(OSError, match=str(cause)) as raised:
@@ -666,14 +683,27 @@ class TestsFlextInfraFileParticipantRecovery:
                 tm.that(raised.value is cause, eq=True)
             else:
                 failed = (
-                    owner.abort_locked(session, str(cause))
+                    owner.abort_locked(session, original)
                     if failure_kind == "abort"
                     else owner.publish_prepared_locked(
                         initial,
                         lambda _initial: owner.commit_locked(session, fail_validator),
                     )
                 )
-                tm.fail(failed, has=str(cause))
+                tm.fail(failed)
+                if failure_kind == "false":
+                    tm.that(failed.error, eq="explicit publication validation failed")
+                else:
+                    tm.that(failed.error, eq=original.error)
+                    tm.that(failed.exception is cause, eq=True)
+                    tm.that(failed.error_code, eq=original.error_code)
+                    tm.that(
+                        tm.not_none(failed.error_data)["consumer"],
+                        eq="native-validator",
+                    )
+                    tm.that(
+                        tm.not_none(failed.error_data)["context"], eq="primary context"
+                    )
                 tm.that(
                     (failed.error_data or {}).get("cleanup_error") is not None,
                     eq=journal_change != "unchanged",
@@ -681,6 +711,9 @@ class TestsFlextInfraFileParticipantRecovery:
             if journal_change == "unchanged":
                 tm.that(journal.exists(), eq=False)
                 tm.that(target.read_bytes(), eq=b"prepared publication\n")
+            elif journal_change == "directory":
+                tm.that(journal.is_dir(), eq=True)
+                tm.that(target.read_bytes(), eq=before.content)
             else:
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),
@@ -693,3 +726,30 @@ class TestsFlextInfraFileParticipantRecovery:
             return r[bool].ok(value=True)
 
         tm.ok(owner.run_files_locked(roots, fail_session))
+
+    @staticmethod
+    def test_abort_rejects_success_before_any_recovery(tmp_path: Path) -> None:
+        """Reject success without consuming the owned journal or its staging tree."""
+        root = u.Tests.git_repository(tmp_path)
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@docs-0": root}
+
+        def exercise(scope: Path) -> p.Result[bool]:
+            session = tm.ok(owner.begin_files_locked(scope, roots, ()))
+            staging = session.plan.layout.file_participants[0].transaction_root
+            before = tm.ok(u.Cli.atomic_inventory_physical_tree(staging))
+            with pytest.raises(ValueError) as rejected:
+                owner.abort_locked(session, r[bool].ok(value=True))
+            tm.that(str(rejected.value), eq=c.ERR_RESULT_FAILURE_REQUIRED)
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(session.journal_state.path)),
+                eq=session.journal_state,
+            )
+            tm.that(tm.ok(u.Cli.atomic_inventory_physical_tree(staging)), eq=before)
+            tm.fail(owner.abort_locked(session, r[bool].fail(None)))
+            tm.that(session.journal_state.path.exists(), eq=False)
+            return r[bool].ok(value=True)
+
+        tm.ok(owner.run_files_locked(roots, exercise))
