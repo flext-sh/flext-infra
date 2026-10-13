@@ -193,6 +193,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             ValueError: If a captured configuration input has no bytes.
         """
         merged: t.JsonDict = {}
+        parse_document = (
+            FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document
+        )
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
             if captured is None:
@@ -202,9 +205,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 if content is None:
                     msg = f"captured config input has no bytes: {path}"
                     raise ValueError(msg)
-                payload = FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document(
-                    content,
-                )
+                payload = parse_document(content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,

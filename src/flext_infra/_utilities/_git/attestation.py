@@ -35,6 +35,103 @@ class FlextInfraUtilitiesGitAttestationMixin(
     _SSH_SIGNATURE_MARKER: ClassVar[str] = "\n-----BEGIN SSH SIGNATURE-----"
 
     @classmethod
+    def git_signing_identity(
+        cls,
+        request: m.Infra.GitRepoRequest,
+    ) -> p.Result[m.Infra.GitSigningIdentityReport]:
+        """Read only native signing references and their effective provenance.
+
+        No signing/default-key command, key file or credential helper is invoked.
+
+        Returns:
+            Declared public metadata and each native configuration query outcome.
+        """
+        root = request.repo_root.expanduser().resolve()
+        identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        if identity.failure:
+            return r[m.Infra.GitSigningIdentityReport].from_failure(identity)
+        observations: list[m.Infra.GitSigningConfigObservation] = []
+        for key in c.Infra.GIT_SIGNING_CONFIGURATION_KEYS:
+            observed = cls._signing_config_observation(root, key)
+            if observed.failure:
+                return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
+            observations.append(observed.value)
+        signing_format, signing_key, allowed_signers = observations
+        inline = (
+            signing_format.value == "ssh"
+            and signing_key.value is not None
+            and signing_key.value.startswith("key::")
+        )
+        return r[m.Infra.GitSigningIdentityReport].ok(
+            m.Infra.GitSigningIdentityReport(
+                repo_root=root,
+                signing_format=signing_format.value,
+                key_path=(
+                    Path(signing_key.value)
+                    if signing_format.value == "ssh"
+                    and signing_key.value is not None
+                    and not inline
+                    else None
+                ),
+                inline_public_key=inline,
+                public_fingerprint=None,
+                allowed_signers_path=(
+                    Path(allowed_signers.value)
+                    if allowed_signers.value is not None else None
+                ),
+                observations=tuple(observations),
+            ),
+        )
+
+    @staticmethod
+    def _signing_config_observation(
+        root: Path,
+        key: str,
+    ) -> p.Result[m.Infra.GitSigningConfigObservation]:
+        """Read one exact Git setting using its NUL-delimited native protocol.
+
+        Returns:
+            The effective scope/origin/value, or a native absent-key observation.
+        """
+        query = u.Cli.run_raw(
+            ("git", "config", "get", "--null", "--show-origin", "--show-scope", key),
+            cwd=root,
+        )
+        if query.failure:
+            return r[m.Infra.GitSigningConfigObservation].from_failure(query)
+        output = query.value
+        process = m.Cli.ProcessOutcome.model_validate(
+            output.outcome, from_attributes=True,
+        )
+        if (
+            not process.timed_out
+            and process.forwarded_signal is None
+            and process.raw_return_code == 1
+            and not output.stdout
+            and not output.stderr
+        ):
+            return r[m.Infra.GitSigningConfigObservation].ok(
+                m.Infra.GitSigningConfigObservation(
+                    key=key, scope=None, origin=None, value=None, process=process,
+                ),
+            )
+        if not u.Cli.process_succeeded(process):
+            return r[m.Infra.GitSigningConfigObservation].fail(
+                output.stderr,
+            )
+        fields = output.stdout.split("\0")
+        if len(fields) != 4 or fields[-1] or not fields[0] or not fields[1]:
+            return r[m.Infra.GitSigningConfigObservation].fail(
+                "native Git signing configuration returned malformed origin data",
+            )
+        scope, origin, value, _ = fields
+        return r[m.Infra.GitSigningConfigObservation].ok(
+            m.Infra.GitSigningConfigObservation(
+                key=key, scope=scope, origin=origin, value=value, process=process,
+            ),
+        )
+
+    @classmethod
     def git_capture_gate(
         cls,
         request: m.Infra.GateCaptureRequest,

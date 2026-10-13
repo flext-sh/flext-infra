@@ -24,7 +24,7 @@ class TestsFlextInfraVscodeOwnerMerge:
     def test_full_config_loader_binds_policy_and_captured_projection(
         tmp_path: Path,
     ) -> None:
-        """Gate policy and editor settings share one explicit root and source receipt."""
+        """Gate policy and editor settings share an explicit root and source receipt."""
         root = tmp_path / "consumer"
         directory = root / c.CONFIG_DIR_NAME
         directory.mkdir(parents=True)

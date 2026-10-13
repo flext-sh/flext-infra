@@ -32,6 +32,7 @@ class FlextInfraImportNormalizationPlacementMixin(
     _IMPORT_SECTION_STDLIB = 0
     _IMPORT_SECTION_THIRD_PARTY = 1
     _IMPORT_SECTION_OWN = 2
+    _MIN_REORDERABLE_IMPORTS = 2
 
     # -- import guards ---------------------------------------------------------------
 
@@ -113,7 +114,7 @@ class FlextInfraImportNormalizationPlacementMixin(
             for node in state.tree.body
             if isinstance(node, ast.Import | ast.ImportFrom)
         ]
-        if len(statements) < 2:
+        if len(statements) < cls._MIN_REORDERABLE_IMPORTS:
             return ()
         start = statements[0].lineno
         end = cls._end_line(statements[-1])
@@ -255,9 +256,6 @@ class FlextInfraImportNormalizationPlacementMixin(
         Returns:
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
-        Raises:
-            ValueError: If ``guard.orelse``; or if ``cls._is_reverse(state, node,
-                alias)``.
         """
         edits: list[tuple[int, int, t.StrSequence]] = []
         promoted: list[str] = []
@@ -266,41 +264,12 @@ class FlextInfraImportNormalizationPlacementMixin(
                 isinstance(guard, ast.If) and cls._is_type_checking_test(guard.test)
             ):
                 continue
-            guard_edits: list[tuple[int, int, t.StrSequence]] = []
-            removed: set[int] = set()
-            for node in guard.body:
-                if not isinstance(node, ast.Import | ast.ImportFrom):
-                    continue
-                selected: list[ast.alias] = []
-                for alias in node.names:
-                    bound = alias.asname or alias.name.partition(".")[0]
-                    if not cls._runtime_uses(state.tree, bound, state.parents):
-                        continue
-                    if cls._is_reverse(state, node, alias):
-                        msg = (
-                            f"{state.scope.file_path}: runtime binding {bound} "
-                            "requires a forbidden reverse namespace import"
-                        )
-                        raise ValueError(msg)
-                    selected.append(alias)
-                if not selected:
-                    continue
-                if guard.orelse:
-                    msg = (
-                        f"{state.scope.file_path}: runtime import promotion "
-                        "requires an unambiguous TYPE_CHECKING guard"
-                    )
-                    raise ValueError(msg)
-                kept = [alias for alias in node.names if alias not in selected]
-                promoted.append(cls._render(node, selected))
-                if not kept:
-                    removed.add(id(node))
-                indent = cls._line_indent(lines[node.lineno - 1])
-                guard_edits.append((
-                    node.lineno,
-                    cls._end_line(node),
-                    (f"{indent}{cls._render(node, kept)}",) if kept else (),
-                ))
+            guard_edits, removed, guard_promoted = cls._promote_guard_body(
+                state,
+                lines,
+                guard,
+            )
+            promoted.extend(guard_promoted)
             if guard_edits:
                 edits.extend(
                     ((guard.lineno, cls._end_line(guard), ()),)
@@ -310,6 +279,83 @@ class FlextInfraImportNormalizationPlacementMixin(
         if promoted:
             edits.extend(cls._insertion_edits(state, tuple(promoted), ()))
         return edits
+
+    @classmethod
+    def _promote_guard_body(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+        guard: ast.If,
+    ) -> tuple[
+        list[tuple[int, int, t.StrSequence]],
+        set[int],
+        list[str],
+    ]:
+        """Select runtime-read aliases of one TYPE_CHECKING guard for promotion.
+
+        Returns:
+            The per-statement edits, the removed statement ids, and the
+            promoted renderings.
+
+        Raises:
+            ValueError: If the guard is ambiguous or forces a reverse import.
+
+        """
+        guard_edits: list[tuple[int, int, t.StrSequence]] = []
+        removed: set[int] = set()
+        promoted: list[str] = []
+        for node in guard.body:
+            if not isinstance(node, ast.Import | ast.ImportFrom):
+                continue
+            selected = cls._runtime_selected_aliases(state, node)
+            if not selected:
+                continue
+            if guard.orelse:
+                msg = (
+                    f"{state.scope.file_path}: runtime import promotion "
+                    "requires an unambiguous TYPE_CHECKING guard"
+                )
+                raise ValueError(msg)
+            kept = [alias for alias in node.names if alias not in selected]
+            promoted.append(cls._render(node, selected))
+            if not kept:
+                removed.add(id(node))
+            indent = cls._line_indent(lines[node.lineno - 1])
+            guard_edits.append((
+                node.lineno,
+                cls._end_line(node),
+                (f"{indent}{cls._render(node, kept)}",) if kept else (),
+            ))
+        return guard_edits, removed, promoted
+
+    @classmethod
+    def _runtime_selected_aliases(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+    ) -> list[ast.alias]:
+        """Select the aliases a runtime read requires, rejecting reverse edges.
+
+        Returns:
+            The aliases whose binding is read at runtime.
+
+        Raises:
+            ValueError: If a runtime binding requires a forbidden reverse import.
+
+        """
+        selected: list[ast.alias] = []
+        for alias in node.names:
+            bound = alias.asname or alias.name.partition(".")[0]
+            if not cls._runtime_uses(state.tree, bound, state.parents):
+                continue
+            if cls._is_reverse(state, node, alias):
+                msg = (
+                    f"{state.scope.file_path}: runtime binding {bound} "
+                    "requires a forbidden reverse namespace import"
+                )
+                raise ValueError(msg)
+            selected.append(alias)
+        return selected
 
     @classmethod
     def _statement_edit(
