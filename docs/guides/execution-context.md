@@ -132,11 +132,10 @@ by hand.
 
 ## Dependency locks
 
-An attached project inherits both locks and the physical environment of its
-Git superproject. Its `make setup` and `make upg` delegate to that root before
-installing tools or resolving dependencies. A standalone checkout owns those
-operations itself. Only `upg` resolves moving Git branches; `setup` installs the
-exact committed lock without changing it.
+Git attachment elects the physical runtime, not the lock owner. Every repository
+owns independent locks, authenticated through native UV discovery. Attached
+`make setup` delegates to the root; `make upg` settles its own lock before aligning
+that root once. Standalone checkouts own both. Setup never changes locks.
 
 Every repository runs independently in remote CI, including a superproject.
 Remote checkout never initializes members. The CI gate token does not change
@@ -155,8 +154,9 @@ releases and writes the committed `uv.lock` and `mise.lock`. `make setup` instal
 from committed locks; `make gen` and `make fmt` neither install nor upgrade tools.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
-One `make upg` run converges. It resolves the Mise lock before provisioning,
-upgrades `uv.lock`, installs the upgraded generator and conforms dependency floors.
+One `make upg` run provisions the frozen producer before corrective pyproject
+projection, without requiring final runtime admission. Native UV authenticates
+independent lock ownership; member locks settle before root alignment.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -189,8 +189,7 @@ manifest declares it, and a commit in a hand-written source fails. Fix the setup
 A workspace root preserves declared Git requirements and binds its package members
 through `[tool.uv.sources]` entries containing their declared local `path` and
 `editable` values. No repository declares a native `[tool.uv.workspace]`.
-Standalone repositories own their locks; attached members use their containing
-workspace's locks exclusively. Publishable members retain the same inline
+Standalone and attached repositories own independent locks. Members retain inline
 Git provenance whether attached or standalone; only the containing root owns the
 local source overlay and the shared runtime environment. Regenerate that root with
 `make gen` and reconcile its lock with `make upg` when the local binding changes.
@@ -215,8 +214,8 @@ are parsed by Git's native boolean GET operation. A malformed value fails before
 provisioning and preserves Git's diagnostic; it never becomes an exclusion.
 Run runtime actions through the root Make dispatcher. Its recipes use the
 setup-owned interpreter without selecting a member's lock for synchronization. Only
-setup and upgrade provision dependencies. A provenance failure is repaired through setup,
-not through a `--no-sync` override or a source-path injection.
+setup and upgrade provision dependencies. A stale Git binding requires canonical
+generation and `make upg`, then setup; never a manual installer or source override.
 
 ## Runtime environment
 
@@ -245,8 +244,9 @@ borrowed from another checkout fails before candidate checks or publication.
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. One host
-Mise capable of reading the committed lock provisions that entry; setup verifies
-the installed release and enters the recursive Make lifecycle through it. Every
+Mise provisions that entry; setup enters the recursive Make lifecycle through the
+verified executable. Without a self-pin, setup qualifies the installed host Mise;
+the absent pin remains an audit defect, never an invented release. Every
 later `mise` resolved through the shims is the pinned release, and `make audit`
 (`codegen mise-proof`) fails when the running Mise differs from the lock.
 
@@ -267,8 +267,8 @@ release metadata publishes no checksum declares `lock_checksum: false`.
 `make setup` and `make upg` pass the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
 provision every tool of the operator's global Mise registry, so no generated recipe
-runs one. After the environment is provisioned, `make setup` runs the reality proof
-(`flext-infra codegen mise-proof`) before `post-setup`. For each declared tool, in
+runs one. After setup provisions the environment, `make audit` runs the reality proof
+(`flext-infra codegen mise-proof`). For each declared tool, in
 order, it stops at the first defect:
 
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
@@ -290,9 +290,8 @@ Mise reaches GitHub to install a tool missing from its cache and to resolve
 releases during `make upg`. Only `make upg` writes `mise.lock` and `uv.lock`;
 `make setup` never writes either. A missing or incompatible Mise lock entry fails
 with its original diagnostic and exit status, without disabling lockfiles or
-retrying. Setup checks whether `uv.lock` agrees with the manifests. A matching lock uses
-`--locked`; a drifted lock emits its diagnostic and installs the committed lock
-with `--frozen`, without rewriting it. Drift and any resulting dependency
+retrying. Setup installs `uv.lock` with `--frozen`, without a lock verdict or rewrite.
+Audit judges manifest satisfaction and lock integrity. Drift and resulting dependency
 incompatibility remain red until `make upg` produces matching locks. A missing
 lock fails with an actionable diagnostic. A failed native resolver or installer
 retains its original failure; no downgrade, retry or disabled lock policy masks it.

@@ -88,7 +88,7 @@ fi; \
 {%- endif %}
 {{ pytest_testmon_guard() }}
 {{ pytest_scratch_root() }}
-{{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(call UV_RUN,$(PROJECT_INFRA_PYTHONPATH)) python -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
+{{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
 {%- endmacro -%}
 {#- The single-file verb validates its FILE input and executes the complete
     requested file once, including its slow tests, in one bounded process
@@ -451,15 +451,6 @@ TOOL_BOOTSTRAP_RESOLVE :=
 {{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", toolchain, mise_install_tools, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", make, bootstrap_report_shell_literal, bootstrap_report_relative_path, true) }}
 _bootstrap_setup_tools: _builtin_require_workspace
 
-# UV, not Git attachment or runtime environment selection, owns lock discovery.
-.PHONY: _builtin_require_upg_lock_owner
-_builtin_require_upg_lock_owner:
-	@set -eu; owner="$$($(UV) workspace dir --project "$(PROJECT_ROOT)")"; \
-	if [ "$$owner" != "$(PROJECT_ROOT)" ]; then \
-		printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the independent-project topology before upgrading.\n' "$$owner" "$(PROJECT_ROOT)" >&2; \
-		exit 2; \
-	fi
-
 # Every repository evaluates only itself: a workspace root consumes its members
 # as installed libraries and each member runs its own lifecycle in its own
 # repository. Locally, the mutating verbs fmt/fix/mod then carry that same
@@ -490,13 +481,13 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
 SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
-	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
-	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"; \
 	setup_scope="{{ 'all' if make_profile == 'workspace' else 'self' }}"; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then setup_scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope"; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply
+	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply; \
+	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
+	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -519,19 +510,9 @@ _builtin_require_workspace:
 
 # Execute the interpreter provisioned by setup without discovering a project
 # workspace or creating a dependency-resolution file during a runtime command.
-override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTIME_BIN):$$PATH" PYTHONPATH="$(PROJECT_ROOT)/src$(if $(1),:$(1))" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
-# The checked-out flext-infra lane owns every lifecycle verb: a workspace
-# runs the generator it carries (the submodule src), so a broken published
-# dependency tip can never block the local recovery cycle. A checkout without
-# the submodule (standalone member) keeps its own installed copy.
-FLEXT_INFRA_SUBMODULE_SRC := $(RUNTIME_ROOT)/flext-infra/src
-ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
-# Only this candidate's own sources are visible; dependencies stay installed.
-override PROJECT_INFRA_PYTHONPATH := $(MAKEFILE_ROOT)/src
-else
-override PROJECT_INFRA_PYTHONPATH := $(if $(wildcard $(FLEXT_INFRA_SUBMODULE_SRC)/flext_infra/.),$(FLEXT_INFRA_SUBMODULE_SRC),$(MAKEFILE_ROOT)/src)
-endif
-override PROJECT_INFRA_RUN = if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON)
+override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTIME_BIN):$$PATH" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
+# Control modules use installed bindings; only UV_RUN exposes project-own sources.
+override PROJECT_INFRA_RUN = env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT "$(FLEXT_INFRA_PYTHON)"
 override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 
 # Scaffold dev tools live in the validated optional dev
@@ -725,11 +706,7 @@ _setup_lifecycle:
 # integrity, the toolchain reality proof - belong to `make audit`, which CI runs
 # right after setup; `make upg` cures them and never depends on setup.
 .PHONY: _setup_activated
-# The reality proof runs before post-setup: every declared tool must be the
-# mise.lock release, self-contained in its install root, reporting the locked
-# version (codegen mise-proof). The first defect fails setup; no fallback.
 _setup_activated:
-	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(command -v $(UV))"
 	@set -eu; \
 	case "$(strip $({{ make.ci.variable }})): $(CUSTOM_DECLARED_TARGETS) " in \
 		{{ make.ci.value }}:*) ;; \
@@ -823,21 +800,9 @@ endif
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# Upgrade installs the trusted frozen tool closure, then projects dependency
-# inputs before native resolution. It never requires the final environment to
-# be healthy before the producer can derive its dependency closure.
-# After generation, reconcile admitted independent locks and the runtime lock,
-# install the complete environment, then activate the produced surfaces.
-# Attached projects own their lock upgrade and align the containing root once;
-# the root never recursively upgrades a member. Gates stay with make check.
-# UV sources remain the only installer input for native editable selection.
-# The producer half of `gen` publishes this Makefile. A recipe never names a
-# target after that point from a file it did not parse: when publication
-# changed the Makefile, the upgrade hands off to a fresh `make upg` that
-# parses the new file and converges there (its own producer half is then a
-# fixed point); otherwise `_upg_converge`, defined by this same file,
-# finishes it. A second change inside the hand-off is a gen fixed-point
-# defect and fails loud.
+# Provision the frozen producer before corrective projection, without runtime
+# admission. Independent locks settle before the containing runtime aligns.
+# Reparse a changed dispatcher once; a second change fails the fixed point.
 .PHONY: _upg_lifecycle _upg_converge
 {% for verb in profile.verbs if verb.name == "upg-sources" %}
 _builtin-upg-sources: _builtin_require_environment
@@ -857,13 +822,9 @@ _upg_lifecycle: _builtin_setup_submodules
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
 	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope self --mode apply
-	@$(SELF_MAKE) _builtin_require_upg_lock_owner
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope all --mode apply
+	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
-	@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		$(UV) lock --project "$(RUNTIME_ROOT)" --upgrade --refresh; \
-	fi
-	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
@@ -886,15 +847,15 @@ _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
+	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
+		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg; \
+	fi
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
 	$(call RUN_PUBLIC_ACTIVATE,gen)
 	@$(SELF_MAKE) gen
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _builtin_setup_environment
-	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg; \
-	fi
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
@@ -905,7 +866,7 @@ _upg_reconcile_locks:
 	if [ "$(strip $({{ make.ci.variable }}))" != "{{ make.ci.value }}" ]; then \
 		members="$$($(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} editable-members --repository-root "$(PROJECT_ROOT)")"; \
 	fi; \
-	printf '%s\n' . "$$members" | while IFS= read -r relative; do \
+	printf '%s\n' "$$members" . | while IFS= read -r relative; do \
 		if [ -z "$$relative" ]; then continue; fi; \
 		project="$(PROJECT_ROOT)"; \
 		if [ "$$relative" != . ]; then project="$(PROJECT_ROOT)/$$relative"; fi; \
@@ -918,10 +879,6 @@ _upg_reconcile_locks:
 		$(UV) lock --project "$$project"; \
 		$(UV) lock --check --project "$$project"; \
 	done
-	@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		$(UV) lock --project "$(RUNTIME_ROOT)"; \
-		$(UV) lock --check --project "$(RUNTIME_ROOT)"; \
-	fi
 
 .PHONY: _upg_activated
 _upg_activated:
@@ -1086,11 +1043,11 @@ _builtin-profile-test: _builtin_require_environment
 	else unset FLEXT_PYTEST_TARGET_FILE; fi; \
 	{{ pytest_testmon_guard() }}
 {{ pytest_scratch_root() }}
-	{{ make.testmon_cache.database_environment_variable }}="$$database" $(call UV_RUN,$(PROJECT_INFRA_PYTHONPATH)) python -m flext_infra._pytest_entry profile \
+	{{ make.testmon_cache.database_environment_variable }}="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry profile \
 		"$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}"
 
 _builtin-profile-test-report: _builtin_require_environment
-	@$(call UV_RUN,$(PROJECT_INFRA_PYTHONPATH)) python -m flext_infra._cprofile_entry \
+	@$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
 		"$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}" "$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}.json"
 
 {% set status_origin_probe %}
@@ -1299,6 +1256,7 @@ ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
 endif
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(RUNTIME_ROOT)"
+	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(command -v $(UV))"
 _builtin-status: _builtin_status_diagnostics
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} signing-identity --repo-root "$(PROJECT_ROOT)"
 _builtin-verify-clean: _builtin_require_environment

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
@@ -26,6 +27,108 @@ class FlextInfraMiseArtifactsVerification(
     FlextInfraMiseArtifactsVerificationTopology,
 ):
     """Manifest, topology, and liveness verification for Mise transactions."""
+
+    @classmethod
+    def publication_current(
+        cls,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Authenticate a completed publication without planning or rendering."""
+        root = request.root.expanduser().resolve()
+        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        captured = FlextInfraMiseArtifactsFiles.read_state(report, required=False)
+        result = r[m.Infra.CodegenPhaseOutcome]
+        if captured.failure:
+            return result.from_failure(captured)
+        content = captured.value.content
+        if content is None:
+            return result.fail(
+                f"generation publication receipt is missing: {report}; run make gen",
+            )
+        parsed = result.create_from_callable(
+            lambda: m.Infra.CodegenPhaseOutcome.model_validate_json(content),
+        )
+        if parsed.failure:
+            return result.fail(
+                f"generation publication receipt is invalid: {report}; run make gen",
+                exception=parsed.exception,
+            )
+        outcome = parsed.value
+        if (
+            not outcome.completed
+            or outcome.issues
+            or outcome.pending_files
+            or not (outcome.outputs or outcome.batches)
+            or outcome.root != root
+            or outcome.surface != c.Infra.CodegenConformSurface(request.what)
+            or outcome.scope != c.Infra.CodegenConformScope(request.scope)
+        ):
+            return result.fail(
+                f"generation publication does not cover this request: {report}; "
+                "run make gen",
+            )
+        current = cls._publication_states_current(outcome)
+        if current.failure:
+            return result.from_failure(current)
+        unchanged = cls.states_current((captured.value,))
+        if unchanged.failure:
+            return result.from_failure(unchanged)
+        return result.ok(outcome)
+
+    @classmethod
+    def _publication_states_current(
+        cls,
+        outcome: m.Infra.CodegenPhaseOutcome,
+    ) -> p.Result[bool]:
+        """Verify native file and ancestry witnesses of every completed batch."""
+        if not outcome.completed or outcome.issues or outcome.pending_files:
+            return r[bool].fail("generation batch is incomplete; run make gen")
+        for witness in outcome.source_topology:
+            observed = u.Cli.atomic_plan_directory_chain(witness.target)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != witness:
+                return r[bool].fail(
+                    f"generation source topology changed: {witness.target}; "
+                    "run make gen",
+                )
+        for expected in (
+            *outcome.sources,
+            *outcome.outputs,
+            *outcome.generator_sources,
+        ):
+            if expected.absent_parent is not None:
+                ancestry = u.Cli.atomic_plan_directory_chain(expected.path.parent)
+                if ancestry.failure:
+                    return r[bool].from_failure(ancestry)
+                if ancestry.value != expected.absent_parent:
+                    return r[bool].fail(
+                        f"generation source ancestry changed: {expected.path}; "
+                        "run make gen",
+                    )
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                expected.path,
+                required=expected.sha256 is not None,
+            )
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            recorded = FlextInfraMiseArtifactsJournal.source_record(
+                expected.phase,
+                observed.value,
+                previous=expected,
+            )
+            if recorded.failure:
+                return r[bool].from_failure(recorded)
+            if recorded.value != expected:
+                return r[bool].fail(
+                    f"generation publication state changed: {expected.path}; "
+                    "run make gen",
+                )
+        for batch in outcome.batches:
+            verified = cls._publication_states_current(batch)
+            if verified.failure:
+                return verified
+        return r[bool].ok(value=True)
 
     @classmethod
     def states_current(

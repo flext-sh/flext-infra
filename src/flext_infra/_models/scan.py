@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
@@ -200,10 +201,12 @@ class FlextInfraModelsScan:
                 description="Authenticated source input, or absent on source drift"
             ),
         ]
-        binding_paths: Annotated[
-            tuple[Path, ...],
+        binding_graph: Annotated[
+            int,
             m.Field(
-                description="Every input in this occurrence's closed binding graph"
+                ge=0,
+                strict=True,
+                description="Index of this occurrence's authenticated binding graph",
             ),
         ]
 
@@ -399,6 +402,13 @@ class FlextInfraModelsScan:
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
+        binding_graphs: Annotated[
+            tuple[tuple[Path, ...], ...],
+            m.Field(
+                description="Closed binding graphs stored once, retaining input order "
+                "and multiplicity",
+            ),
+        ]
         command: Annotated[
             c.Infra.ModScanCommand,
             m.Field(description="Public mod scan mode"),
@@ -439,22 +449,32 @@ class FlextInfraModelsScan:
                 if self.totals_by_class[classification] != getattr(self, field):
                     msg = f"mod scan {field} differs from authenticated entries"
                     raise ValueError(msg)
+            for field, totals in (
+                ("repository", self.totals_by_repository),
+                ("rule_id", self.totals_by_rule),
+            ):
+                counted = Counter(dict.fromkeys(totals, 0))
+                counted.update(getattr(entry, field) for entry in self.entries)
+                if dict(counted) != dict(totals):
+                    msg = f"mod scan {field} totals differ from authenticated entries"
+                    raise ValueError(msg)
             indexed = {state.path: state for state in self.inputs.states}
-            bindings: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
+            bindings = tuple(
+                tuple(indexed[path] for path in paths) for paths in self.binding_graphs
+            )
             entries = []
             for entry in self.entries:
                 source = (
                     None if entry.source_path is None else indexed[entry.source_path]
                 )
-                if entry.binding_paths not in bindings:
-                    bindings[entry.binding_paths] = tuple(
-                        indexed[path] for path in entry.binding_paths
-                    )
+                if entry.binding_graph >= len(bindings):
+                    msg = f"mod scan binding graph is missing: {entry.binding_graph}"
+                    raise ValueError(msg)
                 entries.append(
                     entry.model_copy(
                         update={
                             "source_state": source,
-                            "binding_states": bindings[entry.binding_paths],
+                            "binding_states": bindings[entry.binding_graph],
                         }
                     )
                 )

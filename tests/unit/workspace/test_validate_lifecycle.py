@@ -169,3 +169,25 @@ class TestsFlextInfraWorkspaceLifecycle:
             eq=True,
         )
         tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)
+
+    def test_ci_targets_only_the_invoking_root_without_electing_member_effects(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """CI scope narrows member work independently of editable declarations."""
+        root = tmp_path / "workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        ci = config.Infra.codegen.make.ci
+        with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
+            report = tm.ok(
+                FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
+            )
+        member_rows = tuple(
+            row for row in report.receipts if row.repository_root == member
+        )
+        tm.that(member_rows, empty=False)
+        for row in member_rows:
+            tm.that(row.applicable, eq=False)
+            tm.that(row.applicability_reason, empty=False)
+            tm.that(row.outcome, eq=None)
+        tm.that(report.executed_commands, eq=0)

@@ -145,6 +145,20 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
+        outputs: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Complete output proof, including no-ops")
+        generator_sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Captured loaded generator implementation")
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(),
+            description="Source-owner directory witnesses for observation",
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Source-owner roots for topology observation",
+        )
         directories: Annotated[
             t.VariadicTuple[
                 FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory

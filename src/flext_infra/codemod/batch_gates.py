@@ -913,8 +913,9 @@ class FlextInfraModGateEngine:
                 repository=context.repositories[file_path],
                 file=file_path,
                 source_owner="generator"
-                if snapshot.content.decode(c.DEFAULT_ENCODING).startswith(
-                    c.Infra.AUTOGEN_HEADERS,
+                if any(
+                    snapshot.content.startswith(header.encode(c.DEFAULT_ENCODING))
+                    for header in c.Infra.AUTOGEN_HEADERS
                 )
                 else "authored",
                 source_state=snapshot,

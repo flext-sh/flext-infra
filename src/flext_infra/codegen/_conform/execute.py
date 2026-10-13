@@ -909,7 +909,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             mise_owner,
             participant_policy=policy.value,
         )
-        return transaction.run_locked(
+        published = transaction.run_locked(
             prepare=mode is c.Infra.CodegenConformMode.APPLY,
             operation=lambda scope_root: self._execute_managed_locked(
                 request,
@@ -918,6 +918,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 ports,
             ),
         )
+        if published.failure or mode is c.Infra.CodegenConformMode.CHECK:
+            return published
+        return self._publish_docs_batches(request, published.value, ports)
 
     def _execute_managed_locked(
         self,
@@ -1224,11 +1227,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if lazy.failure:
             return r[m.Infra.CodegenResult].from_failure(lazy)
         session, _owned_lazy_analysis = lazy.value
-        docs = self._append_docs_phase(request, plan, transaction, session, ports)
-        if docs.failure:
-            return r[m.Infra.CodegenResult].from_failure(docs)
-        with_docs, _docs_analysis = docs.value
-        published = transaction.commit_locked(with_docs)
+        published = transaction.commit_locked(session)
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
         routes = self.conform_workspace_beads_routes(request)
@@ -1293,76 +1292,41 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(extended)
         return result_type.ok((extended.value, owned_lazy_analysis))
 
-    def _append_docs_phase(
+    def _publish_docs_batches(
         self,
         request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-        transaction: FlextInfraCodegenTransaction,
-        session: m.Infra.CodegenTransactionSession,
+        result: m.Infra.CodegenResult,
         ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[
-        t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-    ]:
-        """Authorize docs directories, publish the docs files, and analyze them.
-
-        Why (X-47): DECLARED scope excludes the workspace root repository
-        from ``plan.repositories``; docs generation must not render the root
-        as an output scope either, or its report_dir escapes the transaction
-        layout that already excludes root for that same scope. Root guides
-        remain readable sources for members regardless of this flag.
-
-        Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionSession,
-                m.Infra.CodegenPhaseAnalysis]]``.
-
-        """
-        result_type = r[
-            t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-        ]
-        docs_include_root = any(
-            repository.name == plan.workspace.repository.name
-            for repository in plan.repositories
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Publish only invocation-owned docs after the managed batch releases."""
+        owned = tuple(
+            repository.name
+            for repository in result.plan.repositories
+            if repository.path == Path()
         )
+        if not owned:
+            return r[m.Infra.CodegenResult].ok(result)
         docs_generator = ports.docs_planner(
             repository_root=request.root,
-            projects=tuple(repository.name for repository in plan.repositories),
-            include_root=docs_include_root,
+            projects=owned,
+            include_root=True,
         )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return result_type.from_failure(docs_bundle)
-        docs_directories = docs_generator.required_directories(docs_bundle.value)
-        if docs_directories.failure:
-            return result_type.from_failure(docs_directories)
-        owned_docs_directories = self._owned_docs_directories(
-            request,
-            plan,
-            docs_directories.value,
+        written = list(result.written_files)
+        for prepared in docs_generator.prepare_batches():
+            if prepared.failure:
+                return r[m.Infra.CodegenResult].from_failure(prepared)
+            published = docs_generator.publish_batch(prepared.value)
+            if published.failure:
+                return r[m.Infra.CodegenResult].from_failure(published)
+            written.extend(
+                Path(item.path)
+                for report in published.value
+                for item in report.items
+                if item.written
+            )
+        return r[m.Infra.CodegenResult].ok(
+            result.model_copy(update={"written_files": tuple(written)}),
         )
-        with_directories = transaction.append_directories_locked(
-            session,
-            "docs",
-            owned_docs_directories,
-        )
-        if with_directories.failure:
-            return result_type.from_failure(with_directories)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return result_type.from_failure(docs_plans)
-        owned_docs_files = self.owned_docs_files(request, docs_plans.value)
-        docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.DOCS,
-            files=owned_docs_files,
-            inputs=docs_bundle.value.source_states,
-        )
-        with_docs = transaction.append_phase_locked(
-            with_directories.value,
-            "docs",
-            owned_docs_files,
-        )
-        if with_docs.failure:
-            return result_type.from_failure(with_docs)
-        return result_type.ok((with_docs.value, docs_analysis))
 
     @staticmethod
     def _allow_direnv_after_apply(

@@ -6,14 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
-import sys
 import time
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
+from uuid import uuid4
 
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraDepsGate(FlextInfraGate):
@@ -49,81 +51,130 @@ class FlextInfraDepsGate(FlextInfraGate):
         Returns:
             The complete scan receipt with every dependency issue.
 
-        Raises:
-            FileNotFoundError: If the runtime environment carries no deptry.
+        Native execution and report failures remain ERROR receipts, not findings.
         """
-        _ = ctx
         started = time.monotonic()
-        venv_bin = Path(sys.executable).parent
-        deptry_bin = venv_bin / c.Infra.DEPTRY
-        if not deptry_bin.exists():
-            message = (
-                "deps gate requires deptry in the runtime environment: "
-                f"{deptry_bin} is absent; add deptry to the workspace root "
-                "dev group and run make setup"
+        raw_output = ""
+        native_error = ""
+        issues: t.VariadicTuple[m.Infra.Issue] = ()
+        outcome = c.Infra.ToolOutcome.ERROR
+        try:
+            settings = u.Cli.atomic_read_binary_file_state(
+                project_dir / c.PYPROJECT_FILENAME,
+                required=True,
+            ).unwrap()
+            # An exclusive run path cannot inherit a previous command's report.
+            report_dir = ctx.reports_dir.absolute() / (
+                f"{project_dir.name}-{self.gate_id}-{uuid4().hex}"
             )
-            raise FileNotFoundError(message)
-        settings = project_dir / c.PYPROJECT_FILENAME
-        out_file = project_dir / ".reports" / "deptry-check.json"
-        out_file.parent.mkdir(parents=True, exist_ok=True)
-        command: t.MutableSequenceOf[str] = [
-            str(deptry_bin),
-            ".",
-            "--config",
-            str(settings),
-            "--json-output",
-            str(out_file),
-            "--no-ansi",
-        ]
-        run = u.Cli.run_raw(
-            command,
-            cwd=project_dir,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
-        # deptry exits nonzero on findings and on misuse alike: the receipt
-        # content decides the verdict, so a failed run with a report still
-        # states its issues; a failed run with no report is a gate error and
-        # the raw failure escapes unchanged (law 14).
-        issues: list[m.Infra.Issue] = []
-        if out_file.exists():
-            loaded = json.loads(out_file.read_text(encoding="utf-8"))
-            if isinstance(loaded, list):
-                for item in loaded:
-                    if not isinstance(item, dict):
-                        continue
-                    location = item.get("location")
-                    location = location if isinstance(location, dict) else {}
-                    line_value = location.get("line")
-                    issues.append(
-                        m.Infra.Issue(
-                            file=str(
-                                location.get("file")
-                                or item.get("module")
-                                or project_dir,
-                            ),
-                            line=int(line_value) if line_value else 1,
-                            column=1,
-                            code=f"{self.gate_id}-{item.get('kind', 'issue')}",
-                            message=str(item.get("message", item))[:400],
-                            severity=c.Infra.GateSeverity.ERROR.value,
+            planned = u.Cli.atomic_plan_directory_chain(report_dir).unwrap()
+            if not planned.directories:
+                raise FileExistsError(report_dir)
+            u.Cli.atomic_create_directory_chain_guarded(
+                planned,
+                permission_mode=config.Infra.codegen.modes.directory_private,
+            ).unwrap()
+            out_file = report_dir / "deptry.json"
+            command = self._python_console_script_command(
+                c.Infra.DEPTRY,
+                ".",
+                "--config",
+                str(settings.path),
+                "--json-output",
+                str(out_file),
+                "--no-ansi",
+            )
+            raw_output = f"command={command!r} cwd={project_dir} report={out_file}"
+            native = u.Cli.run_raw(
+                command,
+                cwd=project_dir,
+                timeout=c.Infra.TIMEOUT_MEDIUM,
+            ).unwrap()
+            raw_output += (
+                f"\nreturn-code={native.outcome.raw_return_code}\n"
+                + self._raw_output(native)
+            )
+            if not u.Cli.process_succeeded(native.outcome):
+                native_error = self._raw_output(native)
+            if (
+                native.outcome.timed_out
+                or native.outcome.forwarded_signal is not None
+                or native.outcome.raw_return_code not in {0, 1}
+            ):
+                issues = (
+                    self._command_error_issue(
+                        native,
+                        tool=c.Infra.DEPTRY,
+                        file=str(project_dir),
+                        line=0,
+                        column=0,
+                    ),
+                )
+            else:
+                state = u.Cli.atomic_read_binary_file_state(
+                    out_file,
+                    required=True,
+                ).unwrap()
+                if state.content is None:
+                    message = f"deptry did not produce its native report: {out_file}"
+                    raise ValueError(message)
+                report = m.Infra.DeptryNativeReport.model_validate_json(
+                    state.content,
+                    strict=True,
+                )
+                u.Cli.atomic_verify_binary_file_states((settings, state)).unwrap()
+                raw_output += f"\nreport-sha256={u.Cli.sha256_bytes(state.content)}"
+                issues = tuple(
+                    m.Infra.Issue(
+                        file=item.location.file,
+                        line=(
+                            item.location.line if item.location.line is not None else 0
                         ),
+                        column=(
+                            item.location.column
+                            if item.location.column is not None
+                            else 0
+                        ),
+                        code=f"{self.gate_id}-{item.error.code}",
+                        message=item.error.message,
+                        severity=c.Infra.GateSeverity.ERROR.value,
                     )
-            out_file.unlink(missing_ok=True)
-        if run.failure and not issues:
-            return self._build_check_gate_execution(
-                project_dir,
-                passed=False,
-                issues=(),
-                raw_output=str(run.error),
-                started=started,
+                    for item in report.root
+                )
+                if native.outcome.raw_return_code != int(bool(issues)):
+                    message = "deptry exit status contradicts its native report"
+                    raise ValueError(message)
+                outcome = u.Infra.tool_outcome(
+                    native.outcome,
+                    findings=len(issues),
+                    findings_exit_codes=(1,),
+                )
+        except (OSError, ValueError, RuntimeError) as exc:
+            issues = (
+                *issues,
+                m.Infra.Issue(
+                    file=str(project_dir),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message="\n".join(
+                        detail
+                        for detail in (native_error, f"{type(exc).__name__}: {exc}")
+                        if detail
+                    ),
+                    severity=c.Infra.GateSeverity.ERROR.value,
+                ),
             )
-        raw = f"checked={project_dir} findings={len(issues)}"
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=not issues,
-            issues=tuple(issues),
-            raw_output="\n".join((raw, *(issue.formatted for issue in issues))),
-            started=started,
+            raw_output += "\n" + issues[-1].message
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=outcome is c.Infra.ToolOutcome.CLEAN,
+                outcome=outcome,
+                issues=issues,
+                raw_output=raw_output,
+                started=started,
+            ),
         )
 
 

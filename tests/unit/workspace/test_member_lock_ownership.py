@@ -13,9 +13,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace import FlextInfraWorkspacePropagation
+from flext_infra.workspace import (
+    FlextInfraWorkspaceLockCompleteness,
+    FlextInfraWorkspacePropagation,
+)
 from tests import c, tm, u
 
 
@@ -70,6 +75,24 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         member = self._workspace(tmp_path, uv_workspace=False) / self.MEMBER
 
         tm.that(tm.ok(FlextInfraCodegenConform.require_own_lock(member)), eq=member)
+
+    @pytest.mark.parametrize("uv_workspace", [False, True])
+    def test_verification_uses_native_lock_owner(
+        self,
+        tmp_path: Path,
+        uv_workspace: bool,
+    ) -> None:
+        """Git attachment alone never elects the containing runtime's lock."""
+        root = self._workspace(tmp_path, uv_workspace=uv_workspace)
+        member = root / self.MEMBER
+        owner = root if uv_workspace else member
+        lock = owner / c.Infra.UV_LOCK_FILENAME
+        lock.write_text("package = []", encoding="utf-8")
+
+        tm.fail(FlextInfraWorkspaceLockCompleteness.validate(member), has=str(lock))
+        tm.that(lock.read_text(encoding="utf-8"), eq="package = []")
+        other = (member if uv_workspace else root) / c.Infra.UV_LOCK_FILENAME
+        tm.that(other.exists(), eq=False)
 
     def test_attached_member_settle_stops_before_any_lock(
         self,

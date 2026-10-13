@@ -972,6 +972,29 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq=rendered,
         )
 
+    def test_standalone_preserves_declared_nonlocal_source(self) -> None:
+        """Conformance owns local topology, not a user's independent Git source."""
+        dependency = self._member_ref("flext-custom", "flext-custom")
+        source_entry = {"git": dependency.url, "rev": u.Tests.provider_branch()}
+        source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
+                "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
+            }),
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=self._workspace(role=self._ROLE.STANDALONE),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+            ),
+        )
+        tm.that(
+            u.Tests.toml_table_at(rendered, "tool", "uv", "sources"),
+            eq={dependency.distribution: source_entry},
+        )
+
     def test_external_consumer_keeps_direct_git_requirement(self) -> None:
         """Test external consumer keeps direct git requirement."""
         workspace = u.Tests.workspace_spec(

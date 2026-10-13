@@ -53,10 +53,11 @@ The workspace elects the rules once per project and captures the selected
 projects' binding inputs in one inventory. File contents and Python parses are
 shared; import resolution retains each project's native lexical roots.
 Finding authentication and ownership are indexed by file within the scan,
-with a final descriptor check before admission. Evidence schema 2 stores every
-complete input once and keeps occurrence references to that inventory. Its
-counts derive from the occurrences; project, rule and class totals remain
-published, including zero rows.
+with a final descriptor check before admission. Evidence stores each complete
+input and each ordered binding graph once. Occurrences reference the input
+inventory and graph table. Project, rule and class totals are validated against
+the occurrences, including declared zero rows. The exact schema version comes
+from the infrastructure scan contract.
 Strings, docstrings, `Literal` values and `Annotated` metadata retain their
 contents, including PEP 695 and assignment-style aliases. Actual type operands
 remain distinct from metadata; unrelated runtime assignments are not annotations.

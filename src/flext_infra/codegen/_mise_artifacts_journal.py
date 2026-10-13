@@ -506,9 +506,30 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     def source_record(
         cls,
         phase: str,
-        source: m.Cli.AtomicFileState,
+        source: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
         previous: m.Infra.CodegenJournalSource | None = None,
+        *,
+        path: Path | None = None,
     ) -> p.Result[m.Infra.CodegenJournalSource]:
+        if isinstance(source, m.Cli.AtomicDirectoryChainPlan):
+            if path is None or path.parent != source.target:
+                return r[m.Infra.CodegenJournalSource].fail(
+                    "absent output requires its exact captured parent witness",
+                )
+            return r[m.Infra.CodegenJournalSource].ok(
+                m.Infra.CodegenJournalSource(
+                    phase=phase,
+                    path=path,
+                    parent_device=None,
+                    parent_inode=None,
+                    sha256=None,
+                    mode=None,
+                    device=None,
+                    inode=None,
+                    link_count=None,
+                    absent_parent=source,
+                )
+            )
         absent_parent = None
         if source.parent_device is None or source.parent_inode is None:
             if previous is not None:
