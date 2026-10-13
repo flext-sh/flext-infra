@@ -80,6 +80,20 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
+    class CodemodEnsureImport(m.ArbitraryTypesModel):
+        """One module import a rule's applied rewrites require in the file."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Dotted module path the name must be bound from"),
+        ]
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Top-level name the applied rewrite references"),
+        ]
+
     class CodemodRule(m.ArbitraryTypesModel):
         """One validated ast-grep rule document from a composed provider."""
 
@@ -151,6 +165,15 @@ class FlextInfraModelsRefactorGrep:
                 description=(
                     "Project-context conditions a finding must satisfy; empty "
                     "when the syntactic match alone is the finding"
+                ),
+            ),
+        ] = ()
+        ensure_imports: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodEnsureImport],
+            m.Field(
+                description=(
+                    "Module imports every applied rewrite of this rule requires "
+                    "in the rewritten file; empty when the fix is self-contained"
                 ),
             ),
         ] = ()

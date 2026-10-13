@@ -148,13 +148,15 @@ class FlextInfraUtilitiesRefactor:
                     raise ValueError(msg)
         proven: set[tuple[str, str]] = set()
         topology = sorted(projects, key=lambda item: len(item.parts), reverse=True)
-        counters: list[dict[tuple[str, str], Counter[tuple[str, str]]]] = []
-        indexes: list[dict[tuple[str, str], list[int]]] = []
+        counters: t.ListOf[
+            t.MutableMappingKV[t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]]
+        ] = []
+        indexes: t.ListOf[t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]]] = []
         for report in (before, after):
-            occurrences: dict[tuple[str, str], Counter[tuple[str, str]]] = defaultdict(
-                Counter
-            )
-            positions: dict[tuple[str, str], list[int]] = defaultdict(list)
+            occurrences: t.MutableMappingKV[
+                t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
+            ] = defaultdict(Counter)
+            positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = defaultdict(list)
             for index, entry in enumerate(report.entries):
                 if isinstance(entry, m.Infra.ModScanFinding):
                     repository = entry.repository
@@ -220,8 +222,11 @@ class FlextInfraUtilitiesRefactor:
         ):
             repository, rule_id = key
             original, final = before_entries[key], after_entries[key]
-            persisted = (original & final).total()
-            before_count, after_count = original.total(), final.total()
+            persisted = sum(
+                min(original[identity], final[identity])
+                for identity in original.keys() & final.keys()
+            )
+            before_count, after_count = sum(original.values()), sum(final.values())
             deltas.append(
                 m.Infra.ViolationsRuleDelta(
                     repository=repository,

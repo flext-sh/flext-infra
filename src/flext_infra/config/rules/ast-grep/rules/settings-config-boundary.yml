@@ -81,6 +81,14 @@ message: >-
   Layer-zero settings/config imports its own namespace `$MODULE`, including
   TYPE_CHECKING: use native or valid upstream contracts.
 ---
+# A family base composes its family's parts; the classes it shares with the
+# sibling families it reaches through the package's public family compose
+# modules (`<own-package>.{constants,models,protocols,typings,utilities}` —
+# the compose-module context, the family-shape amendment cosmos-h5y3o): the
+# compose classes are the only form the type checkers resolve, and the lazy
+# root keeps re-exporting them for runtime. Every other own-module import
+# stays banned, and the import-layer law (ban-reverse-runtime-import) still
+# governs which of those compose imports may run at runtime.
 id: ban-family-base-own-import
 language: python
 severity: error
@@ -91,6 +99,7 @@ metadata:
     MODULE:
       - is: own-package
       - is: family-base-file
+      - not: compose-module
 rule:
   all:
     - kind: import_from_statement
@@ -102,4 +111,5 @@ rule:
           regex: "\\._[a-z]+\\._base_parts(\\.|$)"
 message: >-
   Family base.py imports `$MODULE` from its own namespace: a family base is a
-  leaf and imports neither other own modules nor settings/config.
+  leaf and imports neither other own modules nor settings/config; shared
+  family classes come from the public compose modules.

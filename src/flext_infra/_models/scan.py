@@ -197,13 +197,13 @@ class FlextInfraModelsScan:
             m.Field(ge=0, strict=True, description="Exclusive end byte"),
         ]
 
-    class ModScanCounts(m.ArbitraryTypesModel):
+    class ModScanCounts[FindingT: ModScanFinding](m.ArbitraryTypesModel):
         """Authenticated findings are the sole source of serialized scan counts."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
+            t.VariadicTuple[FindingT],
             m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
@@ -251,7 +251,7 @@ class FlextInfraModelsScan:
                 for entry in self.entries
             )
 
-    class ModScanReport(ModScanCounts):
+    class ModScanReport(ModScanCounts[ModScanFinding]):
         """Verified structural findings and actionable rewrite targets."""
 
         source_states: Annotated[
@@ -359,7 +359,7 @@ class FlextInfraModelsScan:
             m.Field(description="Every validated text finding in stable order"),
         ]
 
-    class ModScanEvidence(ModScanCounts):
+    class ModScanEvidence(ModScanCounts[ModScanFindingReference]):
         """Complete replace-on-run evidence for one public mod scan."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
@@ -376,12 +376,6 @@ class FlextInfraModelsScan:
         inputs: Annotated[
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
-        ]
-        entries: Annotated[
-            tuple[FlextInfraModelsScan.ModScanFindingReference, ...],
-            m.Field(
-                description="All occurrences referencing the shared input inventory"
-            ),
         ]
         command: Annotated[
             c.Infra.ModScanCommand,

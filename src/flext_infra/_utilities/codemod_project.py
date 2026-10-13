@@ -858,6 +858,7 @@ class FlextInfraUtilitiesCodemodProject(
                     captured,
                     own,
                     facts,
+                    file_path,
                 )
             case (
                 c.Infra.CodemodContextPredicate.MODULE_EXPORT
@@ -914,6 +915,7 @@ class FlextInfraUtilitiesCodemodProject(
         captured: t.Pair[str, str | None],
         own: str,
         facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
     ) -> bool:
         """Evaluate one package-scope predicate.
 
@@ -952,9 +954,49 @@ class FlextInfraUtilitiesCodemodProject(
                     msg = f"project layout is unresolved: {root}"
                     raise ValueError(msg)
                 return value in layout.runtime_aliases
+            case c.Infra.CodemodContextPredicate.COMPOSE_MODULE:
+                return cls._compose_module_holds(root, value, own, facts, file_path)
             case _:
                 message = f"predicate is not package-scoped: {predicate}"
                 raise ValueError(message)
+
+    @classmethod
+    def _compose_module_holds(
+        cls,
+        root: Path,
+        value: str,
+        own: str,
+        facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
+    ) -> bool:
+        """Evaluate the ``compose-module`` predicate (the family-shape amendment).
+
+        The captured dotted module is a sanctioned public family compose
+        module when it is exactly ``<package>.<leaf>`` for a canonical
+        compose leaf: the own package must declare the leaf module file
+        beside its private family packages, and a foreign package must belong
+        to the project's runtime closure, where the family shape is the
+        fleet-wide contract.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        parts = value.split(".")
+        if len(parts) != 2 or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES:
+            return False
+        top, leaf = parts
+        if top == own:
+            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                root,
+                file_path,
+            )
+            layout = FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+            return (
+                layout is not None
+                and (layout.package_dir / f"{leaf}{c.Infra.EXT_PYTHON}").is_file()
+            )
+        return top in facts.runtime_modules
 
     @classmethod
     def _context_module_holds(
