@@ -228,7 +228,6 @@ def _provision_consumer_template(parent: Path) -> Path:
                 [verb],
                 cwd=root,
                 env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
-                capture=False,
             ),
         )
         _write_receipt(parent / receipt, output)

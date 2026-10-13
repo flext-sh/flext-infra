@@ -536,11 +536,14 @@ class FlextInfraUtilitiesCodemodProject(
     ) -> m.Infra.CodemodBindingSnapshot:
         """Capture every selected project's owners once before inference.
 
-        Returns:
-            The resulting ``m.Infra.CodemodBindingSnapshot``.
+        Args:
+            root: The root path of the project to capture.
+            source_states: A tuple of atomic file states representing the source files.
+            modules: A sequence of module names to include in the snapshot.
+            projects: An optional sequence of codemod binding projects to consider.
 
-        Raises:
-            ValueError: If binding source snapshots disagree.
+        Returns:
+            The resulting ``m.Infra.CodemodBindingSnapshot``..
         """
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
             state.path.resolve(): state
@@ -556,17 +559,35 @@ class FlextInfraUtilitiesCodemodProject(
             )
         )
         imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]] = {}
+        python_modules: t.MutableMappingKV[
+            t.Pair[str, str], t.Infra.RopeResource | None
+        ] = {}
         for selection in selections:
             with (
                 FlextInfraUtilitiesRopeCore.open_project(selection.root) as project,
                 project.frozen_layout(),
             ):
                 lookup = m.Infra.CodemodImportResources(
-                    modules={
-                        (name, None, 0): project.find_module(name)
-                        for name in dict.fromkeys(selection.modules)
-                    },
+                    source_folders=tuple(
+                        folder
+                        for folder in project.get_source_folders()
+                        if isinstance(folder, p.Infra.RopeRoot)
+                    ),
+                    python_folders=tuple(
+                        folder
+                        for folder in project.get_python_path_folders()
+                        if isinstance(folder, p.Infra.RopeRoot)
+                    ),
+                    python_modules=python_modules,
                 )
+                for name in dict.fromkeys(selection.modules):
+                    cls._snapshot_imported_resource(
+                        project,
+                        project.root,
+                        name,
+                        level=0,
+                        lookup=lookup,
+                    )
                 pending = [
                     project.get_resource(
                         path.relative_to(selection.root.resolve()).as_posix()
@@ -594,6 +615,7 @@ class FlextInfraUtilitiesCodemodProject(
                         if imported.real_path not in scheduled:
                             scheduled.add(imported.real_path)
                             pending.append(imported)
+                python_modules = lookup.python_modules
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
@@ -766,7 +788,26 @@ class FlextInfraUtilitiesCodemodProject(
         # final importing-folder lookup is local to the occurrence.
         absolute = (name, None, 0)
         if absolute not in modules_by_name:
-            modules_by_name[absolute] = project.find_module(name)
+            imported = next(
+                (
+                    resource
+                    for folder in lookup.source_folders
+                    if (resource := project.find_relative_module(name, folder, 1))
+                    is not None
+                ),
+                None,
+            )
+            if imported is None:
+                for search_folder in lookup.python_folders:
+                    shared = (name, search_folder.real_path)
+                    if shared not in lookup.python_modules:
+                        lookup.python_modules[shared] = project.find_relative_module(
+                            name, search_folder, 1
+                        )
+                    imported = lookup.python_modules[shared]
+                    if imported is not None:
+                        break
+            modules_by_name[absolute] = imported
         imported = modules_by_name[absolute]
         modules_by_name[key] = (
             imported

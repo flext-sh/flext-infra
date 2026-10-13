@@ -138,22 +138,29 @@ class TestsFlextInfraFreshImport:
         tm.that(report.passed, eq=True, msg=str(report.violations))
 
     @staticmethod
-    @pytest.mark.parametrize("missing_export", [False, True])
+    @pytest.mark.parametrize(
+        ("content", "missing_export"),
+        [("", False), ("__all__ = ()\n", False), ("__all__ = ('missing_export',)\n", True)],
+    )
     def test_preserved_initializer_uses_real_publication_contract(
         tmp_path: Path,
+        content: str,
         *,
         missing_export: bool,
     ) -> None:
         """A preserved package is imported and its live exports must resolve."""
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         initializer = package / c.Infra.INIT_PY
-        content = "__all__ = ('missing_export',)\n" if missing_export else ""
         initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
+        before = initializer.read_bytes()
         analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
-        publication = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        tm.that(
+            any(
+                file.path == initializer and u.Infra.codegen_file_requires_effect(file)
+                for file in analysis.files
+            ),
+            eq=False,
         )
-        tm.that(publication.action, eq=c.Infra.LazyInitAction.SKIP)
 
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
@@ -163,7 +170,7 @@ class TestsFlextInfraFreshImport:
         )
 
         tm.that(report.passed, eq=not missing_export, msg=str(report.violations))
-        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
+        tm.that(initializer.read_bytes(), eq=before)
         if missing_export:
             tm.that(report.violations[0], has="missing_export")
             tm.that(report.violations[0], has="Traceback")

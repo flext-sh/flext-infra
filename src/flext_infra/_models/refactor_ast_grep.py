@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
@@ -32,6 +32,18 @@ class FlextInfraModelsRefactorGrep:
                     "Elected native module resources keyed by invocation identity"
                 ),
             ),
+        ]
+        source_folders: Annotated[
+            tuple[p.Infra.RopeRoot, ...],
+            m.Field(description="Project-owned roots in the native search order"),
+        ]
+        python_folders: Annotated[
+            tuple[p.Infra.RopeRoot, ...],
+            m.Field(description="Native shared Python path roots in search order"),
+        ]
+        python_modules: Annotated[
+            t.MutableMappingKV[t.Pair[str, str], t.Infra.RopeResource | None],
+            m.Field(description="Shared native Python-root elections for this capture"),
         ]
 
     class CodemodContextCondition(m.ArbitraryTypesModel):

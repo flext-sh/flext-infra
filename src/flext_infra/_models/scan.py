@@ -443,7 +443,9 @@ class FlextInfraModelsScan:
             bindings: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
             entries = []
             for entry in self.entries:
-                source = None if entry.source_path is None else indexed[entry.source_path]
+                source = (
+                    None if entry.source_path is None else indexed[entry.source_path]
+                )
                 if entry.binding_paths not in bindings:
                     bindings[entry.binding_paths] = tuple(
                         indexed[path] for path in entry.binding_paths

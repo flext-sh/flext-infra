@@ -92,9 +92,12 @@ class TestsFlextInfraModEvidenceInputs:
     ) -> None:
         """Distinct binding groups share inputs through both JSON publication paths."""
         source = mod_workspace / "consumer.py"
+        owner = mod_workspace / "binding_owner.py"
+        owner.write_text("class Public:\n    value = 'captured'\n", encoding="utf-8")
         marker = "descriptor evidence sentinel"
         source.write_text(
             f"# {marker}\nfrom __future__ import annotations\n"
+            "from binding_owner import Public\n"
             + "".join(
                 f"def call_{index}(value: str) -> str:\n    return str(value)\n"
                 for index in range(occurrences)
@@ -117,7 +120,12 @@ class TestsFlextInfraModEvidenceInputs:
             inputs.append(
                 tm.ok(u.Cli.atomic_read_binary_file_state(resource, required=True))
             )
-        bindings = (tuple(inputs), (inputs[0],), tuple(reversed(inputs)), ())
+        bindings = (
+            (*inputs, inputs[0], inputs[-1], inputs[0]),
+            (inputs[0],),
+            tuple(reversed(inputs)),
+            (),
+        )
         report = report.model_copy(
             update={
                 "entries": tuple(
@@ -160,16 +168,21 @@ class TestsFlextInfraModEvidenceInputs:
             tm.that(occurrence.payload, eq=original.payload)
             tm.that(occurrence.source_state, eq=original.source_state)
             tm.that(occurrence.binding_states, eq=original.binding_states)
+            tm.that(
+                occurrence.binding_paths,
+                eq=tuple(state.path for state in original.binding_states),
+            )
             tm.that(occurrence.classification, eq=original.classification)
             tm.that(
                 occurrence.binding_states
-                is shared.setdefault(occurrence.binding_paths, occurrence.binding_states)
+                is shared.setdefault(
+                    occurrence.binding_paths, occurrence.binding_states
+                )
             )
         tm.that(
             len(restored.inputs.states),
             eq=len({
-                state.path
-                for state in (*tm.not_none(report.source_states), *inputs)
+                state.path for state in (*tm.not_none(report.source_states), *inputs)
             }),
         )
         nested_path = tm.ok(
@@ -182,9 +195,37 @@ class TestsFlextInfraModEvidenceInputs:
         )
         tm.that(nested.evidence, eq=restored)
         tm.that(nested.sha256, eq=u.Cli.sha256_bytes(nested.path.read_bytes()))
-        for reference in (
-            {"source_path": mod_workspace / "absent.py"},
-            {"binding_paths": (mod_workspace / "absent.py",)},
+        indexed = {state.path: state for state in nested.evidence.inputs.states}
+        for occurrence in nested.evidence.entries:
+            if occurrence.source_path is not None:
+                tm.that(occurrence.source_state is indexed[occurrence.source_path])
+            for state in occurrence.binding_states:
+                tm.that(state is indexed[state.path])
+        closure = nested.evidence.entries[0].binding_states
+        tm.that(closure[-1] is closure[0])
+        owner.write_text("invalid syntax !!!\n", encoding="utf-8")
+        with u.Infra.codemod_binding_project(
+            mod_workspace, m.Infra.CodemodBindingSnapshot(states=closure)
+        ) as (project, sources):
+            module = project.get_pymodule(project.get_resource(source.name))
+            tm.that(
+                u.Infra.name_definition_resource_path(
+                    module, sources[source].rindex("Public")
+                ),
+                eq=str(owner),
+            )
+        missing_source = mod_workspace / "absent_source.py"
+        missing_binding = mod_workspace / "absent_binding.py"
+        for reference, expected_key in (
+            ({"source_path": missing_source}, missing_source),
+            ({"binding_paths": (missing_binding,)}, missing_binding),
+            (
+                {
+                    "source_path": missing_source,
+                    "binding_paths": (missing_binding,),
+                },
+                missing_source,
+            ),
         ):
             tampered = restored.model_copy(
                 update={
@@ -194,10 +235,11 @@ class TestsFlextInfraModEvidenceInputs:
                     )
                 }
             )
-            with pytest.raises(KeyError):
+            with pytest.raises(KeyError) as missing:
                 m.Infra.ModScanEvidence.model_validate_json(
                     tampered.model_dump_json(round_trip=True)
                 )
+            tm.that(missing.value.args, eq=(expected_key,))
         with pytest.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(
