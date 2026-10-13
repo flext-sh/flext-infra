@@ -59,7 +59,11 @@ class TestsFlextInfraLazyInitRuntime:
         if ownership == "rebound":
             sources[owner] = source.replace("value: int", "value: str") + source
         facade = package / f"{family.module}.py"
-        sources[facade] = "class Facade: pass\nm = Facade\n__all__ = ['Facade', 'm']\n"
+        sources[facade] = (
+            "from flext_core import m as parent\n"
+            "class Facade(parent): pass\n"
+            "m = Facade\n__all__ = ['Facade', 'm']\n"
+        )
         if ownership == "standalone":
             sources[owners / "standalone.py"] = (
                 "from flext_core import m as parent\n"
@@ -73,7 +77,8 @@ class TestsFlextInfraLazyInitRuntime:
             )
         if ownership == "entities":
             sources[facade] = (
-                "class Facade:\n"
+                "from flext_core import m as parent\n"
+                "class Facade(parent):\n"
                 "    class First: value = 'first'\n"
                 "    class Second: value = 'second'\n"
                 "m = Facade\n__all__ = ['Facade', 'm']\n"

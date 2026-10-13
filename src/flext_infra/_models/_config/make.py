@@ -121,6 +121,21 @@ class FlextInfraConfigModelsMake(
             ),
         ] = tuple(FlextInfraConfigVocabulary.MakeProfile)
 
+    class MakeLifecycleStepSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One public command in the declared runtime acceptance sequence."""
+
+        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
+        scope: Annotated[
+            Literal["root", "each"],
+            m.Field(description="Run once at the root or in every eligible repository"),
+        ]
+        contexts: Annotated[
+            t.VariadicTuple[Literal["local", "ci"]],
+            m.Field(
+                min_length=1, description="Contexts where this acceptance step applies"
+            ),
+        ]
+
     class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One canonical workflow step."""
 
@@ -561,6 +576,18 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowStepSpec],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
+        lifecycle_steps: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeLifecycleStepSpec],
+            m.Field(
+                min_length=1, description="Ordered public runtime acceptance steps"
+            ),
+        ]
+        lifecycle_observed_files: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1, description="Relative files observed around each step"
+            ),
+        ]
         ci: Annotated[
             FlextInfraConfigModelsMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
@@ -839,6 +866,17 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
+            unknown_lifecycle = {step.verb for step in self.lifecycle_steps} - declared
+            if unknown_lifecycle:
+                msg = (
+                    "make lifecycle verbs are not declared public verbs: "
+                    f"{', '.join(sorted(unknown_lifecycle))}"
+                )
+                raise ValueError(msg)
+            for path in self.lifecycle_observed_files:
+                if Path(path).is_absolute() or ".." in Path(path).parts:
+                    msg = f"make lifecycle observed file escapes its repository: {path}"
+                    raise ValueError(msg)
             # Every profile renders the workflow, so a workflow verb must exist
             # in every profile's Makefile.
             partial_workflow = sorted(

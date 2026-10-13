@@ -95,7 +95,11 @@ class TestsFlextInfraCProfileReport:
             )
         )
         tm.that(u.Cli.process_succeeded(reference.outcome), eq=False)
-        tm.that(profiled.outcome.raw_return_code, eq=reference.outcome.raw_return_code)
+        tm.that(
+            profiled.outcome.raw_return_code,
+            eq=reference.outcome.raw_return_code,
+            msg=reference.stderr + profiled.stderr,
+        )
         tm.that(reference.stderr, lacks="KeyboardInterrupt")
         tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
         primary_trace, secondary_trace = profiled.stderr.split(

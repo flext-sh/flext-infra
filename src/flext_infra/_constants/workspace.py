@@ -163,15 +163,6 @@ print(json.dumps({
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-verb.json"
     )
     "Typed receipts of the latest fleet verb run, one per governed member."
-    LIFECYCLE_VERBS: ClassVar[t.StrSequence] = (
-        "setup",
-        "gen",
-        "upg",
-        "setup",
-        "gen",
-        "gen",
-    )
-    "Fixed serial lifecycle, including the post-upgrade generation fixed point."
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
     )

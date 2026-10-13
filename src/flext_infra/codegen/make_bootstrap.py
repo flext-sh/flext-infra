@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace.environment_provenance import (
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,11 +44,27 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
             if self.effective_dry_run
             else c.Infra.CodegenConformMode.APPLY
         )
-        return self.conform_target(
-            self.repository_root,
-            surface=c.Infra.CodegenConformSurface.MAKEFILE,
-            mode=mode,
-        )
+        roots: t.VariadicTuple[Path] = (requested,)
+        ci = config.Infra.codegen.make.ci
+        if u.Infra.env_value(ci.variable).strip() != ci.value:
+            members = FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+                requested,
+            )
+            if members.failure:
+                return r[bool].from_failure(members)
+            roots = (
+                requested,
+                *(requested / member.path for member in members.value),
+            )
+        for root in roots:
+            conformed = self.conform_target(
+                root,
+                surface=c.Infra.CodegenConformSurface.MAKEFILE,
+                mode=mode,
+            )
+            if conformed.failure:
+                return conformed
+        return r[bool].ok(value=True)
 
     @staticmethod
     def conform_target(

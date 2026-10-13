@@ -47,6 +47,11 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             p.Result[m.Infra.CodegenTransactionSession],
         ]
         | None = None,
+        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        admission: Callable[
+            [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
+        ]
+        | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Append, durably authorize, then publish one dependent generated phase.
 
@@ -55,6 +60,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        if batch_analysis is not None and (
+            batch_analysis.phase != phase or batch_analysis.files != plans
+        ):
+            return result_type.fail("batch analysis differs from requested phase")
         if issues:
             session = session.model_copy(
                 update={"issues": (*session.issues, *issues)},
@@ -63,12 +72,34 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
         )
         if not changed:
+            if admission is not None:
+                admitted = admission(
+                    tuple(
+                        item.created
+                        for item in session.journal.directories
+                        if item.created is not None
+                    )
+                )
+                if admitted.failure:
+                    return result_type.from_failure(admitted)
+                if not admitted.value:
+                    return result_type.fail("batch topology admission rejected")
+            if batch_analysis is not None:
+                admitted = FlextInfraMisePublication.admit_batch(batch_analysis)
+                if admitted.failure:
+                    return result_type.from_failure(admitted)
             return result_type.ok(session)
         authorized = self._authorize_phase_destinations(session, phase, changed, plans)
         if authorized.failure:
             return result_type.from_failure(authorized)
         return self._append_authorized_phase(
-            session, authorized.value, phase, changed, staged_validator
+            session,
+            authorized.value,
+            phase,
+            changed,
+            staged_validator,
+            batch_analysis,
+            admission,
         )
 
     def _append_authorized_phase(
@@ -87,6 +118,11 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 t.VariadicTuple[m.Infra.CodegenStagedFile],
             ],
             p.Result[m.Infra.CodegenTransactionSession],
+        ]
+        | None = None,
+        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        admission: Callable[
+            [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
         ]
         | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
@@ -130,10 +166,23 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             if checked.failure:
                 return result_type.from_failure(checked)
             current = checked.value
+        if admission is not None:
+            admitted = admission(
+                tuple(
+                    item.created
+                    for item in current.journal.directories
+                    if item.created is not None
+                )
+            )
+            if admitted.failure:
+                return result_type.from_failure(admitted)
+            if not admitted.value:
+                return result_type.fail("batch topology admission rejected")
         published = self._publish_verified_phase(
             prepared.value.plan.layout,
             phase,
             staged.value,
+            batch_analysis=batch_analysis,
         )
         if published.success:
             journal, journal_state = current.journal, current.journal_state
@@ -824,6 +873,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         phase: str,
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish the verified staged set and prove it live.
 
@@ -832,7 +883,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             files.
 
         """
-        published = FlextInfraMisePublication.publish(staged)
+        published = FlextInfraMisePublication.publish(
+            staged,
+            batch_analysis=batch_analysis,
+        )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
                 self._recover_failure(
@@ -1031,11 +1085,16 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 return r[t.VariadicTuple[Path]].from_failure(evidence)
             if validator is not None:
                 validated = validator()
-                if validated.failure or not validated.value:
-                    cleaned = self._recover_prepared(session.plan.layout)
-                    return r[t.VariadicTuple[Path]].fail(
-                        validated.error or "explicit publication validation failed",
-                        exception=session.exception or validated.exception,
+                if validated.success and not validated.value:
+                    validated = r[bool].fail(
+                        "explicit publication validation failed",
+                        exception=session.exception,
+                    )
+                if validated.failure:
+                    failure = r[bool].fail(
+                        validated.error,
+                        exception=validated.exception,
+                        error_code=validated.error_code,
                         error_data={
                             "written_files": tuple(
                                 str(path) for path in session.written_files
@@ -1043,8 +1102,11 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                             "issues": tuple(
                                 issue.model_dump() for issue in session.issues
                             ),
-                            "cleanup_error": cleaned.error if cleaned.failure else None,
+                            **(validated.error_data or {}),
                         },
+                    )
+                    return r[t.VariadicTuple[Path]].from_failure(
+                        self._recover_failure(session.plan.layout, failure)
                     )
             return self._settle_publication(session)
         finally:

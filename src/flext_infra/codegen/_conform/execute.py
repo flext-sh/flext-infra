@@ -1269,7 +1269,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if lazy_analysis.failure:
             aborted = transaction.abort_locked(
                 session,
-                lazy_analysis.error or "lazy-init planning failed",
+                lazy_analysis,
             )
             return result_type.from_failure(aborted)
         conform_paths = frozenset(file.path for file in plan.files)

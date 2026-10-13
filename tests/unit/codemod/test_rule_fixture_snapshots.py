@@ -22,6 +22,84 @@ from tests import t, tm, u
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
 
+    @pytest.mark.slow
+    def test_failure_transport_uses_resolved_inherited_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """The native root guard admits inherited recovery, not foreign homonyms."""
+        u.Tests.WorktreeFixture.write_python_project(tmp_path, "failure-transport")
+        demo = self._owner(tmp_path)
+        owner = Path(__file__).resolve().parents[3]
+        source_catalog = self._source_catalog(owner)
+        rule = self._catalog(tmp_path) / "rules" / "result-failure-rebind.yml"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule,
+                (source_catalog / "rules" / rule.name).read_text(
+                    encoding=c.DEFAULT_ENCODING
+                ),
+            )
+        )
+        for fixture in (source_catalog / "tests").glob("result-*-*-test.yml"):
+            if fixture.stem.startswith((
+                "result-recovery-",
+                "result-journal-",
+                "result-directory-",
+            )):
+                tm.ok(
+                    u.Cli.atomic_write_text_file(
+                        self._catalog(tmp_path) / "tests" / fixture.name,
+                        fixture.read_text(encoding=c.DEFAULT_ENCODING),
+                    )
+                )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                self._catalog(tmp_path) / "tests" / "result-failure-rebind-test.yml",
+                (source_catalog / "tests" / "result-failure-rebind-test.yml").read_text(
+                    encoding=c.DEFAULT_ENCODING
+                ),
+            )
+        )
+        tm.ok(
+            FlextInfraModGateEngine.refresh_rule_snapshots(
+                tmp_path, (demo, rule), apply=True
+            )
+        )
+        u.Tests.provision_checkout(tmp_path)
+        sample = tmp_path / "src" / "consumer.py"
+        source = (
+            "from flext_infra import p\n"
+            "from flext_infra.codegen import FlextInfraCodegenTransaction\n"
+            "class Consumer(FlextInfraCodegenTransaction):\n"
+            "    def accept(self, layout, result: p.Result[bool]):\n"
+            "        if result.failure:\n"
+            "            return self._recover_failure(layout, result.error or 'context', "
+            "exception=result.exception, error_code=result.error_code, error_data=result.error_data)\n"
+            "    def unstable(self, layout, result, other):\n"
+            "        if result.failure:\n"
+            "            result = other\n"
+            "            return self._recover_failure(layout, result.error or 'context')\n"
+            "class Foreign:\n"
+            "    def _recover_failure(self, layout, text, **kwargs):\n"
+            "        return text\n"
+            "    def accept(self, layout, result):\n"
+            "        if result.failure:\n"
+            "            return self._recover_failure(layout, result.error or 'context')\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        plan = tm.ok(u.Infra.codemod_rule_plan(tmp_path))
+        selected = tuple(item.id for item in plan.rules if item.resource == rule)
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(tmp_path, fix=False, rule_ids=selected)
+        )
+        tm.that(len(report.entries), eq=1)
+        finding = report.entries[0]
+        tm.that(finding.file, eq=sample.relative_to(tmp_path))
+        tm.that(
+            tm.not_none(finding.replacement), has="context=result.error or 'context'"
+        )
+        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
     @pytest.mark.parametrize("relative_catalog", ["policy", "nested/native/policy"])
     def test_native_snapshots_follow_declared_catalog_root(
         self,
