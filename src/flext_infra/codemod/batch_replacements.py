@@ -72,6 +72,7 @@ class FlextInfraModReplacements:
         report: m.Infra.ModScanReport,
         *,
         exact_replacements: bool = False,
+        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
 
@@ -106,6 +107,7 @@ class FlextInfraModReplacements:
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
+            published_files=published_plans,
         )
         if published.failure:
             return r[bool].from_failure(published)
@@ -231,7 +233,9 @@ class FlextInfraModReplacements:
             )
             if normalized.failure:
                 return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(normalized)
-            accepted.append(plan.model_copy(update={"desired_content": normalized.value}))
+            accepted.append(
+                plan.model_copy(update={"desired_content": normalized.value})
+            )
         return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(accepted))
 
     @staticmethod

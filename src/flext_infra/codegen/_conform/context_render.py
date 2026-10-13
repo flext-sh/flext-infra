@@ -88,7 +88,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """
         return u.Infra.resolve_integration_branch(
             target.root,
-            preference=codegen.branch_policy.integration_branch_preference,
+            policy_branch=codegen.branch_policy.integration_branch,
             declared=(
                 workspace.integration.branch
                 if workspace.integration is not None

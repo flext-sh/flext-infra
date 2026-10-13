@@ -358,7 +358,14 @@ class FlextInfraAccessorMigrationReportMixin:
             for tool in file_report.lint_tools:
                 receipt = file_report.lint_after.get(tool)
                 issues = (
-                    (*receipt.errors, *((receipt.execution_error,) if receipt.execution_error else ()))
+                    (
+                        *receipt.errors,
+                        *(
+                            (receipt.execution_error,)
+                            if receipt.execution_error
+                            else ()
+                        ),
+                    )
                     if receipt is not None
                     else ("not executed",)
                 )

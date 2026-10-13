@@ -39,11 +39,14 @@ def _provision_edited_sample(
 @pytest.mark.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
     @staticmethod
-    @pytest.mark.parametrize("mode", ["empty", "malformed", "signal", "timeout", "launch"])
+    @pytest.mark.parametrize(
+        "mode", ["empty", "malformed", "signal", "timeout", "launch"]
+    )
     def test_native_lint_failure_never_becomes_a_diagnostic_zero(
-        tmp_path: Path, mode: str,
+        tmp_path: Path,
+        mode: str,
     ) -> None:
-        """Real process failures retain their native receipt without invented findings."""
+        """Process failures retain native receipts without invented findings."""
         programs = {
             "empty": f"raise SystemExit({c.Cli.EXIT_CODE_FAILURE})",
             "malformed": "print('{}')",
@@ -59,7 +62,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         receipt = u.Infra.lint_gate_result(c.Infra.RUFF, executed)
         tm.that(receipt.errors, eq=())
         tm.that(receipt.execution_error is not None, eq=True)
-        tm.that(u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False)
+        tm.that(
+            u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False
+        )
         tm.that(
             u.Infra.lint_new_errors(
                 {receipt.tool_name: receipt}, {receipt.tool_name: receipt}
@@ -94,7 +99,6 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         """Changing only the native configuration must recover a failed snapshot."""
         project_config, py_file, _, _ = _provision_edited_sample(tmp_path)
         configuration = tmp_path / c.PYPROJECT_FILENAME
-        u.Infra.clear_snapshot_cache()
         configuration.write_text(
             project_config + "[tool.ruff]\nline-length = 'invalid'\n",
             encoding=c.DEFAULT_ENCODING,
@@ -107,7 +111,39 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(u.Infra.lint_execution_errors(recovered), eq=())
         tm.that(recovered[c.Infra.RUFF].errors, eq=())
         tm.that(recovered[c.Infra.RUFF].output is not None, eq=True)
-        u.Infra.clear_snapshot_cache()
+
+    @staticmethod
+    @pytest.mark.parametrize("inherited", [False, True])
+    def test_valid_configuration_changes_reobserve_unchanged_source(
+        tmp_path: Path,
+        *,
+        inherited: bool,
+    ) -> None:
+        """Native configuration changes invalidate observations, including extends."""
+        project_config, py_file, _, _ = _provision_edited_sample(tmp_path)
+        py_file.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
+        configuration = tmp_path / c.PYPROJECT_FILENAME
+        if inherited:
+            configuration = tmp_path / "policy.toml"
+            (tmp_path / c.PYPROJECT_FILENAME).write_text(
+                "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+                "[tool.ruff]\nextend = 'policy.toml'\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            project_config = "[lint]\nselect = ['F401']\n"
+            configuration.write_text(project_config, encoding=c.DEFAULT_ENCODING)
+        before = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(before), eq=())
+        tm.that(before[c.Infra.RUFF].errors, empty=False)
+        configuration.write_text(
+            project_config.replace("F401", "F821"), encoding=c.DEFAULT_ENCODING
+        )
+        after = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(after), eq=())
+        tm.that(after[c.Infra.RUFF].errors, eq=())
+        configuration.write_text(project_config, encoding=c.DEFAULT_ENCODING)
+        restored = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(restored[c.Infra.RUFF].errors, eq=before[c.Infra.RUFF].errors)
 
     @staticmethod
     def test_native_ruff_findings_retain_violation_exit_separately(

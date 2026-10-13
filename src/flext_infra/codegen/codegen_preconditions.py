@@ -35,32 +35,28 @@ class FlextInfraCodegenPreconditions:
                 m.Cli.AtomicFileState]]]``.
 
         """
-        result_type = r[tuple[tuple[str, m.Cli.AtomicFileState], ...]]
-        sources: MutableMapping[Path, m.Cli.AtomicFileState] = {}
-        for plan in plans:
-            for source in plan.source_states:
-                previous = sources.get(source.path)
-                if previous is not None and previous != source:
-                    return result_type.fail(
-                        f"{phase} planner observed two states for {source.path}",
-                    )
-                sources[source.path] = source
-        return result_type.ok(tuple((phase, source) for source in sources.values()))
+        return FlextInfraCodegenPreconditions.unique_states(
+            tuple(source for plan in plans for source in plan.source_states)
+        ).map(lambda sources: tuple((phase, source) for source in sources))
 
     @staticmethod
     def unique_states(
         states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
-        """Coalesce repeated states by their publication path.
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Preserve the first identity per path and refuse conflicting snapshots.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Cli.AtomicFileState]``.
+            The authenticated ordered union or its first identity conflict.
 
         """
+        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         by_path: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         for file_state in states:
-            by_path[file_state.path] = file_state
-        return tuple(by_path.values())
+            if by_path.setdefault(file_state.path, file_state) != file_state:
+                return result_type.fail(
+                    f"planner observed two states for {file_state.path}"
+                )
+        return result_type.ok(tuple(by_path.values()))
 
     @staticmethod
     def prepublication_barriers(
@@ -74,8 +70,8 @@ class FlextInfraCodegenPreconditions:
             The resulting ``p.Result[bool]``.
 
         """
-        source_barrier = FlextInfraMiseArtifactsVerification.states_current(
-            FlextInfraCodegenPreconditions.unique_states(sources),
+        source_barrier = FlextInfraCodegenPreconditions.unique_states(sources).flat_map(
+            FlextInfraMiseArtifactsVerification.states_current
         )
         if source_barrier.failure:
             return source_barrier

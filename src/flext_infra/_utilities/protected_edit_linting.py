@@ -265,6 +265,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return f"`{imported_name}` imported but unused"
 
         normalized_line: str = c.Infra.LINE_COL_RE.sub("", line)
+        # The comparison pairs one logical file's before and after snapshots,
+        # whose linted locations differ (live path vs staged source-view path):
+        # the leading file-path token normalizes away so only the diagnostic
+        # content itself can differ.
+        head, separator, remainder = normalized_line.partition(" ")
+        if separator and "/" in head:
+            normalized_line = remainder
         normalized_without_unused_imports: str = c.Infra.UNUSED_IMPORT_RE.sub(
             normalize_unused_import,
             normalized_line,
@@ -464,8 +471,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
             command = (*command, "--outputjson")
         elif tool_name == c.Infra.PYREFLY:
             command = (
-                *command, "--output-format", c.Infra.OUTPUT_JSON,
-                "-o", "-", "--summary=none",
+                *command,
+                "--output-format",
+                c.Infra.OUTPUT_JSON,
+                "-o",
+                "-",
+                "--summary=none",
             )
         if (
             tool_name == c.Infra.PYREFLY
@@ -502,32 +513,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
             for entry in cls._selected_lint_tools(gates)
         )
-
-    _snapshot_cache: ClassVar[
-        MutableMapping[
-            t.Triple[str, str, t.StrSequence],
-            t.Infra.LintSnapshot[m.Infra.LintGateResult],
-        ]
-    ] = {}
-
-    @classmethod
-    def clear_snapshot_cache(cls) -> None:
-        """Reset the content-hash keyed lint snapshot cache."""
-        cls._snapshot_cache.clear()
-
-    @staticmethod
-    def _lint_snapshot_cache_key(
-        py_file: Path,
-        gate_key: t.StrSequence,
-    ) -> t.Triple[str, str, t.StrSequence] | None:
-        """Lint snapshot cache key.
-
-        Returns:
-            The resulting ``t.Triple[str, str, t.StrSequence] | None``.
-
-        """
-        raw_bytes = py_file.read_bytes()
-        return (str(py_file.resolve()), u.Cli.sha256_bytes(raw_bytes), gate_key)
 
     @classmethod
     def _execute_selected_lint_tools(
@@ -709,8 +694,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 f"{(output.stderr or output.stdout).strip()}"
             )
         failure = failure or (str(parsed.error) if parsed.failure else None)
-        if output.stderr.strip():
-            failure = failure or output.stderr.strip()
         return m.Infra.LintGateResult(
             tool_name=tool_name,
             errors=lines,
@@ -735,16 +718,22 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 m.Infra.PyrightReport, source, from_json=True, strict=True
             )
             return report.flat_map(
-                lambda observed: result.ok(tuple(
-                    f"{entry.file}:"
-                    f"{entry.range.start.line + 1 if entry.range else 0}:"
-                    f"{entry.range.start.character + 1 if entry.range else 0}: "
-                    f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                    for entry in observed.general_diagnostics
-                    if entry.severity in {"error", "warning"}
-                ))
-                if observed.summary.files_analyzed
-                else result.fail("pyright analyzed no files for the selected source")
+                lambda observed: (
+                    result.ok(
+                        tuple(
+                            f"{entry.file}:"
+                            f"{entry.range.start.line + 1 if entry.range else 0}:"
+                            f"{entry.range.start.character + 1 if entry.range else 0}: "
+                            f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
+                            for entry in observed.general_diagnostics
+                            if entry.severity in {"error", "warning"}
+                        )
+                    )
+                    if observed.summary.files_analyzed
+                    else result.fail(
+                        "pyright analyzed no files for the selected source"
+                    )
+                )
             )
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
@@ -796,10 +785,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         result = r[t.StrSequence]
         loaded = u.Cli.json_parse(source)
-        if loaded.failure:
-            return result.from_failure(loaded)
-        if not isinstance(loaded.value, list):
-            return result.fail("Ruff JSON report is not a list of findings")
+        if loaded.failure or not isinstance(loaded.value, list):
+            return (
+                result.from_failure(loaded)
+                if loaded.failure
+                else result.fail("Ruff JSON report is not a list of findings")
+            )
         errors: list[str] = []
         for finding in loaded.value:
             if not isinstance(finding, dict):
@@ -813,7 +804,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     "file": finding.get("filename"),
                     "line": location.get("row"),
                     "column": location.get("column"),
-                    "code": finding.get("name"),
+                    "code": finding.get("code"),
                     "message": finding.get("message"),
                 },
                 strict=True,
@@ -827,7 +818,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 or issue.value.line < 1
                 or issue.value.column < 1
             ):
-                return result.fail("Ruff JSON finding has invalid native diagnostic fields")
+                return result.fail(
+                    "Ruff JSON finding has invalid native diagnostic fields"
+                )
             errors.append(issue.value.formatted)
         return result.ok(tuple(errors))
 
@@ -871,6 +864,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Candidate stdin retains the destination's filename and configuration;
         it never materializes the proposed bytes on the live filesystem.
+        Every call observes the native tool again. A file hash cannot authenticate
+        configuration, runtime or imported dependency changes; only the native
+        checker owns reuse of its complete analysis inputs.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.
@@ -892,25 +888,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     source=source,
                 ),
             ))
-        if not selected_tools:
-            return {}
-
-        gate_key = tuple(entry[0] for entry in selected_tools)
-        cache_key = cls._lint_snapshot_cache_key(py_file, gate_key)
-        if (
-            cache_key is not None
-            and (cached := cls._snapshot_cache.get(cache_key)) is not None
-        ):
-            return cached
-
-        result = cls._execute_selected_lint_tools(
+        return cls._execute_selected_lint_tools(
             py_file=py_file,
             workspace=workspace,
             selected_tools=selected_tools,
         )
-        if cache_key is not None and not cls.lint_execution_errors(result):
-            cls._snapshot_cache[cache_key] = dict(result)
-        return result
 
     @classmethod
     def lint_snapshots(

@@ -12,7 +12,9 @@ from pathlib import Path
 from types import CodeType
 from typing import TYPE_CHECKING
 
-from flext_infra import main, r
+import pytest
+
+from flext_infra import infra, m, main, r
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import t, tm, u
 
@@ -439,17 +441,34 @@ class TestsFlextInfraRefactorMainCli:
         result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
+    @pytest.mark.parametrize(
+        ("kinds", "rules", "families"),
+        [
+            (("function",), ("unused",), None),
+            ((" function , ", ""), (" unused , ", ""), (" , \t",)),
+        ],
+    )
     def test_refactor_census_flags_unused_when_only_tests_reference_source(
         self,
         tmp_path: Path,
+        kinds: t.StrSequence,
+        rules: t.StrSequence,
+        families: t.StrSequence | None,
     ) -> None:
-        """Test refactor census flags unused when only tests reference source."""
+        """The public census normalizes selectors without changing request data."""
         workspace = self._build_test_only_workspace(tmp_path)
-        report = u.Tests.census_report(
-            workspace,
-            kinds=("function",),
-            rules=("unused",),
+        u.Tests.provision_checkout(workspace)
+        request = m.Infra.CensusInput(
+            repository_root=workspace,
+            kinds=kinds,
+            rules=rules,
+            families=families,
         )
+        payload = request.model_dump()
+        result = infra.census(request)
+        tm.ok(result)
+        report = result.unwrap()
+        tm.that(request.model_dump(), eq=payload)
         violations = u.Tests.census_violations(report)
 
         tm.that(report.unused_count, eq=1)

@@ -1070,11 +1070,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             codegen,
             {item.path: item for item in codegen.managed_files if item.runtime_binding},
             completed,
-<<<<<<< HEAD
-=======
-            vscode_spec=vscode_spec,
             codegen_inputs=codegen_inputs,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             migrate_tracking=True,
         )
         if planned.failure:
@@ -1201,7 +1197,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         settings = cls._vscode_tracking_settings(request, state)
         if settings.failure:
             return result_type.from_failure(settings)
-        projected = cls._vscode_tracking_projection(request, *settings.value)
+        projected = cls._vscode_tracking_projection(
+            request, *settings.value, codegen_inputs=codegen_inputs
+        )
         if projected.failure:
             return result_type.from_failure(projected)
         effective, declarations = projected.value
@@ -1235,7 +1233,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(indexed)
         if live.failure:
             return result_type.from_failure(live)
-<<<<<<< HEAD
         return result_type.ok((indexed.value, live.value))
 
     @classmethod
@@ -1244,6 +1241,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         request: m.Infra.CodegenGovernedPlanRequest,
         indexed: t.JsonMapping,
         live: t.JsonMapping,
+        *,
+        codegen_inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[
         t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
     ]:
@@ -1255,29 +1254,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         result_type = r[
             t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
         ]
-        loaded = u.Infra.load_codegen_inputs(request.root)
-        if loaded.failure:
-            return result_type.from_failure(loaded)
-        project = cls._vscode_project_projection(request.root, loaded.value, indexed)
-=======
         if codegen_inputs is None:
             loaded = u.Infra.load_codegen_inputs(request.root)
             if loaded.failure:
                 return result_type.from_failure(loaded)
             codegen_inputs = loaded.value
-        baseline = u.Infra.project_codegen_inputs(
-            request.root,
-            codegen_inputs,
-            include_local=False,
-        )
-        if baseline.failure:
-            return result_type.from_failure(baseline)
-        project = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
-            request.root,
-            indexed.value,
-            spec=baseline.value.spec.vscode,
-        )
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
+        project = cls._vscode_project_projection(request.root, codegen_inputs, indexed)
         if project.failure:
             return result_type.from_failure(project)
         projections = project.value
@@ -1317,7 +1299,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(effective)
         return cls._vscode_declaration_plans(
             request.root,
-            loaded.value,
+            codegen_inputs,
             projections,
         ).map(lambda declarations: (effective.value, declarations))
 
@@ -1403,13 +1385,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             planned = cls._codegen_declaration_plan(
                 root,
                 path,
-<<<<<<< HEAD
                 validated.value,
                 sources=inputs.sources,
-=======
-                {"vscode": dict(delta.values)},
-                sources=codegen_inputs.sources,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             )
             if planned.failure:
                 return result_type.from_failure(planned)
@@ -1433,13 +1410,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         binding = cls._vscode_merged_plan(
             request.model_copy(
                 update={
-<<<<<<< HEAD
                     "vscode_spec": effective.spec.vscode,
                     "source_states": effective.sources,
-=======
-                    "vscode_spec": effective.value.spec.vscode,
-                    "source_states": codegen_inputs.sources,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 },
             ),
         )

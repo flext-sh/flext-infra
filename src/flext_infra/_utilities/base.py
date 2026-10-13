@@ -14,13 +14,14 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra import c, t
+from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._settings import FlextInfraSettings
 
 if os.name != "nt":
     import pwd
 
 
-class FlextInfraUtilitiesBase:
+class FlextInfraUtilitiesBase(FlextInfraMakeContract):
     """Base utilities for flext-infra project.
 
     Provides primitive helpers used across all infra utility subclasses.

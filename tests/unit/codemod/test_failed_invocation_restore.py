@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main
+from flext_infra import infra, main
 from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, tm, u
@@ -19,6 +19,43 @@ from tests import c, m, tm, u
 
 class TestsFlextInfraFailedInvocationProgress:
     """Failures preserve accepted progress and newer independent source states."""
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("copies", [1, 2])
+    def test_selected_apply_preserves_authenticated_module_absence(
+        mod_workspace: Path, capsys: pytest.CaptureFixture[str], copies: int
+    ) -> None:
+        """Whole-module native absence survives selected token publication."""
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                "repair-marker": (
+                    "id: repair-marker\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  pattern: marker = dict()\nfix: marker = {}\n"
+                ),
+            },
+        )
+        sample = mod_workspace / "accounting.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * copies))
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            "repair-marker",
+            "--apply",
+        ])
+        capture = capsys.readouterr()
+        console = capture.out + capture.err
+        tm.that(exit_code, eq=0, msg=console)
+        tm.that(
+            sample.read_text(encoding=c.DEFAULT_ENCODING), eq="marker = {}\n" * copies
+        )
+        tm.that(console, has="selected AST fixed point verified")
+        tm.that(console, lacks="introduced whole-catalog finding occurrences")
 
     @staticmethod
     @pytest.mark.slow
@@ -438,6 +475,7 @@ class TestsFlextInfraFailedInvocationProgress:
                         changes=("real formatter rejection",),
                     ),
                 ),
+                source_preview=infra.source_preview(mod_workspace),
             )
 
         tm.that(accepted.read_text(encoding="utf-8"), eq=source)

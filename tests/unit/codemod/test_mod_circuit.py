@@ -32,6 +32,33 @@ class TestsFlextInfraModCliRoute:
     """
 
     @staticmethod
+    def test_jsonl_keeps_unicode_separators_inside_native_captures(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """JSONL separates records at LF, preserving Unicode inside JSON strings."""
+        source = 'value = "\u2028🚦"\n'
+        path = mod_workspace / "unicode_source.py"
+        tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rule_id = "require-future-annotations"
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            rule_id,
+        ])
+        console = capsys.readouterr()
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(exit_code, ne=0, msg=console.out + console.err)
+        tm.that(evidence.totals_by_rule[rule_id], eq=1)
+        tm.that(evidence.entries[0].text, eq=source)
+        tm.that(evidence.entries[0].payload["text"], eq=source)
+
+    @staticmethod
     def test_assert_rewrite_proves_matcher_binding_at_each_occurrence(
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],

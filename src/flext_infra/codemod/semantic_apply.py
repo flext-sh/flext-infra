@@ -12,10 +12,11 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, settings, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -51,14 +52,7 @@ class FlextInfraCodemodSemanticApply:
         )
         original = cls._source_inventory(
             root,
-            m.Infra.ModScanReport(
-                findings=0,
-                actionable=0,
-                detection_only=0,
-                non_actionable_with_fix=0,
-                files=frozenset(),
-                entries=(),
-            ),
+            FlextInfraModGateEngine.recounted(()),
         )
         inputs = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -171,16 +165,9 @@ class FlextInfraCodemodSemanticApply:
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         artifact, driver = pair
-        if artifact.candidate.workspace != root:
-            return r[bool].fail("semantic rename candidate belongs to another workspace")
-        if any(state.path == driver.path for state in artifact.candidate.inputs):
-            return r[bool].fail("semantic rename driver aliases a governed source input")
-        authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
-        if authenticated.failure:
-            return r[bool].from_failure(authenticated)
-        current = FlextInfraStagedPackage.source_inputs_current(artifact.candidate)
-        if current.failure:
-            return r[bool].from_failure(current)
+        guarded = cls._authenticate_rename_candidate(root, artifact, driver)
+        if guarded.failure:
+            return guarded
         rebuilt = cls.build_rename_plan(
             root,
             workspace,
@@ -216,22 +203,67 @@ class FlextInfraCodemodSemanticApply:
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
         if request.apply and not request.check and not request.dry_run_mode:
-            originals = {state.path: state for state in artifact.candidate.inputs}
-            plans = tuple(
-                m.Infra.SemanticFilePlan(
-                    project=u.Infra.project_root(path) or root,
-                    path=path,
-                    before=originals[path],
-                    desired_content=source.encode(c.DEFAULT_ENCODING),
-                    desired_mode=originals[path].mode,
-                    changes=("authenticated semantic rename artifact",),
-                )
-                for path, source in artifact.candidate.updates.items()
-            )
-            return FlextInfraSemanticPublication.publish_source_candidate(
-                plans, candidate=artifact.candidate, inputs=(driver,)
-            ).map(lambda _: True)
+            return cls._publish_authenticated_rename(root, request, artifact, driver)
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _authenticate_rename_candidate(
+        root: Path,
+        artifact: m.Infra.SemanticRenamePlan,
+        driver: m.Cli.AtomicFileState,
+    ) -> p.Result[bool]:
+        """Reject a foreign workspace, an aliased driver, or drifted identities.
+
+        Returns:
+            The first authentication failure, or the accepted candidate.
+
+        """
+        if artifact.candidate.workspace != root:
+            return r[bool].fail(
+                "semantic rename candidate belongs to another workspace"
+            )
+        if any(state.path == driver.path for state in artifact.candidate.inputs):
+            return r[bool].fail(
+                "semantic rename driver aliases a governed source input"
+            )
+        authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
+        if authenticated.failure:
+            return r[bool].from_failure(authenticated)
+        current = FlextInfraStagedPackage.source_inputs_current(artifact.candidate)
+        if current.failure:
+            return r[bool].from_failure(current)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _publish_authenticated_rename(
+        root: Path,
+        request: m.Infra.ModCommand,
+        artifact: m.Infra.SemanticRenamePlan,
+        driver: m.Cli.AtomicFileState,
+    ) -> p.Result[bool]:
+        """Publish the authenticated candidate through the guarded transaction.
+
+        Returns:
+            The publication outcome mapped to the candidate acceptance.
+
+        """
+        originals = {state.path: state for state in artifact.candidate.inputs}
+        plans = tuple(
+            m.Infra.SemanticFilePlan(
+                project=u.Infra.project_root(path) or root,
+                path=path,
+                before=originals[path],
+                desired_content=source.encode(c.DEFAULT_ENCODING),
+                desired_mode=originals[path].mode,
+                changes=("authenticated semantic rename artifact",),
+            )
+            for path, source in artifact.candidate.updates.items()
+        )
+        return FlextInfraSemanticPublication.publish_source_candidate(
+            plans,
+            candidate=artifact.candidate,
+            inputs=(driver,),
+        ).map(lambda _: True)
 
     @classmethod
     def census_constants(
@@ -240,6 +272,8 @@ class FlextInfraCodemodSemanticApply:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         apply: bool,
+        source_preview: p.Infra.SourcePreview,
+        workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose declaration and constant consumers before census acceptance.
 
@@ -248,10 +282,6 @@ class FlextInfraCodemodSemanticApply:
 
         """
         inventory = m.Infra.ModScanReport(
-            findings=0,
-            actionable=0,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset(),
             entries=(),
         )
@@ -303,21 +333,24 @@ class FlextInfraCodemodSemanticApply:
             ),
         )
 
-        def verify() -> p.Result[bool]:
-            rope_workspace.refresh()
-            fixed_point = cls._verify_census_phases(
-                cls._source_inventory(root, inventory),
-                rope_workspace,
-                phases,
-            )
+        def verify(candidate_root: Path) -> p.Result[bool]:
+            with workspace_factory(candidate_root, None) as candidate_workspace:
+                fixed_point = cls._verify_census_phases(
+                    cls._source_inventory(candidate_root, inventory),
+                    candidate_workspace,
+                    phases,
+                )
             if fixed_point.failure:
                 return fixed_point
             return FlextInfraWorkspaceChecker(
-                repository_root=root,
+                repository_root=candidate_root,
             ).execute_payload(
                 m.Infra.RunCommand(
-                    repository_root=root,
+                    repository_root=candidate_root,
                     projects=projects,
+                    reports_dir=str(
+                        m.Infra.RunCommand(repository_root=root).reports_dir_path
+                    ),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
@@ -327,6 +360,7 @@ class FlextInfraCodemodSemanticApply:
             original,
             working,
             changed,
+            source_preview=source_preview,
             validator=verify,
         ).map(lambda _: constant_edits)
 
@@ -415,13 +449,17 @@ class FlextInfraCodemodSemanticApply:
         cls,
         root: Path,
         edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit],
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> None:
         """Publish the exact callback included in the existing progress fingerprint."""
         original = {edit.file_path: edit.original_source for edit in edits}
         working = dict(original)
         changed: set[Path] = set()
         cls._apply_plan(working, edits, changed)
-        cls._publish(root, original, working, changed).unwrap()
+        cls._publish(
+            root, original, working, changed, source_preview=source_preview
+        ).unwrap()
         cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
 
     @classmethod
@@ -430,6 +468,9 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        source_preview: p.Infra.SourcePreview,
+        workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
     ) -> p.Result[bool]:
         """Apply every semantic cutover selected by the canonical mod circuit.
 
@@ -510,10 +551,10 @@ class FlextInfraCodemodSemanticApply:
             + " ".join(f"{name}={count}" for name, count in counts.items()),
         )
         validator = partial(
-            cls._validate_published,
-            root,
-            preflight,
-            rope_workspace,
+            cls._validate_candidate,
+            preflight=preflight,
+            workspace_factory=workspace_factory,
+            reports_root=root,
         )
         return cls._check_definition_time(original, working, changed).flat_map(
             lambda _: cls._publish(
@@ -521,6 +562,7 @@ class FlextInfraCodemodSemanticApply:
                 original,
                 working,
                 changed,
+                source_preview=source_preview,
                 validator=validator,
             ),
         )
@@ -554,11 +596,25 @@ class FlextInfraCodemodSemanticApply:
         return residue
 
     @classmethod
+    def _validate_candidate(
+        cls,
+        root: Path,
+        *,
+        preflight: m.Infra.ModScanReport,
+        workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
+        reports_root: Path,
+    ) -> p.Result[bool]:
+        """Check the same public contract in a staged or published workspace."""
+        with workspace_factory(root, None) as workspace:
+            return cls._validate_published(root, preflight, workspace, reports_root)
+
+    @classmethod
     def _validate_published(
         cls,
         root: Path,
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
+        reports_root: Path,
     ) -> p.Result[bool]:
         """Re-read, refresh, and verify the fixed point of the published sources.
 
@@ -588,6 +644,11 @@ class FlextInfraCodemodSemanticApply:
                     .execute_payload(
                         m.Infra.RunCommand(
                             repository_root=root,
+                            reports_dir=str(
+                                m.Infra.RunCommand(
+                                    repository_root=reports_root
+                                ).reports_dir_path
+                            ),
                             projects=tuple(
                                 str(project.relative_to(root))
                                 for project in sorted(
@@ -895,7 +956,8 @@ class FlextInfraCodemodSemanticApply:
         updated: t.MappingKV[Path, str],
         changed: set[Path],
         *,
-        validator: Callable[[], p.Result[bool]] | None = None,
+        source_preview: p.Infra.SourcePreview,
+        validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[bool]:
         """Normalize and preflight every source before journaled publication.
 
@@ -907,9 +969,20 @@ class FlextInfraCodemodSemanticApply:
 
         """
         semantic_plans: list[m.Infra.SemanticFilePlan] = []
+        inputs = tuple(
+            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            for path in original
+        )
+        if any(
+            state.content != original[state.path].encode(c.DEFAULT_ENCODING)
+            for state in inputs
+        ):
+            return r[bool].fail("source changed after semantic preflight")
+        states = {state.path: state for state in inputs}
+        candidate_updates: t.MutableMappingKV[Path, str] = {}
         consumer_first = sorted(changed, key=cls._path_key)
         for path in consumer_first:
-            state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            state = states[path]
             content = state.content
             if content is None or content.decode(c.DEFAULT_ENCODING) != original[path]:
                 msg = f"source changed after semantic preflight: {path}"
@@ -927,6 +1000,7 @@ class FlextInfraCodemodSemanticApply:
             new_content = normalized.value.encode(c.DEFAULT_ENCODING)
             if content == new_content:
                 continue
+            candidate_updates[path] = normalized.value
             semantic_plans.append(
                 m.Infra.SemanticFilePlan(
                     project=project_root.resolve(),
@@ -935,13 +1009,32 @@ class FlextInfraCodemodSemanticApply:
                     desired_content=new_content,
                     desired_mode=state.mode,
                     changes=("semantic migration",),
+                    source_states=inputs,
                 ),
             )
+        if validator is not None:
+            checked = source_preview.preview_sources(
+                root,
+                candidate_updates,
+                lambda view_root, _candidates: validator(view_root),
+                inputs=inputs,
+                runtime_root=u.Infra.runtime_environment_dir(
+                    root,
+                    runtime_root=type(settings).fetch_global().Infra.runtime_root,
+                ).parent,
+            )
+            if checked.failure:
+                return r[bool].from_failure(checked)
+            if checked.value.failure:
+                return r[bool].from_failure(checked.value)
+            if not checked.value.value:
+                return r[bool].fail("semantic candidate validation rejected")
         return FlextInfraSemanticPublication.publish_semantic_file_plans(
             semantic_plans,
             repository_root=root,
-            validator=validator,
+            validator=(lambda: validator(root)) if validator is not None else None,
             projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
         ).map(lambda _: True)
 
     @staticmethod

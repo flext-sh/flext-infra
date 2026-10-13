@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -26,7 +27,6 @@ from flext_infra.refactor import (
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(
@@ -61,6 +61,9 @@ class FlextInfraRefactorCensus(
         exclude=True,
         description="Injected authenticated source preview capability",
     )
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
+    )
 
     @property
     def json_output_path(self) -> Path | None:
@@ -75,24 +78,6 @@ class FlextInfraRefactorCensus(
             self.options.impact_map_output,
         )
         return path
-
-    @property
-    @override
-    def kind_names(self) -> t.StrSequence | None:
-        """Normalized symbol-kind filters."""
-        return u.Infra.normalize_sequence_values(self.options.kinds)
-
-    @property
-    @override
-    def rule_names(self) -> t.StrSequence | None:
-        """Normalized violation-rule filters."""
-        return u.Infra.normalize_sequence_values(self.options.rules)
-
-    @property
-    @override
-    def family_names(self) -> t.StrSequence | None:
-        """Normalized family filters."""
-        return u.Infra.normalize_sequence_values(self.options.families)
 
     @property
     @override
@@ -136,19 +121,22 @@ class FlextInfraRefactorCensus(
 
         """
         started = time.monotonic()
-        with FlextInfraRopeWorkspace.open_workspace(
+        with self.workspace_factory(
             self.root,
-            rope_repository_root=self._rope_root_for_selection(),
+            self._rope_root_for_selection(),
         ) as rope:
             constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
             if (
-                self.rule_names is not None
-                and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in self.rule_names
+                (rule_names := u.Infra.normalize_sequence_values(self.options.rules))
+                is not None
+                and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in rule_names
             ):
                 planned_constants = FlextInfraCodemodSemanticApply.census_constants(
                     self.root,
                     rope,
                     apply=self.apply_changes and not self.effective_dry_run,
+                    source_preview=self.source_preview,
+                    workspace_factory=self.workspace_factory,
                 )
                 if planned_constants.failure:
                     # An unprovable constant-consumer phase is reported
@@ -173,9 +161,8 @@ class FlextInfraRefactorCensus(
             duplicate_plans: t.VariadicTuple[m.Infra.DuplicateCurePlan] = ()
             duplicate_files = duplicate_copies = duplicate_bindings = 0
             if (
-                self.rule_names is not None
-                and c.Infra.CensusRule.DUPLICATE in self.rule_names
-            ):
+                rule_names := u.Infra.normalize_sequence_values(self.options.rules)
+            ) is not None and c.Infra.CensusRule.DUPLICATE in rule_names:
                 cure = FlextInfraCodemodDuplicateApply.census_duplicates(
                     self.root,
                     rope,

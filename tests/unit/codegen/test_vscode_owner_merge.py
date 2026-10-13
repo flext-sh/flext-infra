@@ -76,21 +76,33 @@ class TestsFlextInfraVscodeOwnerMerge:
         directory = tmp_path / c.CONFIG_DIR_NAME
         directory.mkdir()
         path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
-        tm.ok(u.Cli.yaml_dump(path, {
-            "Infra": {"codegen": {
-                "repository": {"read_only": True},
-                "vscode": {"unrecognized_setting": True},
-            }},
-        }))
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {"read_only": True},
+                            "vscode": {"unrecognized_setting": True},
+                        }
+                    },
+                },
+            )
+        )
         declaration = tm.ok(u.Infra.load_repository_declaration_inputs(tmp_path))
         tm.that(declaration.spec.read_only, eq=True)
         tm.that(path in {state.path for state in declaration.sources}, eq=True)
         complete = u.Infra.load_codegen_inputs(tmp_path)
         tm.that(complete.failure, eq=True)
         tm.that(complete.exception is not None, eq=True)
-        tm.ok(u.Cli.yaml_dump(path, {
-            "Infra": {"codegen": {"repository": {"unknown_policy": True}}},
-        }))
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {"codegen": {"repository": {"unknown_policy": True}}},
+                },
+            )
+        )
         invalid = u.Infra.load_repository_declaration_inputs(tmp_path)
         tm.that(invalid.failure, eq=True)
         tm.that(invalid.exception is not None, eq=True)

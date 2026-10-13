@@ -6,19 +6,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, main
+from flext_infra import infra, main
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from tests import tm, u
+from tests import tm, u, c, m
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:
@@ -144,6 +145,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                     root,
                     rope,
                     apply=True,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
                 )
             if broken:
                 tm.fail(result, has="quality")
@@ -171,6 +174,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
                     ),
                 )
             tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=published)
@@ -182,6 +187,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
                     ),
                     has="quality",
                 )
@@ -229,6 +236,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
+                workspace_factory=infra.rope_workspace,
                 source_preview=infra.source_preview(mod_workspace),
                 repository_root=mod_workspace,
                 apply_changes=True,
@@ -288,22 +296,28 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             "from __future__ import annotations\n\nvalue = 0\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
-        final = "2" if outcome == "converged" else (
-            "0" if outcome == "cycle" else "missing_candidate_binding"
+        final = (
+            "2"
+            if outcome == "converged"
+            else ("0" if outcome == "cycle" else "missing_candidate_binding")
         )
-        u.Tests.declare_codemod_rules(mod_workspace, {
-            "first-wave": (
-                "id: first-wave\nlanguage: Python\nseverity: error\n"
-                "rule:\n  pattern: value = 0\nfix: value = 1\n"
-            ),
-            "second-wave": (
-                "id: second-wave\nlanguage: Python\nseverity: error\n"
-                f"rule:\n  pattern: value = 1\nfix: value = {final}\n"
-            ),
-        })
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                "first-wave": (
+                    "id: first-wave\nlanguage: Python\nseverity: error\n"
+                    "rule:\n  pattern: value = 0\nfix: value = 1\n"
+                ),
+                "second-wave": (
+                    "id: second-wave\nlanguage: Python\nseverity: error\n"
+                    f"rule:\n  pattern: value = 1\nfix: value = {final}\n"
+                ),
+            },
+        )
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
+                workspace_factory=infra.rope_workspace,
                 source_preview=infra.source_preview(mod_workspace),
                 repository_root=mod_workspace,
                 apply_changes=True,
@@ -312,7 +326,13 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 rope=rope,
             )
             if outcome != "converged":
-                with pytest.raises(RuntimeError, match="cycle|Ruff|normalization"):
+                with pytest.raises(
+                    RuntimeError,
+                    match="|".join(
+                        re.escape(message)
+                        for message in ("cycle", "Ruff", "normalization")
+                    ),
+                ):
                     service.execute()
                 tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
                 tm.that(progress.validated, eq=False)
@@ -320,12 +340,17 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             tm.ok(service.execute())
             first = sample.read_bytes()
             tm.that(progress.validated, eq=True)
-            tm.ok(u.Cli.run((
-                sys.executable,
-                "-c",
-                "import runpy, sys; assert runpy.run_path(sys.argv[1])['value'] == 2",
-                str(sample),
-            )))
+            tm.ok(
+                u.Cli.run((
+                    sys.executable,
+                    "-c",
+                    (
+                        "import runpy, sys; "
+                        "assert runpy.run_path(sys.argv[1])['value'] == 2"
+                    ),
+                    str(sample),
+                ))
+            )
             tm.ok(service.execute())
             tm.that(sample.read_bytes(), eq=first)
 

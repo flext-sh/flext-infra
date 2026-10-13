@@ -82,7 +82,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             # checkout when the manifest does not declare it.
             branch = u.Infra.resolve_integration_branch(
                 target.root,
-                preference=codegen.branch_policy.integration_branch_preference,
+                policy_branch=codegen.branch_policy.integration_branch,
             )
             if branch.failure:
                 return r[str].from_failure(branch)
@@ -103,13 +103,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 constraint_dependencies=tuple(
                     codegen.toolchain.uv_constraint_dependencies,
                 ),
-<<<<<<< HEAD
                 override_dependencies=tuple(
                     codegen.toolchain.uv_override_dependencies,
                 ),
-                exclude_dependencies=cls.routed_uv_exclude_dependencies(render_inputs),
-=======
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 environments=tuple(codegen.toolchain.uv_environments),
             ),
             options=u.Infra.PyprojectConformOptions(

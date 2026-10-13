@@ -11,13 +11,12 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, infra, m
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
 )
-from tests import tm, u
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -98,31 +97,18 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
 
     @staticmethod
-    def _workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _workspace(duplicate_project: Path) -> tuple[Path, Path]:
         """One governed fixture workspace with a provisioned interpreter.
 
-        The regenerated lazy initializer imports ``flext_core``, so the
-        fixture environment installs the local core project and its declared
-        dependencies; otherwise the fresh-import gate fails on the fixture's
-        bare virtual environment, not on the published sources.
+        The shared fixture clones a run-scoped ``make upg`` template and runs
+        frozen ``make setup`` in the clone, installing the declared runtime
+        dependencies and tools into its own physical environment.
 
         Returns:
             The repository root and its source package.
 
         """
-        root = u.Tests.WorktreeFixture.governed_workspace(
-            tmp_path,
-            "flext-demo",
-            distribution="flext-demo",
-        )
-        core_root = tm.not_none(fleet_u.Infra.project_root(Path(flext_core.__file__)))
-        tm.ok(
-            u.Tests.create_python_environment(
-                root,
-                dependency_projects=(core_root,),
-            ),
-        )
-        return root, package
+        return duplicate_project, duplicate_project / "src" / "flext_demo"
 
     @staticmethod
     def _objects(
@@ -170,10 +156,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_trivial_group_keeps_owner_and_rewires_consumers(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """The consumer-carrying definition wins and every copy disappears."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
         core.write_text(
@@ -231,9 +217,9 @@ class TestsFlextInfraCodemodDuplicateApply:
             source = (package / f"{name}.py").read_text(encoding=c.DEFAULT_ENCODING)
             tm.that(source, has="from flext_demo.side import SHARED_LIMIT")
 
-    def test_phase_cures_once_then_converges(self, tmp_path: Path) -> None:
+    def test_phase_cures_once_then_converges(self, duplicate_project: Path) -> None:
         """The mod-loop callback changes sources once and reports the fixed point."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
         core.write_text(
@@ -258,10 +244,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_different_homonyms_are_planned_never_written(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """Two same-name objects with different values stay untouched."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         first = package / "first.py"
         second = package / "second.py"
         first.write_text(
@@ -300,10 +286,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_byte_identical_body_with_free_name_is_planned_only(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """Equal text reading a per-module global is never auto-unified."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         first = package / "left.py"
         second = package / "right.py"
         body = self._module("Module context trap") + "LIMIT = BASE\n"
@@ -339,10 +325,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_structural_clone_is_planned_without_writes(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """A semantic jscpd clone becomes a plan; the sources never change."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         owner = package / "holder.py"
         clone = package / "mirror.py"
         owner_block = "def handle(seed):\n    total = seed + 1\n    return total * 2\n"
@@ -387,9 +373,11 @@ class TestsFlextInfraCodemodDuplicateApply:
             eq=before,
         )
 
-    def test_declaration_only_clone_is_filtered_out(self, tmp_path: Path) -> None:
+    def test_declaration_only_clone_is_filtered_out(
+        self, duplicate_project: Path
+    ) -> None:
         """A clone without executable python behavior produces no plan."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         owner = package / "typing_owner.py"
         clone = package / "typing_mirror.py"
         block = "from typing import ClassVar\n\nNAME: ClassVar[str] = 'x'\n"
@@ -418,10 +406,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_census_rule_applies_the_cure_through_the_public_verb(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """``refactor census --rules duplicate --apply`` cures and reports."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
         core.write_text(

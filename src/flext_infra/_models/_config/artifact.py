@@ -592,7 +592,9 @@ class FlextInfraConfigModelsArtifact:
         ]
         sources: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(exclude=True, description="Exact consulted configuration input states"),
+            m.Field(
+                exclude=True, description="Exact consulted configuration input states"
+            ),
         ] = ()
 
     class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):
@@ -773,6 +775,11 @@ class FlextInfraConfigModelsArtifact:
 
     class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
         """Exact before state and desired state for one managed file."""
+
+        dependency_group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Invocation-local dependent publication group"),
+        ] = None
 
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]

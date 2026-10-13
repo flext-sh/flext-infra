@@ -118,10 +118,14 @@ class FlextInfraUtilitiesCodemodRules:
         indexed = cls._indexed_distributions(paths)
         discovered = cls._indexed_provider_configs(paths)
         runtime_closure = cls.codemod_runtime_closure(direct_runtime, indexed)
+        # Universal scope is a fleet law: it applies to every project,
+        # the provider's own home repository included. Runtime scope is
+        # consumer-targeting (see the provider sgconfig contract), so a
+        # distribution never elects itself through its consumers' graph.
         universal = cls._providers(
             discovered,
             scope=c.Infra.CODEMOD_SCOPE_UNIVERSAL,
-            selected=frozenset(indexed).difference({root_name}),
+            selected=frozenset(indexed),
         )
         runtime = cls._providers(
             discovered,
@@ -129,22 +133,15 @@ class FlextInfraUtilitiesCodemodRules:
             selected=runtime_closure.difference({root_name}),
         )
         universal_order = cls._provider_order(universal, indexed)
-        if universal_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(universal_order)
         runtime_order = cls._provider_order(runtime, indexed)
-        if runtime_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(runtime_order)
         providers: list[t.Pair[str, Path]] = []
-        for name in (*universal_order.value, *runtime_order.value):
+        for name in (*universal_order, *runtime_order):
             provider_config = universal.get(name) or runtime.get(name)
             if provider_config is None:
                 return r[m.Infra.CodemodRulePlan].fail(
                     f"codemod provider disappeared from resolved graph: {name}",
                 )
             providers.append((name, provider_config))
-        local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
-        if local_config.is_file():
-            providers.append((f"{root_name}:local", local_config))
         return cls._compose(tuple(providers), root_name, runtime_closure, root)
 
     @staticmethod
@@ -422,7 +419,7 @@ class FlextInfraUtilitiesCodemodRules:
         cls,
         providers: t.MappingKV[str, Path],
         indexed: t.MappingKV[str, Distribution],
-    ) -> p.Result[t.StrSequence]:
+    ) -> t.StrSequence:
 
         selected = frozenset(providers)
         edges = {
@@ -433,17 +430,10 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        try:
-            ordered = FlextInfraUtilitiesDependencies.dependency_order(
-                tuple(selected),
-                dependencies=lambda name: edges.get(name, ()),
-            )
-        except ValueError as exc:
-            return r[t.StrSequence].fail(
-                f"codemod provider cycle: {exc}",
-                exception=exc,
-            )
-        return r[t.StrSequence].ok(ordered)
+        return FlextInfraUtilitiesDependencies.dependency_order(
+            tuple(selected),
+            dependencies=lambda name: edges[name],
+        )
 
     @staticmethod
     def _provider_config(name: str) -> Path | None:
@@ -569,7 +559,7 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRuleset]]``.
 
         """
-        parsed = cls._rules(provider, provider_config)
+        parsed = cls.codemod_catalog_rules(provider, provider_config)
         if parsed.failure:
             return r[t.SequenceOf[m.Infra.CodemodRuleset]].from_failure(parsed)
         elected: list[str] = []
@@ -645,12 +635,12 @@ class FlextInfraUtilitiesCodemodRules:
         )
 
     @classmethod
-    def _rules(
+    def codemod_catalog_rules(
         cls,
         provider: str,
         config: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
-
+        """Read every validated catalog declaration before execution election."""
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -846,6 +836,31 @@ class FlextInfraUtilitiesCodemodRules:
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")
+        detector = parsed_rule.get("rule")
+        negative = detector.get("not") if isinstance(detector, Mapping) else None
+        alternatives = negative.get("any") if isinstance(negative, Mapping) else None
+        module_absence = (
+            isinstance(detector, Mapping)
+            and str(parsed_rule["language"]).casefold() == "python"
+            and set(detector) == {"kind", "not"}
+            and detector.get("kind") == "module"
+            and isinstance(negative, Mapping)
+            and (
+                (set(negative) == {"has"} and isinstance(negative.get("has"), Mapping))
+                or (
+                    set(negative) == {"any"}
+                    and isinstance(alternatives, list)
+                    and bool(alternatives)
+                    and all(
+                        isinstance(item, Mapping)
+                        and set(item) == {"has"}
+                        and isinstance(item.get("has"), Mapping)
+                        for item in alternatives
+                    )
+                )
+            )
+            and not context.value
+        )
         return r[m.Infra.CodemodRule].ok(
             m.Infra.CodemodRule.model_validate({
                 "id": rule_id,
@@ -853,6 +868,7 @@ class FlextInfraUtilitiesCodemodRules:
                 "provider": provider,
                 "resource": resource,
                 "fixable": "fix" in parsed_rule,
+                "module_absence": module_absence,
                 "expected": declared.value[0] if declared.value else None,
                 "owner": declared_metadata.get(
                     c.Infra.CODEMOD_RULE_OWNER_KEY,

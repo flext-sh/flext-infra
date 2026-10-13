@@ -188,6 +188,10 @@ class FlextInfraModelsRefactor(
             int,
             m.Field(description="Findings whose rewrite matches the current source"),
         ]
+        deferred: Annotated[
+            int,
+            m.Field(description="Findings deferred because their source drifted"),
+        ] = 0
 
     class ViolationsRuleDelta(m.ContractModel):
         """Occurrence counts for one repository and exact rule identity."""
@@ -355,9 +359,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Actual native text scan, None if unobserved"),
         ] = None
         lint: Annotated[
-            t.MappingKV[
-                str, t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult]
-            ] | None,
+            t.MappingKV[str, t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult]]
+            | None,
             m.Field(description="Canonical Ruff snapshots by source path"),
         ] = None
         observation_errors: Annotated[

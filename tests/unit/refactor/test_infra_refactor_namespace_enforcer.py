@@ -24,6 +24,51 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     """Behavior contract for test_infra_refactor_namespace_enforcer."""
 
     @staticmethod
+    def test_selected_module_normalizes_alias_without_rewriting_sibling(
+        tmp_path: Path,
+    ) -> None:
+        """The public dotted module selection bounds the actual repair effects."""
+        workspace, project, pkg = u.Tests.namespace_workspace(tmp_path)
+        (pkg / "helper.py").write_text(
+            "from __future__ import annotations\n"
+            "class SampleHelper:\n    value = 'published'\n"
+            "__all__ = ['SampleHelper']\n",
+            encoding="utf-8",
+        )
+        source = (
+            "from __future__ import annotations\n"
+            f"from {pkg.name}.helper import SampleHelper as files\n"
+            "value = files.value\n"
+        )
+        target = pkg / "consumer.py"
+        sibling = pkg / "sibling.py"
+        target.write_text(source, encoding="utf-8")
+        sibling.write_text(source, encoding="utf-8")
+        u.Tests.provision_checkout(workspace)
+        before = sibling.read_bytes()
+        FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+            apply=True,
+            module=u.Infra.module_name_for_file(target, project_root=project),
+        )
+        tm.that(target.read_text(encoding="utf-8"), lacks="as files")
+        tm.that(target.read_text(encoding="utf-8"), has="value = SampleHelper.value")
+        tm.that(sibling.read_bytes(), eq=before)
+
+    @staticmethod
+    def test_unknown_module_fails_before_repair(tmp_path: Path) -> None:
+        """An unresolved selector cannot silently expand to the whole project."""
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
+        target = pkg / "consumer.py"
+        source = b"from __future__ import annotations\nimport os as operating\n"
+        target.write_bytes(source)
+        with pytest.raises(ValueError, match="requires one owned module"):
+            FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+                apply=True,
+                module=f"{pkg.name}.missing",
+            )
+        tm.that(target.read_bytes(), eq=source)
+
+    @staticmethod
     def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
         tmp_path: Path,
     ) -> None:
@@ -106,7 +151,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         workspace, project, _pkg = u.Tests.namespace_workspace(
             tmp_path,
             pyproject=(
-                "[project]\nname='sample'\n\n"
+                "[project]\nname='sample'\nversion='1.0.0'\n\n"
                 "[tool.flext.namespace]\nscan_dirs = ['src']\n"
             ),
         )

@@ -14,6 +14,7 @@ from flext_cli import m
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
+from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
 from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
 from flext_infra._models._config.base import FlextInfraConfigModels
@@ -129,6 +130,11 @@ class FlextInfraModelsCodegenPipelineModels:
         written_files: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Destinations successfully published despite target failures",
+        )
+        published_files: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+        ] = m.Field(
+            default=(), exclude=True, description="Actual admitted destination states"
         )
         retained_files: t.VariadicTuple[Path] = m.Field(
             default=(),

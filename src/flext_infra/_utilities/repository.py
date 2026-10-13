@@ -295,7 +295,7 @@ class FlextInfraUtilitiesRepository:
         """
         source = codegen.infra_repository
         distribution = source.distribution
-        preference = codegen.branch_policy.integration_branch_preference
+        policy_branch = codegen.branch_policy.integration_branch
         if bootstrap_source is not None:
             if (repository_root / c.PYPROJECT_FILENAME).exists():
                 return r[m.Infra.WorkspaceIntegrationSpec].fail(
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesRepository:
             detected = cls._detected_infra_source(
                 repository_root=repository_root,
                 distribution=distribution,
-                preference=preference,
+                policy_branch=policy_branch,
             )
         if detected.failure:
             return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
@@ -377,7 +377,7 @@ class FlextInfraUtilitiesRepository:
         *,
         repository_root: Path,
         distribution: str,
-        preference: t.StrSequence,
+        policy_branch: str,
     ) -> p.Result[t.Pair[str, str]]:
         """Detect the infrastructure distribution's canonical URL and ref.
 
@@ -389,14 +389,14 @@ class FlextInfraUtilitiesRepository:
             repository_root,
         )
         if metadata.success and metadata.value.project.name == distribution:
-            return cls._checkout_origin_source(repository_root, preference)
+            return cls._checkout_origin_source(repository_root, policy_branch)
         pyproject_path = repository_root / c.PYPROJECT_FILENAME
         if pyproject_path.is_file():
             declared = cls._declared_dependency_source(
                 pyproject_path=pyproject_path,
                 distribution=distribution,
                 prefix=f"{distribution.partition('-')[0]}-",
-                preference=preference,
+                policy_branch=policy_branch,
             )
             if declared.failure or declared.value[0]:
                 return declared
@@ -409,7 +409,7 @@ class FlextInfraUtilitiesRepository:
         if manifest.value:
             return cls.resolve_integration_branch(
                 repository_root,
-                preference=preference,
+                policy_branch=policy_branch,
             ).map(lambda branch: (manifest.value, branch))
         declared_line = cls._declared_flext_source(repository_root)
         if declared_line.failure or declared_line.value[0]:
@@ -425,7 +425,7 @@ class FlextInfraUtilitiesRepository:
     def _checkout_origin_source(
         cls,
         repository_root: Path,
-        preference: t.StrSequence,
+        policy_branch: str,
     ) -> p.Result[t.Pair[str, str]]:
         """Resolve an infrastructure checkout's published origin and branch.
 
@@ -445,7 +445,7 @@ class FlextInfraUtilitiesRepository:
             )
         branch = cls.resolve_integration_branch(
             repository_root,
-            preference=preference,
+            policy_branch=policy_branch,
         )
         if branch.failure:
             return r[t.Pair[str, str]].from_failure(branch)
@@ -591,7 +591,7 @@ class FlextInfraUtilitiesRepository:
         *,
         pyproject_path: Path,
         distribution: str,
-        preference: t.StrSequence,
+        policy_branch: str,
     ) -> p.Result[t.Pair[str, str]]:
         """Resolve the workspace-membership source, or an empty payload.
 
@@ -618,7 +618,7 @@ class FlextInfraUtilitiesRepository:
                 if parsed == distribution:
                     return cls.resolve_integration_branch(
                         pyproject_path.parent,
-                        preference=preference,
+                        policy_branch=policy_branch,
                     ).map(
                         lambda branch: (
                             f"https://github.com/flext-sh/{distribution}.git",
@@ -635,7 +635,7 @@ class FlextInfraUtilitiesRepository:
         pyproject_path: Path,
         distribution: str,
         prefix: str,
-        preference: t.StrSequence,
+        policy_branch: str,
     ) -> p.Result[t.Pair[str, str]]:
         """Return the family line the pyproject declares, as a source for one member.
 
@@ -667,7 +667,7 @@ class FlextInfraUtilitiesRepository:
             payload.value,
             pyproject_path=pyproject_path,
             distribution=distribution,
-            preference=preference,
+            policy_branch=policy_branch,
         )
 
     @staticmethod
@@ -845,7 +845,7 @@ class FlextInfraUtilitiesRepository:
         cls,
         repository_root: Path,
         *,
-        preference: t.StrSequence,
+        policy_branch: str,
         declared: str | None = None,
         inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[str]:
@@ -856,10 +856,9 @@ class FlextInfraUtilitiesRepository:
         ``declared`` — the declaration that governs this checkout when it
         carries none of its own (its in-memory spec before the manifest is
         written, or the workspace a governed member follows); then the
-        published integration line — the local remote-tracking ref, tried in
-        the declared preference order — a Git fact independent of the
-        checkout. When none exists the failure is loud and no default is
-        invented.
+        workspace's declared policy line (``policy_branch``) checked against
+        published Git — one line, one fact, no name list to guess from. When
+        none exists the failure is loud and no default is invented.
 
         Returns:
             The integration branch one repository integrates on.
@@ -916,8 +915,8 @@ class FlextInfraUtilitiesRepository:
                 return r[str].from_failure(parent_inputs)
             return cls.resolve_integration_branch(
                 superproject_root,
-                preference=(
-                    parent_inputs.value.spec.branch_policy.integration_branch_preference
+                policy_branch=(
+                    parent_inputs.value.spec.branch_policy.integration_branch
                 ),
                 inputs=parent_inputs.value,
             )
@@ -927,7 +926,7 @@ class FlextInfraUtilitiesRepository:
         # and from published Git facts, never from the environment).
         baseline = cls.repository_baseline_branch(
             repository_root,
-            preference=tuple(preference) or None,
+            declared_branch=policy_branch,
         )
         if baseline.success:
             return r[str].ok(baseline.value)
@@ -956,42 +955,31 @@ class FlextInfraUtilitiesRepository:
     def repository_baseline_branch(
         cls,
         repository_root: Path,
-        fallback: str | None = None,
-        preference: t.VariadicTuple[str] | None = None,
+        *,
+        declared_branch: str,
     ) -> p.Result[str]:
-        """Return the integration baseline the repository actually publishes.
+        """Return the declared integration line once published Git carries it.
 
-        Managed repositories under the same provider legitimately integrate
-        on different branches. The baseline is therefore derived from live
-        Git: the published remote-tracking integration branch wins.
-
-        ``preference`` is the ordered set of names to try, owned by
-        ``codegen.branch_policy.integration_branch_preference`` so a workspace
-        declares its own release line instead of asking for a constant in this
-        package. Omitting it uses the built-in conventional ordering.
-
-        ``fallback`` carries an explicitly declared default for a repository
-        that cannot have published anything yet (project creation). Without
-        it, a checkout with no integration branch fails closed instead of
-        guessing.
+        One declared line, one Git fact: the workspace declares its versioned
+        integration line (``codegen.branch_policy.integration_branch``), and
+        this check reads the live remote-tracking ref for exactly that line.
+        A repository that does not publish it has no integration baseline and
+        fails loud — there is no name list to guess from and no default to
+        invent.
 
         Returns:
-            The integration baseline the repository actually publishes.
+            The declared integration branch the repository publishes.
 
         """
-        candidates = preference or c.Infra.INTEGRATION_BRANCH_PREFERENCE
-        for candidate in candidates:
-            reference = f"refs/remotes/origin/{candidate}"
-            resolved = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
-                m.Infra.GitRefRequest(repo_root=repository_root, reference=reference),
-            )
-            if resolved.success and resolved.value.value:
-                return r[str].ok(candidate)
-        if fallback:
-            return r[str].ok(fallback)
+        reference = f"refs/remotes/origin/{declared_branch}"
+        resolved = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
+            m.Infra.GitRefRequest(repo_root=repository_root, reference=reference),
+        )
+        if resolved.success and resolved.value.value:
+            return r[str].ok(declared_branch)
         return r[str].fail(
             "repository publishes no integration branch "
-            f"({', '.join(candidates)}): {repository_root}",
+            f"(declared {declared_branch}): {repository_root}",
         )
 
 

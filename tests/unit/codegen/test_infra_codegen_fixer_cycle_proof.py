@@ -56,6 +56,13 @@ class TestsFlextInfraCodegenFixerCycleProof:
     """Behavior contract for the fixer's cycle proof and import rebinding."""
 
     @staticmethod
+    def test_missing_repository_propagates_discovery_failure(tmp_path: Path) -> None:
+        """A missing repository cannot produce a successful empty fix report."""
+        missing = tmp_path / "missing"
+        with pytest.raises(RuntimeError, match=str(missing)):
+            FlextInfraCodegenFixer(repository_root=missing).fix_workspace()
+
+    @staticmethod
     @pytest.mark.slow
     def test_auto_fix_flags_modules_in_a_runtime_cycle(tmp_path: Path) -> None:
         """Two modules importing each other are both flagged as cycle members."""

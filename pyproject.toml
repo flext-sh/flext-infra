@@ -513,6 +513,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.mixins.PositiveLineMixin",
   "flext_infra._models.mixins.ScopeMixin",
   "flext_infra._models.refactor.CensusOptions",
+  "flext_infra._models.scan.ModScanCounts",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",
@@ -536,12 +537,8 @@ runtime-evaluated-base-classes = [
   "flext_infra.m.ArbitraryTypesModel",
   "flext_infra.m.FrozenModel",
   "flext_infra.m.ImmutableValueModel",
-<<<<<<< HEAD
   "flext_infra.m.Infra.ViolationsSweepRequest",
-=======
-  "flext_infra.m.Infra.CensusOptions",
   "flext_infra.m.Value",
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
   "flext_infra.maintenance.sonarcloud_client.FlextInfraSonarcloudClient",
   "flext_infra.release.FlextInfraReleaseArtifactMixin",
   "flext_infra.release.FlextInfraReleaseBoundaryMixin",

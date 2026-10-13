@@ -85,7 +85,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         workspace: Path,
         before_source: str,
         new_errors: t.Infra.LintSnapshot[t.StrSequence],
-        pytest_failure: str | None = None,
+        *,
         execution_errors: t.StrSequence = (),
     ) -> list[str]:
         """Describe the actual source delta and its validation failures.
@@ -104,24 +104,22 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             max_lines=c.Infra.EDIT_DIFF_PREVIEW_MAX_LINES,
         )
         report_lines = [f"  VALIDATION FAILED {rel}:"]
-        report_lines.extend(f"    lint execution failure: {error}" for error in execution_errors)
+        report_lines.extend(
+            f"    lint execution failure: {error}" for error in execution_errors
+        )
         report_lines.extend(f"    {line.rstrip()}" for line in diff)
         for tool, messages in new_errors.items():
             report_lines.extend((
                 f"    NEW {tool} errors:",
                 *(f"      {message}" for message in messages),
             ))
-        if pytest_failure:
-            report_lines.append(f"    pytest failure: {pytest_failure}")
         return report_lines
 
     @staticmethod
     def _preview_write_reports(
         candidates: t.MappingKV[Path, Path],
         before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[
-            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
-        ],
+        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         workspace: Path,
         gates: t.StrSequence | None = None,
     ) -> t.Infra.EditResult:
@@ -146,7 +144,11 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             execution_errors = tuple(
                 error
                 for snapshot in (before_lints[path], after_lints[candidate])
-                for error in FlextInfraUtilitiesProtectedEditPreview.lint_execution_errors(snapshot)
+                for error in (
+                    FlextInfraUtilitiesProtectedEditPreview.lint_execution_errors(
+                        snapshot
+                    )
+                )
             )
             if not new_errors and not execution_errors:
                 continue

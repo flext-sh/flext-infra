@@ -20,7 +20,6 @@ from tests import c, m, t, tm
 FIXTURE_PROVIDER_NAME = "flext-sh"
 FIXTURE_PROVIDER_ORGANIZATION = "flext-sh"
 FIXTURE_PROVIDER_BASE_URL = "https://github.com/flext-sh"
-FIXTURE_PROVIDER_BRANCH = "0.12.0-dev"
 WORKSPACE_MANIFEST_VERSION = 3
 
 
@@ -84,11 +83,15 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
     def provider_branch() -> str:
         """Return the declared fixture integration branch.
 
+        The fixture fleet integrates on the workspace's declared versioned
+        line: one SSOT (``codegen.branch_policy.integration_branch``) owns
+        the branch name that fixtures publish and resolution checks.
+
         Returns:
             The declared fixture integration branch.
 
         """
-        return FIXTURE_PROVIDER_BRANCH
+        return config.Infra.codegen.branch_policy.integration_branch
 
     @staticmethod
     def flext_source(distribution: str | None = None) -> str:
@@ -124,7 +127,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
         return m.Infra.WorkspaceIntegrationSpec(
             provider=provider.name,
-            branch=FIXTURE_PROVIDER_BRANCH,
+            branch=TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
         )
 
     @staticmethod

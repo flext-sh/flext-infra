@@ -49,6 +49,19 @@ class FlextInfraModelsCodemod:
             m.Field(description="Consumer and resolved Python import-owner inputs"),
         ]
 
+        @m.field_validator("states")
+        @classmethod
+        def unique_inputs(
+            cls, states: tuple[m.Cli.AtomicFileState, ...]
+        ) -> tuple[m.Cli.AtomicFileState, ...]:
+            """Store each authenticated input once; conflicting identities fail."""
+            indexed: dict[Path, m.Cli.AtomicFileState] = {}
+            for state in states:
+                if indexed.setdefault(state.path, state) != state:
+                    msg = f"binding source snapshots disagree: {state.path}"
+                    raise ValueError(msg)
+            return tuple(indexed.values())
+
     class AstGrepDiagnostic(m.FlexibleModel):
         """Required native RuleMatch fields, with zero-based source coordinates.
 

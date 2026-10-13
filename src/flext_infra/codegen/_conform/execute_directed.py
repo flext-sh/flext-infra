@@ -210,11 +210,15 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             *analysis.inputs,
             *stage_plan.inputs,
         ))
+        if source_states.failure:
+            return result_type.from_failure(source_states)
         authenticated = analysis.model_copy(
             update={
-                "inputs": source_states,
+                "inputs": source_states.value,
                 "files": (
-                    selected_file.model_copy(update={"source_states": source_states}),
+                    selected_file.model_copy(
+                        update={"source_states": source_states.value}
+                    ),
                 ),
             },
         )

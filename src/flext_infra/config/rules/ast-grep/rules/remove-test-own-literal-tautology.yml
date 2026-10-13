@@ -1,23 +1,11 @@
-# Test law: an assertion that cannot fail against a wrong runtime is deleted,
-# not reworded.
-#
-# ban-test-tautology owns the tautology law and stays detection-only because a
-# rewrite cannot choose the outcome the test meant to prove. Two tautology
-# shapes, however, prove NOTHING by construction, so the law's action for them
-# is removal and this rule applies it mechanically:
-#
-#   * an owned constant, config or settings value compared with a hardcoded
-#     literal (`assert c.Ns.KEY == "value"`, `tm.that(settings.Ns.key, eq=3)`):
-#     the assertion restates the SSOT, breaks on every legitimate config
-#     change (P0), and proves no behaviour — the lines are removed;
-#   * `X.success or X.failure` on one FlextResult: a flext Result is always
-#     exactly one of them, so the assertion is always true — removed.
-#
-# Indeterminate tautologies (call-bearing self-comparisons, isinstance of the
-# object just built) stay owned by ban-test-tautology for worker triage: a
-# worker either rewrites the scenario against its one observable outcome or
-# deletes the whole test. A test whose body this rule empties is itself a
-# fake test and is caught by the worker pass and the suite gates.
+# Detection-only contract repair, retaining the existing finding ID.
+# Owned SSOT/literal comparisons violate P0 but are not logical tautologies:
+# correct them against the consumer contract, never erase their failure behavior.
+# Result-shaped expressions require receiver identity, purity and evaluation
+# evidence before removal. Syntax alone proves none of these, especially inside
+# compound assertions or assertions with messages. No automatic fix is declared.
+# ban-test-tautology retains the broader detection law; residual findings stay red
+# without preventing unrelated safe rewrites through the canonical mod pipeline.
 #
 # The owned-facade guard is the same one ban-test-tautology uses: a local
 # variable named `c`, `config` or `settings` is the facade only where the
@@ -102,8 +90,8 @@ rule:
         - inside:
             stopBy: end
             kind: assert_statement
-fix: ""
 message: >-
-  Tautological assertion that proves nothing (an owned SSOT value restated as
-  a literal, or success-or-failure on one Result): removed by law — assert a
-  real observable outcome instead, or leave the test without this line.
+  Assertion requires contract-driven review: an owned SSOT value compared with
+  a literal, or a success-or-failure expression without proven receiver purity.
+  Preserve evaluation, meaningful checks and messages; correct the contract
+  rather than automatically deleting behavior.

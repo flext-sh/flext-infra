@@ -151,6 +151,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(status, has=f"?? {c.Infra.DIR_TESTS}/")
 
         report = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
             source_preview=infra.source_preview(root),
             repository_root=root,
             apply_changes=False,

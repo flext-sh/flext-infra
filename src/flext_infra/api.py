@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, FlextInfraConfig, m, r, s, t, u
+from flext_infra import c, m, r, s, t, u
 from flext_infra._conform_wiring import FlextInfraConformWiring
 from flext_infra._preview_wiring import FlextInfraPreviewWiring
 from flext_infra.check import FlextInfraWorkspaceChecker
@@ -91,9 +91,11 @@ class FlextInfra(
             ),
         ).execute(source_root, workspace.value, request, manifest.value)
 
+    @override
     def rope_workspace(
         self,
         repository_root: Path | None = None,
+        rope_repository_root: Path | None = None,
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade.
 
@@ -107,7 +109,9 @@ class FlextInfra(
         resolved_root = (
             self.repository_root if repository_root is None else repository_root
         )
-        return FlextInfraRopeWorkspace.open_workspace(resolved_root)
+        return FlextInfraRopeWorkspace.open_workspace(
+            resolved_root, rope_repository_root=rope_repository_root
+        )
 
     @staticmethod
     def check(request: m.Infra.RunCommand) -> p.Result[bool]:
@@ -311,6 +315,7 @@ class FlextInfra(
                     return r[t.Cli.ResultValue].from_failure(renamed)
                 rope.refresh()
             return FlextInfraCodemodBatchApply(
+                workspace_factory=self.rope_workspace,
                 source_preview=source_preview,
                 repository_root=root,
                 apply_changes=request.apply,

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import infra, m
+from flext_infra import infra
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import tm
+from tests import m, tm
 
 
 class TestsFlextInfraRefactorCensusRemovalEvidence:
@@ -91,14 +91,12 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             include_local_scopes=False,
         )
         service = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
             repository_root=options.repository_root,
             source_preview=infra.source_preview(options.repository_root),
             options=options,
         )
         tm.that(service.options, eq=options)
-        tm.that(service.kind_names, eq=options.kinds)
-        tm.that(service.rule_names, eq=options.rules)
-        tm.that(service.family_names, eq=options.families)
         tm.that(service.json_output_path, eq=json_output)
         tm.that(service.impact_map_output_path, eq=impact_map_output)
         tm.that(service.options.include_local_scopes, eq=options.include_local_scopes)
@@ -110,6 +108,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
     def test_service_defaults_use_declared_options(tmp_path: Path) -> None:
         """Omitted options are constructed by the canonical options model."""
         service = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
             repository_root=tmp_path,
             source_preview=infra.source_preview(tmp_path),
         )

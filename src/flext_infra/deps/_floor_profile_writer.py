@@ -20,15 +20,9 @@ if TYPE_CHECKING:
 class FlextInfraDepsFloorProfileWriter:
     """Rewrite dependency_profiles floors from the provisioned runtime."""
 
-<<<<<<< HEAD
-    @classmethod
-    def _source_paths(cls, root: Path) -> t.SequenceOf[Path]:
-        """Elect the local owner from the caller's typed workspace declaration.
-=======
     @staticmethod
     def _source_paths(root: Path) -> t.SequenceOf[m.Cli.AtomicFileState]:
         """Elect writable source layers that actually declare dependency profiles.
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
 
         Returns:
             Captured configuration states owned by this operation's root.
@@ -39,34 +33,6 @@ class FlextInfraDepsFloorProfileWriter:
 
         """
         root = root.resolve()
-<<<<<<< HEAD
-        manifests = u.Infra.load_workspace_manifest(root).unwrap()
-        relative = Path(c.Infra.CODEGEN_CONFIG_DIR) / c.Infra.CODEGEN_CONFIG_FILENAME
-        local = root / relative
-        owners: t.MutableSequenceOf[Path] = []
-        if cls._declares_local_profiles(root, local):
-            owners.append(root)
-        for manifest in manifests:
-            for member in manifest.members:
-                if member.distribution != config.Infra.name:
-                    continue
-                owner = (root / member.path).resolve()
-                if not owner.is_relative_to(root) or member.read_only:
-                    message = (
-                        f"dependency floor owner is not writable "
-                        f"in this workspace: {owner}"
-                    )
-                    raise ValueError(message)
-                owners.append(owner)
-            if manifest.repository.distribution == config.Infra.name and not owners:
-                owners.append(root)
-        if len(owners) > 1:
-            message = f"ambiguous dependency floor owners in {root}: {owners}"
-            raise ValueError(message)
-        sources = tuple(owner / relative for owner in owners)
-        for source in sources:
-            if not source.resolve().is_relative_to(root):
-=======
         captured = u.Infra.load_config_document_inputs(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -76,7 +42,6 @@ class FlextInfraDepsFloorProfileWriter:
             if not source.path.is_relative_to(root):
                 continue
             if not source.path.resolve().is_relative_to(root):
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 message = (
                     "dependency floor configuration is outside its owner: "
                     f"{source.path}"
@@ -97,32 +62,6 @@ class FlextInfraDepsFloorProfileWriter:
             FlextInfraDepsFloorProfileWriter._validated_sections(document, source.path)
             sources.append(source)
         return tuple(sources)
-
-    @classmethod
-    def _declares_local_profiles(cls, root: Path, local: Path) -> bool:
-        """Inspect an existing local configuration without crossing the workspace.
-
-        Returns:
-            Whether the local project declares dependency profiles.
-
-        Raises:
-            ValueError: If the configuration resolves outside the workspace.
-
-        """
-        if not (local.exists() or local.is_symlink()):
-            return False
-        if not local.resolve().is_relative_to(root):
-            message = f"dependency floor configuration is outside workspace: {local}"
-            raise ValueError(message)
-        document = cls._loaded_document(local)
-        project = u.Cli.json_deep_mapping(
-            document,
-            "Infra",
-            "codegen",
-            "scaffold",
-            "project",
-        )
-        return "dependency_profiles" in project
 
     @classmethod
     def rewrite_profiles_from_resolution(

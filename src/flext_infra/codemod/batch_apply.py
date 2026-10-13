@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import override
 
@@ -24,6 +24,10 @@ from flext_infra.transformers import FlextInfraSemanticPublication
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     """Apply guarded rewrites and retain accepted progress for fix-forward."""
+
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
+    )
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
         exclude=True,
@@ -134,6 +138,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         self.rope.refresh()
         self.progress.emit("mod: apply the workspace constants census")
         census_runner = FlextInfraRefactorCensus(
+            workspace_factory=self.workspace_factory,
             source_preview=self.source_preview,
             repository_root=self.repository_root,
             apply_changes=True,
@@ -200,11 +205,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     ).unwrap()
         seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
         while after_ast.actionable:
-            state = tuple(sorted(
-                (str(path), plan.desired_content.hex())
-                for path, plan in plans.items()
-                if plan.desired_content is not None
-            ))
+            state = tuple(
+                sorted(
+                    (str(path), plan.desired_content.hex())
+                    for path, plan in plans.items()
+                    if plan.desired_content is not None
+                )
+            )
             if state in seen:
                 msg = "mod syntax cascade cycle before semantic publication"
                 raise RuntimeError(msg)
@@ -216,35 +223,18 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 for source in (plan.before, *plan.source_states):
                     if source.path not in plans:
                         inputs.setdefault(source.path, source)
-                plans[plan.path] = plan if original is None else plan.model_copy(
-                    update={
-                        "before": original.before,
-                        "changes": (*original.changes, *plan.changes),
-                    }
+                plans[plan.path] = (
+                    plan
+                    if original is None
+                    else plan.model_copy(
+                        update={
+                            "before": original.before,
+                            "changes": (*original.changes, *plan.changes),
+                        }
+                    )
                 )
-            candidate = FlextInfraStagedPackage.plan_sources(
-                root,
-                {
-                    path: plan.desired_content.decode(c.DEFAULT_ENCODING)
-                    for path, plan in plans.items()
-                    if plan.desired_content is not None
-                },
-                inputs=tuple(inputs.values()),
-            ).unwrap()
-            for source in candidate.inputs:
-                inputs.setdefault(source.path, source)
-
-            def scan(
-                view_root: Path, _paths: t.MappingKV[Path, Path]
-            ) -> m.Infra.ModScanReport:
-                return FlextInfraModGateEngine.scan_candidate(
-                    root, view_root, candidate
-                ).unwrap()
-
             after_ast = FlextInfraModGateEngine.authored(
-                self.source_preview.preview_sources(
-                    root, candidate.updates, scan, inputs=candidate.inputs
-                ).unwrap()
+                self._preview_ast_candidate(root, plans, inputs)
             )
             FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
         if plans:
@@ -268,6 +258,40 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             ).unwrap()
             rope_workspace.refresh()
         return FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+
+    def _preview_ast_candidate(
+        self,
+        root: Path,
+        plans: t.MappingKV[Path, m.Infra.SemanticFilePlan],
+        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+    ) -> m.Infra.ModScanReport:
+        """Bind each wave's authenticated plan to its transactional scan.
+
+        Returns:
+            The full-catalog report for this candidate's staged bytes.
+        """
+        candidate = FlextInfraStagedPackage.plan_sources(
+            root,
+            {
+                path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                for path, plan in plans.items()
+                if plan.desired_content is not None
+            },
+            inputs=tuple(inputs.values()),
+        ).unwrap()
+        for source in candidate.inputs:
+            inputs.setdefault(source.path, source)
+
+        def scan(
+            view_root: Path, _paths: t.MappingKV[Path, Path]
+        ) -> m.Infra.ModScanReport:
+            return FlextInfraModGateEngine.scan_candidate(
+                root, view_root, candidate
+            ).unwrap()
+
+        return self.source_preview.preview_sources(
+            root, candidate.updates, scan, inputs=candidate.inputs
+        ).unwrap()
 
     @staticmethod
     def _apply_text_phase(
@@ -348,6 +372,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             FlextInfraCodemodSemanticApply.apply_transaction_paths(
                 root,
                 transaction_paths,
+                source_preview=self.source_preview,
             )
             rope_workspace.refresh()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
@@ -360,6 +385,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             root,
             FlextInfraModGateEngine.authored(after_ast),
             rope_workspace,
+            source_preview=self.source_preview,
+            workspace_factory=self.workspace_factory,
         )
         if semantic.failure:
             return outcome.from_failure(semantic)
