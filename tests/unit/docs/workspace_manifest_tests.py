@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config
-from tests import tm, u
+from tests import t, tm, u
 
 _PROBE = "flext-probe"
 
@@ -127,16 +127,21 @@ class TestsFlextInfraWorkspaceManifest:
         tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
 
     @staticmethod
-    def test_git_members_declare_a_fleet_umbrella(tmp_path: Path) -> None:
+    @pytest.mark.parametrize("declared", [False, True])
+    def test_git_members_declare_a_fleet_umbrella(
+        tmp_path: Path,
+        *,
+        declared: bool,
+    ) -> None:
         """Git composition, not a legacy role, selects aggregate documentation."""
         u.Tests.write_standalone_workspace_manifest(
             tmp_path,
             _PROBE,
             role=c.Infra.MakeProfile.WORKSPACE,
         )
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
-        u.Tests.WorktreeFixture.write_gitmodules(tmp_path, (_PROBE,))
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=True)
+        if declared:
+            u.Tests.WorktreeFixture.write_gitmodules(tmp_path, (_PROBE,))
+        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=declared)
 
     @staticmethod
     def test_a_beads_override_never_makes_a_checkout_an_umbrella(
@@ -156,7 +161,7 @@ class TestsFlextInfraWorkspaceManifest:
     @pytest.mark.parametrize("scan_dirs", [None, [""]])
     def test_invalid_codegen_cannot_supply_default_refactor_settings(
         tmp_path: Path,
-        scan_dirs: list[str] | None,
+        scan_dirs: t.JsonValue,
     ) -> None:
         """The compiled codegen owner rejects invalid declared refactor inputs."""
         directory = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
@@ -175,6 +180,9 @@ class TestsFlextInfraWorkspaceManifest:
                 },
             ),
         )
-        tm.that(u.Infra.load_codegen_inputs(tmp_path).failure, eq=True)
-        with pytest.raises(c.ValidationError, match="project_scan_dirs"):
+        loaded = u.Infra.load_codegen_inputs(tmp_path)
+        tm.fail(loaded, has="project_scan_dirs")
+        tm.that(isinstance(loaded.exception, c.ValidationError), eq=True)
+        with pytest.raises(RuntimeError, match="project_scan_dirs") as raised:
             u.Infra.load_refactor_config(tmp_path)
+        tm.that(isinstance(raised.value.__cause__, c.ValidationError), eq=True)
