@@ -876,12 +876,28 @@ class TestsFlextInfraSemanticPhaseContract:
             entries=(finding,),
         )
         with infra.rope_workspace(root) as rope:
-            tm.ok(FlextInfraCodemodSemanticApply.apply(root, report, rope))
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    rope,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
         published = path.read_text(encoding="utf-8")
         tm.that(published, has="from __future__ import annotations")
         tm.that(published, has=f"    class {owner}Member")
         with infra.rope_workspace(root) as rope:
-            tm.ok(FlextInfraCodemodSemanticApply.apply(root, report, rope))
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    rope,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
         tm.that(path.read_text(encoding="utf-8"), eq=published)
 
     @staticmethod

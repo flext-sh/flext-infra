@@ -9,17 +9,14 @@ from __future__ import annotations
 import operator
 import shutil
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
 from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 class FlextInfraCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
@@ -27,6 +24,9 @@ class FlextInfraCodegenQualityGate(s[bool]):
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
         exclude=True,
         description="Injected authenticated source preview capability",
+    )
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = m.Field(
+        exclude=True, description="Injected candidate Rope workspace factory"
     )
 
     @override
@@ -68,6 +68,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 f"lazy-init artifacts require codegen conform: {paths}",
             )
         census = FlextInfraRefactorCensus(
+            workspace_factory=self.workspace_factory,
             source_preview=self.source_preview,
             options=m.Infra.CensusOptions(
                 include_local_scopes=False,

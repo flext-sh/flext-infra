@@ -16,6 +16,7 @@ from textwrap import indent
 from flext_infra import config, u
 from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 from tests import c, m, p, r, t, tm
+from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 
@@ -317,6 +318,48 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             ),
             cwd=root,
         )
+
+    @classmethod
+    def provision_locked_project_checkout(
+        cls,
+        template: Path,
+        root: Path,
+        *,
+        origin_url: str,
+    ) -> Path:
+        """Clone a resolved fixture and prepare its own runtime through Make.
+
+        Returns:
+            The checkout installed from its committed dependency locks.
+        """
+        TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+            root.parent,
+            ("clone", "-q", str(template), str(root)),
+        )
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            root,
+            origin_url=origin_url,
+        )
+        setup = tm.ok(cls.run_isolated_make(["setup"], cwd=root, capture=False))
+        TestsFlextInfraUtilitiesDepsMixin.record_dependency_command_output(setup)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root.parent / f"{root.name}-setup-receipt.json",
+                m.Cli.CommandOutput.model_validate(
+                    setup,
+                    from_attributes=True,
+                ).model_dump_json(),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(setup.outcome),
+            eq=True,
+            msg=setup.stdout + setup.stderr,
+        )
+        environment = u.Infra.runtime_environment_dir(root)
+        tm.that(environment.is_symlink(), eq=False)
+        tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+        return root
 
     @classmethod
     def provision_python_project_environment(cls, root: Path) -> p.Result[bool]:

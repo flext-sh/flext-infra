@@ -29,6 +29,27 @@ class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
 
     @staticmethod
+    def test_cold_public_cli_composes_semantic_ports_without_an_import_cycle() -> None:
+        """A fresh native CLI process must finish API composition before dispatch."""
+        result = tm.ok(
+            u.Cli.run((sys.executable, "-I", "-m", "flext_infra", "--help"))
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    def test_public_workspace_factory_preserves_selected_rope_root(
+        tmp_path: Path,
+    ) -> None:
+        """The injected factory preserves the existing scoped workspace contract."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = "VALUE = 1\n"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root, root) as workspace:
+            tm.not_none(workspace.module(path))
+            tm.that(workspace.source(path), eq=source)
+
+    @staticmethod
     def _rename_artifact(
         tmp_path: Path,
     ) -> t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]:
@@ -291,7 +312,13 @@ class TestsFlextInfraSemanticPublication:
             entries=(),
         )
         with infra.rope_workspace(root) as rope:
-            result = FlextInfraCodemodSemanticApply.apply(root, report, rope)
+            result = FlextInfraCodemodSemanticApply.apply(
+                root,
+                report,
+                rope,
+                source_preview=infra.source_preview(root),
+                workspace_factory=infra.rope_workspace,
+            )
         if rejected:
             tm.fail(result)
         else:
@@ -778,7 +805,11 @@ class TestsFlextInfraSemanticPublication:
             for index, plan in enumerate(plans)
         )
         with pytest.raises(RuntimeError, match="failed"):
-            FlextInfraCodemodSemanticApply.apply_transaction_paths(mod_workspace, edits)
+            FlextInfraCodemodSemanticApply.apply_transaction_paths(
+                mod_workspace,
+                edits,
+                source_preview=infra.source_preview(mod_workspace),
+            )
         for plan in plans:
             tm.that(plan.path.read_bytes(), eq=plan.before.content)
 
@@ -794,7 +825,11 @@ class TestsFlextInfraSemanticPublication:
             updated_source='value="after"\n',
             changes=("semantic normalization",),
         )
-        FlextInfraCodemodSemanticApply.apply_transaction_paths(mod_workspace, (edit,))
+        FlextInfraCodemodSemanticApply.apply_transaction_paths(
+            mod_workspace,
+            (edit,),
+            source_preview=infra.source_preview(mod_workspace),
+        )
         published = first.path.read_text()
         tm.that(published, has="after")
         tm.that(published, lacks="before")
@@ -804,5 +839,6 @@ class TestsFlextInfraSemanticPublication:
         FlextInfraCodemodSemanticApply.apply_transaction_paths(
             mod_workspace,
             (repeated,),
+            source_preview=infra.source_preview(mod_workspace),
         )
         tm.that(first.path.read_text(), eq=published)

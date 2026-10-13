@@ -546,17 +546,6 @@ class FlextInfraUtilitiesCodemodProject(
             FlextInfraUtilitiesRopeCore.open_project(root) as project,
             project.frozen_layout(),
         ):
-            lookup = m.Infra.CodemodImportResources()
-            pending = [
-                project.get_resource(path.relative_to(root.resolve()).as_posix())
-                for path in states
-            ]
-            pending.extend(
-                resource
-                for name in modules
-                if (resource := project.find_module(name)) is not None
-            )
-            scheduled = {resource.real_path for resource in pending}
             search_roots = tuple(
                 folder
                 for folder in (
@@ -565,6 +554,21 @@ class FlextInfraUtilitiesCodemodProject(
                 )
                 if isinstance(folder, p.Infra.RopeRoot)
             )
+            lookup = m.Infra.CodemodImportResources(
+                modules={
+                    (name, None, 0): project.find_module(name)
+                    for name in dict.fromkeys(modules)
+                },
+                folders={folder.real_path: folder for folder in search_roots},
+            )
+            pending = [
+                project.get_resource(path.relative_to(root.resolve()).as_posix())
+                for path in states
+            ]
+            pending.extend(
+                resource for resource in lookup.modules.values() if resource is not None
+            )
+            scheduled = {resource.real_path for resource in pending}
             visited: set[Path] = set()
             while pending:
                 fetched = cls._snapshot_module_tree(

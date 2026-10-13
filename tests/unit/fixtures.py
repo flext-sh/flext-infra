@@ -134,14 +134,26 @@ def _detector_template_parent(run_root: Path, modules: t.StrSequence) -> Path:
 
 
 def _provision_detector_template(run_root: Path, modules: t.StrSequence) -> None:
-    """Resolve one detector consumer through ``make upg`` and commit its locks.
+    """Resolve the detector consumer using the shared locked-template lifecycle."""
+    _provision_consumer_template(
+        _detector_template_parent(run_root, modules),
+        modules,
+        distribution=_DETECTOR_PROJECT_NAME,
+    )
+
+
+def _provision_consumer_template(
+    parent: Path,
+    modules: t.StrSequence,
+    *,
+    distribution: str,
+) -> None:
+    """Resolve one declared consumer through ``make upg`` and commit its locks.
 
     ``make upg`` is the sole writer of a new consumer's locks; it resolves over
-    the network, so it runs once per run and dependency set, before any test
-    item starts. The command output is kept as the receipt every consumer of
-    the template asserts.
+    the network, so it runs once per run and dependency set when first consumed.
+    The command output is kept as the receipt every consumer asserts.
     """
-    parent = _detector_template_parent(run_root, modules)
     distributions = {"requests": "requests", "pytz": "pytz", "six": "six"}
     # A governed FLEXT consumer declares exactly one runtime upstream profile;
     # conform derives its project spec from it (context_render.py).
@@ -165,29 +177,35 @@ def _provision_detector_template(run_root: Path, modules: t.StrSequence) -> None
     infrastructure_source = (
         f"{infrastructure.distribution} @ git+{infrastructure.url}@{integration.branch}"
     )
+    development = ", ".join(
+        f'"{u.Tests.flext_source(name) if name.startswith("flext-") else requirement}"'
+        for requirement in config.Infra.codegen.scaffold.project.dev
+        if (name := u.Infra.dep_name(requirement)) is not None
+        and name != distribution
+    )
     root = u.Tests.mk_project(
         parent,
-        _DETECTOR_PROJECT_NAME,
+        distribution,
         with_src=True,
         pyproject=(
             '[build-system]\nrequires = ["hatchling"]\n'
             'build-backend = "hatchling.build"\n'
-            '[project]\nname = "detector-fixture"\nversion = "0.1.0"\n'
+            f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
+            f'description = "{distribution} governed fixture"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
             f'requires-python = "{python_required}"\n'
             f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
             # A governed checkout declares every internal requirement with its
             # own direct Git source; the scaffold dev SSOT includes flext-tests.
-            '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
-            f'"{infrastructure_source}", '
-            f'"{u.Tests.flext_source("flext-tests")}"]\n'
+            f'[dependency-groups]\ndev = [{development}, "pip", '
+            f'"{infrastructure_source}"]\n'
             "[tool.hatch.metadata]\nallow-direct-references = true\n"
             "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),
     )
-    (root / "src" / "detector_fixture" / "__init__.py").write_text(
+    (root / "src" / distribution.replace("-", "_") / "__init__.py").write_text(
         "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
         encoding="utf-8",
     )
@@ -503,21 +521,14 @@ def real_detector_project(
         (parent / _DETECTOR_UPGRADE_RECEIPT).read_text(encoding="utf-8"),
     )
     tm.that(u.Cli.process_succeeded(upgrade.outcome), eq=True, msg=upgrade.stderr)
-    root = tmp_path / _DETECTOR_PROJECT_NAME
-    u.Tests.git_bootstrap(
-        tmp_path,
-        ("clone", "-q", str(parent / _DETECTOR_PROJECT_NAME), str(root)),
-    )
-    u.Tests.initialize_git_repo(
-        root,
+    root = u.Tests.provision_locked_project_checkout(
+        parent / _DETECTOR_PROJECT_NAME,
+        tmp_path / _DETECTOR_PROJECT_NAME,
         origin_url=u.Tests.repository_ref(
-            root.name,
+            _DETECTOR_PROJECT_NAME,
             role=c.Infra.MakeProfile.STANDALONE,
         ).url,
     )
-    setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=root, capture=False))
-    u.Tests.record_dependency_command_output(setup)
-    tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
     runtime = u.Infra.runtime_environment_dir(root)
     executable = c.Infra.DEPTRY + (".exe" if os.name == "nt" else "")
     tool_path = runtime / ("Scripts" if os.name == "nt" else "bin") / executable
@@ -527,6 +538,39 @@ def real_detector_project(
         encoding="utf-8",
     )
     return root
+
+
+@pytest.fixture
+def duplicate_project(
+    tmp_path: Path,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Path:
+    """Prepare a duplicate-cure consumer from one run-scoped resolved template.
+
+    Returns:
+        A physical checkout with its declared dependencies and managed tools.
+    """
+    distribution = "flext-demo"
+    parent = _run_scoped(_run_root(tmp_path_factory), "consumer-templates", distribution)
+    parent.mkdir(parents=True, exist_ok=True)
+    receipt = parent / _DETECTOR_UPGRADE_RECEIPT
+    with u.Infra.codegen_transaction_lease(receipt):
+        if not receipt.is_file():
+            _provision_consumer_template(parent, (), distribution=distribution)
+    upgrade = u.Tests.command_receipt(receipt)
+    tm.that(
+        u.Cli.process_succeeded(upgrade.outcome),
+        eq=True,
+        msg=upgrade.stdout + upgrade.stderr,
+    )
+    return u.Tests.provision_locked_project_checkout(
+        parent / distribution,
+        tmp_path / distribution,
+        origin_url=u.Tests.repository_ref(
+            distribution,
+            role=c.Infra.MakeProfile.STANDALONE,
+        ).url,
+    )
 
 
 @pytest.fixture

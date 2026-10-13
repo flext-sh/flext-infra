@@ -800,7 +800,13 @@ class TestsFlextInfraDeclarationRelocation:
             )
             tm.ok(planned)
             tm.that(planned.value, empty=True)
-            applied = FlextInfraCodemodSemanticApply.apply(root, preflight, rope)
+            applied = FlextInfraCodemodSemanticApply.apply(
+                root,
+                preflight,
+                rope,
+                source_preview=infra.source_preview(root),
+                workspace_factory=infra.rope_workspace,
+            )
         tm.that(len(findings), eq=1)
         tm.that(findings[0].file_path, eq=origin.resolve())
         tm.that(findings[0].declaration, eq=f"{stem}UtilitiesPayload.Payload")

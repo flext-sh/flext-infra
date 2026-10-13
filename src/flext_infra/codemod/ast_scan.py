@@ -181,6 +181,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         before = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        catalog_before = u.Infra.codemod_rule_plan(root).unwrap()
         destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
         invocation = destination.parent / destination.stem / uuid4().hex
         if rule_ids is not None:
@@ -202,7 +203,10 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             if rule_ids is not None
             else before
         )
-        outcome = cls._converge(root, current, rule_ids=rule_ids)
+        published_plans: list[m.Infra.SemanticFilePlan] = []
+        outcome = cls._converge(
+            root, current, rule_ids=rule_ids, published_plans=published_plans
+        )
         if rule_ids is None:
             return outcome
         after = FlextInfraModGateEngine.scan(root, fix=False)
@@ -239,7 +243,24 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"ast: whole-catalog after evidence={receipt.value.path} "
             f"sha256={receipt.value.sha256}",
         )
-        deltas = u.Infra.rule_deltas(before, after.value)
+        try:
+            catalog_after = u.Infra.codemod_rule_plan(root)
+            if catalog_after.failure:
+                msg = f"ast: whole-catalog observation failed: {catalog_after.error}"
+                raise ValueError(msg)
+            if catalog_before != catalog_after.value:
+                msg = "ast: whole-catalog identity changed during selected apply"
+                raise ValueError(msg)
+            deltas = u.Infra.rule_deltas(
+                before, after.value, publication_chain=tuple(published_plans)
+            )
+        except ValueError as exc:
+            sys.stderr.write(
+                f"ast: {'secondary ' if outcome.failure else ''}"
+                f"whole-catalog correspondence failure: {exc}; "
+                "accepted writes retained; no rollback performed\n"
+            )
+            return outcome if outcome.failure else r[t.Cli.ResultValue].fail(str(exc))
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
             f"after={after.value.findings}; "
@@ -285,6 +306,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         current: m.Infra.ModScanReport,
         *,
         rule_ids: t.StrSequence | None = None,
+        published_plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 
@@ -316,7 +338,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
-            applied = FlextInfraModGateEngine.scan(root, fix=True, rule_ids=rule_ids)
+            applied = FlextInfraModGateEngine.scan(
+                root, fix=True, rule_ids=rule_ids, published_plans=published_plans
+            )
             if rule_ids is None:
                 applied.unwrap()
             if applied.failure:

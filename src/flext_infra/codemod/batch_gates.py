@@ -503,7 +503,11 @@ class FlextInfraModGateEngine:
             )
             if entry.rule_id in project_rule_ids[owner]:
                 grouped.setdefault(owner, []).append(
-                    entry.model_copy(update={"file": source})
+                    entry.model_copy(update={
+                        "file": source,
+                        "catalog_digest": rules_by_id[entry.rule_id].digest,
+                        "module_absence": rules_by_id[entry.rule_id].module_absence,
+                    })
                 )
         admitted: list[m.Infra.ModScanFinding] = []
         for project, entries in grouped.items():
@@ -1063,6 +1067,7 @@ class FlextInfraModGateEngine:
         *,
         fix: bool,
         rule_ids: t.StrSequence | None = None,
+        published_plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
 
@@ -1131,6 +1136,7 @@ class FlextInfraModGateEngine:
                 root,
                 cls.authored(complete_report),
                 exact_replacements=rule_ids is not None,
+                published_plans=published_plans,
             )
             if published.failure:
                 return r[m.Infra.ModScanReport].from_failure(published)

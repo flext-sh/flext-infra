@@ -265,6 +265,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return f"`{imported_name}` imported but unused"
 
         normalized_line: str = c.Infra.LINE_COL_RE.sub("", line)
+        # The comparison pairs one logical file's before and after snapshots,
+        # whose linted locations differ (live path vs staged source-view path):
+        # the leading file-path token normalizes away so only the diagnostic
+        # content itself can differ.
+        head, separator, remainder = normalized_line.partition(" ")
+        if separator and "/" in head:
+            normalized_line = remainder
         normalized_without_unused_imports: str = c.Infra.UNUSED_IMPORT_RE.sub(
             normalize_unused_import,
             normalized_line,
@@ -713,8 +720,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 f"{(output.stderr or output.stdout).strip()}"
             )
         failure = failure or (str(parsed.error) if parsed.failure else None)
-        if output.stderr.strip():
-            failure = failure or output.stderr.strip()
         return m.Infra.LintGateResult(
             tool_name=tool_name,
             errors=lines,

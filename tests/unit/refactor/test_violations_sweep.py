@@ -82,6 +82,109 @@ class TestsFlextInfraRefactorViolationsSweep:
             eq=True,
         )
 
+    @pytest.mark.parametrize("copies", [1, 2])
+    def test_published_module_absence_preserves_locus_not_changed_declarations(
+        self, mod_workspace: Path, copies: int
+    ) -> None:
+        """Real publication preserves root absence, never equal-total call swaps."""
+        self._prepare(mod_workspace, makefile=self._makefile(), local_rule=False)
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                "repair-marker": (
+                    "id: repair-marker\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  pattern: marker = dict()\nfix: marker = list()\n"
+                ),
+                "absent-class": (
+                    "id: absent-class\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  kind: module\n  not:\n    has:\n"
+                    "      kind: class_definition\n"
+                ),
+                "violating-call": (
+                    "id: violating-call\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  kind: call\n  regex: '^(dict|list)\\(\\)$'\n"
+                ),
+                "violating-declaration": (
+                    "id: violating-declaration\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  kind: expression_statement\n"
+                    "  regex: '^marker = (dict|list)\\(\\)$'\n"
+                ),
+                "module-with-declaration": (
+                    "id: module-with-declaration\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  kind: module\n  has:\n"
+                    "    kind: expression_statement\n"
+                    "    regex: '^marker = (dict|list)\\(\\)$'\n"
+                ),
+            },
+        )
+        sample = mod_workspace / "accounting.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * copies))
+        before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
+        chain: list[m.Infra.SemanticFilePlan] = []
+        tm.ok(FlextInfraModGateEngine.scan(
+            mod_workspace, fix=True, rule_ids=("repair-marker",), published_plans=chain
+        ))
+        after = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
+        tm.that(len(chain), eq=1)
+        rows = {
+            row.rule_id: row
+            for row in u.Infra.rule_deltas(before, after, publication_chain=tuple(chain))
+        }
+        absence = rows["absent-class"]
+        tm.that((absence.before, absence.after, absence.introduced), eq=(1, 1, 0))
+        tm.that(absence.semantic_correspondence_proven, eq=True)
+        calls = rows["violating-call"]
+        tm.that((calls.before, calls.after, calls.introduced), eq=(copies, copies, copies))
+        tm.that(calls.semantic_correspondence_proven, eq=False)
+        tm.that(rows["violating-declaration"].introduced, eq=copies)
+        tm.that(rows["module-with-declaration"].introduced, eq=1)
+        tm.that(rows["module-with-declaration"].semantic_correspondence_proven, eq=False)
+        with pytest.raises(ValueError, match="byte continuity broken"):
+            u.Infra.rule_deltas(before, after, publication_chain=(*chain, *chain))
+        duplicated = FlextInfraModGateEngine.recounted((
+            *after.entries,
+            next(entry for entry in after.entries if entry.rule_id == "absent-class"),
+        ))
+        duplicate_rows = {
+            row.rule_id: row
+            for row in u.Infra.rule_deltas(
+                before, duplicated, publication_chain=tuple(chain)
+            )
+        }
+        tm.that(duplicate_rows["absent-class"].introduced, eq=1)
+        lexical = {
+            row.rule_id: row for row in u.Infra.rule_deltas(before, after)
+        }
+        tm.that(lexical["absent-class"].introduced, eq=1)
+        with pytest.raises(ValueError, match="lacks publication proof"):
+            u.Infra.rule_deltas(before, after, publication_chain=())
+        drifted = after.model_copy(update={
+            "entries": tuple(
+                entry.model_copy(update={
+                    "source_state": entry.source_state.model_copy(
+                        update={"content": b"marker = tuple()\n"}
+                    )
+                })
+                if entry.file == sample.relative_to(mod_workspace)
+                and entry.module_absence
+                and entry.source_state is not None
+                else entry
+                for entry in after.entries
+            )
+        })
+        with pytest.raises(ValueError, match="native root|source drift"):
+            u.Infra.rule_deltas(before, drifted, publication_chain=tuple(chain))
+        changed_catalog = after.model_copy(update={
+            "entries": tuple(
+                entry.model_copy(update={"catalog_digest": "changed-catalog"})
+                if entry.rule_id == "absent-class" else entry
+                for entry in after.entries
+            )
+        })
+        with pytest.raises(ValueError, match="catalog correspondence changed"):
+            u.Infra.rule_deltas(before, changed_catalog, publication_chain=tuple(chain))
+
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
         self,
         mod_workspace: Path,
@@ -488,6 +591,8 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(self._sweep(root), ne=0)
 
         report = self._receipt(root)
+        assert report.before is not None
+        assert report.after is not None
         tm.that(
             "findings" in report.increased_totals,
             eq=True,
@@ -580,6 +685,15 @@ class TestsFlextInfraRefactorViolationsSweep:
         report = self._receipt(root)
         assert report.before_evidence is not None
         assert report.before_plan is not None
+        assert report.before_source_sha256 is not None
+        tm.that(report.before_evidence.evidence.totals_by_rule["sweep-growth"], eq=0)
+        tm.that(
+            report.before_evidence.evidence.totals_by_repository[root.name],
+            eq=sum(
+                entry.repository == root.name
+                for entry in report.before_evidence.evidence.entries
+            ),
+        )
         rows = {(row.repository, row.rule_id) for row in report.rule_deltas}
         expected = {
             (project.name, rule.id)
@@ -735,6 +849,7 @@ class TestsFlextInfraRefactorViolationsSweep:
     def test_existing_ast_cli_applies_only_the_exact_selected_rule(
         self,
         mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Reuse the native selected engine, never a sweep-specific rewrite engine."""
         root = mod_workspace
@@ -749,18 +864,17 @@ class TestsFlextInfraRefactorViolationsSweep:
             )
         )
         tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
-        tm.that(
-            main([
-                c.Infra.CLI_GROUP_REFACTOR,
-                "ast",
-                "--apply",
-                "--repository-root",
-                str(root),
-                "--rules",
-                "sweep-growth",
-            ]),
-            eq=0,
-        )
+        exit_code = main([
+            c.Infra.CLI_GROUP_REFACTOR,
+            "ast",
+            "--apply",
+            "--repository-root",
+            str(root),
+            "--rules",
+            "sweep-growth",
+        ])
+        captured = capsys.readouterr()
+        tm.that(exit_code, eq=0, msg=captured.out + captured.err)
         tm.that((root / "ran.txt").exists(), eq=False)
         tm.that(self._sweep(root, "--audit-rules"), eq=0)
         row = next(
@@ -904,8 +1018,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             "id: sweep-match\nlanguage: Python\nrule:\n  pattern: marker = tuple()\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(utility, utility_text))
-        sample = root / "sample.py"
-        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
         changed = utility if mutation == "change" else utilities / "extra.yml"
         extra_text = utility_text.replace("sweep-match", "sweep-extra")
         if mutation == "remove":
@@ -923,23 +1036,25 @@ class TestsFlextInfraRefactorViolationsSweep:
             makefile=".PHONY: audit\naudit:\n" + recipe,
             local_rule=False,
         )
-        result = FlextInfraRefactorViolationsSweep(
-            repository_root=root, repair_verbs="audit"
-        ).execute()
-        tm.fail(result, has="audit changed")
-        report = self._receipt(root)
-        stage = report.stages[0]
+        tm.fail(
+            FlextInfraRefactorViolationsSweep(
+                repository_root=root, repair_verbs="audit"
+            ).execute(),
+            has="audit changed",
+        )
+        stage = self._receipt(root).stages[0]
         tm.that(stage.source_inventory_unchanged, eq=False)
         assert stage.audit_before is not None
         assert stage.audit_after is not None
         before = stage.audit_before.sha256
         after = stage.audit_after.sha256
-        for unchanged in (catalog, rule_path, sample):
+        for unchanged in (catalog, rule_path, root / "sample.py"):
             tm.that(
                 before[str(unchanged.resolve())], eq=after[str(unchanged.resolve())]
             )
-        utility_key = str(utility.resolve())
-        tm.that(before[utility_key], eq=u.Cli.sha256_bytes(utility_text.encode()))
+        tm.that(
+            before[str(utility.resolve())], eq=u.Cli.sha256_bytes(utility_text.encode())
+        )
         changed_key = str(changed.resolve())
         if mutation == "change":
             tm.that(before[changed_key], ne=after[changed_key])

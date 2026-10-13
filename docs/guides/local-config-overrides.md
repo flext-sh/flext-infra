@@ -87,6 +87,15 @@ and `--python`. It changes only the provisioned consumer environment; it never e
 consumer's dependency declarations. Canonical setup restores the declared resolution.
 Workspace setup installs its declared local editable sources through `uv sync`; it
 does not invoke the external-consumer binding service on itself.
+The workspace root owns local path sources and source-replacement overrides. A
+transitive Git requirement for the same distribution is replaced by that local
+identity, not deleted from the dependency graph. Declared version bounds remain in
+constraints, and requested extras remain on the replacement requirement. Member
+metadata keeps its portable Git provenance and renders identically when detached.
+Conformance removes dependency-edge exclusions; no reverse-edge exclusion catalog
+or project-routing declaration is required. See the official UV
+[override semantics](https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides)
+and [development sources](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources).
 The interpreter must belong to the consumer's physical environment as determined by the
 workspace topology. A symlinked environment or a foreign interpreter is rejected.
 

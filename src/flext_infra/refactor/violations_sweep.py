@@ -409,7 +409,8 @@ class FlextInfraRefactorViolationsSweep(
 
     @classmethod
     def _scan_evidence(
-        cls: Path,
+        cls,
+        root: Path,
         destination: Path,
     ) -> p.Result[
         t.Triple[
@@ -430,11 +431,12 @@ class FlextInfraRefactorViolationsSweep(
                 m.Infra.ViolationsSweepSources,
             ]
         ]
-        captured = FlextInfraRefactorViolationsSweep._source_snapshot(cls, observe=True)
+        captured = cls._source_snapshot(root, observe=True)
         if captured.failure:
             return result.from_failure(captured)
         snapshot = captured.value
-        if snapshot.ast_report is None:
+        report = snapshot.ast_report
+        if report is None:
             return result.fail(
                 "; ".join(snapshot.observation_errors) or "native AST scan unavailable"
             )
@@ -444,20 +446,20 @@ class FlextInfraRefactorViolationsSweep(
             for rule_id in rules
         }
         unexpected = {
-            (entry.repository, entry.rule_id) for entry in snapshot.ast_report.entries
+            (entry.repository, entry.rule_id) for entry in report.entries
         } - elected
         if unexpected:
             return result.fail(
                 "native finding outside effective project rule plan: "
                 f"{sorted(unexpected)}",
             )
-        digests = cls._verify_entry_digests(snapshot.ast_report, snapshot)
+        digests = cls._verify_entry_digests(report, snapshot)
         if digests.failure:
             return result.from_failure(digests)
         repositories = tuple(project.name for project in snapshot.repository_roots)
         receipt = u.Infra.publish_mod_scan_evidence(
-            cls,
-            snapshot.ast_report,
+            root,
+            report,
             publication=m.Infra.ModScanPublication(
                 command=c.Infra.ModScanCommand.SCAN,
                 scope=snapshot.scope,
@@ -466,13 +468,7 @@ class FlextInfraRefactorViolationsSweep(
                 rule_ids=tuple(rule.id for rule in snapshot.plan.rules),
             ),
         )
-        if receipt.failure:
-            return result.from_failure(receipt)
-        return result.ok((
-            snapshot.ast_report,
-            receipt.value,
-            snapshot,
-        ))
+        return receipt.map(lambda published: (report, published, snapshot))
 
     @staticmethod
     def _verify_entry_digests(

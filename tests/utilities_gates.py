@@ -244,6 +244,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
             resolved = dataclasses.replace(resolved, kinds=kinds)
         TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(workspace)
         result = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
             source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=resolved.apply_changes,

@@ -91,6 +91,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             include_local_scopes=False,
         )
         service = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
             repository_root=options.repository_root,
             source_preview=infra.source_preview(options.repository_root),
             options=options,
@@ -110,6 +111,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
     def test_service_defaults_use_declared_options(tmp_path: Path) -> None:
         """Omitted options are constructed by the canonical options model."""
         service = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
             repository_root=tmp_path,
             source_preview=infra.source_preview(tmp_path),
         )

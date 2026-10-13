@@ -292,12 +292,6 @@ class FlextInfraConfigModelsArtifact:
                 ),
             ),
         ]
-        uv_exclude_dependencies: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
-            ],
-            m.Field(description="Project-scoped official uv dependency exclusions"),
-        ] = ()
         sonarcloud: Annotated[
             FlextInfraConfigModelsRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),

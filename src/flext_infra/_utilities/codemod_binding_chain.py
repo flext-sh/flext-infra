@@ -67,9 +67,6 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The resulting ``bool``.
-
-            Raises:
-                ValueError: If the specified module is unknown.
             """
             root, source, project = frame
             capture = m.Infra.AstGrepCapture.model_validate(

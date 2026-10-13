@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -144,6 +145,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                     root,
                     rope,
                     apply=True,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
                 )
             if broken:
                 tm.fail(result, has="quality")
@@ -171,6 +174,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
                     ),
                 )
             tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=published)
@@ -182,6 +187,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
                     ),
                     has="quality",
                 )
@@ -229,6 +236,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
+                workspace_factory=infra.rope_workspace,
                 source_preview=infra.source_preview(mod_workspace),
                 repository_root=mod_workspace,
                 apply_changes=True,
@@ -309,6 +317,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
+                workspace_factory=infra.rope_workspace,
                 source_preview=infra.source_preview(mod_workspace),
                 repository_root=mod_workspace,
                 apply_changes=True,
@@ -317,7 +326,13 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 rope=rope,
             )
             if outcome != "converged":
-                with pytest.raises(RuntimeError, match="cycle|Ruff|normalization"):
+                with pytest.raises(
+                    RuntimeError,
+                    match="|".join(
+                        re.escape(message)
+                        for message in ("cycle", "Ruff", "normalization")
+                    ),
+                ):
                     service.execute()
                 tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
                 tm.that(progress.validated, eq=False)
@@ -329,7 +344,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 u.Cli.run((
                     sys.executable,
                     "-c",
-                    "import runpy, sys; assert runpy.run_path(sys.argv[1])['value'] == 2",
+                    "import runpy, sys; "
+                    "assert runpy.run_path(sys.argv[1])['value'] == 2",
                     str(sample),
                 ))
             )

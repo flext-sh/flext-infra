@@ -18,7 +18,6 @@ from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
 from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
 
 
 class FlextInfraModelsCodegenRender:
@@ -291,12 +290,6 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = ()
-        exclude_dependencies: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
-            ],
-            m.Field(description="Scoped dependency exclusions routed to the project"),
-        ]
         environments: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Resolved environment markers uv resolves for"),

@@ -1,4 +1,4 @@
-"""Declarative SonarCloud and uv resolution policy.
+"""Declarative SonarCloud policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,10 +11,9 @@ from typing import Annotated
 from flext_cli import m, t
 
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.uv import FlextInfraConfigModelsUv
 
 
-class FlextInfraConfigModelsRender(FlextInfraConfigModelsUv):
+class FlextInfraConfigModelsRender:
     """Policy declarations consumed by the configuration contract."""
 
     class SonarcloudIssueExclusionSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -76,21 +75,3 @@ class FlextInfraConfigModelsRender(FlextInfraConfigModelsUv):
                 ),
             ),
         ] = ()
-
-    class UvScopedDependencyExclusionSpec(
-        FlextInfraConfigModelsContract.ConfigContract,
-    ):
-        """Project-routed official uv scoped dependency exclusion."""
-
-        project: Annotated[
-            t.NonEmptyStr,
-            m.Field(exclude=True, description="Owning project distribution route"),
-        ]
-        package: Annotated[
-            FlextInfraConfigModelsUv.UvPackageSelectorSpec,
-            m.Field(description="Package whose transitive edge is scoped"),
-        ]
-        dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Excluded transitive dependency names"),
-        ]

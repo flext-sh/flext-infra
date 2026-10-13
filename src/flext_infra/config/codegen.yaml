@@ -674,6 +674,10 @@ Infra:
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
       - name: profile-mod-report
         description: Render the canonical codemod profile from the last profiling invocation.
+      - name: profile-mod-rules
+        description: Profile the complete read-only rule diagnostic and retain its native failure outcome.
+      - name: profile-mod-rules-report
+        description: Render the profile of the complete read-only rule diagnostic.
       - name: fmt
         description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
       - name: fix
@@ -714,6 +718,8 @@ Infra:
         description: Materialize the declared package initializer graph.
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
+      - name: mod-rules
+        description: Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.
       - name: mod-text
         description: Apply the declared Sed text rules with exact receipts and guarded publication.
       - name: mod-text-candidate
@@ -2177,11 +2183,9 @@ Infra:
         destination: pyproject.toml
         profiles: [ workspace, standalone ]
         delegate: render
-      # New-project declaration is serialized once from WorkspaceManifestSpec.
-      # Existing-tree conform reads this file as input and never overwrites it.
-      - destination: config/workspace.yaml
-        profiles: [ workspace, standalone ]
-        delegate: manifest
+      # Workspace composition exterminated (flext-a0cjp, operator ruling
+      # 2026-10-13): .gitmodules is the sole topology SSOT; no workspace.yaml
+      # is published, read, or validated anywhere.
       # Repository-local Beads identity. conform requires this file to
       # exist before it can plan, so a scaffolded project that never
       # rendered it could not be conformed at all.

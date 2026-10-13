@@ -264,7 +264,13 @@ class TestsFlextInfraClassNestingSuiteScope:
             entries=(),
         )
         with flext_infra.infra.rope_workspace(root) as rope:
-            applied = FlextInfraCodemodSemanticApply.apply(root, report, rope)
+            applied = FlextInfraCodemodSemanticApply.apply(
+                root,
+                report,
+                rope,
+                source_preview=flext_infra.infra.source_preview(root),
+                workspace_factory=flext_infra.infra.rope_workspace,
+            )
         tm.fail(applied, has=f"{owner_name}: LIMIT")
         tm.that(path.read_text(encoding=c.Infra.ENCODING_DEFAULT), eq=source)
 

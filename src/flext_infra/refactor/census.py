@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -26,7 +27,6 @@ from flext_infra.refactor import (
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(
@@ -60,6 +60,9 @@ class FlextInfraRefactorCensus(
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
         exclude=True,
         description="Injected authenticated source preview capability",
+    )
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = m.Field(
+        exclude=True, description="Injected candidate Rope workspace factory"
     )
 
     @property
@@ -136,9 +139,9 @@ class FlextInfraRefactorCensus(
 
         """
         started = time.monotonic()
-        with FlextInfraRopeWorkspace.open_workspace(
+        with self.workspace_factory(
             self.root,
-            rope_repository_root=self._rope_root_for_selection(),
+            self._rope_root_for_selection(),
         ) as rope:
             constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
             if (
@@ -149,6 +152,8 @@ class FlextInfraRefactorCensus(
                     self.root,
                     rope,
                     apply=self.apply_changes and not self.effective_dry_run,
+                    source_preview=self.source_preview,
+                    workspace_factory=self.workspace_factory,
                 )
                 if planned_constants.failure:
                     # An unprovable constant-consumer phase is reported

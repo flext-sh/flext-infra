@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_cli import u
@@ -53,8 +53,12 @@ class FlextInfraUtilitiesRefactor:
         inventory: tuple[tuple[str, str], ...] = (),
         repository_root: Path | None = None,
         projects: t.SequenceOf[Path] = (),
+        publication_chain: tuple[m.Infra.SemanticFilePlan, ...] | None = None,
     ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
-        """Compare lexical multiplicities, without asserting semantic correspondence.
+        """Compare lexical occurrences, or prove module absence through publication.
+
+        Without a publication chain the comparison is explicitly lexical. A supplied
+        chain is never replaced by guessed correspondence when authentication fails.
 
         Returns:
             Per-repository and per-rule occurrence deltas.
@@ -68,8 +72,54 @@ class FlextInfraUtilitiesRefactor:
         ):
             msg = "rule comparison requires the same native engine"
             raise ValueError(msg)
+        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, bytes]] = {}
+        if publication_chain is not None:
+            if not isinstance(before, m.Infra.ModScanReport) or not isinstance(
+                after, m.Infra.ModScanReport
+            ):
+                msg = "semantic correspondence requires native AST findings"
+                raise ValueError(msg)
+            for plan in publication_chain:
+                original, desired = plan.before.content, plan.desired_content
+                if (
+                    original is None
+                    or desired is None
+                    or plan.before.path != plan.path
+                    or plan.desired_mode != plan.before.mode
+                ):
+                    msg = f"invalid publication correspondence: {plan.path}"
+                    raise ValueError(msg)
+                previous = endpoints.get(plan.path)
+                if previous is not None and (
+                    previous[1] != original or previous[0].mode != plan.before.mode
+                ):
+                    msg = f"publication byte continuity broken: {plan.path}"
+                    raise ValueError(msg)
+                endpoints[plan.path] = (previous[0] if previous else plan.before, desired)
+            catalogs = [
+                {
+                    (entry.repository, entry.rule_id): (
+                        entry.catalog_digest, entry.module_absence
+                    )
+                    for entry in report.entries
+                }
+                for report in (before, after)
+            ]
+            for report, catalog in zip((before, after), catalogs, strict=True):
+                if any(
+                    catalog[entry.repository, entry.rule_id]
+                    != (entry.catalog_digest, entry.module_absence)
+                    for entry in report.entries
+                ):
+                    msg = "native rule occurrences disagree on catalog identity"
+                    raise ValueError(msg)
+            for key in catalogs[0].keys() & catalogs[1].keys():
+                if catalogs[0][key][0] is None or catalogs[0][key] != catalogs[1][key]:
+                    msg = f"native catalog correspondence changed: {key}"
+                    raise ValueError(msg)
+        proven: set[tuple[str, str]] = set()
         snapshots: list[list[tuple[str, str, str, str]]] = []
-        for report in (before, after):
+        for side, report in enumerate((before, after)):
             identities: list[tuple[str, str, str, str]] = []
             for entry in report.entries:
                 if isinstance(entry, m.Infra.ModScanFinding):
@@ -93,11 +143,65 @@ class FlextInfraUtilitiesRefactor:
                         msg = f"text finding outside declared topology: {entry.file}"
                         raise ValueError(msg)
                     repository = owner.name
+                text = entry.text
+                if (
+                    publication_chain is not None
+                    and isinstance(entry, m.Infra.ModScanFinding)
+                    and entry.module_absence
+                ):
+                    state = entry.source_state
+                    offsets = entry.range.get("byteOffset")
+                    if (
+                        state is None or state.content is None or not entry.catalog_digest
+                    ):
+                        msg = f"module occurrence lacks authentication: {entry.file}"
+                        raise ValueError(msg)
+                    if not isinstance(offsets, Mapping):
+                        msg = f"module occurrence lacks native range: {entry.file}"
+                        raise ValueError(msg)
+                    start, end = offsets.get("start"), offsets.get("end")
+                    if (
+                        not isinstance(start, int)
+                        or isinstance(start, bool)
+                        or start != 0
+                        or not isinstance(end, int)
+                        or isinstance(end, bool)
+                        or not 0 <= end <= len(state.content)
+                        or state.content[end:].strip()
+                        or state.content[:end] != entry.text.encode(c.DEFAULT_ENCODING)
+                    ):
+                        msg = f"module occurrence is not the native root: {entry.file}"
+                        raise ValueError(msg)
+                    endpoint = endpoints.get(state.path)
+                    if endpoint is not None and (
+                        state != endpoint[0]
+                        if side == 0
+                        else state.content != endpoint[1]
+                        or state.mode != endpoint[0].mode
+                    ):
+                        msg = f"publication source drift: {entry.file}"
+                        raise ValueError(msg)
+                    peers = (
+                        candidate
+                        for candidate in (after if side == 0 else before).entries
+                        if isinstance(candidate, m.Infra.ModScanFinding)
+                        and candidate.repository == repository
+                        and candidate.rule_id == entry.rule_id
+                        and candidate.file == entry.file
+                    )
+                    if endpoint is None and any(
+                        candidate.source_state != state
+                        for candidate in peers
+                    ):
+                        msg = f"changed module lacks publication proof: {entry.file}"
+                        raise ValueError(msg)
+                    text = f"module-absence:{entry.catalog_digest}"
+                    proven.add((repository, entry.rule_id))
                 identities.append((
                     repository,
                     entry.rule_id,
                     str(entry.file),
-                    entry.text,
+                    text,
                 ))
             snapshots.append(identities)
         before_entries, after_entries = (Counter(entries) for entries in snapshots)
@@ -125,6 +229,7 @@ class FlextInfraUtilitiesRefactor:
                     resolved=before_count - persisted,
                     persisted=persisted,
                     introduced=after_count - persisted,
+                    semantic_correspondence_proven=(repository, rule_id) in proven,
                     before_entries=tuple(
                         index
                         for index, key in enumerate(snapshots[0])
@@ -269,7 +374,7 @@ class FlextInfraUtilitiesRefactor:
             )
             for rule_id in sorted(set(catalog) | set(rows))
         )
-        text_deltas = (
+        deltas += (
             FlextInfraUtilitiesRefactor.rule_deltas(
                 before.text_report,
                 after.text_report,
@@ -291,8 +396,8 @@ class FlextInfraUtilitiesRefactor:
                 delta=row,
                 error=None,
             )
-            for row in text_deltas
-            if row.repository == project.name
+            for row in deltas
+            if row.engine == "text" and row.repository == project.name
         )
         ast_observed = (
             before.source_verified
@@ -359,19 +464,22 @@ class FlextInfraUtilitiesRefactor:
             )
             for path, findings in (after.lint or {}).items()
         }
-        introduced = (
-            FlextInfraUtilitiesRefactor.text_introduced_findings(
-                before.text_report,
-                after.text_report,
-            )
-            if before.text_report is not None and after.text_report is not None
-            else None
-        )
-        unchanged = (
-            before.sha256 == after.sha256
-            and before.plan == after.plan
-            and before.scope == after.scope
-            and before.repository_roots == after.repository_roots
+        stage = stage.model_copy(
+            update={
+                "introduced_text": (
+                    FlextInfraUtilitiesRefactor.text_introduced_findings(
+                        before.text_report, after.text_report
+                    )
+                    if before.text_report is not None and after.text_report is not None
+                    else None
+                ),
+                "source_inventory_unchanged": (
+                    before.sha256 == after.sha256
+                    and before.plan == after.plan
+                    and before.scope == after.scope
+                    and before.repository_roots == after.repository_roots
+                ),
+            }
         )
         incomplete = "; ".join(
             row.cause for row in coverage if row.status != "observed" and row.cause
@@ -386,7 +494,8 @@ class FlextInfraUtilitiesRefactor:
                     for cause, failed in (
                         (
                             "read-only rule audit changed source",
-                            not unchanged and stage.verb in {"audit", "audit-rules"},
+                            not stage.source_inventory_unchanged
+                            and stage.verb in {"audit", "audit-rules"},
                         ),
                         ("elected rule catalog changed", before.plan != after.plan),
                         (
@@ -415,9 +524,9 @@ class FlextInfraUtilitiesRefactor:
                         ),
                         (
                             "introduced native finding occurrences",
-                            any(row.introduced for row in (*deltas, *text_deltas))
+                            any(row.introduced for row in deltas)
                             or any(lint.values())
-                            or bool(introduced),
+                            or bool(stage.introduced_text),
                         ),
                         (incomplete, stage.verb == "comparison" and bool(incomplete)),
                     )
@@ -433,8 +542,6 @@ class FlextInfraUtilitiesRefactor:
                 "introduced_lint": (
                     lint if before.lint is not None and after.lint is not None else None
                 ),
-                "introduced_text": introduced,
-                "source_inventory_unchanged": unchanged,
                 "inspection_error": error or incomplete,
                 "error": error,
             }
@@ -551,10 +658,11 @@ class FlextInfraUtilitiesRefactor:
         if totals.failure:
             return r[m.Infra.ModScanEvidenceReceipt].from_failure(totals)
         repository_totals, rule_totals, class_totals = totals.value
-        repository_totals = (
-            dict.fromkeys(publication.repositories, 0) | repository_totals
-        )
-        rule_totals = dict.fromkeys(publication.rule_ids, 0) | rule_totals
+        repository_totals = {
+            **dict.fromkeys(publication.repositories, 0),
+            **repository_totals,
+        }
+        rule_totals = {**dict.fromkeys(publication.rule_ids, 0), **rule_totals}
         evidence = m.Infra.ModScanEvidence(
             schema_version=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             command=publication.command,
@@ -622,18 +730,10 @@ class FlextInfraUtilitiesRefactor:
                 f"findings={report.findings} entries={len(report.entries)} "
                 f"classified={classified}",
             )
-        repository_totals: MutableMapping[str, int] = {}
-        rule_totals: MutableMapping[str, int] = {}
-        class_totals: MutableMapping[c.Infra.ModScanFindingClass, int] = dict.fromkeys(
-            c.Infra.ModScanFindingClass,
-            0,
-        )
-        for finding in report.entries:
-            repository_totals[finding.repository] = (
-                repository_totals.get(finding.repository, 0) + 1
-            )
-            rule_totals[finding.rule_id] = rule_totals.get(finding.rule_id, 0) + 1
-            class_totals[finding.classification] += 1
+        repository_totals = Counter(entry.repository for entry in report.entries)
+        rule_totals = Counter(entry.rule_id for entry in report.entries)
+        class_totals = Counter(dict.fromkeys(c.Infra.ModScanFindingClass, 0))
+        class_totals.update(entry.classification for entry in report.entries)
         expected_class_totals = {
             c.Infra.ModScanFindingClass.ACTIONABLE: report.actionable,
             c.Infra.ModScanFindingClass.DETECTION_ONLY: report.detection_only,
