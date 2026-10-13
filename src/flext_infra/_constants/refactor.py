@@ -276,9 +276,6 @@ class FlextInfraConstantsRefactor:
         SemanticCutoverPhase.MODEL_FIELDS: (
             "rewire-getattr-model-fields-to-direct-access"
         ),
-        SemanticCutoverPhase.SELF_FACADE_IMPORT: (
-            "ban-declaration-utility-facade-import"
-        ),
         SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: "ban-ambient-environ-read",
         SemanticCutoverPhase.MODULE_END: "require-all-last",
         SemanticCutoverPhase.NOTICE_LAST: "require-notice-last",

@@ -6,14 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import platform
 import re
+import shlex
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
 
@@ -28,6 +33,194 @@ class FlextInfraUtilitiesGitAttestationMixin(
         + c.Infra.GateAttestationSchema.V2.value.rsplit("/", maxsplit=1)[-1]
     )
     _SSH_SIGNATURE_MARKER: ClassVar[str] = "\n-----BEGIN SSH SIGNATURE-----"
+
+    @classmethod
+    def git_capture_gate(
+        cls,
+        request: m.Infra.GateCaptureRequest,
+    ) -> p.Result[m.Infra.GateCaptureReport]:
+        """Execute the original checker once and retain its native evidence."""
+        root = request.repository_root.resolve()
+        directory = config.Infra.codegen.make.gate_receipts_directory
+        if directory.is_absolute() or ".." in directory.parts:
+            return r[m.Infra.GateCaptureReport].fail(
+                "gate receipts directory must remain repository-relative",
+            )
+        started = datetime.now(tz=UTC)
+        run_id = started.strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
+        report_root = root / directory / run_id
+        u.Cli.ensure_dir(report_root).unwrap()
+        before = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        clean_before = before.success and not cls._repo(root).is_dirty(
+            untracked_files=False
+        )
+        command = (
+            sys.executable,
+            "-m",
+            "flext_infra",
+            "check",
+            "run",
+            "--repository-root",
+            str(root),
+            "--gates",
+            request.gates,
+            "--reports-dir",
+            str(report_root / c.Infra.VERB_CHECK),
+        )
+        native = u.Cli.run_to_file(
+            command,
+            report_root / "execution.log",
+            cwd=root,
+            options=m.Cli.ProcessOptions(live=True),
+        )
+        if native.failure:
+            return r[m.Infra.GateCaptureReport].from_failure(native)
+        process = m.Cli.ProcessOutcome.model_validate(
+            native.value, from_attributes=True
+        )
+        after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        issue: str | None = None
+        if before.failure:
+            issue = before.error
+        elif after.failure:
+            issue = after.error
+        elif (
+            not clean_before
+            or cls._repo(root).is_dirty(untracked_files=False)
+            or before.value.head_oid != after.value.head_oid
+            or before.value.origin_remote is None
+        ):
+            issue = (
+                "original gate candidate is dirty, changed or has no declared origin"
+            )
+        report_paths = tuple(
+            sorted(
+                (report_root / c.Infra.VERB_CHECK).rglob(
+                    c.Infra.CHECK_REPORT_SARIF_FILENAME
+                )
+            )
+        )
+        reports = cls._captured_report_evidence(root, report_paths).unwrap()
+        receipt: Path | None = None
+        if issue is None:
+            captured = cls._captured_check_evidence(
+                root,
+                command,
+                before.value.head_oid,
+                before.value.origin_remote,
+                process,
+                reports,
+                started,
+                request.gates,
+            )
+            if captured.failure:
+                issue = captured.error
+            else:
+                receipt = report_root / "original-receipt.json"
+                u.Cli.atomic_write_text_file(
+                    receipt,
+                    captured.value.model_dump_json(round_trip=True) + "\n",
+                ).unwrap()
+        result = m.Infra.GateCaptureReport(
+            process=process,
+            receipt=receipt,
+            issues=(
+                (
+                    m.Infra.Issue(
+                        file=str(root),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        severity="error",
+                        message=issue,
+                    ),
+                )
+                if issue is not None
+                else ()
+            ),
+        )
+        u.Cli.atomic_write_text_file(
+            report_root / "capture-result.json",
+            result.model_dump_json(round_trip=True) + "\n",
+        ).unwrap()
+        return r[m.Infra.GateCaptureReport].ok(result)
+
+    @staticmethod
+    def _captured_report_evidence(
+        root: Path,
+        paths: t.VariadicTuple[Path],
+    ) -> p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]:
+        """Capture producer-owned report bytes through the atomic read owner."""
+        reports: list[m.Infra.GateReportEvidence] = []
+        for path in paths:
+            content = (
+                u.Cli
+                .atomic_read_binary_file_state(path, required=True)
+                .unwrap()
+                .content
+            )
+            if content is None:
+                return r[t.VariadicTuple[m.Infra.GateReportEvidence]].fail(
+                    f"required original checker report has no captured bytes: {path}",
+                )
+            reports.append(
+                m.Infra.GateReportEvidence(
+                    path=path.relative_to(root),
+                    digest=f"sha256:{u.Cli.sha256_bytes(content)}",
+                    kind=c.Infra.GateEvidenceReportKind.CHECK_SARIF,
+                )
+            )
+        return r[t.VariadicTuple[m.Infra.GateReportEvidence]].ok(tuple(reports))
+
+    @classmethod
+    def _captured_check_evidence(
+        cls,
+        root: Path,
+        command: t.StrSequence,
+        commit_sha: str,
+        origin: str | None,
+        process: m.Cli.ProcessOutcome,
+        reports: t.VariadicTuple[m.Infra.GateReportEvidence],
+        started: datetime,
+        gates: str,
+    ) -> p.Result[m.Infra.GateCommandEvidence]:
+        """Bind the original producer reports to the observed candidate."""
+        if len(reports) != 1:
+            return r[m.Infra.GateCommandEvidence].fail(
+                "original checker must publish exactly one invocation report",
+            )
+        if origin is None:
+            return r[m.Infra.GateCommandEvidence].fail("candidate origin is absent")
+        policy = config.Infra.codegen.make.gate_acceptance_policy
+        evidence = m.Infra.GateCommandEvidence(
+            gate=c.Infra.VERB_CHECK,
+            process=process,
+            native_outcome=c.Infra.ToolOutcome.ERROR,
+            policy=policy,
+            policy_digest=f"sha256:{u.Cli.sha256_content(policy.value)}",
+            context_digest=f"sha256:{
+                u.Cli.sha256_content(
+                    f'{sys.version}\n{platform.platform()}\n{c.Infra.VERB_CHECK}\n{gates}'
+                )
+            }",
+            reports=reports,
+            result_digest=f"sha256:{
+                u.Cli.sha256_content(process.model_dump_json(round_trip=True))
+            }",
+            started_at=started.isoformat(),
+            completed_at=datetime.now(tz=UTC).isoformat(),
+            cwd=str(root),
+            command=shlex.join(command),
+            repository=FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin),
+            commit_sha=commit_sha,
+            tree_sha=cls._repo(root).head.commit.tree.hexsha,
+        )
+        classified = cls._original_report_outcome(root, evidence)
+        if classified.failure:
+            return r[m.Infra.GateCommandEvidence].from_failure(classified)
+        return r[m.Infra.GateCommandEvidence].ok(
+            evidence.model_copy(update={"native_outcome": classified.value}),
+        )
 
     @classmethod
     def _attestation_tag(

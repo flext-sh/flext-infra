@@ -89,6 +89,18 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
 
+    class CodegenVscodeDeclarationDelta(
+        FlextInfraConfigModelsContract.ConfigContract,
+    ):
+        """Portable editor overrides extracted from one captured document."""
+
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(
+                description="Minimal typed codegen.vscode declaration overrides",
+            ),
+        ]
+
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold artifact and its typed rendering owner."""
 

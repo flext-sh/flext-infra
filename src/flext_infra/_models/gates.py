@@ -15,7 +15,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsDuplication
+from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDuplication
 
 # Gate models use base type primitives; importing the composing project facade
 # here creates unresolved aliases while Pydantic analyzes nested root models.
@@ -376,21 +376,16 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         @m.model_validator(mode="after")
         def _validate_command(self) -> Self:
             command = shlex.split(self.command)
+            canonical_cli_prefix_length = 5
             canonical_cli = (
-                len(command) >= 5
+                len(command) >= canonical_cli_prefix_length
                 and command[1:4] == ["-m", "flext_infra", "check"]
                 and command[4] == "run"
                 and self.gate == c.Infra.VERB_CHECK
             )
-            if (
-                not command
-                or not (
-                    canonical_cli
-                    or (
-                        Path(command[0]).name == c.Infra.MAKE
-                        and self.gate in command[1:]
-                    )
-                )
+            if not command or not (
+                canonical_cli
+                or (Path(command[0]).name == c.Infra.MAKE and self.gate in command[1:])
             ):
                 msg = "gate evidence command must use its canonical producer"
                 raise ValueError(msg)
@@ -410,13 +405,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Original process and publication outcome, independent of acceptance."""
 
         process: Annotated[
-            m.Cli.ProcessOutcome, m.Field(description="Reaped original producer outcome")
+            m.Cli.ProcessOutcome,
+            m.Field(description="Reaped original producer outcome"),
         ]
         receipt: Annotated[
             Path | None, m.Field(description="Published immutable original receipt")
         ]
         issues: Annotated[
-            t.VariadicTuple[m.Infra.Issue],
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
             m.Field(description="Actual capture or candidate eligibility failures"),
         ] = ()
 

@@ -240,7 +240,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         """
         match phase:
             case c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT:
-                return cls._plan_self_facade_imports(root, sources, selected)
+                return cls._plan_self_facade_imports(root, sources)
             case c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT:
                 return cls._plan_dynamic_environment(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.MODULE_END:

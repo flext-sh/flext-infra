@@ -61,6 +61,14 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             scope=params.scope,
         )
 
+    @staticmethod
+    def _capture_gate(
+        params: m.Infra.GateCaptureRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Retain the original checker process and return its unchanged status."""
+        captured = u.Infra.git_capture_gate(params).unwrap()
+        u.Cli.framework_exit(captured.process.exit_code)
+
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
     ] = {
@@ -75,6 +83,12 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             ),
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="capture-gate",
+                help_text="Execute the original checker once and publish its receipt",
+                model_cls=m.Infra.GateCaptureRequest,
+                handler=_capture_gate,
+            ),
             m.Cli.ResultCommandRoute(
                 name="validate-lifecycle",
                 help_text="Validate the root and governed member lifecycles serially",

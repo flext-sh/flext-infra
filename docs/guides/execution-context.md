@@ -467,8 +467,14 @@ Checks require complete target and requested-gate coverage in SARIF. Tests requi
 original process, accounting and diagnostics reports with complete positive execution.
 Timeouts, signals, collection errors, operational failures, missing artifacts and changed
 digests remain failures. The complete-execution policy may admit finished findings while
-preserving their nonzero status; the clean-quality policy rejects them. Original
-invocation capture, CI signing/restore wiring, zero-execution cache evidence and other
+preserving their nonzero status; the clean-quality policy rejects them. Bare `make check`
+uses the existing workspace capture route to execute the original checker once. It
+preserves that producer's native process outcome and owns an exclusive report base,
+then writes an immutable receipt only when the candidate and original reports remain
+eligible. Dirty, changed or unversioned candidates still execute and retain a capture
+result without claiming reusable evidence. The Make policy and receipt directory come
+from the typed codegen specification. Original test capture, CI signing/restore wiring,
+zero-execution cache evidence and other
 stage adapters remain required integration work. Verifying a setup proof never
 provisions a fresh runner.
 

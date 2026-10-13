@@ -331,16 +331,17 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Write a namespace module fixture for lazy-export tests."""
         export_list = f'"{class_name}", "{alias}"'
         extra_classes = "".join(
-            f"\nclass {extra_class_name}:\n    pass\n"
+            f'\nclass {extra_class_name}:\n    """Additional namespace declaration."""\n'
             for extra_class_name in extra_class_names
         )
+        notice = u.Infra.copyright_notice(module_path.parent, module=module_path)
         module_path.write_text(
             (
-                f'"""{docstring}"""\n\n'
+                f'"""{docstring}\n\n{notice}\n"""\n\n'
                 "from __future__ import annotations\n\n"
                 f"__all__: list[str] = [{export_list}]\n\n"
                 f"class {class_name}:\n"
-                "    pass\n\n"
+                '    """Public namespace declaration."""\n\n'
                 f"{alias} = {class_name}\n"
                 f"{extra_classes}"
             ),

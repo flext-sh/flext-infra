@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -18,9 +18,7 @@ from flext_infra._utilities._semantic_cutover.facade_bases import (
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
 )
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
-from flext_infra._utilities.project_discovery import (
-    FlextInfraUtilitiesProjectDiscovery,
-)
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,29 +36,11 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        selected = {
-            (root / finding.file).resolve(): {
-                declaration.module
-                for candidate in findings
-                if candidate.file == finding.file
-                and isinstance(
-                    declaration := cls._finding_statement(candidate),
-                    ast.ImportFrom,
-                )
-                and declaration.module
-            }
-            for finding in findings
-        }
-        utility_directory = (
-            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
-                c.Infra.UTILITIES_PY,
-            ).directory
-        )
+        selected: dict[Path, set[str]] = {}
+        declarations: dict[Path, set[str]] = {}
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         for path, source in sources.items():
-            if utility_directory not in path.parts:
-                continue
             project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 root, path
             )
@@ -69,18 +49,23 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
             namespace = FlextInfraUtilitiesImportLaw.import_namespace(project, path)
             if namespace is None:
                 continue
-            own_modules = {
+            layer = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
+            imported_modules = {
                 node.module
                 for node in ast.parse(source, filename=str(path)).body
                 if isinstance(node, ast.ImportFrom)
-                and node.module == namespace[0].name
+                and node.module
                 and not node.level
-                and any(
-                    alias.name == c.Infra.FacadeFamily.U for alias in node.names
-                )
+                and any(alias.name == c.Infra.FacadeFamily.U for alias in node.names)
             }
-            if own_modules:
-                selected.setdefault(path.resolve(), set()).update(own_modules)
+            if layer == order.index(c.Infra.FacadeFamily.U):
+                own_modules = imported_modules.intersection({namespace[0].name})
+                if own_modules:
+                    selected[path.resolve()] = own_modules
+            elif layer <= order.index(c.Infra.FacadeFamily.M):
+                external_modules = imported_modules.difference({namespace[0].name})
+                if external_modules:
+                    declarations[path.resolve()] = external_modules
         behavior = FlextInfraUtilitiesSemanticCutoverFacadeBases
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
@@ -94,12 +79,21 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                 for node in ast.parse(source, filename=str(path)).body
                 if isinstance(node, ast.ImportFrom)
                 and node.module
-                and node.module in selected[path]
+                and node.module in selected.get(path, set())
                 and not node.level
                 for alias in node.names
                 if alias.name == c.Infra.FacadeFamily.U
             )
-            if not elected:
+            eligible = frozenset(
+                (node.module, alias.name)
+                for node in ast.parse(source, filename=str(path)).body
+                if isinstance(node, ast.ImportFrom)
+                and node.module in declarations.get(path, set())
+                and not node.level
+                for alias in node.names
+                if alias.name == c.Infra.FacadeFamily.U
+            )
+            if not (elected or eligible):
                 return source, ()
             modules = behavior.behavior_source_modules(sources, typing_directory)
             ownership = behavior.behavior_utility_owners(
@@ -115,6 +109,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                     modules=modules,
                     ownership=ownership,
                     utility_imports=elected,
+                    declaration_imports=eligible,
                 ),
             )
             for node in ast.parse(updated, filename=str(path)).body:
@@ -134,7 +129,9 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
 
         return cls._semantic_edits(
             tuple(
-                item for item in cls._editable_sources(sources) if item[0] in selected
+                item
+                for item in cls._editable_sources(sources)
+                if item[0] in selected or item[0] in declarations
             ),
             rewrite,
         )

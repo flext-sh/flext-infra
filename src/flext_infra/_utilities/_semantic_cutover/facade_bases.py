@@ -747,6 +747,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         modules = request.modules
         ownership = request.ownership
         utility_imports = request.utility_imports
+        declaration_imports = request.declaration_imports
+        elected_imports = utility_imports | declaration_imports
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.TYPINGS_PY
@@ -776,23 +778,23 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
             if imported is None:
                 return None
-            if utility_imports and imported not in utility_imports:
+            if elected_imports and imported not in elected_imports:
                 return None
             module, receiver = imported
             if imported not in lineages:
                 lineages[imported] = (
                     cls._behavior_lineage(modules, module, receiver)
-                    if imported in utility_imports
+                    if imported in elected_imports
                     else cls._typing_behavior_lineage(
                         modules, module, receiver, typing_directory
                     )
                 )
             lineage = lineages[imported]
-            if imported not in utility_imports and cls._behavior_member_declared(
+            if imported not in elected_imports and cls._behavior_member_declared(
                 modules, lineage, qualified.rpartition(".")[2], ownership[0]
             ):
                 return None
-            if imported in utility_imports:
+            if imported in elected_imports:
                 member = qualified.rpartition(".")[2]
                 effective = cls._behavior_effective_declaration(
                     modules, lineage, member
@@ -837,6 +839,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 if lower:
                     obsolete.add(imported)
                     return lower[0]
+                if imported in declaration_imports:
+                    return None
             target = cls._behavior_reference_target(
                 qualified, path, lineage, modules, ownership
             )

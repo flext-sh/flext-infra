@@ -21,6 +21,25 @@ class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
 
     @staticmethod
+    def test_portable_declaration_rejects_unrepresentable_list_replacement(
+        tmp_path: Path,
+    ) -> None:
+        """The config concatenation contract cannot silently remove prior entries."""
+        key = "extension.scopes"
+        spec = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "list_settings": {key: ("parent",)},
+        })
+        planned = FlextInfraCodegen.vscode_declaration_delta(
+            tmp_path,
+            {key: ["child"]},
+            spec=spec,
+            runtime_root=tmp_path,
+        )
+        tm.fail(planned)
+        tm.that(planned.exception, is_=ValueError)
+
+    @staticmethod
     def test_scoped_config_uses_project_then_local_layers(tmp_path: Path) -> None:
         """Two injected repositories retain independent committed and local choices."""
         key = "python.analysis.userFileIndexingLimit"
@@ -419,6 +438,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                 ),
             ),
         )
+        original = path.read_text(encoding=c.DEFAULT_ENCODING)
         rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
         doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(u.Cli.json_parse(rendered)),
@@ -456,3 +476,48 @@ class TestsFlextInfraVscodeOwnerMerge:
             eq="${workspaceFolder}/.venv-is-not-the-environment",
         )
         tm.that(str(tmp_path) in rendered, eq=False)
+        migrated = tm.ok(
+            FlextInfraCodegen.vscode_declaration_delta(
+                member,
+                doc,
+                spec=tm.ok(FlextInfraCodegen.load_vscode_spec(member)),
+            ),
+        )
+        declaration = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            migrated.values["additional_settings"],
+        )
+        portable_terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            declaration["terminal.integrated.env.linux"],
+        )
+        tm.that(
+            portable_terminal["VIRTUAL_ENV"],
+            eq=f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}",
+        )
+        standalone = tmp_path / "standalone"
+        config_dir = standalone / c.CONFIG_DIR_NAME
+        config_dir.mkdir(parents=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                config_dir / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {"Infra": {"codegen": {"vscode": migrated.values}}},
+            ),
+        )
+        standalone_rendered = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(
+                standalone,
+                runtime_root=standalone,
+            ),
+        )
+        standalone_doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(standalone_rendered)),
+        )
+        tm.that(
+            standalone_doc["terminal.integrated.env.linux"],
+            eq=portable_terminal,
+        )
+        tm.that(standalone_doc["ruff.interpreter"], eq=declaration["ruff.interpreter"])
+        tm.that(standalone_doc["operator.note"], eq=doc["operator.note"])
+        tm.that(
+            path.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=original,
+        )
