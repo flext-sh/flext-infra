@@ -161,6 +161,9 @@ jobs:
             .reports/**/coverage.json
             .reports/check/**/*.sarif
             .reports/check/**/*.md
+            {{ make.gate_receipts_directory }}/**/{{ gate_original_receipt_filename }}
+            {{ make.gate_receipts_directory }}/**/check/**/*.sarif
+            {{ make.gate_receipts_directory }}/**/check/**/*.md
             .reports/codegen-plan.json
             .reports/codegen-publication.json
             .reports/codegen-publication/**/*.json
@@ -173,6 +176,8 @@ jobs:
             .reports/tests/**/testmon-selection.json
             .reports/tests/**/testmon-inventory.json
             .reports/tests/**/run-accounting.json
+            .reports/tests/**/diagnostics.json
+            .reports/tests/**/{{ gate_original_receipt_filename }}
             .reports/tests/**/cache-before.json
             .reports/tests/**/cache-after.json
             .reports/tests/**/cache-policy.json

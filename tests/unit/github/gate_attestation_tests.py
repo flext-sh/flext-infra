@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from shlex import quote
 
@@ -147,9 +148,8 @@ class TestsFlextInfraGithubGateAttestation:
             assert report.path.is_relative_to(
                 first.receipt.parent.relative_to(tmp_path)
             )
-            assert report.digest == (
-                f"sha256:{cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())}"
-            )
+            digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
+            assert report.digest == f"sha256:{digest}"
 
     def test_dirty_candidate_still_executes_without_reusable_receipt(
         self,
@@ -174,11 +174,17 @@ class TestsFlextInfraGithubGateAttestation:
 
     @classmethod
     def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
-        """Consume the receipt automatically emitted by the original Make run."""
+        """Consume the receipt automatically emitted by the original Make run.
+
+        Returns:
+            The resulting ``m.Infra.GateAttestationCreateRequest``.
+        """
         receipts = root / config.Infra.codegen.make.gate_receipts_directory
-        previous = set(receipts.rglob("original-receipt.json"))
+        previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
         tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
-        published = set(receipts.rglob("original-receipt.json")) - previous
+        published = (
+            set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)) - previous
+        )
         assert len(published) == 1
         receipt = published.pop()
         evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
@@ -203,7 +209,7 @@ class TestsFlextInfraGithubGateAttestation:
         receipts = root / config.Infra.codegen.make.gate_receipts_directory
         evidence = tuple(
             record
-            for path in receipts.rglob("original-receipt.json")
+            for path in receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)
             if (
                 record := m.Infra.GateCommandEvidence.model_validate_json(
                     path.read_bytes(),
@@ -245,7 +251,7 @@ class TestsFlextInfraGithubGateAttestation:
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
-        """Repeated publication verifies the same object and leaves execution untouched."""
+        """Repeated publication verifies the object and leaves execution untouched."""
         signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         before = (tmp_path / "invocations.txt").read_bytes()
@@ -324,6 +330,7 @@ class TestsFlextInfraGithubGateAttestation:
         allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         tm.ok(u.Infra.git_create_gate_attestation(request))
+        digest = f"sha256:{cli_u.Cli.sha256_content('different runtime context')}"
 
         tm.fail(
             u.Infra.git_verify_gate_attestation(
@@ -332,7 +339,7 @@ class TestsFlextInfraGithubGateAttestation:
                     allowed_signers=str(allowed),
                     expected_gates=request.gates,
                     commit_sha=self._head(tmp_path),
-                    context_digest=f"sha256:{cli_u.Cli.sha256_content('different runtime context')}",
+                    context_digest=digest,
                     policy=request.policy,
                     policy_digest=request.policy_digest,
                 ),
@@ -388,7 +395,7 @@ class TestsFlextInfraGithubGateAttestation:
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
-        """Original reaped timeout state remains operational failure under either policy."""
+        """Original reaped timeout state stays operational failure under either policy."""
         signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         source = m.Infra.GateCommandEvidence.model_validate_json(
@@ -396,11 +403,12 @@ class TestsFlextInfraGithubGateAttestation:
         )
         started = datetime.now(UTC)
         command = ["make", c.Infra.VERB_CHECK, "ATTEST_PROBE_DELAY=2"]
+        command_digest = f"sha256:{cli_u.Cli.sha256_content(' '.join(command))}"
         interrupted = tm.ok(cli_u.Cli.run_raw(command, cwd=tmp_path, timeout=1))
         tm.that(interrupted.outcome.timed_out, eq=True)
         updated = source.model_copy(
             update={
-                "command": " ".join(command),
+                "command_digest": command_digest,
                 "process": m.Cli.ProcessOutcome.model_validate(
                     interrupted.outcome,
                     from_attributes=True,
@@ -504,5 +512,5 @@ class TestsFlextInfraGithubGateAttestation:
         values = self._request(tmp_path).model_dump()
         values["gates"] = (c.Infra.VERB_CHECK, c.Infra.VERB_CHECK)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="at most 1 item"):
             m.Infra.GateAttestationCreateRequest.model_validate(values)

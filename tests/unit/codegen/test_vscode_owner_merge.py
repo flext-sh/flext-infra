@@ -123,7 +123,7 @@ class TestsFlextInfraVscodeOwnerMerge:
     def test_invalid_member_config_keeps_valid_workspace_binding(
         tmp_path: Path,
     ) -> None:
-        """A rejected member declaration preserves the native cause and valid sibling."""
+        """A rejected member declaration preserves the cause and valid sibling."""
         root = tmp_path / "parent"
         member = u.Tests.WorktreeFixture.copied_member(
             root,
@@ -402,6 +402,38 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that("ruff.nativeServer" in doc, eq=False)
 
     @staticmethod
+    def _assert_workspace_runtime_projections(member: Path, doc: t.JsonMapping) -> None:
+        """Assert rendered settings resolve to the member's physical runtime."""
+        interpreter = u.type_adapter(str).validate_python(
+            doc["python.defaultInterpreterPath"],
+        )
+        projected = member / interpreter.removeprefix("${workspaceFolder}/")
+        tm.that(projected.resolve(), eq=u.Infra.runtime_python(member))
+        executable = u.type_adapter(str).validate_python(doc["pyrefly.lspPath"])
+        projected_tool = member / executable.removeprefix("${workspaceFolder}/")
+        tm.that(
+            projected_tool.parent.resolve(),
+            eq=u.Infra.runtime_python(member).parent,
+        )
+        terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            doc["terminal.integrated.env.linux"],
+        )
+        environment = u.type_adapter(str).validate_python(terminal["VIRTUAL_ENV"])
+        tm.that(
+            (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
+            eq=u.Infra.runtime_environment_dir(member),
+        )
+        interpreter_list = u.type_adapter(t.StrSequence).validate_python(
+            doc["ruff.interpreter"],
+        )
+        tm.that(
+            (
+                member / interpreter_list[0].removeprefix("${workspaceFolder}/")
+            ).resolve(),
+            eq=u.Infra.runtime_python(member),
+        )
+
+    @staticmethod
     def test_attached_member_projects_its_workspace_interpreter(tmp_path: Path) -> None:
         """Opening an attached member resolves its physical workspace runtime."""
         parent = tmp_path / "parent"
@@ -443,33 +475,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(u.Cli.json_parse(rendered)),
         )
-        interpreter = u.type_adapter(str).validate_python(
-            doc["python.defaultInterpreterPath"],
-        )
-        projected = member / interpreter.removeprefix("${workspaceFolder}/")
-        tm.that(projected.resolve(), eq=u.Infra.runtime_python(member))
-        executable = u.type_adapter(str).validate_python(doc["pyrefly.lspPath"])
-        projected_tool = member / executable.removeprefix("${workspaceFolder}/")
-        tm.that(
-            projected_tool.parent.resolve(),
-            eq=u.Infra.runtime_python(member).parent,
-        )
-        terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            doc["terminal.integrated.env.linux"],
-        )
-        environment = u.type_adapter(str).validate_python(terminal["VIRTUAL_ENV"])
-        tm.that(
-            (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
-            eq=u.Infra.runtime_environment_dir(member),
-        )
-        interpreter_list = u.type_adapter(t.StrSequence).validate_python(
-            doc["ruff.interpreter"],
-        )
-        tm.that(
-            (
-                member / interpreter_list[0].removeprefix("${workspaceFolder}/")
-            ).resolve(),
-            eq=u.Infra.runtime_python(member),
+        TestsFlextInfraVscodeOwnerMerge._assert_workspace_runtime_projections(
+            member,
+            doc,
         )
         tm.that(
             doc["operator.note"],

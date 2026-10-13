@@ -9,16 +9,108 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import MutableMapping
+from functools import partial
 from pathlib import Path
 
 from flext_cli import u
+from flext_core import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, p, r, t
+from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
+
+    @classmethod
+    def load_codegen_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        include_local: bool = True,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Load one root's full policy through the ordered strict YAML source.
+
+        Returns:
+            The effective codegen declaration and exact consulted file snapshots.
+        """
+        result_type = r[m.Infra.CodegenInputs]
+        elected = r[tuple[Path, ...]].create_from_callable(
+            partial(
+                FlextInfraConfig.config_sources_for_repository,
+                repository_root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            ),
+        )
+        if elected.failure:
+            return result_type.from_failure(elected)
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        selected = layers if include_local else layers[:2]
+        if any(projection.path not in selected[1:] for projection in projections):
+            error = ValueError("projected codegen declaration is outside elected layers")
+            return result_type.fail(str(error), exception=error)
+        snapshots: list[m.Cli.AtomicFileState] = []
+        for path in elected.value:
+            if path not in selected:
+                continue
+            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            snapshots.append(observed.value)
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            partial(cls._repository_codegen_spec, selected, projections),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        for before in snapshots:
+            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            if observed.value != before:
+                error = ValueError(f"codegen configuration changed during read: {before.path}")
+                return result_type.fail(str(error), exception=error)
+        return result_type.ok(
+            m.Infra.CodegenInputs(spec=loaded.value, sources=tuple(snapshots)),
+        )
+
+    @staticmethod
+    def _repository_codegen_spec(
+        sources: tuple[Path, ...],
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+    ) -> m.Infra.CodegenConfigSpec:
+        """Compose ordered original and projected layers with the public merge owner.
+
+        Returns:
+            The validated full repository codegen policy.
+        """
+        merged: t.JsonDict = {}
+        for path in sources:
+            source = FlextStrictYamlConfigSource(
+                FlextInfraConfig,
+                yaml_file=(path,),
+                deep_merge=True,
+            )
+            payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(source())
+            projected = next(
+                (item for item in projections if item.path == path),
+                None,
+            )
+            values = (
+                FlextStrictYamlConfigSource.merge_values(
+                    dict(payload),
+                    dict(projected.values),
+                )
+                if projected is not None
+                else dict(payload)
+            )
+            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
+        codegen = u.Cli.json_walk_path(merged, ("Infra", "codegen"))
+        return m.Infra.CodegenConfigSpec.model_validate(codegen)
 
     @staticmethod
     def compose_ruff_per_file_ignores(

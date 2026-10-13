@@ -75,20 +75,6 @@ class FlextInfraConfigModelsTemplates:
                 raise ValueError(msg)
             return self
 
-    class CodegenVscodeInputs(FlextInfraConfigModelsContract.ConfigContract):
-        """Editor configuration and the exact atomic inputs consulted by its owner."""
-
-        spec: Annotated[
-            CodegenVscodeSpec,
-            m.Field(description="Validated effective editor declaration"),
-        ]
-        sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True, description="Exact consulted configuration snapshots"
-            ),
-        ] = ()
-
     class CodegenVscodeDeclarationDelta(
         FlextInfraConfigModelsContract.ConfigContract,
     ):
@@ -99,6 +85,15 @@ class FlextInfraConfigModelsTemplates:
             m.Field(
                 description="Minimal typed codegen.vscode declaration overrides",
             ),
+        ]
+
+    class CodegenLayerProjection(FlextInfraConfigModelsContract.ConfigContract):
+        """An owned declaration delta projected into one elected config layer."""
+
+        path: Annotated[Path, m.Field(description="Exact target config layer")]
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(description="JSON-compatible declaration fragment"),
         ]
 
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):

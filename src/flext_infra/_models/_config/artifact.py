@@ -30,6 +30,7 @@ from flext_infra._models._config.render import FlextInfraConfigModelsRender
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraConfigModelsArtifact:
@@ -582,6 +583,18 @@ class FlextInfraConfigModelsArtifact:
                 raise ValueError(msg)
             return self
 
+    class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """Full effective codegen policy and its ordered consulted snapshots."""
+
+        spec: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            m.Field(description="Validated effective repository codegen declaration"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(exclude=True, description="Exact consulted config input states"),
+        ] = ()
+
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""
 
@@ -791,6 +804,22 @@ class FlextInfraConfigModelsArtifact:
             Literal["full", "merge"] | None,
             m.Field(description="Governed root artifact policy"),
         ] = None
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Declared persistence policy of this artifact"),
+        ] = "versioned"
+        index_before: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Captured index entry scheduled for retirement"),
+        ] = None
+        tracking_dependencies: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description=(
+                    "Portable declaration destinations required before retirement"
+                ),
+            ),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_publication_identity(self) -> Self:
@@ -809,6 +838,19 @@ class FlextInfraConfigModelsArtifact:
             """
             if not self.project.is_absolute() or not self.path.is_absolute():
                 msg = "codegen project and path must be absolute"
+                raise ValueError(msg)
+            if self.index_before is not None and (
+                self.tracking != "runtime-local"
+                or self.index_before.path.is_absolute()
+                or self.project / self.index_before.path != self.path
+            ):
+                msg = "index retirement must match its runtime-local artifact"
+                raise ValueError(msg)
+            if any(
+                not path.is_relative_to(self.project)
+                for path in self.tracking_dependencies
+            ):
+                msg = "tracking declaration escapes the owning project"
                 raise ValueError(msg)
             if isinstance(self.before, m.Cli.AtomicFileState):
                 if self.before.path != self.path:

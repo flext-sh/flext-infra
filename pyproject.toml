@@ -443,6 +443,7 @@ ignore = [
   "typing-only-first-party-import",
   "typing-only-standard-library-import",
   "typing-only-third-party-import",
+  "unsorted-imports",
 ]
 select = ["ALL"]
 unfixable = [
@@ -476,8 +477,6 @@ runtime-evaluated-base-classes = [
   "flext_core.FlextSettings",
   "flext_core.m.ArbitraryTypesModel",
   "flext_core.m.ContractModel",
-  "flext_core.m.FlexibleModel",
-  "flext_core.m.RootModel",
   "flext_core.m.StrictBoundaryModel",
   "flext_infra.FlextInfraProjectSelectionServiceBase",
   "flext_infra.FlextInfraServiceBase",
@@ -503,6 +502,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models._config.contract.FlextInfraConfigModelsContract.ConfigContract",
   "flext_infra._models._config.external_cache.FlextInfraExternalCacheDirectorySpec",
   "flext_infra._models.codegen_render.MkdocsRenderContext",
+  "flext_infra._models.gates.GateExecutionFacts",
   "flext_infra._models.git.GitRemoteRequest",
   "flext_infra._models.git.GitRepoRequest",
   "flext_infra._models.layout._LayoutContract",
@@ -511,6 +511,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.mixins.FilePathMixin",
   "flext_infra._models.mixins.PositiveLineMixin",
   "flext_infra._models.mixins.ScopeMixin",
+  "flext_infra._models.refactor.CensusOptions",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",
@@ -534,6 +535,7 @@ runtime-evaluated-base-classes = [
   "flext_infra.m.ArbitraryTypesModel",
   "flext_infra.m.FrozenModel",
   "flext_infra.m.ImmutableValueModel",
+  "flext_infra.m.Infra.CensusOptions",
   "flext_infra.maintenance.sonarcloud_client.FlextInfraSonarcloudClient",
   "flext_infra.release.FlextInfraReleaseArtifactMixin",
   "flext_infra.release.FlextInfraReleaseBoundaryMixin",

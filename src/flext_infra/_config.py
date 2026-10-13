@@ -87,25 +87,49 @@ class FlextInfraConfig(FlextCliConfig):
             ValueError: If the filename is not one repository-local YAML file.
             FileNotFoundError: If the declared packaged default is absent.
         """
-        relative = Path(filename)
-        if relative.name != filename or relative.suffix != ".yaml":
-            msg = f"owned config filename must be one YAML file: {filename}"
-            raise ValueError(msg)
-        library = cls.ssot_config_dir() / relative
+        candidates = cls.config_layer_paths_for_repository(
+            repository_root,
+            filename=filename,
+        )
+        library = candidates[0]
         if not library.is_file():
             msg = f"declared packaged config default is missing: {library}"
             raise FileNotFoundError(msg)
-        directory = repository_root / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
-        candidates = (
-            library,
-            directory / relative,
-            directory / relative.with_name(f"{relative.stem}.local.yaml"),
-        )
         for path in candidates:
             if path.exists() and not path.is_file():
                 msg = f"declared config layer is not a regular file: {path}"
                 raise ValueError(msg)
         return tuple(dict.fromkeys(path for path in candidates if path.is_file()))
+
+    @classmethod
+    def config_layer_paths_for_repository(
+        cls,
+        repository_root: Path,
+        *,
+        filename: str,
+    ) -> tuple[Path, Path, Path]:
+        """Declare ordered config destinations independently of file existence.
+
+        Returns:
+            The library, project and local paths used by both reading and migration.
+
+        Raises:
+            ValueError: If the root or owned YAML filename is not explicit.
+        """
+        relative = Path(filename)
+        if (
+            not repository_root.is_absolute()
+            or relative.name != filename
+            or relative.suffix != ".yaml"
+        ):
+            msg = f"config requires an absolute root and one YAML filename: {filename}"
+            raise ValueError(msg)
+        directory = repository_root / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        return (
+            cls.ssot_config_dir() / relative,
+            directory / relative,
+            directory / relative.with_name(f"{relative.stem}.local.yaml"),
+        )
 
 
 # The public singleton keeps its type through circular facade analysis.

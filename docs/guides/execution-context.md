@@ -459,8 +459,9 @@ candidate, context, policy and report digests before signing. It does not invoke
 Schema v2 addresses each immutable proof by repository, commit, effective runtime/policy
 context and stage. Repeated publication verifies the existing signed object and its
 original artifacts before reusing it. Signed public facts retain the actual process
-outcome and diagnostic classification; the private command and working directory remain
-in the digest-bound original receipt.
+outcome, portable operation intent and diagnostic classification. The original public
+receipt binds the exact argv digest; command bytes and the working directory remain in
+private execution checkpoints, outside the CI artifact allowlist.
 
 Admission derives from the original typed reports rather than caller success flags.
 Checks require complete target and requested-gate coverage in SARIF. Tests require
@@ -472,8 +473,13 @@ uses the existing workspace capture route to execute the original checker once. 
 preserves that producer's native process outcome and owns an exclusive report base,
 then writes an immutable receipt only when the candidate and original reports remain
 eligible. Dirty, changed or unversioned candidates still execute and retain a capture
-result without claiming reusable evidence. The Make policy and receipt directory come
-from the typed codegen specification. Original test capture, CI signing/restore wiring,
+result without claiming reusable evidence. The native pytest runner captures its
+candidate immediately before the original suite process and publishes original receipts
+after accounting and diagnostics are written. It retains its existing deadline and
+testmon execution. Both producers share the same capture and report-binding owner.
+CI preserves the public original receipts and their required structured reports, while
+omitting private checkpoints, commands and capture errors. The Make policy and receipt
+directory come from the typed codegen specification. CI signing/restore wiring,
 zero-execution cache evidence and other
 stage adapters remain required integration work. Verifying a setup proof never
 provisions a fresh runner.

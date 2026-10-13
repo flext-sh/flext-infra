@@ -24,6 +24,26 @@ class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
 
     @classmethod
+    def test_runtime_promotion_rejects_reverse_namespace_edges(
+        cls, tmp_path: Path
+    ) -> None:
+        """Runtime demand cannot authorize a higher self-namespace dependency."""
+        project, package = cls._project(tmp_path)
+        module = package / "models.py"
+        source = (
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            f"    from {package.name} import u\n"
+            "value = u()\n"
+        )
+        module.write_text(source, encoding="utf-8")
+        with pytest.raises(ValueError, match="forbidden reverse namespace import"):
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=source
+            )
+        tm.that(module.read_text(encoding="utf-8"), eq=source)
+
+    @classmethod
     @pytest.mark.parametrize("model", [False, True])
     def test_typing_guard_promotes_real_definition_time_imports(
         cls, tmp_path: Path, *, model: bool

@@ -144,18 +144,26 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         Raises:
             ValueError: If declared package namespace is unresolved.
         """
-        roots = (
-            *((Path(),) if target.repository.package else ()),
-            *(
-                member.path
+        roots: list[t.Pair[str, Path]] = []
+        if target.repository.package:
+            # The target root is the repository being conformed. At plan time a
+            # scaffold's pyproject is planned, not yet on disk, so the declared
+            # ProjectSpec owns the import name; reading the pyproject here failed
+            # on the not-yet-materialized file. The declared name and the disk
+            # resolution of a conformed repository are the same identity.
+            declared_name = (
+                target.project.package_name if target.project is not None else ""
+            )
+            roots.append(
+                (declared_name or u.Infra.project_package_name(target.root), Path()),
+            )
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
+            roots.extend(
+                (u.Infra.project_package_name(target.root / member.path), member.path)
                 for member in workspace.subprojects
-                if target.make_profile is c.Infra.MakeProfile.WORKSPACE
-                and member.package
-            ),
-        )
-        imports = tuple(
-            (u.Infra.project_package_name(target.root / root), root) for root in roots
-        )
+                if member.package
+            )
+        imports = tuple(roots)
         if any(not name for name, _root in imports):
             msg = f"declared package namespace is unresolved: {target.root}"
             raise ValueError(msg)

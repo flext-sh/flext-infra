@@ -331,7 +331,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Write a namespace module fixture for lazy-export tests."""
         export_list = f'"{class_name}", "{alias}"'
         extra_classes = "".join(
-            f'\nclass {extra_class_name}:\n    """Additional namespace declaration."""\n'
+            f'\nclass {extra_class_name}:\n    """Additional namespace '
+            f'declaration."""\n'
             for extra_class_name in extra_class_names
         )
         notice = u.Infra.copyright_notice(module_path.parent, module=module_path)

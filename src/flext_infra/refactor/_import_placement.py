@@ -250,7 +250,15 @@ class FlextInfraImportNormalizationPlacementMixin(
         state: m.Infra.ImportLawPass,
         lines: t.StrSequence,
     ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
-        """Promote allowed runtime reads using the existing definition-time analysis."""
+        """Promote allowed runtime reads using the existing definition-time analysis.
+
+        Returns:
+            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+
+        Raises:
+            ValueError: If ``guard.orelse``; or if ``cls._is_reverse(state, node,
+                alias)``.
+        """
         edits: list[tuple[int, int, t.StrSequence]] = []
         promoted: list[str] = []
         for guard in state.tree.body:

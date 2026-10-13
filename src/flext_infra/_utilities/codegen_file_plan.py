@@ -189,10 +189,10 @@ class FlextInfraUtilitiesCodegenFilePlan:
         """Whether publication must change a generated-file destination.
 
         Returns:
-                    The resulting ``bool``.
-        from flext_cli import m as cli_m
-
+            Whether bytes, mode or declared tracking require publication.
         """
+        if plan.index_before is not None:
+            return True
         if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
             return plan.desired_content is not None
         return FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(

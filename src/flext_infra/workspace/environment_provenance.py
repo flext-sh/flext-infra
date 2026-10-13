@@ -337,7 +337,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         descriptor = namespace.get(attribute)
         outer = (
             descriptor.__func__
-            if type(descriptor) in {classmethod, staticmethod}
+            if isinstance(descriptor, classmethod | staticmethod)
             else descriptor
         )
         if not isfunction(outer) or id(outer) != definition_identity:

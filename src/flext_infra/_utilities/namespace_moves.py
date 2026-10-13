@@ -227,21 +227,27 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             )
         )
 
+        candidate_writes: t.MutableMappingKV[Path, str] = {
+            target_file: updated_target.rstrip() + "\n",
+            source_file: "\n".join(filtered_lines).rstrip() + "\n",
+        }
+        candidate_expected: t.MutableMappingKV[Path, str | None] = {
+            target_file: expected_target_source,
+            source_file: source,
+        }
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
-            {
-                target_file: updated_target.rstrip() + "\n",
-                source_file: "\n".join(filtered_lines).rstrip() + "\n",
-            },
+            candidate_writes,
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
-                expected_sources={
-                    target_file: expected_target_source,
-                    source_file: source,
-                },
+                expected_sources=candidate_expected,
                 gates=gates,
             ),
         )
         if not ok:
+            FlextInfraUtilitiesRefactorNamespaceMoves._restore_rejected_writes(
+                written=candidate_writes,
+                expected_sources=candidate_expected,
+            )
             msg = "named block move failed validation: " + "; ".join(reports)
             raise RuntimeError(msg)
         return (source_file, target_file, tuple(moved))
@@ -577,16 +583,50 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         Raises:
             RuntimeError: If the protected writer rejects the candidate.
         """
+        candidate_writes = dict(writes)
+        candidate_expected = dict(expected_sources)
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
-            dict(writes),
+            candidate_writes,
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
-                expected_sources=dict(expected_sources),
+                expected_sources=candidate_expected,
                 gates=gates,
             ),
         )
         if not ok:
+            FlextInfraUtilitiesRefactorNamespaceMoves._restore_rejected_writes(
+                written=candidate_writes,
+                expected_sources=candidate_expected,
+            )
             raise RuntimeError("\n".join(reports))
+
+    @staticmethod
+    def _restore_rejected_writes(
+        *,
+        written: t.MappingKV[Path, str],
+        expected_sources: t.MappingKV[Path, str | None],
+    ) -> None:
+        """Put every file a rejected declaration move rewrote back as it was.
+
+        The protected writer retains a rejected candidate so its lint evidence
+        survives, but a declaration move is all-or-nothing: a candidate that
+        fails validation must not leave the tree half-moved. A destination that
+        still holds the rejected candidate is restored to its captured bytes, a
+        file the move created is removed, and a destination a concurrent writer
+        already advanced past this move is left alone.
+
+        """
+        for path, candidate in written.items():
+            live = (
+                path.read_text(encoding=c.DEFAULT_ENCODING) if path.is_file() else None
+            )
+            if live != candidate:
+                continue
+            original = expected_sources.get(path)
+            if original is None:
+                path.unlink(missing_ok=True)
+                continue
+            path.write_text(original, encoding=c.DEFAULT_ENCODING)
 
     @classmethod
     def _move_typing_alias_lines(

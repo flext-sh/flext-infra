@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-import shlex
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -289,6 +288,49 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 raise ValueError(msg)
             return self
 
+    class GateTestIntent(m.ContractModel):
+        """Portable original test selection bound to the execution proof."""
+
+        execution_mode: Annotated[
+            c.Infra.PytestExecutionMode, m.Field(description="Native test operation")
+        ]
+        target: Annotated[Path, m.Field(description="Repository-relative test root")]
+        target_file: Annotated[
+            Path | None, m.Field(description="Original selected test file")
+        ]
+        ci_context: Annotated[bool, m.Field(description="Original CI selection")]
+        slow_phase: Annotated[bool, m.Field(description="Original slow-test phase")]
+        unbounded: Annotated[bool, m.Field(description="Original unbounded operation")]
+        profile_enabled: Annotated[
+            bool, m.Field(description="Original native process profiling")
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_targets(self) -> Self:
+            for path in (self.target, self.target_file):
+                if path is not None and (path.is_absolute() or ".." in path.parts):
+                    msg = "original test selection must remain repository-relative"
+                    raise ValueError(msg)
+            return self
+
+    class GateExecutionIntent(m.ContractModel):
+        """Producer-owned operation coverage, independent of local argv paths."""
+
+        requested_gates: Annotated[
+            t.StrTuple, m.Field(description="Requested native checker gates")
+        ] = ()
+        test_selection: Annotated[
+            FlextInfraModelsGates.GateTestIntent | None,
+            m.Field(description="Original test selection; absent for checker"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_producer(self) -> Self:
+            if bool(self.requested_gates) == (self.test_selection is not None):
+                msg = "original operation must declare exactly one producer intent"
+                raise ValueError(msg)
+            return self
+
     class GateExecutionFacts(m.ContractModel):
         """Public original execution facts, excluding local machine identities."""
 
@@ -299,6 +341,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 description="Canonical Make gate name",
             ),
         ]
+        command_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Digest of the private exact original process argv",
+            ),
+        ]
         process: Annotated[
             m.Cli.ProcessOutcome,
             m.Field(description="Original Make process outcome, without normalization"),
@@ -306,6 +355,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         native_outcome: Annotated[
             c.Infra.ToolOutcome,
             m.Field(description="Original producer's native report classification"),
+        ]
+        intent: Annotated[
+            FlextInfraModelsGates.GateExecutionIntent,
+            m.Field(description="Portable original operation and selection"),
         ]
         policy: Annotated[
             c.Infra.GateAcceptancePolicy,
@@ -356,13 +409,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             return self
 
     class GateCommandEvidence(GateExecutionFacts):
-        """Original producer receipt bound to its actual local candidate."""
+        """Public original receipt bound to its candidate and exact argv digest."""
 
-        cwd: Annotated[t.NonEmptyStr, m.Field(description="Actual execution directory")]
-        command: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact original Make command"),
-        ]
         repository: Annotated[t.NonEmptyStr, m.Field(description="Candidate origin")]
         commit_sha: Annotated[
             str,
@@ -373,23 +421,37 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate tree"),
         ]
 
-        @m.model_validator(mode="after")
-        def _validate_command(self) -> Self:
-            command = shlex.split(self.command)
-            canonical_cli_prefix_length = 5
-            canonical_cli = (
-                len(command) >= canonical_cli_prefix_length
-                and command[1:4] == ["-m", "flext_infra", "check"]
-                and command[4] == "run"
-                and self.gate == c.Infra.VERB_CHECK
-            )
-            if not command or not (
-                canonical_cli
-                or (Path(command[0]).name == c.Infra.MAKE and self.gate in command[1:])
-            ):
-                msg = "gate evidence command must use its canonical producer"
-                raise ValueError(msg)
-            return self
+    class GateCaptureStart(m.ContractModel):
+        """Private candidate checkpoint preceding the original native process."""
+
+        repository_root: Annotated[Path, m.Field(description="Actual execution root")]
+        gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
+        intent: Annotated[
+            FlextInfraModelsGates.GateExecutionIntent,
+            m.Field(description="Portable original operation and selection"),
+        ]
+        command: Annotated[
+            t.StrTuple, m.Field(min_length=1, description="Exact original process argv")
+        ]
+        repository: Annotated[str | None, m.Field(description="Observed origin")]
+        commit_sha: Annotated[str | None, m.Field(description="Observed commit")]
+        tree_sha: Annotated[str | None, m.Field(description="Observed committed tree")]
+        dirty: Annotated[
+            bool | None, m.Field(description="Observed tracked dirty state")
+        ]
+        context_digest: Annotated[
+            str,
+            m.Field(pattern=r"^sha256:[a-f0-9]{64}$", description="Original context"),
+        ]
+        policy: Annotated[c.Infra.GateAcceptancePolicy, m.Field(description="Policy")]
+        policy_digest: Annotated[
+            str,
+            m.Field(pattern=r"^sha256:[a-f0-9]{64}$", description="Policy digest"),
+        ]
+        started_at: Annotated[t.NonEmptyStr, m.Field(description="UTC native start")]
+        issue: Annotated[
+            str | None, m.Field(description="Original candidate inspection failure")
+        ]
 
     class GateCaptureRequest(m.ContractModel):
         """Capture the original read-only checker invocation exactly once."""
