@@ -256,10 +256,6 @@ class TestsFlextInfraClassNestingSuiteScope:
         path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
         u.Tests.initialize_git_repo(root)
         report = m.Infra.ModScanReport(
-            findings=0,
-            actionable=0,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset(),
             entries=(),
         )

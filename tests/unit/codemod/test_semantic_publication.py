@@ -355,10 +355,6 @@ class TestsFlextInfraSemanticPublication:
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
         report = m.Infra.ModScanReport(
-            findings=0,
-            actionable=0,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset(),
             entries=(),
         )

@@ -26,7 +26,11 @@ class TestsFlextInfraGithubGateAttestation:
 
     @staticmethod
     def _runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
-        """Read real installed provenance and selected native scanner identities."""
+        """Read real installed provenance and selected native scanner identities.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+        """
         return FlextInfraGateRegistry.default().runtime_identity(
             gate_ids,
             installed_identity=FlextInfraPytestRunner.installed_toolchain_identity(),

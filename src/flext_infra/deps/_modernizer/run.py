@@ -143,17 +143,20 @@ class FlextInfraPyprojectModernizerRun:
             prefix, old_ref, new_ref = source_options
             if prefix is None or old_ref is None or new_ref is None:
                 u.Cli.error(
-                    "Git reference migration requires URL prefix, source ref and target ref together"
+                    "Git reference migration requires URL prefix, source ref and "
+                    "target ref together"
                 )
                 return 2
             if not prefix.endswith("/"):
                 u.Cli.error(
-                    "Git source URL prefix must end with '/' to preserve owner boundaries"
+                    "Git source URL prefix must end with '/' to preserve owner "
+                    "boundaries"
                 )
                 return 2
             if self.rewrite_constraints:
                 u.Cli.error(
-                    "Git reference migration and runtime constraint rewriting are separate operations"
+                    "Git reference migration and runtime constraint rewriting are "
+                    "separate operations"
                 )
                 return 2
             source_migration = m.Infra.GitSourceReferenceMigration(

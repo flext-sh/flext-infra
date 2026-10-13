@@ -640,7 +640,11 @@ class FlextInfraUtilitiesCodemodRules:
         provider: str,
         config: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
-        """Read every validated catalog declaration before execution election."""
+        """Read every validated catalog declaration before execution election.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
+        """
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )

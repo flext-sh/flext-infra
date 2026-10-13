@@ -563,14 +563,17 @@ class TestsFlextInfraDeclarationRelocation:
                     (
                         f"from {target.parent.parent.name} import m; "
                         f"from {target.parent.parent.name}.consumer import build; "
-                        f"from {target.parent.parent.name}._utilities.payload import shadow; "
+                        f"from {target.parent.parent.name}._utilities.payload import "
+                        f"shadow; "
                         "from decimal import Decimal; "
                         "from typing import get_type_hints; "
                         "assert get_type_hints(build)['return'] is m.Payload; "
-                        "assert m.Payload.model_fields['amount'].annotation is Decimal; "
+                        "assert m.Payload.model_fields['amount'].annotation is "
+                        "Decimal; "
                         "assert m.Payload.model_validate({'amount': '2.5'}).amount "
                         "== Decimal('2.5'); "
-                        "assert m.Payload.model_validate({'amount': '2.5'}).model_dump_json() "
+                        "assert "
+                        "m.Payload.model_validate({'amount': '2.5'}).model_dump_json() "
                         '== \'{"amount":"2.5"}\'; '
                         "assert shadow('lexical') == 'lexical'"
                     ),
@@ -614,9 +617,12 @@ class TestsFlextInfraDeclarationRelocation:
 
     @staticmethod
     @pytest.mark.parametrize("refused", ["destination", "exposure"])
+    @pytest.mark.parametrize("independent_group", [False, True])
     def test_failed_dependent_group_preserves_independent_public_runtime(
         tmp_path: Path,
         refused: str,
+        *,
+        independent_group: bool,
     ) -> None:
         """A native destination refusal recovers only its invocation's dependent group."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
@@ -649,6 +655,7 @@ class TestsFlextInfraDeclarationRelocation:
                 before=independent_before,
                 desired_content=b"VALUE = 'after'\n",
                 desired_mode=independent_before.mode,
+                dependency_group=independent.stem if independent_group else None,
             )
         ]
         for edit in edits:
@@ -666,10 +673,13 @@ class TestsFlextInfraDeclarationRelocation:
                 )
             )
         if refused == "exposure":
-            exposure = tm.ok(FlextInfraCodegenLazyInit(repository_root=root).plan_files())
+            exposure = tm.ok(
+                FlextInfraCodegenLazyInit(repository_root=root).plan_files()
+            )
             plans.extend(
                 item.model_copy(update={"dependency_group": package.name})
-                for item in exposure.files if item.path == blocked
+                for item in exposure.files
+                if item.path == blocked
             )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
@@ -747,39 +757,54 @@ class TestsFlextInfraDeclarationRelocation:
     ) -> None:
         """A fresh consumer accepts the full cutover, never a rejected partial runtime."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
-            tmp_path, body="count: int = Field(default=3)",
+            tmp_path,
+            body="count: int = Field(default=3)",
         )
-        before_sources = {
-            path: path.read_bytes() for path in root.rglob("*.py")
-        }
+        before_sources = {path: path.read_bytes() for path in root.rglob("*.py")}
         with infra.rope_workspace(root) as rope:
-            edits = tm.ok(u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope, sources=sources,
-            ))
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
         plans: list[m.Infra.SemanticFilePlan] = []
         for edit in edits:
-            before = tm.ok(u.Cli.atomic_read_binary_file_state(edit.file_path, required=True))
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)
+            )
             source = edit.updated_source
             if not accepted and edit.file_path == target:
                 source = source.replace("Field(default=3)", "Field(default=7)")
-            plans.append(m.Infra.SemanticFilePlan(
-                project=root, path=edit.file_path, before=before,
-                desired_content=source.encode("utf-8"), desired_mode=before.mode,
-                changes=("declaration relocation",),
-            ))
+            plans.append(
+                m.Infra.SemanticFilePlan(
+                    project=root,
+                    path=edit.file_path,
+                    before=before,
+                    desired_content=source.encode("utf-8"),
+                    desired_mode=before.mode,
+                    changes=("declaration relocation",),
+                )
+            )
 
         def consume() -> p.Result[bool]:
             result = u.Cli.run(
-                (sys.executable, "-B", "-c", (
-                    f"from {package.name} import m; "
-                    f"from {package.name}.consumer import build; "
-                    "assert build().__class__ is m.Payload; "
-                    "assert build().count == 3; "
-                    "assert m.Payload.model_validate({'count': 4}).model_dump() == {'count': 4}"
-                )),
+                (
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        f"from {package.name} import m; "
+                        f"from {package.name}.consumer import build; "
+                        "assert build().__class__ is m.Payload; "
+                        "assert build().count == 3; "
+                        "assert m.Payload.model_validate({'count': 4}).model_dump() == "
+                        "{'count': 4}"
+                    ),
+                ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
@@ -788,30 +813,50 @@ class TestsFlextInfraDeclarationRelocation:
             return r[bool].ok(u.Cli.process_succeeded(result.value.outcome))
 
         result = FlextInfraSemanticPublication.publish_semantic_file_plans(
-            plans, repository_root=root, projection_roots=(root,),
-            dependency_group=package.name, validator=consume,
+            plans,
+            repository_root=root,
+            projection_roots=(root,),
+            dependency_group=package.name,
+            validator=consume,
         )
         if accepted:
             tm.ok(result)
             tm.that(tm.ok(consume()), eq=True)
             with infra.rope_workspace(root) as rope:
-                tm.that(tm.ok(u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources={path: path.read_text(encoding="utf-8") for path in sources},
-                )), eq=())
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                            rope_workspace=rope,
+                            sources={
+                                path: path.read_text(encoding="utf-8")
+                                for path in sources
+                            },
+                        )
+                    ),
+                    eq=(),
+                )
         else:
             tm.fail(result)
             for path, content in before_sources.items():
                 tm.that(path.read_bytes(), eq=content)
-            original = tm.ok(u.Cli.run(
-                (sys.executable, "-B", "-c", (
-                    f"from {package.name}.consumer import build; "
-                    "assert build().count == 3"
-                )),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ))
+            original = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-B",
+                        "-c",
+                        (
+                            f"from {package.name}.consumer import build; "
+                            "assert build().count == 3"
+                        ),
+                    ),
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        env={"PYTHONPATH": str(package.parent)}
+                    ),
+                )
+            )
             tm.that(u.Cli.process_succeeded(original.outcome), eq=True)
 
     @staticmethod

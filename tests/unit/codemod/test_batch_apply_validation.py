@@ -275,10 +275,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             payload={},
         )
         return m.Infra.ModScanReport(
-            findings=1,
-            actionable=1,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset({path}),
             entries=(finding,),
         )

@@ -246,7 +246,14 @@ def _provision_consumer_template(
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
-    upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
+    upgrade = tm.ok(
+        u.Tests.run_isolated_make(
+            ["upg"],
+            cwd=root,
+            env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+            capture=False,
+        ),
+    )
     if u.Cli.process_succeeded(upgrade.outcome):
         u.Tests.git_bootstrap(root, ("add", "-A"))
         u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))

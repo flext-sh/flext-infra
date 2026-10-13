@@ -40,7 +40,11 @@ class FlextInfraUtilitiesRepository:
         requirement: str,
         migration: m.Infra.GitSourceReferenceMigration,
     ) -> p.Result[str]:
-        """Replace a selected explicit Git ref without changing requirement semantics."""
+        """Replace a selected explicit Git ref without changing requirement semantics.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+        """
         parsed = Requirement(requirement)
         if parsed.url is None or not parsed.url.startswith(
             c.Infra.GIT_URL_SCHEME_PREFIX
@@ -66,7 +70,11 @@ class FlextInfraUtilitiesRepository:
         payload: t.MutableJsonMapping,
         migration: m.Infra.GitSourceReferenceMigration,
     ) -> p.Result[t.StrSequence]:
-        """Migrate only dependency arrays and native UV/Poetry Git source tables."""
+        """Migrate only dependency arrays and native UV/Poetry Git source tables.
+
+        Returns:
+            The resulting ``p.Result[t.StrSequence]``.
+        """
         changes: list[str] = []
         project = u.Cli.toml_mapping_path(payload, (c.Infra.PROJECT,))
         if project is not None:
@@ -97,7 +105,8 @@ class FlextInfraUtilitiesRepository:
                 if rewritten.value != original:
                     entries[index] = rewritten.value
                     changes.append(
-                        f"Git reference {migration.source_ref} -> {migration.target_ref}: {Requirement(original).name}"
+                        f"Git reference {migration.source_ref} -> "
+                        f"{migration.target_ref}: {Requirement(original).name}"
                     )
         tables: list[t.MutableJsonMapping] = []
         uv_sources = u.Cli.toml_mapping_path(payload, ("tool", "uv", "sources"))
@@ -135,7 +144,11 @@ class FlextInfraUtilitiesRepository:
         source: t.MutableJsonMapping,
         migration: m.Infra.GitSourceReferenceMigration,
     ) -> p.Result[t.StrSequence]:
-        """Retain a native source table's selector type and all other fields."""
+        """Retain a native source table's selector type and all other fields.
+
+        Returns:
+            The resulting ``p.Result[t.StrSequence]``.
+        """
         remote = source.get("git")
         if not isinstance(remote, str):
             return r[t.StrSequence].ok(())
@@ -154,7 +167,8 @@ class FlextInfraUtilitiesRepository:
             return r[t.StrSequence].ok(())
         source[reference_key] = migration.target_ref
         return r[t.StrSequence].ok((
-            f"Git {reference_key} {migration.source_ref} -> {migration.target_ref}: {name}",
+            (f"Git {reference_key} {migration.source_ref} -> {migration.target_ref}: "
+            f"{name}"),
         ))
 
     @staticmethod

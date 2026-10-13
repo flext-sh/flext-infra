@@ -79,7 +79,11 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
 
     @staticmethod
     def _check_runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
-        """Compose actual installed Python provenance and declared scanners."""
+        """Compose actual installed Python provenance and declared scanners.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+        """
         return FlextInfraGateRegistry.default().runtime_identity(
             gate_ids,
             installed_identity=FlextInfraPytestRunner.installed_toolchain_identity(),

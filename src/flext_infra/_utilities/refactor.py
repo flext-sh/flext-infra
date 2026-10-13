@@ -105,7 +105,8 @@ class FlextInfraUtilitiesRefactor:
                         entry.source_state is None
                         or indexed.get(entry.source_state.path) != entry.source_state
                     ):
-                        msg = f"finding differs from complete scan inventory: {entry.file}"
+                        msg = (f"finding differs from complete scan inventory: "
+                               f"{entry.file}")
                         raise ValueError(msg)
                 sources.append(indexed)
             for receipt in publication_chain:
@@ -678,9 +679,25 @@ class FlextInfraUtilitiesRefactor:
             "totals_by_class": class_totals,
             "totals_by_repository": dict(sorted(repository_totals.items())),
             "totals_by_rule": dict(sorted(rule_totals.items())),
-            "entries": report.entries,
+            "entries": tuple(
+                m.Infra.ModScanFindingReference(
+                    **{name: getattr(entry, name) for name in type(entry).model_fields},
+                    source_path=(
+                        entry.source_state.path
+                        if entry.source_state is not None
+                        else None
+                    ),
+                    binding_paths=tuple(state.path for state in entry.binding_states),
+                )
+                for entry in report.entries
+            ),
         })
-        content = (evidence.model_dump_json(indent=2) + "\n").encode(
+        content = (
+            evidence.model_dump_json(
+                indent=2, exclude=set(type(evidence).model_computed_fields)
+            )
+            + "\n"
+        ).encode(
             c.DEFAULT_ENCODING,
         )
         report_path = root.resolve() / publication.relative_path
