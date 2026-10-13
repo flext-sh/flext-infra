@@ -104,8 +104,8 @@ class FlextInfraImportNormalizationAstMixin:
             current = parents.get(id(current))
         return False
 
-    @staticmethod
-    def _annotation_ids(tree: ast.Module) -> frozenset[int]:
+    @classmethod
+    def _annotation_ids(cls, tree: ast.Module) -> frozenset[int]:
         """Return the ids of every node inside a non-evaluated annotation.
 
         Function argument and return annotations and module-level variable
@@ -140,7 +140,30 @@ class FlextInfraImportNormalizationAstMixin:
         for statement in tree.body:
             if isinstance(statement, ast.AnnAssign):
                 ids.update(id(sub) for sub in ast.walk(statement.annotation))
+        # ``ClassVar[...]`` members are excluded from Pydantic/dataclass field
+        # processing, so their class-body annotations are never evaluated at
+        # runtime and must not count as runtime reads of the binding.
+        for node in ast.walk(tree):
+            if isinstance(node, ast.AnnAssign) and cls._is_classvar_annotation(
+                node.annotation
+            ):
+                ids.update(id(sub) for sub in ast.walk(node.annotation))
         return frozenset(ids)
+
+    @staticmethod
+    def _is_classvar_annotation(annotation: ast.expr) -> bool:
+        """Return whether an annotation is a ``ClassVar[...]`` subscription.
+
+        Returns:
+            Whether the annotation is a ``ClassVar[...]`` subscription.
+
+        """
+        if not isinstance(annotation, ast.Subscript):
+            return False
+        value = annotation.value
+        return (isinstance(value, ast.Name) and value.id == "ClassVar") or (
+            isinstance(value, ast.Attribute) and value.attr == "ClassVar"
+        )
 
     @staticmethod
     def _defers_annotations(tree: ast.Module) -> bool:

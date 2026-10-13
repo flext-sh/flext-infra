@@ -484,6 +484,15 @@ zero-execution cache evidence and other
 stage adapters remain required integration work. Verifying a setup proof never
 provisions a fresh runner.
 
+`make status` also reads the selected repository's native Git signing configuration
+through the existing workspace CLI. The report names the declared signing format,
+file references and each setting's effective origin/scope and native process outcome.
+It does not read key/trust files, invoke signing/default-key commands or consult a
+keyring. A missing setting preserves Git's absent-key outcome. File references can
+point to unavailable files; discovery does not claim verified trust or an observed
+public fingerprint. The native signature verifier remains the authority for those
+claims.
+
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The
 `runtime-census` gate stays in `make check` and grades every runtime enforcement

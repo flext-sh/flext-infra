@@ -54,7 +54,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet
         scan = self._scan_project(project_dir, fleet_enabled=fleet_enabled)
-        parsed = self._issues_from_report(scan, project_dir, fleet=fleet_enabled)
+        parsed = self._issues_from_report(scan, project_dir)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
@@ -393,8 +393,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         cls,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-        *,
-        fleet: bool = False,
     ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per clone side that falls inside ``project_dir``.
 
@@ -421,7 +419,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
             first_name = cls._report_file_name(first)
             second_name = cls._report_file_name(second)
-            if not fleet and not cls._is_semantic_clone(duplicate, first, second):
+            # The semantic classifier owns the verdict in both scopes: the
+            # fleet union only widens WHICH clones are visible, never what
+            # counts as one.
+            if not cls._is_semantic_clone(duplicate, first, second):
                 continue
             first_span = cls._side_span_key(first)
             second_span = cls._side_span_key(second)

@@ -265,6 +265,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateReportEvidence(m.ContractModel):
         """One original report bound to its repository-relative identity."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         path: Annotated[
             Path,
             m.Field(description="Repository-relative report path"),
@@ -290,6 +292,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
     class GateTestIntent(m.ContractModel):
         """Portable original test selection bound to the execution proof."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         execution_mode: Annotated[
             c.Infra.PytestExecutionMode, m.Field(description="Native test operation")
@@ -333,6 +337,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
     class GateExecutionFacts(m.ContractModel):
         """Public original execution facts, excluding local machine identities."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         gate: Annotated[
             t.NonEmptyStr,
@@ -424,6 +430,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateCaptureStart(m.ContractModel):
         """Private candidate checkpoint preceding the original native process."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         repository_root: Annotated[Path, m.Field(description="Actual execution root")]
         gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
         intent: Annotated[
@@ -485,6 +493,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             extra="forbid",
             frozen=True,
             strict=False,
+            use_enum_values=False,
         )
 
         schema_version: Annotated[
@@ -556,6 +565,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateAttestationCreateRequest(m.ContractModel):
         """Consume one original receipt and create its immutable signed stage proof."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         signer: Annotated[
             t.NonEmptyStr,
@@ -599,6 +610,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
     class GateAttestationVerifyRequest(m.ContractModel):
         """Verify the signed attestation for the repository HEAD."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         allowed_signers: Annotated[

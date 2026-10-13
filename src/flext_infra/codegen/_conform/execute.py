@@ -298,24 +298,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
         )
         if mode is c.Infra.CodegenConformMode.CHECK:
-            if plan.issues:
-                return r[m.Infra.CodegenResult].fail(
-                    "\n".join(issue.formatted for issue in plan.issues),
-                    exception=plan.exception,
-                    error_data={
-                        "issues": tuple(issue.model_dump() for issue in plan.issues),
-                    },
-                )
-            if changed:
-                paths = ", ".join(str(file.path) for file in changed)
-                return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
-            if request.what == c.Infra.CodegenConformSurface.MISE_CONFIG:
-                checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
-                    request.root / c.Infra.MISE_TOML_FILENAME,
-                )
-                if checked.failure:
-                    return r[m.Infra.CodegenResult].from_failure(checked)
-            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
+            return self._execute_check(request, plan, changed)
         surface = c.Infra.CodegenConformSurface(request.what)
         if surface not in {
             c.Infra.CodegenConformSurface.MAKEFILE,
@@ -344,6 +327,37 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 scope_root,
             ),
         )
+
+    @staticmethod
+    def _execute_check(
+        request: m.Infra.CodegenConformRequest,
+        plan: m.Infra.CodegenPlan,
+        changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Report check-mode drift and validate the rendered mise config.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        if plan.issues:
+            return r[m.Infra.CodegenResult].fail(
+                "\n".join(issue.formatted for issue in plan.issues),
+                exception=plan.exception,
+                error_data={
+                    "issues": tuple(issue.model_dump() for issue in plan.issues),
+                },
+            )
+        if changed:
+            paths = ", ".join(str(file.path) for file in changed)
+            return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
+        if request.what == c.Infra.CodegenConformSurface.MISE_CONFIG:
+            checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
+                request.root / c.Infra.MISE_TOML_FILENAME,
+            )
+            if checked.failure:
+                return r[m.Infra.CodegenResult].from_failure(checked)
+        return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
 
     def _publish_bootstrap_locked(
         self,
@@ -453,19 +467,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 f"bootstrap cannot delete a declared destination for {surface}",
             )
         if not changed:
-            if plan.issues:
-                return r[t.VariadicTuple[Path]].fail(
-                    "\n".join(issue.formatted for issue in plan.issues),
-                    exception=plan.exception,
-                    error_data={
-                        "issues": tuple(issue.model_dump() for issue in plan.issues),
-                    },
-                )
-            if surface is c.Infra.CodegenConformSurface.MISE_CONFIG:
-                checked = self._verify_bootstrap(request)
-                if checked.failure:
-                    return r[t.VariadicTuple[Path]].from_failure(checked)
-            return r[t.VariadicTuple[Path]].ok(())
+            return self._settle_unchanged_bootstrap(request, surface, plan)
         inputs = {
             state.path: state for file in plan.files for state in file.source_states
         }
@@ -498,6 +500,32 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 else None
             ),
         )
+
+    def _settle_unchanged_bootstrap(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        surface: c.Infra.CodegenConformSurface,
+        plan: m.Infra.CodegenPlan,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Report the no-op bootstrap outcome when no declared file changed.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+
+        """
+        if plan.issues:
+            return r[t.VariadicTuple[Path]].fail(
+                "\n".join(issue.formatted for issue in plan.issues),
+                exception=plan.exception,
+                error_data={
+                    "issues": tuple(issue.model_dump() for issue in plan.issues),
+                },
+            )
+        if surface is c.Infra.CodegenConformSurface.MISE_CONFIG:
+            checked = self._verify_bootstrap(request)
+            if checked.failure:
+                return r[t.VariadicTuple[Path]].from_failure(checked)
+        return r[t.VariadicTuple[Path]].ok(())
 
     @staticmethod
     def _validate_pyproject_stage(

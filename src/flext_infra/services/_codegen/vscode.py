@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import FlextStrictYamlConfigSource
-from flext_infra import FlextInfraConfig, c, config, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -41,68 +41,61 @@ class FlextInfraCodegenVscodeMixin:
         Returns:
             Library defaults overlaid by this project's and local declarations.
         """
-        return cls.load_vscode_inputs(repository_root).map(lambda inputs: inputs.spec)
+        return u.Infra.load_codegen_inputs(repository_root).map(
+            lambda inputs: inputs.spec.vscode,
+        )
 
     @classmethod
-    def load_vscode_inputs(
+    def vscode_local_declaration_delta(
         cls,
         repository_root: Path,
-    ) -> p.Result[m.Infra.CodegenVscodeInputs]:
-        """Capture and validate exactly the configuration inputs of one binding.
+        indexed: t.JsonMapping,
+        live: t.JsonMapping,
+        *,
+        spec: m.Infra.CodegenVscodeSpec,
+    ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
+        """Preserve only actual local changes after removing topology bindings.
 
         Returns:
-            Typed configuration and verified atomic input snapshots.
+            Local declarations without promoting unchanged indexed defaults.
         """
-        result = r[m.Infra.CodegenVscodeInputs]
-        elected = r[tuple[Path, ...]].create_from_callable(
-            partial(
-                FlextInfraConfig.config_sources_for_repository,
-                repository_root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-            ),
+        result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
+        substitutions = cls._runtime_substitutions(repository_root, None)
+        if substitutions.failure:
+            return result_type.from_failure(substitutions)
+        unbind = tuple(
+            (effective, declared)
+            for declared, effective in substitutions.value
+            if effective != declared
         )
-        if elected.failure:
-            return result.from_failure(elected)
-        snapshots: list[m.Cli.AtomicFileState] = []
-        for path in elected.value:
-            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if observed.failure:
-                return result.from_failure(observed)
-            snapshots.append(observed.value)
-        loaded = r[m.Infra.CodegenVscodeSpec].create_from_callable(
-            partial(cls._repository_vscode_spec, elected.value),
-        )
-        if loaded.failure:
-            return result.from_failure(loaded)
-        for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
-            if observed.failure:
-                return result.from_failure(observed)
-            if observed.value != before:
-                error = ValueError(
-                    f"editor configuration changed during read: {before.path}"
-                )
-                return result.fail(str(error), exception=error)
-        return result.ok(
-            m.Infra.CodegenVscodeInputs(spec=loaded.value, sources=tuple(snapshots)),
-        )
-
-    @staticmethod
-    def _repository_vscode_spec(
-        sources: tuple[Path, ...],
-    ) -> m.Infra.CodegenVscodeSpec:
-        """Validate the selected namespace without mutating global configuration.
-
-        Returns:
-            The typed editor settings for the declared repository.
-        """
-        source = FlextStrictYamlConfigSource(
-            FlextInfraConfig,
-            yaml_file=sources,
-            deep_merge=True,
-        )
-        codegen = u.Cli.json_walk_path(source(), ("Infra", "codegen"))
-        return m.Infra.CodegenConfigSpec.model_validate(codegen).vscode
+        original = {
+            key: cls._bind_runtime_value(value, unbind)
+            for key, value in indexed.items()
+        }
+        current = {
+            key: cls._bind_runtime_value(value, unbind) for key, value in live.items()
+        }
+        retired = {
+            key
+            for key in original.keys() - current.keys()
+            if key not in spec.scalar_settings
+            and key not in spec.list_settings
+            and key not in spec.map_union_settings
+            and key not in spec.stripped_keys
+            and key not in cls._artifact_settings()
+        }
+        if retired:
+            error = ValueError(
+                "local editor deletions cannot be represented by configuration merge: "
+                + ", ".join(sorted(retired)),
+            )
+            return result_type.fail(str(error), exception=error)
+        changed = {
+            key: value
+            for key, value in current.items()
+            if key not in original or value != original[key]
+        }
+        return cls.vscode_declaration_delta(repository_root, changed, spec=spec)
 
     @classmethod
     def vscode_declaration_delta(
@@ -143,54 +136,100 @@ class FlextInfraCodegenVscodeMixin:
         )
         if generated.failure:
             return result_type.from_failure(generated)
-        deltas: t.MutableJsonMapping = {}
-        scalars: t.MutableJsonMapping = {}
-        lists: t.MutableJsonMapping = {}
-        maps: t.MutableJsonMapping = {}
-        additional: t.MutableJsonMapping = {}
-        artifact_settings = cls._artifact_settings()
-        for key, value in portable.items():
-            if key in spec.stripped_keys or key in artifact_settings:
-                continue
-            if key in expected and value == expected[key]:
-                continue
-            if key in spec.scalar_settings:
-                scalars[key] = value
-            elif key in spec.list_settings:
-                baseline = list(spec.list_settings[key])
-                if not isinstance(value, list) or value[: len(baseline)] != baseline:
-                    error = ValueError(
-                        "editor list override cannot be represented by "
-                        f"configuration concatenation: {key}",
-                    )
-                    return result_type.fail(str(error), exception=error)
-                lists[key] = value[len(baseline) :]
-            elif key in spec.map_union_settings:
-                if not isinstance(value, Mapping):
-                    error = ValueError(f"editor union setting must be a mapping: {key}")
-                    return result_type.fail(str(error), exception=error)
-                baseline_map = spec.map_union_settings[key]
-                maps[key] = {
-                    item_key: item_value
-                    for item_key, item_value in value.items()
-                    if item_key not in baseline_map
-                    or item_value != baseline_map[item_key]
-                }
-            else:
-                additional[key] = value
-        for field, values in (
-            ("scalar_settings", scalars),
-            ("list_settings", lists),
-            ("map_union_settings", maps),
-            ("additional_settings", additional),
-        ):
-            if values:
-                deltas[field] = values
-        delta = m.Infra.CodegenVscodeDeclarationDelta(values=deltas)
+        deltas = cls._portable_vscode_deltas(portable, spec, expected)
+        if deltas.failure:
+            return result_type.from_failure(deltas)
+        delta = m.Infra.CodegenVscodeDeclarationDelta(values=deltas.value)
         validated = cls.compose_vscode_delta(spec, delta)
         if validated.failure:
             return result_type.from_failure(validated)
         return result_type.ok(delta)
+
+    @classmethod
+    def _portable_vscode_deltas(
+        cls,
+        portable: t.JsonMapping,
+        spec: m.Infra.CodegenVscodeSpec,
+        expected: t.JsonMapping,
+    ) -> p.Result[t.MutableJsonMapping]:
+        """Classify portable settings into the four representable delta buckets.
+
+        Returns:
+            The minimal override buckets the canonical merge can reproduce.
+        """
+        artifact_settings = cls._artifact_settings()
+        buckets: dict[str, t.MutableJsonMapping] = {
+            "scalar_settings": {},
+            "list_settings": {},
+            "map_union_settings": {},
+            "additional_settings": {},
+        }
+        for key, value in portable.items():
+            classified = cls._classify_vscode_setting(
+                key,
+                value,
+                spec,
+                expected,
+                artifact_settings,
+            )
+            if classified.failure:
+                return r[t.MutableJsonMapping].from_failure(classified)
+            if classified.value is not None:
+                field, normalized = classified.value
+                buckets[field][key] = normalized
+        return r[t.MutableJsonMapping].ok({
+            field: values for field, values in buckets.items() if values
+        })
+
+    @staticmethod
+    def _classify_vscode_setting(
+        key: str,
+        value: t.JsonValue,
+        spec: m.Infra.CodegenVscodeSpec,
+        expected: t.JsonMapping,
+        artifact_settings: t.JsonMapping,
+    ) -> p.Result[tuple[str, t.JsonValue] | None]:
+        """Classify one portable setting into its representable delta bucket.
+
+        Returns:
+            ``(bucket, normalized_value)`` when the setting must be overridden,
+            or ``None`` when it is derived, retired, or already expected.
+
+        Raises:
+            ValueError: If a list or union setting cannot be represented by the
+                canonical configuration merge.
+        """
+        result_type = r[tuple[str, t.JsonValue] | None]
+        if key in spec.stripped_keys or key in artifact_settings:
+            return result_type.ok(None)
+        if key in expected and value == expected[key]:
+            return result_type.ok(None)
+        if key in spec.scalar_settings:
+            return result_type.ok(("scalar_settings", value))
+        if key in spec.list_settings:
+            baseline = list(spec.list_settings[key])
+            if not isinstance(value, list) or value[: len(baseline)] != baseline:
+                error = ValueError(
+                    "editor list override cannot be represented by "
+                    f"configuration concatenation: {key}",
+                )
+                return result_type.fail(str(error), exception=error)
+            return result_type.ok(("list_settings", value[len(baseline) :]))
+        if key in spec.map_union_settings:
+            if not isinstance(value, Mapping):
+                error = ValueError(f"editor union setting must be a mapping: {key}")
+                return result_type.fail(str(error), exception=error)
+            baseline_map = spec.map_union_settings[key]
+            return result_type.ok((
+                "map_union_settings",
+                {
+                    item_key: item_value
+                    for item_key, item_value in value.items()
+                    if item_key not in baseline_map
+                    or item_value != baseline_map[item_key]
+                },
+            ))
+        return result_type.ok(("additional_settings", value))
 
     @staticmethod
     def compose_vscode_delta(

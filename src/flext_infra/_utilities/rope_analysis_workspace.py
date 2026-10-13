@@ -249,7 +249,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # aliases (m, p, t and siblings) that facade-qualified bases resolve
         # through. Read those maps from disk so resolution can rewrite
         # ``<pkg>.<alias>`` targets to their provider modules.
-        extra_module_aliases: dict[str, str] = {}
+        extra_module_aliases: t.StrDict = {}
         owned = {path for path, _ in sources.values()}
         for init_path in sorted(root.rglob("__init__.py")):
             resolved = init_path.resolve()

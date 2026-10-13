@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
+from flext_infra import c, m
 from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import t, tm, u
@@ -323,6 +323,7 @@ class TestsFlextInfraRefactorImportNormalization:
             f"    {name!r}: {module!r},\n" for name, module in exports.items()
         )
         (package_dir / "__init__.py").write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
             "from flext_core.lazy import install_lazy_exports\n"
             "\n"
             "install_lazy_exports(\n"
@@ -551,7 +552,8 @@ class TestsFlextInfraRefactorImportNormalization:
             "class LocalModels(FlextTestsModels):\n"
             "    class Tests(FlextTestsModels.Tests):\n"
             "        class User(FlextTestsModels.Tests.User):\n"
-            "            local: bool = True\n\n"
+            "            local: bool = FlextTestsModels.Field("
+            "default=True, description='Local consumer field')\n\n"
             "m = LocalModels\n__all__ = ['LocalModels', 'm']\n",
             encoding="utf-8",
         )
@@ -578,7 +580,14 @@ class TestsFlextInfraRefactorImportNormalization:
             normalized if normalized is not None else source,
             encoding="utf-8",
         )
-        tm.that(normalized, eq=None)
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=module,
+                source=module.read_text(encoding="utf-8"),
+            ),
+            eq=None,
+        )
         result = tm.ok(
             u.Cli.run(
                 (

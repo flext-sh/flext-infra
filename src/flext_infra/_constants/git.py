@@ -51,6 +51,12 @@ class FlextInfraConstantsGit:
     "Public candidate and original native execution facts."
     GATE_CAPTURE_RESULT_FILENAME: ClassVar[str] = "capture-result.json"
     "Local original capture outcome, including causal issue details."
+    GIT_SIGNING_CONFIGURATION_KEYS: ClassVar[t.StrTuple] = (
+        "gpg.format",
+        "user.signingkey",
+        "gpg.ssh.allowedSignersFile",
+    )
+    "Native Git settings inspected by the bounded public signing identity query."
 
     # --- Index entry modes (git mode field, not POSIX st_mode) ---
 

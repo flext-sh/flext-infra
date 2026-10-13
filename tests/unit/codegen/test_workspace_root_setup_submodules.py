@@ -35,7 +35,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         )
 
     @staticmethod
-    def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
+    def _run_setup(workspace: Path, env: t.StrDict) -> p.Cli.CommandOutput:
         return tm.ok(
             u.Cli.run_raw(
                 ["make", "_builtin_setup_submodules"],

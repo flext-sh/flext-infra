@@ -113,6 +113,47 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         distribution = matches[0]
         expected_root = (resolved_root / repository.path).resolve()
+        direct_url_result = cls._validate_direct_url(
+            repository.distribution,
+            distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
+            expected_root,
+        )
+        if direct_url_result.failure:
+            return r[bool].from_failure(direct_url_result)
+        inventory = cls._validate_pth_inventory(
+            repository,
+            distribution,
+            expected_root,
+        )
+        if inventory.failure:
+            return r[bool].from_failure(inventory)
+        source_result = (
+            cls._validate_import_source(repository, expected_root)
+            if metadata_paths is None
+            else r[bool].ok(value=True)
+        )
+        if source_result.failure:
+            return r[bool].from_failure(source_result)
+        return cls._submodule_gitlink_verdict(
+            repository,
+            resolved_root,
+            expected_root,
+            source_result,
+        )
+
+    @classmethod
+    def _validate_pth_inventory(
+        cls,
+        repository: m.Infra.RepositoryRef,
+        distribution: Distribution,
+        expected_root: Path,
+    ) -> p.Result[bool]:
+        """Prove the installed file inventory yields exactly one editable .pth.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         files = distribution.files
         if files is None:
             return r[bool].fail(
@@ -125,13 +166,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             f"installed_location={distribution.locate_file('')} "
             f"record_files={len(files)} expected_source={expected_root}",
         )
-        direct_url_result = cls._validate_direct_url(
-            repository.distribution,
-            distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
-            expected_root,
-        )
-        if direct_url_result.failure:
-            return r[bool].from_failure(direct_url_result)
         pth_files = tuple(
             Path(str(distribution.locate_file(file)))
             for file in files
@@ -143,20 +177,26 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"distribution={repository.distribution} expected=1 "
                 f"actual={len(pth_files)}",
             )
-        pth_result = cls._validate_pth(
+        return cls._validate_pth(
             repository.distribution,
             pth_files[0],
             expected_root,
         )
-        if pth_result.failure:
-            return r[bool].from_failure(pth_result)
-        source_result = (
-            cls._validate_import_source(repository, expected_root)
-            if metadata_paths is None
-            else r[bool].ok(value=True)
-        )
-        if source_result.failure:
-            return r[bool].from_failure(source_result)
+
+    @classmethod
+    def _submodule_gitlink_verdict(
+        cls,
+        repository: m.Infra.RepositoryRef,
+        resolved_root: Path,
+        expected_root: Path,
+        source_result: p.Result[bool],
+    ) -> p.Result[bool]:
+        """Extend a passing source verdict with the submodule gitlink identity.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         if repository.checkout is not c.Infra.CheckoutKind.SUBMODULE:
             return source_result
         identity = u.Infra.git_identity(
