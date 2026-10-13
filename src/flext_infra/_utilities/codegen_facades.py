@@ -12,13 +12,23 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
 
-from libcst import Arg, ClassDef, Module, Name, parse_expression, parse_module
+from libcst import (
+    Arg,
+    ClassDef,
+    ImportFrom,
+    ImportStar,
+    Module,
+    Name,
+    SimpleStatementLine,
+    parse_expression,
+    parse_module,
+)
 from libcst.codemod import CodemodContext
 from libcst.codemod.commands.rename import RenameCommand
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
-from flext_infra import c, m, t
+from flext_infra import c, config, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
@@ -396,7 +406,7 @@ class FlextInfraUtilitiesCodegenFacades:
         ordered = cls._declared_facade_order(pkg_dir, sources, declarations)
         existing = tuple(cls._base_name(base) for base in namespace.bases)
         if existing == ordered:
-            return source
+            return cls._wrap_facade_imports(source)
         context = CodemodContext()
         if bound_namespace:
             cls._declared_facade_stale_imports(context, source, declared_names)
@@ -552,7 +562,46 @@ class FlextInfraUtilitiesCodegenFacades:
             message = "Declared facade projection did not preserve the module"
             raise TypeError(message)
         result = AddImportsVisitor(context).transform_module(updated)
-        return RemoveImportsVisitor(context).transform_module(result).code
+        return cls._wrap_facade_imports(
+            RemoveImportsVisitor(context).transform_module(result).code
+        )
+
+    @staticmethod
+    def _wrap_facade_imports(source: str) -> str:
+        """Keep projected imports inside the configured Ruff line budget.
+
+        Returns:
+            Source with long single-line from-imports parenthesized.
+
+        Raises:
+            TypeError: If import wrapping does not preserve the module.
+        """
+        wrapper = MetadataWrapper(parse_module(source))
+        updated = wrapper.module
+        for node in wrapper.resolve(PositionProvider):
+            if (
+                not isinstance(node, ImportFrom)
+                or isinstance(node.names, ImportStar)
+                or node.lpar is not None
+                or len(wrapper.module.code_for_node(node))
+                <= config.Infra.tooling.tools.ruff.line_length
+            ):
+                continue
+            prefix = wrapper.module.code_for_node(node).split(" import ", 1)[0]
+            names = "".join(
+                f"    {wrapper.module.code_for_node(alias).rstrip(', ')},\n"
+                for alias in node.names
+            )
+            statement = parse_module(f"{prefix} import (\n{names})\n").body[0]
+            if not isinstance(statement, SimpleStatementLine):
+                message = "Facade import wrapping did not produce an import statement"
+                raise TypeError(message)
+            replacement = updated.deep_replace(node, statement.body[0])
+            if not isinstance(replacement, Module):
+                message = "Facade import wrapping did not preserve the module"
+                raise TypeError(message)
+            updated = replacement
+        return updated.code
 
     @staticmethod
     def _declared_facade_bases(

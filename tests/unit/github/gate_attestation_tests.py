@@ -203,7 +203,7 @@ class TestsFlextInfraGithubGateAttestation:
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
-        """Uncommitted target config remains a bound input rather than ambient policy."""
+        """Uncommitted target config is a bound input, not ambient policy."""
         signed_repository_factory(tmp_path)
         config_dir = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
         config_dir.mkdir()

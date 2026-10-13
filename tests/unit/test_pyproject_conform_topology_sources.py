@@ -687,7 +687,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",),
+            eq=(
+                workspace.repository.distribution,
+                f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",
+            ),
         )
         tm.that(
             tm.ok(
@@ -800,10 +803,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
             "\n[tool.uv]\noverride-dependencies = "
             f'["{infra.distribution} @ git+{infra.url}@{stale_commit}"]\n'
         )
+        workspace = self._workspace(infra, role=self._ROLE.STANDALONE)
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                workspace=self._workspace(infra, role=self._ROLE.STANDALONE),
+                workspace=workspace,
                 required_dev_dependencies=(),
                 uv_resolution=self._toolchain_resolution(),
                 options=u.Infra.PyprojectConformOptions(
@@ -811,10 +815,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 ),
             ),
         )
-        parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
-        tool = u.Tests.toml_mapping(parsed.get("tool"))
-        uv = u.Tests.toml_mapping(tool.get("uv"))
-        tm.that("override-dependencies" not in uv, eq=True)
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
+            eq=(workspace.repository.distribution,),
+        )
 
     def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
         """Assert the canonical standalone output: one direct Git requirement."""

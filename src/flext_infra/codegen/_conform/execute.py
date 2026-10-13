@@ -380,7 +380,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             """Record the sole semantic verification receipt before commit.
 
             Returns:
-                A ``p.Result[bool]`` indicating the success or failure of the verification.
+                Whether semantic verification succeeded.
             """
             checked = self._verify_bootstrap(request)
             if checked.failure:
@@ -392,8 +392,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             request,
             plan,
             transaction,
-            roots,
-            scope_root,
+            (scope_root, roots),
             validator=verify,
         )
         if written.failure:
@@ -413,8 +412,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
+        publication_scope: t.Pair[Path, t.MappingKV[str, Path]],
         *,
         validator: Callable[[], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
@@ -425,6 +423,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             bootstrap files.
 
         """
+        scope_root, roots = publication_scope
         surface = c.Infra.CodegenConformSurface(request.what)
         destinations = self.surface_contract(surface).destinations
         if not destinations:
