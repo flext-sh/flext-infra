@@ -427,6 +427,22 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate tree"),
         ]
 
+    class GateCaptureBeginRequest(m.ContractModel):
+        """Original producer operation and runtime before candidate inspection."""
+
+        repository_root: Annotated[Path, m.Field(description="Actual execution root")]
+        gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
+        command: Annotated[
+            t.StrTuple, m.Field(min_length=1, description="Exact original process argv")
+        ]
+        intent: Annotated[
+            FlextInfraModelsGates.GateExecutionIntent,
+            m.Field(description="Portable original operation and selection"),
+        ]
+        runtime_identity: Annotated[
+            str, m.Field(description="Native runtime observed before execution")
+        ]
+
     class GateCaptureStart(m.ContractModel):
         """Private candidate checkpoint preceding the original native process."""
 

@@ -35,8 +35,8 @@ class FlextInfraPyprojectModernizerTooling:
             project_kind: str | None,
         ) -> str: ...
 
+        @staticmethod
         def _read_document_state(
-            self,
             path: Path,
             *,
             source: str | None = None,

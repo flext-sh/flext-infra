@@ -130,8 +130,6 @@ class TestsFlextInfraModernizerFloorOwner:
         "content",
         [
             "Infra: [broken\n",
-            "Infra: {}\n",
-            "Infra:\n  codegen: {}\n",
             (
                 "Infra:\n  codegen:\n    scaffold:\n      project:\n"
                 "        dependency_profiles: []\n"
@@ -178,11 +176,13 @@ class TestsFlextInfraModernizerFloorOwner:
         external = modernizer_workspace.parent / c.Infra.CODEGEN_CONFIG_FILENAME
         source.rename(external)
         original = external.read_bytes()
+        consumer = "Infra:\n  codegen: {}\n"
+        source.write_text(consumer, encoding="utf-8")
 
         tm.that(self._run(modernizer_workspace), eq=0)
 
         tm.that(external.read_bytes(), eq=original)
-        tm.that(source.exists(), eq=False)
+        tm.that(source.read_text(encoding="utf-8"), eq=consumer)
 
     def test_missing_declared_owner_raises(self, modernizer_workspace: Path) -> None:
         """A declared infrastructure owner must carry its configuration."""

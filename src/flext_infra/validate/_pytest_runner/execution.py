@@ -332,22 +332,24 @@ class FlextInfraPytestRunnerExecution(
             f"{shlex.join(command)}\n",
         ).unwrap()
         capture = u.Infra.git_begin_gate_capture(
-            self.root,
-            c.Infra.VERB_TEST,
-            command,
-            m.Infra.GateExecutionIntent(
-                test_selection=m.Infra.GateTestIntent(
-                    execution_mode=execution_mode,
-                    target=self.target,
-                    target_file=self.target_file,
-                    ci_context=self.ci_context,
-                    slow_phase=self.slow_phase,
-                    unbounded=self.unbounded,
-                    profile_enabled=self.profile_enabled,
+            m.Infra.GateCaptureBeginRequest(
+                repository_root=self.root,
+                gate=c.Infra.VERB_TEST,
+                command=command,
+                intent=m.Infra.GateExecutionIntent(
+                    test_selection=m.Infra.GateTestIntent(
+                        execution_mode=execution_mode,
+                        target=self.target,
+                        target_file=self.target_file,
+                        ci_context=self.ci_context,
+                        slow_phase=self.slow_phase,
+                        unbounded=self.unbounded,
+                        profile_enabled=self.profile_enabled,
+                    ),
                 ),
+                runtime_identity=self.testmon_environment(execution_mode),
             ),
             inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
-            runtime_identity=self.testmon_environment(execution_mode),
         )
         u.Cli.atomic_write_text_file(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,

@@ -63,20 +63,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 "native Git signing configuration declares an empty key "
                 "or trust reference",
             )
-        inline = (
-            signing_format.value == "ssh"
-            and signing_key.value is not None
-            and signing_key.value.startswith("key::")
-        )
+        inline = signing_format.value == "ssh" and signing_key.value.startswith("key::")
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
                 repo_root=root,
                 signing_format=signing_format.value,
                 key_path=(
                     Path(signing_key.value)
-                    if signing_format.value == "ssh"
-                    and signing_key.value is not None
-                    and not inline
+                    if signing_format.value == "ssh" and not inline
                     else None
                 ),
                 inline_public_key=inline,
@@ -196,12 +190,16 @@ class FlextInfraUtilitiesGitAttestationMixin(
             {"repository_root": root, "gates": request.gates},
         )
         started_capture = cls.git_begin_gate_capture(
-            root,
-            c.Infra.VERB_CHECK,
-            command,
-            m.Infra.GateExecutionIntent(requested_gates=tuple(native_request.gates)),
+            m.Infra.GateCaptureBeginRequest(
+                repository_root=root,
+                gate=c.Infra.VERB_CHECK,
+                command=command,
+                intent=m.Infra.GateExecutionIntent(
+                    requested_gates=tuple(native_request.gates),
+                ),
+                runtime_identity=sys.version,
+            ),
             inputs=inputs,
-            runtime_identity=sys.version,
         )
         u.Cli.atomic_write_text_file(
             report_root / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -246,13 +244,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
     @classmethod
     def git_begin_gate_capture(
         cls,
-        root: Path,
-        gate: str,
-        command: t.StrTuple,
-        intent: m.Infra.GateExecutionIntent,
+        request: m.Infra.GateCaptureBeginRequest,
         *,
         inputs: m.Infra.CodegenInputs,
-        runtime_identity: str,
     ) -> m.Infra.GateCaptureStart:
         """Inspect the candidate before its original producer executes.
 
@@ -260,13 +254,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
             The retained pre-execution capture record.
 
         """
+        root = request.repository_root
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         policy = c.Infra.GateAcceptancePolicy(inputs.spec.make.gate_acceptance_policy)
         return m.Infra.GateCaptureStart(
             repository_root=root,
-            gate=gate,
-            command=command,
-            intent=intent,
+            gate=request.gate,
+            command=request.command,
+            intent=request.intent,
             repository=(identity.value.origin_remote if identity.success else None),
             commit_sha=identity.value.head_oid if identity.success else None,
             tree_sha=cls._repo(root).head.commit.tree.hexsha
@@ -279,10 +274,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
             issue=identity.error if identity.failure else None,
             context_digest=cls._gate_capture_context_digest(
-                gate,
-                intent,
+                request.gate,
+                request.intent,
                 inputs,
-                runtime_identity,
+                request.runtime_identity,
             ),
             policy=policy,
             policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",

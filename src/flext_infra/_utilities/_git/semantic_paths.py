@@ -14,7 +14,10 @@ from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, 
 from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPublishMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticPublishMixin,
+    FlextInfraUtilitiesGitStateFilesMixin,
+)
 from flext_infra._utilities._git.state_trees import (
     FlextInfraUtilitiesGitStateTreesMixin,
 )
@@ -22,6 +25,7 @@ from flext_infra._utilities._git.state_trees import (
 
 class FlextInfraUtilitiesGitSemanticPathsMixin(
     FlextInfraUtilitiesGitSemanticPublishMixin,
+    FlextInfraUtilitiesGitStateFilesMixin,
 ):
     """Own semantic paths operations."""
 
@@ -57,7 +61,6 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             ValueError: If the index artifact has unresolved stages.
 
         """
-        repo = cls._repo(request.repo_root)
         entries = FlextInfraUtilitiesGitStateTreesMixin.state_snapshot_index(
             request.repo_root,
             (Path(request.relative_path),),
@@ -70,7 +73,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         entry = entries[0]
         return m.Infra.GitIndexFileState(
             entry=entry,
-            content=repo.odb.stream(bytes.fromhex(entry.oid)).read(),
+            content=cls._state_blob_payload(request.repo_root, entry.oid),
         )
 
     @classmethod
@@ -106,6 +109,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             A receipt once the captured path alone leaves the index.
 
         Raises:
+            TypeError: If the index lock does not return a raw file descriptor.
             ValueError: If the path is absolute/traversing, the entry changed
                 after planning, or the locked index has no captured bytes.
 
@@ -132,7 +136,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             descriptor = lock.open(write=True, stream=False)
             if not isinstance(descriptor, int):
                 msg = "the index lock did not return a raw file descriptor"
-                raise ValueError(msg)
+                raise TypeError(msg)
             FlextInfraUtilitiesGitSemanticPathsMixin._write_index_replacement(
                 request,
                 index_path,

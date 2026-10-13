@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 class FlextInfraDepsFloorProfileWriter:
     """Rewrite dependency_profiles floors from the provisioned runtime."""
 
-    @staticmethod
-    def _source_paths(root: Path) -> t.SequenceOf[Path]:
+    @classmethod
+    def _source_paths(cls, root: Path) -> t.SequenceOf[Path]:
         """Elect the local owner from the caller's typed workspace declaration.
 
         Returns:
@@ -37,7 +37,18 @@ class FlextInfraDepsFloorProfileWriter:
         manifests = u.Infra.load_workspace_manifest(root).unwrap()
         relative = Path(c.Infra.CODEGEN_CONFIG_DIR) / c.Infra.CODEGEN_CONFIG_FILENAME
         local = root / relative
-        owners = [root] if local.exists() or local.is_symlink() else []
+        owners: t.MutableSequenceOf[Path] = []
+        if local.exists() or local.is_symlink():
+            document = cls._loaded_document(local)
+            project = u.Cli.json_deep_mapping(
+                document,
+                "Infra",
+                "codegen",
+                "scaffold",
+                "project",
+            )
+            if "dependency_profiles" in project:
+                owners.append(root)
         for manifest in manifests:
             for member in manifest.members:
                 if member.distribution != config.Infra.name:

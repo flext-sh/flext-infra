@@ -30,19 +30,35 @@ class TestsFlextInfraRopeSnapshot:
             package_name="flext_demo",
         )
         unrelated = repository_root / "unrelated"
-        unrelated.mkdir()
-        (unrelated / "__init__.py").write_text("", encoding="utf-8")
         module_path = package_root / "declared.py"
         source = "value = 1\n"
         module_path.write_text(source, encoding="utf-8")
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             project = rope.rope_project
-            tm.that(project.find_module("unrelated"), eq=None)
+            source_roots = tuple(
+                folder.real_path for folder in project.get_source_folders()
+            )
+            unrelated.mkdir()
+            (unrelated / "__init__.py").write_text("", encoding="utf-8")
+            tm.that(
+                tuple(folder.real_path for folder in project.get_source_folders()),
+                eq=source_roots,
+            )
+            tm.that(str(unrelated) in source_roots, eq=False)
+            package = tm.not_none(project.find_module("unrelated"))
+            tm.that(package.is_folder(), eq=True)
+            tm.that(package.real_path, eq=str(unrelated))
             resource = tm.not_none(project.find_module("flext_demo.declared"))
             tm.that(resource.real_path, eq=str(module_path))
             snapshot = u.Infra.snapshot_project(project, {module_path: source})
             try:
-                tm.that(snapshot.find_module("unrelated"), eq=None)
+                tm.that(
+                    tuple(folder.real_path for folder in snapshot.get_source_folders()),
+                    eq=source_roots,
+                )
+                captured_package = tm.not_none(snapshot.find_module("unrelated"))
+                tm.that(captured_package.is_folder(), eq=True)
+                tm.that(captured_package.real_path, eq=package.real_path)
                 captured = u.Infra.require_file_resource(
                     tm.not_none(snapshot.find_module("flext_demo.declared")),
                     module_path,

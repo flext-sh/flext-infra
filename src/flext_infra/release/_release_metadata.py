@@ -36,12 +36,12 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         range would be a silent contract.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Whether a rendered requirement retains a direct reference.
 
         """
         raw = u.Cli.toml_value(container, key)
         if raw is None:
-            return r[bool].ok(value=True)
+            return r[bool].ok(value=False)
         items: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             u.Cli.json_as_sequence(raw),
@@ -53,6 +53,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
                 items.error,
             )
         rendered: t.MutableSequenceOf[str] = []
+        has_direct_references = False
         for requirement in items.value:
             try:
                 parsed = Requirement(requirement)
@@ -61,6 +62,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             name = canonicalize_name(parsed.name)
             if not name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
                 rendered.append(requirement.strip())
+                has_direct_references |= parsed.url is not None
                 continue
             if name not in versions:
                 return r[bool].fail(
@@ -73,7 +75,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             marker = f"; {parsed.marker}" if parsed.marker is not None else ""
             rendered.append(f"{parsed.name}{extras}{pin.value}{marker}")
         u.Cli.toml_sync_string_list(container, key, rendered)
-        return r[bool].ok(value=True)
+        return r[bool].ok(has_direct_references)
 
     @classmethod
     def _release_pyproject(
@@ -103,10 +105,12 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             (project, c.Infra.DEPENDENCIES),
             *u.Infra.requirement_group_fields(document, project),
         )
+        has_direct_references = False
         for container, key in fields:
             pinned = cls._release_requirements(container, key, versions)
             if pinned.failure:
                 return r[str].from_failure(pinned)
+            has_direct_references |= pinned.value
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         hatch = u.Cli.toml_table_child(tool, "hatch") if tool is not None else None
         if tool is None or hatch is None:
@@ -119,11 +123,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         if metadata is not None:
             # Direct references survive only when a rendered requirement still
             # carries one: the flag is deduced, never configured.
-            if any(
-                Requirement(str(item)).url is not None
-                for container, key in fields
-                for item in container.get(key) or ()
-            ):
+            if has_direct_references:
                 metadata["allow-direct-references"] = True
             else:
                 u.Cli.toml_remove_key_if_present(metadata, "allow-direct-references")
@@ -257,11 +257,17 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             if wheel_forced is not None
             else ()
         )
-        if (sdist_forced is None and sources) or (
-            sdist_forced is not None
-            and {str(source): str(target) for source, target in sdist_forced.items()}
-            != {source: source for source in sources}
-        ):
+        retained: t.StrMapping = {}
+        if sdist_forced is not None:
+            parsed: p.Result[t.StrMapping] = u.validate_value(
+                t.Infra.STR_MAPPING_ADAPTER,
+                u.Cli.toml_value(sdist, "force-include"),
+                strict=True,
+            )
+            if parsed.failure:
+                return r[t.StrSequence].from_failure(parsed)
+            retained = parsed.value
+        if retained != {source: source for source in sources}:
             return r[t.StrSequence].fail(
                 "Hatch sdist must retain every forced wheel source",
             )

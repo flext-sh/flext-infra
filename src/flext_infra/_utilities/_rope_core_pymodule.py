@@ -10,8 +10,6 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from rope.base import exceptions
-
 from flext_infra import t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
@@ -80,7 +78,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                             expected_binding=pyname,
                         )
                     )
-                except exceptions.RopeError:
+                except FlextInfraUtilitiesRopeRuntime.rope_error_types():
                     # A candidate token Rope cannot evaluate (out-of-package
                     # scripts, unresolved stubs) is simply not the binding:
                     # it neither matches nor aborts the anchor search.
@@ -162,13 +160,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                     resource,
                 ),
             )
-        except (
-            exceptions.RefactoringError,
-            exceptions.ResourceNotFoundError,
-            exceptions.ModuleNotFoundError,
-            AttributeError,
-            TypeError,
-        ) as exc:
+        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), TypeError) as exc:
             msg = (
                 "rope module import table unavailable for "
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"

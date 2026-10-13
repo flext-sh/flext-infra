@@ -422,9 +422,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             # The semantic classifier owns the verdict in both scopes: the
             # fleet union only widens WHICH clones are visible, never what
             # counts as one.
-            if not hasattr(cls, "fleet") or (
-                not cls.fleet and not cls.is_semantic_clone(duplicate, first, second)
-            ):
+            if not cls.is_semantic_clone(duplicate, first, second):
                 continue
             first_span = cls.side_span_key(first)
             second_span = cls.side_span_key(second)

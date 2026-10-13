@@ -245,7 +245,7 @@ class FlextInfraConfigModelsMake(
             return self
 
     class MypyCacheSpec(
-        FlextInfraExternalCacheDirectorySpec,
+        FlextInfraExternalCacheDirectorySpec[c.Infra.MypyCacheEnvironment],
         FlextInfraConfigModelsContract.ConfigContract,
     ):
         """Project-keyed shared Mypy cache, one analysis reused across relocks."""
@@ -481,7 +481,7 @@ class FlextInfraConfigModelsMake(
                 return self
 
         class TestmonCacheSpec(
-            FlextInfraExternalCacheDirectorySpec,
+            FlextInfraExternalCacheDirectorySpec[c.Infra.PytestCacheEnvironment],
             FlextInfraConfigModelsContract.ConfigContract,
         ):
             """Persistent pytest-testmon database and runner paths."""
@@ -498,11 +498,14 @@ class FlextInfraConfigModelsMake(
             ]
             data_home_environment_variable: Annotated[
                 c.Infra.PytestCacheEnvironment,
-                m.Field(description="XDG persistent cache-home variable"),
+                m.Field(default=..., description="XDG persistent cache-home variable"),
             ]
             user_home_environment_variable: Annotated[
                 c.Infra.PytestCacheEnvironment,
-                m.Field(description="User home variable for the XDG default"),
+                m.Field(
+                    default=...,
+                    description="User home variable for the XDG default",
+                ),
             ]
             target_directory: Annotated[
                 Path,
@@ -619,15 +622,18 @@ class FlextInfraConfigModelsMake(
 
             data_home_environment_variable: Annotated[
                 t.NonEmptyStr,
-                m.Field(description="XDG persistent cache-home variable"),
+                m.Field(default=..., description="XDG persistent cache-home variable"),
             ]
             user_home_environment_variable: Annotated[
                 t.NonEmptyStr,
-                m.Field(description="User home variable for the XDG default"),
+                m.Field(
+                    default=...,
+                    description="User home variable for the XDG default",
+                ),
             ]
 
         class MypyCacheSpec(
-            FlextInfraExternalCacheDirectorySpec,
+            FlextInfraExternalCacheDirectorySpec[c.Infra.MypyCacheEnvironment],
             FlextInfraConfigModelsContract.ConfigContract,
         ):
             """Project-keyed shared Mypy cache: one analysis per project."""

@@ -26,10 +26,7 @@ class FlextInfraProtocolsBase(Protocol):
     class FunctionDescriptor(Protocol):
         """Native descriptor capability used to authenticate its defining function."""
 
-        @property
-        def __func__(self) -> FunctionType:
-            """The original function, without binding it to a receiver."""
-            ...
+        __func__: FunctionType
 
     @runtime_checkable
     class SourcePreview(Protocol):

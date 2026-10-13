@@ -140,6 +140,10 @@ distribution with its local project identity. A dependency that refers back to
 the checkout through Git must resolve to that checkout rather than introduce a
 second source for the same distribution. Generation derives this identity from
 the repository declaration in both workspace and standalone contexts.
+Dependency-floor updates select explicit `dependency_profiles` declarations or
+the infrastructure repository declared by the topology. A consumer configuration
+file containing only project metadata or editor settings does not declare another
+floor owner.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 

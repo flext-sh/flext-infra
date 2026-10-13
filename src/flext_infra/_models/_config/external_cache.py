@@ -14,19 +14,25 @@ from flext_cli import m
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
-class FlextInfraExternalCacheDirectorySpec(
+class FlextInfraExternalCacheDirectorySpec[Environment: str = str](
     FlextInfraConfigModelsContract.ConfigContract,
 ):
     """One typed external-cache placement every tool cache consumes."""
 
     data_home_environment_variable: Annotated[
-        str,
-        m.Field(min_length=1, description="XDG persistent cache-home variable"),
-    ] = "XDG_CACHE_HOME"
+        Environment,
+        m.Field(
+            min_length=1,
+            description="XDG persistent cache-home variable",
+        ),
+    ] = m.Field(default="XDG_CACHE_HOME")
     user_home_environment_variable: Annotated[
-        str,
-        m.Field(min_length=1, description="User home variable for the XDG default"),
-    ] = "HOME"
+        Environment,
+        m.Field(
+            min_length=1,
+            description="User home variable for the XDG default",
+        ),
+    ] = m.Field(default="HOME")
 
     home_cache_directory: Annotated[
         Path,

@@ -513,8 +513,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
+    @staticmethod
     def _settle_unchanged_bootstrap(
-        self,
         plan: m.Infra.CodegenPlan,
         *,
         validator: Callable[[], p.Result[bool]],

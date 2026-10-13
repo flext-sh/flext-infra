@@ -183,7 +183,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
-            import_graph = (
+            import_graph: t.MappingKV[str, frozenset[str]] = (
                 u.Infra.project_import_graph(project_dir)[0]
                 if any(
                     recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
