@@ -1,5 +1,13 @@
 # Repository configuration and local overrides
 
+<!-- TOC START -->
+
+- [Mandatory Mypy policy](#mandatory-mypy-policy)
+- [Local dependency binding](#local-dependency-binding)
+- [Generation and recovery](#generation-and-recovery)
+
+<!-- TOC END -->
+
 Each configuration family has one ordered source contract:
 
 1. Packaged `flext_infra/config/F.yaml` supplies generic library defaults.
