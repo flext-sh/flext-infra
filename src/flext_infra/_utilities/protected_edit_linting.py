@@ -11,6 +11,7 @@ import concurrent.futures
 import difflib
 import os
 import sys
+import traceback
 from collections import Counter
 from collections.abc import Iterable, MutableMapping
 from itertools import islice
@@ -671,6 +672,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 execution_error=str(executed.error),
                 error_code=executed.error_code,
                 error_data=executed.error_data,
+                error_traceback=(
+                    "".join(traceback.format_exception(executed.exception))
+                    if executed.exception is not None
+                    else None
+                ),
             )
         output = m.Cli.CommandOutput.model_validate(
             executed.value, from_attributes=True
@@ -735,6 +741,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     f"{entry.range.start.character + 1 if entry.range else 0}: "
                     f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
                     for entry in observed.general_diagnostics
+                    if entry.severity in {"error", "warning"}
                 ))
                 if observed.summary.files_analyzed
                 else result.fail("pyright analyzed no files for the selected source")
@@ -748,6 +755,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     f"{entry.path}:{entry.line}:{entry.column}: "
                     f"{entry.severity}: {entry.description} [{entry.name}]"
                     for entry in observed.errors
+                    if entry.severity in {"error", "warn"}
                 )
             )
         if tool_name != c.Infra.RUFF:
@@ -770,6 +778,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
             if diagnostic.failure:
                 return result.from_failure(diagnostic)
             entry = diagnostic.value
+            if entry.severity != "error":
+                continue
             lines.append(
                 f"{entry.file}:{entry.line}:{entry.column}: "
                 f"{entry.severity}: {entry.message} [{entry.code or ''}]"
@@ -810,6 +820,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
             if issue.failure:
                 return result.from_failure(issue)
+            if (
+                not issue.value.file.strip()
+                or not issue.value.code.strip()
+                or not issue.value.message.strip()
+                or issue.value.line < 1
+                or issue.value.column < 1
+            ):
+                return result.fail("Ruff JSON finding has invalid native diagnostic fields")
             errors.append(issue.value.formatted)
         return result.ok(tuple(errors))
 

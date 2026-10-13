@@ -69,6 +69,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         if executed.failure:
             tm.that(receipt.output, eq=None)
             tm.that(receipt.execution_error, eq=executed.error)
+            tm.that(receipt.error_code, eq=executed.error_code)
+            tm.that(receipt.error_data, eq=executed.error_data)
+            if executed.exception is not None:
+                tm.that(receipt.error_traceback or "", has=str(executed.exception))
         else:
             tm.that(receipt.output is not None, eq=True)
             if receipt.output is not None:

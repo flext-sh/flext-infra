@@ -547,7 +547,9 @@ class FlextInfraModGateEngine:
                 for rule_id in sorted({entry.rule_id for entry in report.entries})
             ),
         )
-        states = candidate_states or tuple(
+        states = tuple(
+            state for state in candidate_states if state.path.is_relative_to(root.resolve())
+        ) if candidate_states else tuple(
             {
                 entry.source_state.path: entry.source_state
                 for entry in report.entries
@@ -568,6 +570,10 @@ class FlextInfraModGateEngine:
             if states
             else None
         )
+        if snapshot is not None and candidate_states:
+            closure = {state.path: state for state in snapshot.states}
+            closure.update({state.path: state for state in candidate_states})
+            snapshot = snapshot.model_copy(update={"states": tuple(closure.values())})
         closed = snapshot or m.Infra.CodemodBindingSnapshot(states=())
         with u.Infra.codemod_binding_project(root, closed) as (project, sources):
             entries = tuple(
@@ -1176,12 +1182,16 @@ class FlextInfraModGateEngine:
                 )
                 if receipt.failure:
                     return r[m.Infra.ModScanReport].from_failure(receipt)
-            entries.extend(
-                entry.model_copy(update={
-                    "source_state": logical[(root / entry.file).resolve()],
-                })
-                for entry in parsed.entries
-            )
+            for entry in parsed.entries:
+                relative = (
+                    entry.file.relative_to(view_root)
+                    if entry.file.is_absolute()
+                    else entry.file
+                )
+                entries.append(entry.model_copy(update={
+                    "file": relative,
+                    "source_state": logical[(root / relative).resolve()],
+                }))
         report = cls._admitted(
             root, cls.recounted(tuple(entries)), rules_by_id,
             plan.project_rule_ids, tuple(

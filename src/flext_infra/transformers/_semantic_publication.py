@@ -118,7 +118,13 @@ class FlextInfraSemanticPublication:
             analysis.value,
             repository_root=candidate.workspace,
             projection_roots=(),
-            validator=None,
+            validator=lambda: u.Cli.atomic_verify_binary_file_states(
+                tuple(
+                    state
+                    for state in analysis.value.inputs
+                    if state.path not in candidate.updates
+                )
+            ),
             source_guard=lambda: u.Cli.atomic_verify_binary_file_states(
                 analysis.value.inputs
             ).flat_map(lambda _: FlextInfraStagedPackage.source_inputs_current(candidate)),

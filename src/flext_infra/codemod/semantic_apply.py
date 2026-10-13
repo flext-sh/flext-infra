@@ -116,8 +116,13 @@ class FlextInfraCodemodSemanticApply:
         if verified.failure:
             return verified
         artifact = loaded.value[0]
+        action = (
+            "apply"
+            if request.apply and not request.check and not request.dry_run_mode
+            else "preview"
+        )
         cli.display_text(
-            "semantic rename preview: "
+            f"semantic rename {action}: "
             f"decisions={len(artifact.decisions)} "
             f"files={len(artifact.edits)} runtime=validated"
         )

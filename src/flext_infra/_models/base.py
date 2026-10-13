@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m, t
+from flext_cli import c, m, t
 
 
 class FlextInfraModelsBase:
@@ -160,12 +160,28 @@ class FlextInfraModelsBase:
             t.JsonMapping | None,
             m.Field(description="Original Result failure metadata"),
         ] = None
+        error_traceback: Annotated[
+            str | None,
+            m.Field(description="Original Result exception traceback when available"),
+        ] = None
 
         @m.model_validator(mode="after")
         def _require_execution_evidence(self) -> Self:
             if self.output is None and self.execution_error is None:
                 msg = "lint gate requires a native output or an execution failure"
                 raise ValueError(msg)
+            if self.output is not None and self.execution_error is None:
+                outcome = self.output.outcome
+                if (
+                    outcome.timed_out
+                    or outcome.forwarded_signal is not None
+                    or (
+                        outcome.raw_return_code != c.Cli.EXIT_CODE_SUCCESS
+                        and not self.errors
+                    )
+                ):
+                    msg = "unsuccessful lint execution requires its failure receipt"
+                    raise ValueError(msg)
             return self
 
     class TransformStep(m.ContractModel):

@@ -281,7 +281,6 @@ class FlextInfraModelsCodegenRender:
             t.VariadicTuple[str],
             m.Field(description="Declared constraints; the uv pin is never kept"),
         ]
-<<<<<<< HEAD
         override_dependencies: Annotated[
             t.VariadicTuple[str],
             m.Field(
@@ -298,8 +297,6 @@ class FlextInfraModelsCodegenRender:
             ],
             m.Field(description="Scoped dependency exclusions routed to the project"),
         ]
-=======
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         environments: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Resolved environment markers uv resolves for"),

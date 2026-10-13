@@ -115,26 +115,12 @@ class TestsFlextInfraCodemodDuplicateApply:
             "flext-demo",
             distribution="flext-demo",
         )
-        tm.ok(u.Tests.create_python_environment(root))
-        site = Path(
-            tm.ok(
-                fleet_u.Cli.run(
-                    [
-                        str(fleet_u.Infra.runtime_python(root)),
-                        "-c",
-                        "import sysconfig; print(sysconfig.get_paths()['purelib'])",
-                    ],
-                ),
-            ).stdout.strip(),
-        )
-        # The regenerated lazy initializer imports flext_core and its real
-        # dependency set: a path file exposes the running interpreter's
-        # installed packages to the fixture environment, so the fresh-import
-        # probe judges the published sources, never the bare fixture virtual
-        # environment.
-        (site / "fixture_dependency_set.pth").write_text(
-            f"{Path(flext_core.__file__).parent.parent}\n",
-            encoding=c.DEFAULT_ENCODING,
+        core_root = tm.not_none(fleet_u.Infra.project_root(Path(flext_core.__file__)))
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=(core_root,),
+            ),
         )
         return root, package
 

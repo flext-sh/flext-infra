@@ -41,6 +41,43 @@ LOCAL_GROWTH_RULE = (
 class TestsFlextInfraRefactorViolationsSweep:
     """Behavior contract for the ``refactor violations-sweep`` verb."""
 
+    def test_native_lint_failure_keeps_independent_scan_evidence(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A failed Ruff configuration remains red without erasing AST or text scans."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(root / "ruff.toml", "line-length = 'invalid'\n")
+        )
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
+        report = self._receipt(root)
+        snapshot = next(
+            stage.audit_before
+            for stage in report.stages
+            if stage.audit_before is not None
+        )
+        tm.that(snapshot.ast_report is not None, eq=True)
+        tm.that(snapshot.text_report is not None, eq=True)
+        tm.that(snapshot.observation_errors, empty=False)
+        tm.that("\n".join(snapshot.observation_errors), has="invalid")
+        assert snapshot.lint is not None
+        receipt = next(
+            tools[c.Infra.RUFF]
+            for tools in snapshot.lint.values()
+            if tools[c.Infra.RUFF].execution_error is not None
+        )
+        tm.that(receipt.errors, eq=())
+        assert receipt.output is not None
+        tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
+        assert snapshot.ast_report is not None
+        tm.that(
+            any(entry.rule_id == "sweep-growth" for entry in snapshot.ast_report.entries),
+            eq=True,
+        )
+
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
         self,
         mod_workspace: Path,

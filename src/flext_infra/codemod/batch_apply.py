@@ -189,7 +189,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         if after_ast.actionable:
             for target in u.Infra.ast_grep_scan_targets(root):
                 path = root / target
-                paths = u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+                paths = (
+                    u.Infra.iter_directory_python_files(path)
+                    if path.is_dir()
+                    else (path,)
+                )
                 for source in paths:
                     inputs[source.resolve()] = u.Cli.atomic_read_binary_file_state(
                         source, required=True
@@ -244,7 +248,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
         if plans:
-            accepted = FlextInfraModReplacements.admit(root, tuple(plans.values())).unwrap()
+            accepted = FlextInfraModReplacements.admit(
+                root, tuple(plans.values())
+            ).unwrap()
             candidate = FlextInfraStagedPackage.plan_sources(
                 root,
                 {
