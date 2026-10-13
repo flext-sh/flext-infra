@@ -10,11 +10,12 @@ import ast
 import sys
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Literal
+from typing import Literal, override
 
 from libcst import (
     Arg,
     ClassDef,
+    CSTTransformer,
     ImportFrom,
     ImportStar,
     Module,
@@ -573,35 +574,47 @@ class FlextInfraUtilitiesCodegenFacades:
         Returns:
             Source with long single-line from-imports parenthesized.
 
-        Raises:
-            TypeError: If import wrapping does not preserve the module.
         """
-        wrapper = MetadataWrapper(parse_module(source))
-        updated = wrapper.module
-        for node in wrapper.resolve(PositionProvider):
-            if (
-                not isinstance(node, ImportFrom)
-                or isinstance(node.names, ImportStar)
-                or node.lpar is not None
-                or len(wrapper.module.code_for_node(node))
-                <= config.Infra.tooling.tools.ruff.line_length
-            ):
-                continue
-            prefix = wrapper.module.code_for_node(node).split(" import ", 1)[0]
-            names = "".join(
-                f"    {wrapper.module.code_for_node(alias).rstrip(', ')},\n"
-                for alias in node.names
-            )
-            statement = parse_module(f"{prefix} import (\n{names})\n").body[0]
-            if not isinstance(statement, SimpleStatementLine):
-                message = "Facade import wrapping did not produce an import statement"
+        module = parse_module(source)
+
+        class WrapImports(CSTTransformer):
+            """Wrap each emitted import in a single concrete-syntax traversal."""
+
+            @override
+            def leave_ImportFrom(
+                self,
+                original_node: ImportFrom,
+                updated_node: ImportFrom,
+            ) -> ImportFrom:
+                """Preserve bindings and wrap only imports exceeding the budget.
+
+                Returns:
+                    The original import or its parenthesized equivalent.
+
+                Raises:
+                    TypeError: If wrapping does not produce a from-import.
+                """
+                if (
+                    isinstance(updated_node.names, ImportStar)
+                    or updated_node.lpar is not None
+                    or len(module.code_for_node(original_node))
+                    <= config.Infra.tooling.tools.ruff.line_length
+                ):
+                    return updated_node
+                prefix = module.code_for_node(updated_node).split(" import ", 1)[0]
+                names = "".join(
+                    f"    {module.code_for_node(alias).rstrip(', ')},\n"
+                    for alias in updated_node.names
+                )
+                statement = parse_module(f"{prefix} import (\n{names})\n").body[0]
+                if isinstance(statement, SimpleStatementLine) and isinstance(
+                    statement.body[0], ImportFrom
+                ):
+                    return statement.body[0]
+                message = "Facade import wrapping did not produce a from-import"
                 raise TypeError(message)
-            replacement = updated.deep_replace(node, statement.body[0])
-            if not isinstance(replacement, Module):
-                message = "Facade import wrapping did not preserve the module"
-                raise TypeError(message)
-            updated = replacement
-        return updated.code
+
+        return module.visit(WrapImports()).code
 
     @staticmethod
     def _declared_facade_bases(

@@ -66,9 +66,10 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
         params: m.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
+        root = params.repository_root.expanduser().resolve()
         captured = u.Infra.git_capture_gate(
             params,
-            inputs=u.Infra.load_codegen_inputs(params.repository_root).unwrap(),
+            inputs=u.Infra.load_codegen_inputs(root).unwrap(),
             load_inputs=u.Infra.load_codegen_inputs,
         ).unwrap()
         u.Cli.framework_exit(captured.process.raw_return_code)

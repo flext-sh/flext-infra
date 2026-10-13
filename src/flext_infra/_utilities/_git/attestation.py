@@ -11,9 +11,10 @@ import platform
 import re
 import shlex
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar
 
 from flext_cli import u
 from git import GitCommandError
@@ -161,7 +162,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateCaptureRequest,
         *,
         inputs: m.Infra.CodegenInputs,
-        load_inputs: t.Callable[[Path], p.Result[m.Infra.CodegenInputs]],
+        load_inputs: Callable[[Path], p.Result[m.Infra.CodegenInputs]],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
@@ -232,15 +233,16 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
         ).unwrap()
         return cls.git_finish_gate_capture(
-            started_capture,
-            process,
-            reports,
-            report_root,
+            m.Infra.GateCaptureFinishRequest(
+                started=started_capture,
+                process=process,
+                reports=reports,
+                report_root=report_root,
+                runtime_identity=sys.version,
+            ),
             inputs=load_inputs(root),
-            runtime_identity=sys.version,
         )
 
-    @override
     @classmethod
     def git_begin_gate_capture(
         cls,
@@ -346,13 +348,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
     @classmethod
     def git_finish_gate_capture(
         cls,
-        started: m.Infra.GateCaptureStart,
-        process: m.Cli.ProcessOutcome,
-        reports: t.VariadicTuple[m.Infra.GateReportEvidence],
-        report_root: Path,
+        request: m.Infra.GateCaptureFinishRequest,
         *,
         inputs: p.Result[m.Infra.CodegenInputs],
-        runtime_identity: str,
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Publish original native facts without rerunning or accepting the stage.
 
@@ -360,6 +358,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             The retained capture report or its first failure.
 
         """
+        started = request.started
         root = started.repository_root
         after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         issue = started.issue
@@ -383,7 +382,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 started.gate,
                 started.intent,
                 inputs.value,
-                runtime_identity,
+                request.runtime_identity,
             )
         ):
             issue = (
@@ -391,17 +390,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             )
         receipt: Path | None = None
         if issue is None:
-            captured = cls._captured_gate_evidence(started, process, reports)
+            captured = cls._captured_gate_evidence(
+                started, request.process, request.reports
+            )
             if captured.failure:
                 issue = captured.error
             else:
-                receipt = report_root / c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
+                receipt = request.report_root / c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
                 u.Cli.atomic_write_text_file(
                     receipt,
                     captured.value.model_dump_json(round_trip=True) + "\n",
                 ).unwrap()
         result = m.Infra.GateCaptureReport(
-            process=process,
+            process=request.process,
             receipt=receipt,
             issues=(
                 (
@@ -419,7 +420,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
         )
         u.Cli.atomic_write_text_file(
-            report_root / c.Infra.GATE_CAPTURE_RESULT_FILENAME,
+            request.report_root / c.Infra.GATE_CAPTURE_RESULT_FILENAME,
             result.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
         return r[m.Infra.GateCaptureReport].ok(result)

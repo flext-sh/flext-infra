@@ -228,8 +228,8 @@ class FlextInfraUtilitiesResourceLimits:
             joined with the spec's FLEXT-owned storage directory.
 
         """
-        home = settings.env_lookup(str(spec.data_home_environment_variable)) or str(
-            Path(settings.env_required(str(spec.user_home_environment_variable)))
+        home = settings.env_lookup(spec.data_home_environment_variable) or str(
+            Path(settings.env_required(spec.user_home_environment_variable))
             / spec.home_cache_directory,
         )
         return Path(home) / spec.external_storage_directory

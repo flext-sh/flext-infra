@@ -65,12 +65,19 @@ class TestsFlextInfraGithubGateAttestation:
             "[project]\nname='fixture'\n",
             encoding="utf-8",
         )
-        (root / "consumer.py").write_text("import os\n", encoding="utf-8")
+        source = root / c.Infra.DEFAULT_SRC_DIR
+        source.mkdir()
+        (source / "consumer.py").write_text("import os\n", encoding="utf-8")
         tm.ok(
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
                     repo_root=root,
-                    paths=("Makefile", "pyproject.toml", "tracked.txt", "consumer.py"),
+                    paths=(
+                        "Makefile",
+                        "pyproject.toml",
+                        "tracked.txt",
+                        f"{c.Infra.DEFAULT_SRC_DIR}/consumer.py",
+                    ),
                 ),
             ),
         )

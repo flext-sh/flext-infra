@@ -866,9 +866,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             projects: list[str] = []
             for plan in semantic_plans:
                 project = u.Infra.project_root(plan.path)
-                if project is None or project in projects:
+                if project is None:
                     continue
-                projects.append(str(project.relative_to(root)))
+                project_name = str(project.relative_to(root))
+                if project_name not in projects:
+                    projects.append(project_name)
             return FlextInfraWorkspaceChecker(
                 repository_root=root,
             ).execute_payload(

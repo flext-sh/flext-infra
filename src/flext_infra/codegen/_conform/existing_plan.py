@@ -1214,13 +1214,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             Indexed and live settings with their original parse failures.
         """
         result_type = r[t.Pair[t.JsonMapping, t.JsonMapping]]
-        if state.content is None:
+        content = state.content
+        if content is None:
             error = ValueError(
                 f"captured editor index blob is absent: {request.relative}"
             )
             return result_type.fail(str(error), exception=error)
         decoded = r[str].create_from_callable(
-            lambda: state.content.decode(c.DEFAULT_ENCODING),
+            lambda: content.decode(c.DEFAULT_ENCODING),
         )
         if decoded.failure:
             return result_type.from_failure(decoded)

@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
-from flext_infra import c, config, m
+from flext_infra import c, config, m, t
 from flext_infra.codegen._conform import (
     FlextInfraCodegenConformFilePlans,
 )
@@ -22,16 +21,16 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
     @staticmethod
     def _plan(
         root: Path,
-        workspace: object,
+        workspace: m.Infra.WorkspaceSpec,
         *,
-        uv_environments: tuple[object, ...],
-        files: tuple[object, ...],
-    ) -> object:
+        uv_environments: t.VariadicTuple[m.Infra.UvEnvironmentPlan],
+        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> m.Infra.CodegenPlan:
         """Build the public plan carrier with the selection under test.
 
         Args:
             root: The root path of the project.
-            workspace: The workspace object.
+            workspace: The workspace specification.
             uv_environments: A tuple of UV environment plans.
             files: A tuple of file plans.
 
@@ -48,12 +47,12 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
             repositories=(),
             workspace=workspace,
             make_spec=config.Infra.codegen.make,
-            uv_environments=uv_environments,  # type: ignore[arg-type]
-            files=files,  # type: ignore[arg-type]
+            uv_environments=uv_environments,
+            files=files,
         )
 
     @staticmethod
-    def _mise_file_plan(root: Path) -> object:
+    def _mise_file_plan(root: Path) -> m.Infra.CodegenFilePlan:
         """Plan one real .mise.toml projection from its on-disk state.
 
         Args:
@@ -86,7 +85,7 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
             files=(),
         )
 
-        selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)  # type: ignore[arg-type]
+        selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)
 
         assert selected.failure
         assert "carries no uv environment plan" in (selected.error or "")
@@ -111,7 +110,7 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
             files=(file_plan,),
         )
 
-        selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)  # type: ignore[arg-type]
+        selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)
 
         assert not selected.failure
         assert tuple(item.path for item in selected.value) == (
@@ -137,7 +136,7 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
             files=(),
         )
 
-        selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)  # type: ignore[arg-type]
+        selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)
 
         assert selected.failure
         assert "one Mise configuration per repository" in (selected.error or "")

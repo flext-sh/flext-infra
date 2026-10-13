@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from types import FunctionType
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
@@ -20,6 +21,15 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
+
+    @runtime_checkable
+    class FunctionDescriptor(Protocol):
+        """Native descriptor capability used to authenticate its defining function."""
+
+        @property
+        def __func__(self) -> FunctionType:
+            """The original function, without binding it to a receiver."""
+            ...
 
     @runtime_checkable
     class SourcePreview(Protocol):

@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import tm, u
 
@@ -44,7 +43,10 @@ class TestsFlextInfraRopeSnapshot:
             snapshot = u.Infra.snapshot_project(project, {module_path: source})
             try:
                 tm.that(snapshot.find_module("unrelated"), eq=None)
-                captured = tm.not_none(snapshot.find_module("flext_demo.declared"))
+                captured = u.Infra.require_file_resource(
+                    tm.not_none(snapshot.find_module("flext_demo.declared")),
+                    module_path,
+                )
                 tm.that(captured.read(), eq=source)
             finally:
                 snapshot.close()
@@ -95,7 +97,7 @@ class TestsFlextInfraRopeSnapshot:
             snapshot = u.Infra.snapshot_project(rope.rope_project, sources)
             try:
                 resource = snapshot.get_resource("conftest.py")
-                if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+                if not u.Infra.file_resource(resource):
                     msg = "expected a Rope file resource: conftest.py"
                     raise TypeError(msg)
                 tm.that(resource.read(), eq=sources[conftest.resolve()])

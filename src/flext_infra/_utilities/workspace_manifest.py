@@ -42,7 +42,7 @@ class FlextInfraUtilitiesWorkspaceManifest:
             The validated declaration belonging to the document's own repository.
         """
         result_type = r[m.Infra.RepositoryDeltaSpec]
-        fields = frozenset(m.Infra.RepositoryDeltaSpec.model_fields)
+        fields = set(m.Infra.RepositoryDeltaSpec.model_fields)
         values = legacy.model_dump(
             mode="json",
             include=fields.intersection(m.Infra.WorkspaceManifestSpec.model_fields),

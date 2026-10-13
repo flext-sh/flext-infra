@@ -19,7 +19,7 @@ from flext_infra.codemod import (
 from tests import tm, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 _CORE_CONSTANT = "SHARED_LIMIT = 42\n"
 _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
@@ -85,7 +85,7 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     @staticmethod
     def _objects(
-        rope_workspace: object,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         paths: t.SequenceOf[Path],
         name: str,
     ) -> t.VariadicTuple[m.Infra.Object]:
@@ -423,7 +423,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         """
         owner_start, owner_end = owner_span
         clone_start, clone_end = clone_span
-        summary = {
+        summary: t.JsonDict = {
             "clones": 1,
             "duplicatedLines": 3,
             "duplicatedTokens": 40,

@@ -628,12 +628,14 @@ class FlextInfraPytestRunnerExecution(
             msg = "original suite checkpoint has no native test selection"
             raise ValueError(msg)
         u.Infra.git_finish_gate_capture(
-            start,
-            outcome,
-            reports,
-            report_dir,
+            m.Infra.GateCaptureFinishRequest(
+                started=start,
+                process=outcome,
+                reports=reports,
+                report_root=report_dir,
+                runtime_identity=self.testmon_environment(selection.execution_mode),
+            ),
             inputs=u.Infra.load_codegen_inputs(self.root),
-            runtime_identity=self.testmon_environment(selection.execution_mode),
         ).unwrap()
 
     @staticmethod

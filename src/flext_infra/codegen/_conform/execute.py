@@ -513,7 +513,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
-    @override
     def _settle_unchanged_bootstrap(
         self,
         plan: m.Infra.CodegenPlan,
