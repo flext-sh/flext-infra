@@ -272,7 +272,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
             }),
         )
         cls._sync_uv_candidates(
-            uv, candidate_sources, local_names, local_requirements, resolution
+            uv,
+            candidate_sources,
+            tuple(member.distribution for member in members),
+            local_requirements,
+            resolution,
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         cls._sync_uv_constraints(
@@ -281,23 +285,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        cls._sync_member_sources(
-            uv,
-            members,
-            root_distribution=(
-                workspace.repository.distribution
-                if workspace.repository.package
-                else None
-            ),
-        )
+        cls._sync_member_sources(uv, members)
         return r[bool].ok(value=True)
 
     @staticmethod
     def _sync_member_sources(
         uv: t.Cli.TomlTable,
         members: t.SequenceOf[p.Infra.RepositoryRef],
-        *,
-        root_distribution: str | None,
     ) -> None:
         """Render declared member paths without changing their editable policy.
 
@@ -308,8 +302,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
         if sources is None:
             sources = u.Cli.toml_ensure_table(uv, "sources")
         wanted = {member.distribution for member in members}
-        if root_distribution is not None:
-            wanted.add(root_distribution)
         source_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             u.Cli.toml_unwrap_item(sources),
         )
@@ -331,12 +323,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 sources,
                 member.distribution,
                 {"path": member.path.as_posix(), "editable": member.editable},
-            )
-        if root_distribution is not None:
-            u.Cli.toml_sync_value(
-                sources,
-                root_distribution,
-                {"workspace": True},
             )
         if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")
