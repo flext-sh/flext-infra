@@ -35,7 +35,13 @@ rule:
                 - has:
                     kind: aliased_import
                     stopBy: end
-                    pattern: Literal as $FORM
+                    has:
+                      field: name
+                      regex: "^Literal$"
+                    all:
+                      - has:
+                          field: alias
+                          pattern: $FORM
     - all:
         - kind: subscript
         - has:
@@ -47,24 +53,4 @@ rule:
             all:
               - has:
                   field: object
-                  kind: identifier
-                  pattern: $MODULE
-        - inside:
-            kind: module
-            stopBy: end
-            has:
-              kind: import_statement
-              stopBy: end
-              any:
-                - has:
-                    kind: dotted_name
-                    stopBy: end
-                    pattern: $MODULE
-                    regex: "^typing$"
-                    not:
-                      inside:
-                        kind: aliased_import
-                - has:
-                    kind: aliased_import
-                    stopBy: end
-                    pattern: typing as $MODULE
+                  matches: typing-module-binding

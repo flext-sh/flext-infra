@@ -44,6 +44,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "semantic-type-context",
             "typing-annotated-form",
             "typing-literal-form",
+            "typing-module-binding",
             "t-locally-bound",
             f"typing-{collection}-generic",
             f"{collection}-imported-from-typing",

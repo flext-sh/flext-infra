@@ -236,6 +236,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 
+        Mechanical quiescence is not acceptance while any finding remains.
+
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 

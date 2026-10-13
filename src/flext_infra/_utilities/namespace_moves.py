@@ -538,7 +538,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """
         candidate_writes = {
             path: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
-                project_root, path, source
+                project_root,
+                path,
+                source,
+                before_source=expected_sources[path],
             ).unwrap()
             for path, source in writes.items()
         }

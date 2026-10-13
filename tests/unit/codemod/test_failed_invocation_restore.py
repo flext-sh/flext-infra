@@ -236,7 +236,14 @@ class TestsFlextInfraFailedInvocationProgress:
             },
         )
         sample = mod_workspace / "sample.py"
-        source = 'value = "unresolved"\n'
+        stem = u.derive_class_stem(mod_workspace.name.replace("_", "-"))
+        source = (
+            '"""Warning-only fixture."""\n\n'
+            "from __future__ import annotations\n\n\n"
+            f"class {stem}Sample:\n"
+            '    """A deliberately unresolved native finding."""\n\n'
+            '    value = "unresolved"\n'
+        )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
         exit_code = main([
             "refactor",

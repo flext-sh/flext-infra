@@ -30,6 +30,8 @@ rule:
                       - kind: assignment
                       - kind: augmented_assignment
                       - kind: type_alias_statement
+                      - kind: for_statement
+                      - kind: for_in_clause
                   - has:
                       field: left
                       regex: "\\bt\\b"
@@ -37,6 +39,7 @@ rule:
                   - any:
                       - kind: function_definition
                       - kind: class_definition
+                      - kind: named_expression
                   - has:
                       field: name
                       regex: "^t$"
@@ -52,21 +55,9 @@ rule:
                       regex: "^t$"
               - all:
                   - any:
-                      - kind: for_statement
-                      - kind: for_in_clause
-                  - has:
-                      field: left
-                      regex: "\\bt\\b"
-              - all:
-                  - any:
                       - kind: with_item
                       - kind: except_clause
                   - regex: "\\bas\\s+t\\b"
-              - all:
-                  - kind: named_expression
-                  - has:
-                      field: name
-                      regex: "^t$"
               - all:
                   - kind: import_from_statement
                   - has:

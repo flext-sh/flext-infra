@@ -47,7 +47,7 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
         tmp_path,
         package_name="flext_core",
         pyproject=(
-            f"[project]\nname='sample'\nversion='{config.Infra.project.version}'\n"
+            f"[project]\nname='sample'\nversion='{config.Infra.initial_project_version}'\n"
         ),
     )
     origin_file = pkg / "legacy.py"
@@ -259,7 +259,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             tmp_path,
             package_name="flext_core",
             pyproject=(
-                f"[project]\nname='sample'\nversion='{config.Infra.project.version}'\n"
+                f"[project]\nname='sample'\nversion='{config.Infra.initial_project_version}'\n"
             ),
         )
         advisory_file = pkg / "advisory.py"

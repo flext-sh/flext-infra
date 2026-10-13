@@ -37,10 +37,10 @@ LOCAL_GROWTH_RULE = (
 )
 
 
+@pytest.mark.slow
 class TestsFlextInfraRefactorViolationsSweep:
     """Behavior contract for the ``refactor violations-sweep`` verb."""
 
-    @pytest.mark.slow
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
         self,
         mod_workspace: Path,

@@ -148,7 +148,7 @@ class TestsFlextInfraBatchReplacements:
         *,
         selected: bool,
     ) -> None:
-        """Real actionable generated findings block acceptance, not authored progress."""
+        """Generated findings block acceptance without blocking authored progress."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
         rule_id = "mixed-generator-boundary"
         u.Tests.declare_codemod_rules(
@@ -186,6 +186,13 @@ class TestsFlextInfraBatchReplacements:
         tm.that(len(entries), eq=2)
         tm.that({entry.source_owner for entry in entries}, eq={"authored", "generator"})
         tm.that(all(entry.actionable for entry in entries), eq=True)
+        tm.that(
+            all(
+                entry.classification is c.Infra.ModScanFindingClass.ACTIONABLE
+                for entry in entries
+            ),
+            eq=True,
+        )
         receipt = m.Infra.ModScanEvidence.model_validate_json(
             (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
         )

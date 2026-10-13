@@ -8,6 +8,9 @@ valid:
   - |
     from flext_core import t
     def f(x: t.MappingKV[str, int]) -> None: ...
+  - |
+    from flext_core import t
+    value: t.DictKV[str, int]
   # `Dict` is a locally defined class, not typing.Dict
   - |
     from flext_core import t
@@ -81,6 +84,24 @@ valid:
     from flext_core import t
     import typing
     value: typing.Literal[typing.Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, Dict
+    value: Metadata[int, Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Dict, Literal as Value
+    value: Value[Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[int, tuple[typing.Dict[str, int], ...]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Literal[typing.Dict[str, int]]
   - |
     from unrelated import t
     from typing import Dict
@@ -159,6 +180,21 @@ invalid:
     from flext_core import t
     import typing
     value: typing.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, Dict
+    value: Metadata[Dict[str, int], Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  # A same-named user generic is not typing's value-bearing special form.
+  - |
+    from flext_core import t
+    from typing import Dict
+    class Annotated: ...
+    value: Annotated[int, Dict[str, int]]
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t
@@ -183,8 +219,8 @@ invalid:
     assert payload.values.copy() | {"last": 3} == {"example": 1, "updated": 2, "last": 3}
     payload.values |= {"last": 3}
     assert payload.values.pop("last") == 3
-    assert Payload.model_validate({"values": {"input": "4"}}).values == {"input": 4}
-    assert Payload.model_json_schema()["properties"]["values"]["type"] == "object"
+    assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
+    assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == {}
     assert not callable(get_origin(Contract.__value__))
     assert Contract.__value__ == make.__annotations__["return"]

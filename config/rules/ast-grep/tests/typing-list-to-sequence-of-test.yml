@@ -20,6 +20,9 @@ valid:
     ALIAS = t.SequenceOf[str]
   - |
     from flext_core import t
+    value: t.ListOf[str]
+  - |
+    from flext_core import t
     from typing import List
 
     REWRITE_TABLE = (("Dict[", "t.MappingKV"), ("List[", "t.SequenceOf"))
@@ -80,6 +83,24 @@ valid:
     from flext_core import t
     import typing
     value: typing.Literal[typing.List[str]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, List
+    value: Metadata[int, List[str]]
+  - |
+    from flext_core import t
+    from typing import List, Literal as Value
+    value: Value[List[str]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[int, tuple[typing.List[str], ...]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Literal[typing.List[str]]
   - |
     from unrelated import t
     from typing import List
@@ -148,6 +169,21 @@ invalid:
     from flext_core import t
     import typing
     value: typing.Annotated[typing.List[str], typing.List[str]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, List
+    value: Metadata[List[str], List[str]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[typing.List[str], typing.List[str]]
+  # A same-named user generic is not typing's value-bearing special form.
+  - |
+    from flext_core import t
+    from typing import List
+    class Annotated: ...
+    value: Annotated[int, List[str]]
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t
@@ -172,8 +208,8 @@ invalid:
     payload.values.extend(["another"])
     payload.values.sort()
     assert payload.values.copy() + ["last"] == ["another", "updated", "last"]
-    assert Payload.model_validate({"values": ("input",)}).values == ["input"]
-    assert Payload.model_json_schema()["properties"]["values"]["type"] == "array"
+    assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
+    assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == []
     assert not callable(get_origin(Contract.__value__))
     assert Contract.__value__ == make.__annotations__["return"]
