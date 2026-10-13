@@ -131,7 +131,9 @@ class TestsFlextInfraTransactionStaging:
             updates,
             consume,
             inputs=plan.inputs,
-            runtime_root=Path(__file__).resolve().parents[3],
+            runtime_root=u.Infra.runtime_environment_dir(
+                Path(__file__).resolve().parents[3]
+            ).parent,
         )
         if missing:
             tm.fail(outcome, has="missing_candidate_dependency")
@@ -169,9 +171,61 @@ class TestsFlextInfraTransactionStaging:
             {target: f"__path__ = [{str(package)!r}]\n"},
             checks,
             inputs=(before,),
-            runtime_root=Path(__file__).resolve().parents[3],
+            runtime_root=u.Infra.runtime_environment_dir(
+                Path(__file__).resolve().parents[3]
+            ).parent,
         )
         tm.fail(outcome, has="unsealed candidate origin")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            eq=before,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("borrowed", [False, True])
+    def test_source_runtime_rejects_borrowed_environment_before_checks(
+        tmp_path: Path,
+        *,
+        borrowed: bool,
+    ) -> None:
+        """Neither a linked environment nor a borrowed interpreter owns this runtime."""
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
+        target = package / "contract.py"
+        target.write_text("VALUE = 1\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        if borrowed:
+            u.Tests.provision_checkout(root)
+        else:
+            u.Infra.runtime_environment_dir(root).symlink_to(
+                u.Infra.runtime_environment_dir(Path(__file__).resolve().parents[3]),
+                target_is_directory=True,
+            )
+
+        def checks(_view_root: Path, _candidates: t.MappingKV[Path, Path]) -> bool:
+            pytest.fail("checks ran before candidate runtime rejection")
+
+        outcome = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        ).preview_sources(
+            root,
+            {target: "VALUE = 2\n"},
+            checks,
+            inputs=(before,),
+            runtime_root=root,
+        )
+        tm.fail(
+            outcome,
+            has=(
+                "candidate interpreter escaped declared physical runtime"
+                if borrowed
+                else "candidate runtime must be physical"
+            ),
+        )
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
             eq=before,

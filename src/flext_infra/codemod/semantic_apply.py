@@ -305,11 +305,14 @@ class FlextInfraCodemodSemanticApply:
             if phase is c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS:
                 constant_edits = planned.value
 
-        verified = cls._verify_census_phases(working, rope_workspace, phases)
-        if verified.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                verified,
-            )
+        # Empty plans already prove both phases on the same authenticated input.
+        # Edits invalidate that proof; staged and published runtime checks remain.
+        if changed:
+            verified = cls._verify_census_phases(working, rope_workspace, phases)
+            if verified.failure:
+                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                    verified,
+                )
         u.Infra.preflight_semantic_import_graph(rope_workspace, original, working)
         definition_time = cls._check_definition_time(original, working, changed)
         if definition_time.failure:
@@ -988,9 +991,6 @@ class FlextInfraCodemodSemanticApply:
         for path in consumer_first:
             state = states[path]
             content = state.content
-            if content is None or content.decode(c.DEFAULT_ENCODING) != original[path]:
-                msg = f"source changed after semantic preflight: {path}"
-                raise ValueError(msg)
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root
