@@ -377,7 +377,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         verified_plans: list[m.Infra.CodegenPlan] = []
 
         def verify() -> p.Result[bool]:
-            """Record the sole semantic verification receipt before commit."""
+            """Record the sole semantic verification receipt before commit.
+
+            Returns:
+                A ``p.Result[bool]`` indicating the success or failure of the verification.
+            """
             checked = self._verify_bootstrap(request)
             if checked.failure:
                 return r[bool].from_failure(checked)
@@ -510,6 +514,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
+    @override
     def _settle_unchanged_bootstrap(
         self,
         plan: m.Infra.CodegenPlan,

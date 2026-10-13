@@ -733,7 +733,17 @@ class FlextInfraModTextGateEngine:
     def _source_issue(
         path: Path, message: str, *, exception: BaseException | None = None
     ) -> m.Infra.Issue:
-        """Use the canonical issue contract for one actual source failure."""
+        """Use the canonical issue contract for one actual source failure.
+
+        Args:
+            path: The path to the source file that caused the failure.
+            message: A human-readable message describing the failure.
+            exception: The exception instance that triggered the failure, if any.
+
+        Returns:
+            An instance of `m.Infra.Issue` representing the source failure.
+
+        """
         return m.Infra.Issue(
             file=str(path),
             line=exception.lineno or 0 if isinstance(exception, SyntaxError) else 0,

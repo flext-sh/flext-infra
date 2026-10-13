@@ -23,7 +23,16 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
         references_count: int,
         evidence_collected: bool,
     ) -> m.Infra.Object:
-        """Build one census record with the classification inputs under test."""
+        """Build one census record with the classification inputs under test.
+
+        Args:
+            name: The name of the definition.
+            references_count: The number of references collected.
+            evidence_collected: Whether reference evidence has been collected.
+
+        Returns:
+            An instance of `m.Infra.Object` representing the census record.
+        """
         return m.Infra.Object(
             name=name,
             kind="assignment",

@@ -27,7 +27,17 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
         uv_environments: tuple[object, ...],
         files: tuple[object, ...],
     ) -> object:
-        """Build the public plan carrier with the selection under test."""
+        """Build the public plan carrier with the selection under test.
+
+        Args:
+            root: The root path of the project.
+            workspace: The workspace object.
+            uv_environments: A tuple of UV environment plans.
+            files: A tuple of file plans.
+
+        Returns:
+            An instance of `m.Infra.CodegenPlan` representing the public plan carrier.
+        """
         request = m.Infra.CodegenConformRequest(
             root=root,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -44,7 +54,14 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
 
     @staticmethod
     def _mise_file_plan(root: Path) -> object:
-        """Plan one real .mise.toml projection from its on-disk state."""
+        """Plan one real .mise.toml projection from its on-disk state.
+
+        Args:
+            root: The root path of the project.
+
+        Returns:
+            An instance of `m.Infra.CodegenFilePlan` representing the planned file.
+        """
         path = root / c.Infra.MISE_TOML_FILENAME
         path.write_text('min_version = "2024"\n', encoding="utf-8")
         state = u.Cli.atomic_read_binary_file_state(path, required=True)

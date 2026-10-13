@@ -586,7 +586,14 @@ class FlextInfraPytestRunnerExecution(
         return r.ok(final_exit)
 
     def _capture_original_suite(self, report_dir: Path) -> None:
-        """Bind the already executed suite to its original typed reports."""
+        """Bind the already executed suite to its original typed reports.
+
+        Args:
+            report_dir: The directory containing the report files.
+
+        Raises:
+            ValueError: If the original suite checkpoint has no native test selection.
+        """
         start = m.Infra.GateCaptureStart.model_validate_json(
             u.Cli.files_read_binary(
                 report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,

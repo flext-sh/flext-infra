@@ -13,7 +13,7 @@ import shlex
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
 from flext_cli import u
 from git import GitCommandError
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
             observations.append(observed.value)
         signing_format, signing_key, allowed_signers = observations
-        if signing_key.value == "" or allowed_signers.value == "":
+        if not signing_key.value or not allowed_signers.value:
             return r[m.Infra.GitSigningIdentityReport].fail(
                 "native Git signing configuration declares an empty key or trust reference",
             )
@@ -237,6 +237,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             runtime_identity=sys.version,
         )
 
+    @override
     @classmethod
     def git_begin_gate_capture(
         cls,
