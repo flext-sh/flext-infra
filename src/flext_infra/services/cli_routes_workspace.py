@@ -22,6 +22,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceFleetGaps,
     FlextInfraWorkspaceFleetVerbs,
     FlextInfraWorkspaceLifecycle,
+    FlextInfraWorkspaceLockCompleteness,
     FlextInfraWorkspacePropagation,
 )
 
@@ -163,6 +164,14 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 model_cls=m.Infra.WorkspaceEnvironmentRequest,
                 handler=FlextInfraWorkspaceEnvironmentProvenance.execute_request,
                 success_message="workspace editable provenance verified",
+            ),
+            m.Cli.ResultCommandRoute(
+                name="verify-lock",
+                help_text="Verify the committed uv.lock carries every referenced "
+                "package",
+                model_cls=m.Infra.WorkspaceLockRequest,
+                handler=FlextInfraWorkspaceLockCompleteness.execute_request,
+                success_message="lock completeness verified",
             ),
             m.Cli.ResultCommandRoute(
                 name="flext-binding",

@@ -34,6 +34,13 @@ class FlextInfraModelsWorkspace:
 
         repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
+    class WorkspaceLockRequest(m.ContractModel):
+        """Read-only request for validating the committed uv.lock completeness."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        repository_root: Annotated[Path, m.Field(description="Repository root path")]
+
     class LifecycleReceipt(m.ContractModel):
         """One public Make invocation; an absent outcome is never a green receipt."""
 
