@@ -843,7 +843,9 @@ class FlextInfraModTextGateEngine:
         )
         if scanned.failure:
             return scanned
-        report, _plans, _inputs = scanned.value
+        # Why: _scan_paths publishes the Pair (report, phase analysis); the
+        # inputs travel inside the report's authenticated state.
+        report, _analysis = scanned.value
         if validate_receipts:
             cls._validate_expected_receipts(rules, report)
         return scanned
