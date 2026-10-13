@@ -79,8 +79,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
     @pytest.mark.parametrize("package", [False, True])
-    def test_self_override_has_a_local_root_source(self, package: bool) -> None:
-        """A packaged root's override resolves to its own implicit uv workspace."""
+    def test_root_identity_is_not_overridden(self, package: bool) -> None:
+        """Native root identity preserves its complete dependency groups."""
         workspace = self._workspace(role=self._ROLE.STANDALONE)
         workspace = workspace.model_copy(
             update={
@@ -109,15 +109,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
         tm.that(
             u.Tests.toml_mapping(uv.get("sources")),
-            eq=(
-                {workspace.repository.distribution: {"workspace": True}}
-                if package
-                else {}
-            ),
+            eq={},
         )
         tm.that(
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=((workspace.repository.distribution,) if package else ()),
+            eq=(),
         )
         repeated = tm.ok(
             u.Infra.pyproject_conform(
@@ -185,11 +181,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             u.Tests.toml_mapping(uv.get("sources")),
             eq={
-                **(
-                    {workspace.repository.distribution: {"workspace": True}}
-                    if workspace.repository.package
-                    else {}
-                ),
                 **{
                     ref.distribution: {
                         "path": ref.path.as_posix(),
@@ -891,11 +882,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(
             uv_sources,
-            eq={
-                str(u.Tests.toml_mapping(parsed.get("project"))["name"]): {
-                    "workspace": True,
-                },
-            },
+            eq=None,
         )
 
     def test_member_render_is_context_independent(self) -> None:
@@ -937,7 +924,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that("workspace" not in uv, eq=True)
         tm.that(
             uv.get("sources"),
-            eq={consumer.distribution: {"workspace": True}},
+            eq=None,
         )
         self._assert_direct_source(rendered, runtime)
         detached = tm.ok(
@@ -1090,7 +1077,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(group, eq=(self._inline_requirement(core),))
         tm.that(
             uv_sources,
-            eq={workspace.repository.distribution: {"workspace": True}},
+            eq=None,
         )
 
     def test_member_requirement_with_a_foreign_url_fails_provenance(self) -> None:

@@ -146,10 +146,9 @@ entries retain each member's declared `path` and `editable` values; CI installs
 with `--no-editable`. There is no second installer or post-install editable
 overlay. Shared lock ownership does not change those source declarations.
 
-A packaged project's self override has a matching `tool.uv.sources` entry
-with `workspace = true`; this refers only to the implicit root project.
-Content-only roots have neither entry. Sources, overrides and Make routing
-come from the generator and are never repaired in their projections.
+The current project retains its native uv identity. Local source overrides apply
+to declared members, never to the current project itself. Sources, overrides and
+Make routing come from the generator and are never repaired in their projections.
 
 Configuration declares `latest`. `make upg` is the only verb that resolves newer
 releases and writes the committed `uv.lock` and `mise.lock`. `make setup` installs
