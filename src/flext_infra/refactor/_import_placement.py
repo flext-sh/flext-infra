@@ -222,6 +222,9 @@ class FlextInfraImportNormalizationPlacementMixin(
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
         """
+        promoted = cls._typing_runtime_edits(state, lines)
+        if promoted:
+            return promoted
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]] = {
             placement: [] for placement in c.Infra.ImportPlacement
         }
@@ -239,6 +242,65 @@ class FlextInfraImportNormalizationPlacementMixin(
                 tuple(dict.fromkeys(placed[c.Infra.ImportPlacement.TYPING])),
             ),
         )
+        return edits
+
+    @classmethod
+    def _typing_runtime_edits(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        """Promote allowed runtime reads using the existing definition-time analysis."""
+        edits: list[tuple[int, int, t.StrSequence]] = []
+        promoted: list[str] = []
+        for guard in state.tree.body:
+            if not (
+                isinstance(guard, ast.If) and cls._is_type_checking_test(guard.test)
+            ):
+                continue
+            guard_edits: list[tuple[int, int, t.StrSequence]] = []
+            removed: set[int] = set()
+            for node in guard.body:
+                if not isinstance(node, ast.Import | ast.ImportFrom):
+                    continue
+                selected: list[ast.alias] = []
+                for alias in node.names:
+                    bound = alias.asname or alias.name.partition(".")[0]
+                    if not cls._runtime_uses(state.tree, bound, state.parents):
+                        continue
+                    if cls._is_reverse(state, node, alias):
+                        msg = (
+                            f"{state.scope.file_path}: runtime binding {bound} "
+                            "requires a forbidden reverse namespace import"
+                        )
+                        raise ValueError(msg)
+                    selected.append(alias)
+                if not selected:
+                    continue
+                if guard.orelse:
+                    msg = (
+                        f"{state.scope.file_path}: runtime import promotion "
+                        "requires an unambiguous TYPE_CHECKING guard"
+                    )
+                    raise ValueError(msg)
+                kept = [alias for alias in node.names if alias not in selected]
+                promoted.append(cls._render(node, selected))
+                if not kept:
+                    removed.add(id(node))
+                indent = cls._line_indent(lines[node.lineno - 1])
+                guard_edits.append((
+                    node.lineno,
+                    cls._end_line(node),
+                    (f"{indent}{cls._render(node, kept)}",) if kept else (),
+                ))
+            if guard_edits:
+                edits.extend(
+                    ((guard.lineno, cls._end_line(guard), ()),)
+                    if all(id(statement) in removed for statement in guard.body)
+                    else guard_edits
+                )
+        if promoted:
+            edits.extend(cls._insertion_edits(state, tuple(promoted), ()))
         return edits
 
     @classmethod

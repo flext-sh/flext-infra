@@ -24,6 +24,57 @@ class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
 
     @classmethod
+    @pytest.mark.parametrize("model", [False, True])
+    def test_typing_guard_promotes_real_definition_time_imports(
+        cls, tmp_path: Path, *, model: bool
+    ) -> None:
+        """A fresh consumer resolves evaluated generics and Pydantic annotations."""
+        project, package = cls._project(tmp_path)
+        module = package / ("models.py" if model else "consumer.py")
+        declaration = (
+            "from flext_core import m\n"
+            "class Record(m.ContractModel):\n"
+            "    value: Path = m.Field(description='Consumer path')\n"
+            "value = Record(value=Path('consumer')).value\n"
+            if model
+            else "from flext_core import r\n"
+            "value = r[tuple[Path, ...]].ok((Path('consumer'),)).unwrap()[0]\n"
+        )
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            "    from pathlib import Path, PurePath\n"
+            + declaration
+            + "def annotate(value: PurePath) -> PurePath:\n"
+            "    return value\n"
+        )
+        normalized = cls._normalize(project, module, source)
+        module.write_text(normalized, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.{module.stem} import value, annotate; "
+                        "assert str(value) == 'consumer'; "
+                        "assert annotate(value) == value"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=normalized
+            ),
+            eq=None,
+        )
+
+    @classmethod
     def test_eager_root_dependencies_preserve_bootstrap_imports(
         cls,
         tmp_path: Path,

@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -103,6 +103,120 @@ class FlextInfraCodegenVscodeMixin:
         )
         codegen = u.Cli.json_walk_path(source(), ("Infra", "codegen"))
         return m.Infra.CodegenConfigSpec.model_validate(codegen).vscode
+
+    @classmethod
+    def vscode_declaration_delta(
+        cls,
+        repository_root: Path,
+        settings: t.JsonMapping,
+        *,
+        spec: m.Infra.CodegenVscodeSpec,
+        runtime_root: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
+        """Extract portable project overrides through the existing editor owner.
+
+        Derived settings and retired keys remain owned by their generators.
+        Runtime paths are converted back to declared environment tokens before
+        comparing values, including nested maps and lists.
+
+        Returns:
+            Minimal overrides representable by the canonical configuration merge.
+        """
+        result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
+        substitutions = cls._runtime_substitutions(repository_root, runtime_root)
+        if substitutions.failure:
+            return result_type.from_failure(substitutions)
+        unbind = tuple(
+            (effective, declared)
+            for declared, effective in substitutions.value
+            if effective != declared
+        )
+        portable = {
+            key: cls._bind_runtime_value(value, unbind)
+            for key, value in settings.items()
+        }
+        expected: t.MutableJsonMapping = {}
+        generated = cls._apply_canonical_settings(
+            expected,
+            repository_root,
+            spec=spec,
+        )
+        if generated.failure:
+            return result_type.from_failure(generated)
+        deltas: t.MutableJsonMapping = {}
+        scalars: t.MutableJsonMapping = {}
+        lists: t.MutableJsonMapping = {}
+        maps: t.MutableJsonMapping = {}
+        additional: t.MutableJsonMapping = {}
+        artifact_settings = cls._artifact_settings()
+        for key, value in portable.items():
+            if key in spec.stripped_keys or key in artifact_settings:
+                continue
+            if key in expected and value == expected[key]:
+                continue
+            if key in spec.scalar_settings:
+                scalars[key] = value
+            elif key in spec.list_settings:
+                baseline = list(spec.list_settings[key])
+                if not isinstance(value, list) or value[: len(baseline)] != baseline:
+                    error = ValueError(
+                        "editor list override cannot be represented by "
+                        f"configuration concatenation: {key}",
+                    )
+                    return result_type.fail(str(error), exception=error)
+                lists[key] = value[len(baseline) :]
+            elif key in spec.map_union_settings:
+                if not isinstance(value, Mapping):
+                    error = ValueError(f"editor union setting must be a mapping: {key}")
+                    return result_type.fail(str(error), exception=error)
+                baseline_map = spec.map_union_settings[key]
+                maps[key] = {
+                    item_key: item_value
+                    for item_key, item_value in value.items()
+                    if item_key not in baseline_map
+                    or item_value != baseline_map[item_key]
+                }
+            else:
+                additional[key] = value
+        for field, values in (
+            ("scalar_settings", scalars),
+            ("list_settings", lists),
+            ("map_union_settings", maps),
+            ("additional_settings", additional),
+        ):
+            if values:
+                deltas[field] = values
+        validated = r[m.Infra.CodegenVscodeSpec].create_from_callable(
+            partial(
+                m.Infra.CodegenVscodeSpec.model_validate,
+                {
+                    **spec.model_dump(),
+                    "scalar_settings": {**spec.scalar_settings, **scalars},
+                    "list_settings": {
+                        **spec.list_settings,
+                        **{
+                            key: (*spec.list_settings[key], *value)
+                            for key, value in lists.items()
+                            if isinstance(value, list)
+                        },
+                    },
+                    "map_union_settings": {
+                        **spec.map_union_settings,
+                        **{
+                            key: {**spec.map_union_settings[key], **value}
+                            for key, value in maps.items()
+                            if isinstance(value, Mapping)
+                        },
+                    },
+                    "additional_settings": {**spec.additional_settings, **additional},
+                },
+            ),
+        )
+        if validated.failure:
+            return result_type.from_failure(validated)
+        return result_type.ok(
+            m.Infra.CodegenVscodeDeclarationDelta(values=deltas),
+        )
 
     @classmethod
     def render_vscode_settings(
@@ -322,12 +436,7 @@ class FlextInfraCodegenVscodeMixin:
         # Replacing them removes retired artifacts instead of preserving stale
         # generated keys forever. Only explicitly declared non-artifact maps use
         # merge semantics.
-        codegen = config.Infra.codegen
-        artifact_maps: MutableMapping[str, Mapping[str, str | bool]] = {
-            "files.exclude": dict(codegen.vscode_files_exclude_map),
-            "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),
-            "search.exclude": dict(codegen.vscode_search_exclude_map),
-        }
+        artifact_maps = cls._artifact_settings()
         artifacts_changed = False
         for key, canonical_map in artifact_maps.items():
             canonical = {
@@ -350,6 +459,20 @@ class FlextInfraCodegenVscodeMixin:
             or changed.value
             or additional_changed,
         )
+
+    @staticmethod
+    def _artifact_settings() -> t.MappingKV[str, t.MappingKV[str, str | bool]]:
+        """Project the declared artifact maps through their single editor owner.
+
+        Returns:
+            Complete derived maps consumed by rendering and migration.
+        """
+        codegen = config.Infra.codegen
+        return {
+            "files.exclude": dict(codegen.vscode_files_exclude_map),
+            "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),
+            "search.exclude": dict(codegen.vscode_search_exclude_map),
+        }
 
     @staticmethod
     def _strip_retired_keys(
@@ -421,12 +544,32 @@ class FlextInfraCodegenVscodeMixin:
             Settings bound to the physical checkout environment.
 
         """
+        substitutions = cls._runtime_substitutions(repository_root, runtime_root)
+        if substitutions.failure:
+            return r[t.JsonMapping].from_failure(substitutions)
+        return r[t.JsonMapping].ok({
+            key: cls._bind_runtime_value(value, substitutions.value)
+            for key, value in settings.items()
+        })
+
+    @classmethod
+    def _runtime_substitutions(
+        cls,
+        repository_root: Path,
+        runtime_root: Path | None,
+    ) -> p.Result[t.VariadicTuple[t.Pair[str, str]]]:
+        """Derive one reversible binding from the canonical runtime owner.
+
+        Returns:
+            Declared environment tokens and their effective checkout paths.
+        """
+        result_type = r[t.VariadicTuple[t.Pair[str, str]]]
         if runtime_root is None:
             runtime = u.Infra.git_repository_root(
                 m.Infra.GitRepoRequest(repo_root=repository_root),
             )
             if runtime.failure:
-                return r[t.JsonMapping].from_failure(runtime)
+                return result_type.from_failure(runtime)
             runtime_root = runtime.value.repository_root
         python = u.Infra.runtime_python(
             repository_root,
@@ -461,10 +604,7 @@ class FlextInfraCodegenVscodeMixin:
                 ),
             ),
         )
-        return r[t.JsonMapping].ok({
-            key: cls._bind_runtime_value(value, substitutions)
-            for key, value in settings.items()
-        })
+        return result_type.ok(substitutions)
 
     @classmethod
     def _bind_runtime_value(

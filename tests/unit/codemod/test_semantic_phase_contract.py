@@ -847,6 +847,7 @@ class TestsFlextInfraSemanticPhaseContract:
             alias="c",
             extra_class_names=(f"{owner}Member",),
         )
+        tm.ok(u.Tests.provision_python_project_environment(root))
         source = path.read_text(encoding="utf-8").replace(
             "from __future__ import annotations\n",
             "",

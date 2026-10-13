@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
-from datetime import UTC, datetime
 from pathlib import Path
 from shlex import quote
 
 import pytest
 from flext_cli import u as cli_u
 
-from flext_infra import c, m, p
+from flext_infra import c, config, m, p
 from tests import tm, u
 
 
@@ -56,7 +55,7 @@ class TestsFlextInfraGithubGateAttestation:
             "\t@printf 'executed\\n' >> invocations.txt\n"
             "\t@sleep $(ATTEST_PROBE_DELAY)\n"
             f"\t@{quote(sys.executable)} -m flext_infra "
-            f"{c.Infra.CLI_GROUP_CHECK} {c.Infra.VERB_RUN} "
+            f"{c.Infra.CLI_GROUP_WORKSPACE} capture-gate "
             f"--repository-root . --gates {c.Infra.LINT}\n"
             "ATTEST_PROBE_DELAY ?= 0\n",
             encoding="utf-8",
@@ -116,64 +115,82 @@ class TestsFlextInfraGithubGateAttestation:
         """
         return self._signed_repository
 
-    @classmethod
-    def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
-        """Capture one real Make/check run before the signer consumes evidence."""
-        started = datetime.now(UTC)
-        output = tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
-        completed = datetime.now(UTC)
-        reports_dir = m.Infra.RunCommand(repository_root=root).reports_dir_path
-        sarif = next(reports_dir.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME))
-        report = m.Infra.SarifReport.model_validate_json(sarif.read_bytes())
-        assert report.properties is not None
-        native = report.properties.results[0].gates[c.Infra.LINT].outcome
-        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
-        assert identity.origin_remote is not None
-        policy = c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION
-        context_digest = (
-            f"sha256:{cli_u.Cli.sha256_content(sys.version + sys.platform)}"
+    def test_original_capture_publishes_distinct_receipts_with_stable_context(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """The original public capture binds each run without changing its status."""
+        signed_repository_factory(tmp_path)
+        request = m.Infra.GateCaptureRequest(
+            repository_root=tmp_path,
+            gates=c.Infra.LINT,
         )
-        policy_digest = f"sha256:{cli_u.Cli.sha256_content(policy.value)}"
-        evidence = m.Infra.GateCommandEvidence(
-            gate=c.Infra.VERB_CHECK,
-            command=f"make {c.Infra.VERB_CHECK}",
-            cwd=str(root),
-            process=m.Cli.ProcessOutcome.model_validate(
-                output.outcome, from_attributes=True
-            ),
-            native_outcome=native,
-            policy=policy,
-            repository=u.Infra.canonical_origin_remote(identity.origin_remote),
-            commit_sha=identity.head_oid,
-            tree_sha=cls._rev_parse(root, "HEAD^{tree}"),
-            context_digest=context_digest,
-            policy_digest=policy_digest,
-            reports=(
-                m.Infra.GateReportEvidence(
-                    path=sarif.relative_to(root),
-                    digest=f"sha256:{cli_u.Cli.sha256_bytes(sarif.read_bytes())}",
-                    kind=c.Infra.GateEvidenceReportKind.CHECK_SARIF,
+        first = tm.ok(u.Infra.git_capture_gate(request))
+        second = tm.ok(u.Infra.git_capture_gate(request))
+        assert first.receipt is not None
+        assert second.receipt is not None
+        assert first.receipt != second.receipt
+        first_evidence = m.Infra.GateCommandEvidence.model_validate_json(
+            first.receipt.read_bytes(),
+        )
+        second_evidence = m.Infra.GateCommandEvidence.model_validate_json(
+            second.receipt.read_bytes(),
+        )
+        assert first_evidence.process == first.process
+        assert second_evidence.process == second.process
+        assert first_evidence.context_digest == second_evidence.context_digest
+        assert first_evidence.native_outcome == c.Infra.ToolOutcome.FINDINGS
+        assert first.process.raw_return_code != 0
+        assert not first.issues
+        for report in first_evidence.reports:
+            assert report.path.is_relative_to(
+                first.receipt.parent.relative_to(tmp_path)
+            )
+            assert report.digest == (
+                f"sha256:{cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())}"
+            )
+
+    def test_dirty_candidate_still_executes_without_reusable_receipt(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Working changes cannot suppress the native command or assert proof."""
+        signed_repository_factory(tmp_path)
+        (tmp_path / "tracked.txt").write_text("uncommitted\n", encoding="utf-8")
+        captured = tm.ok(
+            u.Infra.git_capture_gate(
+                m.Infra.GateCaptureRequest(
+                    repository_root=tmp_path,
+                    gates=c.Infra.LINT,
                 ),
-            ),
-            result_digest=f"sha256:{cli_u.Cli.sha256_content(output.stdout + output.stderr)}",
-            started_at=started.isoformat(),
-            completed_at=completed.isoformat(),
-        )
-        receipt = root / c.Infra.REPORTS_DIR_NAME / "original-check.json"
-        tm.ok(
-            cli_u.Cli.atomic_write_text_file(
-                receipt, evidence.model_dump_json(round_trip=True)
             )
         )
+        assert captured.process.raw_return_code != 0
+        assert captured.receipt is None
+        assert captured.issues
+        assert tuple(tmp_path.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME))
+
+    @classmethod
+    def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
+        """Consume the receipt automatically emitted by the original Make run."""
+        receipts = root / config.Infra.codegen.make.gate_receipts_directory
+        previous = set(receipts.rglob("original-receipt.json"))
+        tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
+        published = set(receipts.rglob("original-receipt.json")) - previous
+        assert len(published) == 1
+        receipt = published.pop()
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
         return m.Infra.GateAttestationCreateRequest(
             workspace=str(root),
             signer="attester@example.test",
             gates=(c.Infra.VERB_CHECK,),
             receipt=receipt,
             allowed_signers=str(root / "allowed_signers"),
-            context_digest=context_digest,
-            policy=policy,
-            policy_digest=policy_digest,
+            context_digest=evidence.context_digest,
+            policy=evidence.policy,
+            policy_digest=evidence.policy_digest,
         )
 
     @staticmethod
@@ -183,20 +200,27 @@ class TestsFlextInfraGithubGateAttestation:
         commit_sha: str,
         *gates: str,
     ) -> p.Result[m.Infra.GateAttestationReport]:
+        receipts = root / config.Infra.codegen.make.gate_receipts_directory
+        evidence = tuple(
+            record
+            for path in receipts.rglob("original-receipt.json")
+            if (
+                record := m.Infra.GateCommandEvidence.model_validate_json(
+                    path.read_bytes(),
+                )
+            ).commit_sha
+            == commit_sha
+        )
+        assert len(evidence) == 1
         return u.Infra.git_verify_gate_attestation(
             m.Infra.GateAttestationVerifyRequest(
                 workspace=str(root),
                 allowed_signers=str(allowed_signers),
                 expected_gates=gates,
                 commit_sha=commit_sha,
-                context_digest=f"sha256:{cli_u.Cli.sha256_content(sys.version + sys.platform)}",
-                policy=c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION,
-                policy_digest=(
-                    "sha256:"
-                    + cli_u.Cli.sha256_content(
-                        c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION.value,
-                    )
-                ),
+                context_digest=evidence[0].context_digest,
+                policy=evidence[0].policy,
+                policy_digest=evidence[0].policy_digest,
             ),
         )
 
