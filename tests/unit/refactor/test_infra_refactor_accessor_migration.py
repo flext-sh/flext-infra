@@ -93,7 +93,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=False,
         ).execute()
 
-        tm.that(result.failure, eq=False)
+        tm.that(result.failure, eq=False, msg=result.error)
         tm.that(
             result.value.automated_change_count,
             eq=len(c.ENFORCEMENT_ACCESSOR_RENAMES) * 2,
@@ -160,8 +160,8 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=False,
         ).execute()
 
-        tm.that(complete.failure, eq=False)
-        tm.that(root_only.failure, eq=False)
+        tm.that(complete.failure, eq=False, msg=complete.error)
+        tm.that(root_only.failure, eq=False, msg=root_only.error)
         tm.that(complete.value.automated_change_count > 0, eq=True)
         tm.that(root_only.value.automated_change_count, eq=0)
         tm.that(complete.value.files_scanned > root_only.value.files_scanned, eq=True)
@@ -199,7 +199,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         result = orchestrator.execute()
 
-        tm.that(result.failure, eq=False)
+        tm.that(result.failure, eq=False, msg=result.error)
         receipt = (
             workspace / c.Infra.ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH
         ).resolve()
@@ -247,7 +247,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             repository_root=workspace,
             apply_changes=True,
         ).execute()
-        tm.that(first.failure, eq=False)
+        tm.that(first.failure, eq=False, msg=first.error)
         migrated_source = origin_file.read_text(encoding="utf-8")
 
         second = FlextInfraAccessorMigrationOrchestrator(
@@ -256,7 +256,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=True,
         ).execute()
 
-        tm.that(second.failure, eq=False)
+        tm.that(second.failure, eq=False, msg=second.error)
         tm.that(second.value.automated_change_count, eq=0)
         tm.that(origin_file.read_text(encoding="utf-8"), eq=migrated_source)
 
@@ -336,7 +336,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(warning_names, lacks="get_source_folders")
 
     @staticmethod
-    @pytest.mark.parametrize("decorator", ("", "@staticmethod\n    ", "@classmethod\n    "))
+    @pytest.mark.parametrize(
+        "decorator", ["", "@staticmethod\n    ", "@classmethod\n    "]
+    )
     def test_core_prefix_policy_discovers_methods_outside_legacy_catalog(
         tmp_path: Path,
         decorator: str,
@@ -421,8 +423,50 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
+    def test_parameterized_sdk_base_retains_its_introducing_contract(
+        tmp_path: Path,
+    ) -> None:
+        """Generic SDK contracts stay foreign; local introductions remain visible."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        policy = m.MethodShapeParams.model_validate(
+            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        )
+        name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
+        source = (
+            "from sqlalchemy.types import UserDefinedType\n\n"
+            "class Container:\n"
+            "    class OracleRawType(UserDefinedType[str]):\n"
+            "        def get_col_spec(self, **kw) -> str:\n"
+            "            return 'VARCHAR2(30)'\n"
+            f"        def {name}(self) -> bool:\n"
+            "            return True\n"
+        )
+        _ = origin_file.write_text(source, encoding="utf-8")
+        result = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+        ).execute()
+
+        tm.that(result.failure, eq=False, msg=result.error)
+        findings = tuple(
+            warning
+            for file in result.value.files
+            for warning in file.warnings
+            if warning.original_name in {name, "get_col_spec"}
+        )
+        tm.that(findings, len=1)
+        tm.that(findings[0].original_name, eq=name)
+        tm.that(findings[0].reason, has=f"Container.OracleRawType.{name}")
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "base", ["MissingBase", "MissingBase[str]", "KnownBase, MissingBase[str]"]
+    )
     def test_unresolved_owned_accessor_ancestry_fails_before_changes(
         tmp_path: Path,
+        base: str,
     ) -> None:
         """A genuinely unresolved introducing contract never becomes empty coverage."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
@@ -430,10 +474,15 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
         )
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
-        source = f"class Owned(MissingBase):\n    def {name}(self):\n        return True\n"
+        source = (
+            "class KnownBase:\n    pass\n\n"
+            f"class Owned({base}):\n    def {name}(self):\n        return True\n"
+        )
         _ = origin_file.write_text(source, encoding="utf-8")
 
-        with pytest.raises(ValueError, match="unresolved accessor class ancestry: Owned"):
+        with pytest.raises(
+            ValueError, match="unresolved accessor class ancestry: Owned"
+        ):
             _ = FlextInfraAccessorMigrationOrchestrator(
                 source_preview=infra.source_preview(workspace),
                 repository_root=workspace,

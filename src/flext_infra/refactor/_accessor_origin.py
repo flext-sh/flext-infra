@@ -142,7 +142,29 @@ class FlextInfraAccessorOriginResolver:
                 ),
                 None,
             )
-            if declaration is None or len(bases) != len(declaration.bases):
+            if declaration is None:
+                msg = f"unresolved accessor class ancestry: {owner.get_name()}"
+                raise ValueError(msg)
+            scope = u.Infra.scope_at(
+                module,
+                u.Infra.source_offset(module.source_code, declaration),
+                declaration_line=declaration.lineno,
+            )
+            # Generic subscriptions name their introducing class, not __getitem__.
+            bases = tuple(
+                binding.get_object()
+                for expression in declaration.bases
+                if (
+                    binding := u.Infra.resolve_symbol(
+                        scope,
+                        expression.value
+                        if isinstance(expression, ast.Subscript)
+                        else expression,
+                    )
+                )
+                is not None
+            )
+            if len(bases) != len(declaration.bases):
                 msg = f"unresolved accessor class ancestry: {owner.get_name()}"
                 raise ValueError(msg)
         if any(not u.Infra.abstract_class(base) for base in bases):
@@ -167,11 +189,9 @@ class FlextInfraAccessorOriginResolver:
         Raises:
             ValueError: If a source, declaration or project owner is unresolved.
         """
-        key = str(py_file)
-        if key in self._bindings:
+        if str(py_file) in self._bindings:
             return
-        module = self.module(py_file)
-        scope = module.get_scope()
+        scope = self.module(py_file).get_scope()
         if scope is None:
             msg = f"accessor module has no declaration scope: {py_file}"
             raise ValueError(msg)
@@ -180,76 +200,64 @@ class FlextInfraAccessorOriginResolver:
             msg = f"accessor source has no project owner: {py_file}"
             raise ValueError(msg)
         metadata = u.Infra.read_project_metadata_result(project_root).unwrap()
-        module_name = u.Infra.module_name_for_file(py_file, project_root=project_root)
         bindings: dict[str, list[p.Infra.RopePyName]] = {}
         introduced: list[m.Infra.Object] = []
         pending: list[tuple[p.Infra.RopeScope, tuple[str, ...]]] = [(scope, ())]
         while pending:
             current, chain = pending.pop()
             owner = current.pyobject if current.get_kind() == "Class" else None
-            children = tuple(current.get_scopes())
-            candidates = {
-                child.pyobject.get_name()
-                for child in children
-                if child.get_kind() == "Function"
-                and not child.pyobject.get_name().startswith("_")
-                and (
-                    child.pyobject.get_name() in c.ENFORCEMENT_ACCESSOR_RENAMES
-                    or child.pyobject.get_name().startswith(
-                        tuple(self._policy.forbidden_prefixes)
-                    )
-                )
-            }
-            inherited = (
-                {
-                    name
-                    for base in self.class_lineage(owner)[1:]
-                    for name in base.get_attributes()
-                }
-                if owner is not None and candidates
-                else set()
-            )
-            for child in children:
+            for child in current.get_scopes():
                 name = child.pyobject.get_name()
-                if child.get_kind() == "Class":
-                    pending.append((child, (*chain, name)))
-                elif child.get_kind() == "Function":
-                    pending.append((child, (*chain, name)))
-                    binding = current.get_names().get(name)
-                    if binding is None:
-                        msg = f"accessor declaration has no binding: {py_file}:{name}"
-                        raise ValueError(msg)
-                    holder, line = binding.get_definition_location()
-                    resource = holder.get_resource() if holder is not None else None
-                    if (
-                        resource is None
-                        or resource.real_path != str(py_file)
-                        or line != child.get_start()
-                    ):
-                        continue
-                    bindings.setdefault(name, []).append(binding)
-                    self._names[id(binding)] = name
-                    if owner is not None:
-                        self._owners[id(binding)] = owner
-                        if (
-                            name in candidates
-                            and name not in inherited
-                            and u.Infra.py_function(binding.get_object())
-                        ):
-                            introduced.append(
-                                m.Infra.Object(
-                                    file_path=str(py_file),
-                                    line=child.get_start(),
-                                    project=metadata.project.name,
-                                    name=name,
-                                    kind="method",
-                                    module_name=module_name,
-                                    scope_path=".".join((*chain, name)),
-                                    class_path=".".join(chain),
-                                )
-                            )
-        self._bindings[key] = bindings
-        self._introduced[key] = tuple(introduced)
+                pending.append((child, (*chain, name)))
+                if child.get_kind() != "Function":
+                    continue
+                binding = current.get_names().get(name)
+                if binding is None:
+                    msg = f"accessor declaration has no binding: {py_file}:{name}"
+                    raise ValueError(msg)
+                definition = binding.get_definition_location()
+                resource = (
+                    definition[0].get_resource() if definition[0] is not None else None
+                )
+                if (
+                    resource is None
+                    or resource.real_path != str(py_file)
+                    or definition[1] != child.get_start()
+                ):
+                    continue
+                bindings.setdefault(name, []).append(binding)
+                self._names[id(binding)] = name
+                if owner is None:
+                    continue
+                self._owners[id(binding)] = owner
+                if (
+                    not name.startswith("_")
+                    and (
+                        name in c.ENFORCEMENT_ACCESSOR_RENAMES
+                        or name.startswith(tuple(self._policy.forbidden_prefixes))
+                    )
+                    and u.Infra.py_function(binding.get_object())
+                    and any(
+                        u.Infra.same_name(binding, declaration)
+                        for declaration in self._introducing_bindings(owner, name)
+                    )
+                ):
+                    introduced.append(
+                        m.Infra.Object(
+                            file_path=str(py_file),
+                            line=child.get_start(),
+                            project=metadata.project.name,
+                            name=name,
+                            kind="method",
+                            module_name=u.Infra.module_name_for_file(
+                                py_file, project_root=project_root
+                            ),
+                            scope_path=".".join((*chain, name)),
+                            class_path=".".join(chain),
+                        )
+                    )
+        self._bindings[str(py_file)] = bindings
+        self._introduced[str(py_file)] = tuple(introduced)
 
     def introduced_methods(self, py_file: Path) -> tuple[m.Infra.Object, ...]:
         """Return actual class introducers, including names outside the rename catalog.
@@ -316,6 +324,30 @@ class FlextInfraAccessorOriginResolver:
             for base in self.class_lineage(owner)
         )
 
+    def _introducing_bindings(
+        self, owner: p.Infra.RopePyObject, name: str
+    ) -> tuple[p.Infra.RopePyName, ...]:
+        """Return direct introducing declarations for both discovery and consumers.
+
+        Returns:
+            Bindings whose classes introduce the name rather than override it.
+        """
+        introduced: list[p.Infra.RopePyName] = []
+        for base in self.class_lineage(owner):
+            scope = base.get_scope() if u.Infra.py_class(base) else None
+            attributes = (
+                scope.get_defined_names()
+                if scope is not None
+                else base.get_attributes()
+            )
+            declaration = attributes.get(name)
+            if declaration is not None and not any(
+                name in parent.get_attributes()
+                for parent in self.class_lineage(base)[1:]
+            ):
+                introduced.append(declaration)
+        return tuple(introduced)
+
     def _contract_origin(self, binding: p.Infra.RopePyName) -> str | None:
         """Resolve the sole introducing contract without changing inherited ownership.
 
@@ -327,22 +359,8 @@ class FlextInfraAccessorOriginResolver:
             holder, _line = binding.get_definition_location()
             resource = holder.get_resource() if holder is not None else None
             return resource.real_path if resource is not None else None
-        name = self._names[id(binding)]
-        lineage = self.class_lineage(owner)
         origins: set[str] = set()
-        for base in lineage:
-            scope = base.get_scope() if u.Infra.py_class(base) else None
-            attributes = (
-                scope.get_defined_names()
-                if scope is not None
-                else base.get_attributes()
-            )
-            declaration = attributes.get(name)
-            if declaration is None or any(
-                name in parent.get_attributes()
-                for parent in self.class_lineage(base)[1:]
-            ):
-                continue
+        for declaration in self._introducing_bindings(owner, self._names[id(binding)]):
             holder, _line = declaration.get_definition_location()
             resource = holder.get_resource() if holder is not None else None
             if resource is None:

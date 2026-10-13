@@ -1048,6 +1048,18 @@ _builtin-profile-mod-report: _builtin_require_environment
 		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
 		"$(PROFILE_REPORTS_DIR)/mod.pstats"
 
+# Measure the same read-only diagnostic used by the public mod-rules verb.
+_builtin-profile-mod-rules: _builtin_require_environment
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/mod-rules.pstats" refactor ast \
+		--repository-root "$(PROJECT_ROOT)"
+
+_builtin-profile-mod-rules-report: _builtin_require_environment
+	@cd "$(PROJECT_ROOT)" || exit $$?; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
+		"$(PROFILE_REPORTS_DIR)/mod-rules.pstats"
+
 # Profile the cold canonical pytest execution through its thin entrypoint
 # for startup diagnosis: the same persistent testmon database
 # guard and environment as the bounded gate, but deliberately NOT wrapped in

@@ -27,7 +27,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
     """
 
     if TYPE_CHECKING:
-
         _repository_root: Path
 
     def _enforce_project(

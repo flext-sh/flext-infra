@@ -277,11 +277,15 @@ class FlextInfraModReplacements:
             module = cst.parse_module(normalized.value)
             stripped = module.visit(FlextInfraDeadScaffold())
             orphaned = stripped.visit(FlextInfraOrphanImport())
-            final = u.Infra.normalize_source(
-                root,
-                path,
-                orphaned.code,
-                before_source=before.decode(c.DEFAULT_ENCODING),
+            final = (
+                normalized
+                if orphaned.code == normalized.value
+                else u.Infra.normalize_source(
+                    root,
+                    path,
+                    orphaned.code,
+                    before_source=before.decode(c.DEFAULT_ENCODING),
+                )
             )
         if final.failure:
             return r[bytes].from_failure(final)

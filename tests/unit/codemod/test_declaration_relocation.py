@@ -478,6 +478,96 @@ class TestsFlextInfraDeclarationRelocation:
             del sys.modules[spec.name]
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("dependency", "annotation", "shadow"),
+        [
+            ("from decimal import Decimal as Amount", "Amount", "Amount"),
+            ("import decimal as amounts", "amounts.Decimal", "amounts"),
+        ],
+    )
+    @pytest.mark.parametrize("conflict", [False, True])
+    def test_guarded_dependency_public_consumer(
+        tmp_path: Path,
+        dependency: str,
+        annotation: str,
+        shadow: str,
+        *,
+        conflict: bool,
+    ) -> None:
+        """Guarded aliases resolve at the model owner without capturing local names."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body=f"amount: '{annotation}'",
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        target = next(path for path in sources if path.parent.name == "_models")
+        sources[origin] = (
+            "from typing import TYPE_CHECKING as Checking\n"
+            f"if Checking:\n    {dependency}\n" + sources[origin]
+            + f"\ndef shadow({shadow}: str) -> str:\n    return {shadow}\n"
+        )
+        if conflict:
+            sources[target] = f"{shadow} = str\n" + sources[target]
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            if conflict:
+                with pytest.raises(ValueError, match="conflicting dependency"):
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+                planned = ()
+            else:
+                planned = tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=sources,
+                    ),
+                )
+                proposed = dict(sources)
+                proposed.update({edit.file_path: edit.updated_source for edit in planned})
+                tm.that(
+                    tm.ok(u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=proposed,
+                    )),
+                    eq=(),
+                )
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        if conflict:
+            return
+        for edit in planned:
+            edit.file_path.write_text(edit.updated_source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name}._utilities.payload import shadow; "
+                        "from decimal import Decimal; "
+                        "assert m.Payload.model_validate({'amount': '2.5'}).amount "
+                        "== Decimal('2.5'); "
+                        "assert m.Payload.model_validate({'amount': '2.5'}).model_dump_json() "
+                        "== '{\"amount\":\"2.5\"}'; "
+                        "assert shadow('lexical') == 'lexical'"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:
         """Test real scan selects the immutable declaration phase."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)

@@ -147,8 +147,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             """
             if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
                 message = (
-                    "emitted-symbol requires a lexical expression, "
-                    "module and target"
+                    "emitted-symbol requires a lexical expression, module and target"
                 )
                 raise ValueError(message)
             expression = ast.parse(condition.arg[0], mode="eval").body

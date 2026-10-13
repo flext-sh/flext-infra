@@ -409,7 +409,7 @@ class FlextInfraRefactorViolationsSweep(
 
     @classmethod
     def _scan_evidence(
-        root: Path,
+        cls: Path,
         destination: Path,
     ) -> p.Result[
         t.Triple[
@@ -430,9 +430,7 @@ class FlextInfraRefactorViolationsSweep(
                 m.Infra.ViolationsSweepSources,
             ]
         ]
-        captured = FlextInfraRefactorViolationsSweep._source_snapshot(
-            root, observe=True
-        )
+        captured = FlextInfraRefactorViolationsSweep._source_snapshot(cls, observe=True)
         if captured.failure:
             return result.from_failure(captured)
         snapshot = captured.value
@@ -458,7 +456,7 @@ class FlextInfraRefactorViolationsSweep(
             return result.from_failure(digests)
         repositories = tuple(project.name for project in snapshot.repository_roots)
         receipt = u.Infra.publish_mod_scan_evidence(
-            root,
+            cls,
             snapshot.ast_report,
             publication=m.Infra.ModScanPublication(
                 command=c.Infra.ModScanCommand.SCAN,

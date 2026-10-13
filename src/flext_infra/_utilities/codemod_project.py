@@ -382,6 +382,46 @@ class FlextInfraUtilitiesCodemodProject(
         """
         return (file_path if file_path.is_absolute() else root / file_path).resolve()
 
+    @staticmethod
+    def codemod_binding_requirements(
+        rules: t.SequenceOf[m.Infra.CodemodRule],
+    ) -> t.Pair[frozenset[str], t.StrSequence]:
+        """Elect binding inputs only for the rules that actually found code.
+
+        Returns:
+            Rule identities requiring inference and their declared symbol owners.
+        """
+        predicates = {
+            c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+            c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+            c.Infra.CodemodContextPredicate.SAME_BINDING,
+            c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+            c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+        }
+        selected = tuple(
+            rule
+            for rule in rules
+            if any(condition.predicate in predicates for condition in rule.context)
+        )
+        modules = tuple(
+            dict.fromkeys(
+                condition.arg[
+                    1
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL
+                    else 0
+                ]
+                for rule in selected
+                for condition in rule.context
+                if condition.predicate
+                in {
+                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                    c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+                }
+            ),
+        )
+        return frozenset(rule.id for rule in selected), modules
+
     @classmethod
     def codemod_context_admits(
         cls,

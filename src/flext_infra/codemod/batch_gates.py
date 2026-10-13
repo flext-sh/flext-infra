@@ -538,46 +538,24 @@ class FlextInfraModGateEngine:
             root,
             tuple(rules_by_id[entry.rule_id] for entry in report.entries),
         )
-        occurrence_rules = tuple(
-            rule
-            for rule in rules_by_id.values()
-            if any(
-                condition.predicate
-                in {
-                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                    c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
-                    c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
-                    c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
-                }
-                for condition in rule.context
-            )
+        selected_ids, modules = u.Infra.codemod_binding_requirements(
+            tuple(
+                rules_by_id[rule_id]
+                for rule_id in sorted({entry.rule_id for entry in report.entries})
+            ),
         )
-        selected_ids = {rule.id for rule in occurrence_rules}
         states = tuple(
-            entry.source_state
-            for entry in report.entries
-            if entry.rule_id in selected_ids and entry.source_state is not None
+            {
+                entry.source_state.path: entry.source_state
+                for entry in report.entries
+                if entry.rule_id in selected_ids and entry.source_state is not None
+            }.values(),
         )
         snapshot = (
             u.Infra.codemod_binding_snapshot(
                 root,
                 states,
-                tuple(
-                    condition.arg[
-                        1
-                        if condition.predicate
-                        is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL
-                        else 0
-                    ]
-                    for rule in occurrence_rules
-                    for condition in rule.context
-                    if condition.predicate
-                    in {
-                        c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                        c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
-                    }
-                ),
+                modules,
             )
             if states
             else None

@@ -279,7 +279,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @classmethod
     def _converge(
-        root: Path,
+        cls: Path,
         current: m.Infra.ModScanReport,
         *,
         rule_ids: t.StrSequence | None = None,
@@ -314,12 +314,12 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
-            applied = FlextInfraModGateEngine.scan(root, fix=True, rule_ids=rule_ids)
+            applied = FlextInfraModGateEngine.scan(cls, fix=True, rule_ids=rule_ids)
             if rule_ids is None:
                 applied.unwrap()
             if applied.failure:
                 return r[t.Cli.ResultValue].from_failure(applied)
-            scanned = FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids)
+            scanned = FlextInfraModGateEngine.scan(cls, fix=False, rule_ids=rule_ids)
             if rule_ids is None:
                 scanned.unwrap()
             if scanned.failure:
@@ -328,19 +328,19 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         if rule_ids is not None:
             return cls._selected_fixed_point(current)
         text = FlextInfraModTextGateEngine.scan(
-            root,
+            cls,
             fix=False,
             validate_receipts=True,
         ).unwrap()
         while text.actionable:
             cli.display_text("ast: apply sed-by-list cascade")
-            FlextInfraModTextGateEngine.scan(root, fix=True).unwrap()
+            FlextInfraModTextGateEngine.scan(cls, fix=True).unwrap()
             text = FlextInfraModTextGateEngine.scan(
-                root,
+                cls,
                 fix=False,
                 validate_receipts=True,
             ).unwrap()
-        remaining_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        remaining_ast = FlextInfraModGateEngine.scan(cls, fix=False).unwrap()
         if remaining_ast.findings or text.findings:
             return r[t.Cli.ResultValue].fail(
                 f"ast fixed point retains findings: {remaining_ast.findings} "

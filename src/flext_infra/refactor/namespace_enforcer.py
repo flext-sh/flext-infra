@@ -166,10 +166,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
                 " -> "
                 f"{sum(row.after for row in rows)}"
             ),
-            (
-                "Introduced occurrences: "
-                f"{sum(row.introduced for row in rows)}"
-            ),
+            (f"Introduced occurrences: {sum(row.introduced for row in rows)}"),
             (
                 f"Relocation findings: "
                 f"{sum(project.relocation_findings for project in projects)}"

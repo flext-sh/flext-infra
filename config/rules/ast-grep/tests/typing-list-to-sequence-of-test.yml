@@ -187,19 +187,24 @@ invalid:
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t, u
-    from typing import List, TypeAliasType, get_args, get_origin
+    from typing import Annotated, List, TypeAliasType, get_args, get_origin
     from typing_extensions import TypeForm
     LEGACY = List[str]
     FACTORY = list[str]
-    type Contract = List[str]
+    type Contract = Annotated[List[str], LEGACY]
     class LegacyBase(List[str]): ...
+    # The model field obeys the runtime model law (list origins are rejected in
+    # pydantic fields: SequenceOf + u.empty factory); value positions keep the
+    # concrete list contract this rule preserves.
     class Payload(m.ArbitraryTypesModel):
-        values: List[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.ListOf[str])))
+        values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
     def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
         return values
     assert get_origin(LEGACY) is list
     assert FACTORY() == []
     assert isinstance(LegacyBase(), list)
+    annotated_type, metadata = get_args(Contract.__value__)
+    assert metadata is LEGACY
     assert Payload().values == []
     assert Payload().values is not Payload().values
     payload = Payload()
@@ -209,10 +214,10 @@ invalid:
     payload.values.extend(["another"])
     payload.values.sort()
     assert payload.values.copy() + ["last"] == ["another", "updated", "last"]
-    assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
+    assert Payload.model_validate({"values": ["input"]}, strict=False).values == ["input"]
     assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == []
-    for annotation in (Contract.__value__, make.__annotations__["values"], make.__annotations__["return"]):
+    for annotation in (annotated_type, make.__annotations__["values"], make.__annotations__["return"]):
         origin = get_origin(annotation)
         # PEP 695 aliases retain identity while their values own concrete origins.
         while isinstance(origin, TypeAliasType):
