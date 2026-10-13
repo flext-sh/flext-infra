@@ -140,7 +140,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
         resolutions when no candidate is declared (flext-oe420).
         """
         dependency_extras = FlextInfraUtilitiesDependencies.dependency_extras
+        # Why (fleet-automation 2026-10-13): a standalone consumer whose
+        # transitive graph pins a family member on another integration ref
+        # declares the SSOT override list (org layer); it replaces the
+        # member-computed staging list. Empty keeps the staging behavior.
         overrides = [
+            requirement
+            for requirement in resolution.override_dependencies
+        ] or [
             f"{name}{dependency_extras(requirements, name)}"
             for name in sorted(local_members)
         ]

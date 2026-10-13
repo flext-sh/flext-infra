@@ -293,6 +293,20 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = ()
+        uv_override_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 508 overrides rendered into every generated "
+                    "[tool.uv] override-dependencies from this SSOT. Declared "
+                    "for consumers whose transitive dependency graph pins a "
+                    "flext family member on a different integration ref than "
+                    "the declared line: the override resolves the whole "
+                    "family to one provider and ref. The declared value "
+                    "replaces any retained value; empty removes the key."
+                ),
+            ),
+        ] = ()
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
