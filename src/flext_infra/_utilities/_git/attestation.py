@@ -75,11 +75,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 ),
                 inline_public_key=inline,
                 public_fingerprint=None,
-                allowed_signers_path=(
-                    Path(allowed_signers.value)
-                    if allowed_signers.value is not None
-                    else None
-                ),
+                allowed_signers_path=(Path(allowed_signers.value)),
                 observations=tuple(observations),
             ),
         )

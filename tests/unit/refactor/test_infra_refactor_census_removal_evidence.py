@@ -56,9 +56,9 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=False,
         )
 
-        assert FlextInfraRefactorCensus._is_unused(record) is False
+        assert FlextInfraRefactorCensus.is_unused(record) is False
 
-    def test_zero_references_with_evidence_is_unused(self) -> None:
+    def test_zero_references_with_evidenceis_unused(self) -> None:
         """A completed search over zero references classifies the definition."""
         record = self._object(
             name="PublicThing",
@@ -66,7 +66,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        assert FlextInfraRefactorCensus._is_unused(record) is True
+        assert FlextInfraRefactorCensus.is_unused(record) is True
 
     def test_referenced_definition_is_never_unused(self) -> None:
         """Collected references keep the definition classified as used."""
@@ -76,4 +76,4 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        assert FlextInfraRefactorCensus._is_unused(record) is False
+        assert FlextInfraRefactorCensus.is_unused(record) is False

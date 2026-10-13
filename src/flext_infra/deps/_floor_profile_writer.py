@@ -39,6 +39,11 @@ class FlextInfraDepsFloorProfileWriter:
         local = root / relative
         owners: t.MutableSequenceOf[Path] = []
         if local.exists() or local.is_symlink():
+            if not local.resolve().is_relative_to(root):
+                message = (
+                    f"dependency floor configuration is outside workspace: {local}"
+                )
+                raise ValueError(message)
             document = cls._loaded_document(local)
             project = u.Cli.json_deep_mapping(
                 document,

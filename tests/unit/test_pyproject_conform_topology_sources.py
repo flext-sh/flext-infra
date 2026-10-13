@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
-from tests import tm, u
+from flext_infra import config
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySources:

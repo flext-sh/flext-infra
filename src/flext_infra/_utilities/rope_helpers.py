@@ -52,7 +52,7 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
         """
         if kind == "function":
             node_types: t.VariadicTuple[
-                type[ast.FunctionDef] | type[ast.AsyncFunctionDef] | type[ast.ClassDef]
+                type[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]
             ] = (
                 ast.FunctionDef,
                 ast.AsyncFunctionDef,

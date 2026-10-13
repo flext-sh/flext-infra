@@ -160,7 +160,10 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                     resource,
                 ),
             )
-        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), TypeError) as exc:
+        except (
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            TypeError,
+        ) as exc:
             msg = (
                 "rope module import table unavailable for "
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"
