@@ -1,7 +1,9 @@
 """Pure planning for the project-layout engine.
 
-Every classification derives from ``config.Infra.codegen.layout`` — this mixin
-reads the declarative SSOT and produces typed findings; it never writes.
+Every classification derives from the layered repository codegen contract —
+this mixin reads the declarative SSOT (library defaults + repository layers,
+the same ordered strict source the generator loads) and produces typed
+findings; it never writes.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,7 +14,7 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraCodegenLayoutPlanMixin:
@@ -20,8 +22,16 @@ class FlextInfraCodegenLayoutPlanMixin:
 
     @property
     def _layout_spec(self) -> m.Infra.LayoutSpec:
-        """Layout SSOT loaded once through the validated config singleton."""
-        return config.Infra.codegen.layout
+        """Layout SSOT: the layered repository codegen contract.
+
+        Gates and the generator read the SAME ordered strict source (packaged
+        defaults + repository layers). The split-brain where the generator
+        saw the repository layers while this gate read packaged defaults is
+        what dropped standalone repositories' canonical declarations.
+
+        """
+        layered = u.Infra.load_codegen_inputs(self.repository_root)
+        return layered.map(lambda inputs: inputs.spec.layout).unwrap()
 
     @staticmethod
     def layout_project_name(project_dir: Path) -> str:
