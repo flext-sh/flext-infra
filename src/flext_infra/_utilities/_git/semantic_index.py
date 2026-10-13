@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from git import (
-    BaseIndexEntry,
     GitCommandError,
     InvalidGitRepositoryError,
     NoSuchPathError,
@@ -56,7 +55,8 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             return r[t.MappingKV[str, bytes]].ok({})
         try:
             return r[t.MappingKV[str, bytes]].ok({
-                blob.name: blob.data_stream.read() for blob in tree.blobs
+                blob.name: cls._state_blob_payload(repo_root, blob.hexsha)
+                for blob in tree.blobs
             })
         except (OSError, ValueError) as exc:
             return r[t.MappingKV[str, bytes]].fail_op(
@@ -156,13 +156,13 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            entry = BaseIndexEntry((
-                c.Infra.GIT_MODE_GITLINK,
-                bytes.fromhex(request.oid),
-                c.Infra.GIT_STAGE_NORMAL,
+            repo.git.update_index(
+                "--add",
+                "--cacheinfo",
+                c.Infra.GIT_GITLINK_MODE_TEXT,
+                request.oid,
                 request.relative_path,
-            ))
-            repo.index.add([entry])
+            )
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

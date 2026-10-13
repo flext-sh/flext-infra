@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from types import FunctionType
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
@@ -22,6 +23,28 @@ class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
+    class FunctionDescriptor(Protocol):
+        """Native descriptor capability used to authenticate its defining function."""
+
+        __func__: FunctionType
+
+    @runtime_checkable
+    class GitIndexLock(Protocol):
+        """Native gitdb LockedFD capability consumed by index publication."""
+
+        def open(self, *, write: Literal[True], stream: Literal[False]) -> int:
+            """Acquire the native index lock and return its owned raw descriptor."""
+            ...
+
+        def commit(self) -> None:
+            """Close the descriptor and publish its locked replacement."""
+            ...
+
+        def rollback(self) -> None:
+            """Close the descriptor and remove only its unpublished lock."""
+            ...
+
+    @runtime_checkable
     class SourcePreview(Protocol):
         """Consumer-owned capability for validating authenticated source views."""
 
@@ -30,6 +53,9 @@ class FlextInfraProtocolsBase(Protocol):
             workspace: Path,
             updates: t.MappingKV[Path, str],
             validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+            *,
+            inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+            runtime_root: Path | None = None,
         ) -> p.Result[T]:
             """Validate staged candidates while preserving live sources."""
             ...
@@ -81,6 +107,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             params: m.Infra.ApplyRenamesInput,
         ) -> p.Result[m.Infra.ApplyRenamesReport]: ...
+
+    class SemanticRenameCandidateProvider(Protocol):
+        """Select meaningful names from actual declarations, never token counts."""
+
+        def rename_decision(
+            self,
+            declaration: m.Infra.Object,
+        ) -> m.Infra.SemanticRenameDecision | None: ...
 
     @runtime_checkable
     class ModProgress(Protocol):

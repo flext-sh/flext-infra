@@ -350,7 +350,11 @@ class FlextInfraModelsCheck:
         )
         raw_output: str = m.Field(
             "",
-            description="Raw tool output",
+            description=(
+                "In-memory native output; persisted once at raw_receipt rather "
+                "than duplicated inside serialized execution summaries"
+            ),
+            exclude=True,
             validate_default=True,
         )
         raw_receipt: Path | None = m.Field(

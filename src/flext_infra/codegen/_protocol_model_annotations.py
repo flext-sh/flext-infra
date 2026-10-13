@@ -19,6 +19,7 @@ from typing import (
     ForwardRef,
     Literal,
     TypeAliasType,
+    TypeIs,
     get_args,
     get_origin,
 )
@@ -44,7 +45,6 @@ class FlextInfraCodegenProtocolModelAnnotations:
         abc.MutableSet: "MutableSet",
         abc.Iterable: "Iterable",
         abc.Iterator: "Iterator",
-        abc.Callable: "Callable",
     }
     _ANNOTATED_PREFIX = "Annotated["
     _BANNED = frozenset({"Any", "object", "typing.Any"})
@@ -148,7 +148,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         """
         if origin is Literal:
             return f"Literal[{', '.join(repr(argument) for argument in arguments)}]"
-        if origin is abc.Callable:
+        if origin is get_origin(abc.Callable[..., None]):
             return cls._render_callable(arguments, target)
         if origin is not None:
             return cls._render_origin(origin, arguments, target)
@@ -194,8 +194,8 @@ class FlextInfraCodegenProtocolModelAnnotations:
         """
         parameters, return_type = arguments
         if parameters is Ellipsis:
-            rendered_parameters = "..."
-        elif isinstance(parameters, list):
+            return f"Callable[..., {cls.render(return_type, target)}]"
+        if cls._is_parameter_list(parameters):
             rendered_parameters = ", ".join(
                 cls.render(parameter, target) for parameter in parameters
             )
@@ -204,6 +204,16 @@ class FlextInfraCodegenProtocolModelAnnotations:
             raise TypeError(msg)
         rendered = cls.render(return_type, target)
         return f"Callable[[{rendered_parameters}], {rendered}]"
+
+    @staticmethod
+    def _is_parameter_list(value: p.AttributeProbe) -> TypeIs[list[p.AttributeProbe]]:
+        """Narrow the runtime list whose annotation elements are inspected later.
+
+        Returns:
+            Whether the value is a list of annotation parameters.
+
+        """
+        return isinstance(value, list)
 
     @classmethod
     def _render_origin(
@@ -252,6 +262,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
             TypeError: If unsupported protocol annotation.
 
         """
+        probe: p.AttributeProbe = annotation
         if isinstance(annotation, type):
             if issubclass(annotation, m.BaseModel):
                 if annotation.__module__.startswith(target.package_module_prefix):
@@ -267,7 +278,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 return cls._validate(annotation.__name__)
             if annotation is Path:
                 return "Path"
-        facade_name = cls._facade_name(annotation, target)
+        facade_name = cls._facade_name(probe, target)
         if facade_name is not None:
             return facade_name
         msg = f"unsupported protocol annotation: {annotation!r}"

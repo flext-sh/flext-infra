@@ -56,13 +56,13 @@ class FlextInfraUtilitiesPyproject:
         )
         if requested.failure:
             return r[Path].from_failure(requested)
-        if requested.value is None:
+        if not requested.value:
             return r[Path].fail(f"runtime manifest does not declare {selector}")
         return FlextInfraUtilitiesPyproject._managed_mise_path(
             tool.version_probe.binary,
             owner_root,
             Path(reader),
-            f"{selector}@{requested.value}",
+            f"{selector}@{requested.value[0]}",
         )
 
     @staticmethod
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesPyproject:
     def _qualified_mise_reader(
         reader: Path,
         owner_root: Path,
-        declared: str | None,
+        declared: tuple[str] | tuple[()],
     ) -> p.Result[Path]:
         """Authenticate the reader and its installed release against the lock pin.
 
@@ -106,12 +106,12 @@ class FlextInfraUtilitiesPyproject:
             The installed self-managed executable, or the physical reader when
             the committed manifest declares no self-managed release.
         """
-        if declared is None:
+        if not declared:
             return r[Path].ok(reader.resolve(strict=True))
         return FlextInfraUtilitiesPyproject._locked_mise_version(
             owner_root,
             config.Infra.codegen.toolchain.mise_selector,
-            declared,
+            declared[0],
         ).flat_map(
             lambda pinned: (
                 FlextInfraUtilitiesPyproject
@@ -135,7 +135,9 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
-    def _committed_mise_self_release(owner_root: Path) -> p.Result[str | None]:
+    def _committed_mise_self_release(
+        owner_root: Path,
+    ) -> p.Result[tuple[str] | tuple[()]]:
         """Return the self-managed Mise release the committed manifest declares.
 
         The manifest is the ``.mise.toml`` beside the nearest ``mise.lock``.
@@ -143,14 +145,14 @@ class FlextInfraUtilitiesPyproject:
         no self-managed entry, pins no reader release (typed absence).
 
         Returns:
-            The declared release, or None when the tree declares none.
+            One declared release, or an empty tuple when the tree declares none.
         """
         lock_path = FlextInfraUtilitiesPyproject._mise_lock_path(owner_root)
         manifest = (
             None if lock_path is None else lock_path.parent / c.Infra.MISE_TOML_FILENAME
         )
         if manifest is None or not manifest.is_file():
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
         return FlextInfraUtilitiesPyproject._committed_mise_tool_request(
             manifest.parent,
             config.Infra.codegen.toolchain.mise_selector,
@@ -159,11 +161,11 @@ class FlextInfraUtilitiesPyproject:
     @staticmethod
     def _committed_mise_tool_request(
         owner_root: Path, selector: str
-    ) -> p.Result[str | None]:
+    ) -> p.Result[tuple[str] | tuple[()]]:
         """Read the runtime owner's current request, independently of codegen targets.
 
         Returns:
-            The scalar or table version request, or absence of a declaration.
+            One scalar or table version request, or an empty declaration tuple.
         """
         manifest = next(
             (
@@ -174,26 +176,28 @@ class FlextInfraUtilitiesPyproject:
             None,
         )
         if manifest is None:
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
         payload = u.Cli.toml_mapping_from_text(
             manifest.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
-            return r[str | None].fail(f"{manifest} is not valid TOML")
+            return r[tuple[str] | tuple[()]].fail(f"{manifest} is not valid TOML")
         tools = payload.get("tools", {})
         if not isinstance(tools, Mapping):
-            return r[str | None].fail(f"{manifest} has a malformed [tools] table")
+            return r[tuple[str] | tuple[()]].fail(
+                f"{manifest} has a malformed [tools] table",
+            )
         release = tools.get(selector)
         if release is None:
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
         if isinstance(release, Mapping):
             release = release.get("version")
         if not isinstance(release, str) or not release:
-            return r[str | None].fail(
+            return r[tuple[str] | tuple[()]].fail(
                 f"{manifest} declares a malformed Mise entry for "
                 f"{selector}: {release!r}",
             )
-        return r[str | None].ok(release)
+        return r[tuple[str] | tuple[()]].ok((release,))
 
     @staticmethod
     def _mise_self_identity(

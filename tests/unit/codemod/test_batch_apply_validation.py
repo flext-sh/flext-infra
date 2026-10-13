@@ -18,7 +18,6 @@ from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from tests import tm, u
 
 
@@ -111,7 +110,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         }
         for path, source in tuple(sources.items()):
             sources[path] = tm.ok(
-                FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+                u.Infra.normalize_source(
                     root,
                     path,
                     source,
@@ -275,6 +274,60 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             files=frozenset({path}),
             entries=(finding,),
         )
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("outcome", ["converged", "cycle", "rejected"])
+    def test_general_syntax_candidate_is_atomic(
+        self, mod_workspace: Path, outcome: str
+    ) -> None:
+        """Two native rule waves converge, or reject without changing live bytes."""
+        u.Tests.provision_checkout(mod_workspace)
+        sample = mod_workspace / "sample.py"
+        source = (
+            '"""General syntax cascade consumer."""\n'
+            "from __future__ import annotations\n\nvalue = 0\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        final = "2" if outcome == "converged" else (
+            "0" if outcome == "cycle" else "missing_candidate_binding"
+        )
+        u.Tests.declare_codemod_rules(mod_workspace, {
+            "first-wave": (
+                "id: first-wave\nlanguage: Python\nseverity: error\n"
+                "rule:\n  pattern: value = 0\nfix: value = 1\n"
+            ),
+            "second-wave": (
+                "id: second-wave\nlanguage: Python\nseverity: error\n"
+                f"rule:\n  pattern: value = 1\nfix: value = {final}\n"
+            ),
+        })
+        progress = self.RuntimeProgress(sample)
+        with infra.rope_workspace(mod_workspace) as rope:
+            service = FlextInfraCodemodBatchApply(
+                source_preview=infra.source_preview(mod_workspace),
+                repository_root=mod_workspace,
+                apply_changes=True,
+                rename_runner=FlextInfraApplyRenames(),
+                progress=progress,
+                rope=rope,
+            )
+            if outcome != "converged":
+                with pytest.raises(RuntimeError, match="cycle|Ruff|normalization"):
+                    service.execute()
+                tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+                tm.that(progress.validated, eq=False)
+                return
+            tm.ok(service.execute())
+            first = sample.read_bytes()
+            tm.that(progress.validated, eq=True)
+            tm.ok(u.Cli.run((
+                sys.executable,
+                "-c",
+                "import runpy, sys; assert runpy.run_path(sys.argv[1])['value'] == 2",
+                str(sample),
+            )))
+            tm.ok(service.execute())
+            tm.that(sample.read_bytes(), eq=first)
 
     def test_allows_a_later_rule_enabled_by_a_prior_rewrite(
         self,

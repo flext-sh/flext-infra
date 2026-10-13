@@ -11,14 +11,16 @@ from collections.abc import Mapping, MutableMapping
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import p, t
+from flext_infra import t
 
 
 class FlextInfraUtilitiesDependencyRequirements:
     """Parse, normalize, and deduplicate dependency requirement spellings."""
 
     @staticmethod
-    def raw_requirement_values(raw: p.AttributeProbe) -> list[str]:
+    def raw_requirement_values(
+        raw: t.JsonValue | t.VariadicTuple[t.JsonValue],
+    ) -> list[str]:
         """Collect requirement strings from dependency arrays or group tables.
 
         Returns:

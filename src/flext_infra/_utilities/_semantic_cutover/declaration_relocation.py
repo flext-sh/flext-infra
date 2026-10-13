@@ -27,6 +27,9 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities.protected_edit_linting import (
+    FlextInfraUtilitiesProtectedEditLinting,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
@@ -637,61 +640,13 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         for path, source in sources.items():
             if updated[path] != source:
-                updated[path] = cls._relocation_import_cleanup(source, updated[path])
+                updated[path] = (
+                    FlextInfraUtilitiesProtectedEditLinting.remove_orphaned_imports(
+                        source,
+                        updated[path],
+                    )
+                )
         return updated
-
-    @staticmethod
-    def _relocation_import_cleanup(original: str, proposed: str) -> str:
-        """Remove only imports whose last executable use was relocated.
-
-        Returns:
-            The candidate without orphaned imports, retaining string/export uses.
-        """
-        before = ast.parse(original)
-        after = ast.parse(proposed)
-        lost = {
-            item.id
-            for item in ast.walk(before)
-            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)
-        } - {
-            item.id
-            for item in ast.walk(after)
-            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)
-        }
-        strings = tuple(
-            item.value
-            for item in ast.walk(after)
-            if isinstance(item, ast.Constant) and isinstance(item.value, str)
-        )
-        lost = {name for name in lost if not any(name in value for value in strings)}
-        module = cst.parse_module(proposed)
-        body: list[cst.BaseStatement | None] = list(module.body)
-        for index, statement in enumerate(module.body):
-            if not isinstance(statement, cst.SimpleStatementLine):
-                continue
-            parsed = ast.parse(module.code_for_node(statement))
-            if len(parsed.body) != 1 or not isinstance(
-                parsed.body[0], ast.Import | ast.ImportFrom
-            ):
-                continue
-            imported = parsed.body[0]
-            kept = [
-                alias
-                for alias in imported.names
-                if (alias.asname or alias.name.split(".")[0]) not in lost
-            ]
-            if len(kept) == len(imported.names):
-                continue
-            if not kept:
-                body[index] = None
-                continue
-            imported.names = kept
-            replacement = cst.parse_statement(ast.unparse(imported) + "\n")
-            if isinstance(replacement, cst.SimpleStatementLine):
-                body[index] = statement.with_changes(body=replacement.body)
-        return module.with_changes(
-            body=tuple(item for item in body if item is not None),
-        ).code
 
     @classmethod
     def _payload_reference_rewrites(
@@ -935,11 +890,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         destination = project.get_pymodule(
             project.get_resource(target.relative_to(root).as_posix()),
         ).get_scope()
-        imports: t.MutableMappingKV[str, ast.Import | ast.ImportFrom] = {}
-        for statement in ast.parse(source).body:
-            if isinstance(statement, ast.Import | ast.ImportFrom):
-                for alias in statement.names:
-                    imports[alias.asname or alias.name.split(".")[0]] = statement
         module = project.get_pymodule(
             project.get_resource(origin.relative_to(root).as_posix()),
         )
@@ -949,6 +899,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 f"declaration-relocation: missing module scope for {origin} or {target}"
             )
             raise ValueError(msg)
+        imports: t.MutableMappingKV[str, ast.Import | ast.ImportFrom] = {}
+        statements = list(ast.parse(source).body)
+        guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
+        while statements:
+            statement = statements.pop(0)
+            if isinstance(statement, ast.Import | ast.ImportFrom):
+                for alias in statement.names:
+                    imports[alias.asname or alias.name.split(".")[0]] = statement
+            elif isinstance(statement, ast.If) and runtime.same_name(
+                guard, runtime.resolve_symbol(scope, statement.test)
+            ):
+                statements[0:0] = statement.body
         dependencies, required = cls._payload_dependency_routes(
             (project, scope),
             destination,

@@ -58,6 +58,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 module.get_attribute("PublishedContract").get_object().get_name(),
                 eq="PublishedContract",
             )
+            tm.not_none(u.Infra.resolve_module_imports(project, resource))
 
     @staticmethod
     @pytest.mark.parametrize("regular_package", [False, True])

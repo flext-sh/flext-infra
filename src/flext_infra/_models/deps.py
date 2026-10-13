@@ -249,6 +249,8 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict[str, t.JsonValue])
+<<<<<<< HEAD
+=======
         document: Annotated[
             t.Cli.TomlDocument | None,
             m.Field(
@@ -257,6 +259,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 description="Original parsed TOML tree retaining authored layout and comments",
             ),
         ] = None
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
 
     class PackagedDataSelection(m.ContractModel):
         """Validated data inputs separated by Hatch selection semantics."""

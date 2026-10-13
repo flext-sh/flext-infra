@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import importlib.util as _importlib_util
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
@@ -114,7 +115,8 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
         Uses rope's ``PyModule.get_attributes()`` for class discovery and
         ``rope.refactor.importutils.get_module_imports`` for import-table
-        construction — no ``ast`` walking is performed.
+        construction. Declared base counts from the module AST ensure Rope
+        has not silently omitted an unresolved superclass.
 
         Returns:
             Local classes plus declared and semantic imports in one pass.
@@ -204,15 +206,20 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             Local class infos for one resolved Rope module.
 
+        Raises:
+            TypeError: If Rope does not expose a module AST or a valid superclass.
+            ValueError: If Rope's superclass lineage is incomplete or cyclic.
+
         """
         class_infos: t.MutableSequenceOf[m.Infra.ClassInfo] = []
-        ast_bases_by_class = {
-            class_info.name: class_info.bases
-            for class_info in (
-                FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source
-            )(
-                resource.read(),
-            )
+        tree = pymodule.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = "Rope class discovery requires a module AST"
+            raise TypeError(msg)
+        declared_base_counts = {
+            node.name: len(node.bases)
+            for node in tree.body
+            if isinstance(node, ast.ClassDef)
         }
         for name, pyname in pymodule.get_attributes().items():
             if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
@@ -225,41 +232,42 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 continue
             location = pyname.get_definition_location()
             line = location[1] if location and location[1] else 1
+            # Non-class bases (functions, unknown objects) stay unresolved on
+            # purpose: the declared-versus-resolved count comparison below
+            # refuses the lineage instead of raising mid-comprehension.
             bases: t.StrSequence = tuple(
-                base_name
+                FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
                 for superclass in obj.get_superclasses()
-                if (
-                    base_name
-                    := FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(
-                        superclass,
-                    )
-                )
+                if FlextInfraUtilitiesRopeRuntime.instance_object(superclass)
+                or FlextInfraUtilitiesRopeRuntime.abstract_class(superclass)
             )
-            if not bases:
-                bases = ast_bases_by_class.get(name, ())
+            if (
+                name in declared_base_counts
+                and len(bases) != declared_base_counts[name]
+            ):
+                msg = (
+                    f"Unresolved Rope superclass lineage for {name} in {resource.path}"
+                )
+                raise ValueError(msg)
             class_infos.append(m.Infra.ClassInfo(name=name, line=line, bases=bases))
         return tuple(class_infos)
 
     @staticmethod
-    def superclass_name(superclass: t.Infra.RopePyObject) -> str:
+    def superclass_name(superclass: p.AttributeProbe) -> str:
         """Return a class name from Rope classes or inferred class instances.
 
-        Invalid semantic kinds, unnamed classes and cyclic inferred chains
-        yield an empty name — the callers fall back to the declared AST
-        bases (fleet-automation 2026-10-12: the composed lazy facade
-        families legitimately present rope with self-referent or
-        non-class inferred pyobjects; a census must not die on them).
+        The ingress may hold any SDK semantic kind. Only a nominal Rope
+        class or an exact inferred-instance object may supply a class name.
 
         Returns:
             The SDK class name, resolving inferred instances through their
-            type; empty when the chain is cyclic.
-
+            type.
         """
         return FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
 
     @staticmethod
     def _superclass_name(
-        superclass: t.Infra.RopePyObject,
+        superclass: p.AttributeProbe,
         *,
         visited: frozenset[int] | None = None,
     ) -> str:
@@ -268,26 +276,28 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             The source-defined or builtin class name.
 
+        Raises:
+            TypeError: If the input is neither a class nor an inferred instance.
+            ValueError: If the inferred type chain cycles or its class is unnamed.
+
         """
         visited_ids = visited or frozenset()
         superclass_id = id(superclass)
         if superclass_id in visited_ids:
-            # Cyclic inferred chain (composed lazy facades): an empty name
-            # makes the caller fall back to the declared AST bases.
-            return ""
+            msg = "cyclic Rope superclass type"
+            raise ValueError(msg)
         if FlextInfraUtilitiesRopeRuntime.instance_object(superclass):
             return FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(
                 superclass.get_type(),
                 visited=visited_ids | {superclass_id},
             )
         if not FlextInfraUtilitiesRopeRuntime.abstract_class(superclass):
-            # Rope's inference yields non-class pyobjects for composed lazy
-            # facades; an unresolvable kind is an empty name — the census
-            # caller falls back to the declared AST bases.
-            return ""
+            msg = "Rope superclass is not a class or inferred instance"
+            raise TypeError(msg)
         name = superclass.get_name()
         if not name:
-            return ""
+            msg = "Rope superclass class has no name"
+            raise ValueError(msg)
         return name
 
     @staticmethod

@@ -20,7 +20,7 @@ from flext_infra.codemod import (
 from tests import tm, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 _CORE_CONSTANT = "SHARED_LIMIT = 42\n"
 _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
@@ -101,8 +101,10 @@ class TestsFlextInfraCodemodDuplicateApply:
     def _workspace(tmp_path: Path) -> tuple[Path, Path]:
         """One governed fixture workspace with a provisioned interpreter.
 
-        The fixture resolves its declared dependency sources and provisions its
-        physical environment through the generated native Make lifecycle.
+        The regenerated lazy initializer imports ``flext_core``, so the
+        fixture environment installs the local core project and its declared
+        dependencies; otherwise the fresh-import gate fails on the fixture's
+        bare virtual environment, not on the published sources.
 
         Returns:
             The repository root and its source package.
@@ -113,30 +115,18 @@ class TestsFlextInfraCodemodDuplicateApply:
             "flext-demo",
             distribution="flext-demo",
         )
-        request = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-            scope=c.Infra.CodegenConformScope.ALL,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
+        core_root = tm.not_none(fleet_u.Infra.project_root(Path(flext_core.__file__)))
         tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root,
-                request=request,
-            ).execute(request),
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=(core_root,),
+            ),
         )
-        for verb in ("upg", "setup"):
-            provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
-            tm.that(
-                u.Cli.process_succeeded(provisioned.outcome),
-                eq=True,
-                msg=provisioned.stdout + provisioned.stderr,
-            )
-        return root, root / c.Infra.DEFAULT_SRC_DIR / "flext_demo"
+        return root, package
 
     @staticmethod
     def _objects(
-        rope_workspace: object,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         paths: t.SequenceOf[Path],
         name: str,
     ) -> t.VariadicTuple[m.Infra.Object]:
@@ -476,7 +466,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         """
         owner_start, owner_end = owner_span
         clone_start, clone_end = clone_span
-        summary = {
+        summary: t.JsonDict = {
             "clones": 1,
             "duplicatedLines": 3,
             "duplicatedTokens": 40,

@@ -178,12 +178,15 @@ class FlextInfraImportNormalizationRoutesMixin(
             )
         return edits
 
-    @staticmethod
-    def _unbound_root_aliases(state: m.Infra.ImportLawPass) -> frozenset[str]:
+    @classmethod
+    def _unbound_root_aliases(cls, state: m.Infra.ImportLawPass) -> frozenset[str]:
         """Return root aliases read at module scope or below but bound nowhere.
 
         Returns:
             The resulting ``frozenset[str]``.
+
+        Raises:
+            ValueError: If a loaded alias requires a forbidden reverse import.
 
         """
         scope = state.scope
@@ -211,7 +214,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                 case _:
                     pass
         aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
-        return frozenset(
+        missing = frozenset(
             name
             for name in loaded - bound
             if name in aliases
@@ -220,6 +223,19 @@ class FlextInfraImportNormalizationRoutesMixin(
             and name != scope.family_letter
             and name not in scope.facade_dependencies
         )
+        for name in missing:
+            provider = state.root_exports[name]
+            if (
+                provider.split(".")[0] == scope.namespace
+                and u.Infra.module_import_layer(provider) > scope.layer
+                and cls._runtime_uses(state.tree, name, state.parents)
+            ):
+                msg = (
+                    f"{scope.file_path}: unbound runtime alias {name} requires "
+                    "a forbidden reverse namespace import"
+                )
+                raise ValueError(msg)
+        return missing
 
     @staticmethod
     def _import_anchor(tree: ast.Module) -> int:

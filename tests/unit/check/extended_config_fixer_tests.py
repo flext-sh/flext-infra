@@ -280,4 +280,4 @@ class TestsFlextInfraExtendedConfigFixer:
             items = ["a", "b", "c"]
             arr = u.Cli.toml_array(items)
             tm.that(len(arr), eq=3)
-            tm.that(list(arr), has="a")
+            tm.that(u.Cli.toml_as_string_list(arr), eq=items)

@@ -147,7 +147,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
                     )
                 seen.add(issue.key)
                 findings.append(issue)
-            if total is not None and len(findings) > total:
+            if len(findings) > total:
                 return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
                     "SonarCloud returned more issues than its total",
                 )

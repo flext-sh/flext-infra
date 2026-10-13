@@ -57,8 +57,11 @@ class TestsFlextInfraGenRespectsInvocationScope:
         for line in text.splitlines():
             target = re.match(r"^(_builtin_[a-z_]+):", line)
             if target:
-                current = target.group(1)
-                bodies[current] = []
+                name = target.group(1)
+                if name is None:
+                    pytest.fail("matched builtin target has no name")
+                current = name
+                bodies[name] = []
                 continue
             if current is None:
                 continue

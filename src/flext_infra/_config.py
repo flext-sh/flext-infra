@@ -100,9 +100,13 @@ class FlextInfraConfig(FlextCliConfig):
             msg = f"config requires an absolute root and one YAML filename: {filename}"
             raise ValueError(msg)
         directory = repository_root / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        library = cls.ssot_config_dir() / relative
+        project = directory / relative
+        if project.resolve() == library.resolve():
+            project = directory / relative.with_name(f"{relative.stem}.project.yaml")
         return (
-            cls.ssot_config_dir() / relative,
-            directory / relative,
+            library,
+            project,
             directory / relative.with_name(f"{relative.stem}.local.yaml"),
         )
 

@@ -5,9 +5,11 @@
 # stays legal.
 id: ban-typings-own-letter-import
 valid:
+  - |
+    from ai_hub import textra as t
   # A different letter from the own root is legal facade assembly.
   - |
-    from ai_hub import m
+    from ai_hub import c
   # The canonical producer form: the sibling through its private submodule.
   - |
     from ai_hub._typings.base import AiHubTypingsBase
@@ -18,17 +20,21 @@ valid:
   # a different binding.
   - |
     from ai_hub import textra
-  # An aliased member binds the alias, not the letter.
-  - |
-    from ai_hub import t as aliased
   # A root binding without a letter component reaches no family facade.
   - |
     import ai_hub
-  # Body-nested imports bind nothing at module scope.
+invalid:
+  - |
+    from ai_hub import t as aliased
   - |
     def load() -> None:
         from ai_hub import t
-invalid:
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import t
+  - |
+    import ai_hub.typings
   # The producer binds its own letter from the own root.
   - |
     from ai_hub import t

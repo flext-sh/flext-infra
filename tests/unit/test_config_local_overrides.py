@@ -20,6 +20,30 @@ class TestsFlextInfraConfigLocalOverrides:
     """Prove the local override file merges last through the public surface."""
 
     @staticmethod
+    def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:
+        """Concrete cache owners preserve validated defaults and native wire values."""
+        make = FlextInfraConfig.fetch_global().Infra.codegen.make
+        for spec in (make.ruff_cache, make.mypy_cache):
+            cache_type = type(spec)
+            cache = cache_type.model_validate({
+                "external_storage_directory": spec.external_storage_directory,
+            })
+            tm.that(
+                cache.data_home_environment_variable,
+                eq=c.Infra.MypyCacheEnvironment.DATA_HOME.value,
+            )
+            tm.that(
+                cache.user_home_environment_variable,
+                eq=c.Infra.MypyCacheEnvironment.USER_HOME.value,
+            )
+            tm.that(type(cache.data_home_environment_variable), eq=str)
+            tm.that(type(cache.user_home_environment_variable), eq=str)
+            tm.that(
+                cache_type.model_validate_json(cache.model_dump_json()),
+                eq=cache,
+            )
+
+    @staticmethod
     def _copy_tracked_configs(target: Path) -> None:
         """Seed one config directory with the real tracked fleet config."""
         for tracked in FlextInfraConfig.ssot_config_dir().glob("*.yaml"):

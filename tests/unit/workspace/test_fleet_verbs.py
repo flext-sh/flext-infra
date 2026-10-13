@@ -98,7 +98,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         )
         for row in report.receipts:
             assert row.outcome is not None
-            tm.that(row.outcome.raw_return_code, eq=0)
+            tm.that(u.Cli.process_succeeded(row.outcome), eq=True)
             tm.that(row.outcome.timed_out, eq=False)
             tm.that(row.outcome.forwarded_signal, eq=None)
         tm.that(all(row.error is None for row in report.receipts), eq=True)

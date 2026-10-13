@@ -557,7 +557,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
             eq=u.Infra.runtime_environment_dir(member),
         )
-        interpreter_list = u.type_adapter(t.StrSequence).validate_python(
+        interpreter_list: t.StrSequence = u.type_adapter(list[str]).validate_python(
             doc["ruff.interpreter"],
         )
         tm.that(
@@ -641,7 +641,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(
             u.Cli.yaml_dump(
                 config_dir / c.Infra.CODEGEN_CONFIG_FILENAME,
-                {"Infra": {"codegen": {"vscode": migrated.values}}},
+                {"Infra": {"codegen": {"vscode": dict(migrated.values)}}},
             ),
         )
         standalone_rendered = tm.ok(

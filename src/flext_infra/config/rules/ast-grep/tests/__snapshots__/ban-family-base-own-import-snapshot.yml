@@ -33,3 +33,17 @@ snapshots:
       style: secondary
       start: 5
       end: 26
+  ? |
+    import typing
+
+    if typing.TYPE_CHECKING:
+        from flext_infra import t
+  : labels:
+    - source: from flext_infra import t
+      style: primary
+      start: 44
+      end: 69
+    - source: flext_infra
+      style: secondary
+      start: 49
+      end: 60

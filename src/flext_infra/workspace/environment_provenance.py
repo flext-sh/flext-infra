@@ -15,13 +15,11 @@ from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
-
-    from flext_infra import p
 
 
 class FlextInfraWorkspaceEnvironmentProvenance:
@@ -377,8 +375,12 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         descriptor = namespace.get(attribute)
         outer = (
             descriptor.__func__
+<<<<<<< HEAD
+            if isinstance(descriptor, p.Infra.FunctionDescriptor)
+=======
             if descriptor is not None
             and type(descriptor) in {classmethod, staticmethod}
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             else descriptor
         )
         if not isfunction(outer) or id(outer) != definition_identity:
@@ -810,45 +812,45 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         distribution: str,
         pth_file: Path,
         expected_root: Path,
-    ) -> p.Result[int]:
+    ) -> p.Result[bool]:
         """Validate the distribution-owned editable path file.
 
         Returns:
-            The resulting ``p.Result[int]``.
+            Whether the distribution-owned editable paths are valid.
 
         """
         read_result = u.Cli.files_read_text(pth_file)
         if read_result.failure:
-            return r[int].from_failure(read_result)
+            return r[bool].from_failure(read_result)
         entries = tuple(
             line.strip()
             for line in read_result.value.splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         )
         if not entries:
-            return r[int].fail(
+            return r[bool].fail(
                 "editable provenance pth is empty: "
                 f"distribution={distribution} path={pth_file}",
             )
         for entry in entries:
             if re.match(r"^import\s", entry) or not Path(entry).is_absolute():
-                return r[int].fail(
+                return r[bool].fail(
                     "editable provenance pth entry is not an absolute source path: "
                     f"distribution={distribution} entry={entry}",
                 )
             actual_source = Path(entry).resolve()
             if not actual_source.is_relative_to(expected_root):
-                return r[int].fail(
+                return r[bool].fail(
                     "editable provenance pth mismatch: "
                     f"distribution={distribution} expected_root={expected_root} "
                     f"actual={actual_source}",
                 )
             if not actual_source.is_dir():
-                return r[int].fail(
+                return r[bool].fail(
                     "editable provenance source directory is not live: "
                     f"distribution={distribution} path={actual_source}",
                 )
-        return r[int].ok(1)
+        return r[bool].ok(value=True)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceEnvironmentProvenance"]

@@ -1,6 +1,74 @@
 id: typing-list-missing-t-import
 snapshots:
   ? |
+    from flext_core import t
+    from typing import List
+    def f(t, value: List[str]): ...
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 65
+      end: 74
+    - source: |
+        from flext_core import t
+        from typing import List
+        def f(t, value: List[str]): ...
+      style: secondary
+      start: 0
+      end: 81
+  ? |
+    from flext_core import t
+    from typing import List
+    t = None
+    value: List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 65
+      end: 74
+    - source: |
+        from flext_core import t
+        from typing import List
+        t = None
+        value: List[str]
+      style: secondary
+      start: 0
+      end: 75
+  ? |
+    from flext_core import t
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 80
+      end: 89
+    - source: |
+        from flext_core import t
+        from unrelated import t
+        from typing import List
+        value: List[str]
+      style: secondary
+      start: 0
+      end: 90
+  ? |
+    from flext_core import u as t
+    from typing import List
+    value: List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 61
+      end: 70
+    - source: |
+        from flext_core import u as t
+        from typing import List
+        value: List[str]
+      style: secondary
+      start: 0
+      end: 71
+  ? |
     from typing import List
 
     def f(x: List[str]) -> None: ...
@@ -17,18 +85,84 @@ snapshots:
       start: 0
       end: 58
   ? |
+    from typing import List
+    def local():
+        from flext_core import t
+    value: List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 73
+      end: 82
+    - source: |
+        from typing import List
+        def local():
+            from flext_core import t
+        value: List[str]
+      style: secondary
+      start: 0
+      end: 83
+  ? |
+    from typing import List
+    type ALIAS = List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 37
+      end: 46
+    - source: |
+        from typing import List
+        type ALIAS = List[str]
+      style: secondary
+      start: 0
+      end: 47
+  ? |
+    from typing import List, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 93
+      end: 102
+    - source: |
+        from typing import List, TYPE_CHECKING
+        if TYPE_CHECKING:
+            from flext_core import t
+        value: List[str]
+      style: secondary
+      start: 0
+      end: 103
+  ? |
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  : labels:
+    - source: List[str]
+      style: primary
+      start: 55
+      end: 64
+    - source: |
+        from unrelated import t
+        from typing import List
+        value: List[str]
+      style: secondary
+      start: 0
+      end: 65
+  ? |
     import typing
 
-    ALIAS = typing.List[str]
+    type ALIAS = typing.List[str]
   : labels:
     - source: typing.List[str]
       style: primary
-      start: 23
-      end: 39
+      start: 28
+      end: 44
     - source: |
         import typing
 
-        ALIAS = typing.List[str]
+        type ALIAS = typing.List[str]
       style: secondary
       start: 0
-      end: 40
+      end: 45

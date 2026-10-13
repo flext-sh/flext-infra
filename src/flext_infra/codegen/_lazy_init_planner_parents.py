@@ -48,7 +48,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             ValueError: If parent declaration source unavailable.
 
         """
-        seen = visited if visited is not None else set()
+        seen: set[str] = visited if visited is not None else set()
         seen.add(str(module_path.resolve()))
         resource = self.rope_workspace.resource(module_path)
         if resource is None:

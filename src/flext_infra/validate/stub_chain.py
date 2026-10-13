@@ -33,8 +33,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         """Optional command runner dependency for tests and command execution."""
         return self._runner
 
-    @override
     @property
+    @override
     def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Resolved project directories for targeted validation."""
         names: t.StrSequence | None = self.project_names

@@ -3,6 +3,7 @@
 <!-- TOC START -->
 
 - [Runtime is the authority](#runtime-is-the-authority)
+- [Canonical architecture checkpoints](#canonical-architecture-checkpoints)
 - [Environment activation](#environment-activation)
 - [Dependency locks](#dependency-locks)
 - [Runtime environment](#runtime-environment)
@@ -34,6 +35,38 @@ must match the code under validation. An earlier log or an installation from a p
 workspace does not certify a standalone checkout. Work on the freshly fetched
 integration tip of every repository involved.
 
+## Canonical architecture checkpoints
+
+For every bounded engine, generation or namespace repair, compose
+[root AGENTS.md](../../../AGENTS.md), the
+[FLEXT session router](../../../.agents/commands/flext-law.md), and the exact
+branch-matched [routing](../../../.agents/skills/flext-context-routing/SKILL.md)
+and [law](../../../.agents/skills/flext-law/SKILL.md) skills. The
+[canonical Make guide](../../../docs/guides/make-commands.md) applies these
+owners to command admission and acceptance; this context is not a parallel law.
+
+Before planning, use the router's global search-first/YAGNI/SSOT/SOLID/simplify/DRY
+route to identify the existing domain owner, declaration namespace, consumer
+closure and necessary removal set. Use canonical global DI, Clean Architecture
+and Pydantic skills for concrete dependency/data boundaries. Do not create another
+helper, cache, detector or registry when the correct domain owner already exists.
+
+Before publication, apply FLEXT law **Architecture and imports** and **Sources,
+generation, and commands**: preserve facade MRO `c -> t -> p -> m -> u`, inward
+imports, pure declarations and explicit dependency composition. Config/settings
+are layer-zero and import no own namespace. Models resolve at their declaring
+owner and payloads cross typed Pydantic boundaries once. Repair cycles at the
+declaration/dependency owner, not through local-import demotion, fallback,
+compatibility exports or suppressions. Generated surfaces change only through
+their source and canonical regeneration.
+
+Before accepting a phase, retain evidence of complete consumer rewiring and
+superseded-path removal, domain-correct reuse and net-negative simplification
+without functional reduction. Global make-check/verification-loop own runtime,
+native gates and receipt requirements. A successful publication is not proof of
+lint/type/test success or idempotence: run the applicable gates and repeated
+gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
+
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
@@ -47,6 +80,11 @@ and keeps the command red, so `make gen` can repair a broken generated activatio
 without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
+
+When the checkout owns the distributed configuration file, its project declaration
+uses the derived `<stem>.project.yaml` file beside that default. The local layer
+remains `<stem>.local.yaml`. This keeps project editor declarations separate from
+the library defaults while preserving the same ordered configuration layers.
 
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
@@ -130,6 +168,15 @@ repository owns its lock independently. Publishable members retain the same inli
 Git provenance whether attached or standalone; only the containing root owns the
 local source overlay and the shared runtime environment. Regenerate that root with
 `make gen` and reconcile its lock with `make upg` when the local binding changes.
+Every package checkout also overrides transitive requirements for its own
+distribution with its local project identity. A dependency that refers back to
+the checkout through Git must resolve to that checkout rather than introduce a
+second source for the same distribution. Generation derives this identity from
+the repository declaration in both workspace and standalone contexts.
+Dependency-floor updates select explicit `dependency_profiles` declarations or
+the infrastructure repository declared by the topology. A consumer configuration
+file containing only project metadata or editor settings does not declare another
+floor owner.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 
@@ -315,6 +362,50 @@ and consumers in that order. The namespace laws are codemod catalog rules, so th
 codemod gate is their one verdict. Preserve mutability, inheritance, imports, and
 collection; validate the transformation through the public interface before widening
 the batch. Structural refactors go through `make mod`.
+
+The binding owners are the [workspace law](../../../AGENTS.md), branch-matched
+[FLEXT law](../../../.agents/skills/flext-law/SKILL.md),
+[ADR-005](../../../docs/architecture/adr/005-config-settings-constants-templates-schemas-ssot.md),
+[ADR-014 as amended by ADR-018](../../../docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md),
+[ADR-015](../../../docs/architecture/adr/015-consumer-consumption-law.md),
+[ADR-018](../../../docs/architecture/adr/018-generator-declarations.md) and
+[ADR-024](../../../docs/architecture/adr/024-di-config-contract-derived-defaults-minimal-overrides.md).
+Read their linked universal skills; this checklist is an execution checkpoint, not
+another architecture SSOT:
+
+1. Elect one domain/namespace/location owner from live declarations. Preserve
+   `c → t → p → m → u`, layer-0 config/settings and pure declaration layers.
+2. Consume facade exports through MRO; use typed Pydantic ingress/egress and `t`/`p`
+   contracts. Inject dependencies explicitly at the sole `api.py` composition root.
+3. Reuse the existing correct-domain helpers under SSOT/YAGNI/DRY/SOLID/DI/CA.
+   Rewire every producer/export/consumer and remove superseded routes together,
+   without losing functionality or weakening runtime contracts.
+4. Repair canonical sources, not projections; regenerate and prove repeated gen/fix/fmt
+   idempotent. Generalize recurring causes at the existing rule/semantic owner.
+5. Use the existing custom `refactor ast` and `refactor violations-sweep` CLI owners,
+   verifying their current help. Record per-rule before/after and full-catalog collateral
+   evidence for the root and every declared member (currently 32 projects), including
+   zero, applicability, failed and unexecuted rows. Changed detectors require a new
+   baseline; lower totals never excuse introduced findings.
+6. Prove global lint/type/test/coverage/docs/build and real public runtime over the
+   declared scope, including tests/scripts/examples; retain command/cwd/candidate/exit
+   and decisive output. Missing coverage or prerequisite skips do not prove fleet green.
+
+Private approved plans remain local execution context. Do not collect, project, copy
+or link them into published documentation without explicit publication authorization.
+
+`make mod-rules` inspects the full governed source inventory without rewriting it.
+The text catalog composes Infra's shared rules with each project's local
+`config/rules/mod/sed.yaml`. A domain-specific rule belongs to that project's
+catalog; copying it into the shared catalog creates an ambiguous owner and blocks
+the scan. Rule IDs remain unique across the composed catalogs.
+
+AST planning elects rules separately for each governed project's declared
+distribution and runtime dependencies. The workspace scans the union of shared
+catalogs once, then admits each occurrence against its nearest project's election
+and semantic facts. A library owner's imports remain within its domain; the same
+imports in a consumer remain violations. Reports retain zero counts for every
+governed repository and elected rule.
 
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes
@@ -655,6 +746,11 @@ Timeouts, forwarded signals, other exit codes, malformed JSON, and disagreement 
 exit code and diagnostic severities remain failures, even when stdout exists. Both
 whole-project checks and `check_files` scan every elected provider rule.
 
+Binding inference captures the source files and symbol owners required by
+rules with actual occurrences. Syntax-only findings need no import closure.
+The check gate and the mod scanner share this input election, deduplicating
+source reads without reducing the rule inventory or its diagnostic evidence.
+
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
@@ -701,9 +797,13 @@ an unnecessary type-only annotation dependency. It does not change classes, alia
 or inheritance, and it does not rewrite initializer projections.
 
 `GateExecution.issues` retains each finding's original file, position, rule, message,
-and severity. SARIF reports each finding at its native level; raw scanner output remains
-available on the execution. A passing gate therefore proves both the scanner contract
-and zero rule findings.
+and severity. SARIF reports each finding at its native level. Raw scanner output
+remains available on the live execution and is published verbatim once at
+`raw_receipt`; serialized execution summaries retain that receipt and all issues
+without embedding the native output again. Receipt consumers read the original
+file when they need its bytes. This prevents large native source excerpts from
+being duplicated during SARIF publication and consumption. A passing gate
+therefore proves both the scanner contract and zero rule findings.
 
 The same repair validates projected Ruff first-party namespaces strictly: a malformed
 value cannot be replaced with discovered namespaces. A declared empty list remains

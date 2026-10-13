@@ -535,6 +535,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         verified_plans: list[m.Infra.CodegenPlan] = []
 
+<<<<<<< HEAD
+        def verify() -> p.Result[bool]:
+            """Record the sole semantic verification receipt before commit.
+
+            Returns:
+                Whether semantic verification succeeded.
+            """
+=======
         def verify(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
             """Verify published gains without re-planning known failed targets."""
             unchanged = not any(
@@ -571,6 +579,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 if unchanged and not plan.issues:
                     verified_plans.append(plan)
                 return r[bool].ok(value=True)
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             checked = self._verify_bootstrap(request)
             if checked.failure:
                 return r[bool].from_failure(checked)
@@ -581,8 +590,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             request,
             plan,
             transaction,
-            roots,
-            scope_root,
+            (scope_root, roots),
             validator=verify,
         )
         if written.failure:
@@ -602,8 +610,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
+        publication_scope: t.Pair[Path, t.MappingKV[str, Path]],
         *,
         validator: Callable[[m.Infra.CodegenPhaseAnalysis], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
@@ -614,6 +621,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             bootstrap files.
 
         """
+        scope_root, roots = publication_scope
         surface = c.Infra.CodegenConformSurface(request.what)
         destinations = self.surface_contract(surface).destinations
         if not destinations:
@@ -720,8 +728,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
+    @staticmethod
     def _settle_unchanged_bootstrap(
-        self,
         plan: m.Infra.CodegenPlan,
         *,
         validator: Callable[[], p.Result[bool]],

@@ -131,6 +131,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         candidate_sources: t.StrMapping,
         local_members: t.StrSequence,
         requirements: t.StrSequence,
+        resolution: m.Infra.UvResolutionSpec,
     ) -> None:
         """Sync the staging candidate pins over every resolved requirement.
 
@@ -140,7 +141,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
         resolutions when no candidate is declared (flext-oe420).
         """
         dependency_extras = FlextInfraUtilitiesDependencies.dependency_extras
-        overrides = [
+        # Why (fleet-automation 2026-10-13): a standalone consumer whose
+        # transitive graph pins a family member on another integration ref
+        # declares the SSOT override list (org layer); it replaces the
+        # member-computed staging list. Empty keeps the staging behavior.
+        overrides = list(resolution.override_dependencies) or [
             f"{name}{dependency_extras(requirements, name)}"
             for name in sorted(local_members)
         ]
@@ -237,7 +242,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        local_names = tuple(member.distribution for member in members)
+        local_names = (
+            *(
+                (workspace.repository.distribution,)
+                if workspace.repository.package
+                else ()
+            ),
+            *(member.distribution for member in members),
+        )
         conflicting = set(local_names) & candidate_sources.keys()
         if conflicting:
             return r[bool].fail(
@@ -258,7 +270,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ),
             }),
         )
-        cls._sync_uv_candidates(uv, candidate_sources, local_names, local_requirements)
+        cls._sync_uv_candidates(
+            uv, candidate_sources, local_names, local_requirements, resolution
+        )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         cls._sync_uv_constraints(
             uv,

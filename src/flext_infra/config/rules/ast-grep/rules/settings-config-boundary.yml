@@ -1,20 +1,18 @@
 # Settings/config import boundary (operator-ruling-2026-10-08-settings-config-imports
 # and operator-ruling-2026-10-08-settings-config-boundary).
 #
-# A settings/config module is any module whose path has a segment starting with
-# `settings` or `config` (with or without a leading underscore): the root
-# `_settings.py`/`_config.py`, each family's `settings*.py`/`config*.py` part,
-# and config subpackages such as `_models/_config/`. Inside its own namespace it
-# imports only other settings/config modules and the families' `base.py`; it
-# never imports its own namespace's c/t/p/m/u letters nor other family classes.
+# A layer-zero module owns config/settings before entering any facade family.
+# Family-domain config declarations such as `_models/_config/` remain model
+# assembly, not layer zero. The typed import-law classifier owns this fact. It
+# imports nothing from its own namespace, including TYPE_CHECKING imports.
 # Anything from another namespace is allowed (the own-package context decides
 # which namespace is the module's own). The family internals of c/t/p/m/u may
 # import settings/config, which is why settings/config stay below them. A family
 # `base.py` is a leaf: it imports no other module of its own namespace except its
 # own split parts, and never settings/config.
 #
-# Detection only: moving a declaration to the settings/config graph or to a base
-# is a semantic relocation owned by the make mod declaration-relocation phase.
+# Detection only: use native or valid upstream contracts at layer zero; never
+# defer an invalid own-namespace dependency into a typing guard.
 id: ban-settings-config-own-facade-import
 language: python
 severity: error
@@ -27,36 +25,22 @@ files:
   - "**/_config*/**/*.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   context:
     MODULE:
-      is: own-package
+      - is: own-package
+      - is: layer-zero-file
 rule:
-  all:
-    - kind: dotted_name
-    - not:
-        regex: "^(config|settings)$"
-    - not:
-        inside:
-          kind: import_from_statement
-          field: module_name
-    - inside:
-        kind: import_from_statement
-        has:
-          field: module_name
-          kind: dotted_name
-          pattern: $MODULE
-          not:
-            regex: "\\."
-    - not:
-        matches: inside-type-checking-guard
+  matches: root-imported-name
+  inside:
+    stopBy: end
+    kind: import_from_statement
+    has:
+      field: module_name
+      pattern: $MODULE
 message: >-
-  Settings/config module imports a name other than config/settings from
-  `$MODULE`: it never imports its own namespace's c/t/p/m/u; use another
-  settings/config module, a family base.py, or another namespace.
+  Layer-zero settings/config imports from its own root `$MODULE`, including
+  TYPE_CHECKING: use native or valid upstream contracts, never its own namespace.
 ---
 id: ban-settings-config-own-module-import
 language: python
@@ -73,23 +57,29 @@ ignores:
 metadata:
   context:
     MODULE:
-      is: own-package
+      - is: own-package
+      - is: layer-zero-file
 rule:
-  all:
+  any:
     - kind: import_from_statement
-    - has:
+      has:
         field: module_name
         kind: dotted_name
         pattern: $MODULE
-        all:
-          - regex: "\\."
-          - not:
-              regex: "\\._?(settings|config)[A-Za-z0-9_]*(\\.|$)|\\._[a-z]+\\.base$"
-    - not:
-        matches: inside-type-checking-guard
+        regex: "\\."
+    - kind: dotted_name
+      pattern: $MODULE
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
 message: >-
-  Settings/config module imports `$MODULE`: inside its own namespace it may
-  import only settings/config modules and family base.py modules.
+  Layer-zero settings/config imports its own namespace `$MODULE`, including
+  TYPE_CHECKING: use native or valid upstream contracts.
 ---
 id: ban-family-base-own-import
 language: python
@@ -110,8 +100,6 @@ rule:
         pattern: $MODULE
         not:
           regex: "\\._[a-z]+\\._base_parts(\\.|$)"
-    - not:
-        matches: inside-type-checking-guard
 message: >-
   Family base.py imports `$MODULE` from its own namespace: a family base is a
   leaf and imports neither other own modules nor settings/config.

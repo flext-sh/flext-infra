@@ -178,10 +178,9 @@ class FlextInfraConfigModelsArtifact:
         repository: Annotated[
             FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
             m.Field(
-                default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
                 description="This repository's self-owned declaration differences",
             ),
-        ]
+        ] = m.Field(default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec)
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
             t.VariadicTuple[str | FlextInfraConfigModelsArtifact.RetiredProjectionSpec],
@@ -1188,6 +1187,10 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.RenameCampaignSpec],
             m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()
+        semantic_plan: Annotated[
+            Path | None,
+            m.Field(description="Explicit workspace-relative semantic rename artifact"),
+        ] = None
 
     class SedPatternSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared literal regex substitution applied across the mod scope."""

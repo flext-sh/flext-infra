@@ -1,0 +1,10 @@
+id: rewire-test-assert-len-gte
+valid:
+  - assert len(items) >= 2
+  - |
+    from tests import tm
+    assert len(items) >= 2, 'pair or more'
+invalid:
+  - |
+    from tests import tm
+    assert len(items) >= 2

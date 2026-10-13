@@ -402,8 +402,12 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[p.Cli.CommandOutput]``.
 
         """
-        # Make owns the invocation context; root is only the scanned consumer.
-        binary = u.Infra.managed_mise_binary(command[0], Path.cwd())
+        # Consumer scratch directories never own the invocation's runtime tools.
+        owner_root = u.Infra.runtime_environment_dir(
+            Path.cwd(),
+            runtime_root=type(settings).fetch_global().Infra.runtime_root,
+        ).parent
+        binary = u.Infra.managed_mise_binary(command[0], owner_root)
         if binary.failure:
             return r[p.Cli.CommandOutput].from_failure(binary)
         sys.stderr.write(
@@ -420,7 +424,7 @@ class FlextInfraModGateEngine:
         output = run.value
         sys.stderr.write(
             f"mod: finish {command[0]} exit={output.outcome.raw_return_code} "
-            f"duration={output.duration:.2f}s\n",
+            f"duration={output.duration:.2f}s stdout_chars={len(output.stdout)}\n",
         )
         sys.stderr.flush()
         if output.outcome.raw_return_code != 0:
@@ -478,6 +482,49 @@ class FlextInfraModGateEngine:
         root: Path,
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
+        project_rule_ids: t.MappingKV[Path, t.StrSequence],
+        candidate_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+    ) -> m.Infra.ModScanReport:
+        """Evaluate each source against its nearest governed project's plan.
+
+        Returns:
+            Findings admitted by their own project's rules and semantic context.
+        """
+        projects = sorted(
+            project_rule_ids, key=FlextInfraModGateEngine._path_depth, reverse=True
+        )
+        grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
+        for entry in report.entries:
+            source = u.Infra.codemod_source_path(root, entry.file)
+            owner = next(
+                project for project in projects if source.is_relative_to(project)
+            )
+            if entry.rule_id in project_rule_ids[owner]:
+                grouped.setdefault(owner, []).append(
+                    entry.model_copy(update={"file": source})
+                )
+        admitted: list[m.Infra.ModScanFinding] = []
+        for project, entries in grouped.items():
+            selected = FlextInfraModGateEngine._admitted_project(
+                project,
+                FlextInfraModGateEngine.recounted(tuple(entries)),
+                rules_by_id,
+                candidate_states,
+            )
+            admitted.extend(
+                entry.model_copy(
+                    update={"file": entry.file.relative_to(root.resolve())}
+                )
+                for entry in selected.entries
+            )
+        return FlextInfraModGateEngine.recounted(tuple(admitted))
+
+    @staticmethod
+    def _admitted_project(
+        root: Path,
+        report: m.Infra.ModScanReport,
+        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
+        candidate_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -494,41 +541,39 @@ class FlextInfraModGateEngine:
             root,
             tuple(rules_by_id[entry.rule_id] for entry in report.entries),
         )
-        occurrence_rules = tuple(
-            rule
-            for rule in rules_by_id.values()
-            if any(
-                condition.predicate
-                in {
-                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                    c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
-                    c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
-                }
-                for condition in rule.context
-            )
+        selected_ids, modules = u.Infra.codemod_binding_requirements(
+            tuple(
+                rules_by_id[rule_id]
+                for rule_id in sorted({entry.rule_id for entry in report.entries})
+            ),
         )
-        selected_ids = {rule.id for rule in occurrence_rules}
         states = tuple(
-            entry.source_state
-            for entry in report.entries
-            if entry.rule_id in selected_ids and entry.source_state is not None
+            state for state in candidate_states if state.path.is_relative_to(root.resolve())
+        ) if candidate_states else tuple(
+            {
+                entry.source_state.path: entry.source_state
+                for entry in report.entries
+                if entry.rule_id in selected_ids and entry.source_state is not None
+            }.values(),
         )
+        sys.stderr.write(
+            f"mod: binding snapshot repository={root.name} "
+            f"findings={report.findings} sources={len(states)}\n",
+        )
+        sys.stderr.flush()
         snapshot = (
             u.Infra.codemod_binding_snapshot(
                 root,
                 states,
-                tuple(
-                    condition.arg[0]
-                    for rule in occurrence_rules
-                    for condition in rule.context
-                    if condition.predicate
-                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
-                ),
+                modules,
             )
             if states
             else None
         )
+        if snapshot is not None and candidate_states:
+            closure = {state.path: state for state in snapshot.states}
+            closure.update({state.path: state for state in candidate_states})
+            snapshot = snapshot.model_copy(update={"states": tuple(closure.values())})
         closed = snapshot or m.Infra.CodemodBindingSnapshot(states=())
         with u.Infra.codemod_binding_project(root, closed) as (project, sources):
             entries = tuple(
@@ -571,6 +616,7 @@ class FlextInfraModGateEngine:
             non_actionable_with_fix=classes.count(
                 c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX,
             ),
+            deferred=classes.count(c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT),
             files=frozenset(entry.file for entry in entries),
             entries=entries,
         )
@@ -693,9 +739,14 @@ class FlextInfraModGateEngine:
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure:
             return r[t.Pair[Path, m.Cli.AtomicFileState]].from_failure(observed)
-        if observed.value != snapshot:
+        if observed.value.content != snapshot.content:
             return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
                 f"finding source changed during scanning: {resolved_file}",
+                error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+            )
+        if observed.value != snapshot:
+            return r[t.Pair[Path, m.Cli.AtomicFileState]].ok(
+                (file_path, observed.value),
             )
         return r[t.Pair[Path, m.Cli.AtomicFileState]].ok((file_path, snapshot))
 
@@ -726,6 +777,28 @@ class FlextInfraModGateEngine:
             return outcome.ok((True, c.Infra.ModScanFindingClass.ACTIONABLE))
         return outcome.ok((False, c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX))
 
+    @staticmethod
+    def _finding_repository(
+        file_path: Path,
+        repository_roots: t.SequenceOf[Path],
+        root: Path,
+    ) -> str:
+        """Return the governed repository name owning one finding path.
+
+        Returns:
+            The nearest governed repository name, else the scanned root name.
+
+        """
+        source_path = (root / file_path).resolve()
+        return next(
+            (
+                candidate.name
+                for candidate in repository_roots
+                if source_path.is_relative_to(candidate)
+            ),
+            root.resolve().name,
+        )
+
     @classmethod
     def _line_finding(
         cls,
@@ -747,12 +820,35 @@ class FlextInfraModGateEngine:
         contract_error = cls._finding_contract_error(finding, line, rule_files_by_id)
         if contract_error is not None:
             return r[m.Infra.ModScanFinding].fail(contract_error)
+        raw_replacement = finding.get("replacement")
+        replacement = raw_replacement if isinstance(raw_replacement, str) else None
         authenticated = cls._authenticated_snapshot(
             root,
             str(finding.get("file")),
             source_states,
         )
         if authenticated.failure:
+            if authenticated.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                return r[m.Infra.ModScanFinding].ok(
+                    m.Infra.ModScanFinding(
+                        rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
+                        rule_id=str(rule_id),
+                        repository=cls._finding_repository(
+                            Path(str(finding.get("file"))),
+                            repository_roots,
+                            root,
+                        ),
+                        file=Path(str(finding.get("file"))),
+                        range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                            finding.get("range"),
+                        ),
+                        text=str(finding.get("text")),
+                        replacement=replacement,
+                        actionable=False,
+                        classification=c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT,
+                        payload=t.Cli.JSON_MAPPING_ADAPTER.validate_python(finding),
+                    ),
+                )
             return r[m.Infra.ModScanFinding].from_failure(authenticated)
         file_path, snapshot = authenticated.value
         if snapshot.content is None:
@@ -771,19 +867,11 @@ class FlextInfraModGateEngine:
         if classified.failure:
             return r[m.Infra.ModScanFinding].from_failure(classified)
         actionable, classification = classified.value
-        repository = next(
-            (
-                candidate.name
-                for candidate in repository_roots
-                if file_path.is_relative_to(candidate)
-            ),
-            root.resolve().name,
-        )
         return r[m.Infra.ModScanFinding].ok(
             m.Infra.ModScanFinding(
                 rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
                 rule_id=str(rule_id),
-                repository=repository,
+                repository=cls._finding_repository(file_path, repository_roots, root),
                 file=file_path,
                 source_owner="generator"
                 if snapshot.content.decode(c.DEFAULT_ENCODING).startswith(
@@ -861,6 +949,7 @@ class FlextInfraModGateEngine:
                 non_actionable_with_fix=counts[
                     c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
                 ],
+                deferred=counts[c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT],
                 files=frozenset(files),
                 entries=tuple(entries),
             ),
@@ -894,9 +983,9 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         ruleset: m.Infra.CodemodRuleset,
-        rule_files_by_id: t.MappingKV[str, Path],
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         targets: t.StrSequence,
+        project_rule_ids: t.MappingKV[Path, t.StrSequence],
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan one elected ruleset over the governed targets, then admit.
 
@@ -919,7 +1008,7 @@ class FlextInfraModGateEngine:
             for path in sorted(source_paths)
         }
         ruleset_files = {
-            rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
+            rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
         scan_command = u.Infra.ast_grep_scan_command(
             ruleset.config,
@@ -934,6 +1023,10 @@ class FlextInfraModGateEngine:
         )
         if run.failure:
             return r[m.Infra.ModScanReport].from_failure(run)
+        sys.stderr.write(
+            f"mod: parse native JSONL chars={len(run.value.stdout)}\n",
+        )
+        sys.stderr.flush()
         report = cls._parse_findings(
             run.value.stdout,
             root,
@@ -941,27 +1034,39 @@ class FlextInfraModGateEngine:
             frozenset(ruleset.fixable_rule_ids),
             source_states,
         ).unwrap()
+        sys.stderr.write(f"mod: admit native findings={report.findings}\n")
+        sys.stderr.flush()
         if run.value.outcome.raw_return_code != 0:
             error_findings = sum(
                 entry.payload.get("severity") == "error" for entry in report.entries
             )
             cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
-        return r[m.Infra.ModScanReport].ok(cls._admitted(root, report, rules_by_id))
+        return r[m.Infra.ModScanReport].ok(
+            cls._admitted(root, report, rules_by_id, project_rule_ids),
+        )
 
     @classmethod
-    def scan(cls, root: Path, *, fix: bool) -> p.Result[m.Infra.ModScanReport]:
+    def scan(
+        cls,
+        root: Path,
+        *,
+        fix: bool,
+        rule_ids: t.StrSequence | None = None,
+    ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
+
+        Complete evidence retains generated findings; only the authored projection
+        reaches publication, without granting permission to rewrite generated bytes.
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
-        planned = u.Infra.codemod_rule_plan(root)
+        planned = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
         if planned.failure:
             return r[m.Infra.ModScanReport].from_failure(planned)
         plan = planned.value
         reports: list[m.Infra.ModScanReport] = []
-        rule_files_by_id = {rule.id: rule.resource for rule in plan.rules}
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root)
         sys.stderr.write(
@@ -970,12 +1075,17 @@ class FlextInfraModGateEngine:
         )
         sys.stderr.flush()
         for ruleset in plan.rulesets:
+            sys.stderr.write(
+                f"mod: ast-grep provider={ruleset.provider} "
+                f"rules={','.join(ruleset.rule_ids)}\n",
+            )
+            sys.stderr.flush()
             ruleset_run = cls._ruleset_report(
                 root,
                 ruleset,
-                rule_files_by_id,
                 rules_by_id,
                 targets,
+                plan.project_rule_ids,
             )
             if ruleset_run.failure:
                 return r[m.Infra.ModScanReport].from_failure(ruleset_run)
@@ -986,22 +1096,113 @@ class FlextInfraModGateEngine:
         declared = cls._validate_expected_receipts(plan.rules, complete_report)
         if declared.failure:
             return r[m.Infra.ModScanReport].from_failure(declared)
+        sys.stderr.write(
+            f"mod: publish evidence findings={complete_report.findings}\n",
+        )
+        sys.stderr.flush()
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             complete_report,
-            command=(
-                c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
+            publication=m.Infra.ModScanPublication(
+                command=(
+                    c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
+                ),
+                scope=targets,
+                repositories=tuple(project.name for project in plan.project_rule_ids),
+                rule_ids=tuple(rules_by_id),
             ),
-            scope=targets,
         )
         if receipt.failure:
             return r[m.Infra.ModScanReport].from_failure(receipt)
         cls._report_evidence(receipt.value)
         if fix:
-            published = FlextInfraModReplacements.publish(root, complete_report)
+            published = FlextInfraModReplacements.publish(
+                root,
+                cls.authored(complete_report),
+                exact_replacements=rule_ids is not None,
+            )
             if published.failure:
                 return r[m.Infra.ModScanReport].from_failure(published)
         return r[m.Infra.ModScanReport].ok(complete_report)
+
+    @classmethod
+    def scan_candidate(
+        cls,
+        root: Path,
+        view_root: Path,
+        candidate: m.Infra.StageSourcePlan,
+    ) -> p.Result[m.Infra.ModScanReport]:
+        """Scan an immutable overlay with the original catalog and logical policy.
+
+        Returns:
+            Full-catalog findings authenticated to candidate bytes and bindings.
+        """
+        plan = u.Infra.codemod_rule_plan(root).unwrap()
+        rules_by_id = {rule.id: rule for rule in plan.rules}
+        targets = u.Infra.ast_grep_scan_targets(root)
+        states = tuple(
+            state.model_copy(update={
+                "content": candidate.updates[state.path].encode(c.DEFAULT_ENCODING)
+                if state.path in candidate.updates
+                else state.content,
+            })
+            for state in candidate.inputs
+        )
+        physical = {
+            view_root / state.path.relative_to(root.resolve()):
+            u.Cli.atomic_read_binary_file_state(
+                view_root / state.path.relative_to(root.resolve()), required=True
+            ).unwrap()
+            for state in states
+            if state.content is not None
+            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+        }
+        logical = {state.path: state for state in states}
+        entries: list[m.Infra.ModScanFinding] = []
+        for ruleset in plan.rulesets:
+            run = cls._run_tool(
+                view_root,
+                u.Infra.ast_grep_scan_command(
+                    ruleset.config, rule_ids=ruleset.rule_ids,
+                    targets=targets, json_stream=True,
+                ),
+                finding_exit_code=1,
+            )
+            if run.failure:
+                return r[m.Infra.ModScanReport].from_failure(run)
+            parsed = cls._parse_findings(
+                run.value.stdout, view_root,
+                {rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids},
+                frozenset(ruleset.fixable_rule_ids), physical,
+            ).unwrap()
+            if run.value.outcome.raw_return_code != 0:
+                receipt = cls._validate_finding_receipt(
+                    run.value.stderr,
+                    sum(entry.payload.get("severity") == "error" for entry in parsed.entries),
+                )
+                if receipt.failure:
+                    return r[m.Infra.ModScanReport].from_failure(receipt)
+            for entry in parsed.entries:
+                relative = (
+                    entry.file.relative_to(view_root)
+                    if entry.file.is_absolute()
+                    else entry.file
+                )
+                entries.append(entry.model_copy(update={
+                    "file": relative,
+                    "source_state": logical[(root / relative).resolve()],
+                }))
+        report = cls._admitted(
+            root, cls.recounted(tuple(entries)), rules_by_id,
+            plan.project_rule_ids, tuple(
+                state for state in states
+                if state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            ),
+        )
+        declared = cls._validate_expected_receipts(plan.rules, report)
+        if declared.failure:
+            return r[m.Infra.ModScanReport].from_failure(declared)
+        return r[m.Infra.ModScanReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraModGateEngine"]

@@ -25,7 +25,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     """
 
     if TYPE_CHECKING:
-        include_local_scopes: bool
+        options: m.Infra.CensusOptions
 
         @property
         def project_names(self) -> t.StrSequence | None:
@@ -145,7 +145,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             include_object_references=self._should_collect_object_references(
                 rule_names,
             ),
-            include_local_scopes=self.include_local_scopes,
+            include_local_scopes=self.options.include_local_scopes,
         )
         findings = m.Infra.ScanFindings(project_objects={}, report_projects=set())
         current_project = None

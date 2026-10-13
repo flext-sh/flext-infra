@@ -14,12 +14,224 @@ from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
+from flext_infra.codegen import FlextInfraStagedPackage
+from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
+from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 
 class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
+
+    @classmethod
+    def build_rename_plan(
+        cls,
+        root: Path,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        selections: m.Infra.SemanticRenameSelections,
+    ) -> p.Result[m.Infra.SemanticRenamePlan]:
+        """Produce exact native edits and closure from explicit domain selections.
+
+        Returns:
+            A reversible authenticated artifact, without changing live sources.
+        """
+        decisions = tuple(
+            m.Infra.SemanticRenameDecision(
+                declaration=FlextInfraRenameSymbols.inventoried_declaration(
+                    workspace, selection.qualified_name
+                ),
+                replacement_name=selection.replacement_name,
+                reason=selection.reason,
+                contracts=tuple(
+                    FlextInfraRenameSymbols.inventoried_declaration(workspace, identity)
+                    for identity in selection.contracts
+                ),
+            )
+            for selection in selections.decisions
+        )
+        original = cls._source_inventory(
+            root,
+            m.Infra.ModScanReport(
+                findings=0,
+                actionable=0,
+                detection_only=0,
+                non_actionable_with_fix=0,
+                files=frozenset(),
+                entries=(),
+            ),
+        )
+        inputs = tuple(
+            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            for path in original
+        )
+        if any(
+            state.content != original[state.path].encode(c.DEFAULT_ENCODING)
+            for state in inputs
+        ):
+            return r[m.Infra.SemanticRenamePlan].fail(
+                "rename inventory changed during capture"
+            )
+        snapshot = u.Infra.snapshot_project(workspace.rope_project, original)
+        edits = FlextInfraRenameSymbols.plan_candidates(
+            snapshot,
+            original,
+            tuple(item.declaration for item in decisions),
+            FlextInfraRenameSymbols(decisions),
+        )
+        staged = FlextInfraStagedPackage.plan_sources(
+            root,
+            {edit.file_path: edit.updated_source for edit in edits},
+            inputs=inputs,
+        )
+        return staged.map(
+            lambda candidate: m.Infra.SemanticRenamePlan(
+                decisions=decisions,
+                edits=edits,
+                candidate=candidate,
+            )
+        )
+
+    @classmethod
+    def consume_rename_plan(
+        cls,
+        request: m.Infra.ModCommand,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        source_preview: p.Infra.SourcePreview,
+    ) -> p.Result[bool]:
+        """Re-derive an artifact and validate its complete candidate before effects.
+
+        Returns:
+            The first authentication/runtime failure, or the accepted candidate.
+        """
+        root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
+        loaded = cls._load_rename_artifact(root, request)
+        verified = loaded.flat_map(
+            lambda pair: cls._verify_rename_artifact(
+                request,
+                workspace,
+                pair,
+                source_preview=source_preview,
+            )
+        )
+        if verified.failure:
+            return verified
+        artifact = loaded.value[0]
+        action = (
+            "apply"
+            if request.apply and not request.check and not request.dry_run_mode
+            else "preview"
+        )
+        cli.display_text(
+            f"semantic rename {action}: "
+            f"decisions={len(artifact.decisions)} "
+            f"files={len(artifact.edits)} runtime=validated"
+        )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _load_rename_artifact(
+        cls,
+        root: Path,
+        request: m.Infra.ModCommand,
+    ) -> p.Result[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
+        """Authenticate the semantic rename driver and parse its artifact.
+
+        Returns:
+            The first artifact failure, or the parsed plan with its driver state.
+
+        """
+        loaded = r[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]
+        if request.rename_plan is None:
+            return loaded.fail("semantic rename consumption requires an artifact")
+        path = (root / request.rename_plan).resolve()
+        if not path.is_relative_to(root):
+            return loaded.fail("semantic rename artifact escapes workspace")
+        driver = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        if driver.content is None:
+            return loaded.fail(f"semantic rename artifact disappeared: {path}")
+        return loaded.ok((
+            m.Infra.SemanticRenamePlan.model_validate_json(driver.content),
+            driver,
+        ))
+
+    @classmethod
+    def _verify_rename_artifact(
+        cls,
+        request: m.Infra.ModCommand,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        *,
+        source_preview: p.Infra.SourcePreview,
+    ) -> p.Result[bool]:
+        """Re-derive, candidate-validate, and re-authenticate the artifact.
+
+        Returns:
+            The first verification failure, or the accepted candidate.
+
+        """
+        root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
+        artifact, driver = pair
+        if artifact.candidate.workspace != root:
+            return r[bool].fail("semantic rename candidate belongs to another workspace")
+        if any(state.path == driver.path for state in artifact.candidate.inputs):
+            return r[bool].fail("semantic rename driver aliases a governed source input")
+        authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
+        if authenticated.failure:
+            return r[bool].from_failure(authenticated)
+        current = FlextInfraStagedPackage.source_inputs_current(artifact.candidate)
+        if current.failure:
+            return r[bool].from_failure(current)
+        rebuilt = cls.build_rename_plan(
+            root,
+            workspace,
+            m.Infra.SemanticRenameSelections(
+                decisions=tuple(
+                    m.Infra.SemanticRenameSelection(
+                        qualified_name=f"{item.declaration.module_name}.{item.declaration.scope_path}",
+                        replacement_name=item.replacement_name,
+                        reason=item.reason,
+                        contracts=tuple(
+                            f"{part.module_name}.{part.scope_path}"
+                            for part in item.contracts
+                        ),
+                    )
+                    for item in artifact.decisions
+                ),
+            ),
+        )
+        if rebuilt.failure:
+            return r[bool].from_failure(rebuilt)
+        if rebuilt.value != artifact:
+            return r[bool].fail(
+                "semantic rename artifact differs from current native plan"
+            )
+        checked = FlextInfraAccessorMigrationReportMixin.validate_candidate(
+            artifact.candidate,
+            source_preview,
+            tuple(u.Infra.snapshot_lint_gates()),
+        )
+        if checked.failure:
+            return r[bool].from_failure(checked)
+        authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
+        if authenticated.failure:
+            return r[bool].from_failure(authenticated)
+        if request.apply and not request.check and not request.dry_run_mode:
+            originals = {state.path: state for state in artifact.candidate.inputs}
+            plans = tuple(
+                m.Infra.SemanticFilePlan(
+                    project=u.Infra.project_root(path) or root,
+                    path=path,
+                    before=originals[path],
+                    desired_content=source.encode(c.DEFAULT_ENCODING),
+                    desired_mode=originals[path].mode,
+                    changes=("authenticated semantic rename artifact",),
+                )
+                for path, source in artifact.candidate.updates.items()
+            )
+            return FlextInfraSemanticPublication.publish_source_candidate(
+                plans, candidate=artifact.candidate, inputs=(driver,)
+            ).map(lambda _: True)
+        return r[bool].ok(value=True)
 
     @classmethod
     def census_constants(
@@ -705,7 +917,7 @@ class FlextInfraCodemodSemanticApply:
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root
-            normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            normalized = u.Infra.normalize_source(
                 root,
                 path,
                 updated[path],

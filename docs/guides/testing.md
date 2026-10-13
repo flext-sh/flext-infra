@@ -105,6 +105,12 @@ mutating codemod lifecycle. The profile is written to the generated Make
 the CLI raises. A failed profiling invocation remains RED; its statistics
 identify the expensive owner and do not replace the required quality gates.
 
+Use `make profile-mod-rules` followed by `make profile-mod-rules-report` to
+measure the complete read-only rule diagnostic. It runs the same `refactor ast`
+consumer as `make mod-rules`, including semantic admission and evidence
+publication. The profile checkpoint on SIGTERM retains measured progress while
+the interrupted command remains a failure.
+
 Codemod admission resolves the declared package namespace once in the typed facts
 of each pass. Findings consume that snapshot; a later pass reads the current
 manifest again. No process-global namespace cache carries identity across passes.

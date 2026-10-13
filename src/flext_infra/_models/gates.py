@@ -427,6 +427,22 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate tree"),
         ]
 
+    class GateCaptureBeginRequest(m.ContractModel):
+        """Original producer operation and runtime before candidate inspection."""
+
+        repository_root: Annotated[Path, m.Field(description="Actual execution root")]
+        gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
+        command: Annotated[
+            t.StrTuple, m.Field(min_length=1, description="Exact original process argv")
+        ]
+        intent: Annotated[
+            FlextInfraModelsGates.GateExecutionIntent,
+            m.Field(description="Portable original operation and selection"),
+        ]
+        runtime_identity: Annotated[
+            str, m.Field(description="Native runtime observed before execution")
+        ]
+
     class GateCaptureStart(m.ContractModel):
         """Private candidate checkpoint preceding the original native process."""
 
@@ -469,6 +485,28 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         gates: Annotated[
             t.NonEmptyStr, m.Field(description="Resolved native checker gate inventory")
+        ]
+
+    class GateCaptureFinishRequest(m.ContractModel):
+        """Reaped producer facts and publication context for one original capture."""
+
+        started: Annotated[
+            FlextInfraModelsGates.GateCaptureStart,
+            m.Field(description="Original pre-execution candidate checkpoint"),
+        ]
+        process: Annotated[
+            m.Cli.ProcessOutcome,
+            m.Field(description="Reaped original producer outcome"),
+        ]
+        reports: Annotated[
+            t.VariadicTuple[FlextInfraModelsGates.GateReportEvidence],
+            m.Field(description="Original producer report byte bindings"),
+        ]
+        report_root: Annotated[
+            Path, m.Field(description="Original capture publication directory")
+        ]
+        runtime_identity: Annotated[
+            str, m.Field(description="Native runtime observed after execution")
         ]
 
     class GateCaptureReport(m.ContractModel):
@@ -538,9 +576,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         @m.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
-            if self.schema_version != c.Infra.GateAttestationSchema.V2:
-                msg = "schema_version must match the canonical gate attestation schema"
-                raise ValueError(msg)
             for name, value in (
                 ("commit_sha", self.commit_sha),
                 ("tree_sha", self.tree_sha),

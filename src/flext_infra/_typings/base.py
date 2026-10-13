@@ -162,8 +162,8 @@ class FlextInfraTypesBase:
     "Validated edit outcome: (success, report_lines)."
     type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
     "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot = t.MappingKV[str, t.StrSequence]
-    "Lint errors per tool: {tool_name: [error_lines]}."
+    type LintSnapshot[Receipt] = t.MappingKV[str, Receipt]
+    "Native gate receipts or diagnostic deltas, keyed by canonical tool name."
 
     # ── Lint policy types ────────────────────────────────────────────
 

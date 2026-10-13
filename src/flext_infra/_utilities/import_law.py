@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from functools import cache
 from pathlib import Path
+from typing import Literal
 
 from flext_infra import c, config, t
 from flext_infra._utilities import (
@@ -87,25 +87,47 @@ class FlextInfraUtilitiesImportLaw:
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
 
     @staticmethod
+    def import_module_role(module: str) -> Literal["layer0", "family", "consumer"]:
+        """Classify a module from the canonical singleton and family vocabulary.
+
+        Layer-zero declarations cannot depend on their own namespace, even
+        through a typing guard. Family assembly may retain canonical private
+        imports; it cannot consume the facade it produces.
+
+        Returns:
+            The resulting ``Literal['layer0', 'family', 'consumer']``.
+        """
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        for part in module.split(".")[1:]:
+            stem = part.lstrip("_")
+            if any(stem == family.module for family in families.values()):
+                return "family"
+            if any(
+                stem == role or stem.startswith(f"{role}_")
+                for role in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+            ):
+                return "layer0"
+            if stem in config.Infra.tooling.lazy_init.import_layer_order:
+                return "consumer"
+        return "consumer"
+
+    @staticmethod
     def import_direct_module(namespace_dir: Path, file_path: Path) -> bool:
         """Return whether one module keeps direct leaf imports.
 
-        A settings/config module (any path segment starting with ``settings``
-        or ``config``, with or without leading underscores) and a family
+        A layer-zero settings/config module and a family
         ``base.py`` (a ``base.py`` inside a private ``_<family>/`` package)
-        import their own namespace only through direct leaf modules, so the
-        settings/config graph and the family bases never re-enter a lazy
-        package that is still initializing.
+        retain their upstream/direct providers instead of re-entering the
+        namespace's lazy root. This routing constraint does not exempt them
+        from import-boundary validation.
 
         Returns:
             Whether the module is exempt from root-alias and lazy routing.
 
         """
         relative = file_path.resolve().relative_to(namespace_dir.resolve())
-        stems = tuple(part.removesuffix(".py").lstrip("_") for part in relative.parts)
-        if any(
-            stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)) for stem in stems
-        ):
+        module = ".".join((namespace_dir.name, *relative.with_suffix("").parts))
+        if FlextInfraUtilitiesImportLaw.import_module_role(module) == "layer0":
             return True
         return (
             len(relative.parts) > 1
@@ -114,7 +136,6 @@ class FlextInfraUtilitiesImportLaw:
         )
 
     @staticmethod
-    @cache
     def import_lazy_exports(
         project_root: Path,
         package: str,
@@ -124,9 +145,9 @@ class FlextInfraUtilitiesImportLaw:
         The package resolves under ``src/`` or the project root (internal
         tiers). Relative targets resolve against the package; a target naming
         another distribution (``flext_cli``) stays absolute. The parse is
-        memoized per ``(project_root, package)``: one governed-file scan
-        resolves the same root exports once per namespace, never once per
-        module.
+        memoized by the existing source parser using the exact published
+        content. Each lookup resolves the current file, so same-process
+        publication and newly created packages cannot retain retired routes.
 
         Returns:
             The published name to absolute defining module mapping, or

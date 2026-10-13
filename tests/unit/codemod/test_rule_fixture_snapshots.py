@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -19,6 +20,158 @@ from tests import t, tm, u
 
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
+
+    @pytest.mark.parametrize(("rule_suffix", "operator"), [("eq", "=="), ("ne", "!=")])
+    @pytest.mark.parametrize("verdict", [True, False])
+    def test_assert_message_fixes_preserve_comparison_evaluation(
+        self,
+        rule_suffix: str,
+        operator: str,
+        verdict: bool,
+    ) -> None:
+        """Execute native fixes with non-complementary operators and lazy messages.
+
+        Args:
+            rule_suffix: The suffix of the rule being tested.
+            operator: The comparison operator used in the assertion.
+            verdict: The expected boolean outcome of the assertion.
+
+        Raises:
+            TypeError: If the snapshot or fix is not of the expected type.
+        """
+        owner = Path(__file__).resolve().parents[3]
+        original = (
+            f"from flext_tests import tm\nassert left() {operator} right(), explain()\n"
+        )
+        snapshots = tm.ok(
+            u.Cli.yaml_safe_load(
+                self._snapshot(owner, f"rewire-test-assert-{rule_suffix}-message")
+            ),
+        )["snapshots"]
+        if not isinstance(snapshots, Mapping):
+            message = "Rule snapshots must be a mapping"
+            raise TypeError(message)
+        snapshot = snapshots[original]
+        if not isinstance(snapshot, Mapping):
+            message = "Rule snapshot must be a mapping"
+            raise TypeError(message)
+        fixed = snapshot["fixed"]
+        if not isinstance(fixed, str):
+            message = "Rule fix must be source text"
+            raise TypeError(message)
+        expected_events = ["left", "right", operator, "truth"]
+        if not verdict:
+            expected_events.append("message")
+        setup = (
+            "from flext_tests import tm\n"
+            f"verdict = {verdict!r}\nevents = []\npayload = ('failure',)\n"
+            "class Truth:\n"
+            "    def __bool__(self):\n"
+            "        events.append('truth')\n        return verdict\n"
+            "class Probe:\n"
+            "    def __eq__(self, other):\n"
+            "        events.append('==')\n        return Truth()\n"
+            "    def __ne__(self, other):\n"
+            "        events.append('!=')\n        return Truth()\n"
+            "def left():\n    events.append('left')\n    return Probe()\n"
+            "def right():\n    events.append('right')\n    return Probe()\n"
+            "def explain():\n    events.append('message')\n    return payload\n"
+        )
+        for candidate in (original, fixed):
+            source = (
+                setup
+                + "try:\n"
+                + "".join(f"    {line}\n" for line in candidate.splitlines())
+                + "except AssertionError as error:\n"
+                "    tm.that(verdict, truth=False)\n"
+                "    tm.that(error.args, eq=(payload,))\n"
+                "else:\n    tm.that(verdict, truth=True)\n"
+                f"tm.that(events, eq={expected_events!r})\n"
+            )
+            outcome = tm.ok(u.Cli.run_raw((sys.executable, "-c", source)))
+            tm.that(outcome.exit_code, eq=0, msg=outcome.stderr)
+            tm.that(outcome.stderr, eq="")
+
+    @pytest.mark.parametrize("collection", ["dict", "list"])
+    def test_typing_collection_fixes_preserve_runtime_values(
+        self,
+        tmp_path: Path,
+        collection: str,
+    ) -> None:
+        """Validate real fixes and execute concrete collection/Pydantic contracts."""
+        owner = Path(__file__).resolve().parents[3]
+        demo = self._owner(tmp_path)
+        catalog = self._catalog(tmp_path)
+        source_catalog = self._catalog(owner)
+        tm.ok(u.Cli.ensure_dir(catalog / "utils"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH,
+                "ruleDirs: [rules]\nutilDirs: [utils]\n"
+                "testConfigs:\n  - testDir: tests\n",
+            ),
+        )
+        for name in (
+            "semantic-type-context",
+            "typing-annotated-form",
+            "typing-literal-form",
+            "typing-module-binding",
+            "t-locally-bound",
+            f"typing-{collection}-generic",
+            f"{collection}-imported-from-typing",
+        ):
+            relative = Path("utils") / f"{name}.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    catalog / relative,
+                    (source_catalog / relative).read_text(encoding="utf-8"),
+                ),
+            )
+        rule_id = (
+            "typing-dict-to-mapping-kv"
+            if collection == "dict"
+            else "typing-list-to-sequence-of"
+        )
+        rule = catalog / "rules" / f"{rule_id}.yml"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule,
+                (source_catalog / "rules" / rule.name).read_text(encoding="utf-8"),
+            ),
+        )
+        for selected_id in (rule_id, f"typing-{collection}-missing-t-import"):
+            relative = Path("tests") / f"{selected_id}-test.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    catalog / relative,
+                    (source_catalog / relative).read_text(encoding="utf-8"),
+                ),
+            )
+        rules = (demo, rule)
+        tm.ok(
+            FlextInfraModGateEngine.refresh_rule_snapshots(
+                tmp_path,
+                rules,
+                apply=True,
+            ),
+        )
+        tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, rules))
+        snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
+            "snapshots"
+        ]
+        assert isinstance(snapshots, Mapping)
+        runtime_consumers = 0
+        for snapshot in snapshots.values():
+            assert isinstance(snapshot, Mapping)
+            fixed = snapshot["fixed"]
+            assert isinstance(fixed, str)
+            _ = ast.parse(fixed)
+            if "class Payload(m.ArbitraryTypesModel):" in fixed:
+                outcome = tm.ok(u.Cli.run_raw((sys.executable, "-c", fixed)))
+                tm.that(outcome.exit_code, eq=0, msg=outcome.stderr)
+                tm.that(outcome.stderr, eq="")
+                runtime_consumers += 1
+        tm.that(runtime_consumers, eq=1)
 
     @pytest.mark.parametrize("suffix", ["", "; value = 1", ";"])
     def test_managed_artifact_sequential_full_source_fixes_parse(

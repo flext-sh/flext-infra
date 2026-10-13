@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import m
+from packaging.requirements import Requirement
+from pydantic import field_validator
 
 from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
@@ -50,6 +52,24 @@ class FlextInfraConfigModelsScaffold:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Code-generation requirements"),
         ] = ()
+
+        @field_validator("runtime", "codegen")
+        @classmethod
+        def validate_requirements(
+            cls, requirements: t.VariadicTuple[str]
+        ) -> t.VariadicTuple[str]:
+            """Reject invalid PEP 508 policy before any dependency writer runs.
+
+            Args:
+                requirements: A tuple of requirement strings to validate.
+
+            Returns:
+                The validated tuple of requirement strings.
+
+            """
+            for requirement in requirements:
+                Requirement(requirement)
+            return requirements
 
     class ScaffoldConfigBaseSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One upstream config base a generated ``_config.py`` may compose."""

@@ -18,11 +18,157 @@ from tests import tm, u
 if TYPE_CHECKING:
     from tests import t
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.refactor import (
+    FlextInfraAccessorMigrationReportMixin,
+    FlextInfraImportNormalization,
+)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 
 class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
+
+    @staticmethod
+    def _rename_artifact(
+        tmp_path: Path,
+    ) -> t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]:
+        """Build a native artifact against an independent physical runtime.
+
+        Returns:
+            The captured source candidate and its separate driver identity.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        notice = u.Infra.copyright_notice(root)
+        (package / "service.py").write_text(
+            f'"""Public callable contract.\n\n{notice}\n"""\n\n'
+            "from __future__ import annotations\n\n\n"
+            "class FlextSemanticService:\n"
+            '    """Preserve predicate behavior under an explicit domain rename."""\n\n'
+            "    @staticmethod\n"
+            "    def predicate(value: str) -> bool:\n"
+            '        """Inspect a caller value.\n\n'
+            "        Returns:\n"
+            "            Whether the value is nonempty.\n"
+            '        """\n'
+            "        return bool(value)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with infra.rope_workspace(root) as workspace:
+            artifact = tm.ok(
+                FlextInfraCodemodSemanticApply.build_rename_plan(
+                    root,
+                    workspace,
+                    m.Infra.SemanticRenameSelections(
+                        decisions=(
+                            m.Infra.SemanticRenameSelection(
+                                qualified_name=(
+                                    f"{package.name}.service.FlextSemanticService.predicate"
+                                ),
+                                replacement_name="meaningful",
+                                reason="Reviewed callable domain contract",
+                            ),
+                        )
+                    ),
+                )
+            )
+        driver = root / "rename.artifact"
+        tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
+        return artifact, tm.ok(
+            u.Cli.atomic_read_binary_file_state(driver, required=True)
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("drift", ["none", "driver", "source", "snapshot"])
+    def test_candidate_publication_keeps_driver_separate_and_authenticated(
+        tmp_path: Path, drift: str
+    ) -> None:
+        """Native runtime acceptance never replaces source or driver snapshots."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(tmp_path)
+        candidate = artifact.candidate
+        tm.that(driver.path in {state.path for state in candidate.inputs}, eq=False)
+        tm.ok(
+            FlextInfraAccessorMigrationReportMixin.validate_candidate(
+                candidate,
+                infra.source_preview(candidate.workspace),
+                tuple(u.Infra.snapshot_lint_gates()),
+            )
+        )
+        originals = {state.path: state for state in candidate.inputs}
+        plans = tuple(
+            m.Infra.SemanticFilePlan(
+                project=candidate.workspace,
+                path=path,
+                before=originals[path],
+                desired_content=source.encode(c.DEFAULT_ENCODING),
+                desired_mode=originals[path].mode,
+                source_states=(driver,),
+            )
+            for path, source in candidate.updates.items()
+        )
+        source = plans[0].path
+        if drift in {"driver", "snapshot"}:
+            driver.path.write_bytes(tm.not_none(driver.content) + b"\n")
+        elif drift == "source":
+            source.write_bytes(source.read_bytes() + b"\n# Shared source update\n")
+        before = {state.path: state.path.read_bytes() for state in candidate.inputs}
+        driver_bytes = driver.path.read_bytes()
+        inputs = (
+            (tm.ok(u.Cli.atomic_read_binary_file_state(driver.path, required=True)),)
+            if drift == "snapshot"
+            else (driver,)
+        )
+        published = FlextInfraSemanticPublication.publish_source_candidate(
+            plans, candidate=candidate, inputs=inputs
+        )
+        if drift == "none":
+            tm.that(tm.ok(published), eq=tuple(candidate.updates))
+            for path, desired in candidate.updates.items():
+                tm.that(path.read_bytes(), eq=desired.encode(c.DEFAULT_ENCODING))
+            tm.fail(
+                FlextInfraSemanticPublication.publish_source_candidate(
+                    plans, candidate=candidate, inputs=(driver,)
+                )
+            )
+        else:
+            tm.fail(published)
+            for path, content in before.items():
+                tm.that(path.read_bytes(), eq=content)
+        tm.that(driver.path.read_bytes(), eq=driver_bytes)
+
+    @staticmethod
+    def test_authenticated_rename_apply_publishes_then_rejects_stale_repeat(
+        tmp_path: Path,
+    ) -> None:
+        """The actual artifact consumer applies once and preserves its stale driver."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(tmp_path)
+        root = artifact.candidate.workspace
+        request = m.Infra.ModCommand(
+            repository_root=root, rename_plan=driver.path, apply=True
+        )
+        with infra.rope_workspace(root) as workspace:
+            tm.that(
+                tm.ok(
+                    FlextInfraCodemodSemanticApply.consume_rename_plan(
+                        request, workspace, infra.source_preview(root)
+                    )
+                ),
+                eq=True,
+            )
+            published = {
+                path: path.read_bytes() for path in artifact.candidate.updates
+            }
+            for path, desired in artifact.candidate.updates.items():
+                tm.that(published[path], eq=desired.encode(c.DEFAULT_ENCODING))
+            tm.fail(
+                FlextInfraCodemodSemanticApply.consume_rename_plan(
+                    request, workspace, infra.source_preview(root)
+                )
+            )
+        for path, content in published.items():
+            tm.that(path.read_bytes(), eq=content)
+        tm.that(driver.path.read_bytes(), eq=driver.content)
 
     @staticmethod
     def test_no_effect_publication_requires_true_acceptance(
@@ -175,6 +321,136 @@ class TestsFlextInfraSemanticPublication:
         if rejected:
             tm.that(consumer.stderr, has="consumer rejected")
         tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_publication_refreshes_warm_normalized_export_route(
+        mod_workspace: Path,
+    ) -> None:
+        """A moved declaration routes identically in warm and fresh consumers."""
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
+        previous = package / "previous.py"
+        current = package / "current.py"
+        consumer_path = package / "consumer.py"
+        for path, exported in ((previous, True), (current, False)):
+            path.write_text(
+                "class DeclaredService:\n"
+                "    @staticmethod\n"
+                "    def execute() -> str:\n"
+                f"        return {path.stem!r}\n\n"
+                f"__all__ = {['DeclaredService'] if exported else []!r}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=mod_workspace,
+                projection_roots=(mod_workspace,),
+            ),
+        )
+        original_source = (
+            f"from {package.name}.{previous.stem} import DeclaredService\n\n"
+            "def run() -> str:\n"
+            "    return DeclaredService.execute()\n"
+        )
+        warmed = tm.not_none(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=mod_workspace,
+                file_path=consumer_path,
+                source=original_source,
+            ),
+        )
+        tm.that(warmed, has=f"from {package.name} import DeclaredService\n")
+        candidate = original_source.replace(previous.stem, current.stem)
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for path in (previous, current):
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            outgoing = ["DeclaredService"] if path == previous else []
+            incoming = [] if path == previous else ["DeclaredService"]
+            plans.append(
+                m.Infra.SemanticFilePlan(
+                    project=mod_workspace,
+                    path=path,
+                    before=before,
+                    desired_content=tm
+                    .not_none(before.content)
+                    .decode(c.DEFAULT_ENCODING)
+                    .replace(
+                        f"__all__ = {outgoing!r}",
+                        f"__all__ = {incoming!r}",
+                    )
+                    .encode(c.DEFAULT_ENCODING),
+                    desired_mode=before.mode,
+                ),
+            )
+
+        def validate() -> p.Result[bool]:
+            normalized = tm.not_none(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=mod_workspace,
+                    file_path=consumer_path,
+                    source=candidate,
+                ),
+            )
+            tm.that(normalized, eq=warmed)
+            tm.that(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=mod_workspace,
+                    file_path=consumer_path,
+                    source=normalized,
+                ),
+                eq=None,
+            )
+            fresh = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            "from pathlib import Path\n"
+                            "from flext_infra.refactor import (\n"
+                            "    FlextInfraImportNormalization,\n"
+                            ")\n"
+                            "normalized = FlextInfraImportNormalization"
+                            ".normalize_source(\n"
+                            f"    project_root=Path({str(mod_workspace)!r}),\n"
+                            f"    file_path=Path({str(consumer_path)!r}),\n"
+                            f"    source={candidate!r},\n"
+                            ")\n"
+                            f"assert normalized == {normalized!r}\n"
+                            f"{normalized}\n"
+                            f"assert run() == {current.stem!r}\n"
+                        ),
+                    ),
+                    cwd=mod_workspace,
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                        },
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
+            return r[bool].ok(True)
+
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                plans,
+                repository_root=mod_workspace,
+                projection_roots=(mod_workspace,),
+                validator=validate,
+            ),
+        )
+        initializer = package / c.Infra.INIT_PY
+        published = initializer.read_bytes()
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=mod_workspace,
+                projection_roots=(mod_workspace,),
+                validator=validate,
+            ),
+        )
+        tm.that(initializer.read_bytes(), eq=published)
 
     @staticmethod
     @pytest.mark.parametrize("accepted", [False, True])

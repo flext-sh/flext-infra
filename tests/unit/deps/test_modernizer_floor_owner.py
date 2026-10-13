@@ -9,6 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.version import Version
+from pydantic import ValidationError
 
 from flext_infra import config
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -130,8 +133,6 @@ class TestsFlextInfraModernizerFloorOwner:
         "content",
         [
             "Infra: [broken\n",
-            "Infra: {}\n",
-            "Infra:\n  codegen: {}\n",
             (
                 "Infra:\n  codegen:\n    scaffold:\n      project:\n"
                 "        dependency_profiles: []\n"
@@ -169,6 +170,90 @@ class TestsFlextInfraModernizerFloorOwner:
 
         tm.that(source.read_text(encoding="utf-8"), eq=content)
 
+    @pytest.mark.parametrize("field", ["runtime", "codegen"])
+    def test_invalid_requirement_policy_preserves_all_files(
+        self,
+        modernizer_workspace: Path,
+        field: str,
+    ) -> None:
+        """Validate every declaration before writing even an earlier valid floor."""
+        source = self._source(modernizer_workspace)
+        versions = u.Infra.resolved_dependency_versions()
+        name = next(iter(versions))
+        invalid = "example>=broken"
+        runtime = invalid if field == "runtime" else "example>=0"
+        codegen = f"            codegen: [{invalid}]\n" if field == "codegen" else ""
+        content = (
+            "Infra:\n  codegen:\n    scaffold:\n      project:\n"
+            "        dependency_profiles:\n"
+            "          - upstream: example\n"
+            f"            runtime: [{name}>=0]\n"
+            "          - upstream: invalid-policy\n"
+            f"            runtime: [{runtime}]\n"
+            f"{codegen}"
+        )
+        source.write_text(content, encoding="utf-8")
+        pyproject = modernizer_workspace / c.PYPROJECT_FILENAME
+        original_pyproject = pyproject.read_bytes()
+
+        with pytest.raises(ValidationError, match=field) as captured:
+            self._run(modernizer_workspace)
+
+        error = captured.value.errors()[0]
+        assert "ctx" in error
+        tm.that(isinstance(error["ctx"]["error"], InvalidRequirement), eq=True)
+        tm.that(source.read_text(encoding="utf-8"), eq=content)
+        tm.that(pyproject.read_bytes(), eq=original_pyproject)
+
+    def test_upgrade_preserves_compatible_release_and_direct_source(
+        self,
+        modernizer_workspace: Path,
+    ) -> None:
+        """Real installed floors preserve the source policy and converge on rerun."""
+        versions = u.Infra.resolved_dependency_versions()
+        name, version = next(
+            (name, version)
+            for name, version in versions.items()
+            if u.Infra.constraint_specifier(version)
+        )
+        resolved = Version(version)
+        compatibility = (
+            f"{resolved.release[0]}."
+            f"{resolved.release[1] if len(resolved.release) > 1 else 0}"
+        )
+        if resolved.epoch:
+            compatibility = f"{resolved.epoch}!{compatibility}"
+        original = Requirement(f"{name}[feature]~={compatibility}; os_name == 'posix'")
+        direct = f"{name}@https://example.org/package.whl"
+        content = (
+            "Infra:\n  codegen:\n    scaffold:\n      project:\n"
+            "        dependency_profiles:\n"
+            "          - upstream: example\n"
+            f"            runtime:\n              - {original}\n"
+            f"            codegen:\n              - {direct}\n"
+        )
+        source = self._source(modernizer_workspace)
+        source.write_text(content, encoding="utf-8")
+
+        tm.that(self._run(modernizer_workspace), eq=0)
+
+        project = u.Cli.yaml_safe_load(source).unwrap()
+        for key in ("Infra", "codegen", "scaffold", "project"):
+            project = u.Cli.json_as_mapping(project[key])
+        profile = m.Infra.ScaffoldDependencyProfileSpec.model_validate(
+            u.Cli.json_as_sequence(project["dependency_profiles"])[0],
+        )
+        parsed = Requirement(profile.runtime[0])
+        tm.that(parsed.extras, eq=original.extras)
+        tm.that(parsed.marker == original.marker, eq=True)
+        tm.that(profile.codegen, eq=(direct,))
+        tm.that(parsed.specifier.contains(version), eq=True)
+        tm.that(str(parsed.specifier), has=f"~={compatibility}")
+        tm.that(str(parsed.specifier), has=u.Infra.constraint_specifier(version))
+        rendered = source.read_bytes()
+        tm.that(self._run(modernizer_workspace), eq=0)
+        tm.that(source.read_bytes(), eq=rendered)
+
     def test_consumer_without_owner_leaves_external_config_untouched(
         self,
         modernizer_workspace: Path,
@@ -178,11 +263,13 @@ class TestsFlextInfraModernizerFloorOwner:
         external = modernizer_workspace.parent / c.Infra.CODEGEN_CONFIG_FILENAME
         source.rename(external)
         original = external.read_bytes()
+        consumer = "Infra:\n  codegen: {}\n"
+        source.write_text(consumer, encoding="utf-8")
 
         tm.that(self._run(modernizer_workspace), eq=0)
 
         tm.that(external.read_bytes(), eq=original)
-        tm.that(source.exists(), eq=False)
+        tm.that(source.read_text(encoding="utf-8"), eq=consumer)
 
     def test_missing_declared_owner_raises(self, modernizer_workspace: Path) -> None:
         """A declared infrastructure owner must carry its configuration."""
