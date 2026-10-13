@@ -11,7 +11,10 @@ from collections.abc import Mapping
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDependencyRequirements,
+)
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
@@ -150,7 +153,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         """
         overrides = list(resolution.override_dependencies)
         overrides.extend(
-            f"{name}{dependency_extras(requirements, name)} @ {source}"
+            f"{name}{FlextInfraUtilitiesDependencyRequirements.dependency_extras(requirements, name)} @ {source}"
             for name, source in sorted(candidate_sources.items())
         )
         if overrides:

@@ -287,7 +287,8 @@ class FlextInfraModelsCodegenRender:
                 description=(
                     "SSOT-declared PEP 508 overrides resolving a transitive "
                     "graph's family pins to the declared integration line; "
-                    "empty leaves the member-computed staging behavior."
+                    "empty removes the key, so a standalone repository locks "
+                    "exactly like a fleet member (no member-computed fallback)."
                 ),
             ),
         ] = ()

@@ -79,8 +79,16 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
     @pytest.mark.parametrize("package", [False, True])
-    def test_self_override_has_a_local_root_source(self, package: bool) -> None:
-        """A packaged root's override resolves to its own implicit uv workspace."""
+    def test_packaged_root_renders_workspace_source_without_self_override(
+        self, package: bool
+    ) -> None:
+        """A packaged root renders its native workspace identity source only.
+
+        The self distribution never enters ``override-dependencies``: an
+        empty SSOT resolution removes the key entirely, so a standalone
+        repository locks exactly like a fleet member and keeps its full dev
+        closure in the lock.
+        """
         workspace = self._workspace(role=self._ROLE.STANDALONE)
         workspace = workspace.model_copy(
             update={
@@ -107,18 +115,14 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
-        tm.that(
-            u.Tests.toml_mapping(uv.get("sources")),
-            eq=(
-                {workspace.repository.distribution: {"workspace": True}}
-                if package
-                else {}
-            ),
-        )
-        tm.that(
-            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=((workspace.repository.distribution,) if package else ()),
-        )
+        if package:
+            tm.that(
+                u.Tests.toml_mapping(uv.get("sources")),
+                eq={workspace.repository.distribution: {"workspace": True}},
+            )
+        else:
+            tm.that("sources" in uv, eq=False)
+        tm.that("override-dependencies" in uv, eq=False)
         repeated = tm.ok(
             u.Infra.pyproject_conform(
                 rendered,
@@ -338,8 +342,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq=True,
         )
         tm.that(
-            f"{provider.distribution}[feature]"
-            in u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
+            "override-dependencies" in uv,
             eq=False,
         )
         tm.that(
@@ -738,10 +741,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(
-                workspace.repository.distribution,
-                f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",
-            ),
+            eq=(f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",),
         )
         tm.that(
             tm.ok(
@@ -845,7 +845,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(result.error or "", contains="not declared requirements: flext-cli")
 
     def test_removing_candidate_removes_global_override(self) -> None:
-        """A normal branch resolution leaves no stale candidate override."""
+        """A normal branch resolution leaves no stale candidate override.
+
+        With the candidate gone and the SSOT override list empty, the whole
+        ``override-dependencies`` key is removed — never replaced by a
+        member-computed self-override.
+        """
         infra = self._member_ref("flext-infra", "flext-infra")
         stale_commit = "a" * 40
         source = (
@@ -866,10 +871,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 ),
             ),
         )
-        tm.that(
-            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(workspace.repository.distribution,),
-        )
+        uv_table = u.Tests.toml_table_at(rendered, "tool", "uv")
+        tm.that("override-dependencies" in uv_table, eq=False)
 
     def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
         """Assert the canonical standalone output: one direct Git requirement."""
