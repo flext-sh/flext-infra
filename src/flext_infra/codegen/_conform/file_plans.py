@@ -65,6 +65,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             environment.project_root / c.Infra.MISE_TOML_FILENAME
             for environment in plan.uv_environments
         )
+        if not expected:
+            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
+                "conform plan carries no uv environment plan for the selected "
+                "repositories; the Mise transaction requires one configuration "
+                "per repository",
+            )
         by_path = {item.path: item for item in plan.files if item.path in expected}
         if len(set(expected)) != len(expected) or len(by_path) != len(expected):
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
