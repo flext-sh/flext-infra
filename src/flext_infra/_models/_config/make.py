@@ -783,7 +783,7 @@ class FlextInfraConfigModelsMake(
             # mandatory canonical verb, so the inverted check rejected every
             # valid configuration and `flext_infra.config` could not be built at
             # all. The serialized set no longer exists; the guard has no object.
-            self._validate_workflow(declared)
+            self._validate_workflow(declared, admissible)
             self._validate_docs_verb(declared)
             return self
 
@@ -833,25 +833,17 @@ class FlextInfraConfigModelsMake(
                 msg = "make standalone_check_gates must route each gate once"
                 raise ValueError(msg)
 
-        def _validate_workflow(self, declared: set[str]) -> None:
+        def _validate_workflow(self, declared: set[str], admissible: set[str]) -> None:
             """Validate the workflow verbs against the declared public verbs.
 
-            Why (hq-36xk, flext-lq86m): the guard that lived here read
-            ``if "setup" in serialized`` and protected ``make setup`` from being
-            placed in the serialized mutation set, so it could never require
-            the managed validation environment it is supposed to CREATE.
-            3e5fbc747 exterminated the serialize-make lifecycle and deleted
-            ``self.serialization``, but rebound this condition to ``declared``
-            instead of removing it with the concept it guarded. ``setup`` is a
-            mandatory canonical verb, so the inverted check rejected every
-            valid configuration and ``flext_infra.config`` could not be built
-            at all. The serialized set no longer exists; the guard has no
-            object.
+            CI provisions first and verifies a clean tree last. Configured phases
+            may surround the ordered audit, integrity, and test milestones.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
-                    workflow verbs must exist in every profile; or if make pre-commit
+                    workflow verbs must be selector-free in every profile; or if CI
+                    approval boundaries or milestone order are invalid; or if pre-commit
                     must be declared in every profile.
 
             """
@@ -877,41 +869,36 @@ class FlextInfraConfigModelsMake(
                 if Path(path).is_absolute() or ".." in Path(path).parts:
                     msg = f"make lifecycle observed file escapes its repository: {path}"
                     raise ValueError(msg)
-            # Every profile renders the workflow, so a workflow verb must exist
-            # in every profile's Makefile.
+            # Every consumer invokes workflow verbs without selectors in every profile.
             partial_workflow = sorted(
                 verb.name
                 for verb in self.verbs
                 if verb.name in {*workflow_verbs, "pre-commit"}
-                and set(verb.profiles) != set(FlextInfraConfigVocabulary.MakeProfile)
+                and verb.name not in admissible
             )
             if partial_workflow:
                 msg = (
-                    "make workflow verbs must exist in every profile: "
+                    "make workflow verbs must be selector-free in every profile: "
                     f"{', '.join(partial_workflow)}"
                 )
                 raise ValueError(msg)
-            producers = {verb.name for verb in self.verbs if verb.produces_activation}
-            approval = tuple(
-                step.verb
-                for step in self.workflow
-                if "ci" in step.contexts and step.verb not in producers
+            approval = self.approval_verbs
+            milestones = (
+                "audit",
+                FlextInfraConfigVocabulary.VERB_CHECK,
+                FlextInfraConfigVocabulary.VERB_TEST,
             )
-            if approval != ("setup", "audit", "check", "test", "verify-clean"):
+            if (
+                approval[:1] != ("setup",)
+                or approval[-1:] != ("verify-clean",)
+                or tuple(verb for verb in approval if verb in milestones) != milestones
+            ):
                 msg = "CI requires the setup/audit/check/test/verify-clean workflow"
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != tuple(
-                verb
-                for verb in approval
-                if verb
-                in {
-                    FlextInfraConfigVocabulary.VERB_CHECK,
-                    FlextInfraConfigVocabulary.VERB_TEST,
-                }
-            ):
+            if hook != milestones[1:]:
                 msg = "the pre-commit hook requires the CI check and test workflow"
                 raise ValueError(msg)
             if "pre-commit" not in declared:

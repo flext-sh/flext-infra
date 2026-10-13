@@ -78,12 +78,14 @@ class FlextInfraWorkspaceLifecycle:
                 execution_context=context,
                 applicable=(
                     None
-                    if context in step.contexts and (repository == root or scoped_members)
+                    if context in step.contexts
+                    and (repository == root or scoped_members)
                     else False
                 ),
                 applicability_reason=(
                     None
-                    if context in step.contexts and (repository == root or scoped_members)
+                    if context in step.contexts
+                    and (repository == root or scoped_members)
                     else "CI invocation owns only its root"
                     if repository != root and not scoped_members
                     else f"{context} is outside the step's declared contexts"

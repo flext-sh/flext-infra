@@ -1300,7 +1300,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     ) -> p.Result[m.Infra.CodegenResult]:
         """Publish only invocation-owned docs after the managed batch releases."""
         owned = tuple(
-            repository.name for repository in result.plan.repositories
+            repository.name
+            for repository in result.plan.repositories
             if repository.path == Path()
         )
         if not owned:
@@ -1319,7 +1320,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 return r[m.Infra.CodegenResult].from_failure(published)
             written.extend(
                 Path(item.path)
-                for report in published.value for item in report.items if item.written
+                for report in published.value
+                for item in report.items
+                if item.written
             )
         return r[m.Infra.CodegenResult].ok(
             result.model_copy(update={"written_files": tuple(written)}),

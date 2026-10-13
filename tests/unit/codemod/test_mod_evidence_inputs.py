@@ -163,20 +163,27 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(encoded.count(marker.encode("utf-8")), eq=1)
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
-        shared: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
+        tm.that(
+            len(restored.binding_graphs),
+            eq=len({
+                tuple(state.path for state in entry.binding_states)
+                for entry in report.entries
+            }),
+        )
+        shared: dict[int, tuple[m.Cli.AtomicFileState, ...]] = {}
         for original, occurrence in zip(report.entries, restored.entries, strict=True):
             tm.that(occurrence.payload, eq=original.payload)
             tm.that(occurrence.source_state, eq=original.source_state)
             tm.that(occurrence.binding_states, eq=original.binding_states)
             tm.that(
-                occurrence.binding_paths,
+                restored.binding_graphs[occurrence.binding_graph],
                 eq=tuple(state.path for state in original.binding_states),
             )
             tm.that(occurrence.classification, eq=original.classification)
             tm.that(
                 occurrence.binding_states
                 is shared.setdefault(
-                    occurrence.binding_paths, occurrence.binding_states
+                    occurrence.binding_graph, occurrence.binding_states
                 )
             )
         tm.that(
@@ -216,30 +223,48 @@ class TestsFlextInfraModEvidenceInputs:
             )
         missing_source = mod_workspace / "absent_source.py"
         missing_binding = mod_workspace / "absent_binding.py"
-        for reference, expected_key in (
-            ({"source_path": missing_source}, missing_source),
-            ({"binding_paths": (missing_binding,)}, missing_binding),
+        for updates, expected_key in (
             (
                 {
-                    "source_path": missing_source,
-                    "binding_paths": (missing_binding,),
+                    "entries": (
+                        restored.entries[0].model_copy(
+                            update={"source_path": missing_source}
+                        ),
+                        *restored.entries[1:],
+                    )
                 },
                 missing_source,
             ),
-        ):
-            tampered = restored.model_copy(
-                update={
-                    "entries": (
-                        restored.entries[0].model_copy(update=reference),
-                        *restored.entries[1:],
+            (
+                {
+                    "binding_graphs": (
+                        (missing_binding,),
+                        *restored.binding_graphs[1:],
                     )
-                }
-            )
+                },
+                missing_binding,
+            ),
+        ):
+            tampered = restored.model_copy(update=updates)
             with pytest.raises(KeyError) as missing:
                 m.Infra.ModScanEvidence.model_validate_json(
                     tampered.model_dump_json(round_trip=True)
                 )
             tm.that(missing.value.args, eq=(expected_key,))
+        tampered_graph = restored.model_copy(
+            update={
+                "entries": (
+                    restored.entries[0].model_copy(
+                        update={"binding_graph": len(restored.binding_graphs)}
+                    ),
+                    *restored.entries[1:],
+                )
+            }
+        )
+        with pytest.raises(m.ValidationError, match="binding graph is missing"):
+            m.Infra.ModScanEvidence.model_validate_json(
+                tampered_graph.model_dump_json(round_trip=True)
+            )
         with pytest.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(

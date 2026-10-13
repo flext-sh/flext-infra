@@ -23,7 +23,9 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         tmp_path: Path,
     ) -> None:
         """Projection repair precedes provenance; only setup provisions dependencies."""
-        root, _ = u.Tests.render_make_environment(tmp_path, c.Infra.MakeProfile.WORKSPACE)
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE
+        )
         rendered = (root / "Makefile").read_text(encoding="utf-8")
         for verb in config.Infra.codegen.make.verbs:
             if verb.produces_activation:

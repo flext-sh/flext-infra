@@ -671,8 +671,16 @@ class FlextInfraUtilitiesRefactor:
             identity: tuple(state.path for state in states)
             for identity, states in bindings.items()
         }
+        graphs = {
+            paths: index
+            for index, paths in enumerate(dict.fromkeys(binding_paths.values()))
+        }
+        graph_ids = {
+            identity: graphs[paths] for identity, paths in binding_paths.items()
+        }
         evidence = m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+            "binding_graphs": tuple(graphs),
             "inputs": m.Infra.CodemodBindingSnapshot(
                 states=tuple(
                     chain(
@@ -700,7 +708,7 @@ class FlextInfraUtilitiesRefactor:
                         if entry.source_state is not None
                         else None
                     ),
-                    binding_paths=binding_paths[id(entry.binding_states)],
+                    binding_graph=graph_ids[id(entry.binding_states)],
                 )
                 for entry in report.entries
             ),
