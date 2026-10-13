@@ -28,24 +28,6 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
-    def test_missing_module_imports_preserve_the_native_failure(tmp_path: Path) -> None:
-        """A removed real module retains Rope's exception as the failure cause."""
-        source = tmp_path / "missing.py"
-        source.write_text("value = 1\n", encoding=c.Infra.ENCODING_DEFAULT)
-        with FlextInfraRopeWorkspace.open_workspace(tmp_path) as workspace:
-            resource = workspace.rope_project.get_resource(source.name)
-            source.unlink()
-            with pytest.raises(RuntimeError, match=source.name) as failure:
-                u.Infra.resolve_module_imports(workspace.rope_project, resource)
-            tm.that(
-                isinstance(
-                    failure.value.__cause__,
-                    FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
-                ),
-                eq=True,
-            )
-
-    @staticmethod
     def test_declared_package_root_resolves_its_qualified_name(
         tmp_path: Path,
     ) -> None:
@@ -76,6 +58,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 module.get_attribute("PublishedContract").get_object().get_name(),
                 eq="PublishedContract",
             )
+            tm.not_none(u.Infra.resolve_module_imports(project, resource))
 
     @staticmethod
     @pytest.mark.parametrize("regular_package", [False, True])

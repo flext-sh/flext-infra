@@ -49,6 +49,7 @@ class FlextInfraRefactorCensus(
     lifecycle and injected source-preview capability.
     """
 
+    # Keep the options policy that the former right-hand model base supplied.
     model_config: ClassVar[m.ConfigDict] = m.Infra.CensusOptions.model_config
 
     options: m.Infra.CensusOptions = m.Field(
@@ -70,7 +71,9 @@ class FlextInfraRefactorCensus(
     @property
     def impact_map_output_path(self) -> Path | None:
         """Resolved impact-map export path when provided."""
-        path: Path | None = u.Infra.normalize_optional_path(self.options.impact_map_output)
+        path: Path | None = u.Infra.normalize_optional_path(
+            self.options.impact_map_output,
+        )
         return path
 
     @property

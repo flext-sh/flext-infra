@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from importlib import import_module
 from pathlib import Path
 
 from flext_cli import u as cli_u
 from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
-from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
 from flext_infra._utilities._git import (
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             A receipt once the captured path alone leaves the index.
 
         Raises:
-            TypeError: If the index lock does not return a raw file descriptor.
+            TypeError: If the native index lock has an invalid capability or descriptor.
             ValueError: If the path is absolute/traversing, the entry changed
                 after planning, or the locked index has no captured bytes.
 
@@ -130,11 +130,14 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         if captured.value.content is None:
             msg = "the locked index has no captured bytes"
             raise ValueError(msg)
-        lock = LockedFD(index_path)
+        lock = import_module("gitdb.util").LockedFD(index_path)
+        if not isinstance(lock, p.Infra.GitIndexLock):
+            msg = "native gitdb LockedFD does not provide the index lock contract"
+            raise TypeError(msg)
         committed = False
         try:
             descriptor = lock.open(write=True, stream=False)
-            if not isinstance(descriptor, int):
+            if type(descriptor) is not int:
                 msg = "the index lock did not return a raw file descriptor"
                 raise TypeError(msg)
             FlextInfraUtilitiesGitSemanticPathsMixin._write_index_replacement(

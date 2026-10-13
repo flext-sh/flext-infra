@@ -247,19 +247,40 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             (package / "second.py").write_text(block, encoding="utf-8")
         return root
 
-    def test_scope_renders_each_directory_exactly_once(self, tmp_path: Path) -> None:
-        """The resolved scope never hands the same directory to jscpd twice.
+    def test_overlapping_scope_never_reports_a_file_as_its_own_clone(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Overlapping declarations never produce double-scan clone findings.
 
         A duplicated scope entry makes jscpd clone every file against itself,
         which is the false double-scan artifact; the union must be unique.
         """
         root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
+        pyproject = root / "pyproject.toml"
+        pyproject.write_text(
+            f"{pyproject.read_text(encoding='utf-8')}\n"
+            "[tool.flext.project.duplication]\n"
+            'scope = ["src", "charts", "charts"]\n',
+            encoding="utf-8",
+        )
 
-        scope = FlextInfraDuplicationGate(root)._render_scope_dirs(root)
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(scope.success, eq=True)
-        directories = tuple(scope.value)
-        tm.that(len(directories), eq=len(set(directories)))
+        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.issues, empty=False)
+        report = m.Infra.JscpdReport.model_validate_json(
+            (
+                root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_REPORT_FILENAME
+            ).read_text(encoding="utf-8"),
+        )
+        tm.that(report.duplicates, empty=False)
+        for duplicate in report.duplicates:
+            tm.that(duplicate.first_file == duplicate.second_file, eq=False)
+        tm.that(
+            tuple(issue.file for issue in execution.issues),
+            has="charts/values.yaml",
+        )
 
     def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
         """A clone between two distinct files is a blocking finding."""

@@ -36,13 +36,13 @@ def _shared_mypy_cache_spec() -> FlextInfraConfigModelsMake.MypyCacheSpec:
     return FlextInfraConfigModelsMake.MypyCacheSpec()
 
 
-def _shared_ruff_cache_spec() -> FlextInfraExternalCacheDirectorySpec:
+def _shared_ruff_cache_spec() -> FlextInfraConfigModelsMake.RuffCacheSpec:
     """Construct the declared external Ruff cache policy.
 
     Returns:
-        The resulting ``FlextInfraExternalCacheDirectorySpec``.
+        The resulting ``FlextInfraConfigModelsMake.RuffCacheSpec``.
     """
-    return FlextInfraExternalCacheDirectorySpec(
+    return FlextInfraConfigModelsMake.RuffCacheSpec(
         external_storage_directory=Path("flext/infra/ruff")
     )
 
@@ -63,6 +63,21 @@ class FlextInfraConfigModelsMake(
     FlextInfraConfigModelsMakeDocs,
 ):
     """Make workflow, verb, CI, and cache specification models."""
+
+    class RuffCacheSpec(FlextInfraExternalCacheDirectorySpec[str]):
+        """External Ruff cache with the declared default environment keys."""
+
+        data_home_environment_variable: Annotated[
+            str,
+            m.Field(min_length=1, description="XDG persistent cache-home variable"),
+        ] = c.Infra.MypyCacheEnvironment.DATA_HOME.value
+        user_home_environment_variable: Annotated[
+            str,
+            m.Field(
+                min_length=1,
+                description="User home variable for the XDG default",
+            ),
+        ] = c.Infra.MypyCacheEnvironment.USER_HOME.value
 
     class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
@@ -498,15 +513,14 @@ class FlextInfraConfigModelsMake(
             ]
             data_home_environment_variable: Annotated[
                 c.Infra.PytestCacheEnvironment,
-                m.Field(default=..., description="XDG persistent cache-home variable"),
-            ]
+                m.Field(description="XDG persistent cache-home variable"),
+            ] = m.Field()
             user_home_environment_variable: Annotated[
                 c.Infra.PytestCacheEnvironment,
                 m.Field(
-                    default=...,
                     description="User home variable for the XDG default",
                 ),
-            ]
+            ] = m.Field()
             target_directory: Annotated[
                 Path,
                 m.Field(description="Repository-relative pytest target"),
@@ -622,15 +636,14 @@ class FlextInfraConfigModelsMake(
 
             data_home_environment_variable: Annotated[
                 t.NonEmptyStr,
-                m.Field(default=..., description="XDG persistent cache-home variable"),
-            ]
+                m.Field(description="XDG persistent cache-home variable"),
+            ] = m.Field()
             user_home_environment_variable: Annotated[
                 t.NonEmptyStr,
                 m.Field(
-                    default=...,
                     description="User home variable for the XDG default",
                 ),
-            ]
+            ] = m.Field()
 
         class MypyCacheSpec(
             FlextInfraExternalCacheDirectorySpec[c.Infra.MypyCacheEnvironment],
@@ -801,7 +814,7 @@ class FlextInfraConfigModelsMake(
             ),
         ] = m.Field(default_factory=_shared_mypy_cache_spec)
         ruff_cache: Annotated[
-            FlextInfraExternalCacheDirectorySpec,
+            FlextInfraConfigModelsMake.RuffCacheSpec,
             m.Field(description="External project-keyed native Ruff cache policy"),
         ] = m.Field(default_factory=_shared_ruff_cache_spec)
         verbs: Annotated[

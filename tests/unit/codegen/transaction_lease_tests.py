@@ -20,6 +20,7 @@ from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspace
 from tests import tm, u
 
 if TYPE_CHECKING:
+    from multiprocessing.process import BaseProcess
     from multiprocessing.synchronize import Event
 
 
@@ -281,7 +282,7 @@ class TestsFlextInfraTransactionLease:
             args=(member, ready, release),
         )
         holder.start()
-        waiter: multiprocessing.process.BaseProcess | None = None
+        waiter: BaseProcess | None = None
         try:
             tm.that(
                 ready.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),

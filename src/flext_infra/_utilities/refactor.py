@@ -165,11 +165,18 @@ class FlextInfraUtilitiesRefactor:
             The resulting ``p.Result`` of repository, rule, and class totals.
 
         """
+        result_type = r[
+            t.Triple[
+                MutableMapping[str, int],
+                MutableMapping[str, int],
+                MutableMapping[c.Infra.ModScanFindingClass, int],
+            ]
+        ]
         classified = (
             report.actionable + report.detection_only + report.non_actionable_with_fix
         )
         if classified != report.findings or report.findings != len(report.entries):
-            return r.fail(
+            return result_type.fail(
                 "mod scan classification invariant failed: "
                 f"findings={report.findings} entries={len(report.entries)} "
                 f"classified={classified}",
@@ -194,11 +201,11 @@ class FlextInfraUtilitiesRefactor:
             ),
         }
         if class_totals != expected_class_totals:
-            return r.fail(
+            return result_type.fail(
                 "mod scan entry classification differs from report totals: "
                 f"entries={class_totals} report={expected_class_totals}",
             )
-        return r.ok((repository_totals, rule_totals, class_totals))
+        return result_type.ok((repository_totals, rule_totals, class_totals))
 
     @staticmethod
     def _published_mod_scan_bytes(

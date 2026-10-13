@@ -135,17 +135,19 @@ class TestsFlextInfraWorkspaceCheckCli:
         """Both shipped entrypoints retain a failed Result's native exit status."""
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
         gate = "invalid-exit-contract-gate"
-        output = tm.ok(u.Cli.run_raw([
-            *entrypoint,
-            "check",
-            "run",
-            "--repository-root",
-            str(workspace),
-            "--projects",
-            "flext-core",
-            "--gates",
-            gate,
-        ]))
+        output = tm.ok(
+            u.Cli.run_raw([
+                *entrypoint,
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "flext-core",
+                "--gates",
+                gate,
+            ])
+        )
 
         tm.that(output.outcome.raw_return_code, eq=c.Cli.EXIT_CODE_FAILURE)
         tm.that(output.stdout + output.stderr, has=f"unknown gate '{gate}'")

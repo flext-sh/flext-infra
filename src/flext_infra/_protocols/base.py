@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from types import FunctionType
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
@@ -27,6 +27,22 @@ class FlextInfraProtocolsBase(Protocol):
         """Native descriptor capability used to authenticate its defining function."""
 
         __func__: FunctionType
+
+    @runtime_checkable
+    class GitIndexLock(Protocol):
+        """Native gitdb LockedFD capability consumed by index publication."""
+
+        def open(self, *, write: Literal[True], stream: Literal[False]) -> int:
+            """Acquire the native index lock and return its owned raw descriptor."""
+            ...
+
+        def commit(self) -> None:
+            """Close the descriptor and publish its locked replacement."""
+            ...
+
+        def rollback(self) -> None:
+            """Close the descriptor and remove only its unpublished lock."""
+            ...
 
     @runtime_checkable
     class SourcePreview(Protocol):

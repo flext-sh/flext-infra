@@ -11,7 +11,6 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import c
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
@@ -23,7 +22,6 @@ class FlextInfraExternalCacheDirectorySpec[Environment: str = str](
     data_home_environment_variable: Annotated[
         Environment,
         m.Field(
-            default=c.Infra.MypyCacheEnvironment.DATA_HOME.value,
             min_length=1,
             description="XDG persistent cache-home variable",
         ),
@@ -31,7 +29,6 @@ class FlextInfraExternalCacheDirectorySpec[Environment: str = str](
     user_home_environment_variable: Annotated[
         Environment,
         m.Field(
-            default=c.Infra.MypyCacheEnvironment.USER_HOME.value,
             min_length=1,
             description="User home variable for the XDG default",
         ),

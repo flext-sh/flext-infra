@@ -402,8 +402,12 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[p.Cli.CommandOutput]``.
 
         """
-        # Make owns the invocation context; root is only the scanned consumer.
-        binary = u.Infra.managed_mise_binary(command[0], Path.cwd())
+        # Consumer scratch directories never own the invocation's runtime tools.
+        owner_root = u.Infra.runtime_environment_dir(
+            Path.cwd(),
+            runtime_root=type(settings).fetch_global().Infra.runtime_root,
+        ).parent
+        binary = u.Infra.managed_mise_binary(command[0], owner_root)
         if binary.failure:
             return r[p.Cli.CommandOutput].from_failure(binary)
         sys.stderr.write(

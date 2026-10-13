@@ -27,6 +27,43 @@ class TestsFlextInfraTypeGates:
     """The selected project's actual findings determine acceptance."""
 
     @staticmethod
+    def test_omitted_ruff_policy_uses_concrete_environment_defaults() -> None:
+        """The Make default factory produces a usable typed cache policy."""
+        configured = config.Infra.codegen.make
+        restored = m.Infra.MakeSpec.model_validate(
+            configured.model_dump(
+                exclude={"ruff_cache"},
+                exclude_computed_fields=True,
+            ),
+        )
+        expected = m.Infra.RuffCacheSpec(
+            external_storage_directory=restored.ruff_cache.external_storage_directory,
+        )
+        tm.that(restored.ruff_cache, eq=expected)
+        tm.that(
+            u.Infra.external_cache_directory(restored.ruff_cache),
+            eq=u.Infra.external_cache_directory(expected),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "field",
+        ["data_home_environment_variable", "user_home_environment_variable"],
+    )
+    def test_required_cache_environment_fields_do_not_inherit_defaults(
+        field: str,
+    ) -> None:
+        """Testmon and codemod keep their explicitly required YAML contracts."""
+        configured = config.Infra.codegen.make
+        for policy in (configured.testmon_cache, configured.codemod_rules_cache):
+            payload = policy.model_dump(
+                exclude={field},
+                exclude_computed_fields=True,
+            )
+            with pytest.raises(ValueError, match=field):
+                type(policy).model_validate(payload)
+
+    @staticmethod
     @pytest.mark.slow
     def test_mypy_cache_is_project_keyed_across_checkouts_and_relocks(
         tmp_path: Path,

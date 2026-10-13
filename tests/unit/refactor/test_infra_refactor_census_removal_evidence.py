@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 from flext_infra import infra, m
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import tm
@@ -42,6 +41,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             project="demo",
             module_name="generate",
             scope_path=name,
+            is_facade_member=False,
             references_count=references_count,
             reference_evidence_collected=evidence_collected,
         )
@@ -79,13 +79,15 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
     @staticmethod
     def test_service_composes_validated_options(tmp_path: Path) -> None:
         """Service construction retains request filters and immutable options."""
+        json_output = tmp_path / "census.json"
+        impact_map_output = tmp_path / "impact.json"
         options = m.Infra.CensusInput(
             repository_root=tmp_path,
             kinds=("function",),
             rules=("unused",),
             families=("c",),
-            json_output=str(tmp_path / "census.json"),
-            impact_map_output=str(tmp_path / "impact.json"),
+            json_output=str(json_output),
+            impact_map_output=str(impact_map_output),
             include_local_scopes=False,
         )
         service = FlextInfraRefactorCensus(
@@ -93,10 +95,22 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             source_preview=infra.source_preview(options.repository_root),
             options=options,
         )
-        tm.that(service.options, is_=options)
+        tm.that(service.options, eq=options)
         tm.that(service.kind_names, eq=options.kinds)
         tm.that(service.rule_names, eq=options.rules)
         tm.that(service.family_names, eq=options.families)
-        tm.that(service.json_output_path, eq=Path(options.json_output or ""))
-        tm.that(service.impact_map_output_path, eq=Path(options.impact_map_output or ""))
+        tm.that(service.json_output_path, eq=json_output)
+        tm.that(service.impact_map_output_path, eq=impact_map_output)
         tm.that(service.options.include_local_scopes, eq=options.include_local_scopes)
+        for name, expected in m.Infra.CensusOptions.model_config.items():
+            assert name in service.model_config
+            tm.that(service.model_config.get(name), eq=expected)
+
+    @staticmethod
+    def test_service_defaults_use_declared_options(tmp_path: Path) -> None:
+        """Omitted options are constructed by the canonical options model."""
+        service = FlextInfraRefactorCensus(
+            repository_root=tmp_path,
+            source_preview=infra.source_preview(tmp_path),
+        )
+        tm.that(service.options, eq=m.Infra.CensusOptions())
