@@ -121,7 +121,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         *,
         project_name: str = "sample-proj",
         package_name: str = "sample_pkg",
-        pyproject: str = "[project]\nname='sample'\n",
+        pyproject: str = "[project]\nname='sample'\nversion='1.0.0'\n",
         declare: bool = True,
     ) -> t.Triple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.

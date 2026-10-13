@@ -22,6 +22,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, t, tm, u
 
 
@@ -736,6 +737,82 @@ class TestsFlextInfraDeclarationRelocation:
             )
         )
         tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("accepted", [False, True])
+    def test_public_group_cutover_is_accepted_or_recovers_on_consumer_rejection(
+        tmp_path: Path,
+        *,
+        accepted: bool,
+    ) -> None:
+        """A fresh consumer accepts the full cutover, never a rejected partial runtime."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path, body="count: int = Field(default=3)",
+        )
+        before_sources = {
+            path: path.read_bytes() for path in root.rglob("*.py")
+        }
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope, sources=sources,
+            ))
+        target = next(path for path in sources if path.parent.name == "_models")
+        package = target.parent.parent
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for edit in edits:
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(edit.file_path, required=True))
+            source = edit.updated_source
+            if not accepted and edit.file_path == target:
+                source = source.replace("Field(default=3)", "Field(default=7)")
+            plans.append(m.Infra.SemanticFilePlan(
+                project=root, path=edit.file_path, before=before,
+                desired_content=source.encode("utf-8"), desired_mode=before.mode,
+                changes=("declaration relocation",),
+            ))
+
+        def consume() -> p.Result[bool]:
+            result = u.Cli.run(
+                (sys.executable, "-B", "-c", (
+                    f"from {package.name} import m; "
+                    f"from {package.name}.consumer import build; "
+                    "assert build().__class__ is m.Payload; "
+                    "assert build().count == 3; "
+                    "assert m.Payload.model_validate({'count': 4}).model_dump() == {'count': 4}"
+                )),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+            if result.failure:
+                return r[bool].from_failure(result)
+            return r[bool].ok(u.Cli.process_succeeded(result.value.outcome))
+
+        result = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            plans, repository_root=root, projection_roots=(root,),
+            dependency_group=package.name, validator=consume,
+        )
+        if accepted:
+            tm.ok(result)
+            tm.that(tm.ok(consume()), eq=True)
+            with infra.rope_workspace(root) as rope:
+                tm.that(tm.ok(u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources={path: path.read_text(encoding="utf-8") for path in sources},
+                )), eq=())
+        else:
+            tm.fail(result)
+            for path, content in before_sources.items():
+                tm.that(path.read_bytes(), eq=content)
+            original = tm.ok(u.Cli.run(
+                (sys.executable, "-B", "-c", (
+                    f"from {package.name}.consumer import build; "
+                    "assert build().count == 3"
+                )),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ))
+            tm.that(u.Cli.process_succeeded(original.outcome), eq=True)
 
     @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:

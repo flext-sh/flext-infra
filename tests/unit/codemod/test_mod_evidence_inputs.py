@@ -36,7 +36,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         tm.that(report.findings, eq=2)
         snapshot = u.Infra.codemod_binding_snapshot(
-            mod_workspace, tm.not_none(report.source_states)
+            mod_workspace, (tm.not_none(report.entries[0].source_state),)
         )
         report = report.model_copy(
             update={
@@ -59,7 +59,13 @@ class TestsFlextInfraModEvidenceInputs:
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
         tm.that(encoded.count(marker.encode("utf-8")), eq=1)
         tm.that(restored.entries, eq=report.entries)
-        tm.that(len(restored.inputs.states), eq=len(snapshot.states))
+        tm.that(
+            len(restored.inputs.states),
+            eq=len({
+                state.path
+                for state in (*tm.not_none(report.source_states), *snapshot.states)
+            }),
+        )
         tm.that(restored.entries[0].source_state is restored.entries[1].source_state)
         with pytest.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(

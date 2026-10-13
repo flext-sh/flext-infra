@@ -82,7 +82,11 @@ class FlextInfraCodegenLazyInit(
             )
         return r[bool].ok(value=True)
 
-    def plan_files(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def plan_files(
+        self,
+        *,
+        evidence_root: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return one complete immutable lazy-init analysis receipt.
 
         Returns:
@@ -113,7 +117,7 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
         evidence = u.Infra.publish_refactor_report_evidence(
-            resolved_repository_root,
+            resolved_repository_root if evidence_root is None else evidence_root,
             analysis,
             relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
         )

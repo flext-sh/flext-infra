@@ -151,7 +151,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         workspace, project, _pkg = u.Tests.namespace_workspace(
             tmp_path,
             pyproject=(
-                "[project]\nname='sample'\n\n"
+                "[project]\nname='sample'\nversion='1.0.0'\n\n"
                 "[tool.flext.namespace]\nscan_dirs = ['src']\n"
             ),
         )

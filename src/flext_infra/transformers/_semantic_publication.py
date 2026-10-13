@@ -221,7 +221,7 @@ class FlextInfraSemanticPublication:
                             view_root / path.relative_to(repository_root)
                             for path in projection_roots
                         ),
-                    ).plan_files()
+                    ).plan_files(evidence_root=repository_root)
                     if generated.failure:
                         return r[m.Infra.CodegenPhaseAnalysis].from_failure(generated)
                     for item in generated.value.files:

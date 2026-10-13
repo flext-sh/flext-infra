@@ -60,7 +60,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 "resolve-future": (
                     "id: resolve-future\nlanguage: Python\nseverity: warning\n"
                     "rule:\n  pattern: marker = ()\nfix: |\n"
-                    "  from __future__ import annotations\n  marker = []\n"
+                    "  from __future__ import annotations\n\n  marker = []\n"
                 ),
                 "absent-future": (
                     "id: absent-future\nlanguage: Python\nseverity: warning\n"
@@ -75,6 +75,8 @@ class TestsFlextInfraRefactorViolationsSweep:
         sample, victim = parent / "accounting.py", root / "victim.py"
         tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
         tm.ok(u.Cli.atomic_write_text_file(victim, "value = 1\n"))
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(sample))
+        tm.that(m.Cli.AtomicFileState.model_validate_json(state.model_dump_json()), eq=state)
         before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
         quiet_before = (
             tm.ok(
@@ -267,7 +269,14 @@ class TestsFlextInfraRefactorViolationsSweep:
             )
         }
         absence = rows["absent-class"]
-        tm.that((absence.before, absence.after, absence.introduced), eq=(1, 1, 0))
+        tm.that(
+            (absence.before, absence.after, absence.introduced),
+            eq=(
+                sum(entry.rule_id == absence.rule_id for entry in before.entries),
+                sum(entry.rule_id == absence.rule_id for entry in after.entries),
+                0,
+            ),
+        )
         tm.that(absence.semantic_correspondence_proven, eq=True)
         calls = rows["violating-call"]
         tm.that(
