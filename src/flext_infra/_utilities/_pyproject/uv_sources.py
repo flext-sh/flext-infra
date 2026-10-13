@@ -129,7 +129,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def _sync_uv_candidates(
         uv: t.Cli.TomlTable,
         candidate_sources: t.StrMapping,
-        local_members: t.StrSequence,
         requirements: t.StrSequence,
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
@@ -139,16 +138,17 @@ class FlextInfraUtilitiesPyprojectUvSources(
         requirement for that distribution during staging. The candidate
         manifest owns this temporary pin; the committed lock owns normal
         resolutions when no candidate is declared (flext-oe420).
+
+        Only the declared SSOT override list reaches the rendered key: uv
+        already unifies a repository's own distribution to its editable root
+        (the committed pre-override lock carried one ``flext-infra =
+        editable "."`` entry with the full dev group), while a rendered
+        self-override forces the workspace-source shape that hard-fails
+        standalone ``uv lock`` without a sources entry and drops the dev
+        group with one. Standalone repositories must lock exactly like
+        fleet members.
         """
-        dependency_extras = FlextInfraUtilitiesDependencies.dependency_extras
-        # Why (fleet-automation 2026-10-13): a standalone consumer whose
-        # transitive graph pins a family member on another integration ref
-        # declares the SSOT override list (org layer); it replaces the
-        # member-computed staging list. Empty keeps the staging behavior.
-        overrides = list(resolution.override_dependencies) or [
-            f"{name}{dependency_extras(requirements, name)}"
-            for name in sorted(local_members)
-        ]
+        overrides = list(resolution.override_dependencies)
         overrides.extend(
             f"{name}{dependency_extras(requirements, name)} @ {source}"
             for name, source in sorted(candidate_sources.items())
@@ -273,9 +273,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ),
             }),
         )
-        cls._sync_uv_candidates(
-            uv, candidate_sources, root_names, local_requirements, resolution
-        )
+        cls._sync_uv_candidates(uv, candidate_sources, local_requirements, resolution)
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         cls._sync_uv_constraints(
             uv,
