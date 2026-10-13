@@ -138,7 +138,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if published.success:
             journal, journal_state = current.journal, current.journal_state
             if any(item.dependency_group is not None for item in staged.value):
-                recorded = FlextInfraMiseArtifactsJournal.read(prepared.value.plan.layout)
+                recorded = FlextInfraMiseArtifactsJournal.read(
+                    prepared.value.plan.layout
+                )
                 if recorded.failure:
                     return result_type.from_failure(recorded)
                 journal, journal_state = recorded.value
@@ -147,7 +149,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     plan=prepared.value.plan,
                     journal=journal,
                     journal_state=journal_state,
-                    written_files=(*session.written_files, *published.value.written_files),
+                    written_files=(
+                        *session.written_files,
+                        *published.value.written_files,
+                    ),
                     published_files=(
                         *session.published_files,
                         *published.value.published_files,

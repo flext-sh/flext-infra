@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
+from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -20,6 +21,7 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesCodegen(
+    FlextInfraMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesGitignore,
