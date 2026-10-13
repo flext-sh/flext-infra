@@ -322,6 +322,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.UTILITIES_PY
             ).directory,
+            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
+                c.Infra.MODELS_PY
+            ).directory,
         ))
         # Provider discovery expands the inventory, never the owners eligible
         # for a reference. Its declared inheritance lineage elects those owners.
@@ -330,7 +333,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 statement
                 for module, (source, _package) in modules.items()
                 if directories.intersection(module.split("."))
-                or module.endswith((".typings", ".utilities"))
+                or module.endswith((".typings", ".models", ".utilities"))
                 for statement in cls._behavior_base_imports(source)
             )
             expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
@@ -692,8 +695,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             Whether both receivers reach the identical utility declaration.
         """
         module, receiver, member = target
-        if receiver != c.Infra.FacadeFamily.U:
-            return False
         expected = cls._behavior_effective_declaration(
             modules, cls._behavior_lineage(modules, module, receiver), member
         )
@@ -746,6 +747,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         modules = request.modules
         ownership = request.ownership
         utility_imports = request.utility_imports
+        declaration_imports = request.declaration_imports
+        elected_imports = utility_imports | declaration_imports
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.TYPINGS_PY
@@ -773,46 +776,63 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 ),
                 None,
             )
-            if imported is None:
-                return None
-            if utility_imports and imported not in utility_imports:
+            if imported is None or (
+                elected_imports and imported not in elected_imports
+            ):
                 return None
             module, receiver = imported
             if imported not in lineages:
                 lineages[imported] = (
                     cls._behavior_lineage(modules, module, receiver)
-                    if imported in utility_imports
+                    if imported in elected_imports
                     else cls._typing_behavior_lineage(
                         modules, module, receiver, typing_directory
                     )
                 )
             lineage = lineages[imported]
-            if imported not in utility_imports and cls._behavior_member_declared(
+            if imported not in elected_imports and cls._behavior_member_declared(
                 modules, lineage, qualified.rpartition(".")[2], ownership[0]
             ):
                 return None
+            if imported in elected_imports:
+                member = qualified.rpartition(".")[2]
+                effective = cls._behavior_effective_declaration(
+                    modules, lineage, member
+                )
+                declaration = cls._effective_declaration_node(modules, effective)
+                context_free = cls._context_free_static_member(declaration, member)
+                lower = tuple(
+                    (candidate_module, candidate_receiver, member)
+                    for candidate_module, candidate_receiver in identities
+                    if candidate_receiver == c.Infra.FacadeFamily.M
+                    and context_free
+                    and cls._behavior_effective_declaration(
+                        modules,
+                        cls._behavior_lineage(
+                            modules, candidate_module, candidate_receiver
+                        ),
+                        member,
+                    )
+                    == effective
+                )
+                cls._require_unambiguous_lower(lower, qualified)
+                if lower:
+                    obsolete.add(imported)
+                    return lower[0]
+                if imported in declaration_imports:
+                    return None
             target = cls._behavior_reference_target(
                 qualified, path, lineage, modules, ownership
             )
             if target is None and imported in utility_imports:
                 msg = f"self-facade callable owner is unresolved: {qualified}"
                 raise ValueError(msg)
-            if target is not None:
-                obsolete.add(imported)
+            cls._record_obsolete_target(obsolete, imported, target)
             return target
 
         if not identities:
             return source, ()
-        indices = tuple(
-            index
-            for index, part in enumerate(path.parts)
-            if part == c.Infra.DEFAULT_SRC_DIR
-        )
-        module_name = (
-            ".".join((*path.parts[indices[-1] + 1 : -1], path.stem))
-            if indices
-            else None
-        )
+        module_name = cls._source_module_name(path)
         context = CodemodContext(full_module_name=module_name)
         updated = MetadataWrapper(cst.parse_module(source)).visit(
             cls._BehaviorReferences(
@@ -841,6 +861,101 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     RemoveImportsVisitor.remove_unused_import(
                         context, node.module, alias.name, alias.asname
                     )
+
+    @staticmethod
+    def _require_unambiguous_lower(
+        lower: t.SequenceOf[t.Triple[str, str, str]],
+        qualified: str,
+    ) -> None:
+        """Fail when more than one lower receiver declares the member.
+
+        Args:
+            lower: The lower receivers declaring the effective member.
+            qualified: The qualified reference being resolved.
+
+        Raises:
+            ValueError: If more than one lower receiver declares the member.
+
+        """
+        if len(lower) > 1:
+            msg = f"ambiguous lower declaration receiver: {qualified}"
+            raise ValueError(msg)
+
+    @staticmethod
+    def _record_obsolete_target(
+        obsolete: set[t.Pair[str, str]],
+        imported: t.Pair[str, str],
+        target: t.Triple[str, str, str] | None,
+    ) -> None:
+        """Mark an elected import obsolete once its reference target resolves.
+
+        Args:
+            obsolete: The elected imports proven obsolete.
+            imported: The imported module/name identity.
+            target: The resolved reference target, when present.
+
+        """
+        if target is not None:
+            obsolete.add(imported)
+
+    @staticmethod
+    def _effective_declaration_node(
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        effective: t.Pair[str, str] | None,
+    ) -> ast.ClassDef | None:
+        """Return the declared class node of an effective declaration.
+
+        Returns:
+            The declared class node, or ``None`` when there is no effective
+            declaration.
+
+        """
+        if effective is None:
+            return None
+        return next(
+            node
+            for node in ast.parse(modules[effective[0]][0]).body
+            if isinstance(node, ast.ClassDef) and node.name == effective[1]
+        )
+
+    @classmethod
+    def _context_free_static_member(
+        cls,
+        declaration: ast.ClassDef | None,
+        member: str,
+    ) -> bool:
+        """Return whether a class member is a context-free static method.
+
+        Returns:
+            Whether the bound member is declared as a ``@staticmethod``.
+
+        """
+        binding = (
+            cls._behavior_member_binding(declaration, member)
+            if declaration is not None
+            else None
+        )
+        return isinstance(binding, ast.FunctionDef | ast.AsyncFunctionDef) and any(
+            isinstance(decorator, ast.Name) and decorator.id == "staticmethod"
+            for decorator in binding.decorator_list
+        )
+
+    @staticmethod
+    def _source_module_name(path: Path) -> str | None:
+        """Return the importable module name for a source under ``src``.
+
+        Returns:
+            The dotted module name, or ``None`` when the path is outside ``src``.
+
+        """
+        indices = tuple(
+            index
+            for index, part in enumerate(path.parts)
+            if part == c.Infra.DEFAULT_SRC_DIR
+        )
+        if not indices:
+            return None
+        return ".".join((*path.parts[indices[-1] + 1 : -1], path.stem))
 
     @classmethod
     def _plan_facade_bases(

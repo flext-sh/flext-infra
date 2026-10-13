@@ -98,6 +98,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 uv_environments=tuple(environments),
                 files=tuple(files),
                 issues=tuple(issues),
+                exception=self.planning_exception,
             ),
         )
 
@@ -493,7 +494,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                             desired_digest=(
                                 None
                                 if file.desired_content is None
-                                else f"sha256:{u.Cli.sha256_bytes(file.desired_content)}"
+                                else (
+                                    f"sha256:{u.Cli.sha256_bytes(file.desired_content)}"
+                                )
                             ),
                             desired_mode=file.desired_mode,
                             owner=file.owner,
@@ -580,6 +583,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         issues: list[m.Infra.Issue] = []
         for index, outcome in enumerate(outcomes, start=1):
             issues.extend(outcome.issues)
+            if self.planning_exception is None:
+                self.planning_exception = outcome.exception
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
             if outcome.error or outcome.error_type:
                 u.Cli.status(
@@ -637,6 +642,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 error=str(exc),
                 error_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
                 error_traceback=traceback.format_exc(),
+                exception=exc,
                 elapsed=time.monotonic() - started,
             )
 
@@ -700,6 +706,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ),
             elapsed=time.monotonic() - started,
             issues=tuple(planner.planning_issues),
+            exception=planner.planning_exception,
         )
 
     def _repository_planning_inputs(
@@ -859,7 +866,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]
         ]
         config_spec = config.Infra.codegen
-        if (
+        if contract.runtime_bindings:
+            repository_plan = self.plan_runtime_bindings(target, config_spec)
+        elif (
             self.initial_workspace is not None
             and repository.name == workspace.repository.name
         ):

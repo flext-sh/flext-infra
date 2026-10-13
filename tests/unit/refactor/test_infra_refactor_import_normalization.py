@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
+from flext_infra import c, m
 from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import t, tm, u
@@ -22,6 +22,77 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
+
+    @classmethod
+    def test_runtime_promotion_rejects_reverse_namespace_edges(
+        cls, tmp_path: Path
+    ) -> None:
+        """Runtime demand cannot authorize a higher self-namespace dependency."""
+        project, package = cls._project(tmp_path)
+        module = package / "models.py"
+        source = (
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            f"    from {package.name} import u\n"
+            "value = u()\n"
+        )
+        module.write_text(source, encoding="utf-8")
+        with pytest.raises(ValueError, match="forbidden reverse namespace import"):
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=source
+            )
+        tm.that(module.read_text(encoding="utf-8"), eq=source)
+
+    @classmethod
+    @pytest.mark.parametrize("model", [False, True])
+    def test_typing_guard_promotes_real_definition_time_imports(
+        cls, tmp_path: Path, *, model: bool
+    ) -> None:
+        """A fresh consumer resolves evaluated generics and Pydantic annotations."""
+        project, package = cls._project(tmp_path)
+        module = package / ("models.py" if model else "consumer.py")
+        declaration = (
+            "from flext_core import m\n"
+            "class Record(m.ContractModel):\n"
+            "    value: Path = m.Field(description='Consumer path')\n"
+            "value = Record(value=Path('consumer')).value\n"
+            if model
+            else "from flext_core import r\n"
+            "value = r[tuple[Path, ...]].ok((Path('consumer'),)).unwrap()[0]\n"
+        )
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            "    from pathlib import Path, PurePath\n"
+            + declaration
+            + "def annotate(value: PurePath) -> PurePath:\n"
+            "    return value\n"
+        )
+        normalized = cls._normalize(project, module, source)
+        module.write_text(normalized, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.{module.stem} import value, annotate; "
+                        "assert str(value) == 'consumer'; "
+                        "assert annotate(value) == value"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=normalized
+            ),
+            eq=None,
+        )
 
     @classmethod
     def test_eager_root_dependencies_preserve_bootstrap_imports(
@@ -252,6 +323,7 @@ class TestsFlextInfraRefactorImportNormalization:
             f"    {name!r}: {module!r},\n" for name, module in exports.items()
         )
         (package_dir / "__init__.py").write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
             "from flext_core.lazy import install_lazy_exports\n"
             "\n"
             "install_lazy_exports(\n"
@@ -480,7 +552,8 @@ class TestsFlextInfraRefactorImportNormalization:
             "class LocalModels(FlextTestsModels):\n"
             "    class Tests(FlextTestsModels.Tests):\n"
             "        class User(FlextTestsModels.Tests.User):\n"
-            "            local: bool = True\n\n"
+            "            local: bool = FlextTestsModels.Field("
+            "default=True, description='Local consumer field')\n\n"
             "m = LocalModels\n__all__ = ['LocalModels', 'm']\n",
             encoding="utf-8",
         )
@@ -507,7 +580,14 @@ class TestsFlextInfraRefactorImportNormalization:
             normalized if normalized is not None else source,
             encoding="utf-8",
         )
-        tm.that(normalized, eq=None)
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=module,
+                source=module.read_text(encoding="utf-8"),
+            ),
+            eq=None,
+        )
         result = tm.ok(
             u.Cli.run(
                 (

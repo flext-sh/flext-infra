@@ -17,6 +17,130 @@
 #     expected: 3                  # optional exact finding count receipt
 
 rules:
+  - id: gitmodule-input-declaration-retire-runtime-owner
+    description: Relocate the Git configuration input model to its layer-zero owner.
+    include: [src/flext_infra/_models/git.py]
+    find: '(?ms)^    class GitSubmoduleDeclaration\(m\.ContractModel\):\n.*?(?=^    class GitCommitishRequest\()'
+    replace: ''
+  - id: gitmodule-input-declaration-elect-config-owner
+    description: Let runtime topology consume the one parsed Git input declaration without a layer inversion.
+    include: [src/flext_infra/_models/_config/workspace.py]
+    find: '^(class FlextInfraConfigModelsWorkspace:\n    """Workspace manifest, integration, and policy models\."""\n)(?!\n    class GitSubmoduleDeclaration)'
+    flags: [MULTILINE]
+    replace: |-
+      \g<1>
+          class GitSubmoduleDeclaration(m.ContractModel):
+              """One Git configuration section parsed by its canonical owner."""
+
+              model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+                  extra="forbid",
+                  frozen=True,
+              )
+
+              path: Annotated[
+                  Path,
+                  m.Field(description="Submodule path relative to the superproject root"),
+              ]
+              url: Annotated[
+                  str,
+                  m.Field(description="Declared URL; empty when undeclared"),
+              ]
+              branch: Annotated[
+                  str,
+                  m.Field(description="Declared branch; empty when undeclared"),
+              ]
+              managed: Annotated[
+                  bool | None,
+                  m.Field(
+                      description=(
+                          "Native Git boolean: absent inherits participation; "
+                          "true participates and false does not"
+                      ),
+                  ),
+              ]
+
+  - id: make-retire-unused-gitlink-context-resolution
+    description: Stop resolving a rich member projection unused by every Make template.
+    include: [src/flext_infra/codegen/_conform/*.py]
+    find: '(?ms)^        gitlinks = self\._managed_gitlinks\(\n.*?^            return r\[[^\n]+\]\.from_failure\(gitlinks\)\n'
+    replace: ''
+  - id: make-retire-unused-gitlink-context-argument
+    description: Remove the retired template projection argument from its render producers.
+    include: [src/flext_infra/codegen/_conform/*.py]
+    find: '^                workspace_gitlinks=gitlinks\.value,\n'
+    replace: ''
+    flags: [MULTILINE]
+  - id: make-retire-unused-gitlink-context-resolver
+    description: Remove the superseded provider baseline resolver after retiring its consumers.
+    include: [src/flext_infra/codegen/_conform/context_render.py]
+    find: '(?ms)^    @staticmethod\n    def _managed_gitlinks\(\n.*?(?=^    @staticmethod\n    def _repository_root_rel\()'
+    replace: ''
+  - id: make-retire-unused-gitlink-context-fields
+    description: Keep the Make transport limited to actual template inputs.
+    include: [src/flext_infra/_models/_config/contexts.py]
+    find: '(?ms)^        workspace_gitlinks: Annotated\[\n.*?^        \] = \(\)\n'
+    replace: ''
+  - id: make-retire-unused-managed-gitlink-model
+    description: Eliminate the unused rich gitlink template model after its entire consumer cut.
+    include: [src/flext_infra/_models/_config/repository.py]
+    find: '(?ms)^    class ManagedGitlinkSpec\(FlextInfraConfigModelsContract\.ConfigContract\):\n.*?(?=^    class ScriptDispatchSpec\()'
+    replace: ''
+  - id: make-retire-generated-gitlink-membership-variable
+    description: Submodule provisioning observes Git declarations directly in every mode.
+    include: [src/flext_infra/templates/project/base/Makefile.j2]
+    find: '^MANAGED_GITLINKS :=.*\n'
+    replace: ''
+    flags: [MULTILINE]
+  - id: make-document-live-git-provisioning-authority
+    description: Explain traversal projection separately from the Git provisioning authority.
+    include: [src/flext_infra/templates/project/base/Makefile.j2]
+    find: '^# Computed: MANAGED_GITLINKS mirrors the read-only local \.gitmodules topology\.$'
+    replace: '# Computed: traversal projects observed members; provisioning reads local .gitmodules.'
+    flags: [MULTILINE]
+  - id: make-retire-obsolete-generated-membership-assertion
+    description: Real generated Make provisioning now proves membership discovery through Git.
+    include: [tests/unit/codegen/test_gen_respects_invocation_scope.py]
+    find: '(?ms)^    @staticmethod\n    def test_project_selector_resolves_members_from_repository_root\(\n.*?(?=^    (?:@|def )|\Z)'
+    replace: ''
+  - id: repository-policy-vocabulary-retire-constant-enums
+    description: Move layer-zero repository policy enums out of the constants family.
+    include: [src/flext_infra/_constants/codegen_project.py]
+    find: '(?ms)^    @unique\n    class (?:RepositoryState|CodegenKind|ProjectKind)\(StrEnum\):\n.*?(?=^    @unique\n|^    [A-Z][A-Z0-9_]*:)'
+    replace: ''
+  - id: repository-policy-vocabulary-declare-canonical-enums
+    description: Keep one layer-zero owner inherited by both config models and constants.
+    include: [src/flext_infra/_models/_config/vocabulary.py]
+    find: '^(class FlextInfraConfigVocabulary:\n    """Canonical closed contracts required before project facades initialize\."""\n)(?!\n    @unique\n    class RepositoryState)'
+    flags: [MULTILINE]
+    replace: |-
+      \g<1>
+          @unique
+          class RepositoryState(StrEnum):
+              """Lifecycle state used by repository selection."""
+
+              ACTIVE = "active"
+              EXCLUDED = "excluded"
+
+          @unique
+          class CodegenKind(StrEnum):
+              """Code-generation policy applied to one repository."""
+
+              CONFORM = "conform"
+              PYTHON = "python"
+              NONE = "none"
+
+          @unique
+          class ProjectKind(StrEnum):
+              """Own governance profile; external forks retain upstream contracts."""
+
+              INTERNAL_FLEXT = "internal_flext"
+              INTERNAL = "internal"
+              THIRD_PARTY_FORK = "third_party_fork"
+
+  - id: repository-discovery-retire-manifest-exclusion-name
+    description: Name Git-derived participation at its canonical discovery owner and consumers.
+    find: '\bmanifest_nonparticipant_paths\b'
+    replace: repository_nonparticipant_paths
   - id: ldif-test-case-attribute-data-consumers
     distributions: [flext-ldif]
     description: Materialize attribute case models through the test utility owner.
@@ -308,3 +432,11 @@ rules:
     include: [tests/unit/workspace/test_flext_worktree_binding.py]
     find: '(?m)^from tests import t, u$'
     replace: 'from tests import m, t, u'
+  - id: retire-own-facet-import-shadowed-by-parent
+    description: >-
+      Drop an own-namespace facet alias that the very next line re-imports from
+      the parent package, so the parent's facade is the single binding and no
+      self-namespace cycle is introduced. Applies to every project.
+    find: '^from (?P<own>\w+(?:\.\w+)*) import (?P<names>(?:\w+, )*\w+), (?P<facet>[ctpmu])\nfrom (?P<parent>\w+(?:\.\w+)*) import (?P=facet)$'
+    replace: 'from \g<own> import \g<names>\nfrom \g<parent> import \g<facet>'
+    flags: [MULTILINE]

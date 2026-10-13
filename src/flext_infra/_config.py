@@ -35,39 +35,101 @@ class FlextInfraConfig(FlextCliConfig):
     @classmethod
     @override
     def _config_files(cls) -> list[Path]:
-        """Tracked configs and operator overlays first, the local file last.
-
-        The sorted glob would discover the local override file in first
-        position (``.local`` sorts before ``.yaml``), where it would lose
-        every scalar collision; it is filtered out of the discovered set and
-        appended explicitly exactly once so it merges with the highest
-        precedence of any file source. The governed repository's tracked org
-        layer is appended after it, so a checkout root always speaks with the
-        last word on its own org data.
+        """Elect the existing whole-namespace sources for the global singleton.
 
         Returns:
             The resulting ``list[Path]``.
 
         """
+        project_directory = Path.cwd() / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        user_directory = cls._user_config_dir()
+        inherited = super()._config_files()
+        reserved = {
+            FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME,
+            FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME,
+        }
         files = [
             item
-            for item in super()._config_files()
-            if item.name != FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
+            for item in inherited
+            if item.name not in reserved and not item.is_relative_to(user_directory)
         ]
-        local = (
-            cls._config_dir()
-            / FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
-        )
-        if local.is_file():
-            files.append(local)
         org = (
-            Path.cwd()
-            / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+            project_directory
             / FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME
         )
         if org.is_file():
             files.append(org)
-        return files
+        files.extend(item for item in inherited if item.is_relative_to(user_directory))
+        local = (
+            project_directory
+            / FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
+        )
+        if local.is_file():
+            files.append(local)
+        return list(dict.fromkeys(files))
+
+    @classmethod
+    def config_sources_for_repository(
+        cls,
+        repository_root: Path,
+        *,
+        filename: str,
+    ) -> tuple[Path, ...]:
+        """Elect exactly the declared file's library, project and local layers.
+
+        The target root and owned filename are injected. No current directory,
+        filename ordering or another repository's overrides select a layer.
+
+        Returns:
+            Packaged F.yaml, target F.yaml and target F.local.yaml in that order.
+
+        Raises:
+            ValueError: If the filename is not one repository-local YAML file.
+            FileNotFoundError: If the declared packaged default is absent.
+        """
+        candidates = cls.config_layer_paths_for_repository(
+            repository_root,
+            filename=filename,
+        )
+        library = candidates[0]
+        if not library.is_file():
+            msg = f"declared packaged config default is missing: {library}"
+            raise FileNotFoundError(msg)
+        for path in candidates:
+            if path.exists() and not path.is_file():
+                msg = f"declared config layer is not a regular file: {path}"
+                raise ValueError(msg)
+        return tuple(dict.fromkeys(path for path in candidates if path.is_file()))
+
+    @classmethod
+    def config_layer_paths_for_repository(
+        cls,
+        repository_root: Path,
+        *,
+        filename: str,
+    ) -> tuple[Path, Path, Path]:
+        """Declare ordered config destinations independently of file existence.
+
+        Returns:
+            The library, project and local paths used by both reading and migration.
+
+        Raises:
+            ValueError: If the root or owned YAML filename is not explicit.
+        """
+        relative = Path(filename)
+        if (
+            not repository_root.is_absolute()
+            or relative.name != filename
+            or relative.suffix != ".yaml"
+        ):
+            msg = f"config requires an absolute root and one YAML filename: {filename}"
+            raise ValueError(msg)
+        directory = repository_root / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        return (
+            cls.ssot_config_dir() / relative,
+            directory / relative,
+            directory / relative.with_name(f"{relative.stem}.local.yaml"),
+        )
 
 
 # The public singleton keeps its type through circular facade analysis.

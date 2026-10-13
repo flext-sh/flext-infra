@@ -590,7 +590,7 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         package_name: str,
         source: str,
-    ) -> t.Pair[list[str], dict[str, str]]:
+    ) -> t.Pair[list[str], t.StrDict]:
         """Collect the public exports and their target modules from one facade.
 
         Returns:

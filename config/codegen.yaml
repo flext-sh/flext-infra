@@ -471,6 +471,10 @@ Infra:
       discovery_scope: none
 
     make:
+      # This campaign accepts complete diagnostic execution while preserving
+      # findings. The receipt never converts the native command status to green.
+      gate_acceptance_policy: complete_execution
+      gate_receipts_directory: .reports/gates
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -1265,6 +1269,8 @@ Infra:
     - path: .vscode/settings.json
       owner: vscode
       policy: merge
+      tracking: runtime-local
+      runtime_binding: true
     # Release build policies: fully generated fleet-wide bytes. The release
     # policy phase renders build constraints at build time from
     # config.Infra.release.build_constraints; no repository copy exists.

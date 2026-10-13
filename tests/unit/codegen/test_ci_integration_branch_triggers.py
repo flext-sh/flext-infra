@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m
-from tests import tm, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCiIntegrationBranchTriggers:
@@ -25,6 +25,29 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     baseline_branches = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
 
     @classmethod
+    def _render_workflow(
+        cls,
+        *,
+        dist: str,
+        make_profile: c.Infra.MakeProfile,
+        repository_branch: str,
+        ci_trigger_branches: t.VariadicTuple[t.NonEmptyStr],
+    ) -> tuple[m.Infra.GithubWorkflowRenderSpec, str]:
+        """Render one CI workflow and return its typed spec and rendered text.
+
+        Returns:
+            The render spec and its rendered workflow.
+
+        """
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist=dist,
+            make_profile=make_profile,
+            repository_branch=repository_branch,
+            ci_trigger_branches=ci_trigger_branches,
+        )
+        return spec, tm.ok(u.Cli.template_render(cls.ci_template, spec))
+
+    @classmethod
     def render_ci(cls, *, repository_branch: str) -> str:
         """Provide ``render_ci``.
 
@@ -32,7 +55,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             The resulting ``str``.
 
         """
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
+        _, rendered = cls._render_workflow(
             dist="mcb",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch=repository_branch,
@@ -42,7 +65,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 dict.fromkeys((*cls.baseline_branches, repository_branch)),
             ),
         )
-        return tm.ok(u.Cli.template_render(cls.ci_template, spec))
+        return rendered
 
     @staticmethod
     def _trigger_section(rendered: str) -> str:
@@ -152,17 +175,11 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         profile: c.Infra.MakeProfile,
     ) -> None:
         """The rendered Actions upload preserves causal evidence without logs."""
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="receipt-consumer",
             make_profile=profile,
             repository_branch="integration/receipt-consumer",
             ci_trigger_branches=(),
-        )
-        rendered = tm.ok(
-            u.Cli.template_render(
-                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
-                spec,
-            ),
         )
         steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
         upload = next(
@@ -188,6 +205,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             "testmon-selection.json",
             "testmon-inventory.json",
             "run-accounting.json",
+            "diagnostics.json",
             "cache-before.json",
             "cache-after.json",
             "cache-policy.json",
@@ -198,6 +216,21 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             paths,
             has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
         )
+        tm.that(
+            paths,
+            has=[
+                f"{spec.make.gate_receipts_directory}/**/{spec.gate_original_receipt_filename}",
+                f"{spec.make.gate_receipts_directory}/**/check/**/*.sarif",
+                f"{spec.make.gate_receipts_directory}/**/check/**/*.md",
+                f".reports/tests/**/{spec.gate_original_receipt_filename}",
+            ],
+        )
+        for private_name in (
+            c.Infra.GATE_CAPTURE_START_FILENAME,
+            c.Infra.GATE_CAPTURE_RESULT_FILENAME,
+            "command.txt",
+        ):
+            tm.that(any(path.endswith(private_name) for path in paths), eq=False)
         publication = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         tm.that(
             paths,
@@ -205,6 +238,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix(),
                 publication.as_posix(),
                 f"{publication.with_suffix('').as_posix()}/**/*.json",
+                f"{c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY.as_posix()}/*.json",
             ],
         )
         tm.that(any(path.endswith(".log") for path in paths), eq=False)
@@ -213,17 +247,11 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     @staticmethod
     def test_testmon_save_requires_a_trusted_fresh_project_receipt() -> None:
         """Actions archives only the typed project database, never a cache tree."""
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="integration/cache-consumer",
             ci_trigger_branches=(),
-        )
-        rendered = tm.ok(
-            u.Cli.template_render(
-                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
-                spec,
-            ),
         )
         steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
         saves = tuple(
@@ -297,17 +325,11 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tmp_path: Path,
     ) -> None:
         """Run the rendered cache resolver with distinct inputs and branches."""
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="integration/cache-consumer",
             ci_trigger_branches=(),
-        )
-        rendered = tm.ok(
-            u.Cli.template_render(
-                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
-                spec,
-            ),
         )
         resolver = next(
             step

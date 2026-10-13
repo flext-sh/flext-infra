@@ -407,6 +407,17 @@ sibling manifests. Local setup without the CI token retains local source routing
 Only local upgrade resolves or writes locks; setup preserves the first install error
 without retrying under a different lock mode.
 
+After installation, setup validates Mise declarations and synchronizes environment
+files through two in-process batch calls. Local workspaces select `all`; attached
+members, standalone repositories and CI select `self`. Git declarations own discovery
+order, and each operation runs serially through its original validator or writer.
+Missing required roots remain failed inventory entries. Explicit Git management,
+repository code-generation and read-only policies determine applicability; inapplicable
+entries retain their reason and receive no successful native outcome. Independent roots
+continue after a returned failure, and the original first failure remains the command
+result. The typed receipts in `.reports/setup-operations/` record actual roots, execution,
+native outcomes, returned paths and central issues; CI preserves those reports.
+
 Normal test verbs remain incremental testmon only and omit the configured slow
 markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
 The explicit single-file operation runs incremental selection followed by complete
@@ -442,6 +453,53 @@ An early failure publishes only the receipts reached
 by the operation; a missing report remains an artifact error, never a manufactured
 complete execution. Uploading reports does not change the native command status or
 authorize cache publication from an incomplete run.
+
+The SSH gate-attestation owner consumes an original producer receipt and verifies its
+candidate, context, policy and report digests before signing. It does not invoke Make.
+Schema v2 addresses each immutable proof by repository, commit, effective runtime/policy
+context and stage. Repeated publication verifies the existing signed object and its
+original artifacts before reusing it. Signed public facts retain the actual process
+outcome, portable operation intent and diagnostic classification. The original public
+receipt binds the exact argv digest; command bytes and the working directory remain in
+private execution checkpoints, outside the CI artifact allowlist.
+
+Admission derives from the original typed reports rather than caller success flags.
+Checks require complete target and requested-gate coverage in SARIF. Tests require
+original process, accounting and diagnostics reports with complete positive execution.
+Timeouts, signals, collection errors, operational failures, missing artifacts and changed
+digests remain failures. The complete-execution policy may admit finished findings while
+preserving their nonzero status; the clean-quality policy rejects them. Bare `make check`
+uses the existing workspace capture route to execute the original checker once. It
+preserves that producer's native process outcome and owns an exclusive report base,
+then writes an immutable receipt only when the candidate and original reports remain
+eligible. Dirty, changed or unversioned candidates still execute and retain a capture
+result without claiming reusable evidence. The native pytest runner captures its
+candidate immediately before the original suite process and publishes original receipts
+after accounting and diagnostics are written. It retains its existing deadline and
+testmon execution. Both producers share the same capture and report-binding owner.
+CI preserves the public original receipts and their required structured reports, while
+omitting private checkpoints, commands and capture errors. The Make policy and receipt
+directory come from the typed codegen specification. CI signing/restore wiring,
+zero-execution cache evidence and other
+stage adapters remain required integration work. Verifying a setup proof never
+provisions a fresh runner.
+
+Capture receives the selected repository's full `CodegenInputs` through the canonical
+layer loader. Its policy and report directory come from that typed target specification.
+The context binds the effective specification, ordered input filename/content digests,
+portable operation intent and actual runtime. Tests also bind their existing native
+`testmon_environment` identity. Completion reloads the same target loader and rejects
+configuration or runtime drift while preserving the original process outcome. Config
+payloads and machine paths are not exported with these fingerprints.
+
+`make status` also reads the selected repository's native Git signing configuration
+through the existing workspace CLI. The report names the declared signing format,
+file references and each setting's effective origin/scope and native process outcome.
+It does not read key/trust files, invoke signing/default-key commands or consult a
+keyring. A missing setting preserves Git's absent-key outcome. File references can
+point to unavailable files; discovery does not claim verified trust or an observed
+public fingerprint. The native signature verifier remains the authority for those
+claims.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The
@@ -559,6 +617,29 @@ staging after validation. Parser or validator exceptions retain their original c
 and leave live source bytes and modification times unchanged. Native Ruff uses the
 declared external project cache so its cache files never enter the authenticated
 source view.
+
+Journal footprint inspection and authorization hold the same root journal lease
+as publication. Authorization observes the current journal under that lease;
+an earlier read-only snapshot does not become a global generation precondition.
+Planning releases the lease, then reports a newly authorized observation. Recovery
+and publication retain their own exact journal receipts and physical-state guards.
+
+Protected compilation and pytest validation use the same environment boundary as
+lint validation: the child keeps its project's working directory and configured
+plugins while removing the orchestrator's `PYTHONPATH` and forced-color setting.
+An importing parent cannot supply source modules or startup hooks to that child.
+When canonical child profiling is selected, pytest runs through the existing
+explicit profiler launcher and records a unique artifact in the run's child
+profile directory. Profiling does not reintroduce the parent's import path or
+change plugin selection, native arguments, or validation deadlines.
+The shared profiler clock checkpoints measured progress on SIGTERM, then restores
+and delegates the previous native termination handling. Timed-out or signalled
+children therefore remain failures with their original outcomes; a partial profile
+does not become execution-completion evidence.
+All profiler output paths use one stdlib-only atomic publisher: native marshal
+data is staged on the destination filesystem, flushed and replaced atomically.
+An interrupted write preserves the previous readable profile. Corruption still
+fails the report reader explicitly; neither profiling nor reporting skips it.
 
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases

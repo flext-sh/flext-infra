@@ -10,9 +10,9 @@ import cProfile
 import signal
 import sys
 from pathlib import Path
-from types import FrameType
 
 from flext_infra import main
+from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
 class FlextInfraProfileEntry:
@@ -29,20 +29,12 @@ class FlextInfraProfileEntry:
         profiler = cProfile.Profile()
         previous = signal.getsignal(signal.SIGTERM)
 
-        def terminate(number: int, frame: FrameType | None) -> None:
-            profiler.dump_stats(str(output))
-            signal.signal(number, previous)
-            if callable(previous):
-                previous(number, frame)
-            elif previous == signal.SIG_DFL:
-                signal.raise_signal(number)
-
-        signal.signal(signal.SIGTERM, terminate)
+        FlextInfraPytestClock.register_signal_checkpoint(profiler, output)
         try:
             return profiler.runcall(main, sys.argv[2:])
         finally:
             signal.signal(signal.SIGTERM, previous)
-            profiler.dump_stats(str(output))
+            FlextInfraPytestClock.publish_profile(profiler, output)
 
 
 if __name__ == "__main__":

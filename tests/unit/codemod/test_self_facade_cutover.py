@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sys
 from typing import TYPE_CHECKING
 
@@ -20,6 +21,148 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSelfFacadeCutover:
     """Preserve eager execution, lexical bindings and standalone consumers."""
+
+    @staticmethod
+    def test_external_declaration_import_survives_a_local_model_mask(
+        tmp_path: Path,
+    ) -> None:
+        """A distinct model binding cannot replace a permitted external helper."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        declarations = package / "_models"
+        declarations.mkdir()
+        (declarations / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        consumer = declarations / "consumer.py"
+        sources = {
+            package / c.Infra.INIT_PY: "from .models import Models as m\n",
+            package / c.Infra.MODELS_PY: (
+                "from flext_core import m as core_m\n"
+                "class Models(core_m):\n"
+                "    empty = None\n"
+                "__all__ = ('Models',)\n"
+            ),
+            consumer: (
+                f"from {package.name} import m\n"
+                "from flext_core import t, u\n"
+                "from typing_extensions import TypeForm\n"
+                "class Consumer(m.ContractModel):\n"
+                "    values: t.MutableSequenceOf[str] = m.Field("
+                "default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])), "
+                "description='Consumer values')\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        tm.that(edits, empty=True)
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}._models.consumer import Consumer; "
+                        "assert Consumer().values == []; "
+                        "print('external declaration accepted')"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                            root / c.Infra.DEFAULT_SRC_DIR
+                        )
+                    }
+                ),
+            )
+        )
+        tm.that(result.stdout.strip(), eq="external declaration accepted")
+
+    @staticmethod
+    @pytest.mark.parametrize("tier", ["private", "public", "examples"])
+    def test_declaring_model_receiver_preserves_default_factory(
+        tmp_path: Path,
+        tier: str,
+    ) -> None:
+        """Execute the rewritten model declaration through a real package import."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        if tier == "private":
+            declarations = package / "_models"
+            declarations.mkdir()
+            (declarations / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+            consumer = declarations / "consumer.py"
+            module = f"{package.name}._models.consumer"
+        elif tier == "public":
+            consumer = package / c.Infra.MODELS_PY
+            module = f"{package.name}.models"
+        else:
+            declarations = root / tier
+            declarations.mkdir()
+            (declarations / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+            consumer = declarations / c.Infra.MODELS_PY
+            module = f"{tier}.models"
+        source = (
+            "from flext_core import m, t, u\n"
+            "from typing_extensions import TypeForm\n"
+            "type Bag[T] = t.MutableSequenceOf[T]\n"
+            "class Consumer(m.ContractModel):\n"
+            '    """Consumer-owned collection declaration."""\n'
+            "    values: Bag[str] = m.Field(default_factory=u.empty("
+            'TypeForm(Bag[str])), description="Consumer values")\n'
+        )
+        consumer.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    rope_workspace=rope,
+                    sources={consumer: source},
+                )
+            )
+            tm.that(edits, empty=False)
+            for edit in edits:
+                tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
+            remaining = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    rope_workspace=rope,
+                    sources={consumer: consumer.read_text(encoding="utf-8")},
+                )
+            )
+        tm.that(remaining, empty=True)
+        output = tm.ok(
+            u.Cli.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {module} import Consumer; "
+                        "first, second = Consumer(), Consumer(); "
+                        "first.values.append('consumer'); "
+                        "assert second.values == []; "
+                        "assert Consumer.model_validate_json("
+                        "first.model_dump_json()).values == first.values; "
+                        "print('declaration contract accepted')"
+                    ),
+                ],
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: os.pathsep.join((
+                            str(root / c.Infra.DEFAULT_SRC_DIR),
+                            str(root),
+                        ))
+                    }
+                ),
+            )
+        )
+        tm.that(output.stdout.strip(), eq="declaration contract accepted")
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -75,17 +218,12 @@ class TestsFlextInfraSelfFacadeCutover:
         }
         for path, source in sources.items():
             path.write_text(source, encoding="utf-8")
-        finding = TestsFlextInfraSelfFacadeCutover._finding(
-            consumer.relative_to(root),
-            package.name,
-        )
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
                     rope_workspace=rope,
                     sources=sources,
-                    findings=(finding,),
                 ),
             )
             tm.that(edits, empty=False)
@@ -99,7 +237,6 @@ class TestsFlextInfraSelfFacadeCutover:
                     c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
                     rope_workspace=rope,
                     sources=sources,
-                    findings=(finding,),
                 ),
             )
         tm.that(remaining, empty=True)
@@ -191,29 +328,7 @@ class TestsFlextInfraSelfFacadeCutover:
                 c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
                 rope_workspace=rope,
                 sources=sources,
-                findings=(
-                    TestsFlextInfraSelfFacadeCutover._finding(
-                        consumer.relative_to(root),
-                        package.name,
-                    ),
-                ),
             )
         tm.fail(result, has=expected)
+        tm.that(isinstance(result.exception, ValueError), eq=True)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
-
-    @staticmethod
-    def _finding(path: Path, package: str) -> m.Infra.ModScanFinding:
-        rule = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[
-            c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT
-        ]
-        return m.Infra.ModScanFinding(
-            rule_file=f"{rule}.yml",
-            rule_id=rule,
-            repository="fixture",
-            file=path,
-            range={},
-            text=f"from {package} import u",
-            actionable=False,
-            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
-        )

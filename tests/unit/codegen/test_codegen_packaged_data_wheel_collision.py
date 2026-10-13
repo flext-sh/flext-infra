@@ -23,6 +23,24 @@ FIXTURE_DISTRIBUTION = "flext-packaging-fixture"
 FIXTURE_DISTRIBUTION_DATA_DIR = "config"
 
 
+def _rendered_target_table(root: Path, target: str) -> t.JsonMapping:
+    """Read one rendered hatch build target table of the conformed project.
+
+    Returns:
+        The resulting ``t.JsonMapping``.
+
+    """
+    manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+    return u.Tests.toml_table_at(
+        manifest,
+        c.Infra.TOOL,
+        "hatch",
+        "build",
+        "targets",
+        target,
+    )
+
+
 class TestsFlextInfraCodegenPackagedDataWheel:
     """Rendered wheel and sdist targets never declare one data dir twice."""
 
@@ -129,15 +147,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``t.JsonMapping``.
 
         """
-        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        return u.Tests.toml_table_at(
-            manifest,
-            c.Infra.TOOL,
-            "hatch",
-            "build",
-            "targets",
-            "wheel",
-        )
+        return _rendered_target_table(root, "wheel")
 
     @staticmethod
     def _wheel_force_include(root: Path) -> t.JsonMapping:
@@ -162,16 +172,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``t.JsonList``.
 
         """
-        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        sdist = u.Tests.toml_table_at(
-            manifest,
-            c.Infra.TOOL,
-            "hatch",
-            "build",
-            "targets",
-            "sdist",
-        )
-        return u.Tests.toml_list(sdist["include"])
+        return u.Tests.toml_list(_rendered_target_table(root, "sdist")["include"])
 
     @staticmethod
     def _sdist_force_include(root: Path) -> t.JsonMapping:
@@ -181,15 +182,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``t.JsonMapping``.
 
         """
-        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        sdist = u.Tests.toml_table_at(
-            manifest,
-            c.Infra.TOOL,
-            "hatch",
-            "build",
-            "targets",
-            "sdist",
-        )
+        sdist = _rendered_target_table(root, "sdist")
         return (
             u.Tests.toml_mapping(sdist["force-include"])
             if "force-include" in sdist

@@ -134,6 +134,7 @@ class TestsFlextInfraCheckReportContract:
         )
         assert report.properties is not None
         summary = report.properties
+        tm.that(summary.requested_gates, eq=(c.Infra.LINT,))
         tm.that(summary.selected_files, eq=())
         tm.that(len(summary.targets), eq=1)
         tm.that(summary.targets[0].name, eq=project.name)

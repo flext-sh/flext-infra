@@ -14,6 +14,32 @@ from flext_infra import m, u
 from tests import tm
 
 
+def _projection_config(projection: Path) -> m.Infra.PlanCollectionConfig:
+    """Build the projection-rooted home source configuration.
+
+    Returns:
+        The resulting ``m.Infra.PlanCollectionConfig``.
+
+    """
+    return m.Infra.PlanCollectionConfig(
+        enabled=True,
+        canonical_dir=Path("docs/plans"),
+        projection_root=projection,
+        sources=(
+            m.Infra.PlanCollectionSource(
+                id="home",
+                provider="files",
+                root=projection,
+                adapter="files",
+                driver="fixture",
+                driver_version="1",
+                plan_globs=("*.md",),
+                publication="plan-artifacts",
+            ),
+        ),
+    )
+
+
 class TestsFlextInfraPlanCollection:
     """Collection plans are reproducible and preserve curated documentation."""
 
@@ -270,23 +296,7 @@ class TestsFlextInfraPlanCollection:
         """Test second collection ignores unchanged projection but detects home edit."""
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original home plan\n")
-        config = m.Infra.PlanCollectionConfig(
-            enabled=True,
-            canonical_dir=Path("docs/plans"),
-            projection_root=projection,
-            sources=(
-                m.Infra.PlanCollectionSource(
-                    id="home",
-                    provider="files",
-                    root=projection,
-                    adapter="files",
-                    driver="fixture",
-                    driver_version="1",
-                    plan_globs=("*.md",),
-                    publication="plan-artifacts",
-                ),
-            ),
-        )
+        config = _projection_config(projection)
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
             assert plan.desired_content is not None
@@ -394,23 +404,7 @@ class TestsFlextInfraPlanCollection:
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original\n")
         self._write(projection / "design" / "research.md", "# Research\n")
-        config = m.Infra.PlanCollectionConfig(
-            enabled=True,
-            canonical_dir=Path("docs/plans"),
-            projection_root=projection,
-            sources=(
-                m.Infra.PlanCollectionSource(
-                    id="home",
-                    provider="files",
-                    root=projection,
-                    adapter="files",
-                    driver="fixture",
-                    driver_version="1",
-                    plan_globs=("*.md",),
-                    publication="plan-artifacts",
-                ),
-            ),
-        )
+        config = _projection_config(projection)
         initial = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in initial.files:
             assert plan.desired_content is not None

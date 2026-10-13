@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import secrets
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r, settings, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditPreview
 
 
@@ -113,6 +114,10 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         Returns:
             The resulting ``p.Result[bool]``.
 
+        Raises:
+            ValueError: If the profile declares no canonical process directory.
+            NotADirectoryError: If the resolved profile path is not a directory.
+
         """
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
             return r[bool].ok(value=True)
@@ -125,7 +130,10 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                     str(py_file),
                 ],
                 cwd=cls._command_cwd(py_file, workspace),
-                options=m.Cli.ProcessOptions(env=cls._command_env()),
+                options=m.Cli.ProcessOptions(
+                    env=cls._command_env(),
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                ),
                 timeout=c.Infra.TIMEOUT_SHORT,
             )
             if compile_result.failure:
@@ -135,16 +143,33 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                     compile_result.value.stdout + compile_result.value.stderr,
                 )
             return r[bool].ok(value=True)
+        arguments = (str(py_file), "-x", "--tb=short", "-q")
+        profile_root = settings.env_lookup(c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV)
+        if profile_root is not None:
+            if not profile_root or not settings.env_lookup(
+                c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV,
+            ):
+                msg = "protected pytest profile has no canonical process directory"
+                raise ValueError(msg)
+            directory = Path(profile_root).resolve(strict=True)
+            if not directory.is_dir():
+                raise NotADirectoryError(directory)
+            command = (
+                *cls._workspace_tool_command(c.Infra.PYTHON),
+                "-c",
+                c.Infra.PYTEST_PROFILE_LAUNCHER,
+                str(directory / f"{secrets.token_hex(16)}.pstats"),
+                *arguments,
+            )
+        else:
+            command = (*cls._workspace_tool_command("pytest"), *arguments)
         run_result = u.Cli.run_raw(
-            [
-                *cls._workspace_tool_command("pytest"),
-                str(py_file),
-                "-x",
-                "--tb=short",
-                "-q",
-            ],
+            command,
             cwd=cls._command_cwd(py_file, workspace),
-            options=m.Cli.ProcessOptions(env=cls._command_env()),
+            options=m.Cli.ProcessOptions(
+                env=cls._command_env(),
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+            ),
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if run_result.failure:

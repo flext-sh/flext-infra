@@ -331,6 +331,28 @@ class FlextInfraPytestRunnerExecution(
             report_dir / "command.txt",
             f"{shlex.join(command)}\n",
         ).unwrap()
+        capture = u.Infra.git_begin_gate_capture(
+            self.root,
+            c.Infra.VERB_TEST,
+            command,
+            m.Infra.GateExecutionIntent(
+                test_selection=m.Infra.GateTestIntent(
+                    execution_mode=execution_mode,
+                    target=self.target,
+                    target_file=self.target_file,
+                    ci_context=self.ci_context,
+                    slow_phase=self.slow_phase,
+                    unbounded=self.unbounded,
+                    profile_enabled=self.profile_enabled,
+                ),
+            ),
+            inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
+            runtime_identity=self.testmon_environment(execution_mode),
+        )
+        u.Cli.atomic_write_text_file(
+            report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
+            capture.model_dump_json(round_trip=True) + "\n",
+        ).unwrap()
         outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
@@ -552,6 +574,7 @@ class FlextInfraPytestRunnerExecution(
             accounting.model_dump_json(indent=2) + "\n",
         ).unwrap()
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
+        self._capture_original_suite(report_dir)
         sys.stderr.write(f"Reports: {report_dir}\n")
         if (
             self.target_file is not None
@@ -561,6 +584,47 @@ class FlextInfraPytestRunnerExecution(
             msg = f"empty file phase has rejected evidence: {report_dir}"
             raise RuntimeError(msg)
         return r.ok(final_exit)
+
+    def _capture_original_suite(self, report_dir: Path) -> None:
+        """Bind the already executed suite to its original typed reports."""
+        start = m.Infra.GateCaptureStart.model_validate_json(
+            u.Cli.files_read_binary(
+                report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
+            ).unwrap(),
+        )
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            u.Cli.files_read_binary(report_dir / "suite-outcome.json").unwrap(),
+        )
+        reports = u.Infra.git_capture_report_bindings(
+            start.repository_root,
+            (
+                (
+                    report_dir / "suite-outcome.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_PROCESS,
+                ),
+                (
+                    report_dir / "run-accounting.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_ACCOUNTING,
+                ),
+                (
+                    report_dir / "diagnostics.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_DIAGNOSTICS,
+                ),
+                (
+                    report_dir / "run-context.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_CONTEXT,
+                ),
+            ),
+        ).unwrap()
+        selection = start.intent.test_selection
+        if selection is None:
+            msg = "original suite checkpoint has no native test selection"
+            raise ValueError(msg)
+        u.Infra.git_finish_gate_capture(
+            start, outcome, reports, report_dir,
+            inputs=u.Infra.load_codegen_inputs(self.root),
+            runtime_identity=self.testmon_environment(selection.execution_mode),
+        ).unwrap()
 
     @staticmethod
     def _external_gate_markers(context: m.Infra.PytestRunContext) -> str:

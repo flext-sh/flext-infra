@@ -13,17 +13,6 @@ snapshots:
       style: primary
       start: 57
       end: 71
-    - source: from typing import Dict
-      style: secondary
-      start: 25
-      end: 48
-    - source: |
-        from flext_core import t
-        from typing import Dict
-        ALIAS = Dict[str, int]
-      style: secondary
-      start: 0
-      end: 72
     - source: from flext_core import t
       style: secondary
       start: 0
@@ -48,17 +37,6 @@ snapshots:
       style: primary
       start: 56
       end: 70
-    - source: from typing import Dict
-      style: secondary
-      start: 25
-      end: 48
-    - source: |
-        from flext_core import t
-        from typing import Dict
-        ALIAS: Dict[str, int] = {}
-      style: secondary
-      start: 0
-      end: 76
     - source: from flext_core import t
       style: secondary
       start: 0
@@ -83,17 +61,6 @@ snapshots:
       style: primary
       start: 60
       end: 74
-    - source: from typing import Dict
-      style: secondary
-      start: 25
-      end: 48
-    - source: |
-        from flext_core import t
-        from typing import Dict
-        def f() -> Dict[str, int]: ...
-      style: secondary
-      start: 0
-      end: 80
     - source: from flext_core import t
       style: secondary
       start: 0
@@ -118,17 +85,6 @@ snapshots:
       style: primary
       start: 58
       end: 72
-    - source: from typing import Dict
-      style: secondary
-      start: 25
-      end: 48
-    - source: |
-        from flext_core import t
-        from typing import Dict
-        def f(x: Dict[str, int]) -> None: ...
-      style: secondary
-      start: 0
-      end: 87
     - source: from flext_core import t
       style: secondary
       start: 0

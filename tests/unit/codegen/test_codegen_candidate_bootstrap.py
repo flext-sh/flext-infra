@@ -16,6 +16,35 @@ from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
+def _declared_candidate_campaign(
+    tmp_path: Path,
+    surface: c.Infra.CodegenConformSurface,
+) -> tuple[Path, Path]:
+    """Render a source workspace declaring one candidate recovery target.
+
+    Returns:
+        The source workspace and the candidate it declares.
+    """
+    source, _ = u.Tests.render_make_environment(
+        tmp_path / "source",
+        c.Infra.MakeProfile.STANDALONE,
+    )
+    candidate, _ = u.Tests.render_make_environment(
+        tmp_path / "candidate",
+        c.Infra.MakeProfile.STANDALONE,
+    )
+    manifest = u.Tests.write_workspace_manifest(source, source.name)
+    u.Tests.write_workspace_manifest(candidate, candidate.name)
+    manifest.write_text(
+        manifest.read_text(encoding="utf-8")
+        + "\ncandidate_bootstrap_targets:\n"
+        + f"  - path: {Path(os.path.relpath(candidate, source)).as_posix()}\n"
+        + f"    what: {surface}\n",
+        encoding="utf-8",
+    )
+    return source, candidate
+
+
 class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
 
@@ -321,22 +350,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         like its slow-phase sibling below: alone it takes ~9s of the 10s
         bounded-phase item budget, so it belongs to the declared slow phase.
         """
-        source, _ = u.Tests.render_make_environment(
-            tmp_path / "source",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        candidate, _ = u.Tests.render_make_environment(
-            tmp_path / "candidate",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        manifest = u.Tests.write_workspace_manifest(source, source.name)
-        u.Tests.write_workspace_manifest(candidate, candidate.name)
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8")
-            + "\ncandidate_bootstrap_targets:\n"
-            + f"  - path: {Path(os.path.relpath(candidate, source)).as_posix()}\n"
-            + "    what: docs-config\n",
-            encoding="utf-8",
+        source, candidate = _declared_candidate_campaign(
+            tmp_path,
+            c.Infra.CodegenConformSurface.DOCS_CONFIG,
         )
         projection = candidate / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME
         tm.ok(u.Cli.ensure_dir(projection.parent))
@@ -360,22 +376,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         conflict_section: str,
     ) -> None:
         """A healthy provider restores a candidate before its own Make can import."""
-        source, _ = u.Tests.render_make_environment(
-            tmp_path / "source",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        candidate, _ = u.Tests.render_make_environment(
-            tmp_path / "candidate",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        manifest = u.Tests.write_workspace_manifest(source, source.name)
-        u.Tests.write_workspace_manifest(candidate, candidate.name)
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8")
-            + "\ncandidate_bootstrap_targets:\n"
-            + f"  - path: {Path(os.path.relpath(candidate, source)).as_posix()}\n"
-            + "    what: pyproject\n",
-            encoding="utf-8",
+        source, candidate = _declared_candidate_campaign(
+            tmp_path,
+            c.Infra.CodegenConformSurface.PYPROJECT,
         )
         projection = candidate / c.PYPROJECT_FILENAME
         original = projection.read_text(encoding="utf-8")

@@ -59,7 +59,7 @@ class TestsFlextInfraWorkspaceManifest:
             is c.Infra.CodegenConformSurface.MAKEFILE,
             eq=True,
         )
-        tm.that(u.Infra.manifest_nonparticipant_paths(tmp_path), empty=True)
+        tm.that(u.Infra.repository_nonparticipant_paths(tmp_path), empty=True)
         tm.that(
             u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
             eq=config.Infra.source_scan.roots,
@@ -90,7 +90,7 @@ class TestsFlextInfraWorkspaceManifest:
 
         tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
         with pytest.raises(c.ValidationError):
-            u.Infra.manifest_nonparticipant_paths(tmp_path)
+            u.Infra.repository_nonparticipant_paths(tmp_path)
         with pytest.raises(c.ValidationError):
             u.Infra.load_refactor_config(tmp_path)
 
@@ -101,7 +101,7 @@ class TestsFlextInfraWorkspaceManifest:
         manifest.parent.mkdir(parents=True)
         manifest.write_text("version: invalid\n", encoding="utf-8")
         with pytest.raises(c.ValidationError):
-            u.Infra.manifest_nonparticipant_paths(tmp_path)
+            u.Infra.repository_nonparticipant_paths(tmp_path)
         with pytest.raises(c.ValidationError):
             u.Infra.load_refactor_config(tmp_path)
 
@@ -179,7 +179,7 @@ class TestsFlextInfraWorkspaceManifest:
         manifest.write_text("{}\n", encoding=c.DEFAULT_ENCODING)
 
         with pytest.raises(c.ValidationError):
-            u.Infra.manifest_nonparticipant_paths(tmp_path)
+            u.Infra.repository_nonparticipant_paths(tmp_path)
 
     @staticmethod
     def test_invalid_manifest_cannot_supply_default_refactor_settings(

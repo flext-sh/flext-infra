@@ -20,6 +20,71 @@ class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @staticmethod
+    def test_original_suite_receipt_binds_public_process_and_accounting(
+        cached_runner_project: Path,
+    ) -> None:
+        """A real suite produces its own public proof input without another run."""
+        root = cached_runner_project
+        u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
+        for key, value in (
+            ("user.name", "Original Suite Test"),
+            ("user.email", "suite@example.test"),
+            ("commit.gpgsign", "false"),
+        ):
+            u.Tests.git_bootstrap(root, ("config", key, value))
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "remote",
+                "add",
+                c.Infra.GIT_ORIGIN,
+                "https://github.example/flext/suite.git",
+            ),
+        )
+        cache = config.Infra.codegen.make.testmon_cache
+        tm.ok(
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(
+                    repo_root=root,
+                    paths=(c.PYPROJECT_FILENAME, cache.target_directory.as_posix()),
+                )
+            )
+        )
+        tm.ok(
+            u.Infra.git_commit(
+                m.Infra.GitCommitRequest(
+                    repo_root=root,
+                    message="test: declare original suite candidate",
+                )
+            )
+        )
+        runner = u.Tests.PytestRunner.runner_for(root)
+        tm.that(tm.ok(runner.execute()), eq=0)
+        receipts = tuple(
+            (root / runner.reports).rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME),
+        )
+        tm.that(receipts, length=1)
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(
+            receipts[0].read_bytes(),
+        )
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        tm.that(evidence.commit_sha, eq=identity.head_oid)
+        tm.that(evidence.gate, eq=c.Infra.VERB_TEST)
+        tm.that(evidence.intent.requested_gates, eq=())
+        assert evidence.intent.test_selection is not None
+        tm.that(evidence.intent.test_selection.target, eq=runner.target)
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            (receipts[0].parent / "suite-outcome.json").read_bytes(),
+        )
+        tm.that(evidence.process, eq=outcome)
+        tm.that(receipts[0].read_text(encoding=c.DEFAULT_ENCODING), lacks=str(root))
+        for report in evidence.reports:
+            tm.that(
+                report.digest,
+                eq=f"sha256:{u.Cli.sha256_bytes((root / report.path).read_bytes())}",
+            )
+
+    @staticmethod
     @pytest.mark.parametrize("ci_context", [True, False])
     def test_marker_selection_is_shared_by_collection_execution_and_coverage(
         cached_runner_project: Path,

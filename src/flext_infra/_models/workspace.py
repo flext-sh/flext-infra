@@ -16,6 +16,7 @@ from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsWorkspace:
@@ -34,7 +35,7 @@ class FlextInfraModelsWorkspace:
         repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class LifecycleReceipt(m.ContractModel):
-        """One public Make invocation; an absent exit is never a green receipt."""
+        """One public Make invocation; an absent outcome is never a green receipt."""
 
         command: Annotated[
             t.VariadicTuple[str], m.Field(description="Public Make argv")
@@ -44,10 +45,13 @@ class FlextInfraModelsWorkspace:
             Path,
             m.Field(description="Durable combined stdout/stderr for reached steps"),
         ]
-        exit_code: Annotated[
-            int | None,
+        outcome: Annotated[
+            m.Cli.ProcessOutcome | None,
             m.Field(
-                description="Observed exit; absent when unreached or launch failed"
+                description=(
+                    "Original reaped process outcome; absent when unreached or "
+                    "launch failed"
+                )
             ),
         ] = None
         error: Annotated[
@@ -62,6 +66,79 @@ class FlextInfraModelsWorkspace:
         receipts: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleReceipt],
             m.Field(description="Ordered public command receipts for the entire scope"),
+        ]
+
+    class WorkspaceOperationReceipt(m.ContractModel):
+        """Original in-process repository operation, with its observed effects."""
+
+        root: Annotated[Path, m.Field(description="Repository actually attempted")]
+        executed: Annotated[bool, m.Field(description="Original operation was invoked")]
+        outcome: Annotated[
+            c.Infra.ToolOutcome | None,
+            m.Field(
+                description=(
+                    "Native operation outcome; independent of report transport"
+                ),
+            ),
+        ]
+        applicability: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Explicit reason when declaration policy prevents execution"
+                ),
+            ),
+        ] = ""
+        files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description=(
+                    "Validated or changed paths returned by the original owner"
+                ),
+            ),
+        ] = ()
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(
+                description=("Native failures attributed to their actual repository"),
+            ),
+        ] = ()
+
+    class WorkspaceOperationTarget(m.ContractModel):
+        """One discovered root and its original Git management declaration."""
+
+        root: Annotated[Path, m.Field(description="Actual declared repository root")]
+        managed: Annotated[
+            bool | None,
+            m.Field(
+                description="Explicit Git management policy; absent when undeclared",
+            ),
+        ] = None
+
+    class WorkspaceOperationApplicability(m.ContractModel):
+        """Repository-owned policy applied before an operation's real effects."""
+
+        applicable: Annotated[bool, m.Field(description="Original owner may execute")]
+        reason: Annotated[
+            str,
+            m.Field(description="Declared reason when inapplicable"),
+        ] = ""
+
+    class WorkspaceOperationReport(m.ContractModel):
+        """Declared repository scope and original serial operation receipts."""
+
+        root: Annotated[Path, m.Field(description="Invoking repository root")]
+        operation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public operation name"),
+        ]
+        scope: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Roots discovered once before the batch"),
+        ]
+        receipts: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
+            m.Field(description="Original outcomes in discovered order"),
         ]
 
     class SubprojectLoadContext(m.ContractModel):

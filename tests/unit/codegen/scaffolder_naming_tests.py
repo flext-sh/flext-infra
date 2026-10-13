@@ -20,84 +20,51 @@ if TYPE_CHECKING:
     from tests import m, t
 
 
+def _project_info(
+    project: Path,
+    *,
+    package_name: str = "test_project",
+) -> m.Infra.ProjectInfo:
+    """Build the scaffolder project info for ``project``.
+
+    Returns:
+        The resulting ``m.Infra.ProjectInfo``.
+
+    """
+    return u.Tests.create_project_info(
+        project,
+        name=project.name,
+        package_name=package_name,
+    )
+
+
+def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
+    """Compile every module in ``base_dir`` as valid Python."""
+    for mod in modules:
+        source = (base_dir / mod).read_text(encoding="utf-8")
+        _ = compile(source, str(base_dir / mod), "exec")
+
+
+def _validate_class_names(
+    base_dir: Path,
+    filename_to_expected_class: t.StrMapping,
+) -> None:
+    """Validate expected class names exist in the generated modules."""
+    for filename, expected_class in filename_to_expected_class.items():
+        source = (base_dir / filename).read_text(encoding="utf-8")
+        class_names = c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
+        tm.that(
+            expected_class in class_names,
+            eq=True,
+            msg=f"{filename} should contain {expected_class}",
+        )
+
+
 class TestsFlextInfraCodegenScaffolderNaming:
     """Test suite for scaffolder generated code validity and naming conventions."""
 
-    @staticmethod
-    def _parse_class_names(source: str) -> t.StrSequence:
-        """Extract all class names from Python source via the codegen regex authority.
-
-        Single Responsibility: detect class definitions only.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        return c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
-
-    @staticmethod
-    def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
-        """Validate that all modules in base_dir compile as valid Python.
-
-        Utility: eliminates duplicate syntax validation logic.
-        """
-        for mod in modules:
-            source = (base_dir / mod).read_text(encoding="utf-8")
-            _ = compile(source, str(base_dir / mod), "exec")
-
-    def _validate_class_names(
-        self,
-        base_dir: Path,
-        filename_to_expected_class: t.StrMapping,
-    ) -> None:
-        """Validate expected class names exist in modules.
-
-        Utility: eliminates duplicate class name extraction and validation.
-        """
-        for filename, expected_class in filename_to_expected_class.items():
-            source = (base_dir / filename).read_text(encoding="utf-8")
-            class_names = self._parse_class_names(source)
-            tm.that(
-                expected_class in class_names,
-                eq=True,
-                msg=f"{filename} should contain {expected_class}",
-            )
-
-    @staticmethod
-    def _project_info(
-        project: Path,
-        *,
-        package_name: str = "test_project",
-    ) -> m.Infra.ProjectInfo:
-        return u.Tests.create_project_info(
-            project,
-            name=project.name,
-            package_name=package_name,
-        )
-
     class TestsGeneratedFilesAreValidPython:
         """Generated source and test modules compile as Python."""
-
-        @staticmethod
-        def _validate_modules_parse(
-            base_dir: Path,
-            modules: t.StrSequence,
-        ) -> None:
-            for mod in modules:
-                source = (base_dir / mod).read_text(encoding="utf-8")
-                _ = compile(source, str(base_dir / mod), "exec")
-
-        @staticmethod
-        def _project_info(
-            project: Path,
-            *,
-            package_name: str = "test_project",
-        ) -> m.Infra.ProjectInfo:
-            return u.Tests.create_project_info(
-                project,
-                name=project.name,
-                package_name=package_name,
-            )
 
         def test_generated_src_modules_parse_successfully(self, tmp_path: Path) -> None:
             """Compile every generated source facade module."""
@@ -106,9 +73,9 @@ class TestsFlextInfraCodegenScaffolderNaming:
                 with_all_modules=False,
             )
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[self._project_info(project)])
+            _ = scaffolder.run(projects=[_project_info(project)])
             pkg = project / "src" / "test_project"
-            self._validate_modules_parse(pkg, u.Tests.src_module_files())
+            _validate_modules_parse(pkg, u.Tests.src_module_files())
 
         def test_generated_tests_modules_parse_successfully(
             self,
@@ -122,41 +89,11 @@ class TestsFlextInfraCodegenScaffolderNaming:
             tests_dir = project / "tests"
             tests_dir.mkdir()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[self._project_info(project)])
-            self._validate_modules_parse(tests_dir, u.Tests.src_module_files())
+            _ = scaffolder.run(projects=[_project_info(project)])
+            _validate_modules_parse(tests_dir, u.Tests.src_module_files())
 
     class TestsGeneratedClassNamingConvention:
         """Generated class names follow the canonical prefix and suffix contract."""
-
-        @staticmethod
-        def _parse_class_names(source: str) -> t.StrSequence:
-            return c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
-
-        def _validate_class_names(
-            self,
-            base_dir: Path,
-            filename_to_expected_class: t.StrMapping,
-        ) -> None:
-            for filename, expected_class in filename_to_expected_class.items():
-                source = (base_dir / filename).read_text(encoding="utf-8")
-                class_names = self._parse_class_names(source)
-                tm.that(
-                    expected_class in class_names,
-                    eq=True,
-                    msg=f"{filename} should contain {expected_class}",
-                )
-
-        @staticmethod
-        def _project_info(
-            project: Path,
-            *,
-            package_name: str = "test_project",
-        ) -> m.Infra.ProjectInfo:
-            return u.Tests.create_project_info(
-                project,
-                name=project.name,
-                package_name=package_name,
-            )
 
         def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
             """Use the project prefix on generated source facade classes."""
@@ -165,9 +102,9 @@ class TestsFlextInfraCodegenScaffolderNaming:
                 with_all_modules=False,
             )
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[self._project_info(project)])
+            _ = scaffolder.run(projects=[_project_info(project)])
             pkg = project / "src" / "test_project"
-            self._validate_class_names(
+            _validate_class_names(
                 pkg,
                 {
                     "constants.py": "TestProjectConstants",
@@ -190,8 +127,8 @@ class TestsFlextInfraCodegenScaffolderNaming:
             tests_dir = project / "tests"
             tests_dir.mkdir()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[self._project_info(project)])
-            self._validate_class_names(
+            _ = scaffolder.run(projects=[_project_info(project)])
+            _validate_class_names(
                 tests_dir,
                 {
                     "constants.py": "TestsTestProjectConstants",
@@ -210,13 +147,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
             (project / "Makefile").touch()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
             [result] = scaffolder.run(
-                projects=[
-                    u.Tests.create_project_info(
-                        project,
-                        name="empty-project",
-                        package_name="",
-                    ),
-                ],
+                projects=[_project_info(project, package_name="")],
             )
             tm.that(result.files_created, empty=True)
             tm.that(result.files_skipped, empty=True)

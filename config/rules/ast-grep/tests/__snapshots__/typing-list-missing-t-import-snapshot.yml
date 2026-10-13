@@ -9,17 +9,6 @@ snapshots:
       style: primary
       start: 34
       end: 43
-    - source: from typing import List
-      style: secondary
-      start: 0
-      end: 23
-    - source: |
-        from typing import List
-
-        def f(x: List[str]) -> None: ...
-      style: secondary
-      start: 0
-      end: 58
     - source: |
         from typing import List
 

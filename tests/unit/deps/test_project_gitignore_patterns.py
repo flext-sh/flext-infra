@@ -162,7 +162,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
         assert planned.rendered == first
-        assert first.endswith("\n\n" + external)
+        assert external in first
         assert "old policy" not in first
         (root / ".gitignore").write_bytes(first.encode())
         second = tm.ok(
@@ -174,6 +174,54 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
         assert second.encode() == first.encode()
+
+    def test_runtime_policy_survives_preserved_negation(self, tmp_path: Path) -> None:
+        """Git enforces local-artifact policy after retaining an external whitelist."""
+        root = self._external_project(tmp_path / "project")
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
+        relative = Path("runtime-binding.json")
+        artifact = m.Infra.ManagedFileSpec(
+            path=relative,
+            owner=c.Infra.CODEGEN_OWNER_VSCODE,
+            policy="merge",
+            tracking="runtime-local",
+        )
+        codegen = config.Infra.codegen.model_copy(
+            update={"managed_files": (artifact,)},
+        )
+        external = (
+            "# BEGIN external projection\n"
+            f"!/{relative.as_posix()}\n"
+            "# END external projection\n"
+        )
+        ignore = root / c.Infra.GITIGNORE
+        ignore.write_text(external, encoding=c.DEFAULT_ENCODING)
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name=root.name,
+                project_dir=root,
+            ),
+        )
+        assert external in rendered
+        ignore.write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        observed = tm.ok(
+            u.Cli.run(
+                (c.Infra.GIT, "check-ignore", "--no-index", relative.as_posix()),
+                cwd=root,
+            ),
+        )
+        tm.that(observed.stdout.strip(), eq=relative.as_posix())
+        repeated = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name=root.name,
+                project_dir=root,
+            ),
+        )
+        tm.that(repeated, eq=rendered)
 
     @pytest.mark.parametrize(
         "current",

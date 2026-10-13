@@ -16,6 +16,35 @@ from flext_cli import t
 class FlextInfraConfigVocabulary:
     """Canonical closed contracts required before project facades initialize."""
 
+    @unique
+    class RepositoryState(StrEnum):
+        """Lifecycle state used by repository selection."""
+
+        ACTIVE = "active"
+        EXCLUDED = "excluded"
+
+    @unique
+    class CodegenKind(StrEnum):
+        """Code-generation policy applied to one repository."""
+
+        CONFORM = "conform"
+        PYTHON = "python"
+        NONE = "none"
+
+    @unique
+    class ProjectKind(StrEnum):
+        """Own governance profile; external forks retain upstream contracts."""
+
+        INTERNAL_FLEXT = "internal_flext"
+        INTERNAL = "internal"
+        THIRD_PARTY_FORK = "third_party_fork"
+    @unique
+    class GateAcceptancePolicy(StrEnum):
+        """Whether evidence claims clean quality or complete diagnostic execution."""
+
+        CLEAN = "clean"
+        COMPLETE_EXECUTION = "complete_execution"
+
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""
 
@@ -50,3 +79,4 @@ class FlextInfraConfigVocabulary:
         MAKEFILE = "makefile"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
+        RUNTIME_BINDINGS = "runtime-bindings"

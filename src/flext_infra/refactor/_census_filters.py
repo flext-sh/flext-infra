@@ -26,7 +26,7 @@ class FlextInfraRefactorCensusFiltersMixin:
     _MIN_DUPLICATE_DEFINITIONS: ClassVar[int] = 2
 
     @staticmethod
-    def _duplicate_groups(
+    def duplicate_groups(
         project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
     ) -> t.VariadicTuple[m.Infra.DuplicateGroup]:
         """Duplicate groups.

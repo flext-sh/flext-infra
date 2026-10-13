@@ -11,9 +11,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_core import m
+from flext_cli import m
+
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsDuplication
+from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDuplication
 
 # Gate models use base type primitives; importing the composing project facade
 # here creates unresolved aliases while Pydantic analyzes nested root models.
@@ -261,8 +262,83 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Native Pyrefly diagnostics"),
         ]
 
-    class GateCommandEvidence(m.ContractModel):
-        """One canonical Make invocation covered by an attestation."""
+    class GateReportEvidence(m.ContractModel):
+        """One original report bound to its repository-relative identity."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
+        path: Annotated[
+            Path,
+            m.Field(description="Repository-relative report path"),
+        ]
+        digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Original report byte digest",
+            ),
+        ]
+        kind: Annotated[
+            c.Infra.GateEvidenceReportKind,
+            m.Field(description="Canonical producer report contract"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_report_path(self) -> Self:
+            if self.path.is_absolute() or ".." in self.path.parts:
+                msg = "attestation report path must remain inside its repository"
+                raise ValueError(msg)
+            return self
+
+    class GateTestIntent(m.ContractModel):
+        """Portable original test selection bound to the execution proof."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
+        execution_mode: Annotated[
+            c.Infra.PytestExecutionMode, m.Field(description="Native test operation")
+        ]
+        target: Annotated[Path, m.Field(description="Repository-relative test root")]
+        target_file: Annotated[
+            Path | None, m.Field(description="Original selected test file")
+        ]
+        ci_context: Annotated[bool, m.Field(description="Original CI selection")]
+        slow_phase: Annotated[bool, m.Field(description="Original slow-test phase")]
+        unbounded: Annotated[bool, m.Field(description="Original unbounded operation")]
+        profile_enabled: Annotated[
+            bool, m.Field(description="Original native process profiling")
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_targets(self) -> Self:
+            for path in (self.target, self.target_file):
+                if path is not None and (path.is_absolute() or ".." in path.parts):
+                    msg = "original test selection must remain repository-relative"
+                    raise ValueError(msg)
+            return self
+
+    class GateExecutionIntent(m.ContractModel):
+        """Producer-owned operation coverage, independent of local argv paths."""
+
+        requested_gates: Annotated[
+            t.StrTuple, m.Field(description="Requested native checker gates")
+        ] = ()
+        test_selection: Annotated[
+            FlextInfraModelsGates.GateTestIntent | None,
+            m.Field(description="Original test selection; absent for checker"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_producer(self) -> Self:
+            if bool(self.requested_gates) == (self.test_selection is not None):
+                msg = "original operation must declare exactly one producer intent"
+                raise ValueError(msg)
+            return self
+
+    class GateExecutionFacts(m.ContractModel):
+        """Public original execution facts, excluding local machine identities."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         gate: Annotated[
             t.NonEmptyStr,
@@ -271,9 +347,51 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 description="Canonical Make gate name",
             ),
         ]
-        command: Annotated[t.NonEmptyStr, m.Field(description="Exact Make command")]
-        cwd: Annotated[t.NonEmptyStr, m.Field(description="Absolute working directory")]
-        exit_code: Annotated[Literal[0], m.Field(description="Successful exit code")]
+        command_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Digest of the private exact original process argv",
+            ),
+        ]
+        process: Annotated[
+            m.Cli.ProcessOutcome,
+            m.Field(description="Original Make process outcome, without normalization"),
+        ]
+        native_outcome: Annotated[
+            c.Infra.ToolOutcome,
+            m.Field(description="Original producer's native report classification"),
+        ]
+        intent: Annotated[
+            FlextInfraModelsGates.GateExecutionIntent,
+            m.Field(description="Portable original operation and selection"),
+        ]
+        policy: Annotated[
+            c.Infra.GateAcceptancePolicy,
+            m.Field(description="Exact recorded policy used to derive admission"),
+        ]
+        context_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description=(
+                    "Original runtime, platform and operation-context fingerprint"
+                ),
+            ),
+        ]
+        policy_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Original acceptance policy",
+            ),
+        ]
+        reports: Annotated[
+            t.VariadicTuple[FlextInfraModelsGates.GateReportEvidence],
+            m.Field(
+                min_length=1, description="Original report identities and byte digests"
+            ),
+        ]
         result_digest: Annotated[
             t.NonEmptyStr,
             m.Field(description="SHA-256 digest of the gate result"),
@@ -286,9 +404,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         @m.model_validator(mode="after")
         def _validate_evidence(self) -> Self:
-            if not self.command.startswith(f"make {self.gate}"):
-                msg = "gate evidence command must use canonical make <gate>"
-                raise ValueError(msg)
             if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.result_digest):
                 msg = "result_digest must be sha256:<64 lowercase hex>"
                 raise ValueError(msg)
@@ -299,6 +414,78 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 raise ValueError(msg)
             return self
 
+    class GateCommandEvidence(GateExecutionFacts):
+        """Public original receipt bound to its candidate and exact argv digest."""
+
+        repository: Annotated[t.NonEmptyStr, m.Field(description="Candidate origin")]
+        commit_sha: Annotated[
+            str,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate commit"),
+        ]
+        tree_sha: Annotated[
+            str,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate tree"),
+        ]
+
+    class GateCaptureStart(m.ContractModel):
+        """Private candidate checkpoint preceding the original native process."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
+        repository_root: Annotated[Path, m.Field(description="Actual execution root")]
+        gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
+        intent: Annotated[
+            FlextInfraModelsGates.GateExecutionIntent,
+            m.Field(description="Portable original operation and selection"),
+        ]
+        command: Annotated[
+            t.StrTuple, m.Field(min_length=1, description="Exact original process argv")
+        ]
+        repository: Annotated[str | None, m.Field(description="Observed origin")]
+        commit_sha: Annotated[str | None, m.Field(description="Observed commit")]
+        tree_sha: Annotated[str | None, m.Field(description="Observed committed tree")]
+        dirty: Annotated[
+            bool | None, m.Field(description="Observed tracked dirty state")
+        ]
+        context_digest: Annotated[
+            str,
+            m.Field(pattern=r"^sha256:[a-f0-9]{64}$", description="Original context"),
+        ]
+        policy: Annotated[c.Infra.GateAcceptancePolicy, m.Field(description="Policy")]
+        policy_digest: Annotated[
+            str,
+            m.Field(pattern=r"^sha256:[a-f0-9]{64}$", description="Policy digest"),
+        ]
+        started_at: Annotated[t.NonEmptyStr, m.Field(description="UTC native start")]
+        issue: Annotated[
+            str | None, m.Field(description="Original candidate inspection failure")
+        ]
+
+    class GateCaptureRequest(m.ContractModel):
+        """Capture the original read-only checker invocation exactly once."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Actual root selected by the public Make verb")
+        ]
+        gates: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved native checker gate inventory")
+        ]
+
+    class GateCaptureReport(m.ContractModel):
+        """Original process and publication outcome, independent of acceptance."""
+
+        process: Annotated[
+            m.Cli.ProcessOutcome,
+            m.Field(description="Reaped original producer outcome"),
+        ]
+        receipt: Annotated[
+            Path | None, m.Field(description="Published immutable original receipt")
+        ]
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(description="Actual capture or candidate eligibility failures"),
+        ] = ()
+
     class GateAttestationPredicate(m.ContractModel):
         """Canonical signed statement for locally completed gates."""
 
@@ -306,12 +493,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             extra="forbid",
             frozen=True,
             strict=False,
+            use_enum_values=False,
         )
 
         schema_version: Annotated[
-            str,
+            c.Infra.GateAttestationSchema,
             m.Field(description="Predicate schema identity"),
-        ] = c.Infra.GATE_ATTESTATION_SCHEMA
+        ] = c.Infra.GateAttestationSchema.V2
         repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Full tree SHA")]
@@ -323,18 +511,34 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.NonEmptyStr,
             m.Field(description="SHA-256 toolchain digest"),
         ]
+        context_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$", description="Exact execution context"
+            ),
+        ]
+        receipt: Annotated[
+            FlextInfraModelsGates.GateReportEvidence,
+            m.Field(
+                description="Original private producer receipt identity and digest"
+            ),
+        ]
         covered_gates: Annotated[
             t.StrSequence,
-            m.Field(min_length=1, description="Exactly covered gates"),
+            m.Field(
+                min_length=1, max_length=1, description="Exactly covered original stage"
+            ),
         ]
         commands: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
-            m.Field(min_length=1, description="Successful canonical invocations"),
+            t.VariadicTuple[FlextInfraModelsGates.GateExecutionFacts],
+            m.Field(
+                min_length=1, max_length=1, description="Original accepted execution"
+            ),
         ]
 
         @m.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
-            if self.schema_version != c.Infra.GATE_ATTESTATION_SCHEMA:
+            if self.schema_version != c.Infra.GateAttestationSchema.V2:
                 msg = "schema_version must match the canonical gate attestation schema"
                 raise ValueError(msg)
             for name, value in (
@@ -359,7 +563,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             return self
 
     class GateAttestationCreateRequest(m.ContractModel):
-        """Run required gates and transparently create the signed HEAD proof."""
+        """Consume one original receipt and create its immutable signed stage proof."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         signer: Annotated[
@@ -368,7 +574,31 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         gates: Annotated[
             t.StrSequence,
-            m.Field(min_length=1, description="Canonical Make gates"),
+            m.Field(
+                min_length=1, max_length=1, description="Original canonical Make stage"
+            ),
+        ]
+        receipt: Annotated[Path, m.Field(description="Original producer receipt JSON")]
+        context_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Expected execution context",
+            ),
+        ]
+        policy: Annotated[
+            c.Infra.GateAcceptancePolicy,
+            m.Field(description="Exact policy requested for this original evidence"),
+        ]
+        policy_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$", description="Expected recorded policy"
+            ),
+        ]
+        allowed_signers: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Trust file used before new or repeated publication"),
         ]
 
         @m.model_validator(mode="after")
@@ -381,6 +611,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateAttestationVerifyRequest(m.ContractModel):
         """Verify the signed attestation for the repository HEAD."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         allowed_signers: Annotated[
             t.NonEmptyStr,
@@ -388,7 +620,24 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         expected_gates: Annotated[
             t.StrSequence,
-            m.Field(min_length=1, description="Required gate coverage"),
+            m.Field(min_length=1, max_length=1, description="Required original stage"),
+        ]
+        context_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Expected execution context",
+            ),
+        ]
+        policy: Annotated[
+            c.Infra.GateAcceptancePolicy,
+            m.Field(description="Required policy for stage reuse"),
+        ]
+        policy_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$", description="Required recorded policy"
+            ),
         ]
         commit_sha: Annotated[
             t.NonEmptyStr,
@@ -420,6 +669,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Verified signer principal"),
         ]
         covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
+        context_digest: Annotated[
+            str, m.Field(description="Verified execution context")
+        ]
+        reused: Annotated[
+            bool, m.Field(description="Existing immutable proof was reused")
+        ] = False
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]

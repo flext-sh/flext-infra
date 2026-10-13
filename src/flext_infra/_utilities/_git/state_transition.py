@@ -300,7 +300,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         # An index change made by another writer remains visible before the
         # one atomic index-info publication; no intermediate empty index.
         cls._state_preflight_transition(snapshot, root, cleanup=cleanup)
-        cls._state_index_update(
+        cls.state_index_update(
             root,
             tuple(paths),
             baseline if cleanup else snapshot.index_entries,

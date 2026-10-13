@@ -104,7 +104,11 @@ class TestsFlextInfraWorkspaceLifecycle:
             tuple((row.cwd, row.command) for row in report.receipts),
             eq=expected,
         )
-        tm.that(all(row.exit_code == 0 for row in report.receipts), eq=True)
+        for row in report.receipts:
+            assert row.outcome is not None
+            tm.that(row.outcome.raw_return_code, eq=0)
+            tm.that(row.outcome.timed_out, eq=False)
+            tm.that(row.outcome.forwarded_signal, eq=None)
         tm.that(all(row.error is None for row in report.receipts), eq=True)
         tm.that(all(row.output_file.is_file() for row in report.receipts), eq=True)
         tm.that(
@@ -133,16 +137,25 @@ class TestsFlextInfraWorkspaceLifecycle:
             len(report.receipts),
             eq=len(report.scope) * len(c.Infra.LIFECYCLE_VERBS),
         )
-        tm.that(all(row.exit_code == 0 for row in report.receipts[:fail_at]), eq=True)
+        tm.that(
+            all(
+                row.outcome is not None and row.outcome.raw_return_code == 0
+                for row in report.receipts[:fail_at]
+            ),
+            eq=True,
+        )
         failed = report.receipts[fail_at]
-        tm.that(failed.exit_code not in {None, 0}, eq=True)
+        assert failed.outcome is not None
+        tm.that(failed.outcome.raw_return_code != 0, eq=True)
+        tm.that(failed.outcome.timed_out, eq=False)
+        tm.that(failed.outcome.forwarded_signal, eq=None)
         tm.that(failed.error is not None, eq=True)
         tm.that(
             failed.output_file.read_text(encoding=c.DEFAULT_ENCODING),
             has="lifecycle-fixture-failure",
         )
         tm.that(
-            all(row.exit_code is None for row in report.receipts[fail_at + 1 :]),
+            all(row.outcome is None for row in report.receipts[fail_at + 1 :]),
             eq=True,
         )
         tm.that(

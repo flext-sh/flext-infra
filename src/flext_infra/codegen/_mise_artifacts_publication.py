@@ -48,7 +48,8 @@ class FlextInfraMisePublication:
         if before.failure:
             return r[bool].from_failure(before)
         if (
-            plan.path.name == c.Infra.INIT_PY
+            phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
+            and plan.path.name == c.Infra.INIT_PY
             and u.Infra.codegen_initializer_is_authored(before.value.content)
         ):
             u.Cli.info(
@@ -58,7 +59,11 @@ class FlextInfraMisePublication:
         staged_publication = cls._staged_publication(
             plan,
             phase=phase,
-            before=before.value,
+            before=(
+                plan.before
+                if phase == c.Infra.CodegenStagedFilePhase.SEMANTIC
+                else before.value
+            ),
         )
         if staged_publication.failure:
             return r[bool].from_failure(staged_publication)
@@ -91,6 +96,9 @@ class FlextInfraMisePublication:
                     project=plan.project,
                     before=before,
                     replacement=None,
+                    tracking=plan.tracking,
+                    index_before=plan.index_before,
+                    tracking_dependencies=plan.tracking_dependencies,
                 ),
             )
         mode = plan.desired_mode
@@ -119,6 +127,9 @@ class FlextInfraMisePublication:
                 project=plan.project,
                 before=before,
                 replacement=staged.value,
+                tracking=plan.tracking,
+                index_before=plan.index_before,
+                tracking_dependencies=plan.tracking_dependencies,
             ),
         )
 
@@ -137,11 +148,32 @@ class FlextInfraMisePublication:
         issues: list[m.Infra.Issue] = []
         exception: BaseException | None = None
         total = len(publications)
-        for index, publication in enumerate(publications, start=1):
+        ordered = tuple(
+            sorted(publications, key=lambda item: item.index_before is not None)
+        )
+        for index, publication in enumerate(ordered, start=1):
             u.Cli.emit_raw(f"  publish [{index}/{total}] {publication.before.path}\n")
+            ready = FlextInfraMisePublication._tracking_prerequisites(
+                publication,
+                publications,
+                written,
+            )
+            if ready.failure:
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(publication.before.path),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=ready.error or "tracking prerequisite failed",
+                    ),
+                )
+                exception = exception or ready.exception
+                continue
             observed = files.read_state(publication.before.path, required=False)
             if (
                 observed.success
+                and publication.phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
                 and publication.before.path.name == c.Infra.INIT_PY
                 and u.Infra.codegen_initializer_is_authored(observed.value.content)
             ):
@@ -153,7 +185,16 @@ class FlextInfraMisePublication:
                 continue
             changed = (
                 files.write_publication(
-                    publication.model_copy(update={"before": observed.value}),
+                    publication
+                    if (
+                        publication.phase
+                        in {
+                            c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                            c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                        }
+                        or publication.tracking == "runtime-local"
+                    )
+                    else publication.model_copy(update={"before": observed.value}),
                 )
                 if observed.success
                 else r[bool].from_failure(observed)
@@ -175,6 +216,24 @@ class FlextInfraMisePublication:
                 publication.before.path,
             )
             written.append(publication.before.path)
+            if publication.index_before is not None:
+                retired = u.Infra.git_retire_index_file(
+                    m.Infra.GitIndexRetirementRequest(
+                        repo_root=publication.project,
+                        entry=publication.index_before,
+                    ),
+                )
+                if retired.failure:
+                    issues.append(
+                        m.Infra.Issue(
+                            file=str(publication.before.path),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=retired.error or "index retirement failed",
+                        ),
+                    )
+                    exception = exception or retired.exception
         return r[m.Infra.CodegenPhaseOutcome].ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
@@ -183,6 +242,44 @@ class FlextInfraMisePublication:
                 exception=exception,
             ),
         )
+
+    @staticmethod
+    def _tracking_prerequisites(
+        publication: m.Infra.CodegenStagedFile,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        written: t.SequenceOf[Path],
+    ) -> p.Result[bool]:
+        """Require portable declarations from this phase before retiring their binding.
+
+        Returns:
+            Verified publication evidence for every required declaration.
+        """
+        for dependency in publication.tracking_dependencies:
+            planned = next(
+                (item for item in publications if item.before.path == dependency),
+                None,
+            )
+            if (
+                planned is None
+                or dependency not in written
+                or planned.replacement is None
+            ):
+                error = ValueError(
+                    f"portable declaration was not published: {dependency}",
+                )
+                return r[bool].fail(str(error), exception=error)
+            observed = files.read_state(dependency, required=True)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if (
+                observed.value.content != planned.replacement.content
+                or observed.value.mode != planned.replacement.mode
+            ):
+                error = ValueError(
+                    f"portable declaration changed after publication: {dependency}",
+                )
+                return r[bool].fail(str(error), exception=error)
+        return r[bool].ok(value=True)
 
 
 __all__: list[str] = ["FlextInfraMisePublication"]

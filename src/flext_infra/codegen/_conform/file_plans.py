@@ -6,14 +6,185 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_core import FlextStrictYamlConfigSource
+from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
 
 
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     """Desired-state file, environment, and retirement plans."""
+
+    @classmethod
+    def _codegen_declaration_plan(
+        cls,
+        root: Path,
+        path: Path,
+        values: t.JsonMapping,
+        *,
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Merge captured project YAML through its canonical config primitive.
+
+        Returns:
+            A guarded source plan preserving all unrelated configuration values.
+        """
+        result_type = r[m.Infra.CodegenFilePlan]
+        captured = cls.file_plan(root, path.relative_to(root).as_posix(), "")
+        if captured.failure:
+            return result_type.from_failure(captured)
+        before = captured.value.before
+        original = next((state for state in sources if state.path == path), None)
+        if original is not None and before != original:
+            error = ValueError(
+                f"codegen declaration changed after input capture: {path}"
+            )
+            return result_type.fail(str(error), exception=error)
+        if (
+            original is None
+            and isinstance(before, m.Cli.AtomicFileState)
+            and before.content is not None
+        ):
+            error = ValueError(
+                f"codegen declaration appeared after input capture: {path}"
+            )
+            return result_type.fail(str(error), exception=error)
+        payload: t.JsonMapping = {}
+        if isinstance(before, m.Cli.AtomicFileState) and before.content is not None:
+            parsed = u.Infra.read_codegen_config_document(before.content)
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+            payload = parsed.value
+        merged = FlextStrictYamlConfigSource.merge_values(
+            dict(payload),
+            {"Infra": {"codegen": dict(values)}},
+        )
+        serialized = r[str].create_from_callable(
+            partial(u.Cli.yaml_dump_str, merged),
+        )
+        if serialized.failure:
+            return result_type.from_failure(serialized)
+        return result_type.ok(
+            captured.value.model_copy(
+                update={"desired_content": serialized.value.encode(c.DEFAULT_ENCODING)},
+            ),
+        )
+
+    @classmethod
+    def repository_declaration_migration_plans(
+        cls,
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Project captured self-owned declarations before retiring their input.
+
+        This is an explicit migration operation, not a configuration source.
+        Runtime codegen inputs continue to come exclusively from their typed
+        library, repository and local layers.
+
+        Returns:
+            The guarded declaration followed by dependent manifest retirement.
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        legacy_path = u.Infra.workspace_manifest_path(root)
+        captured = u.Cli.atomic_read_binary_file_state(legacy_path, required=False)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        if captured.value.content is None:
+            return result_type.ok(())
+        parsed = u.Infra.read_codegen_config_document(captured.value.content)
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
+        if legacy.failure:
+            return result_type.from_failure(legacy)
+        if legacy.value.external_consumers:
+            error = ValueError(
+                "manifest retirement requires verified public host inventory "
+                "coverage for its external consumers",
+            )
+            return result_type.fail(str(error), exception=error)
+        delta = u.Infra.repository_declaration_delta(legacy.value)
+        if delta.failure:
+            return result_type.from_failure(delta)
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if layers[0].resolve() == layers[1].resolve():
+            error = ValueError(
+                "repository declarations share the distributed codegen defaults",
+            )
+            return result_type.fail(str(error), exception=error)
+        own_source = next(
+            (state for state in inputs.sources if state.path == layers[1]),
+            None,
+        )
+        if own_source is not None and own_source.content is not None:
+            own_document = u.Infra.read_codegen_config_document(own_source.content)
+            if own_document.failure:
+                return result_type.from_failure(own_document)
+            own_values = u.Cli.json_walk_path(
+                own_document.value,
+                ("Infra", "codegen", "repository"),
+            )
+            if own_values is not None:
+                own_delta = u.validate_value(m.Infra.RepositoryDeltaSpec, own_values)
+                if own_delta.failure:
+                    return result_type.from_failure(own_delta)
+                conflicting = tuple(
+                    field
+                    for field in own_delta.value.model_fields_set
+                    if getattr(own_delta.value, field) != getattr(delta.value, field)
+                )
+                if conflicting:
+                    error = ValueError(
+                        "repository declarations conflict with migration input: "
+                        + ", ".join(sorted(conflicting)),
+                    )
+                    return result_type.fail(str(error), exception=error)
+        values = delta.value.model_dump(
+            mode="json",
+            exclude_none=True,
+            exclude_defaults=True,
+            exclude_computed_fields=True,
+        )
+        composed = u.Infra.project_codegen_inputs(
+            root,
+            inputs,
+            projections=(
+                m.Infra.CodegenLayerProjection(
+                    path=layers[1],
+                    values={"Infra": {"codegen": {"repository": values}}},
+                ),
+            ),
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        declaration = cls._codegen_declaration_plan(
+            root,
+            layers[1],
+            {"repository": values},
+            sources=(*inputs.sources, captured.value),
+        )
+        if declaration.failure:
+            return result_type.from_failure(declaration)
+        retirement = cls._absent_file_plan(root, legacy_path)
+        if retirement.failure:
+            return result_type.from_failure(retirement)
+        if retirement.value.before != captured.value:
+            error = ValueError(
+                "repository declaration changed after migration input capture",
+            )
+            return result_type.fail(str(error), exception=error)
+        return result_type.ok((
+            declaration.value,
+            retirement.value.model_copy(
+                update={"tracking_dependencies": (declaration.value.path,)},
+            ),
+        ))
 
     @staticmethod
     def file_plan(
@@ -65,6 +236,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             environment.project_root / c.Infra.MISE_TOML_FILENAME
             for environment in plan.uv_environments
         )
+        if not expected:
+            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
+                "conform plan carries no uv environment plan for the selected "
+                "repositories; the Mise transaction requires one configuration "
+                "per repository",
+            )
         by_path = {item.path: item for item in plan.files if item.path in expected}
         if len(set(expected)) != len(expected) or len(by_path) != len(expected):
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
@@ -135,7 +312,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         result_type = r[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]
         extra: list[str] = []
-        evidence_by_path: dict[str, str] = {}
+        evidence_by_path: t.StrDict = {}
         for retired in config.Infra.codegen.retired_projections:
             declared = retired if isinstance(retired, str) else retired.path
             relative = Path(declared)

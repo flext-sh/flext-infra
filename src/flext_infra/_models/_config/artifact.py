@@ -30,6 +30,7 @@ from flext_infra._models._config.render import FlextInfraConfigModelsRender
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraConfigModelsArtifact:
@@ -87,29 +88,34 @@ class FlextInfraConfigModelsArtifact:
                 raise ValueError(msg)
             return self
 
-    class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Fully modeled ``vscode`` section of ``config/codegen.yaml``."""
+    class CodegenGovernedPlanRequest(FlextInfraConfigModelsContract.ConfigContract):
+        """Resolved inputs for planning one governed artifact's file plan."""
 
-        scalar_settings: Annotated[
-            Mapping[str, str | bool | int],
-            m.Field(description="VS Code scalar keys enforced on every project"),
+        root: Annotated[Path, m.Field(description="Repository root of the artifact")]
+        relative: Annotated[
+            Path,
+            m.Field(description="Artifact path relative to the repository root"),
         ]
-        list_settings: Annotated[
-            Mapping[str, t.VariadicTuple[str]],
-            m.Field(description="VS Code list keys enforced on every project"),
+        governed: Annotated[
+            FlextInfraConfigModelsTemplates.ManagedFileSpec,
+            m.Field(description="Declared governance for the artifact"),
         ]
-        map_union_settings: Annotated[
-            Mapping[str, Mapping[str, str | bool | int]],
-            m.Field(description="VS Code map keys union-merged over project settings"),
+        current: Annotated[
+            str,
+            m.Field(description="Current on-disk text; empty when absent"),
         ]
-        stripped_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+        runtime_root: Annotated[
+            Path | None,
+            m.Field(description="Runtime root when the artifact belongs to the root"),
+        ] = None
+        vscode_spec: Annotated[
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
+            m.Field(description="Declared vscode settings spec when present"),
+        ] = None
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
-                description=(
-                    "VS Code keys actively stripped from the settings projection "
-                    "because they conflict with a pyrightconfig.json/pyproject.toml "
-                    "owner (Pylance settingsNotOverridable)."
-                ),
+                exclude=True, description="Exact inputs of the injected declaration"
             ),
         ] = ()
 
@@ -169,6 +175,13 @@ class FlextInfraConfigModelsArtifact:
     class CodegenConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
+        repository: Annotated[
+            FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
+            m.Field(
+                default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
+                description="This repository's self-owned declaration differences",
+            ),
+        ]
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
             t.VariadicTuple[str | FlextInfraConfigModelsArtifact.RetiredProjectionSpec],
@@ -307,7 +320,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Canonical Make contract"),
         ]
         vscode: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenVscodeSpec,
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
         artifacts: Annotated[
@@ -577,6 +590,18 @@ class FlextInfraConfigModelsArtifact:
                 raise ValueError(msg)
             return self
 
+    class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """Full effective codegen policy and its ordered consulted snapshots."""
+
+        spec: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            m.Field(description="Validated effective repository codegen declaration"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(exclude=True, description="Exact consulted config input states"),
+        ] = ()
+
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""
 
@@ -593,6 +618,10 @@ class FlextInfraConfigModelsArtifact:
         dependencies_only: Annotated[
             bool,
             m.Field(description="Whether planning is dependency-only"),
+        ] = False
+        runtime_bindings: Annotated[
+            bool,
+            m.Field(description="Select only declared checkout-local runtime bindings"),
         ] = False
         delegates: Annotated[
             bool,
@@ -782,6 +811,22 @@ class FlextInfraConfigModelsArtifact:
             Literal["full", "merge"] | None,
             m.Field(description="Governed root artifact policy"),
         ] = None
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Declared persistence policy of this artifact"),
+        ] = "versioned"
+        index_before: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Captured index entry scheduled for retirement"),
+        ] = None
+        tracking_dependencies: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description=(
+                    "Portable declaration destinations required before retirement"
+                ),
+            ),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_publication_identity(self) -> Self:
@@ -800,6 +845,19 @@ class FlextInfraConfigModelsArtifact:
             """
             if not self.project.is_absolute() or not self.path.is_absolute():
                 msg = "codegen project and path must be absolute"
+                raise ValueError(msg)
+            if self.index_before is not None and (
+                self.tracking != "runtime-local"
+                or self.index_before.path.is_absolute()
+                or self.project / self.index_before.path != self.path
+            ):
+                msg = "index retirement must match its runtime-local artifact"
+                raise ValueError(msg)
+            if any(
+                not path.is_relative_to(self.project)
+                for path in self.tracking_dependencies
+            ):
+                msg = "tracking declaration escapes the owning project"
                 raise ValueError(msg)
             if isinstance(self.before, m.Cli.AtomicFileState):
                 if self.before.path != self.path:
@@ -855,6 +913,12 @@ class FlextInfraConfigModelsArtifact:
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's planned files and environment, or its failure."""
 
+        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native target planning cause",
+        )
         repository: Annotated[
             t.NonEmptyStr,
             m.Field(description="Planned repository name"),
@@ -930,7 +994,7 @@ class FlextInfraConfigModelsArtifact:
         candidate_dirty: Annotated[
             bool | None,
             m.Field(
-                description="Candidate worktree state; absent without Git ownership"
+                description=("Candidate worktree state; absent without Git ownership")
             ),
         ]
         files: Annotated[
@@ -944,12 +1008,6 @@ class FlextInfraConfigModelsArtifact:
         error: Annotated[str, m.Field(description="Original planning failure message")]
         error_type: Annotated[str, m.Field(description="Original exception identity")]
         elapsed: Annotated[float, m.Field(ge=0, description="Planning wall seconds")]
-
-        @m.computed_field
-        @property
-        def planned_file_count(self) -> int:
-            """Count the published target inventory."""
-            return len(self.files)
 
     class CodegenPlanningReport(FlextInfraConfigModelsContract.ConfigContract):
         """Candidate and target evidence excluding source snapshots and commands."""
@@ -965,6 +1023,12 @@ class FlextInfraConfigModelsArtifact:
     class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""
 
+        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native target failure carried into publication",
+        )
         request: Annotated[
             FlextInfraConfigModelsArtifact.CodegenConformRequest,
             m.Field(description="Validated public request"),

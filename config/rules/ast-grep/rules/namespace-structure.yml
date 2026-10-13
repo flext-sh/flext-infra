@@ -569,6 +569,7 @@ rule:
             kind: type
       - inside:
           kind: parameters
+          stopBy: end
           inside:
             kind: function_definition
             has:

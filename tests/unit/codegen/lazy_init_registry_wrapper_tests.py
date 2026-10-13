@@ -11,6 +11,22 @@ from pathlib import Path
 from tests import c, t, tm, u
 
 
+def _namespace_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    """Provide a lazy-init workspace carrying the shared namespace module.
+
+    Returns:
+        The repository root and the package root.
+
+    """
+    repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+    u.Tests.write_lazy_init_namespace_module(
+        package_root / "models.py",
+        class_name="FlextTestsModels",
+        alias="m",
+    )
+    return repository_root, package_root
+
+
 # flext-i6nq.10: Cleanup is proven through the real generator, not private mixins.
 class TestsFlextInfraLazyInitCleanup:
     """Validate stale generated sidecars are reported or removed truthfully."""
@@ -19,12 +35,7 @@ class TestsFlextInfraLazyInitCleanup:
     def _workspace_with_sidecars(
         tmp_path: Path,
     ) -> t.Triple[Path, Path, t.VariadicTuple[Path]]:
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-        )
+        repository_root, package_root = _namespace_workspace(tmp_path)
         stale_paths = (
             package_root / c.Infra.ROOT_EXPORTS_FILENAME,
             package_root / "_exports_lazy.py",
@@ -68,12 +79,7 @@ class TestsFlextInfraLazyInitCleanup:
     @staticmethod
     def test_apply_removes_closed_obsolete_root_support(tmp_path: Path) -> None:
         """Apply removes every retired root support file."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-        )
+        repository_root, package_root = _namespace_workspace(tmp_path)
         obsolete_module = package_root / "_root_typing.py"
         obsolete_module.write_text("ROOT = ()\n", encoding=c.DEFAULT_ENCODING)
         obsolete_package = package_root / "_root_typing_parts"
@@ -93,12 +99,7 @@ class TestsFlextInfraLazyInitCleanup:
         tmp_path: Path,
     ) -> None:
         """Check-only records retired files and preserves their bytes."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-        )
+        repository_root, package_root = _namespace_workspace(tmp_path)
         obsolete_module = package_root / "_root_exports.py"
         obsolete_module.write_text("ROOT = ()\n", encoding=c.DEFAULT_ENCODING)
         service = u.Tests.create_lazy_init_service(repository_root)
@@ -112,12 +113,7 @@ class TestsFlextInfraLazyInitCleanup:
     @staticmethod
     def test_obsolete_root_support_cleanup_fails_closed(tmp_path: Path) -> None:
         """Reject unexpected content before deleting any retired registry."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-        )
+        repository_root, package_root = _namespace_workspace(tmp_path)
         obsolete_module = package_root / "_root_typing.py"
         obsolete_module.write_text("ROOT = ()\n", encoding=c.DEFAULT_ENCODING)
         obsolete_package = package_root / "_root_typing_parts"

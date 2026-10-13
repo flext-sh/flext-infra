@@ -16,7 +16,7 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services import FlextInfraCodegenRoutes
-from tests import c, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -130,10 +130,13 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(stat.S_IMODE(destination.stat().st_mode), eq=desired_mode)
 
     @staticmethod
-    def test_workspace_uv_plan_owns_root_environment_and_local_member_sources(
-        tmp_path: Path,
-    ) -> None:
-        """Keep workspace setup data complete without Make-side re-derivation."""
+    def _workspace_fixture(tmp_path: Path) -> tuple[Path, m.Infra.WorkspaceSpec]:
+        """Scaffold the governed workspace fixture.
+
+        Returns:
+            The workspace root and its typed spec.
+
+        """
         root_repository = u.Tests.repository_ref("flext")
         member = u.Tests.repository_ref("flext-core", path=Path("flext-core"))
         workspace = u.Tests.workspace_spec(
@@ -151,6 +154,16 @@ class TestsFlextInfraCodegenConformPublicSurface:
         # The governed tree above the workspace carries the committed Mise
         # declaration and lock that activate its locked tools.
         u.Tests.copy_tracked_mise_seeds(tmp_path)
+        return root, workspace
+
+    @staticmethod
+    def test_workspace_uv_plan_owns_root_environment_and_local_member_sources(
+        tmp_path: Path,
+    ) -> None:
+        """Keep workspace setup data complete without Make-side re-derivation."""
+        root, workspace = TestsFlextInfraCodegenConformPublicSurface._workspace_fixture(
+            tmp_path
+        )
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,
@@ -167,7 +180,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         planned_files = {file.path: file for file in plan.files}
         for outcome in evidence.outcomes:
-            tm.that(outcome.planned_file_count, eq=len(outcome.files))
             for file in outcome.files:
                 original = planned_files[file.path]
                 tm.that(

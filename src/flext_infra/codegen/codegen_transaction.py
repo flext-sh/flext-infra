@@ -15,9 +15,9 @@ from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
     FlextInfraCodegenTransactionPhases,
-    FlextInfraMiseArtifactsJournal as journal_io,
-    FlextInfraMiseArtifactsState as state,
-    FlextInfraMiseArtifactsVerification as verify,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -58,7 +58,9 @@ class FlextInfraCodegenTransaction(
         }
 
         def validate_locked(scope_root: Path) -> p.Result[T]:
-            source_barrier = verify.states_current(plan.inputs)
+            source_barrier = FlextInfraMiseArtifactsVerification.states_current(
+                plan.inputs,
+            )
             if source_barrier.failure:
                 return r[T].from_failure(source_barrier)
             started = self.begin_files_locked(scope_root, roots, plan.inputs)
@@ -171,7 +173,9 @@ class FlextInfraCodegenTransaction(
                 held_roots=frozenset({identity.value.repo_root.resolve()}),
             ):
                 if not prepare:
-                    residue = state.transaction_residue(proposed.value)
+                    residue = FlextInfraMiseArtifactsState.transaction_residue(
+                        proposed.value,
+                    )
                     if residue:
                         return r[T].fail(
                             "unregistered generation staging blocks readiness: "
@@ -203,9 +207,6 @@ class FlextInfraCodegenTransaction(
         authorized = self._authorize_roots(tuple(roots.values()))
         if authorized.failure:
             return r[m.Infra.GitIdentityReport].from_failure(authorized)
-        preflight = self._preflight_journal(identity.value)
-        if preflight.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(preflight)
         return identity
 
     def _file_recovery_participants(
@@ -222,17 +223,17 @@ class FlextInfraCodegenTransaction(
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFileParticipant]]
         participants = {item.root: item for item in layout.file_participants}
-        observed = state.journal_state(layout)
+        observed = FlextInfraMiseArtifactsState.journal_state(layout)
         if observed.failure:
             return result_type.from_failure(observed)
-        snapshot = state.journal_snapshot(observed.value)
+        snapshot = FlextInfraMiseArtifactsState.journal_snapshot(observed.value)
         if snapshot is not None and snapshot.content is not None:
             if not prepare:
                 return result_type.fail(
                     "pending file generation journal blocks read-only readiness; "
                     "authenticated apply recovery is required",
                 )
-            loaded = journal_io.read(layout)
+            loaded = FlextInfraMiseArtifactsJournal.read(layout)
             if loaded.failure:
                 return result_type.from_failure(loaded)
             authorized = self._authorize_journal(layout, loaded.value[0])
@@ -331,17 +332,17 @@ class FlextInfraCodegenTransaction(
                 m.Cli.AtomicFileState,
             ]
         ]
-        observed = state.journal_state(layout)
+        observed = FlextInfraMiseArtifactsState.journal_state(layout)
         if observed.failure:
             return result_type.from_failure(observed)
-        before = state.journal_snapshot(observed.value)
+        before = FlextInfraMiseArtifactsState.journal_snapshot(observed.value)
         if before is None or before.content is not None:
             return result_type.fail(
                 "file transaction journal is not absent after recovery",
             )
-        if state.transaction_residue(layout):
+        if FlextInfraMiseArtifactsState.transaction_residue(layout):
             return result_type.fail("file transaction has unowned staging residue")
-        directories = state.plan_transaction_directories(layout)
+        directories = FlextInfraMiseArtifactsState.plan_transaction_directories(layout)
         if directories.failure:
             return result_type.from_failure(directories)
         return result_type.ok((directories.value, before))
@@ -367,7 +368,7 @@ class FlextInfraCodegenTransaction(
         if guarded.failure:
             return result_type.from_failure(guarded)
         directories, before = guarded.value
-        journal = journal_io.begin(
+        journal = FlextInfraMiseArtifactsJournal.begin(
             plan,
             transaction_id=transaction_id,
             sources=tuple(("docs", source) for source in inputs),
@@ -379,7 +380,11 @@ class FlextInfraCodegenTransaction(
         if opened.failure:
             return result_type.from_failure(opened)
         recorded, recorded_state = opened.value
-        prepared_journal = journal_io.append_prepared(plan, recorded, ())
+        prepared_journal = FlextInfraMiseArtifactsJournal.append_prepared(
+            plan,
+            recorded,
+            (),
+        )
         if prepared_journal.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -428,7 +433,9 @@ class FlextInfraCodegenTransaction(
         if started.failure:
             return result_type.from_failure(started)
         prepared = self.append_directories_locked(
-            started.value,
+            started.value.model_copy(
+                update={"exception": started.value.exception or analysis.exception},
+            ),
             analysis.phase,
             policy.directories,
         )
@@ -438,6 +445,7 @@ class FlextInfraCodegenTransaction(
             prepared.value,
             analysis.phase,
             analysis.files,
+            issues=analysis.issues,
             staged_validator=staged_validator,
         )
         if published.failure:
@@ -474,15 +482,15 @@ class FlextInfraCodegenTransaction(
         if selected.failure:
             return r[bool].from_failure(selected)
         layout = selected.value
-        journal = state.journal_state(layout)
+        journal = FlextInfraMiseArtifactsState.journal_state(layout)
         if journal.failure:
             return r[bool].from_failure(journal)
-        journal_snapshot = state.journal_snapshot(journal.value)
+        journal_snapshot = FlextInfraMiseArtifactsState.journal_snapshot(journal.value)
         if journal_snapshot is not None and journal_snapshot.content is not None:
             return r[bool].fail(
                 "pending generation transaction requires apply-mode recovery",
             )
-        residue = state.transaction_residue(layout)
+        residue = FlextInfraMiseArtifactsState.transaction_residue(layout)
         if residue:
             return r[bool].fail(
                 f"generation staging has no journal authority: {residue[0]}",
@@ -490,7 +498,7 @@ class FlextInfraCodegenTransaction(
         plan = self._planner.snapshot(layout, config_plans)
         if plan.failure:
             return r[bool].from_failure(plan)
-        return verify.live(self._owner, plan.value)
+        return FlextInfraMiseArtifactsVerification.live(self._owner, plan.value)
 
     def _selected_validate_layout(
         self,
@@ -522,7 +530,7 @@ class FlextInfraCodegenTransaction(
             The resulting ``p.Result[bool]``.
 
         """
-        return verify.phase_analysis_live(analysis)
+        return FlextInfraMiseArtifactsVerification.phase_analysis_live(analysis)
 
     def run_locked[T](
         self,
@@ -539,9 +547,6 @@ class FlextInfraCodegenTransaction(
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[T].from_failure(identity)
-        preflight = self._preflight_journal(identity.value)
-        if preflight.failure:
-            return r[T].from_failure(preflight)
         with u.Infra.codegen_transaction_lease(
             self._planner.journal_path(identity.value),
         ):

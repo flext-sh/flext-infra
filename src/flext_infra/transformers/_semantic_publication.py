@@ -34,10 +34,11 @@ class FlextInfraSemanticPublication:
         codegen: m.Infra.CodegenConfigSpec | None = None,
         projection_roots: t.VariadicTuple[Path] = (),
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Preflight every plan and commit only after byte and caller acceptance.
+        """Publish each guarded file and report byte and caller acceptance.
 
         ``None`` content means no semantic change, never deletion. The existing
-        transaction owns identity checks, staging, durable recovery and rollback.
+        transaction owns identity checks, staging and durable recovery. Consumer
+        rejection preserves successful writes for correction at their owner.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.

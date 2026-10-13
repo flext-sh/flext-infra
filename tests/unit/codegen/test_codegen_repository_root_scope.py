@@ -12,16 +12,78 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
-    def _recorded_activation_env(tmp_path: Path) -> t.Pair[dict[str, str], Path]:
+    @pytest.mark.slow
+    def test_selected_member_mod_text_owns_its_real_workspace_scope(
+        tmp_path: Path,
+    ) -> None:
+        """A generated member Makefile rewrites its member from workspace CWD."""
+        root = tmp_path / "scope-workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(
+            FlextInfraCodegenConform(repository_root=root, request=request).execute(
+                request
+            )
+        )
+        for verb in ("upg", "setup"):
+            provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
+            tm.that(
+                u.Cli.process_succeeded(provisioned.outcome),
+                eq=True,
+                msg=provisioned.stdout + provisioned.stderr,
+            )
+        sentinel = root / "scope_sentinel.py"
+        selected = member / "scope_selected.py"
+        original = 'value = "scope_before"\n'
+        tm.ok(u.Cli.atomic_write_text_file(sentinel, original))
+        tm.ok(u.Cli.atomic_write_text_file(selected, original))
+        for project in (root, member):
+            relative = sentinel.name if project == root else selected.name
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                    "rules:\n"
+                    "  - id: private-scope-contract\n"
+                    f"    include: ['{relative}']\n"
+                    "    find: 'scope_before'\n"
+                    "    replace: 'scope_after'\n",
+                )
+            )
+        result = tm.ok(
+            u.Tests.run_isolated_make(
+                [
+                    "-f",
+                    str((member / c.Infra.MAKEFILE_FILENAME).relative_to(root)),
+                    "mod-text",
+                ],
+                cwd=root,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+        tm.that(selected.read_text(encoding="utf-8"), eq='value = "scope_after"\n')
+        tm.that(sentinel.read_text(encoding="utf-8"), eq=original)
+
+    @staticmethod
+    def _recorded_activation_env(tmp_path: Path) -> t.Pair[t.StrMapping, Path]:
         """Record the local-context activation instead of entering a host shell.
 
         ``make upg`` is a local verb (CI forbids resolution), so its lifecycle
@@ -209,15 +271,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         dry run enters that lifecycle directly, and its recursive ``+``
         activation re-enters the checkout through ``direnv exec``.
         """
-        repository_root = self._render_root_makefile(tmp_path)
-        env, activations = self._recorded_activation_env(tmp_path)
-
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
+        repository_root, activations, execution = self._run_upg_lifecycle(
+            tmp_path,
         )
 
         tm.that(
@@ -247,14 +302,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         gen's activation half demands the pinned Mise release, then checks
         uv.lock before post-upg.
         """
-        repository_root = self._render_root_makefile(tmp_path)
-        env, activations = self._recorded_activation_env(tmp_path)
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
+        _, activations, execution = self._run_upg_lifecycle(
+            tmp_path,
         )
         tm.that(
             activations.read_text(encoding="utf-8"),
@@ -429,3 +478,31 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         return repository_root
+
+    @classmethod
+    def _run_upg_lifecycle(
+        cls,
+        tmp_path: Path,
+    ) -> t.Triple[Path, Path, p.Cli.CommandOutput]:
+        """Render the workspace root and dry-run the canonical ``upg`` lifecycle.
+
+        Every ``upg`` recipe assertion shares the same premise: a rendered
+        workspace Makefile whose ``_upg_lifecycle`` re-enters through the
+        recorded direnv activation. Running the isolated dry run once keeps the
+        two tests on a single owner.
+
+        Returns:
+            The repository root, the recorded activation log, and the dry-run
+            output.
+
+        """
+        repository_root = cls._render_root_makefile(tmp_path)
+        env, activations = cls._recorded_activation_env(tmp_path)
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle"],
+                cwd=repository_root,
+                env=env,
+            ),
+        )
+        return repository_root, activations, execution

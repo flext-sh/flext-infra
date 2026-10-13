@@ -41,6 +41,55 @@ class FlextInfraModelsGit(
 
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
 
+    class GitSigningConfigObservation(m.ContractModel):
+        """Native configuration origin and outcome without exporting key material."""
+
+        key: Annotated[
+            t.NonEmptyStr, m.Field(description="Inspected native Git setting")
+        ]
+        scope: Annotated[
+            str | None, m.Field(description="Native effective config scope")
+        ]
+        origin: Annotated[
+            str | None, m.Field(description="Native effective config origin")
+        ]
+        value: Annotated[
+            str | None,
+            m.Field(
+                exclude=True, description="Private native config value for projection"
+            ),
+        ] = None
+        process: Annotated[
+            m.Cli.ProcessOutcome, m.Field(description="Original native query outcome")
+        ]
+
+    class GitSigningIdentityReport(m.ContractModel):
+        """Read-only signing references; no private files or command execution."""
+
+        repo_root: Annotated[Path, m.Field(description="Inspected repository root")]
+        signing_format: Annotated[
+            str | None, m.Field(description="Declared native signing format")
+        ]
+        key_path: Annotated[
+            Path | None, m.Field(description="Declared file key reference, unread")
+        ]
+        inline_public_key: Annotated[
+            bool, m.Field(description="Git declares an inline key:: public reference")
+        ]
+        public_fingerprint: Annotated[
+            str | None,
+            m.Field(description="Verified public fingerprint, unknown until verified"),
+        ]
+        allowed_signers_path: Annotated[
+            Path | None, m.Field(description="Declared public trust file, unread")
+        ]
+        observations: Annotated[
+            tuple[FlextInfraModelsGit.GitSigningConfigObservation, ...],
+            m.Field(
+                description="Native origin, scope and raw outcome for every setting"
+            ),
+        ]
+
     class GitLaneEvidence(m.ContractModel):
         """Repository-bound coordinator receipt, never a cleanup instruction."""
 

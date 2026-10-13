@@ -142,7 +142,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
 
     def inspect_journal(self) -> p.Result[m.Infra.CodegenFootprint]:
-        """Read the actual typed journal without locks, recovery, or directory writes.
+        """Read the typed journal under its lease without recovery or writes.
+
+        Inspects the journal in place; it neither recovers it nor writes any
+        destination.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenFootprint]``.
@@ -150,31 +153,35 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[m.Infra.CodegenFootprint].from_failure(identity)
-        return self._inspect_journal(identity.value)
+        with u.Infra.codegen_transaction_lease(
+            self._planner.journal_path(identity.value),
+        ):
+            return self._inspect_journal(identity.value)
 
     def validate_footprint(
         self,
         footprint: m.Infra.CodegenFootprint,
-    ) -> p.Result[bool]:
-        """Authorize one observed journal without acquiring or recovering it.
+    ) -> p.Result[m.Infra.CodegenFootprint]:
+        """Authorize the current journal under its lease without recovering it.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The current authenticated footprint, independent of earlier observations.
         """
         identity = self._coordinated_identity()
         if identity.failure:
-            return r[bool].from_failure(identity)
+            return r[m.Infra.CodegenFootprint].from_failure(identity)
         layout = self._planner.journal_layout(identity.value)
         if layout.failure:
-            return r[bool].from_failure(layout)
-        if layout.value.journal_path != footprint.journal_path:
-            return r[bool].fail("generation footprint journal anchor changed")
-        anchor = self._footprint_anchor_matches(footprint, identity.value)
-        if anchor.failure:
-            return r[bool].from_failure(anchor)
-        if footprint.journal is not None:
-            return self._authorize_journal(layout.value, footprint.journal)
-        return self._authorize_roots((identity.value.repo_root,))
+            return r[m.Infra.CodegenFootprint].from_failure(layout)
+        if (
+            layout.value.journal_path != footprint.journal_path
+            or identity.value.repo_root != footprint.scope_root
+        ):
+            return r[m.Infra.CodegenFootprint].fail(
+                "generation footprint journal anchor changed",
+            )
+        with u.Infra.codegen_transaction_lease(layout.value.journal_path):
+            return self._validate_footprint_locked(identity.value)
 
     def _coordinated_identity(self) -> p.Result[m.Infra.GitIdentityReport]:
         """Resolve the scope identity and hold it against the participant policy.
@@ -196,35 +203,30 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             )
         return identity
 
-    def _footprint_anchor_matches(
+    def _validate_footprint_locked(
         self,
-        footprint: m.Infra.CodegenFootprint,
         identity: m.Infra.GitIdentityReport,
-    ) -> p.Result[bool]:
-        """Compare the freshly observed journal against the authorized footprint.
+    ) -> p.Result[m.Infra.CodegenFootprint]:
+        """Observe and authorize current journal authority while its lease is held.
 
         Returns:
-            Success when the observed journal still matches the footprint.
+            The current footprint or its actual authorization failure.
 
         """
         observed = self._inspect_journal(identity)
         if observed.failure:
-            return r[bool].from_failure(observed)
-        if observed.value.snapshot != footprint.snapshot:
-            u.Cli.info(
-                "generation journal changed during footprint inspection; "
-                f"journal-snapshot-before={footprint.model_dump_json()}",
-            )
-            u.Cli.info(f"journal-snapshot-after={observed.value.model_dump_json()}")
-            fields_equal = observed.value.snapshot.model_dump(
-                exclude={"content"},
-            ) == footprint.snapshot.model_dump(exclude={"content"})
-            bytes_equal = observed.value.snapshot.content == footprint.snapshot.content
-            return r[bool].fail(
-                "generation journal changed during footprint inspection; "
-                f"bytes_equal={bytes_equal}; normalized_fields_equal={fields_equal}",
-            )
-        return r[bool].ok(value=True)
+            return r[m.Infra.CodegenFootprint].from_failure(observed)
+        layout = self._planner.journal_layout(identity)
+        if layout.failure:
+            return r[m.Infra.CodegenFootprint].from_failure(layout)
+        authorized = (
+            self._authorize_journal(layout.value, observed.value.journal)
+            if observed.value.journal is not None
+            else self._authorize_roots((identity.repo_root,))
+        )
+        if authorized.failure:
+            return r[m.Infra.CodegenFootprint].from_failure(authorized)
+        return observed
 
     def _inspect_journal(
         self,
@@ -366,7 +368,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         identity: m.Infra.GitIdentityReport,
     ) -> p.Result[bool]:
-        """Refuse foreign pending authority before opening even the scope lease.
+        """Refuse foreign pending authority while holding the scope journal lease.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -378,10 +380,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         authorized = self._authorize_roots((identity.repo_root,))
         if authorized.failure:
             return authorized
-        observed = self._inspect_journal(identity)
+        observed = self._validate_footprint_locked(identity)
         if observed.failure:
             return r[bool].from_failure(observed)
-        return self.validate_footprint(observed.value)
+        return r[bool].ok(value=True)
 
     def _materialize_directories(
         self,
@@ -640,7 +642,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         if authorized.failure:
             return authorized
         if journal.file_participants:
-            return self._recover_file_participants(layout, journal, journal_state)
+            return self._recover_file_participants(
+                layout,
+                journal,
+                journal_state,
+                owned_receipt=expected is not None,
+            )
         return self._recover_project_selectors(layout, journal, journal_state)
 
     def _recover_file_participants(
@@ -648,6 +655,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
+        *,
+        owned_receipt: bool,
     ) -> p.Result[bool]:
         """Recover a file-only journal under its participants' leases.
 
@@ -659,18 +668,29 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[bool].fail(
                 "mixed Mise and file-only recovery requires explicit composition",
             )
-        recovery_layout = self._planner.file_layout(
-            layout.scope_root,
-            {item.selector: item.root for item in journal.file_participants},
-            transaction_id=journal.transaction_id,
-        )
-        if recovery_layout.failure:
-            return r[bool].from_failure(recovery_layout)
-        if recovery_layout.value.journal_path != layout.journal_path:
+        if owned_receipt:
+            if (
+                layout.transaction_id != journal.transaction_id
+                or layout.file_participants != journal.file_participants
+            ):
+                return r[bool].fail(
+                    "owned file cleanup layout differs from authenticated journal",
+                )
+            recovery_layout = layout
+        else:
+            reconstructed = self._planner.file_layout(
+                layout.scope_root,
+                {item.selector: item.root for item in journal.file_participants},
+                transaction_id=journal.transaction_id,
+            )
+            if reconstructed.failure:
+                return r[bool].from_failure(reconstructed)
+            recovery_layout = reconstructed.value
+        if recovery_layout.journal_path != layout.journal_path:
             return r[bool].fail("file journal identity changed during recovery")
         with self._lease_file_participants(journal.file_participants):
             recovered = self._recovery.execute(
-                recovery_layout.value,
+                recovery_layout,
                 journal,
                 journal_state,
             )

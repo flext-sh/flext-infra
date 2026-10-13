@@ -109,6 +109,13 @@ class FlextInfraModelsTransformers:
             frozenset[t.Pair[str, str]],
             m.Field(description="Elected self-facade import identities"),
         ] = m.Field(default_factory=frozenset)
+        declaration_imports: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(
+                description="External declaration receivers eligible for proven lower "
+                "binding"
+            ),
+        ] = m.Field(default_factory=frozenset)
 
     class DeclarationRelocationFinding(m.ContractModel):
         """One payload declaration whose relocation owner cannot be resolved."""

@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import t
+from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraModelsCodegenJournalModels:
@@ -39,6 +40,20 @@ class FlextInfraModelsCodegenJournalModels:
             m.Cli.AtomicFileState | None,
             m.Field(description="Exact staged state, or None for a planned deletion"),
         ] = None
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Managed artifact persistence policy"),
+        ] = "versioned"
+        index_before: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Captured index entry authorized for retirement"),
+        ] = None
+        tracking_dependencies: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description="Portable declaration prerequisites of index retirement"
+            ),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_publication(self) -> Self:
@@ -443,6 +458,18 @@ class FlextInfraModelsCodegenJournalModels:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Declared persistence policy for this destination"),
+        ] = "versioned"
+        index_before: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Immutable index preimage authorized for retirement"),
+        ] = None
+        tracking_dependencies: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Declaration destinations required before retirement"),
+        ] = ()
         phase: Annotated[
             t.NonEmptyStr,
             m.Field(description="Generation phase owning this entry"),

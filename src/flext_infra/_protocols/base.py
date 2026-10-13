@@ -34,6 +34,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Validate staged candidates while preserving live sources."""
             ...
 
+    @runtime_checkable
     class ExternalCacheDirectory(Protocol):
         """Shared consumer contract for declared tool cache placement."""
 

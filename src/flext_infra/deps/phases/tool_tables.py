@@ -173,7 +173,7 @@ class FlextInfraToolTablesPhase:
         """
         return frozenset(
             Path(path).parts[0]
-            for path in u.Infra.manifest_nonparticipant_paths(project_dir.resolve())
+            for path in u.Infra.repository_nonparticipant_paths(project_dir.resolve())
         )
 
     def _phases(

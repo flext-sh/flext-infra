@@ -13,9 +13,41 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 pytestmark = pytest.mark.slow
+
+
+def _run_make_help(
+    project_root: Path,
+    *extra_args: str,
+) -> p.Cli.CommandOutput:
+    """Run the generated ``help`` verb in isolation and require success.
+
+    The literal-description proof and the inert-override proof share one real
+    invocation against the same generated checkout, so the rendered verb has a
+    single owner. ``extra_args`` are the trailing command words a caller adds
+    to prove they are inert.
+
+    Returns:
+        The resulting ``p.Cli.CommandOutput``.
+
+    """
+    process = tm.ok(
+        u.Cli.run_raw(
+            [c.Infra.MAKE, "--no-print-directory", "help", *extra_args],
+            cwd=project_root,
+            options=m.Cli.ProcessOptions(
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            ),
+        ),
+    )
+    tm.that(
+        u.Cli.process_succeeded(process.outcome),
+        eq=True,
+        msg=process.stdout + process.stderr,
+    )
+    return process
 
 
 class TestsFlextInfraCodegenMakeVerbs:
@@ -168,7 +200,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         )
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has="-m flext_infra workspace capture-gate")
         tm.that(invocation, has=f"--gates {gates}")
         tm.that(invocation, lacks="--apply")
 
@@ -192,20 +224,7 @@ class TestsFlextInfraCodegenMakeVerbs:
                 ),
             ),
         )
-        process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "help"],
-                cwd=project_root,
-                options=m.Cli.ProcessOptions(
-                    remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-                ),
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
-        )
+        process = _run_make_help(project_root)
         tm.that(process.stdout, has=description)
         tm.that((project_root / "make-effect").exists(), eq=False)
         tm.that((project_root / "shell-effect").exists(), eq=False)
@@ -300,21 +319,7 @@ class TestsFlextInfraCodegenMakeVerbs:
             c.Infra.MakeProfile.STANDALONE,
         )
 
-        process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "help", "FOO=bar"],
-                cwd=project_root,
-                options=m.Cli.ProcessOptions(
-                    remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-                ),
-            ),
-        )
-
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
-        )
+        _run_make_help(project_root, "FOO=bar")
 
     @staticmethod
     def test_generated_makefile_routes_every_verb_unconditionally(

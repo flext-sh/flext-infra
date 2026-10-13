@@ -6,15 +6,33 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
+from flext_infra import infra, settings
 from tests import c, m, t, tm, u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+
+def _provision_edited_sample(
+    tmp_path: Path,
+) -> t.Quad[str, Path, str, str]:
+    """Provision one lint-gated sample package and its edited source pair.
+
+    Returns:
+        The resulting ``t.Quad[str, Path, str, str]``.
+
+    """
+    project_config = (
+        "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+        "[tool.ruff.lint]\nselect = ['F401']\n"
+    )
+    package = u.Tests.src_package(tmp_path, "sample", pyproject=project_config)
+    py_file = package / "sample.py"
+    original = "VALUE = 1\n"
+    updated = "VALUE = 2\n"
+    py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
+    return project_config, py_file, original, updated
 
 
 @pytest.mark.usefixtures("provisioned_workspace")
@@ -23,6 +41,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     @pytest.fixture
     def provisioned_workspace(tmp_path: Path) -> None:
         """The edited workspace is a checkout whose environment owns the tools."""
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         u.Tests.provision_checkout(tmp_path)
 
     @staticmethod
@@ -33,15 +55,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         batch: bool,
     ) -> None:
         """The first callback exception escapes without undoing its writes."""
-        project_config = (
-            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
-            "[tool.ruff.lint]\nselect = ['F401']\n"
-        )
-        package = u.Tests.src_package(tmp_path, "sample", pyproject=project_config)
-        py_file = package / "sample.py"
-        original = "VALUE = 1\n"
-        updated = "VALUE = 2\n"
-        py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
+        _, py_file, original, updated = _provision_edited_sample(tmp_path)
 
         failure = RuntimeError("protected edit callback failed")
 
@@ -91,15 +105,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         batch: bool,
     ) -> None:
         """A native configuration error remains visible with the retained edit."""
-        project_config = (
-            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
-            "[tool.ruff.lint]\nselect = ['F401']\n"
-        )
-        package = u.Tests.src_package(tmp_path, "sample", pyproject=project_config)
-        py_file = package / "sample.py"
-        original = "VALUE = 1\n"
-        updated = "VALUE = 2\n"
-        py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
+        project_config, py_file, original, updated = _provision_edited_sample(tmp_path)
 
         def invalidate_configuration() -> None:
             (tmp_path / "pyproject.toml").write_text(
@@ -381,17 +387,45 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             else "return 1\n"
         )
         py_file.write_text(original, encoding=c.DEFAULT_ENCODING)
-        result = u.Infra.protected_source_write(
-            py_file,
-            request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=tmp_path,
-                updated_source=updated,
-                gates=(),
-            ),
+        inherited = tmp_path / "orchestrator-imports"
+        inherited.mkdir()
+        marker = tmp_path / "inherited-startup.txt"
+        (inherited / "sitecustomize.py").write_text(
+            "from pathlib import Path\n"
+            f"Path({str(marker)!r}).write_text('inherited', encoding='utf-8')\n",
+            encoding=c.DEFAULT_ENCODING,
         )
+        selected_profile = settings.env_lookup(
+            c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV,
+        )
+        profile_directory = (
+            Path(selected_profile) if selected_profile is not None else None
+        )
+        previous_profiles = (
+            set(profile_directory.glob("*.pstats"))
+            if profile_directory is not None
+            else set()
+        )
+        with u.Tests.env_vars_context({
+            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(inherited),
+        }):
+            result = u.Infra.protected_source_write(
+                py_file,
+                request=m.Infra.ProtectedSourceWriteRequest(
+                    workspace=tmp_path,
+                    updated_source=updated,
+                    gates=(),
+                ),
+            )
         tm.that(result[0], eq=False)
         tm.that(result[1], empty=False)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
+        tm.that(marker.exists(), eq=False)
+        if collectable and profile_directory is not None:
+            tm.that(
+                set(profile_directory.glob("*.pstats")) - previous_profiles,
+                empty=False,
+            )
 
     @staticmethod
     def test_protected_source_writes_applies_request_options(

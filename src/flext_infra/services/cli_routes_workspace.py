@@ -54,9 +54,24 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
 
         """
         request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
-            params.model_dump(),
+            params.model_dump(exclude={"scope"}),
         )
-        return FlextInfraWorkspaceEnvironmentMixin.execute_request(request)
+        return FlextInfraWorkspaceEnvironmentMixin.execute_request(
+            request,
+            scope=params.scope,
+        )
+
+    @staticmethod
+    def _capture_gate(
+        params: m.Infra.GateCaptureRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Retain the original checker process and return its unchanged status."""
+        captured = u.Infra.git_capture_gate(
+            params,
+            inputs=u.Infra.load_codegen_inputs(params.repository_root).unwrap(),
+            load_inputs=u.Infra.load_codegen_inputs,
+        ).unwrap()
+        u.Cli.framework_exit(captured.process.raw_return_code)
 
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
@@ -72,6 +87,18 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             ),
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="signing-identity",
+                help_text="Inspect native public signing references without key access",
+                model_cls=m.Infra.GitRepoRequest,
+                handler=u.Infra.git_signing_identity,
+            ),
+            m.Cli.ResultCommandRoute(
+                name="capture-gate",
+                help_text="Execute the original checker once and publish its receipt",
+                model_cls=m.Infra.GateCaptureRequest,
+                handler=_capture_gate,
+            ),
             m.Cli.ResultCommandRoute(
                 name="validate-lifecycle",
                 help_text="Validate the root and governed member lifecycles serially",

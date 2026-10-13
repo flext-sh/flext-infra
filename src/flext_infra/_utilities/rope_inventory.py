@@ -11,6 +11,7 @@ from operator import itemgetter
 from pathlib import Path
 
 from flext_infra import c, m, p, t
+from flext_cli import u as census_u
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
@@ -300,10 +301,14 @@ class FlextInfraUtilitiesRopeInventory:
         all_reference_sites: t.VariadicTuple[m.Infra.ReferenceSite] = ()
         runtime_reference_sites: t.VariadicTuple[m.Infra.ReferenceSite] = ()
         script_reference_sites: t.VariadicTuple[m.Infra.ReferenceSite] = ()
+        reference_evidence_collected = False
         if include_references:
-            runtime_reference_sites, script_reference_sites, all_reference_sites = (
-                cls._reference_sites(options, line=line)
-            )
+            (
+                runtime_reference_sites,
+                script_reference_sites,
+                all_reference_sites,
+                reference_evidence_collected,
+            ) = cls._reference_sites(options, line=line)
         if is_facade_member or options.name.startswith("_"):
             runtime_reference_sites = ()
             script_reference_sites = ()
@@ -332,7 +337,7 @@ class FlextInfraUtilitiesRopeInventory:
             runtime_reference_sites=runtime_reference_sites,
             script_reference_sites=script_reference_sites,
             all_reference_sites=all_reference_sites,
-            reference_evidence_collected=include_references,
+            reference_evidence_collected=reference_evidence_collected,
             fingerprint=cls._fingerprint(
                 options.source,
                 name=options.name,
@@ -704,34 +709,48 @@ class FlextInfraUtilitiesRopeInventory:
         options: m.Infra.RopeInventoryRecordInput,
         *,
         line: int,
-    ) -> t.Triple[
+    ) -> t.Quad[
         t.VariadicTuple[m.Infra.ReferenceSite],
         t.VariadicTuple[m.Infra.ReferenceSite],
         t.VariadicTuple[m.Infra.ReferenceSite],
+        bool,
     ]:
         """Collect the reference sites for the symbol one record describes.
 
         Returns:
-            Runtime/source sites, script sites and exact all-surface evidence.
+            Runtime/source sites, script sites, exact all-surface evidence,
+            and whether the occurrence search was anchored at all.
 
         Raises:
-            RuntimeError: If the definition identifier or path cannot be located.
+            RuntimeError: If the definition path cannot be located.
 
         """
         name = options.name
         lines = options.source.splitlines(keepends=True)
-        offset = FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
-            lines,
-            line=line,
-            symbol=name,
-            pyname=options.pyname,
-        )
-        if offset is None:
-            msg = (
-                "rope census definition identifier unavailable: "
-                f"{options.resource.path}:{line}:{name}"
+        try:
+            offset = FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
+                lines,
+                line=line,
+                symbol=name,
+                pyname=options.pyname,
             )
-            raise RuntimeError(msg)
+        except RuntimeError as anchor_failure:
+            offset = None
+            anchor_diagnostic = str(anchor_failure)
+        else:
+            anchor_diagnostic = "identifier not found on its definition line"
+        if offset is None:
+            # A definition the binder cannot anchor (today: out-of-package
+            # script modules whose Rope resource is not an indexed source
+            # root, or an ambiguous same-line token) yields no reference
+            # evidence. The record reports an uncollected search — never an
+            # unused classification — instead of failing the whole census
+            # for one unanchorable symbol.
+            census_u.Cli.info(
+                "rope census reference evidence unavailable: "
+                f"{options.resource.path}:{line}:{name}: {anchor_diagnostic}",
+            )
+            return ((), (), (), False)
         definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             options.rope_project,
             options.resource,
@@ -788,7 +807,12 @@ class FlextInfraUtilitiesRopeInventory:
                 definition_path=definition_path,
                 line=line,
             )
-        return (tuple(runtime_sites), tuple(script_sites), tuple(all_sites))
+        return (
+            tuple(runtime_sites),
+            tuple(script_sites),
+            tuple(all_sites),
+            True,
+        )
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:

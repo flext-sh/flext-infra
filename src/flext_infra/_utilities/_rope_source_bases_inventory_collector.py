@@ -102,7 +102,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             return
         visible = {**spec.lexical, **bindings}
-        bases = tuple(cls._reference(base, visible, spec.module) for base in node.bases)
+        bases = tuple(cls._reference(base, visible, spec) for base in node.bases)
         if node.type_params:
             bases = (
                 *bases,
@@ -447,7 +447,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         target = targets[0]
         if not isinstance(target, ast.Attribute):
             return False
-        receiver = cls._reference(target.value, visible, spec.module)
+        receiver = cls._reference(target.value, visible, spec)
         owner = cls._nested_class_receiver(receiver, spec.definitions)
         if owner is None:
             return False
@@ -532,7 +532,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return None
         if head.id in visible and visible[head.id] is None:
             return None
-        return cls._reference(value, visible, spec.module)
+        return cls._reference(value, visible, spec)
 
     @classmethod
     def _aug_assign(
@@ -689,7 +689,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         visible = {**spec.lexical, **bindings}
         if head.id not in visible or visible[head.id] is None:
             return None
-        guard = cls._reference(test, visible, spec.module)
+        guard = cls._reference(test, visible, spec)
         selected: bool | None = None
         match (guard.target, guard.attributes):
             case ("typing" | "typing_extensions", ("TYPE_CHECKING",)):
@@ -732,7 +732,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _reference(
         expression: ast.expr,
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
-        module: str,
+        spec: m.Infra.SourceBindingCollectorSpec,
     ) -> m.Infra.SourceClassReference:
         """Capture the binding visible when a base expression is evaluated.
 
@@ -741,10 +741,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             TypeError: If the expression is not a supported class reference.
-            ValueError: If its lexical binding is not a class.
+            ValueError: If a governed lexical binding is not a class.
 
         """
         # Unwrap interleaved attributes and subscriptions before resolving the root.
+        module = spec.module
         attributes: list[str] = []
         while isinstance(expression, ast.Subscript | ast.Attribute):
             if isinstance(expression, ast.Attribute):
@@ -760,8 +761,22 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if name in bindings:
             binding = bindings[name]
             if binding is None:
-                message = f"Non-class binding used as a base in {module}: {name}"
-                raise ValueError(message)
+                # Why (fleet-automation 2026-10-12): external modules (the
+                # stdlib above all) legitimately bind classes under runtime
+                # conditionals the lexical walk cannot prove
+                # (socketserver.ForkingMixIn under ``hasattr(os, "fork")``);
+                # a governed module doing the same stays fail-loud.
+                governed = bool(spec.package) and module.startswith(
+                    f"{spec.package}.",
+                )
+                if governed:
+                    message = f"Non-class binding used as a base in {module}: {name}"
+                    raise ValueError(message)
+                binding = m.Infra.SourceClassReference(
+                    target=module,
+                    attributes=(name,),
+                    qualified_base=f"{module}.{name}",
+                )
         elif star_module is not None and not hasattr(builtins, name):
             binding = m.Infra.SourceClassReference(
                 target=star_module.target,

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_cli import u
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
@@ -22,13 +22,94 @@ from flext_infra._utilities import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesProjectDiscovery(
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 ):
     """Static helpers for discovering governed project roots in a workspace."""
+
+    @staticmethod
+    def repository_operation_targets(
+        root: Path,
+        scope: c.Infra.CodegenConformScope,
+    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]:
+        """Retain declared roots, including missing checkouts, in discovery order.
+
+        Returns:
+            The declared roots in discovery order.
+
+        """
+        resolved = root.expanduser().resolve()
+        result_type = r[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]
+        if not resolved.is_dir():
+            return result_type.fail(f"operation root does not exist: {resolved}")
+        target = m.Infra.WorkspaceOperationTarget(root=resolved)
+        if scope == c.Infra.CodegenConformScope.SELF:
+            return result_type.ok((target,))
+        if scope != c.Infra.CodegenConformScope.ALL:
+            return result_type.fail(f"operation scope must be self or all: {scope}")
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
+        if declared.failure:
+            return result_type.from_failure(declared)
+        return result_type.ok((
+            target,
+            *(
+                m.Infra.WorkspaceOperationTarget(
+                    root=resolved / declaration.path,
+                    managed=declaration.managed,
+                )
+                for declaration in declared.value
+            ),
+        ))
+
+    @staticmethod
+    def repository_operation_applicability(
+        target: m.Infra.WorkspaceOperationTarget,
+        *,
+        mutating: bool,
+    ) -> p.Result[m.Infra.WorkspaceOperationApplicability]:
+        """Read the target's own policy without reintroducing a workspace roster.
+
+        Returns:
+            The target's own applicability policy.
+
+        """
+        result_type = r[m.Infra.WorkspaceOperationApplicability]
+        if target.managed is False:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Git declaration disables workspace management",
+                ),
+            )
+        if not target.root.is_dir():
+            return result_type.fail(
+                f"required operation root is missing: {target.root}",
+            )
+        loaded = FlextInfraUtilitiesWorkspaceManifest.load_workspace_manifest(
+            target.root,
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        for manifest in loaded.value:
+            repository = manifest.repository
+            if repository.codegen == c.Infra.CodegenKind.NONE:
+                return result_type.ok(
+                    m.Infra.WorkspaceOperationApplicability(
+                        applicable=False,
+                        reason="Repository declaration disables code generation",
+                    ),
+                )
+            if mutating and repository.read_only:
+                return result_type.ok(
+                    m.Infra.WorkspaceOperationApplicability(
+                        applicable=False,
+                        reason="Repository declaration is read-only",
+                    ),
+                )
+        return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -54,49 +135,25 @@ class FlextInfraUtilitiesProjectDiscovery(
         return manifest.refactor
 
     @classmethod
-    @lru_cache(maxsize=1)
-    def manifest_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:
-        """Return every manifest-relative path that is not a generation participant.
+    def repository_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:
+        """Derive external analysis roots from the current Git declarations.
 
-        One authority for project scope. The transaction derives its participants
-        from the workspace manifest, so discovery must derive its candidates from
-        exactly the same declaration or the two disagree and a plan is produced
-        for a directory the transaction cannot stage into.
-
-        Three manifest fields declare "not ours to generate", and the manifest
-        model itself already unions them for validation (`external_paths` in
-        `WorkspaceManifestSpec._validate_references`): `exclusions`,
-        `content_only` and `external_dependency_paths`. Honouring only
-        `exclusions` is what moved this defect from one directory to the next
-        instead of ending it.
-
-        Paths are manifest-relative POSIX strings, never leaf names: two
-        directories may share a leaf, and excluding by name would silently
-        exclude the wrong tree.
-
-        An absent manifest declares no exclusions. An unreadable or invalid
-        manifest fails before discovery can expand the declared scope.
+        Git's explicit management flag owns participation. Repository-local
+        paths retain their full relative shape, so similarly named directories
+        cannot exclude one another. Each invocation observes the current input;
+        changing a Git declaration cannot leave a cached exclusion catalog.
 
         Returns:
-            Every manifest-relative path that is not a generation participant.
+            Every explicitly unmanaged Git submodule path.
 
         """
-        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
             repository_root,
-        )
-        if not manifest_path.is_file():
-            return frozenset()
-        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
-        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
-        declared = (
-            *(exclusion.path for exclusion in manifest.exclusions),
-            *manifest.content_only,
-            *manifest.external_dependency_paths,
-        )
+        ).unwrap()
         return frozenset(
-            posix
-            for path in declared
-            if (posix := Path(path).as_posix()) not in {".", ""}
+            declaration.path.as_posix()
+            for declaration in declared
+            if declaration.managed is False
         )
 
     @classmethod
@@ -154,7 +211,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             repository_root,
             scan_dirs=scan_dirs,
         )
-        nonparticipants = cls.manifest_nonparticipant_paths(repository_root)
+        nonparticipants = cls.repository_nonparticipant_paths(repository_root)
         if not nonparticipants:
             return candidates
         return tuple(
@@ -244,7 +301,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         if declared_paths.failure:
             raise ValueError(declared_paths.error or "invalid .gitmodules")
         declared = cls.discover_project_candidates(resolved_root)
-        nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
+        nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
         direct = tuple(
             child.resolve()
             for child in sorted(resolved_root.iterdir(), key=attrgetter("name"))
@@ -294,7 +351,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                         resolved_root,
                         targets,
                     )
-        nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
+        nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
         return tuple(
             target
             for target in sorted(targets)

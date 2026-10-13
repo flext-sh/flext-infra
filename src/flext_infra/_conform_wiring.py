@@ -73,18 +73,22 @@ class FlextInfraConformWiring:
         authorized = bounded.validate_footprint(footprint)
         if authorized.failure:
             return r[str].from_failure(authorized)
+        footprint = authorized.value
         planned = FlextInfraCodegenConform(
             repository_root=request.root,
             ports=None,
         ).plan(request)
         if planned.failure:
             return r[str].from_failure(planned)
-        unchanged = bounded.validate_footprint(footprint)
-        if unchanged.failure:
-            return r[str].from_failure(unchanged)
+        current = bounded.validate_footprint(footprint)
+        if current.failure:
+            return r[str].from_failure(current)
         return r[str].ok(
-            footprint.model_copy(
+            current.value.model_copy(
                 update={
+                    "authorized_roots": tuple(
+                        root.target for root in policy.value.roots
+                    ),
                     "planned_roots": tuple(
                         dict.fromkeys((
                             *(
