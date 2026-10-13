@@ -977,12 +977,7 @@ class FlextInfraModGateEngine:
     def _report_evidence(receipt: m.Infra.ModScanEvidenceReceipt) -> None:
         """Print bounded totals and the authenticated full-evidence identity."""
         evidence = receipt.evidence
-        sys.stderr.write(
-            "mod: findings "
-            f"total={evidence.findings} actionable={evidence.actionable} "
-            f"detection_only={evidence.detection_only} "
-            f"non_actionable_with_fix={evidence.non_actionable_with_fix}\n",
-        )
+        sys.stderr.write(f"mod: findings total={evidence.findings}\n")
         for finding_class, count in evidence.totals_by_class.items():
             sys.stderr.write(
                 f"mod: findings class={finding_class.value} count={count}\n",
