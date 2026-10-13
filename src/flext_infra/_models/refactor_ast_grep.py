@@ -111,6 +111,10 @@ class FlextInfraModelsRefactorGrep:
             bool,
             m.Field(description="Whether the rule declares an automated fix"),
         ]
+        module_absence: Annotated[
+            bool,
+            m.Field(description="Native predicate is exclusively absence at module root"),
+        ] = False
         expected: Annotated[
             int | None,
             m.Field(

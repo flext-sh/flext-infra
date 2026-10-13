@@ -118,10 +118,14 @@ class FlextInfraUtilitiesCodemodRules:
         indexed = cls._indexed_distributions(paths)
         discovered = cls._indexed_provider_configs(paths)
         runtime_closure = cls.codemod_runtime_closure(direct_runtime, indexed)
+        # Universal scope is a fleet law: it applies to every project,
+        # the provider's own home repository included. Runtime scope is
+        # consumer-targeting (see the provider sgconfig contract), so a
+        # distribution never elects itself through its consumers' graph.
         universal = cls._providers(
             discovered,
             scope=c.Infra.CODEMOD_SCOPE_UNIVERSAL,
-            selected=frozenset(indexed).difference({root_name}),
+            selected=frozenset(indexed),
         )
         runtime = cls._providers(
             discovered,
@@ -142,9 +146,6 @@ class FlextInfraUtilitiesCodemodRules:
                     f"codemod provider disappeared from resolved graph: {name}",
                 )
             providers.append((name, provider_config))
-        local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
-        if local_config.is_file():
-            providers.append((f"{root_name}:local", local_config))
         return cls._compose(tuple(providers), root_name, runtime_closure, root)
 
     @staticmethod
@@ -846,6 +847,29 @@ class FlextInfraUtilitiesCodemodRules:
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")
+        detector = parsed_rule.get("rule")
+        negative = detector.get("not") if isinstance(detector, Mapping) else None
+        alternatives = negative.get("any") if isinstance(negative, Mapping) else None
+        module_absence = (
+            isinstance(detector, Mapping)
+            and set(detector) == {"kind", "not"}
+            and detector.get("kind") == "module"
+            and isinstance(negative, Mapping)
+            and (
+                set(negative) == {"has"}
+                and isinstance(negative.get("has"), Mapping)
+                or set(negative) == {"any"}
+                and isinstance(alternatives, list)
+                and bool(alternatives)
+                and all(
+                    isinstance(item, Mapping)
+                    and set(item) == {"has"}
+                    and isinstance(item.get("has"), Mapping)
+                    for item in alternatives
+                )
+            )
+            and not context.value
+        )
         return r[m.Infra.CodemodRule].ok(
             m.Infra.CodemodRule.model_validate({
                 "id": rule_id,
@@ -853,6 +877,7 @@ class FlextInfraUtilitiesCodemodRules:
                 "provider": provider,
                 "resource": resource,
                 "fixable": "fix" in parsed_rule,
+                "module_absence": module_absence,
                 "expected": declared.value[0] if declared.value else None,
                 "owner": declared_metadata.get(
                     c.Infra.CODEMOD_RULE_OWNER_KEY,

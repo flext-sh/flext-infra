@@ -116,6 +116,12 @@ class FlextInfraModelsScan:
             t.NonEmptyStr,
             m.Field(description="Workspace repository owning the file"),
         ]
+        catalog_digest: Annotated[
+            str | None, m.Field(description="Authenticated native rule document digest")
+        ] = None
+        module_absence: Annotated[
+            bool, m.Field(description="Occurrence anchored by native module absence predicate")
+        ] = False
         file: Annotated[Path, m.Field(description="Workspace-relative finding path")]
         source_owner: Annotated[
             Literal["authored", "generator"],
