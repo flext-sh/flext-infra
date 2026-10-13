@@ -148,7 +148,30 @@ class FlextInfraImportNormalizationAstMixin:
                 node.annotation
             ):
                 ids.update(id(sub) for sub in ast.walk(node.annotation))
+        cls._collect_plain_namespace_annotations(tree, ids)
         return frozenset(ids)
+
+    @classmethod
+    def _collect_plain_namespace_annotations(
+        cls,
+        tree: ast.Module,
+        ids: set[int],
+    ) -> None:
+        """Collect annotation ids inside base-less class bodies.
+
+        A class with no bases is a plain namespace holder: under deferred
+        annotations its body annotations are never evaluated by anything
+        (no Pydantic/dataclass machinery resolves them), so annotation-name
+        reads inside it are typing-only. Based classes keep the
+        conservative runtime classification — their annotations may feed
+        model construction.
+
+        """
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and not node.bases:
+                for statement in node.body:
+                    if isinstance(statement, ast.AnnAssign):
+                        ids.update(id(sub) for sub in ast.walk(statement.annotation))
 
     @staticmethod
     def _is_classvar_annotation(annotation: ast.expr) -> bool:
