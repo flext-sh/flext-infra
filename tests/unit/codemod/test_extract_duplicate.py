@@ -138,7 +138,7 @@ class TestsFlextInfraExtractDuplicate:
         module.write_text(_SAFE_SOURCE, encoding=c.DEFAULT_ENCODING)
         report_dir = tmp_path / c.Infra.JSCPD_REPORT_DIRNAME
         report_dir.mkdir(parents=True)
-        report: t.JsonMapping = {
+        report: t.JsonDict = {
             "duplicates": [
                 {
                     "format": "python",

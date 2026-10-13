@@ -803,7 +803,9 @@ class FlextInfraConfigModelsArtifact:
         tracking_dependencies: Annotated[
             t.VariadicTuple[Path],
             m.Field(
-                description="Portable declaration destinations required before retirement",
+                description=(
+                    "Portable declaration destinations required before retirement"
+                ),
             ),
         ] = ()
 
