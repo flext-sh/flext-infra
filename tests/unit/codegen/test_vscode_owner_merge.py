@@ -185,10 +185,16 @@ class TestsFlextInfraVscodeOwnerMerge:
             distribution="fixture-member",
             relative_path=member.relative_to(root).as_posix(),
         )
+        u.Tests.WorktreeFixture.write_beads_project(
+            member,
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
         directory = member / c.CONFIG_DIR_NAME
         directory.mkdir(exist_ok=True)
         local = directory / Path(c.Infra.CODEGEN_CONFIG_FILENAME).with_name(
-            "codegen.local.yaml",
+            f"{Path(c.Infra.CODEGEN_CONFIG_FILENAME).stem}.local.yaml",
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -215,7 +221,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             ),
         )
         tm.fail(rejected)
-        tm.that(rejected.exception, is_=ValueError)
+        tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
         with pytest.raises(RuntimeError) as raised:
             rejected.unwrap()
         tm.that(raised.value.__cause__, eq=rejected.exception)

@@ -28,6 +28,58 @@ class FlextInfraUtilitiesWorkspaceManifest:
     """Resolve, load and classify a checkout by its workspace manifest."""
 
     @staticmethod
+    def repository_declaration_delta(
+        legacy: m.Infra.WorkspaceManifestSpec,
+    ) -> p.Result[m.Infra.RepositoryDeltaSpec]:
+        """Extract only self-owned declarations for an explicit migration.
+
+        This operation describes migration input. Runtime discovery must consume
+        the resulting repository codegen declaration, never the legacy document.
+        Composed members, exclusions, ledger copies and machine-local consumer
+        paths cannot become repository declaration fields.
+
+        Returns:
+            The validated declaration belonging to the document's own repository.
+        """
+        result_type = r[m.Infra.RepositoryDeltaSpec]
+        fields = frozenset(m.Infra.RepositoryDeltaSpec.model_fields)
+        values = legacy.model_dump(
+            mode="json",
+            include=fields.intersection(m.Infra.WorkspaceManifestSpec.model_fields),
+            exclude_none=True,
+            exclude_computed_fields=True,
+        )
+        values.update(
+            legacy.repository.model_dump(
+                mode="json",
+                include=fields.intersection(m.Infra.RepositoryRef.model_fields),
+                exclude_none=True,
+                exclude_computed_fields=True,
+            ),
+        )
+        for policy in legacy.repository_policy_overlays:
+            if policy.project == legacy.repository.distribution:
+                values.update(
+                    policy.model_dump(
+                        mode="json",
+                        include=fields.intersection(
+                            m.Infra.RepositoryPolicyOverlaySpec.model_fields,
+                        ),
+                        exclude_computed_fields=True,
+                    ),
+                )
+        if legacy.candidate_dependencies:
+            error = ValueError(
+                "candidate dependency coordinates must be adopted by the "
+                "declared dependency provenance before manifest retirement",
+            )
+            return result_type.fail(str(error), exception=error)
+        validated = u.validate_value(m.Infra.RepositoryDeltaSpec, values)
+        if validated.failure:
+            return result_type.from_failure(validated)
+        return result_type.ok(validated.value)
+
+    @staticmethod
     def workspace_manifest_path(repository_root: Path) -> Path:
         """Return where the workspace manifest lives for one checkout.
 

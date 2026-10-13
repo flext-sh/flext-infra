@@ -13,7 +13,6 @@ from functools import partial
 from pathlib import Path
 from typing import Literal
 
-from flext_core import FlextStrictYamlConfigSource
 from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -1288,10 +1287,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     f"{path}",
                 )
                 return result_type.fail(str(error), exception=error)
-            planned = cls._vscode_declaration_plan(
+            planned = cls._codegen_declaration_plan(
                 request.root,
                 path,
-                delta,
+                {"vscode": dict(delta.values)},
                 sources=loaded.value.sources,
             )
             if planned.failure:
@@ -1322,61 +1321,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         ),
                     },
                 ),
-            ),
-        )
-
-    @classmethod
-    def _vscode_declaration_plan(
-        cls,
-        root: Path,
-        path: Path,
-        delta: m.Infra.CodegenVscodeDeclarationDelta,
-        *,
-        sources: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
-        """Merge captured project YAML through its canonical config primitive.
-
-        Returns:
-            A guarded source plan preserving all unrelated configuration values.
-        """
-        result_type = r[m.Infra.CodegenFilePlan]
-        captured = cls.file_plan(root, path.relative_to(root).as_posix(), "")
-        if captured.failure:
-            return result_type.from_failure(captured)
-        before = captured.value.before
-        original = next((state for state in sources if state.path == path), None)
-        if original is not None and before != original:
-            error = ValueError(
-                f"editor declaration changed after input capture: {path}"
-            )
-            return result_type.fail(str(error), exception=error)
-        if (
-            original is None
-            and isinstance(before, m.Cli.AtomicFileState)
-            and before.content is not None
-        ):
-            error = ValueError(
-                f"editor declaration appeared after input capture: {path}"
-            )
-            return result_type.fail(str(error), exception=error)
-        payload: t.JsonMapping = {}
-        if isinstance(before, m.Cli.AtomicFileState) and before.content is not None:
-            parsed = u.Infra.read_codegen_config_document(before.content)
-            if parsed.failure:
-                return result_type.from_failure(parsed)
-            payload = parsed.value
-        merged = FlextStrictYamlConfigSource.merge_values(
-            dict(payload),
-            {"Infra": {"codegen": {"vscode": dict(delta.values)}}},
-        )
-        serialized = r[str].create_from_callable(
-            partial(u.Cli.yaml_dump_str, merged),
-        )
-        if serialized.failure:
-            return result_type.from_failure(serialized)
-        return result_type.ok(
-            captured.value.model_copy(
-                update={"desired_content": serialized.value.encode(c.DEFAULT_ENCODING)},
             ),
         )
 

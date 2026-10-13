@@ -18,7 +18,7 @@ from typing import ClassVar
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
 
@@ -156,6 +156,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_capture_gate(
         cls,
         request: m.Infra.GateCaptureRequest,
+        *,
+        inputs: m.Infra.CodegenInputs,
+        load_inputs: t.Callable[[Path], p.Result[m.Infra.CodegenInputs]],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
@@ -163,7 +166,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             The resulting ``p.Result[m.Infra.GateCaptureReport]``.
         """
         root = request.repository_root.resolve()
-        directory = config.Infra.codegen.make.gate_receipts_directory
+        directory = inputs.spec.make.gate_receipts_directory
         if directory.is_absolute() or ".." in directory.parts:
             return r[m.Infra.GateCaptureReport].fail(
                 "gate receipts directory must remain repository-relative",
@@ -193,6 +196,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             c.Infra.VERB_CHECK,
             command,
             m.Infra.GateExecutionIntent(requested_gates=tuple(native_request.gates)),
+            inputs=inputs,
+            runtime_identity=sys.version,
         )
         u.Cli.atomic_write_text_file(
             report_root / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -228,6 +233,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             process,
             reports,
             report_root,
+            inputs=load_inputs(root),
+            runtime_identity=sys.version,
         )
 
     @classmethod
@@ -237,6 +244,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         gate: str,
         command: t.StrTuple,
         intent: m.Infra.GateExecutionIntent,
+        *,
+        inputs: m.Infra.CodegenInputs,
+        runtime_identity: str,
     ) -> m.Infra.GateCaptureStart:
         """Inspect the candidate before its original producer executes.
 
@@ -246,7 +256,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         """
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         policy = c.Infra.GateAcceptancePolicy(
-            config.Infra.codegen.make.gate_acceptance_policy
+            inputs.spec.make.gate_acceptance_policy
         )
         return m.Infra.GateCaptureStart(
             repository_root=root,
@@ -264,16 +274,40 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 else None
             ),
             issue=identity.error if identity.failure else None,
-            context_digest=f"sha256:{
-                u.Cli.sha256_content(
-                    f'{sys.version}\n{platform.platform()}\n{gate}\n'
-                    + intent.model_dump_json(round_trip=True)
-                )
-            }",
+            context_digest=cls._gate_capture_context_digest(
+                gate, intent, inputs, runtime_identity,
+            ),
             policy=policy,
             policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",
             started_at=datetime.now(tz=UTC).isoformat(),
         )
+
+    @staticmethod
+    def _gate_capture_context_digest(
+        gate: str,
+        intent: m.Infra.GateExecutionIntent,
+        inputs: m.Infra.CodegenInputs,
+        runtime_identity: str,
+    ) -> str:
+        """Bind effective target configuration and native runtime without paths."""
+        sources = "\n".join(
+            f"{source.path.name}:"
+            + (
+                u.Cli.sha256_bytes(source.content)
+                if source.content is not None else "absent"
+            )
+            for source in inputs.sources
+        )
+        material = "\n".join((
+            sys.version,
+            platform.platform(),
+            gate,
+            runtime_identity,
+            intent.model_dump_json(round_trip=True),
+            inputs.spec.model_dump_json(round_trip=True),
+            sources,
+        ))
+        return f"sha256:{u.Cli.sha256_content(material)}"
 
     @classmethod
     def _candidate_unsettled(
@@ -306,6 +340,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         process: m.Cli.ProcessOutcome,
         reports: t.VariadicTuple[m.Infra.GateReportEvidence],
         report_root: Path,
+        *,
+        inputs: p.Result[m.Infra.CodegenInputs],
+        runtime_identity: str,
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Publish original native facts without rerunning or accepting the stage.
 
@@ -316,9 +353,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
         root = started.repository_root
         after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         issue = started.issue
-        if after.failure:
+        if issue is None and inputs.failure:
+            issue = inputs.error
+        elif issue is None and after.failure:
             issue = after.error
-        elif cls._candidate_unsettled(
+        elif issue is None and cls._candidate_unsettled(
             started,
             head_oid=after.value.head_oid,
             origin_remote=after.value.origin_remote,
@@ -327,6 +366,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             issue = (
                 "original gate candidate is dirty, changed or has no declared origin"
             )
+        elif issue is None and started.context_digest != cls._gate_capture_context_digest(
+            started.gate, started.intent, inputs.value, runtime_identity,
+        ):
+            issue = "original gate configuration or native runtime changed during execution"
         receipt: Path | None = None
         if issue is None:
             captured = cls._captured_gate_evidence(started, process, reports)

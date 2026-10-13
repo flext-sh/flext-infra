@@ -135,49 +135,25 @@ class FlextInfraUtilitiesProjectDiscovery(
         return manifest.refactor
 
     @classmethod
-    @lru_cache(maxsize=1)
-    def manifest_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:
-        """Return every manifest-relative path that is not a generation participant.
+    def repository_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:
+        """Derive external analysis roots from the current Git declarations.
 
-        One authority for project scope. The transaction derives its participants
-        from the workspace manifest, so discovery must derive its candidates from
-        exactly the same declaration or the two disagree and a plan is produced
-        for a directory the transaction cannot stage into.
-
-        Three manifest fields declare "not ours to generate", and the manifest
-        model itself already unions them for validation (`external_paths` in
-        `WorkspaceManifestSpec._validate_references`): `exclusions`,
-        `content_only` and `external_dependency_paths`. Honouring only
-        `exclusions` is what moved this defect from one directory to the next
-        instead of ending it.
-
-        Paths are manifest-relative POSIX strings, never leaf names: two
-        directories may share a leaf, and excluding by name would silently
-        exclude the wrong tree.
-
-        An absent manifest declares no exclusions. An unreadable or invalid
-        manifest fails before discovery can expand the declared scope.
+        Git's explicit management flag owns participation. Repository-local
+        paths retain their full relative shape, so similarly named directories
+        cannot exclude one another. Each invocation observes the current input;
+        changing a Git declaration cannot leave a cached exclusion catalog.
 
         Returns:
-            Every manifest-relative path that is not a generation participant.
+            Every explicitly unmanaged Git submodule path.
 
         """
-        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
             repository_root,
-        )
-        if not manifest_path.is_file():
-            return frozenset()
-        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
-        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
-        declared = (
-            *(exclusion.path for exclusion in manifest.exclusions),
-            *manifest.content_only,
-            *manifest.external_dependency_paths,
-        )
+        ).unwrap()
         return frozenset(
-            posix
-            for path in declared
-            if (posix := Path(path).as_posix()) not in {".", ""}
+            declaration.path.as_posix()
+            for declaration in declared
+            if declaration.managed is False
         )
 
     @classmethod
@@ -235,7 +211,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             repository_root,
             scan_dirs=scan_dirs,
         )
-        nonparticipants = cls.manifest_nonparticipant_paths(repository_root)
+        nonparticipants = cls.repository_nonparticipant_paths(repository_root)
         if not nonparticipants:
             return candidates
         return tuple(
@@ -325,7 +301,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         if declared_paths.failure:
             raise ValueError(declared_paths.error or "invalid .gitmodules")
         declared = cls.discover_project_candidates(resolved_root)
-        nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
+        nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
         direct = tuple(
             child.resolve()
             for child in sorted(resolved_root.iterdir(), key=attrgetter("name"))
@@ -375,7 +351,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                         resolved_root,
                         targets,
                     )
-        nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
+        nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
         return tuple(
             target
             for target in sorted(targets)

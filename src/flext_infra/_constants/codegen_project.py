@@ -112,42 +112,12 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
         STANDALONE = "standalone"
 
     @unique
-    class RepositoryState(StrEnum):
-        """Lifecycle state used by repository selection."""
-
-        ACTIVE = "active"
-        EXCLUDED = "excluded"
-
-    @unique
     class CheckoutKind(StrEnum):
         """Physical checkout topology for one repository."""
 
         ROOT = "root"
         SUBMODULE = "submodule"
         INDEPENDENT = "independent"
-
-    @unique
-    class CodegenKind(StrEnum):
-        """Code-generation policy applied to one repository."""
-
-        CONFORM = "conform"
-        PYTHON = "python"
-        NONE = "none"
-
-    @unique
-    class ProjectKind(StrEnum):
-        """Governance kind of one repository; decides who may rewrite it.
-
-        Generation applies to ``INTERNAL_FLEXT`` alone. An ``INTERNAL`` project
-        is owned but not built on FLEXT, so FLEXT layout, facade chain, and
-        typing policy do not apply to it. A ``THIRD_PARTY_FORK`` follows its
-        upstream in everything, and standardizing it would destroy the contract
-        the fork exists to track.
-        """
-
-        INTERNAL_FLEXT = "internal_flext"
-        INTERNAL = "internal"
-        THIRD_PARTY_FORK = "third_party_fork"
 
     BEADS_CONFIG_FILENAME: ClassVar[str] = "beads.yaml"
     BEADS_DIRNAME: ClassVar[str] = ".beads"

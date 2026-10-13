@@ -884,7 +884,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 cleaned = self._recover_prepared(session.plan.layout)
                 return r[t.VariadicTuple[Path]].fail(
                     validated.error or "explicit publication validation failed",
-                    exception=validated.exception,
+                    exception=session.exception or validated.exception,
                     error_data={
                         "written_files": tuple(
                             str(path) for path in session.written_files

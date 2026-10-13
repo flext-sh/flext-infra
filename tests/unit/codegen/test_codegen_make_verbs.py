@@ -200,7 +200,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         )
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has="-m flext_infra workspace capture-gate")
         tm.that(invocation, has=f"--gates {gates}")
         tm.that(invocation, lacks="--apply")
 

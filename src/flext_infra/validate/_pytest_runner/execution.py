@@ -346,6 +346,8 @@ class FlextInfraPytestRunnerExecution(
                     profile_enabled=self.profile_enabled,
                 ),
             ),
+            inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
+            runtime_identity=self.testmon_environment(execution_mode),
         )
         u.Cli.atomic_write_text_file(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -583,8 +585,7 @@ class FlextInfraPytestRunnerExecution(
             raise RuntimeError(msg)
         return r.ok(final_exit)
 
-    @staticmethod
-    def _capture_original_suite(report_dir: Path) -> None:
+    def _capture_original_suite(self, report_dir: Path) -> None:
         """Bind the already executed suite to its original typed reports."""
         start = m.Infra.GateCaptureStart.model_validate_json(
             u.Cli.files_read_binary(
@@ -615,7 +616,15 @@ class FlextInfraPytestRunnerExecution(
                 ),
             ),
         ).unwrap()
-        u.Infra.git_finish_gate_capture(start, outcome, reports, report_dir).unwrap()
+        selection = start.intent.test_selection
+        if selection is None:
+            msg = "original suite checkpoint has no native test selection"
+            raise ValueError(msg)
+        u.Infra.git_finish_gate_capture(
+            start, outcome, reports, report_dir,
+            inputs=u.Infra.load_codegen_inputs(self.root),
+            runtime_identity=self.testmon_environment(selection.execution_mode),
+        ).unwrap()
 
     @staticmethod
     def _external_gate_markers(context: m.Infra.PytestRunContext) -> str:

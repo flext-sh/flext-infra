@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
 
@@ -322,6 +323,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             roots,
             lambda scope_root: self._publish_bootstrap_locked(
                 request,
+                plan,
                 transaction,
                 roots,
                 scope_root,
@@ -362,6 +364,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def _publish_bootstrap_locked(
         self,
         request: m.Infra.CodegenConformRequest,
+        plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
         roots: t.MappingKV[str, Path],
         scope_root: Path,
@@ -371,30 +374,34 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
         """
-        planned = self.plan(request)
-        if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
-        plan = planned.value
+        verified_plans: list[m.Infra.CodegenPlan] = []
+
+        def verify() -> p.Result[bool]:
+            """Record the sole semantic verification receipt before commit."""
+            checked = self._verify_bootstrap(request)
+            if checked.failure:
+                return r[bool].from_failure(checked)
+            verified_plans.append(checked.value)
+            return r[bool].ok(value=True)
+
         written = self._publish_bootstrap_phase(
             request,
             plan,
             transaction,
             roots,
             scope_root,
+            validator=verify,
         )
         if written.failure:
             return r[m.Infra.CodegenResult].from_failure(written)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
-        fixed_point = u.Infra.codegen_fixed_point(
-            verified.value.files,
-            subject="Makefile bootstrap",
-        )
-        if fixed_point.failure:
-            return r[m.Infra.CodegenResult].from_failure(fixed_point)
+        if len(verified_plans) != 1:
+            error = ValueError("bootstrap semantic verification receipt is incomplete")
+            return r[m.Infra.CodegenResult].fail(str(error), exception=error)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=written.value),
+            m.Infra.CodegenResult(
+                plan=verified_plans[0],
+                written_files=written.value,
+            ),
         )
 
     def _publish_bootstrap_phase(
@@ -404,6 +411,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction: FlextInfraCodegenTransaction,
         roots: t.MappingKV[str, Path],
         scope_root: Path,
+        *,
+        validator: Callable[[], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Authorize the surface contract, then publish its changed files.
 
@@ -467,7 +476,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 f"bootstrap cannot delete a declared destination for {surface}",
             )
         if not changed:
-            return self._settle_unchanged_bootstrap(request, surface, plan)
+            return self._settle_unchanged_bootstrap(plan, validator=validator)
         inputs = {
             state.path: state for file in plan.files for state in file.source_states
         }
@@ -490,7 +499,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                         if not file.path.parent.is_dir()
                     }),
                 ),
-                validator=lambda: self._verify_bootstrap(request),
+                validator=validator,
             ),
             staged_validator=(
                 self._validate_mise_stage
@@ -503,9 +512,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
     def _settle_unchanged_bootstrap(
         self,
-        request: m.Infra.CodegenConformRequest,
-        surface: c.Infra.CodegenConformSurface,
         plan: m.Infra.CodegenPlan,
+        *,
+        validator: Callable[[], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Report the no-op bootstrap outcome when no declared file changed.
 
@@ -521,10 +530,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     "issues": tuple(issue.model_dump() for issue in plan.issues),
                 },
             )
-        if surface is c.Infra.CodegenConformSurface.MISE_CONFIG:
-            checked = self._verify_bootstrap(request)
-            if checked.failure:
-                return r[t.VariadicTuple[Path]].from_failure(checked)
+        checked = validator()
+        if checked.failure:
+            return r[t.VariadicTuple[Path]].from_failure(checked)
         return r[t.VariadicTuple[Path]].ok(())
 
     @staticmethod
@@ -579,22 +587,30 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def _verify_bootstrap(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[bool]:
+    ) -> p.Result[m.Infra.CodegenPlan]:
         """Validate the public conform plan reaches a fixed point before commit.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The verified plan consumed by the caller and fixed-point receipt.
         """
         planned = self.plan(request)
         if planned.failure:
-            return r[bool].from_failure(planned)
+            return r[m.Infra.CodegenPlan].from_failure(planned)
+        if planned.value.issues:
+            return r[m.Infra.CodegenPlan].fail(
+                "\n".join(issue.formatted for issue in planned.value.issues),
+                exception=planned.value.exception,
+            )
         if request.what == c.Infra.CodegenConformSurface.MISE_CONFIG:
             checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
                 request.root / c.Infra.MISE_TOML_FILENAME,
             )
             if checked.failure:
-                return checked
-        return u.Infra.codegen_fixed_point(planned.value.files, subject="bootstrap")
+                return r[m.Infra.CodegenPlan].from_failure(checked)
+        fixed = u.Infra.codegen_fixed_point(planned.value.files, subject="bootstrap")
+        if fixed.failure:
+            return r[m.Infra.CodegenPlan].from_failure(fixed)
+        return r[m.Infra.CodegenPlan].ok(planned.value)
 
     def _seed_declared_beads_identity(self, root: Path) -> p.Result[bool]:
         """Materialize the scaffold's declared Beads identity before governance.

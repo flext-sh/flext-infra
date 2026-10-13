@@ -15,11 +15,116 @@ from flext_cli import m, t
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
 class FlextInfraConfigModelsWorkspace:
     """Workspace manifest, integration, and policy models."""
+
+    class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Refactor file-selection configuration."""
+
+        project_scan_dirs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Relative directories scanned for candidate files"),
+        ]
+        file_extensions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Allowed file extensions (empty = all by pattern)"),
+        ] = m.Field(default_factory=tuple)
+
+    class RepositoryDeltaSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Own repository differences; Git and project metadata own identity.
+
+        The effective codegen configuration composes this declaration from the
+        library defaults, the selected repository and its local overlay. It
+        never declares another repository or a workspace participant.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
+        project: Annotated[
+            FlextInfraConfigModelsContexts.ProjectSpec | None,
+            m.Field(description="Explicit metadata for a new project scaffold"),
+        ] = None
+        integration: Annotated[
+            FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
+            m.Field(description="Explicit repository integration contract"),
+        ] = None
+        docs_audit: Annotated[
+            FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
+            m.Field(description="Own documentation audit declarations"),
+        ] = m.Field(
+            default_factory=FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
+        )
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(description="Own namespace analysis roots"),
+        ] = ()
+        refactor: Annotated[
+            FlextInfraConfigModelsWorkspace.RefactorConfigSpec | None,
+            m.Field(description="Own refactor file-selection declaration"),
+        ] = None
+        beads_enabled: Annotated[
+            bool,
+            m.Field(description="Repository participates in the Beads contract"),
+        ] = True
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(description="Repository consumes the Gas City runtime contract"),
+        ] = True
+        ci_enabled: Annotated[
+            bool,
+            m.Field(description="Repository projects its canonical CI surface"),
+        ] = True
+        ci_matrix_auto_run: Annotated[
+            bool,
+            m.Field(description="Repository enables automatic CI matrix execution"),
+        ] = False
+        codegen: Annotated[
+            FlextInfraConfigVocabulary.CodegenKind,
+            m.Field(description="Own canonical generation policy"),
+        ] = FlextInfraConfigVocabulary.CodegenKind.CONFORM
+        kind: Annotated[
+            FlextInfraConfigVocabulary.ProjectKind,
+            m.Field(description="Own governance profile and architecture boundary"),
+        ] = FlextInfraConfigVocabulary.ProjectKind.INTERNAL_FLEXT
+        state: Annotated[
+            FlextInfraConfigVocabulary.RepositoryState,
+            m.Field(description="Own lifecycle participation policy"),
+        ] = FlextInfraConfigVocabulary.RepositoryState.ACTIVE
+        read_only: Annotated[
+            bool,
+            m.Field(description="Repository rejects generated mutations"),
+        ] = False
+        publishes_release: Annotated[
+            bool,
+            m.Field(description="Repository declares the generated release protocol"),
+        ] = False
+        uv_link_mode: Annotated[
+            Literal["clone", "copy", "hardlink", "symlink"] | None,
+            m.Field(description="Own uv installation link-mode declaration"),
+        ] = None
+        duplication_trees: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Own additional duplication-analysis trees"),
+        ] = ()
+        examples_module: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
+                description="Own explicit examples module",
+            ),
+        ] = None
+        extra_verbs: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            m.Field(description="Own additional public Make commands"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModelsContexts.ScriptDispatchSpec | None,
+            m.Field(description="Own script command routing contract"),
+        ] = None
 
     class CandidateBootstrapTargetSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared worktree and canonical conform surface."""
@@ -202,20 +307,6 @@ class FlextInfraConfigModelsWorkspace:
 
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
-
-    class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Refactor file-selection configuration."""
-
-        project_scan_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Relative directories scanned for candidate files"),
-        ]
-        file_extensions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description="Allowed file extensions (empty = all by pattern)",
-            ),
-        ] = m.Field(default_factory=tuple)
 
     class WorkspaceManifestSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete versioned input contract for ``config/workspace.yaml``."""

@@ -484,6 +484,14 @@ zero-execution cache evidence and other
 stage adapters remain required integration work. Verifying a setup proof never
 provisions a fresh runner.
 
+Capture receives the selected repository's full `CodegenInputs` through the canonical
+layer loader. Its policy and report directory come from that typed target specification.
+The context binds the effective specification, ordered input filename/content digests,
+portable operation intent and actual runtime. Tests also bind their existing native
+`testmon_environment` identity. Completion reloads the same target loader and rejects
+configuration or runtime drift while preserving the original process outcome. Config
+payloads and machine paths are not exported with these fingerprints.
+
 `make status` also reads the selected repository's native Git signing configuration
 through the existing workspace CLI. The report names the declared signing format,
 file references and each setting's effective origin/scope and native process outcome.

@@ -15,7 +15,7 @@ from shlex import quote
 import pytest
 from flext_cli import u as cli_u
 
-from flext_infra import c, config, m, p
+from flext_infra import c, m, p
 from tests import tm, u
 
 
@@ -127,8 +127,16 @@ class TestsFlextInfraGithubGateAttestation:
             repository_root=tmp_path,
             gates=c.Infra.LINT,
         )
-        first = tm.ok(u.Infra.git_capture_gate(request))
-        second = tm.ok(u.Infra.git_capture_gate(request))
+        first = tm.ok(u.Infra.git_capture_gate(
+            request,
+            inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
+            load_inputs=u.Infra.load_codegen_inputs,
+        ))
+        second = tm.ok(u.Infra.git_capture_gate(
+            request,
+            inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
+            load_inputs=u.Infra.load_codegen_inputs,
+        ))
         assert first.receipt is not None
         assert second.receipt is not None
         assert first.receipt != second.receipt
@@ -186,6 +194,53 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(restored.key_path, eq=report.key_path)
         tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
 
+    def test_capture_uses_target_policy_and_configuration_context(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Uncommitted target config remains a bound input rather than ambient policy."""
+        signed_repository_factory(tmp_path)
+        config_dir = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
+        config_dir.mkdir()
+        declaration = config_dir / c.Infra.CODEGEN_CONFIG_FILENAME
+        request = m.Infra.GateCaptureRequest(
+            repository_root=tmp_path, gates=c.Infra.LINT,
+        )
+        observed: list[m.Infra.GateCommandEvidence] = []
+        for policy in c.Infra.GateAcceptancePolicy:
+            declaration.write_text(
+                "Infra:\n  codegen:\n    make:\n"
+                f"      gate_acceptance_policy: {policy.value}\n"
+                f"      gate_receipts_directory: .reports/{policy.value}\n",
+                encoding="utf-8",
+            )
+            inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+            captured = tm.ok(u.Infra.git_capture_gate(
+                request,
+                inputs=inputs,
+                load_inputs=u.Infra.load_codegen_inputs,
+            ))
+            assert captured.receipt is not None
+            assert captured.receipt.is_relative_to(
+                tmp_path / inputs.spec.make.gate_receipts_directory,
+            )
+            evidence = m.Infra.GateCommandEvidence.model_validate_json(
+                captured.receipt.read_bytes(),
+            )
+            tm.that(
+                evidence.policy,
+                eq=inputs.spec.make.gate_acceptance_policy,
+            )
+            tm.that(evidence.process, eq=captured.process)
+            tm.that(
+                captured.receipt.read_text(encoding="utf-8"),
+                lacks=[str(tmp_path), "gate_acceptance_policy:"],
+            )
+            observed.append(evidence)
+        assert len({item.context_digest for item in observed}) == len(observed)
+        assert len({item.commit_sha for item in observed}) == 1
+
     def test_signing_identity_does_not_open_missing_key_or_trust_files(
         self,
         tmp_path: Path,
@@ -225,6 +280,8 @@ class TestsFlextInfraGithubGateAttestation:
                     repository_root=tmp_path,
                     gates=c.Infra.LINT,
                 ),
+                inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
+                load_inputs=u.Infra.load_codegen_inputs,
             )
         )
         assert captured.process.raw_return_code != 0
@@ -239,7 +296,7 @@ class TestsFlextInfraGithubGateAttestation:
         Returns:
             The resulting ``m.Infra.GateAttestationCreateRequest``.
         """
-        receipts = root / config.Infra.codegen.make.gate_receipts_directory
+        receipts = root / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
         previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
         tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
         published = (
@@ -266,7 +323,7 @@ class TestsFlextInfraGithubGateAttestation:
         commit_sha: str,
         *gates: str,
     ) -> p.Result[m.Infra.GateAttestationReport]:
-        receipts = root / config.Infra.codegen.make.gate_receipts_directory
+        receipts = root / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
         evidence = tuple(
             record
             for path in receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)
