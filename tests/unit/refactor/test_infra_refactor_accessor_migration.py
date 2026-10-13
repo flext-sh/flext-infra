@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, infra
+import pytest
+
+from flext_infra import c, config, infra, m
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -259,8 +261,10 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=migrated_source)
 
     @staticmethod
-    def test_module_filter_scopes_the_scanned_files(tmp_path: Path) -> None:
-        """``target_module`` keeps only files under the declared module path."""
+    def test_module_filter_selects_bindings_without_truncating_consumers(
+        tmp_path: Path,
+    ) -> None:
+        """A module selector narrows ownership, not the coupled source inventory."""
         workspace, _origin_file, _foreign_file = _materialize_fixture(tmp_path)
         unfiltered = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
@@ -278,16 +282,16 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         tm.that(filtered.failure, eq=False)
         tm.that(
-            filtered.value.files_scanned < unfiltered.value.files_scanned,
-            eq=True,
+            filtered.value.files_scanned,
+            eq=unfiltered.value.files_scanned,
         )
         tm.that(filtered.value.files_scanned > 0, eq=True)
 
     @staticmethod
-    def test_manual_warnings_stay_advisory_and_external_contracts_exempt(
+    def test_manual_warnings_preserve_real_sdk_overrides(
         tmp_path: Path,
     ) -> None:
-        """Public accessor warnings never rewrite; external contracts stay silent."""
+        """An actual Rope SDK superclass owns the override, not its local spelling."""
         workspace, _project, pkg = u.Tests.namespace_workspace(
             tmp_path,
             package_name="flext_core",
@@ -298,13 +302,16 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         advisory_file = pkg / "advisory.py"
         _ = advisory_file.write_text(
             "from __future__ import annotations\n"
+            "from rope.base.project import Project\n"
             "\n"
-            "def get_value() -> int:\n"
-            "    return 1\n"
+            "class Owned:\n"
+            "    def get_value(self) -> int:\n"
+            "        return 1\n"
             "\n"
             "\n"
-            "def get_field_value() -> int:\n"
-            "    return 2\n",
+            "class Adapter(Project):\n"
+            "    def get_source_folders(self):\n"
+            "        return super().get_source_folders()\n",
             encoding="utf-8",
         )
         u.Tests.provision_checkout(workspace)
@@ -318,12 +325,106 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         tm.that(result.failure, eq=False)
         advisory_source = advisory_file.read_text(encoding="utf-8")
-        tm.that(advisory_source, has="def get_value() -> int:")
-        tm.that(advisory_source, has="def get_field_value() -> int:")
+        tm.that(advisory_source, has="def get_value(self) -> int:")
+        tm.that(advisory_source, has="def get_source_folders(self):")
         warning_names = tuple(
             change.original_name
             for file_report in result.value.files
             for change in file_report.warnings
         )
         tm.that(warning_names, has="get_value")
-        tm.that(warning_names, lacks="get_field_value")
+        tm.that(warning_names, lacks="get_source_folders")
+
+    @staticmethod
+    def test_core_prefix_policy_discovers_methods_outside_legacy_catalog(
+        tmp_path: Path,
+    ) -> None:
+        """The canonical prefix policy, not seventeen names, owns discovery."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        policy = m.MethodShapeParams.model_validate(
+            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        )
+        name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
+        tm.that(name in c.ENFORCEMENT_ACCESSOR_RENAMES, eq=False)
+        source = f"class Owned:\n    def {name}(self) -> bool:\n        return True\n"
+        _ = origin_file.write_text(source, encoding="utf-8")
+        result = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+        ).execute()
+
+        tm.that(result.failure, eq=False)
+        findings = tuple(
+            warning
+            for file in result.value.files
+            for warning in file.warnings
+            if warning.original_name == name
+        )
+        tm.that(findings, len=1)
+        tm.that(findings[0].reason, has=f"flext_core.legacy.Owned.{name}")
+        tm.that(findings[0].replacement_name, eq="")
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_facade_namespace_selects_utilities_and_external_consumers(
+        tmp_path: Path,
+    ) -> None:
+        """The public u binding selects its MRO, never a literal u directory."""
+        workspace, origin_file, foreign_file = _materialize_fixture(tmp_path)
+        pkg = origin_file.parent
+        family = u.Infra.facade_families()["u"]
+        project = pkg.parent.parent
+        implementation = u.Tests.src_package(
+            project,
+            f"flext_core/_{family.module}",
+            pyproject=(project / "pyproject.toml").read_text(encoding="utf-8"),
+        )
+        owned_file = implementation / "owned.py"
+        source = (
+            f"class UtilityOwner:\n    def {_SOURCE_NAME}(self, flag: bool) -> bool:\n"
+            "        return flag\n"
+        )
+        _ = owned_file.write_text(source, encoding="utf-8")
+        _ = (pkg / f"{family.module}.py").write_text(
+            f"from flext_core._{family.module}.owned import UtilityOwner\n\n"
+            "class UtilityFacade(UtilityOwner):\n    pass\n\n"
+            "u = UtilityFacade\n__all__ = ['UtilityFacade', 'u']\n",
+            encoding="utf-8",
+        )
+        consumer = foreign_file.parent / "consumer.py"
+        _ = consumer.write_text(
+            f"from flext_core.{family.module} import u\n"
+            f"value = u().{_SOURCE_NAME}(True)\n",
+            encoding="utf-8",
+        )
+        result = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            target_namespace="u",
+            apply_changes=True,
+        ).execute()
+
+        tm.that(result.failure, eq=False)
+        tm.that(owned_file.read_text(encoding="utf-8"), has=f"def {_REPLACEMENT_NAME}(")
+        tm.that(
+            consumer.read_text(encoding="utf-8"), has=f"u().{_REPLACEMENT_NAME}(True)"
+        )
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
+        tm.that(foreign_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
+
+    @staticmethod
+    def test_unknown_namespace_is_not_successful_empty_selection(
+        tmp_path: Path,
+    ) -> None:
+        """Unknown facade contracts must fail instead of returning green zero."""
+        workspace, _origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        with pytest.raises(
+            ValueError, match="accessor namespace selected no published facade"
+        ):
+            _ = FlextInfraAccessorMigrationOrchestrator(
+                source_preview=infra.source_preview(workspace),
+                repository_root=workspace,
+                target_namespace="missing_facade",
+                apply_changes=False,
+            ).execute()

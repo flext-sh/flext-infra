@@ -41,17 +41,16 @@ class TestsFlextInfraUtilitiesformatting:
         tm.that("import sys" in preserved, eq=True)
         normalized = tm.ok(
             u.Infra.normalize_source(
-                tmp_path, path, candidate, remove_unused_imports=True
+                tmp_path,
+                path,
+                candidate,
+                before_source=candidate + "print(sys.version)\n",
             )
         )
         tm.that("import sys" in normalized, eq=False)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(
-            tm.ok(
-                u.Infra.normalize_source(
-                    tmp_path, path, normalized, remove_unused_imports=True
-                )
-            ),
+            tm.ok(u.Infra.normalize_source(tmp_path, path, normalized)),
             eq=normalized,
         )
         output = tm.ok(

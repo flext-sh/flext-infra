@@ -6,18 +6,185 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 from pathlib import Path
 
 import pytest
 
 from flext_infra import c, m, u
-from flext_infra.codemod import FlextInfraApplyRenames
+from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraRenameSymbols
 from tests import tm
 
 
 class TestsFlextInfraApplyRenames:
     """Campaigns change declared sources, preserve drivers, and prove convergence."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("old", "new"),
+        [
+            ("is_semantic_clone", "semantic_clone"),
+            ("is_production_module", "production_module"),
+            ("is_unused", "unused"),
+        ],
+    )
+    def test_domain_decision_plans_declarations_contracts_and_full_references(
+        mod_workspace: Path, old: str, new: str
+    ) -> None:
+        """Names enter as decisions, while native Rope owns all reference rewires."""
+        definer = mod_workspace / "definer.py"
+        source = (
+            "from typing import TYPE_CHECKING\n"
+            "class Owner:\n"
+            "    @staticmethod\n"
+            f"    def {old}(value: str) -> bool:\n"
+            "        return len(value) > 1\n"
+            "class Contract:\n"
+            "    if TYPE_CHECKING:\n"
+            "        @staticmethod\n"
+            f"        def {old}(value: str) -> bool: ...\n"
+            "    def evaluate(self, value: str) -> bool:\n"
+            f"        return self.{old}(value)\n"
+            "class Composed(Contract, Owner):\n"
+            "    pass\n"
+            "class Foreign:\n"
+            "    @staticmethod\n"
+            f"    def {old}(value: str) -> bool:\n"
+            "        return False\n"
+        )
+        definer.write_text(source, encoding="utf-8")
+        consumer = mod_workspace / "consumer.py"
+        consumer.write_text(
+            "from definer import Owner as alias, Composed, Foreign\n"
+            f"print(alias.{old}('yes'), Composed().evaluate('yes'), "
+            f"Foreign.{old}('yes'))\n",
+            encoding="utf-8",
+        )
+        sources = {path: path.read_text() for path in (definer, consumer)}
+        declaration = m.Infra.Object(
+            project=mod_workspace.name,
+            file_path=str(definer),
+            line=4,
+            name=old,
+            kind="method",
+            module_name="definer",
+            scope_path=f"Owner.{old}",
+        )
+        contract = declaration.model_copy(
+            update={"line": 9, "scope_path": f"Contract.{old}"}
+        )
+        provider = FlextInfraRenameSymbols((
+            m.Infra.SemanticRenameDecision(
+                declaration=declaration,
+                replacement_name=new,
+                reason="Domain predicate retaining its callable contract",
+                contracts=(contract,),
+            ),
+        ))
+        with u.Infra.open_project(
+            mod_workspace, project_roots=(mod_workspace,)
+        ) as project:
+            plans = FlextInfraRenameSymbols.plan_candidates(
+                project, sources, (declaration,), provider
+            )
+        tm.that({plan.file_path for plan in plans}, eq={definer, consumer})
+        for plan in plans:
+            tm.that(plan.file_path.read_text(), eq=plan.original_source)
+            plan.file_path.write_text(plan.updated_source, encoding="utf-8")
+        output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
+        tm.that(output.stdout, eq="True True False\n")
+        original_method = next(
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef)
+        )
+        renamed_method = next(
+            node
+            for node in ast.walk(ast.parse(definer.read_text()))
+            if isinstance(node, ast.FunctionDef)
+        )
+        tm.that(renamed_method.name, eq=new)
+        tm.that(ast.dump(renamed_method.args), eq=ast.dump(original_method.args))
+        tm.that(
+            [ast.dump(node) for node in renamed_method.body],
+            eq=[ast.dump(node) for node in original_method.body],
+        )
+        for plan in plans:
+            plan.file_path.write_text(plan.original_source, encoding="utf-8")
+        tm.that(definer.read_text(), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("failure", "error"),
+        [
+            ("collision", "destination is occupied"),
+            ("inherited", "inherited rather than introduced"),
+            ("contract", "incompatible contract"),
+            ("behavior", "companion has behavior"),
+            ("incomplete", "escaped known inventory"),
+        ],
+    )
+    def test_domain_decision_rejects_unsafe_plans_without_publication(
+        mod_workspace: Path, failure: str, error: str
+    ) -> None:
+        """Occupied names, inherited declarations and differing signatures fail."""
+        path = mod_workspace / "definer.py"
+        source = (
+            "class Owner:\n"
+            "    def predicate(self, value: str) -> bool:\n"
+            "        return bool(value)\n"
+            "    def canonical(self, value: str) -> bool:\n"
+            "        return False\n"
+            "class Derived(Owner):\n"
+            "    pass\n"
+            "class Contract:\n"
+            "    def predicate(self, value: int) -> bool: ...\n"
+        )
+        if failure == "behavior":
+            source = source.replace(
+                "value: int) -> bool: ...", "value: str) -> bool: return True"
+            )
+        path.write_text(source, encoding="utf-8")
+        if failure == "incomplete":
+            (mod_workspace / "excluded_consumer.py").write_text(
+                "from definer import Owner\nvalue = Owner().predicate('yes')\n",
+                encoding="utf-8",
+            )
+        declaration = m.Infra.Object(
+            project=mod_workspace.name,
+            file_path=str(path),
+            line=2,
+            name="predicate",
+            kind="method",
+            module_name="definer",
+            scope_path=(
+                "Derived.predicate" if failure == "inherited" else "Owner.predicate"
+            ),
+        )
+        contract = declaration.model_copy(
+            update={"line": 9, "scope_path": "Contract.predicate"}
+        )
+        provider = FlextInfraRenameSymbols((
+            m.Infra.SemanticRenameDecision(
+                declaration=declaration,
+                replacement_name=(
+                    "canonical" if failure == "collision" else "meaningful"
+                ),
+                reason="Explicit test domain decision",
+                contracts=((contract,) if failure in {"contract", "behavior"} else ()),
+            ),
+        ))
+        with (
+            u.Infra.open_project(
+                mod_workspace, project_roots=(mod_workspace,)
+            ) as project,
+            pytest.raises(ValueError, match=error),
+        ):
+            FlextInfraRenameSymbols.plan_candidates(
+                project, {path: source}, (declaration,), provider
+            )
+        tm.that(path.read_text(), eq=source)
 
     @staticmethod
     def _request(root: Path, *, apply: bool) -> m.Infra.ApplyRenamesInput:

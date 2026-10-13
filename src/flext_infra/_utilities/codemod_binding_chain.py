@@ -100,6 +100,30 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
             ):
                 return True
+            if condition.predicate is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL:
+                if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
+                    message = "emitted-symbol requires a lexical expression, module and target"
+                    raise ValueError(message)
+                expression = ast.parse(condition.arg[0], mode="eval").body
+                if not cls._stable_binding_chain(
+                    (project, module, scope),
+                    expression,
+                    start,
+                    sources,
+                ):
+                    return False
+                return cls._resolved_expression_holds(
+                    (project, module, scope),
+                    condition.model_copy(
+                        update={
+                            "predicate": c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                            "arg": condition.arg[1:],
+                        }
+                    ),
+                    condition.arg[0],
+                    start,
+                    sources,
+                )
             return cls._resolved_expression_holds(
                 (project, module, scope),
                 condition,

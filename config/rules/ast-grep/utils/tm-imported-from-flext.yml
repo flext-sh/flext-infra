@@ -15,8 +15,12 @@
 #           stopBy: end
 #           has: { matches: tm-imported-from-flext, stopBy: end }
 
-# tm imported from a flext facade in the module. Gate for every tm-emitting fix:
-# rewriting to `tm.*` is only F821-safe when tm is actually in scope.
+# tm imported from a flext facade (or the generated tests facade) in the
+# module. Gate for every tm-emitting fix: rewriting to `tm.*` is only
+# F821-safe when tm is actually in scope. Member tests bind `tm` through the
+# generated tests package (`from tests import c, tm`), so the accepted module
+# roots are the flext roots and `tests` — the same pair the public test
+# facade guards accept.
 id: tm-imported-from-flext
 language: Python
 rule:
@@ -27,4 +31,4 @@ rule:
         stopBy: end
     - has:
         field: module_name
-        regex: "^flext(?:_[a-z0-9_]+)?$"
+        regex: "^(?:tests|flext(?:_[a-z0-9_]+)?)$"

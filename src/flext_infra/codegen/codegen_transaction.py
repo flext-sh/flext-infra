@@ -37,6 +37,9 @@ class FlextInfraCodegenTransaction(
         workspace: Path,
         updates: t.MappingKV[Path, str],
         validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        runtime_root: Path | None = None,
     ) -> p.Result[T]:
         """Validate a journal-owned source view without publishing live files.
 
@@ -44,11 +47,17 @@ class FlextInfraCodegenTransaction(
             workspace: The declared source workspace.
             updates: Desired source content keyed by live paths.
             validator: A callable that validates the source view.
+            inputs: Original caller source states required to remain unchanged.
+            runtime_root: Declared physical runtime for pre-check candidate imports.
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
         """
-        planned = FlextInfraStagedPackage.plan_sources(workspace, updates)
+        planned = FlextInfraStagedPackage.plan_sources(
+            workspace,
+            updates,
+            inputs=inputs,
+        )
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
@@ -58,9 +67,7 @@ class FlextInfraCodegenTransaction(
         }
 
         def validate_locked(scope_root: Path) -> p.Result[T]:
-            source_barrier = FlextInfraMiseArtifactsVerification.states_current(
-                plan.inputs,
-            )
+            source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
             if source_barrier.failure:
                 return r[T].from_failure(source_barrier)
             started = self.begin_files_locked(scope_root, roots, plan.inputs)
@@ -81,14 +88,22 @@ class FlextInfraCodegenTransaction(
                     path: view_root / path.relative_to(plan.workspace)
                     for path in plan.updates
                 }
-                writes = self._source_preview_writes(plan, view_root)
-                materialized = self._materialize_package_writes(prepared, writes)
+                materialized = self._materialize_source_preview(
+                    prepared,
+                    plan,
+                    view_root,
+                )
                 if materialized.failure:
                     return r[T].from_failure(materialized)
+                current_session, manifest = materialized.value
+                consumed = self._source_runtime_consumer(plan, view_root, runtime_root)
+                if consumed.failure:
+                    return r[T].from_failure(consumed)
                 value = validator(view_root, candidates)
-                barrier = FlextInfraCodegenPreconditions.unchanged_journal(
-                    materialized.value,
-                    "source preview journal changed during validation",
+                barrier = self._source_preview_current(
+                    plan,
+                    manifest,
+                    current_session,
                 )
                 if barrier.failure:
                     return r[T].from_failure(barrier)
@@ -109,6 +124,166 @@ class FlextInfraCodegenTransaction(
 
         return self.run_files_locked(roots, validate_locked)
 
+    def _materialize_source_preview(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenTransactionSession, m.Cli.AtomicPhysicalTreeManifest]
+    ]:
+        """Record the actual materialized view through the existing journal writer.
+
+        Returns:
+            The prepared cursor and its authenticated candidate manifest.
+        """
+        return self._materialize_package_writes(
+            session,
+            self._source_preview_writes(plan, view_root),
+        ).flat_map(
+            lambda current: u.Cli.atomic_inventory_physical_tree(view_root).map(
+                lambda manifest: (current, manifest),
+            )
+        )
+
+    @staticmethod
+    def _source_runtime_consumer(
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+        runtime_root: Path | None,
+    ) -> p.Result[bool]:
+        """Import sealed runtime modules before any candidate check callback.
+
+        Returns:
+            Actual native consumer success or its first causal failure.
+        """
+        if runtime_root is None:
+            return r[bool].ok(value=True)
+        environment = u.Infra.runtime_environment_dir(runtime_root)
+        interpreter = u.Infra.runtime_python(runtime_root)
+        if environment.is_symlink() or not environment.is_dir():
+            return r[bool].fail(f"candidate runtime must be physical: {environment}")
+        identity = u.Cli.atomic_plan_directory_chain(environment).unwrap()
+        bindings = tuple(
+            (
+                layout.package_name,
+                str(view_root / layout.src_dir.relative_to(plan.workspace)),
+            )
+            for layout in plan.layouts
+        )
+        modules = tuple(
+            sorted({
+                ".".join(
+                    (*path.relative_to(layout.src_dir).with_suffix("").parts[:-1],)
+                    if path.stem == "__init__"
+                    else path.relative_to(layout.src_dir).with_suffix("").parts
+                )
+                for layout in plan.layouts
+                for path in (state.path for state in plan.inputs)
+                if path.suffix == c.Infra.EXT_PYTHON
+                and path.is_relative_to(layout.package_dir)
+            })
+        )
+        code = (
+            "import ast, importlib, importlib.util, sys\n"
+            "from importlib.machinery import PathFinder\n"
+            "from graphlib import TopologicalSorter\n"
+            "from pathlib import Path\n"
+            f"if Path(sys.prefix).resolve() != Path({str(environment)!r}).resolve():\n"
+            "    raise RuntimeError('candidate interpreter escaped "
+            "declared physical runtime')\n"
+            f"environment = Path({str(environment)!r})\n"
+            f"expected = {(identity.anchor_device, identity.anchor_inode)!r}\n"
+            "before = environment.stat()\n"
+            "if environment.is_symlink() "
+            "or (before.st_dev, before.st_ino) != expected:\n"
+            "    raise RuntimeError('candidate physical runtime identity changed')\n"
+            f"bindings = {bindings!r}\n"
+            "specs = {}\n"
+            "dependencies = {}\n"
+            "namespaces = {name for name, source in bindings}\n"
+            "for name, source in bindings:\n"
+            "    if name in sys.modules:\n"
+            "        raise ImportError('candidate inherited cached package: ' + name)\n"
+            "    spec = PathFinder.find_spec(name, [source])\n"
+            "    if spec is None or spec.loader is None:\n"
+            "        raise ImportError('unsupported candidate package: ' + name)\n"
+            "    sys.modules[name] = importlib.util.module_from_spec(spec)\n"
+            "    specs[name] = spec\n"
+            "    imports = []\n"
+            "    for node in ast.parse(Path(spec.origin).read_text()).body:\n"
+            "        if isinstance(node, ast.Import):\n"
+            "            imports.extend(alias.name for alias in node.names)\n"
+            "        elif (isinstance(node, ast.ImportFrom) "
+            "and not node.level and node.module):\n"
+            "            imports.append(node.module)\n"
+            "    dependencies[name] = {module.split('.')[0] for module in imports}\n"
+            "    dependencies[name].intersection_update(namespaces - {name})\n"
+            "for name in TopologicalSorter(dependencies).static_order():\n"
+            "    spec = specs[name]\n"
+            "    spec.loader.exec_module(sys.modules[spec.name])\n"
+            f"for name in {modules!r}:\n"
+            "    importlib.import_module(name)\n"
+            "origins = {name: Path(source) / name for name, source in bindings}\n"
+            "for name, module in tuple(sys.modules.items()):\n"
+            "    namespace = name.split('.')[0]\n"
+            f"    if namespace not in {tuple(plan.workspace_packages)!r}:\n"
+            "        continue\n"
+            "    root = origins.get(namespace)\n"
+            "    origin = getattr(module, '__file__', None)\n"
+            "    paths = getattr(module, '__path__', ())\n"
+            "    if (root is None or origin is None\n"
+            "        or not Path(origin).resolve().is_relative_to(root)\n"
+            "        or any(not Path(path).resolve().is_relative_to(root) "
+            "for path in paths)):\n"
+            "        raise ImportError('unsealed candidate origin: ' "
+            "+ name + ': ' + str(origin))\n"
+            "after = environment.stat()\n"
+            "if environment.is_symlink() or (after.st_dev, after.st_ino) != expected:\n"
+            "    raise RuntimeError('candidate physical runtime identity changed')\n"
+        )
+        output = u.Cli.run_raw(
+            [str(interpreter), "-I", "-B", "-W", "error", "-"],
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(
+                input_data=code,
+                remove_env_keys=(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,),
+            ),
+        )
+        if output.failure:
+            return r[bool].from_failure(output)
+        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+            return r[bool].fail(
+                f"candidate runtime consumer failed: {output.value.outcome}:\n"
+                f"{output.value.stdout}{output.value.stderr}",
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _source_preview_current(
+        plan: m.Infra.StageSourcePlan,
+        manifest: m.Cli.AtomicPhysicalTreeManifest,
+        session: m.Infra.CodegenTransactionSession,
+    ) -> p.Result[bool]:
+        """Bind acceptance to unchanged candidate, live sources and journal.
+
+        Returns:
+            Success only while every pre-consumer observation remains current.
+        """
+        current = u.Cli.atomic_inventory_physical_tree(manifest.root.path)
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value != manifest:
+            return r[bool].fail("source preview candidate changed during validation")
+        originals = FlextInfraStagedPackage.source_inputs_current(plan)
+        if originals.failure:
+            return r[bool].from_failure(originals)
+        return FlextInfraCodegenPreconditions.unchanged_journal(
+            session,
+            "source preview journal changed during validation",
+        )
+
     @staticmethod
     def _source_preview_writes(
         plan: m.Infra.StageSourcePlan,
@@ -117,7 +292,7 @@ class FlextInfraCodegenTransaction(
         """Build the staged writes that materialize the previewed source view.
 
         Returns:
-            One (destination, content, mode) write per changed source input.
+            One (destination, content, mode) write per existing or desired source input.
 
         """
         writes: list[tuple[Path, bytes, int]] = []

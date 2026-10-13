@@ -1,0 +1,363 @@
+# Test assertion law: raw assertions report through the tm matcher facade.
+#
+# This family rewires the mechanically-safe raw `assert` comparison shapes to
+# their `tm` equivalents, so every assertion in a test tier reports through
+# the one matcher owner (flext-tests). Each document is isomorphic: the
+# replacement evaluates the same expressions and asserts the same outcome, so
+# `make mod` applies it fleet-wide without behaviour change.
+#
+# Guard: every fix emits `tm.*`, so a document matches only where the module
+# imports `tm` from a FLEXT facade or the generated tests facade
+# (utils/tm-imported-from-flext.yml). A test file with raw asserts but no tm
+# import gets no rewrite: add `tm` to the `from tests import ...` line and
+# re-run `make mod` (the two-phase cutover).
+#
+# Exclusions kept out of the mechanical cutover (manual triage):
+#   * tautological call-free self-comparisons (owned by ban-test-tautology);
+#   * chained comparisons (`0 < x < 10`, `x == y == z`), whose operands the
+#     one-criterion tm form cannot split without changing what is asserted;
+#   * asserts inside except clauses (expected-failure choreography);
+#   * `len(...)` subjects, owned by the length documents of this family.
+# A trailing message clause (the assert's second child, of any expression
+# kind) routes the equality shapes to the `-message` documents of this
+# family; other operators with a message clause stay raw for manual triage.
+id: rewire-test-assert-eq
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A == $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        all:
+          - pattern: "assert $A == $A"
+          - not:
+              has:
+                kind: call
+                stopBy: end
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "==[^,\\n]*=="
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A == $B, truth=True)
+message: Assert equality through the tm matcher facade.
+---
+id: rewire-test-assert-ne
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A != $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "!=[^,\\n]*!="
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A != $B, truth=True)
+message: Assert inequality through the tm matcher facade.
+---
+id: rewire-test-assert-gt
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A > $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "(?:<|>|<=|>=)[^,\\n]*(?:<|>|<=|>=)"
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A > $B, truth=True)
+message: Assert the strict ordering through the tm matcher facade.
+---
+id: rewire-test-assert-gte
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A >= $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "(?:<|>|<=|>=)[^,\\n]*(?:<|>|<=|>=)"
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A >= $B, truth=True)
+message: Assert the inclusive lower bound through the tm matcher facade.
+---
+id: rewire-test-assert-lt
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A < $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "(?:<|>|<=|>=)[^,\\n]*(?:<|>|<=|>=)"
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A < $B, truth=True)
+message: Assert the strict upper bound through the tm matcher facade.
+---
+id: rewire-test-assert-lte
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A <= $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "(?:<|>|<=|>=)[^,\\n]*(?:<|>|<=|>=)"
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A <= $B, truth=True)
+message: Assert the inclusive upper bound through the tm matcher facade.
+---
+id: rewire-test-assert-eq-message
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A == $B, $MSG"
+    - not:
+        all:
+          - pattern: "assert $A == $A, $MSG"
+          - not:
+              has:
+                kind: call
+                stopBy: end
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "==[^,\\n]*=="
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: |-
+  if not ($A == $B):
+      tm.that(False, truth=True, assertion_message=$MSG)
+message: Assert equality with its message through the tm matcher facade.
+---
+id: rewire-test-assert-ne-message
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A != $B, $MSG"
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "!=[^,\\n]*!="
+    - not:
+        has:
+          kind: call
+          stopBy: end
+          regex: "^len\\("
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: |-
+  if not ($A != $B):
+      tm.that(False, truth=True, assertion_message=$MSG)
+message: Assert inequality with its message through the tm matcher facade.
+---
+id: test-assert-tm-binding-required
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+metadata:
+  context:
+    CONDITION:
+      not: emitted-symbol
+      arg: tm flext_tests tm
+rule:
+  pattern: assert $CONDITION
+message: >-
+  The assertion needs the public matcher, but tm does not resolve to its owner
+  at this occurrence. Repair the import or shadowed binding before rewriting.

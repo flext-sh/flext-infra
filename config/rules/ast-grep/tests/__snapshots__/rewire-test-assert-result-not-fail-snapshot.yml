@@ -1,0 +1,23 @@
+id: rewire-test-assert-result-not-fail
+snapshots:
+  ? |
+    from tests import tm
+    assert not result.failure
+  : fixed: |
+      from tests import tm
+      tm.ok(result)
+    labels:
+    - source: assert not result.failure
+      style: primary
+      start: 21
+      end: 46
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert not result.failure
+      style: secondary
+      start: 0
+      end: 47

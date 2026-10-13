@@ -545,6 +545,7 @@ class FlextInfraModGateEngine:
                 condition.predicate
                 in {
                     c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                    c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                     c.Infra.CodemodContextPredicate.SAME_BINDING,
                     c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                     c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
@@ -563,11 +564,19 @@ class FlextInfraModGateEngine:
                 root,
                 states,
                 tuple(
-                    condition.arg[0]
+                    condition.arg[
+                        1
+                        if condition.predicate
+                        is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL
+                        else 0
+                    ]
                     for rule in occurrence_rules
                     for condition in rule.context
                     if condition.predicate
-                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+                    in {
+                        c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                        c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+                    }
                 ),
             )
             if states

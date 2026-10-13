@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -96,6 +95,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             assert isinstance(fixed, str)
             _ = ast.parse(fixed)
             if "class Payload(m.ArbitraryTypesModel):" in fixed:
+                # DEBUG
+                import sys
+
+                print("=== FIXED CODE ===", file=sys.stderr)
+                print(fixed, file=sys.stderr)
+                print("=== END FIXED CODE ===", file=sys.stderr)
                 outcome = tm.ok(u.Cli.run_raw((sys.executable, "-c", fixed)))
                 tm.that(outcome.exit_code, eq=0)
                 tm.that(outcome.stderr, eq="")

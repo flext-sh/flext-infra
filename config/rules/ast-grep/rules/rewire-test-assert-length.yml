@@ -1,0 +1,153 @@
+# Collection-size raw asserts rewired to the tm length criteria.
+#
+# Family law, guard, and exclusions are documented in
+# rewire-test-assert-comparison.yml; this file adds the length shapes:
+#   * `assert len(x) == n` -> `tm.that(x, len=n)`;
+#   * `assert len(x) > n`  -> `tm.that(x, length_gt=n)`;
+#   * `assert len(x) >= n` -> `tm.that(x, length_gte=n)`;
+#   * `assert len(x) < n`  -> `tm.that(x, length_lt=n)`;
+#   * `assert len(x) <= n` -> `tm.that(x, length_lte=n)`.
+#
+# The bound is constrained to an integer literal: the tm length criteria own
+# int and (min, max) bounds, and a computed bound would need the comparison
+# criteria instead. The comparison documents exclude `len(...)` subjects, so
+# the two families stay disjoint.
+id: rewire-test-assert-len-eq
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert len($A) == $N"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  N:
+    regex: "^\\d+$"
+fix: tm.that($A, len=$N)
+message: Assert the collection size through the tm length criterion.
+---
+id: rewire-test-assert-len-gt
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert len($A) > $N"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  N:
+    regex: "^\\d+$"
+fix: tm.that($A, length_gt=$N)
+message: Assert the minimum collection size through the tm length criterion.
+---
+id: rewire-test-assert-len-gte
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert len($A) >= $N"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  N:
+    regex: "^\\d+$"
+fix: tm.that($A, length_gte=$N)
+message: Assert the inclusive minimum size through the tm length criterion.
+---
+id: rewire-test-assert-len-lt
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert len($A) < $N"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  N:
+    regex: "^\\d+$"
+fix: tm.that($A, length_lt=$N)
+message: Assert the exclusive maximum size through the tm length criterion.
+---
+id: rewire-test-assert-len-lte
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert len($A) <= $N"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  N:
+    regex: "^\\d+$"
+fix: tm.that($A, length_lte=$N)
+message: Assert the inclusive maximum size through the tm length criterion.

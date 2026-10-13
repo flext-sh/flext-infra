@@ -170,6 +170,23 @@ class FlextInfraUtilitiesCodemodRules:
                     )
                 rules.setdefault(rule.id, rule)
             for ruleset in plan.rulesets:
+                elected = tuple(
+                    rule_id
+                    for rule_id in ruleset.rule_ids
+                    if rules[rule_id].provider == ruleset.provider
+                )
+                if not elected:
+                    continue
+                ruleset = ruleset.model_copy(
+                    update={
+                        "rule_ids": elected,
+                        "fixable_rule_ids": tuple(
+                            rule_id
+                            for rule_id in ruleset.fixable_rule_ids
+                            if rule_id in elected
+                        ),
+                    }
+                )
                 key = ruleset.config.resolve()
                 previous = rulesets.get(key)
                 rulesets[key] = (

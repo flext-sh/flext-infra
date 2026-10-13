@@ -1,0 +1,23 @@
+id: rewire-test-assert-len-eq
+snapshots:
+  ? |
+    from tests import tm
+    assert len(items) == 3
+  : fixed: |
+      from tests import tm
+      tm.that(items, len=3)
+    labels:
+    - source: assert len(items) == 3
+      style: primary
+      start: 21
+      end: 43
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert len(items) == 3
+      style: secondary
+      start: 0
+      end: 44

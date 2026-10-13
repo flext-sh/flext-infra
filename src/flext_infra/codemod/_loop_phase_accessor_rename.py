@@ -9,10 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m, p, r, u
-from flext_infra.refactor import FlextInfraAccessorMigrationRewriteMixin
+from flext_infra.refactor import (
+    FlextInfraAccessorMigrationReportMixin,
+    FlextInfraAccessorMigrationRewriteMixin,
+)
 
 
-class FlextInfraAccessorRenamePhase(FlextInfraAccessorMigrationRewriteMixin):
+class FlextInfraAccessorRenamePhase(
+    FlextInfraAccessorMigrationRewriteMixin,
+    FlextInfraAccessorMigrationReportMixin,
+):
     """Accessor callback: origin-owned rename catalog repairs in the loop.
 
     Reuses the accessor migration's origin-aware rewrite, so a homonym the
@@ -20,6 +26,10 @@ class FlextInfraAccessorRenamePhase(FlextInfraAccessorMigrationRewriteMixin):
     """
 
     name: str = "accessor-rename"
+
+    def __init__(self, *, source_preview: p.Infra.SourcePreview) -> None:
+        """Receive the same authenticated candidate capability as the public verb."""
+        self.source_preview = source_preview
 
     def apply(
         self,
@@ -33,7 +43,6 @@ class FlextInfraAccessorRenamePhase(FlextInfraAccessorMigrationRewriteMixin):
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
-        del preflight
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(u.Infra.governed_project_roots(root)),
@@ -41,32 +50,33 @@ class FlextInfraAccessorRenamePhase(FlextInfraAccessorMigrationRewriteMixin):
         )
         if iter_result.failure:
             return r[bool].from_failure(iter_result)
-        changed = False
-        for py_file in iter_result.value:
-            read = u.Cli.files_read_text(py_file)
-            if read.failure:
-                return r[bool].from_failure(read)
-            updated_source, rewrite_changes = self._apply_automated_rewrites(
-                rope_workspace.rope_project,
-                py_file,
-                read.value,
-            )
-            if not any(change.automated for change in rewrite_changes):
-                continue
-            ok, report = u.Infra.protected_source_write(
-                py_file,
-                request=m.Infra.ProtectedSourceWriteRequest(
-                    workspace=root,
-                    updated_source=updated_source,
-                    gates=(),
-                ),
-            )
-            if not ok:
-                return r[bool].fail(
-                    "; ".join(report[:3]) or "protected write failed",
+        planned = self._process_files(
+            rope_workspace.rope_project,
+            iter_result.value,
+            params=m.Infra.AccessorMigrationInput(
+                repository_root=root,
+                apply=True,
+                gates=tuple(u.Infra.snapshot_lint_gates()),
+            ),
+            source_preview=self.source_preview,
+            inputs=tuple(
+                state
+                for finding in preflight.entries
+                for state in (
+                    *(
+                        (finding.source_state,)
+                        if finding.source_state is not None
+                        else ()
+                    ),
+                    *finding.binding_states,
                 )
-            changed = True
-        return r[bool].ok(value=changed)
+            ),
+        )
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        return r[bool].ok(
+            value=any(report.automated_changes for report in planned.value)
+        )
 
 
 __all__: list[str] = ["FlextInfraAccessorRenamePhase"]

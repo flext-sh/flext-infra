@@ -293,9 +293,10 @@ class FlextInfra(
                     exclude_globs=declared.exclude_globs,
                 ),
             )
+        source_preview = self.source_preview(root)
         with self.rope_workspace(root) as rope:
             return FlextInfraCodemodBatchApply(
-                source_preview=self.source_preview(root),
+                source_preview=source_preview,
                 repository_root=root,
                 apply_changes=request.apply,
                 check_only=request.check,
@@ -308,7 +309,7 @@ class FlextInfra(
                     FlextInfraImportNormalizationPhase(),
                     FlextInfraNamespaceRelocationPhase(),
                     FlextInfraDuplicateApplyPhase(),
-                    FlextInfraAccessorRenamePhase(),
+                    FlextInfraAccessorRenamePhase(source_preview=source_preview),
                 ),
             ).execute()
 

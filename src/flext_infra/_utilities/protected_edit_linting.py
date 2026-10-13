@@ -793,7 +793,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Only lint errors introduced relative to *before*.
 
         """
-        introduced: t.Infra.LintSnapshot = {}
+        introduced: t.MutableMappingKV[str, t.StrSequence] = {}
         normalize = FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line
         for tool, lines in after.items():
             remaining = Counter(normalize(line) for line in before.get(tool, ()))

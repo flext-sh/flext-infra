@@ -1,0 +1,10 @@
+id: rewire-test-assert-lte
+valid:
+  - assert ratio <= 1
+  - |
+    from tests import tm
+    assert ratio <= ceiling, 'bounded'
+invalid:
+  - |
+    from tests import tm
+    assert ratio <= 1

@@ -1,0 +1,13 @@
+id: rewire-test-assert-eq-message
+valid:
+  - "assert result.count == 3, 'count must match'"
+  - |
+    from tests import tm
+    assert alpha == alpha, 'self compare'
+  - |
+    from tests import tm
+    assert left == right
+invalid:
+  - |
+    from tests import tm
+    assert result.count == 3, 'count must match'

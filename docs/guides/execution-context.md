@@ -331,6 +331,13 @@ The text catalog composes Infra's shared rules with each project's local
 catalog; copying it into the shared catalog creates an ambiguous owner and blocks
 the scan. Rule IDs remain unique across the composed catalogs.
 
+AST planning elects rules separately for each governed project's declared
+distribution and runtime dependencies. The workspace scans the union of shared
+catalogs once, then admits each occurrence against its nearest project's election
+and semantic facts. A library owner's imports remain within its domain; the same
+imports in a consumer remain violations. Reports retain zero counts for every
+governed repository and elected rule.
+
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes
 and local bindings. Unsupported references, ambiguous bindings and uncertain

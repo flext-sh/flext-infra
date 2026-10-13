@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, config, m, main, u
-from flext_infra.codemod import FlextInfraModGateEngine
+from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import tm
 
@@ -115,6 +115,199 @@ class TestsFlextInfraRefactorViolationsSweep:
                 ),
             )
 
+    @classmethod
+    def _declare_members(cls, root: Path, names: tuple[str, ...]) -> tuple[Path, ...]:
+        """Declare real member identities through the existing Git manifest owner.
+
+        Returns:
+            Fixture members with native project metadata and executable audits.
+        """
+        distribution, _dependencies = tm.ok(u.Infra.codemod_project_requirements(root))
+        document = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        members = tuple(root / name for name in names)
+        for member in members:
+            package = member / c.Infra.DEFAULT_SRC_DIR / member.name.replace("-", "_")
+            tm.ok(u.Cli.ensure_dir(package))
+            tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    member / c.PYPROJECT_FILENAME,
+                    document.replace(
+                        f'name = "{distribution}"', f'name = "{member.name}"'
+                    ),
+                )
+            )
+            cls._prepare(
+                member, makefile=".PHONY: audit\naudit:\n\t@true\n", local_rule=True
+            )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.GITMODULES,
+                "".join(
+                    f'[submodule "{member.name}"]\n\tpath = {member.name}\n'
+                    f"\turl = https://example.com/{member.name}.git\n"
+                    for member in members
+                ),
+            )
+        )
+        return members
+
+    def test_same_total_rule_swap_cannot_offset_native_rule_growth(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """Each actual native ID keeps its counter even when total count is equal."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        rule_dir = root / c.Infra.CODEMOD_CONFIG_RELPATH.parent / c.Cli.RULES_DIR_NAME
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule_dir / "second.yml",
+                LOCAL_GROWTH_RULE.replace("sweep-growth", "sweep-second").replace(
+                    "dict()", "list()"
+                ),
+            )
+        )
+        sample = root / "sample.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
+        before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = list()\n"))
+        after = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        rows = {row.rule_id: row for row in u.Infra.rule_deltas(before, after)}
+        tm.that(before.findings, eq=after.findings)
+        tm.that(rows["sweep-growth"].resolved, eq=1)
+        tm.that(rows["sweep-second"].introduced, eq=1)
+
+    def test_project_reduction_cannot_offset_another_project_growth(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """Two projects with the same native rule retain independent multiplicities."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        first, second = self._declare_members(root, ("member-first", "member-second"))
+        first_source = first / "sample.py"
+        second_source = second / "sample.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                first_source, "marker = dict()\nmarker = dict()\n"
+            )
+        )
+        tm.ok(u.Cli.atomic_write_text_file(second_source, "marker = tuple()\n"))
+        before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        tm.ok(u.Cli.atomic_write_text_file(first_source, "marker = tuple()\n"))
+        tm.ok(u.Cli.atomic_write_text_file(second_source, "marker = dict()\n"))
+        after = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        rows = {
+            (row.repository, row.rule_id): row
+            for row in u.Infra.rule_deltas(before, after)
+        }
+        tm.that(rows[first.name, "sweep-growth"].resolved, eq=2)
+        tm.that(rows[second.name, "sweep-growth"].introduced, eq=1)
+
+    def test_effective_zero_rows_and_not_applicable_retain_catalog_identity(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A native owner exclusion is not a successful zero-count scan."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        (member,) = self._declare_members(root, ("member-owner",))
+        rule_text = LOCAL_GROWTH_RULE + f"metadata:\n  owner: {member.name}\n"
+        for project in (root, member):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project
+                    / c.Infra.CODEMOD_CONFIG_RELPATH.parent
+                    / c.Cli.RULES_DIR_NAME
+                    / "sweep.yml",
+                    rule_text,
+                )
+            )
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
+        report = self._receipt(root)
+        rows = {(row.repository, row.rule_id): row for row in report.rule_evaluations}
+        scanned = rows[root.name, "sweep-growth"]
+        excluded = rows[member.name, "sweep-growth"]
+        tm.that(scanned.status, eq="observed")
+        assert scanned.delta is not None
+        tm.that((scanned.delta.before, scanned.delta.after), eq=(0, 0))
+        tm.that(excluded.status, eq="not_applicable")
+        tm.that(excluded.delta, eq=None)
+        tm.that(excluded.catalog_digest, eq=scanned.catalog_digest)
+        tm.that(excluded.provider, eq=scanned.provider)
+        tm.that(bool(excluded.error), eq=True)
+        tm.that(
+            {row.repository for row in report.engine_coverage},
+            eq={root.name, member.name},
+        )
+
+    def test_native_text_and_ast_homonyms_never_share_a_counter(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """The native text finding ID is independent of an identically named AST ID."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        text_catalog = root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
+        tm.ok(u.Cli.ensure_dir(text_catalog.parent))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                text_catalog,
+                "rules:\n  - id: sweep-growth\n    include: [sample.py]\n"
+                "    find: 'dict'\n    replace: 'tuple'\n",
+            )
+        )
+        sample = root / "sample.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(sample, "marker = dict()\nmarker = dict()\n")
+        )
+        before_ast = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        before_text = tm.ok(FlextInfraModTextGateEngine.scan(root, fix=False))
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
+        after_ast = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        after_text = tm.ok(FlextInfraModTextGateEngine.scan(root, fix=False))
+        ast_rows = u.Infra.rule_deltas(before_ast, after_ast)
+        text_rows = u.Infra.rule_deltas(
+            before_text,
+            after_text,
+            repository_root=root,
+            projects=(root.resolve(),),
+        )
+        rows = {(row.engine, row.rule_id): row for row in (*ast_rows, *text_rows)}
+        for engine in ("ast-grep", "text"):
+            row = rows[engine, "sweep-growth"]
+            tm.that(
+                (row.before, row.after, row.persisted, row.resolved), eq=(2, 1, 1, 1)
+            )
+            tm.that(row.introduced, eq=0)
+
+    def test_failed_text_inventory_preserves_independent_ast_evidence(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """One failed native engine never erases another engine's measured rows."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
+        text_catalog = root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
+        tm.ok(u.Cli.ensure_dir(text_catalog.parent))
+        tm.ok(u.Cli.atomic_write_text_file(text_catalog, "rules: [invalid\n"))
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
+        report = self._receipt(root)
+        assert report.before_evidence is not None
+        row = next(
+            row
+            for row in report.rule_evaluations
+            if row.engine == "ast-grep" and row.rule_id == "sweep-growth"
+        )
+        assert row.delta is not None
+        tm.that((row.delta.before, row.delta.after, row.delta.persisted), eq=(1, 1, 1))
+        text = next(row for row in report.engine_coverage if row.engine == "text")
+        tm.that(text.status, eq="NOT_EXECUTED")
+        tm.that(bool(report.repair_error), eq=True)
+        tm.that((root / "ran.txt").exists(), eq=False)
+
     @staticmethod
     def _sweep(root: Path, *options: str) -> int:
         """Run the public violations-sweep CLI once.
@@ -155,15 +348,15 @@ class TestsFlextInfraRefactorViolationsSweep:
         lines = (root / "ran.txt").read_text(encoding="utf-8").splitlines()
         yield from (line for line in lines if line)
 
-    def test_clean_tree_is_a_no_op_success_with_zero_delta(
+    def test_clean_tree_retains_zero_deltas_without_false_complete_audit(
         self,
         mod_workspace: Path,
     ) -> None:
-        """The canonical sequence runs in order and no total moves."""
+        """The sequence runs, but missing native rule audits cannot become green."""
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=False)
 
-        tm.that(self._sweep(root), eq=0)
+        tm.that(self._sweep(root), ne=0)
 
         tm.that(
             list(self._verbs_ran(root)),
@@ -176,6 +369,22 @@ class TestsFlextInfraRefactorViolationsSweep:
         )
         tm.that(report.before, eq=report.after)
         tm.that(report.increased_totals, eq=())
+        tm.that(report.repair_error, eq=None)
+        tm.that(
+            {row.engine: row.status for row in report.engine_coverage},
+            eq={
+                "ast-grep": "incomplete",
+                "text": "incomplete",
+                "ruff": "incomplete",
+                "census": "NOT_EXECUTED",
+            },
+        )
+        tm.that(
+            all(
+                row.cause for row in report.engine_coverage if row.status != "observed"
+            ),
+            eq=True,
+        )
         for field in ("before_source_sha256", "after_source_sha256"):
             with pytest.raises(ValueError, match=field):
                 m.Infra.ViolationsSweepReport.model_validate(
@@ -189,14 +398,14 @@ class TestsFlextInfraRefactorViolationsSweep:
         """A second sweep preserves the first invocation's authenticated snapshots."""
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=False)
-        tm.that(self._sweep(root), eq=0)
+        tm.that(self._sweep(root), ne=0)
         first = self._receipt(root)
         assert first.before_evidence is not None
         assert first.after_evidence is not None
         before_bytes = first.before_evidence.path.read_bytes()
         after_bytes = first.after_evidence.path.read_bytes()
 
-        tm.that(self._sweep(root), eq=0)
+        tm.that(self._sweep(root), ne=0)
 
         second = self._receipt(root)
         assert second.before_evidence is not None
@@ -326,7 +535,7 @@ class TestsFlextInfraRefactorViolationsSweep:
         """An elected rule and governed project remain visible with no findings."""
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=True)
-        tm.that(self._sweep(root), eq=0)
+        tm.that(self._sweep(root), ne=0)
         report = self._receipt(root)
         assert report.before_evidence is not None
         assert report.before_plan is not None
@@ -417,7 +626,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 "marker = dict()\nmarker = dict()\n",
             )
         )
-        tm.that(self._sweep(root), eq=0)
+        tm.that(self._sweep(root), ne=0)
         delta = next(
             row
             for row in self._receipt(root).rule_deltas
@@ -458,7 +667,7 @@ class TestsFlextInfraRefactorViolationsSweep:
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
-        tm.that(self._sweep(root, "--audit-rules", "--rules", "sweep-growth"), eq=0)
+        tm.that(self._sweep(root, "--audit-rules", "--rules", "sweep-growth"), ne=0)
         tm.that((root / "ran.txt").exists(), eq=False)
         report = self._receipt(root)
         stage = report.stages[0]
@@ -482,6 +691,37 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(row.delta.resolved, eq=0)
         tm.that(row.delta.introduced, eq=0)
 
+    def test_existing_ast_cli_applies_only_the_exact_selected_rule(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """Reuse the native selected engine, never a sweep-specific rewrite engine."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
+        tm.that(
+            main([
+                c.Infra.CLI_GROUP_REFACTOR,
+                "ast",
+                "--apply",
+                "--repository-root",
+                str(root),
+                "--rules",
+                "sweep-growth",
+            ]),
+            eq=0,
+        )
+        tm.that((root / "ran.txt").exists(), eq=False)
+        tm.that(self._sweep(root, "--audit-rules"), eq=0)
+        row = next(
+            row
+            for row in self._receipt(root).stages[0].rule_evaluations
+            if row.rule_id == "sweep-growth"
+        )
+        assert row.delta is not None
+        tm.that(row.delta.before, eq=0)
+        tm.that(row.delta.after, eq=0)
+
     def test_public_sequence_records_each_canonical_operation(
         self,
         mod_workspace: Path,
@@ -495,7 +735,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             makefile=f".PHONY: {names}\n{names}:\n\t@printf '%s\\n' '$@' >> ran.txt\n",
             local_rule=True,
         )
-        tm.that(self._sweep(root, "--repair-verbs", ",".join(verbs)), eq=0)
+        tm.that(self._sweep(root, "--repair-verbs", ",".join(verbs)), ne=0)
         report = self._receipt(root)
         tm.that(list(report.repair_verbs), eq=list(verbs))
         tm.that(list(self._verbs_ran(root)), eq=list(verbs))

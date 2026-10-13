@@ -422,6 +422,7 @@ class FlextInfraUtilitiesCodemodProject(
         for condition in rule.context:
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,

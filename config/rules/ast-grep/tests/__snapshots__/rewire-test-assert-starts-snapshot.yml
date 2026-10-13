@@ -1,0 +1,23 @@
+id: rewire-test-assert-starts
+snapshots:
+  ? |
+    from tests import tm
+    assert name.startswith('flext')
+  : fixed: |
+      from tests import tm
+      tm.that(name, starts='flext')
+    labels:
+    - source: assert name.startswith('flext')
+      style: primary
+      start: 21
+      end: 52
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert name.startswith('flext')
+      style: secondary
+      start: 0
+      end: 53

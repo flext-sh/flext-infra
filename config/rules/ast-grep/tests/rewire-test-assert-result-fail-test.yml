@@ -1,0 +1,10 @@
+id: rewire-test-assert-result-fail
+valid:
+  - assert result.failure
+  - |
+    from tests import tm
+    assert result.failure, 'must fail'
+invalid:
+  - |
+    from tests import tm
+    assert result.failure

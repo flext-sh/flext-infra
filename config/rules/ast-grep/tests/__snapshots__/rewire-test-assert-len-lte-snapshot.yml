@@ -1,0 +1,23 @@
+id: rewire-test-assert-len-lte
+snapshots:
+  ? |
+    from tests import tm
+    assert len(items) <= 32
+  : fixed: |
+      from tests import tm
+      tm.that(items, length_lte=32)
+    labels:
+    - source: assert len(items) <= 32
+      style: primary
+      start: 21
+      end: 44
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert len(items) <= 32
+      style: secondary
+      start: 0
+      end: 45

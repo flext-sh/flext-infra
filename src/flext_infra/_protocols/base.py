@@ -53,6 +53,9 @@ class FlextInfraProtocolsBase(Protocol):
             workspace: Path,
             updates: t.MappingKV[Path, str],
             validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+            *,
+            inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+            runtime_root: Path | None = None,
         ) -> p.Result[T]:
             """Validate staged candidates while preserving live sources."""
             ...
@@ -104,6 +107,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             params: m.Infra.ApplyRenamesInput,
         ) -> p.Result[m.Infra.ApplyRenamesReport]: ...
+
+    class SemanticRenameCandidateProvider(Protocol):
+        """Select meaningful names from actual declarations, never token counts."""
+
+        def rename_decision(
+            self,
+            declaration: m.Infra.Object,
+        ) -> m.Infra.SemanticRenameDecision | None: ...
 
     @runtime_checkable
     class ModProgress(Protocol):

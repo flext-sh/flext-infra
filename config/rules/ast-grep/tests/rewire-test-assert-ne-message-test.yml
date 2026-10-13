@@ -1,0 +1,10 @@
+id: rewire-test-assert-ne-message
+valid:
+  - "assert result.key != other.key, 'keys differ'"
+  - |
+    from tests import tm
+    assert left != right
+invalid:
+  - |
+    from tests import tm
+    assert result.key != other.key, 'keys differ'
