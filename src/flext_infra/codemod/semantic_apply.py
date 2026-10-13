@@ -282,10 +282,6 @@ class FlextInfraCodemodSemanticApply:
 
         """
         inventory = m.Infra.ModScanReport(
-            findings=0,
-            actionable=0,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset(),
             entries=(),
         )
@@ -1038,6 +1034,7 @@ class FlextInfraCodemodSemanticApply:
             repository_root=root,
             validator=(lambda: validator(root)) if validator is not None else None,
             projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
         ).map(lambda _: True)
 
     @staticmethod

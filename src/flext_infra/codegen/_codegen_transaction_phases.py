@@ -138,6 +138,11 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if published.failure:
             return result_type.from_failure(published)
         journal, journal_state = current.journal, current.journal_state
+        if any(item.dependency_group is not None for item in staged.value):
+            recorded = journal_io.read(prepared.value.plan.layout)
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            journal, journal_state = recorded.value
         return self.record_publication(
             m.Infra.CodegenTransactionSession(
                 plan=prepared.value.plan,
@@ -544,7 +549,13 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         prepared, phase_roots = checked.value
         writes: list[tuple[Path, bytes, int]] = []
         directories = set(phase_roots)
-        for index, (_plan, _before, replacement, present) in enumerate(prepared):
+        for index, (plan, before, replacement, present) in enumerate(prepared):
+            if plan.dependency_group is not None and before.content is not None:
+                writes.append((
+                    replacement[0] / f"{index:06d}.original",
+                    before.content,
+                    before.mode,
+                ))
             if present:
                 root, content, mode = replacement
                 writes.append((root / f"{index:06d}.replacement", content, mode))
@@ -809,6 +820,71 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     error_data=published.error_data,
                 ),
             )
+        grouped = tuple(item for item in staged if item.dependency_group is not None)
+        if grouped:
+            failed_paths = {Path(issue.file) for issue in published.value.issues}
+            failed_groups = {
+                item.dependency_group
+                for item in grouped
+                if item.before.path in failed_paths
+            }
+            admitted_paths = {
+                item.before.path for item in published.value.published_files
+            }
+            observed = journal_io.read(layout)
+            if observed.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(observed)
+            journal, snapshot = observed.value
+            entries = []
+            for entry in journal.entries:
+                destination = files.resolve_transaction(
+                    layout, entry.path, purpose="group admission"
+                )
+                if destination.failure:
+                    return r[m.Infra.CodegenPhaseOutcome].from_failure(destination)
+                entries.append(
+                    entry.model_copy(
+                        update={
+                            "group_admitted": entry.group_admitted
+                            or destination.value in admitted_paths,
+                            "recover_group": entry.recover_group
+                            or entry.dependency_group in failed_groups,
+                        }
+                    )
+                )
+            recorded = self._write_journal(
+                layout,
+                journal.model_copy(update={"entries": tuple(entries)}),
+                expected=snapshot,
+            )
+            if recorded.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(recorded)
+            if failed_groups:
+                recovered = self._recovery.restore_groups(
+                    layout,
+                    journal.model_copy(update={"entries": tuple(entries)}),
+                )
+                if recovered.failure:
+                    return r[m.Infra.CodegenPhaseOutcome].fail(
+                        published.value.issues[0].formatted,
+                        exception=published.value.exception,
+                        error_data={"cleanup_error": recovered.error},
+                    )
+                live = tuple(
+                    item
+                    for item in published.value.published_files
+                    if FlextInfraMiseArtifactsVerification.publications_live((
+                        item,
+                    )).success
+                )
+                published = r[m.Infra.CodegenPhaseOutcome].ok(
+                    published.value.model_copy(
+                        update={
+                            "published_files": live,
+                            "written_files": tuple(item.before.path for item in live),
+                        }
+                    ),
+                )
         return published
 
     def append_directories_locked(
@@ -945,12 +1021,20 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return self._settle_publication(session)
         finally:
             if published_files is not None:
-                published_files.extend(
-                    receipt
-                    for receipt in session.published_files
+                endpoints = {
+                    receipt.before.path: receipt for receipt in session.published_files
+                }
+                live_paths = {
+                    path
+                    for path, receipt in endpoints.items()
                     if FlextInfraMiseArtifactsVerification.publications_live(
                         (receipt,),
                     ).success
+                }
+                published_files.extend(
+                    receipt
+                    for receipt in session.published_files
+                    if receipt.before.path in live_paths
                 )
 
     def _settle_publication(

@@ -24,6 +24,74 @@ class TestsFlextInfraRefactorImportNormalization:
     """Each import-law rule observed through ``normalize_source``."""
 
     @classmethod
+    def test_own_import_alias_rewrites_only_bound_references(
+        cls, tmp_path: Path
+    ) -> None:
+        """The published name replaces the alias without changing homonyms or data."""
+        project, package = cls._project(tmp_path)
+        helper = package / "_utilities" / "helper.py"
+        helper.write_text(
+            "class DemoHelper:\n    marker = 'published'\n__all__ = ['DemoHelper']\n",
+            encoding="utf-8",
+        )
+        target = package / "consumer.py"
+        normalized = cls._normalize(
+            project,
+            target,
+            "from demo_pkg._utilities import DemoHelper as files\n"
+            "value = files.marker\n"
+            "literal = 'files'\n"
+            "def sibling(files: str) -> str:\n    return files\n",
+        )
+        tm.that(normalized, lacks="as files")
+        tm.that(normalized, has="value = DemoHelper.marker")
+        tm.that(normalized, has="return files")
+        tm.that(normalized, has="literal = 'files'")
+        target.write_text(normalized, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg.consumer import value, sibling, literal; "
+                        "assert value == 'published'; assert sibling('local') == 'local'; "
+                        "assert literal == 'files'"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=normalized,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    def test_own_import_alias_rejects_destination_capture(cls, tmp_path: Path) -> None:
+        """A local canonical-name parameter cannot capture an imported reference."""
+        project, package = cls._project(tmp_path)
+        target = package / "consumer.py"
+        source = (
+            "from demo_pkg._utilities import DemoHelper as files\n"
+            "def consumer(DemoHelper: str) -> str:\n    return files.marker\n"
+        )
+        target.write_text(source, encoding="utf-8")
+        with pytest.raises(ValueError, match="destination is occupied"):
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=source,
+            )
+        tm.that(target.read_text(encoding="utf-8"), eq=source)
+
+    @classmethod
     def test_runtime_promotion_rejects_reverse_namespace_edges(
         cls, tmp_path: Path
     ) -> None:

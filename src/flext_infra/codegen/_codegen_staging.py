@@ -259,8 +259,14 @@ class FlextInfraCodegenStaging:
         """
         result_type = r[t.Pair[tuple[Path, bytes, int], bool]]
         desired_mode = file_plan.desired_mode
-        if file_plan.desired_content is None:
+        if file_plan.desired_content is None and file_plan.dependency_group is None:
             return result_type.ok(((Path(), b"", 0), False))
+        if file_plan.desired_content is None:
+            desired_mode = (
+                file_plan.before.mode
+                if isinstance(file_plan.before, m.Cli.AtomicFileState)
+                else None
+            )
         if desired_mode is None:
             return result_type.fail(f"{phase} desired mode is absent: {file_plan.path}")
         phase_root = transaction_root / f"phase-{phase}"
@@ -283,8 +289,8 @@ class FlextInfraCodegenStaging:
                 )
             phase_roots[phase_root] = phase_root_before.value
         return result_type.ok((
-            (phase_root, file_plan.desired_content, desired_mode),
-            True,
+            (phase_root, file_plan.desired_content or b"", desired_mode),
+            file_plan.desired_content is not None,
         ))
 
     @staticmethod
@@ -314,6 +320,27 @@ class FlextInfraCodegenStaging:
             prepared,
         ):
             replacement: m.Cli.AtomicFileState | None = None
+            original_replacement: m.Cli.AtomicFileState | None = None
+            if file_plan.dependency_group is not None and before.content is not None:
+                original_path = replacement_input[0] / f"{index:06d}.original"
+                intent = next(
+                    (item for item in intents if item.before.path == original_path),
+                    None,
+                )
+                if intent is None or before.mode is None:
+                    return result_type.fail("group preimage has no durable intention")
+                original = process.write_new(
+                    original_path,
+                    before.content,
+                    before.mode,
+                    intent=intent,
+                )
+                if original.failure:
+                    return result_type.from_failure(original)
+                observed = files.read_state(original_path, required=True)
+                if observed.failure:
+                    return result_type.from_failure(observed)
+                original_replacement = observed.value
             if staged_present:
                 phase_root, desired_content, desired_mode = replacement_input
                 staged_path = phase_root / f"{index:06d}.replacement"
@@ -339,6 +366,8 @@ class FlextInfraCodegenStaging:
                 replacement = staged_state.value
             publications.append(
                 m.Infra.CodegenStagedFile(
+                    dependency_group=file_plan.dependency_group,
+                    original_replacement=original_replacement,
                     phase=c.Infra.CodegenStagedFilePhase(phase),
                     project=file_plan.project,
                     before=before,

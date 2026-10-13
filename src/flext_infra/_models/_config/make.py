@@ -14,7 +14,6 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
     FlextInfraExternalCacheDirectorySpec,
@@ -727,11 +726,7 @@ class FlextInfraConfigModelsMake(
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
                 raise ValueError(msg)
-            sweep_verbs = FlextInfraMakeContract.selector_free_make_verbs(
-                self.verbs,
-                tuple(c.Infra.MakeProfile),
-            )
-            if set(self.violations_sweep_repair_verbs) - sweep_verbs:
+            if set(self.violations_sweep_repair_verbs) - self.selector_free_verbs:
                 msg = (
                     "make violations sweep requires declared selector-free verbs "
                     "in every profile"
@@ -892,6 +887,17 @@ class FlextInfraConfigModelsMake(
             ):
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
+
+        @m.computed_field
+        @property
+        def selector_free_verbs(self) -> frozenset[str]:
+            """Argument-free operations available in every declared Make profile."""
+            profiles = set(c.Infra.MakeProfile)
+            return frozenset(
+                verb.name
+                for verb in self.verbs
+                if not verb.arguments and set(verb.profiles) == profiles
+            )
 
         @m.computed_field
         @property

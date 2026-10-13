@@ -67,6 +67,13 @@ native gates and receipt requirements. A successful publication is not proof of
 lint/type/test success or idempotence: run the applicable gates and repeated
 gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
 
+Protected-edit snapshots reobserve the native checker on every call. They do not
+reuse Python-level receipts keyed only by source bytes and gate names: those keys
+cannot authenticate effective configuration, tool runtime or imported dependencies.
+Native checker caches remain owned by their existing runtime/cache owners. Native
+execution and malformed-report failures stay separate from diagnostic occurrences;
+neither a repeated failure nor an unchanged finding count proves validation success.
+
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.

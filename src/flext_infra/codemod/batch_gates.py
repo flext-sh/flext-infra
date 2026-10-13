@@ -623,13 +623,7 @@ class FlextInfraModGateEngine:
             The scan report of exactly these findings, classes recounted.
 
         """
-        classes = [entry.classification for entry in entries]
         return m.Infra.ModScanReport(
-            findings=len(entries),
-            **{
-                field: classes.count(member)
-                for member, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items()
-            },
             files=frozenset(entry.file for entry in entries),
             entries=entries,
             source_states=source_states,
@@ -924,11 +918,6 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
-        counts: MutableMapping[c.Infra.ModScanFindingClass, int] = dict.fromkeys(
-            c.Infra.ModScanFindingClass,
-            0,
-        )
-        files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
         repository_roots = tuple(
             sorted(
@@ -958,17 +947,9 @@ class FlextInfraModGateEngine:
             if entry.failure:
                 return r[m.Infra.ModScanReport].from_failure(entry)
             entries.append(entry.value)
-            counts[entry.value.classification] += 1
-            files.add(entry.value.file)
         return r.ok(
-            m.Infra.ModScanReport(
-                findings=len(entries),
-                **{
-                    field: counts[member]
-                    for member, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items()
-                },
-                files=frozenset(files),
-                entries=tuple(entries),
+            cls.recounted(
+                tuple(entries),
                 source_states=tuple(source_states.values()),
             ),
         )

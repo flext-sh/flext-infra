@@ -161,6 +161,12 @@ namespace-enforce` / `refactor accessor-migrate` without `--apply` reports
   without writing) and publish their structured receipts under
   `.reports/refactor/`; a second run over a converged tree writes nothing.
 
+`flext-infra refactor namespace-enforce --module <dotted-module> --apply` limits
+import normalization and declared relocations to one owned source module. An unknown
+or ambiguous module fails before effects. The shared import-normalization phase also
+removes own-package import aliases, preserves shadowed homonyms and rejects canonical
+name capture; `make mod` consumes that same owner.
+
 The public `flext-infra refactor move-module` command moves an existing module
 through the same Rope engine and rewrites its import references. Its required
 `--repository-root`, `--source-file`, and `--destination-directory` arguments

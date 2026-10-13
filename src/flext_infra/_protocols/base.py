@@ -22,18 +22,6 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
-    class MakeOperation(Protocol):
-        """Read-only Make capabilities required by selector-free election."""
-
-        @property
-        def name(self) -> str: ...
-
-        @property
-        def arguments(self) -> t.StrSequence: ...
-
-        @property
-        def profiles(self) -> t.SequenceOf[c.Infra.MakeProfile]: ...
-
     @runtime_checkable
     class FunctionDescriptor(Protocol):
         """Native descriptor capability used to authenticate its defining function."""

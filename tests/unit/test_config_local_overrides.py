@@ -25,21 +25,24 @@ class TestsFlextInfraConfigLocalOverrides:
         make = FlextInfraConfig.fetch_global().Infra.codegen.make
         profiles = tuple(c.Infra.MakeProfile)
         operation = next(verb for verb in make.verbs if not verb.arguments)
+        operation = operation.model_copy(
+            update={"name": f"{operation.name}-renamed", "profiles": profiles[::-1]},
+        )
         for update in (
             {"arguments": ("INPUT",)},
             {"profiles": profiles[:1]},
         ):
             rejected = operation.model_copy(update=update)
-            elected = u.Infra.selector_free_make_verbs((rejected,), profiles)
-            tm.that(elected, eq=frozenset())
+            candidate = make.model_copy(update={"verbs": (rejected,)})
+            tm.that(rejected.name in candidate.selector_free_verbs, eq=False)
             payload = make.model_dump(round_trip=True)
             payload.update(
                 verbs=(rejected,), violations_sweep_repair_verbs=(rejected.name,)
             )
             with pytest.raises(ValueError, match="declared selector-free verbs"):
                 type(make).model_validate(payload)
-        elected = u.Infra.selector_free_make_verbs(make.verbs, profiles)
-        tm.that(elected, has=operation.name)
+        candidate = make.model_copy(update={"verbs": (operation,)})
+        tm.that(operation.name in candidate.selector_free_verbs, eq=True)
 
     @staticmethod
     def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:
@@ -49,9 +52,9 @@ class TestsFlextInfraConfigLocalOverrides:
         tm.that(type(policy).model_validate_json(policy.model_dump_json()), eq=policy)
         for spec in (make.ruff_cache, make.mypy_cache):
             cache_type = type(spec)
-            cache = cache_type.model_validate({
-                "external_storage_directory": spec.external_storage_directory,
-            })
+            cache = cache_type.model_validate(
+                {"external_storage_directory": spec.external_storage_directory},
+            )
             tm.that(
                 cache.data_home_environment_variable,
                 eq=c.Infra.MypyCacheEnvironment.DATA_HOME.value,
@@ -127,7 +130,9 @@ class TestsFlextInfraConfigLocalOverrides:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A dict-typed registry gains the local entry and keeps tracked ones."""
-        baseline = FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
+        baseline = (
+            FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
+        )
         self._copy_tracked_configs(tmp_path)
         (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
             "Infra:\n"
@@ -158,11 +163,13 @@ class TestsFlextInfraConfigLocalOverrides:
         directory = root / c.Infra.CODEGEN_CONFIG_DIR
         directory.mkdir(parents=True)
         (directory / "codegen.yaml").write_text(
-            "Infra:\n  codegen:\n    make:\n      docs:\n        overview_preview_limits:\n          aliases: 23\n",
+            "Infra:\n  codegen:\n    make:\n      docs:\n"
+            "        overview_preview_limits:\n          aliases: 23\n",
             encoding="utf-8",
         )
         (directory / "codegen.local.yaml").write_text(
-            "Infra:\n  codegen:\n    make:\n      docs:\n        overview_preview_limits:\n          aliases: 31\n",
+            "Infra:\n  codegen:\n    make:\n      docs:\n"
+            "        overview_preview_limits:\n          aliases: 31\n",
             encoding="utf-8",
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))

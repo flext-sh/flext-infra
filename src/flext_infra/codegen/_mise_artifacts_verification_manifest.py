@@ -259,6 +259,14 @@ class FlextInfraMiseArtifactsVerificationManifest:
         if file_specs.failure:
             return r[bool].from_failure(file_specs)
         consumable = set(file_specs.value)
+        for entry in journal.entries:
+            if entry.recover_group and entry.original_staging is not None:
+                preimage = files.resolve_transaction(
+                    layout, entry.original_staging, purpose="group preimage consumption"
+                )
+                if preimage.failure:
+                    return r[bool].from_failure(preimage)
+                consumable.add(preimage.value)
         expected_check = cls._verified_expected_entries(expected, current, consumable)
         if expected_check.failure:
             return expected_check

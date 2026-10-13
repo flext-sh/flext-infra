@@ -14,7 +14,11 @@ from pathlib import Path
 import flext_tests
 import pytest
 
-from flext_infra import infra
+from flext_infra import infra, p, r
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from tests import c, m, t, tm, u
@@ -605,6 +609,123 @@ class TestsFlextInfraDeclarationRelocation:
             )
         for path, source in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("refused", ["destination", "exposure"])
+    def test_failed_dependent_group_preserves_independent_public_runtime(
+        tmp_path: Path,
+        refused: str,
+    ) -> None:
+        """A native destination refusal recovers only its invocation's dependent group."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body="count: int = Field(default=3)",
+        )
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        target = next(path for path in sources if path.parent.name == "_models")
+        package = target.parent.parent
+        blocked = target if refused == "destination" else package / "models.py"
+        independent = root / "independent.py"
+        independent.write_text("VALUE = 'before'\n", encoding="utf-8")
+        independent_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(independent, required=True)
+        )
+        plans = [
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=independent,
+                before=independent_before,
+                desired_content=b"VALUE = 'after'\n",
+                desired_mode=independent_before.mode,
+            )
+        ]
+        for edit in edits:
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)
+            )
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=edit.file_path,
+                    before=before,
+                    desired_content=edit.updated_source.encode("utf-8"),
+                    desired_mode=before.mode,
+                    dependency_group=package.name,
+                )
+            )
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        receipts: list[m.Infra.CodegenStagedFile] = []
+
+        def refuse_destination(
+            session: m.Infra.CodegenTransactionSession,
+            _staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(blocked, required=True))
+            tm.ok(
+                u.Cli.atomic_write_binary_file_guarded(
+                    before,
+                    sources[blocked].encode("utf-8")
+                    + b"\n# authored destination change\n",
+                    permission_mode=before.mode,
+                )
+            )
+            return r[m.Infra.CodegenTransactionSession].ok(session)
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            started = transaction.begin_files_locked(scope, {root.name: root}, ())
+            if started.failure:
+                return r[t.VariadicTuple[Path]].from_failure(started)
+            admitted = transaction.append_phase_locked(
+                started.value,
+                c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                tuple(plans),
+                staged_validator=refuse_destination,
+            )
+            if admitted.failure:
+                return r[t.VariadicTuple[Path]].from_failure(admitted)
+            return transaction.commit_locked(admitted.value, published_files=receipts)
+
+        failed = transaction.run_files_locked(root, {root.name: root}, publish)
+        tm.fail(failed)
+        tm.that(independent.read_text(encoding="utf-8"), eq="VALUE = 'after'\n")
+        tm.that(
+            blocked.read_text(encoding="utf-8"),
+            eq=sources[blocked] + "\n# authored destination change\n",
+        )
+        for path, source in sources.items():
+            if path != blocked:
+                tm.that(path.read_text(encoding="utf-8"), eq=source)
+        tm.that(tuple(item.before.path for item in receipts), eq=(independent,))
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        f"from {package.name}.consumer import build; "
+                        f"from {package.name} import u; "
+                        "from independent import VALUE; "
+                        "assert build().__class__ is u.Payload; "
+                        "assert build().count == 3; assert VALUE == 'after'"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent) + ":" + str(root)}
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
 
     @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:

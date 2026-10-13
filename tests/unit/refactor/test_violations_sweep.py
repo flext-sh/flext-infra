@@ -59,6 +59,11 @@ class TestsFlextInfraRefactorViolationsSweep:
                     "rule:\n  pattern: marker = tuple()\nfix: |\n"
                     "  from __future__ import annotations\n  marker = list()\n"
                 ),
+                "absent-future": (
+                    "id: absent-future\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  kind: module\n  not:\n    has:\n"
+                    "      pattern: from __future__ import annotations\n"
+                ),
             },
         )
         tm.ok(u.Tests.create_python_environment(root))
@@ -147,9 +152,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                             )
         if drift == "none":
             rows = u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
-            future = next(
-                row for row in rows if row.rule_id == "require-future-annotations"
-            )
+            future = next(row for row in rows if row.rule_id == "absent-future")
             tm.that(future.resolved, eq=1)
             tm.that(future.semantic_correspondence_proven, eq=True)
         else:
@@ -200,8 +203,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         )
 
     @pytest.mark.parametrize("copies", [1, 2])
+    @pytest.mark.parametrize("prefix", ["", "\n", "# \u03b1\n"])
     def test_published_module_absence_preserves_locus_not_changed_declarations(
-        self, mod_workspace: Path, copies: int
+        self, mod_workspace: Path, copies: int, prefix: str
     ) -> None:
         """Real publication preserves root absence, never equal-total call swaps."""
         self._prepare(mod_workspace, makefile=self._makefile(), local_rule=False)
@@ -236,7 +240,9 @@ class TestsFlextInfraRefactorViolationsSweep:
             },
         )
         sample = mod_workspace / "accounting.py"
-        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * copies))
+        tm.ok(
+            u.Cli.atomic_write_text_file(sample, prefix + "marker = dict()\n" * copies)
+        )
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         chain: list[m.Infra.CodegenStagedFile] = []
         tm.ok(
@@ -329,19 +335,34 @@ class TestsFlextInfraRefactorViolationsSweep:
         with pytest.raises(ValueError, match="catalog correspondence changed"):
             u.Infra.rule_deltas(before, changed_catalog, publication_chain=tuple(chain))
 
+    @pytest.mark.parametrize("counts", [(2, 0), (2, 1), (1, 2), (0, 0)])
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
         self,
         mod_workspace: Path,
+        counts: tuple[int, int],
     ) -> None:
         """The single utility owner retains complete per-rule evidence fields."""
         self._prepare(mod_workspace, makefile=self._makefile(), local_rule=True)
         sample = mod_workspace / "sample.py"
-        tm.ok(
-            u.Cli.atomic_write_text_file(sample, "marker = dict()\nmarker = dict()\n")
-        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * counts[0]))
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
-        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = tuple()\n"))
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * counts[1]))
         after = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
+        )
+        for classification, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items():
+            tm.that(
+                getattr(evidence, field),
+                eq=sum(
+                    entry.classification == classification for entry in after.entries
+                ),
+            )
+        with pytest.raises(ValueError, match="deferred differs"):
+            m.Infra.ModScanEvidence.model_validate({
+                **evidence.model_dump(mode="json"),
+                "deferred": evidence.deferred + 1,
+            })
         plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace))
         inventory = tuple(
             (project.name, rule.id)
@@ -349,19 +370,31 @@ class TestsFlextInfraRefactorViolationsSweep:
             for rule in plan.rules
         )
         deltas = u.Infra.rule_deltas(before, after, inventory=inventory)
-        tm.that({(row.repository, row.rule_id) for row in deltas}, eq=set(inventory))
-        delta = next(row for row in deltas if row.rule_id == "sweep-growth")
-        tm.that((delta.before, delta.after, delta.resolved), eq=(2, 0, 2))
-        tm.that((delta.persisted, delta.introduced), eq=(0, 0))
         tm.that(
-            delta.before_entries,
-            eq=tuple(
-                index
-                for index, entry in enumerate(before.entries)
-                if entry.rule_id == delta.rule_id
-            ),
+            [(row.repository, row.rule_id) for row in deltas], eq=sorted(set(inventory))
         )
-        tm.that(delta.after_entries, eq=())
+        delta = next(row for row in deltas if row.rule_id == "sweep-growth")
+        persisted = min(counts)
+        tm.that((delta.before, delta.after), eq=counts)
+        tm.that(
+            (delta.resolved, delta.introduced),
+            eq=tuple(count - persisted for count in counts),
+        )
+        tm.that(delta.persisted, eq=persisted)
+        for row in deltas:
+            for report, indexes in (
+                (before, row.before_entries),
+                (after, row.after_entries),
+            ):
+                tm.that(
+                    indexes,
+                    eq=tuple(
+                        index
+                        for index, entry in enumerate(report.entries)
+                        if (entry.repository, entry.rule_id)
+                        == (row.repository, row.rule_id)
+                    ),
+                )
         tm.that(delta.semantic_correspondence_proven, eq=False)
 
     @staticmethod

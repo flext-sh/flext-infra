@@ -12,7 +12,10 @@ from flext_cli import cli
 
 from flext_infra import c, m, r, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.refactor import FlextInfraNamespaceEnforcerProjectMixin
+from flext_infra.refactor import (
+    FlextInfraImportNormalization,
+    FlextInfraNamespaceEnforcerProjectMixin,
+)
 from flext_infra.refactor.namespace_relocations import (
     FlextInfraNamespaceRelocationCascade,
 )
@@ -39,6 +42,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         *,
         apply: bool = False,
         project_names: t.StrSequence | None = None,
+        module: str | None = None,
         gates: t.StrSequence | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
@@ -46,6 +50,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         Args:
             apply: If True, auto-fix detected violations.
             project_names: If provided, only enforce these projects.
+            module: If provided, normalize and relocate only this dotted module.
             gates: If provided, only run these enforcement gates.
 
         Returns:
@@ -61,14 +66,42 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         files_by_project = {
             root: cascade.scoped_py_files(root) for root in project_roots
         }
+        if module is not None:
+            files_by_project = {
+                root: tuple(
+                    path
+                    for path in paths
+                    if u.Infra.module_name_for_file(path, project_root=root) == module
+                )
+                for root, paths in files_by_project.items()
+            }
+            if sum(len(paths) for paths in files_by_project.values()) != 1:
+                msg = f"namespace scope requires one owned module: {module}"
+                raise ValueError(msg)
+            files_by_project = {
+                root: paths for root, paths in files_by_project.items() if paths
+            }
+        scoped = frozenset(
+            path for paths in files_by_project.values() for path in paths
+        )
         before_plan = u.Infra.codemod_rule_plan(self._repository_root).unwrap()
         before = FlextInfraModGateEngine.scan(self._repository_root, fix=False).unwrap()
+        before = before.model_copy(
+            update={
+                "entries": tuple(
+                    entry
+                    for entry in before.entries
+                    if (self._repository_root / entry.file).resolve() in scoped
+                ),
+            }
+        )
         if apply:
-            for project_root in files_by_project:
+            for project_root, py_files in files_by_project.items():
+                if module is not None:
+                    FlextInfraImportNormalization.apply_files(project_root, py_files)
                 relocation_ids = tuple(cascade.relocation_by_rule(project_root))
                 if not relocation_ids:
                     continue
-                py_files = cascade.scoped_py_files(project_root)
                 current = FlextInfraModGateEngine.scan(
                     project_root, fix=False, rule_ids=relocation_ids
                 ).unwrap()
@@ -85,6 +118,15 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
             FlextInfraModGateEngine.scan(self._repository_root, fix=False).unwrap()
             if apply
             else before
+        )
+        after = after.model_copy(
+            update={
+                "entries": tuple(
+                    entry
+                    for entry in after.entries
+                    if (self._repository_root / entry.file).resolve() in scoped
+                ),
+            }
         )
         after_plan = (
             u.Infra.codemod_rule_plan(self._repository_root).unwrap()
@@ -207,6 +249,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         report = enforcer.enforce(
             apply=params.apply,
             project_names=params.project_names,
+            module=params.module,
             gates=params.gates,
         )
         cli.display_text(cls.render_text(report))

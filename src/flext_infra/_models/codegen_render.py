@@ -13,12 +13,12 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsDepsToolConfig
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
 from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
 from flext_infra._models._config.render import FlextInfraConfigModelsRender
+from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 
 
 class FlextInfraModelsCodegenRender:

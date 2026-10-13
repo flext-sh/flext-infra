@@ -418,12 +418,11 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.that(receipt.attempted_files, eq=(initializer,))
         tm.that(receipt.pending_files, eq=())
         tm.that(receipt.completed, eq=False)
-        assert receipt.transaction_id is not None
-        digest = u.Cli.sha256_content(receipt.model_dump_json())
+        transaction_id = tm.not_none(receipt.transaction_id)
         history = (
             report_path.with_suffix("")
-            / receipt.transaction_id
-            / f"{digest}{report_path.suffix}"
+            / transaction_id
+            / f"{u.Cli.sha256_content(receipt.model_dump_json())}{report_path.suffix}"
         )
         tm.that(history.is_file(), eq=True)
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))

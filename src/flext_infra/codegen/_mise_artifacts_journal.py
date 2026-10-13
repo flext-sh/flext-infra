@@ -681,6 +681,20 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             desired_staging = staging.value
         return r[m.Infra.CodegenJournalEntry].ok(
             m.Infra.CodegenJournalEntry(
+                dependency_group=publication.dependency_group,
+                original_staging=(
+                    files.transaction_relative(
+                        plan.layout, publication.original_replacement.path
+                    ).unwrap()
+                    if publication.original_replacement is not None
+                    else None
+                ),
+                original_content_hex=(
+                    before.content.hex()
+                    if publication.dependency_group is not None
+                    and before.content is not None
+                    else None
+                ),
                 phase=publication.phase,
                 project=project.selector,
                 path=selector,

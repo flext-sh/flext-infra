@@ -640,11 +640,7 @@ class FlextInfraUtilitiesCodemodRules:
         provider: str,
         config: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
-        """Read the complete declared catalog before execution scope election.
-
-        Returns:
-            Every validated rule declaration owned by the provider configuration.
-        """
+        """Read every validated catalog declaration before execution election."""
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -845,6 +841,7 @@ class FlextInfraUtilitiesCodemodRules:
         alternatives = negative.get("any") if isinstance(negative, Mapping) else None
         module_absence = (
             isinstance(detector, Mapping)
+            and str(parsed_rule["language"]).casefold() == "python"
             and set(detector) == {"kind", "not"}
             and detector.get("kind") == "module"
             and isinstance(negative, Mapping)

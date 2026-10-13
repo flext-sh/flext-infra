@@ -8,11 +8,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
@@ -176,10 +177,82 @@ class FlextInfraModelsScan:
             m.Field(ge=0, strict=True, description="Exclusive end byte"),
         ]
 
-    class ModScanReport(m.ArbitraryTypesModel):
-        """Verified structural findings and actionable rewrite targets."""
+    class ModScanCounts(m.ArbitraryTypesModel):
+        """Authenticated findings are the sole source of serialized scan counts."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        entries: Annotated[
+            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
+            m.Field(description="Every validated ast-grep finding in stable order"),
+        ]
+
+        @m.model_validator(mode="wrap")
+        @classmethod
+        def validate_serialized_counts(
+            cls, value: t.ModelInput, handler: p.ModelWrapValidatorHandler[Self]
+        ) -> Self:
+            """Validate serialized projections against their parsed native entries."""
+            if not isinstance(value, Mapping):
+                return handler(value)
+            counts = {
+                name: value[name] for name in cls.model_computed_fields if name in value
+            }
+            result = handler({
+                name: item for name, item in value.items() if name not in counts
+            })
+            for name, count in counts.items():
+                if count != getattr(result, name):
+                    msg = f"mod scan {name} differs from authenticated entries"
+                    raise ValueError(msg)
+            return result
+
+        @m.computed_field
+        @property
+        def findings(self) -> int:
+            """Complete native occurrence count, including source drift."""
+            return len(self.entries)
+
+        @m.computed_field
+        @property
+        def actionable(self) -> int:
+            """Native occurrences whose admitted fix changes source bytes."""
+            return sum(
+                entry.classification == c.Infra.ModScanFindingClass.ACTIONABLE
+                for entry in self.entries
+            )
+
+        @m.computed_field
+        @property
+        def detection_only(self) -> int:
+            """Native occurrences produced by rules without a fix."""
+            return sum(
+                entry.classification == c.Infra.ModScanFindingClass.DETECTION_ONLY
+                for entry in self.entries
+            )
+
+        @m.computed_field
+        @property
+        def non_actionable_with_fix(self) -> int:
+            """Native occurrences whose declared fix leaves identical bytes."""
+            return sum(
+                entry.classification
+                == c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
+                for entry in self.entries
+            )
+
+        @m.computed_field
+        @property
+        def deferred(self) -> int:
+            """Drifted native occurrences retained as evidence, never admitted edits."""
+            return sum(
+                entry.classification
+                == c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
+                for entry in self.entries
+            )
+
+    class ModScanReport(ModScanCounts):
+        """Verified structural findings and actionable rewrite targets."""
 
         source_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...] | None,
@@ -187,40 +260,9 @@ class FlextInfraModelsScan:
                 description="Complete authenticated scan inventory, including zero findings"
             ),
         ] = None
-
-        findings: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Complete finding count"),
-        ]
-        actionable: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Byte-changing rewrite count"),
-        ]
-        detection_only: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings produced by rules without a fix"),
-        ]
-        non_actionable_with_fix: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings whose declared fix is byte-identical"),
-        ]
-        deferred: Annotated[
-            t.NonNegativeInt,
-            m.Field(
-                description=(
-                    "Findings deferred because their source bytes changed "
-                    "during scanning; publication never applies them and "
-                    "the next scan re-authenticates or stops reporting them"
-                ),
-            ),
-        ] = 0
         files: Annotated[
             frozenset[Path],
             m.Field(description="Files containing findings"),
-        ]
-        entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
-            m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
     class ModTextRule(m.ArbitraryTypesModel):
@@ -316,7 +358,7 @@ class FlextInfraModelsScan:
             m.Field(description="Every validated text finding in stable order"),
         ]
 
-    class ModScanEvidence(m.ArbitraryTypesModel):
+    class ModScanEvidence(ModScanCounts):
         """Complete replace-on-run evidence for one public mod scan."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
@@ -334,22 +376,6 @@ class FlextInfraModelsScan:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Exact ast-grep target scope"),
         ]
-        findings: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Complete finding count"),
-        ]
-        actionable: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Byte-changing rewrite count"),
-        ]
-        detection_only: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings produced by rules without a fix"),
-        ]
-        non_actionable_with_fix: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings whose declared fix is byte-identical"),
-        ]
         totals_by_class: Annotated[
             t.MappingKV[c.Infra.ModScanFindingClass, t.NonNegativeInt],
             m.Field(description="Complete finding totals by mutability class"),
@@ -361,10 +387,6 @@ class FlextInfraModelsScan:
         totals_by_rule: Annotated[
             t.MappingKV[str, t.NonNegativeInt],
             m.Field(description="Complete finding totals by rule identifier"),
-        ]
-        entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
-            m.Field(description="Every finding in deterministic scan order"),
         ]
 
     class ModScanEvidenceReceipt(m.ArbitraryTypesModel):

@@ -546,20 +546,11 @@ class FlextInfraUtilitiesCodemodProject(
             FlextInfraUtilitiesRopeCore.open_project(root) as project,
             project.frozen_layout(),
         ):
-            search_roots = tuple(
-                folder
-                for folder in (
-                    *project.get_source_folders(),
-                    *project.get_python_path_folders(),
-                )
-                if isinstance(folder, p.Infra.RopeRoot)
-            )
             lookup = m.Infra.CodemodImportResources(
                 modules={
                     (name, None, 0): project.find_module(name)
                     for name in dict.fromkeys(modules)
                 },
-                folders={folder.real_path: folder for folder in search_roots},
             )
             pending = [
                 project.get_resource(path.relative_to(root.resolve()).as_posix())
@@ -585,7 +576,6 @@ class FlextInfraUtilitiesCodemodProject(
                     resource,
                     tree,
                     lookup,
-                    search_roots,
                 ):
                     if imported.real_path not in scheduled:
                         scheduled.add(imported.real_path)
@@ -656,7 +646,6 @@ class FlextInfraUtilitiesCodemodProject(
         resource: t.Infra.RopeResource,
         tree: ast.Module,
         lookup: m.Infra.CodemodImportResources,
-        search_roots: t.SequenceOf[p.Infra.RopeRoot],
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of every import inside one module tree.
 
@@ -665,10 +654,6 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         found: list[t.Infra.RopeResource] = []
-        relative_roots = (
-            (resource.parent,) if isinstance(resource.parent, p.Infra.RopeRoot) else ()
-        )
-        folders = ((*search_roots, *relative_roots), relative_roots)
         pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
         while pending:
             node = pending.popleft()
@@ -679,7 +664,6 @@ class FlextInfraUtilitiesCodemodProject(
                         resource,
                         node,
                         lookup,
-                        folders,
                     ),
                 )
             # Imports are statements. Exception handlers and match cases are
@@ -699,10 +683,6 @@ class FlextInfraUtilitiesCodemodProject(
         resource: t.Infra.RopeResource,
         node: ast.AST,
         lookup: m.Infra.CodemodImportResources,
-        folders: t.Pair[
-            t.SequenceOf[p.Infra.RopeRoot],
-            t.SequenceOf[p.Infra.RopeRoot],
-        ],
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of one import statement's targets.
 
@@ -734,70 +714,17 @@ class FlextInfraUtilitiesCodemodProject(
         for alias in node.names:
             if alias.name == "*":
                 continue
-            child = cls._snapshot_child_imported_resource(
-                (project, resource),
-                (node.module or "", alias.name),
+            qualified = f"{node.module}.{alias.name}" if node.module else alias.name
+            child = cls._snapshot_imported_resource(
+                project,
+                resource,
+                qualified,
                 level=level,
                 lookup=lookup,
-                folders=folders[1 if level else 0],
             )
             if child is not None:
                 found.append(child)
         return found
-
-    @staticmethod
-    def _snapshot_child_imported_resource(
-        frame: t.Pair[p.Infra.RopeProject, t.Infra.RopeResource],
-        names: t.Pair[str, str],
-        *,
-        level: int,
-        lookup: m.Infra.CodemodImportResources,
-        folders: t.SequenceOf[p.Infra.RopeRoot],
-    ) -> t.Infra.RopeResource | None:
-        """Resolve descendants in the SDK's complete search-root order.
-
-        The SDK elects a same-named directory before a module file. Only an
-        elected folder can contain descendants in that search root; later
-        roots retain their independent package and namespace resolution.
-
-        Returns:
-            The first real child module in the native resolution order.
-
-        """
-        project, resource = frame
-        modules_by_name = lookup.modules
-        parent_name, child_name = names
-        qualified = f"{parent_name}.{child_name}" if parent_name else child_name
-        key = (qualified, resource.parent.real_path, level)
-        if key in modules_by_name:
-            return modules_by_name[key]
-        modules_by_name[key] = None
-        for folder in folders:
-            parent_key = (parent_name, folder.real_path, level or 1)
-            if parent_key not in modules_by_name:
-                modules_by_name[parent_key] = project.find_relative_module(
-                    parent_name, folder, level or 1
-                )
-            elected = modules_by_name[parent_key]
-            if elected is None:
-                continue
-            if elected.real_path not in lookup.folders:
-                lookup.folders[elected.real_path] = (
-                    elected if isinstance(elected, p.Infra.RopeRoot) else None
-                )
-            parent = lookup.folders[elected.real_path]
-            if parent is None:
-                continue
-            child_key = (child_name, parent.real_path, 1)
-            if child_key not in modules_by_name:
-                modules_by_name[child_key] = project.find_relative_module(
-                    child_name, parent, 1
-                )
-            child = modules_by_name[child_key]
-            if child is not None:
-                modules_by_name[key] = child
-                break
-        return modules_by_name[key]
 
     @staticmethod
     def _snapshot_imported_resource(

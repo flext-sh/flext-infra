@@ -12,6 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests import tm, u
 
@@ -21,6 +23,14 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraCodegenScaffolder:
     """Tests for ``FlextInfraCodegenScaffolder``."""
+
+    def test_missing_repository_propagates_discovery_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """A missing repository cannot produce a successful empty scaffold."""
+        missing = tmp_path / "missing"
+        with pytest.raises(RuntimeError, match=str(missing)):
+            FlextInfraCodegenScaffolder(repository_root=missing).run()
 
     @staticmethod
     def _create_test_project(
