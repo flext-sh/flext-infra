@@ -58,7 +58,15 @@ class FlextInfraConfigModelsScaffold:
         def validate_requirements(
             cls, requirements: t.VariadicTuple[str]
         ) -> t.VariadicTuple[str]:
-            """Reject invalid PEP 508 policy before any dependency writer runs."""
+            """Reject invalid PEP 508 policy before any dependency writer runs.
+
+            Args:
+                requirements: A tuple of requirement strings to validate.
+
+            Returns:
+                The validated tuple of requirement strings.
+
+            """
             for requirement in requirements:
                 Requirement(requirement)
             return requirements

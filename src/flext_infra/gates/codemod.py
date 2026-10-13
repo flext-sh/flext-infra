@@ -177,22 +177,30 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 project_dir,
                 tuple(rules_by_id[finding.rule_id] for finding in report.root),
             )
-            snapshot = u.Infra.codemod_binding_snapshot(
-                project_dir,
+            binding_ids, binding_modules = u.Infra.codemod_binding_requirements(
                 tuple(
-                    u.Cli.atomic_read_binary_file_state(
-                        u.Infra.codemod_source_path(project_dir, Path(finding.file)),
-                        required=True,
-                    ).unwrap()
-                    for finding in report.root
+                    rules_by_id[rule_id]
+                    for rule_id in sorted({finding.rule_id for finding in report.root})
                 ),
-                tuple(
-                    condition.arg[0]
-                    for finding in report.root
-                    for condition in rules_by_id[finding.rule_id].context
-                    if condition.predicate
-                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
-                ),
+            )
+            snapshot = (
+                u.Infra.codemod_binding_snapshot(
+                    project_dir,
+                    tuple(
+                        u.Cli.atomic_read_binary_file_state(
+                            path,
+                            required=True,
+                        ).unwrap()
+                        for path in dict.fromkeys(
+                            u.Infra.codemod_source_path(project_dir, Path(finding.file))
+                            for finding in report.root
+                            if finding.rule_id in binding_ids
+                        )
+                    ),
+                    binding_modules,
+                )
+                if binding_ids
+                else m.Infra.CodemodBindingSnapshot(states=())
             )
             with u.Infra.codemod_binding_project(project_dir, snapshot) as (
                 project,

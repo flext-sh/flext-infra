@@ -890,11 +890,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         destination = project.get_pymodule(
             project.get_resource(target.relative_to(root).as_posix()),
         ).get_scope()
-        imports: t.MutableMappingKV[str, ast.Import | ast.ImportFrom] = {}
-        for statement in ast.parse(source).body:
-            if isinstance(statement, ast.Import | ast.ImportFrom):
-                for alias in statement.names:
-                    imports[alias.asname or alias.name.split(".")[0]] = statement
         module = project.get_pymodule(
             project.get_resource(origin.relative_to(root).as_posix()),
         )
@@ -904,6 +899,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 f"declaration-relocation: missing module scope for {origin} or {target}"
             )
             raise ValueError(msg)
+        imports: t.MutableMappingKV[str, ast.Import | ast.ImportFrom] = {}
+        statements = list(ast.parse(source).body)
+        guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
+        while statements:
+            statement = statements.pop(0)
+            if isinstance(statement, ast.Import | ast.ImportFrom):
+                for alias in statement.names:
+                    imports[alias.asname or alias.name.split(".")[0]] = statement
+            elif isinstance(statement, ast.If) and runtime.same_name(
+                guard, runtime.resolve_symbol(scope, statement.test)
+            ):
+                statements[0:0] = statement.body
         dependencies, required = cls._payload_dependency_routes(
             (project, scope),
             destination,

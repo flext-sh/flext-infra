@@ -70,6 +70,12 @@ class FlextInfraModelsCodegenTransactionModels:
         updates: t.MappingKV[Path, str] = m.Field(
             description="Desired source updates keyed by live destination"
         )
+        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+            description="Original project layouts in the desired import closure",
+        )
+        workspace_packages: t.StrSequence = m.Field(
+            description="Declared workspace namespaces with sealed candidate origins",
+        )
 
     class StagePackageView(m.ArbitraryTypesModel):
         """Journal-owned materialized package view, never another source of truth."""

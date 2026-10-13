@@ -11,12 +11,37 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsCodemod
+from flext_infra import c, p, t
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
 class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
+
+    class CodemodImportResources(m.ArbitraryTypesModel):
+        """One frozen-layout invocation's native module and folder elections."""
+
+        modules: Annotated[
+            t.MutableMappingKV[
+                t.Triple[str, str | None, int],
+                t.Infra.RopeResource | None,
+            ],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Elected native module resources keyed by invocation identity"
+                ),
+            ),
+        ]
+        folders: Annotated[
+            t.MutableMappingKV[str, p.Infra.RopeRoot | None],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Verified folder capabilities keyed by native resource path"
+                ),
+            ),
+        ]
 
     class CodemodContextCondition(m.ArbitraryTypesModel):
         """One project-context condition over a captured metavariable."""
@@ -171,6 +196,12 @@ class FlextInfraModelsRefactorGrep:
         rulesets: Annotated[
             t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRuleset],
             m.Field(description="Executable provider configs in precedence order"),
+        ]
+        project_rule_ids: Annotated[
+            t.MappingKV[Path, t.StrSequence],
+            m.Field(
+                description="Absolute governed roots and their applicable rule IDs"
+            ),
         ]
 
     class CodemodProjectFacts(m.ArbitraryTypesModel):
@@ -357,11 +388,11 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Unified diff preview for the file"),
         ] = ""
         lint_before: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             m.Field(description="Lint output before the proposed rewrite"),
         ]
         lint_after: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             m.Field(description="Lint output after the proposed rewrite"),
         ]
         new_lint_errors: Annotated[
@@ -420,4 +451,4 @@ class FlextInfraModelsRefactorGrep:
         )
 
 
-__all__: list[str] = ["FlextInfraModelsRefactorGrep"]
+__all__ = ("FlextInfraModelsRefactorGrep",)

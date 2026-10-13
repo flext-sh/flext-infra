@@ -341,6 +341,6 @@ class TestsFlextInfraDepsModernizerHelpers:
     @staticmethod
     @pytest.mark.parametrize("requirement", ["example>=broken", "example; broken", ""])
     def test_rewrite_rejects_invalid_requirement(requirement: str) -> None:
-        """Invalid declarations retain the native parser diagnostic, even if unresolved."""
+        """Unresolved invalid declarations retain the native parser diagnostic."""
         with pytest.raises(InvalidRequirement):
             u.Infra.rewrite_requirement_constraint(requirement, resolved_versions={})

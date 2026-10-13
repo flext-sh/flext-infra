@@ -181,28 +181,36 @@ class TestsFlextInfraCodemodGate:
         tm.that(execution.result.passed, eq=True, msg=str(execution.issues))
         tm.that(execution.issues, empty=True)
 
-    def test_manifest_external_file_does_not_hide_owned_sibling(
+    def test_unmanaged_git_submodule_does_not_hide_owned_sibling(
         self,
         tmp_path: Path,
     ) -> None:
-        """Exclude the declared foreign file while enforcing an owned sibling."""
+        """Git excludes its foreign subtree while the sibling stays enforced."""
         project = self._project(tmp_path)
-        manifest = u.Tests.write_standalone_workspace_manifest(
+        declaration = u.Tests.declare_workspace_projects(
             project,
-            "scanner-contract",
+            ("src/vendor",),
         )
-        declared = m.Infra.WorkspaceManifestSpec.model_validate(
-            u.Cli.config_load(manifest, expand_env=False).unwrap().data,
-        ).model_copy(
-            update={
-                "external_dependency_paths": (
-                    (project / "src/vendor.py").relative_to(project),
+        tm.ok(
+            u.Cli.run_checked(
+                (
+                    "git",
+                    "config",
+                    "--file",
+                    str(declaration),
+                    "submodule.src/vendor.managed",
+                    "false",
                 ),
-            }
+                cwd=project,
+            ),
         )
-        tm.ok(u.Cli.yaml_dump(manifest, declared.model_dump(mode="json")))
-        (project / "src" / "vendor.py").write_text("second(1)\n", encoding="utf-8")
-        (project / "src" / "owned.py").write_text("second(2)\n", encoding="utf-8")
+        vendor = project / "src" / "vendor"
+        vendor.mkdir()
+        (vendor / "subject.py").write_text("second(1)\n", encoding="utf-8")
+        (project / "src" / "vendor_owned.py").write_text(
+            "second(2)\n",
+            encoding="utf-8",
+        )
 
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
 
@@ -211,7 +219,7 @@ class TestsFlextInfraCodemodGate:
             issue for issue in execution.issues if issue.code == "contract-second"
         )
         tm.that(len(findings), eq=1)
-        tm.that(findings[0].file.endswith("src/owned.py"), eq=True)
+        tm.that(findings[0].file.endswith("src/vendor_owned.py"), eq=True)
 
     def test_check_files_uses_every_rule_and_only_requested_files(
         self,

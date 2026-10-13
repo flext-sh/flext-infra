@@ -45,6 +45,7 @@ class FlextInfraNamespaceRelocationPhase:
                 project_root,
                 py_files,
                 preflight.entries,
+                scan_root=root,
             )
             if not findings:
                 continue

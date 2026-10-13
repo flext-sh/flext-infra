@@ -245,12 +245,18 @@ class TestsFlextInfraBatchReplacements:
         tmp_path: Path,
         changed: bytes,
     ) -> None:
-        """Test changed source is not overwritten."""
+        """Test changed source is not overwritten.
+
+        A drifted source is deferred with a receipt: the publication succeeds
+        for every authenticated file and the drifted bytes stay untouched —
+        the next scan re-authenticates or stops reporting the finding.
+
+        """
         root = u.Tests.git_repository(tmp_path)
         path = root / "subject.py"
         report = self._report(path, b'value = "before"\n')
         path.write_bytes(changed)
-        tm.fail(FlextInfraModReplacements.publish(root, report))
+        tm.ok(FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_bytes(), eq=changed)
 
     def test_missing_actionable_snapshot_is_rejected(self, tmp_path: Path) -> None:

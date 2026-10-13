@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -14,6 +15,7 @@ import libcst as cst
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -95,6 +97,10 @@ class FlextInfraModReplacements:
                 exact_replacements=exact_replacements,
             )
             if plan.failure:
+                if plan.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                    sys.stderr.write(f"mod: publish deferred drifted source: {path}\n")
+                    sys.stderr.flush()
+                    continue
                 return r[bool].from_failure(plan)
             plans.append(plan.value)
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -135,6 +141,7 @@ class FlextInfraModReplacements:
             ):
                 return r[m.Infra.SemanticFilePlan].fail(
                     f"inconsistent actionable finding source: {path}",
+                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
                 )
             coordinates = cls._finding_replacement(
                 before.content,
@@ -269,11 +276,16 @@ class FlextInfraModReplacements:
                 return r[bytes].from_failure(normalized)
             module = cst.parse_module(normalized.value)
             stripped = module.visit(FlextInfraDeadScaffold())
-            final = u.Infra.normalize_source(
-                root,
-                path,
-                stripped.code,
-                before_source=before.decode(c.DEFAULT_ENCODING),
+            orphaned = stripped.visit(FlextInfraOrphanImport())
+            final = (
+                normalized
+                if orphaned.code == normalized.value
+                else u.Infra.normalize_source(
+                    root,
+                    path,
+                    orphaned.code,
+                    before_source=before.decode(c.DEFAULT_ENCODING),
+                )
             )
         if final.failure:
             return r[bytes].from_failure(final)

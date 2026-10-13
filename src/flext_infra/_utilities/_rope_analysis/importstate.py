@@ -232,9 +232,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 continue
             location = pyname.get_definition_location()
             line = location[1] if location and location[1] else 1
+            # Non-class bases (functions, unknown objects) stay unresolved on
+            # purpose: the declared-versus-resolved count comparison below
+            # refuses the lineage instead of raising mid-comprehension.
             bases: t.StrSequence = tuple(
                 FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
                 for superclass in obj.get_superclasses()
+                if FlextInfraUtilitiesRopeRuntime.instance_object(superclass)
+                or FlextInfraUtilitiesRopeRuntime.abstract_class(superclass)
             )
             if (
                 name in declared_base_counts

@@ -424,7 +424,7 @@ class FlextInfraModGateEngine:
         output = run.value
         sys.stderr.write(
             f"mod: finish {command[0]} exit={output.outcome.raw_return_code} "
-            f"duration={output.duration:.2f}s\n",
+            f"duration={output.duration:.2f}s stdout_chars={len(output.stdout)}\n",
         )
         sys.stderr.flush()
         if output.outcome.raw_return_code != 0:
@@ -482,6 +482,46 @@ class FlextInfraModGateEngine:
         root: Path,
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
+        project_rule_ids: t.MappingKV[Path, t.StrSequence],
+    ) -> m.Infra.ModScanReport:
+        """Evaluate each source against its nearest governed project's plan.
+
+        Returns:
+            Findings admitted by their own project's rules and semantic context.
+        """
+        projects = sorted(
+            project_rule_ids, key=FlextInfraModGateEngine._path_depth, reverse=True
+        )
+        grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
+        for entry in report.entries:
+            source = u.Infra.codemod_source_path(root, entry.file)
+            owner = next(
+                project for project in projects if source.is_relative_to(project)
+            )
+            if entry.rule_id in project_rule_ids[owner]:
+                grouped.setdefault(owner, []).append(
+                    entry.model_copy(update={"file": source})
+                )
+        admitted: list[m.Infra.ModScanFinding] = []
+        for project, entries in grouped.items():
+            selected = FlextInfraModGateEngine._admitted_project(
+                project,
+                FlextInfraModGateEngine.recounted(tuple(entries)),
+                rules_by_id,
+            )
+            admitted.extend(
+                entry.model_copy(
+                    update={"file": entry.file.relative_to(root.resolve())}
+                )
+                for entry in selected.entries
+            )
+        return FlextInfraModGateEngine.recounted(tuple(admitted))
+
+    @staticmethod
+    def _admitted_project(
+        root: Path,
+        report: m.Infra.ModScanReport,
+        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -498,37 +538,29 @@ class FlextInfraModGateEngine:
             root,
             tuple(rules_by_id[entry.rule_id] for entry in report.entries),
         )
-        occurrence_rules = tuple(
-            rule
-            for rule in rules_by_id.values()
-            if any(
-                condition.predicate
-                in {
-                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
-                    c.Infra.CodemodContextPredicate.SAME_BINDING,
-                    c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
-                    c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
-                }
-                for condition in rule.context
-            )
+        selected_ids, modules = u.Infra.codemod_binding_requirements(
+            tuple(
+                rules_by_id[rule_id]
+                for rule_id in sorted({entry.rule_id for entry in report.entries})
+            ),
         )
-        selected_ids = {rule.id for rule in occurrence_rules}
         states = tuple(
-            entry.source_state
-            for entry in report.entries
-            if entry.rule_id in selected_ids and entry.source_state is not None
+            {
+                entry.source_state.path: entry.source_state
+                for entry in report.entries
+                if entry.rule_id in selected_ids and entry.source_state is not None
+            }.values(),
         )
+        sys.stderr.write(
+            f"mod: binding snapshot repository={root.name} "
+            f"findings={report.findings} sources={len(states)}\n",
+        )
+        sys.stderr.flush()
         snapshot = (
             u.Infra.codemod_binding_snapshot(
                 root,
                 states,
-                tuple(
-                    condition.arg[0]
-                    for rule in occurrence_rules
-                    for condition in rule.context
-                    if condition.predicate
-                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
-                ),
+                modules,
             )
             if states
             else None
@@ -942,9 +974,9 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         ruleset: m.Infra.CodemodRuleset,
-        rule_files_by_id: t.MappingKV[str, Path],
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         targets: t.StrSequence,
+        project_rule_ids: t.MappingKV[Path, t.StrSequence],
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan one elected ruleset over the governed targets, then admit.
 
@@ -967,7 +999,7 @@ class FlextInfraModGateEngine:
             for path in sorted(source_paths)
         }
         ruleset_files = {
-            rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
+            rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
         scan_command = u.Infra.ast_grep_scan_command(
             ruleset.config,
@@ -982,6 +1014,10 @@ class FlextInfraModGateEngine:
         )
         if run.failure:
             return r[m.Infra.ModScanReport].from_failure(run)
+        sys.stderr.write(
+            f"mod: parse native JSONL chars={len(run.value.stdout)}\n",
+        )
+        sys.stderr.flush()
         report = cls._parse_findings(
             run.value.stdout,
             root,
@@ -989,12 +1025,16 @@ class FlextInfraModGateEngine:
             frozenset(ruleset.fixable_rule_ids),
             source_states,
         ).unwrap()
+        sys.stderr.write(f"mod: admit native findings={report.findings}\n")
+        sys.stderr.flush()
         if run.value.outcome.raw_return_code != 0:
             error_findings = sum(
                 entry.payload.get("severity") == "error" for entry in report.entries
             )
             cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
-        return r[m.Infra.ModScanReport].ok(cls._admitted(root, report, rules_by_id))
+        return r[m.Infra.ModScanReport].ok(
+            cls._admitted(root, report, rules_by_id, project_rule_ids),
+        )
 
     @classmethod
     def scan(
@@ -1018,7 +1058,6 @@ class FlextInfraModGateEngine:
             return r[m.Infra.ModScanReport].from_failure(planned)
         plan = planned.value
         reports: list[m.Infra.ModScanReport] = []
-        rule_files_by_id = {rule.id: rule.resource for rule in plan.rules}
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root)
         sys.stderr.write(
@@ -1035,9 +1074,9 @@ class FlextInfraModGateEngine:
             ruleset_run = cls._ruleset_report(
                 root,
                 ruleset,
-                rule_files_by_id,
                 rules_by_id,
                 targets,
+                plan.project_rule_ids,
             )
             if ruleset_run.failure:
                 return r[m.Infra.ModScanReport].from_failure(ruleset_run)
@@ -1048,6 +1087,10 @@ class FlextInfraModGateEngine:
         declared = cls._validate_expected_receipts(plan.rules, complete_report)
         if declared.failure:
             return r[m.Infra.ModScanReport].from_failure(declared)
+        sys.stderr.write(
+            f"mod: publish evidence findings={complete_report.findings}\n",
+        )
+        sys.stderr.flush()
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             complete_report,
@@ -1056,6 +1099,8 @@ class FlextInfraModGateEngine:
                     c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
                 ),
                 scope=targets,
+                repositories=tuple(project.name for project in plan.project_rule_ids),
+                rule_ids=tuple(rules_by_id),
             ),
         )
         if receipt.failure:

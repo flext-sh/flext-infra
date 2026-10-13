@@ -232,6 +232,7 @@ class FlextInfraConstantsRefactor:
         LAYER_ZERO_FILE = "layer-zero-file"
         PAYLOAD_DECLARATION = "payload-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
+        EMITTED_SYMBOL = "emitted-symbol"
         SAME_BINDING = "same-binding"
         EXECUTABLE_OCCURRENCE = "executable-occurrence"
         UNREFERENCED_IMPORT = "unreferenced-import"

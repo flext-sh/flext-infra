@@ -58,8 +58,18 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             are not executable migration candidates. Missing coordinates are a rule
             defect, not permission to resolve at module scope.
 
+
+            Args:
+                frame: A triple containing the root path, source path, and Rope project.
+                condition: The codemod context condition to evaluate.
+                captures: A mapping of captured variables.
+                sources: A mapping of source file paths to their content.
+
             Returns:
                 The resulting ``bool``.
+
+            Raises:
+                ValueError: If the specified module is unknown.
             """
             root, source, project = frame
             capture = m.Infra.AstGrepCapture.model_validate(
@@ -100,10 +110,63 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
             ):
                 return True
+            if condition.predicate is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL:
+                return cls._emitted_symbol_holds(
+                    (project, module, scope),
+                    condition,
+                    start,
+                    sources,
+                )
             return cls._resolved_expression_holds(
                 (project, module, scope),
                 condition,
                 capture.text,
+                start,
+                sources,
+            )
+
+        @classmethod
+        def _emitted_symbol_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            start: int,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Resolve an emitted-symbol predicate through its module target.
+
+            Returns:
+                Whether the rewritten expression keeps a stable binding chain.
+
+            Raises:
+                ValueError: If emitted-symbol lacks a lexical expression, module
+                    and target.
+
+            """
+            if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
+                message = (
+                    "emitted-symbol requires a lexical expression, module and target"
+                )
+                raise ValueError(message)
+            expression = ast.parse(condition.arg[0], mode="eval").body
+            if not cls._stable_binding_chain(
+                frame,
+                expression,
+                start,
+                sources,
+            ):
+                return False
+            return cls._resolved_expression_holds(
+                frame,
+                condition.model_copy(
+                    update={
+                        "predicate": c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                        "arg": condition.arg[1:],
+                    }
+                ),
+                condition.arg[0],
                 start,
                 sources,
             )

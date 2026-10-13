@@ -15,7 +15,65 @@ from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRenameSymbols:
-    """Translate declared CSV prefixes into current-owner Rope constraints."""
+    """Supply domain decisions and translate rename plans into Rope constraints."""
+
+    def __init__(self, decisions: t.SequenceOf[m.Infra.SemanticRenameDecision]) -> None:
+        self.decisions = tuple(decisions)
+
+    def rename_decision(
+        self, declaration: m.Infra.Object
+    ) -> m.Infra.SemanticRenameDecision | None:
+        """Return the unique explicit decision for this introducing declaration.
+
+        Returns:
+            The domain decision, or no candidate when the domain declared none.
+
+        Raises:
+            ValueError: If the domain supplied competing decisions for one owner.
+        """
+        decisions = tuple(
+            decision
+            for decision in self.decisions
+            if decision.declaration == declaration
+        )
+        if len(decisions) > 1:
+            msg = f"competing semantic rename decisions: {declaration.scope_path}"
+            raise ValueError(msg)
+        return next(iter(decisions), None)
+
+    @classmethod
+    def inventoried_declaration(
+        cls, workspace: p.Infra.RopeWorkspaceDsl, qualified_name: str
+    ) -> m.Infra.Object:
+        """Resolve an explicit identity through native bindings and actual inventory.
+
+        Returns:
+            The unique introducing callable object observed in its source module.
+
+        Raises:
+            ValueError: If the identity is missing, inherited, or ambiguous.
+        """
+        owner, _, name = qualified_name.rpartition(".")
+        binding = cls.resolve_member(workspace.rope_project, owner, name)
+        module, _ = (
+            binding.get_definition_location() if binding is not None else (None, None)
+        )
+        resource = module.get_resource() if module is not None else None
+        if resource is None:
+            msg = f"semantic rename has no inventoried source: {qualified_name}"
+            raise ValueError(msg)
+        matches = tuple(
+            item
+            for item in workspace.objects(
+                Path(resource.real_path), include_references=False
+            )
+            if f"{item.module_name}.{item.scope_path}" == qualified_name
+            and item.kind in {"method", "function"}
+        )
+        if len(matches) != 1:
+            msg = f"semantic rename requires one introducing object: {qualified_name}"
+            raise ValueError(msg)
+        return matches[0]
 
     @staticmethod
     def _member_paths(source: str, path: Path) -> frozenset[tuple[str, ...]]:
@@ -49,7 +107,14 @@ class FlextInfraRenameSymbols:
             The resulting ``p.Infra.RopePyName | None``.
 
         """
-        module, *attributes = owner.split(".")
+        parts = owner.split(".")
+        module = parts[0]
+        for end in range(2, len(parts) + 1):
+            candidate = ".".join(parts[:end])
+            if project.find_module(candidate) is None:
+                break
+            module = candidate
+        attributes = parts[len(module.split(".")) :]
         value: p.Infra.RopePyModule | p.Infra.RopePyObject = project.get_module(module)
         binding: p.Infra.RopePyName | None = None
         for attribute in (*attributes, *suffix.split(".")):
@@ -58,6 +123,174 @@ class FlextInfraRenameSymbols:
             binding = value.get_attribute(attribute)
             value = binding.get_object()
         return binding
+
+    @classmethod
+    def plan_candidates(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+        declarations: t.SequenceOf[m.Infra.Object],
+        provider: p.Infra.SemanticRenameCandidateProvider,
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Compose explicit domain decisions through the existing Rope planner.
+
+        Independent typing stubs enter only as declared contracts of the observed
+        introducer. No lexical prefix policy chooses a replacement or a consumer.
+        The returned original bytes make the plan reversible and publication-free.
+
+        Returns:
+            Complete changed-source plans against one authenticated snapshot.
+
+        Raises:
+            ValueError: If a decision changes identity, repeats an owner, or names
+                an inherited declaration or incompatible independent contract.
+        """
+        planned: t.MutableMappingKV[
+            Path, t.MutableSequenceOf[m.Infra.SourceRewrite]
+        ] = {}
+        selected: set[t.Pair[str, str]] = set()
+        for declaration in declarations:
+            decision = provider.rename_decision(declaration)
+            if decision is None:
+                continue
+            if decision.declaration != declaration:
+                msg = "semantic rename decision changed its observed declaration"
+                raise ValueError(msg)
+            signature = cls._candidate_signature(project, sources, declaration)
+            for item in (declaration, *decision.contracts):
+                owner, _, name = item.scope_path.rpartition(".")
+                identity = (f"{item.module_name}.{owner}".rstrip("."), name)
+                identities = (identity, (identity[0], decision.replacement_name))
+                if not selected.isdisjoint(identities):
+                    msg = f"semantic rename has competing owner names: {identity}"
+                    raise ValueError(msg)
+                selected.update(identities)
+                if (
+                    cls._candidate_signature(
+                        project, sources, item, contract=item != declaration
+                    )
+                    != signature
+                ):
+                    msg = f"semantic rename has incompatible contract: {identity}"
+                    raise ValueError(msg)
+                changes = cls.plan(
+                    project,
+                    sources,
+                    ((name, decision.replacement_name),),
+                    {"": (identity[0],)},
+                    rename_definitions=True,
+                )
+                for path, edits in changes.items():
+                    target = planned.setdefault(path, [])
+                    target.extend(edit for edit in edits if edit not in target)
+        root = Path(project.root.real_path)
+        return tuple(
+            m.Infra.SemanticMigrationEdit(
+                file_path=path,
+                original_source=sources[path],
+                updated_source=u.Infra.content_change(
+                    project.get_resource(path.relative_to(root).as_posix()),
+                    sources[path],
+                    edits,
+                ).new_contents,
+                changes=("applied explicit domain semantic rename decisions",),
+            )
+            for path, edits in sorted(planned.items())
+        )
+
+    @classmethod
+    def _candidate_signature(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+        declaration: m.Infra.Object,
+        *,
+        contract: bool = False,
+    ) -> t.Pair[str, str]:
+        """Authenticate a direct method/function and retain its callable contract.
+
+        Returns:
+            The AST argument and return-annotation identities.
+
+        Raises:
+            ValueError: If discovery does not identify the actual declaration.
+        """
+        owner, _, name = declaration.scope_path.rpartition(".")
+        binding = cls.resolve_member(
+            project, f"{declaration.module_name}.{owner}".rstrip("."), name
+        )
+        if binding is None:
+            msg = (
+                f"semantic rename declaration has no binding: {declaration.scope_path}"
+            )
+            raise ValueError(msg)
+        module, line = binding.get_definition_location()
+        resource = module.get_resource() if module is not None else None
+        path = Path(declaration.file_path)
+        if (
+            module is None
+            or resource is None
+            or Path(resource.real_path) != path
+            or line != declaration.line
+            or path not in sources
+        ):
+            msg = (
+                "semantic rename is not an observed direct declaration: "
+                f"{declaration.scope_path}"
+            )
+            raise ValueError(msg)
+        if declaration.kind not in {"function", "method"} or name != declaration.name:
+            msg = (
+                "semantic rename requires a callable identity: "
+                f"{declaration.scope_path}"
+            )
+            raise ValueError(msg)
+        tree = ast.parse(sources[path])
+        function = next(
+            (
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.lineno == line
+                and node.name == name
+            ),
+            None,
+        )
+        if function is None:
+            msg = f"semantic rename declaration has no callable body: {path}:{line}"
+            raise ValueError(msg)
+        owner_binding = cls.resolve_member(project, declaration.module_name, owner)
+        scope = (
+            owner_binding.get_object().get_scope()
+            if owner_binding is not None
+            else module.get_scope()
+        )
+        if scope is None or not u.Infra.same_name(
+            binding, scope.get_defined_names().get(name)
+        ):
+            msg = (
+                "semantic rename is inherited rather than introduced: "
+                f"{declaration.scope_path}"
+            )
+            raise ValueError(msg)
+        if contract and not all(
+            isinstance(node, ast.Pass)
+            or (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and (node.value.value is Ellipsis or isinstance(node.value.value, str))
+            )
+            for node in function.body
+        ):
+            msg = (
+                "semantic rename companion has behavior, not a typing contract: "
+                f"{path}:{line}"
+            )
+            raise ValueError(msg)
+        return (
+            f"{type(function).__name__}:{ast.dump(function.args)}",
+            ast.dump(function.returns) if function.returns else "",
+        )
 
     @classmethod
     def _eligible_spans(
@@ -407,7 +640,15 @@ class FlextInfraRenameSymbols:
             offset,
             new_suffix,
             options=m.Infra.RopeRenameOptions(
-                resources=tuple(resources.values()),
+                resources=tuple(
+                    {
+                        resource.real_path: resource
+                        for resource in (
+                            *resources.values(),
+                            *project.get_python_files(),
+                        )
+                    }.values()
+                ),
                 in_hierarchy=True,
             ),
         )

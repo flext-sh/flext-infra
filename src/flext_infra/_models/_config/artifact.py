@@ -1173,6 +1173,10 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.RenameCampaignSpec],
             m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()
+        semantic_plan: Annotated[
+            Path | None,
+            m.Field(description="Explicit workspace-relative semantic rename artifact"),
+        ] = None
 
     class SedPatternSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared literal regex substitution applied across the mod scope."""

@@ -197,19 +197,25 @@ invalid:
     value: Annotated[int, Dict[str, int]]
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
-    from flext_core import m, t
-    from typing import Dict, get_origin
+    from flext_core import m, t, u
+    from typing import Annotated, Dict, TypeAliasType, get_args, get_origin
+    from typing_extensions import TypeForm
     LEGACY = Dict[str, int]
     FACTORY = dict[str, int]
-    type Contract = Dict[str, int]
+    type Contract = Annotated[Dict[str, int], LEGACY]
     class LegacyBase(Dict[str, int]): ...
+    # The model field obeys the runtime model law (dict origins are rejected in
+    # pydantic fields: MappingKV + u.empty factory); value positions keep the
+    # concrete dict contract this rule preserves.
     class Payload(m.ArbitraryTypesModel):
-        values: Dict[str, int] = m.Field(default_factory=dict[str, int])
-    def make(values: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+        values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
+    def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
         return values
     assert get_origin(LEGACY) is dict
     assert FACTORY() == {}
     assert isinstance(LegacyBase(), dict)
+    annotated_type, metadata = get_args(Contract.__value__)
+    assert metadata is LEGACY
     assert Payload().values == {}
     assert Payload().values is not Payload().values
     payload = Payload()
@@ -222,5 +228,10 @@ invalid:
     assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
     assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == {}
-    assert not callable(get_origin(Contract.__value__))
-    assert Contract.__value__ == make.__annotations__["return"]
+    for annotation in (annotated_type, make.__annotations__["values"], make.__annotations__["return"]):
+        origin = get_origin(annotation)
+        # PEP 695 aliases retain identity while their values own concrete origins.
+        while isinstance(origin, TypeAliasType):
+            origin = get_origin(origin.__value__)
+        assert origin is get_origin(LEGACY)
+        assert get_args(annotation) == get_args(LEGACY)

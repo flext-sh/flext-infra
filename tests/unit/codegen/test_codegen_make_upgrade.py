@@ -251,35 +251,28 @@ class TestsFlextInfraCodegenMakeUpgrade:
             "\n\n",
             1,
         )[0]
-        tm.that(re.findall(r"\$\(UV\) lock\b", setup_recipe), eq=["$(UV) lock"])
+        # Setup uses $(UV) sync --frozen to install from committed lock
+        tm.that(re.findall(r"\$\(UV\) sync\b", setup_recipe), eq=["$(UV) sync"])
         tm.that(
             setup_recipe,
             has=[
-                "lock --check",
-                "$(UV_SYNC_FLAGS) --locked",
+                "--frozen",
                 "ERROR[setup]",
                 "make upg",
             ],
         )
-        lock_check = setup_recipe.index("lock --check")
-        sync = setup_recipe.index("$(UV) sync")
-        tm.that(lock_check < setup_recipe.index("exit 2;", lock_check) < sync, eq=True)
         admission = "codegen mise-artifacts"
-        tm.that(setup_recipe.count(admission), eq=2)
-        tm.that(lock_check < setup_recipe.index(admission) < sync, eq=True)
-        tm.that(setup_recipe.rindex(admission) < sync, eq=True)
+        tm.that(setup_recipe.count(admission), eq=1)
         tm.that(
             setup_recipe,
             has=[
                 '--repository-root "$(PROJECT_ROOT)" --config-only',
-                "for member in $(WORKSPACE_SUBPROJECTS); do",
-                '--repository-root "$(PROJECT_ROOT)/$$member" --config-only',
             ],
         )
+        # Single mise-artifacts call with --scope all handles root + members
         tm.that(
             setup_recipe,
             lacks=[
-                "--frozen",
                 "WARNING[setup]",
                 "--requirements",
                 'rm -f "$(UV_PROJECT)/uv.lock"',
@@ -358,13 +351,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(
             audit,
             has=[
-                (
-                    'codegen mise-proof --repository-root "$(PROJECT_ROOT)" '
-                    '--uv-executable "$$(mise which uv)"'
-                ),
-                '$(UV) lock --check --project "$(UV_PROJECT)"',
-                "deps verify-locks",
-                "make upg",
+                "$(UV) pip check",
+                "workspace verify-environment",
+                'codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check',
             ],
         )
         tm.that(
@@ -521,7 +510,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             for needle in (
                 "--what mise-config --scope self --mode apply",
                 "lock --bump",
-                "install --yes",
+                "install --locked --yes",
                 "deps modernize",
                 "$(SELF_MAKE) _builtin_require_environment",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
@@ -538,9 +527,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(makefile, has="_activated-gen: _builtin_require_environment")
         tm.that(
             makefile,
-            has="_builtin_require_environment: _builtin_require_workspace\n",
+            has="_builtin_require_environment: _builtin_require_interpreter\n",
         )
-        tm.that(makefile, lacks="_builtin_require_mise")
 
         # GNU Make itself expands the canned halves: the producer half never
         # re-enters the environment, the activation half does, and the public
@@ -598,15 +586,22 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 r"\$\(UV\) lock --check\b",
                 regex=True,
             ),
-            eq={"_upg_converge", "_upg_reconcile_locks", "_builtin-audit"},
+            eq={"_upg_converge", "_upg_reconcile_locks"},
         )
         tm.that(
             self._recipe_targets_containing(makefile, "codegen mise-proof"),
-            eq={"_builtin-audit"},
+            eq={"_setup_activated"},
         )
-        tm.that(makefile, lacks=["_builtin_setup_lock_verdict", "ERROR[setup]"])
+        tm.that(makefile, lacks=["_builtin_setup_lock_verdict"])
         audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]
-        tm.that(audit, has=["ERROR[audit]", "make upg", "exit 2"])
+        tm.that(
+            audit,
+            has=[
+                "$(UV) pip check",
+                "workspace verify-environment",
+                'codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check',
+            ],
+        )
 
     @pytest.mark.parametrize(
         "generated_make_template",
@@ -740,7 +735,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         u.Tests.WorktreeFixture.initialize_governed_project(
             source,
             repository.distribution,
-            beads=u.Tests.WorktreeFixture.BeadsIdentity(
+            beads=u.Tests.BeadsIdentity(
                 workspace=beads.workspace,
                 database=beads.database,
                 issue_prefix=beads.issue_prefix,

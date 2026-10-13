@@ -35,7 +35,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
         u.Tests.WorktreeFixture.initialize_governed_project(
             source,
             member.distribution,
-            beads=u.Tests.WorktreeFixture.BeadsIdentity(
+            beads=u.Tests.BeadsIdentity(
                 workspace=beads.workspace,
                 database=beads.database,
                 issue_prefix=beads.issue_prefix,
@@ -103,7 +103,8 @@ class TestsFlextInfraCodegenUpgWorkspace:
         custom.write_text(
             custom.read_text(encoding="utf-8") + "post-upg:\n"
             '\t@set -eu; for project in "$(PROJECT_ROOT)" '
-            '$(foreach member,$(WORKSPACE_SUBPROJECTS),"$(PROJECT_ROOT)/$(member)"); do '
+            "$(foreach member,$(WORKSPACE_SUBPROJECTS),"
+            '"$(PROJECT_ROOT)/$(member)"); do '
             'owner="$$($(UV) workspace dir --project "$$project")"; '
             'test "$$owner" = "$$project"; '
             '$(UV) lock --check --project "$$project"; '
@@ -156,7 +157,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
         u.Tests.WorktreeFixture.initialize_governed_project(
             added_source,
             added.distribution,
-            beads=u.Tests.WorktreeFixture.BeadsIdentity(
+            beads=u.Tests.BeadsIdentity(
                 workspace=added_beads.workspace,
                 database=added_beads.database,
                 issue_prefix=added_beads.issue_prefix,

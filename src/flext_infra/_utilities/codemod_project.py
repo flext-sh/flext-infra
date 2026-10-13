@@ -382,6 +382,46 @@ class FlextInfraUtilitiesCodemodProject(
         """
         return (file_path if file_path.is_absolute() else root / file_path).resolve()
 
+    @staticmethod
+    def codemod_binding_requirements(
+        rules: t.SequenceOf[m.Infra.CodemodRule],
+    ) -> t.Pair[frozenset[str], t.StrSequence]:
+        """Elect binding inputs only for the rules that actually found code.
+
+        Returns:
+            Rule identities requiring inference and their declared symbol owners.
+        """
+        predicates = {
+            c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+            c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+            c.Infra.CodemodContextPredicate.SAME_BINDING,
+            c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+            c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+        }
+        selected = tuple(
+            rule
+            for rule in rules
+            if any(condition.predicate in predicates for condition in rule.context)
+        )
+        modules = tuple(
+            dict.fromkeys(
+                condition.arg[
+                    1
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL
+                    else 0
+                ]
+                for rule in selected
+                for condition in rule.context
+                if condition.predicate
+                in {
+                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                    c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+                }
+            ),
+        )
+        return frozenset(rule.id for rule in selected), modules
+
     @classmethod
     def codemod_context_admits(
         cls,
@@ -422,6 +462,7 @@ class FlextInfraUtilitiesCodemodProject(
         for condition in rule.context:
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
@@ -505,9 +546,7 @@ class FlextInfraUtilitiesCodemodProject(
             FlextInfraUtilitiesRopeCore.open_project(root) as project,
             project.frozen_layout(),
         ):
-            modules_by_name: t.MutableMappingKV[
-                t.Triple[str, str | None, int], t.Infra.RopeResource | None
-            ] = {}
+            lookup = m.Infra.CodemodImportResources()
             pending = [
                 project.get_resource(path.relative_to(root.resolve()).as_posix())
                 for path in states
@@ -516,6 +555,15 @@ class FlextInfraUtilitiesCodemodProject(
                 resource
                 for name in modules
                 if (resource := project.find_module(name)) is not None
+            )
+            scheduled = {resource.real_path for resource in pending}
+            search_roots = tuple(
+                folder
+                for folder in (
+                    *project.get_source_folders(),
+                    *project.get_python_path_folders(),
+                )
+                if isinstance(folder, p.Infra.RopeRoot)
             )
             visited: set[Path] = set()
             while pending:
@@ -528,11 +576,16 @@ class FlextInfraUtilitiesCodemodProject(
                     continue
                 path, resource, tree = fetched
                 visited.add(path)
-                pending.extend(
-                    cls._snapshot_import_resources(
-                        project, resource, tree, modules_by_name
-                    )
-                )
+                for imported in cls._snapshot_import_resources(
+                    project,
+                    resource,
+                    tree,
+                    lookup,
+                    search_roots,
+                ):
+                    if imported.real_path not in scheduled:
+                        scheduled.add(imported.real_path)
+                        pending.append(imported)
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
@@ -598,9 +651,8 @@ class FlextInfraUtilitiesCodemodProject(
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         tree: ast.Module,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
+        lookup: m.Infra.CodemodImportResources,
+        search_roots: t.SequenceOf[p.Infra.RopeRoot],
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of every import inside one module tree.
 
@@ -609,13 +661,21 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         found: list[t.Infra.RopeResource] = []
+        relative_roots = (
+            (resource.parent,) if isinstance(resource.parent, p.Infra.RopeRoot) else ()
+        )
+        folders = ((*search_roots, *relative_roots), relative_roots)
         pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
         while pending:
             node = pending.popleft()
             if isinstance(node, ast.Import | ast.ImportFrom):
                 found.extend(
                     cls._snapshot_node_import_resources(
-                        project, resource, node, modules_by_name
+                        project,
+                        resource,
+                        node,
+                        lookup,
+                        folders,
                     ),
                 )
             # Imports are statements. Exception handlers and match cases are
@@ -634,8 +694,10 @@ class FlextInfraUtilitiesCodemodProject(
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         node: ast.AST,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
+        lookup: m.Infra.CodemodImportResources,
+        folders: t.Pair[
+            t.SequenceOf[p.Infra.RopeRoot],
+            t.SequenceOf[p.Infra.RopeRoot],
         ],
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of one import statement's targets.
@@ -659,7 +721,7 @@ class FlextInfraUtilitiesCodemodProject(
                 resource,
                 name,
                 level=level,
-                modules_by_name=modules_by_name,
+                lookup=lookup,
             )
             if imported is not None:
                 found.append(imported)
@@ -672,7 +734,8 @@ class FlextInfraUtilitiesCodemodProject(
                 (project, resource),
                 (node.module or "", alias.name),
                 level=level,
-                modules_by_name=modules_by_name,
+                lookup=lookup,
+                folders=folders[1 if level else 0],
             )
             if child is not None:
                 found.append(child)
@@ -684,9 +747,8 @@ class FlextInfraUtilitiesCodemodProject(
         names: t.Pair[str, str],
         *,
         level: int,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
+        lookup: m.Infra.CodemodImportResources,
+        folders: t.SequenceOf[p.Infra.RopeRoot],
     ) -> t.Infra.RopeResource | None:
         """Resolve descendants in the SDK's complete search-root order.
 
@@ -699,33 +761,28 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         project, resource = frame
+        modules_by_name = lookup.modules
         parent_name, child_name = names
         qualified = f"{parent_name}.{child_name}" if parent_name else child_name
         key = (qualified, resource.parent.real_path, level)
         if key in modules_by_name:
             return modules_by_name[key]
-        folders = (
-            (resource.parent,)
-            if level
-            else (
-                *project.get_source_folders(),
-                *project.get_python_path_folders(),
-                resource.parent,
-            )
-        )
         modules_by_name[key] = None
-        for folder in (
-            candidate
-            for candidate in folders
-            if isinstance(candidate, p.Infra.RopeRoot)
-        ):
+        for folder in folders:
             parent_key = (parent_name, folder.real_path, level or 1)
             if parent_key not in modules_by_name:
                 modules_by_name[parent_key] = project.find_relative_module(
                     parent_name, folder, level or 1
                 )
-            parent = modules_by_name[parent_key]
-            if not isinstance(parent, p.Infra.RopeRoot):
+            elected = modules_by_name[parent_key]
+            if elected is None:
+                continue
+            if elected.real_path not in lookup.folders:
+                lookup.folders[elected.real_path] = (
+                    elected if isinstance(elected, p.Infra.RopeRoot) else None
+                )
+            parent = lookup.folders[elected.real_path]
+            if parent is None:
                 continue
             child_key = (child_name, parent.real_path, 1)
             if child_key not in modules_by_name:
@@ -745,9 +802,7 @@ class FlextInfraUtilitiesCodemodProject(
         name: str,
         *,
         level: int,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
+        lookup: m.Infra.CodemodImportResources,
     ) -> t.Infra.RopeResource | None:
         """Resolve one imported module name relative to the importing package.
 
@@ -755,6 +810,7 @@ class FlextInfraUtilitiesCodemodProject(
             The imported module resource, or ``None`` when Rope cannot find it.
 
         """
+        modules_by_name = lookup.modules
         folder = resource.parent
         key = (name, folder.real_path, level)
         if key in modules_by_name:

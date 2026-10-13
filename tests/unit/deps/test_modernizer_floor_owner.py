@@ -199,10 +199,9 @@ class TestsFlextInfraModernizerFloorOwner:
         with pytest.raises(ValidationError, match=field) as captured:
             self._run(modernizer_workspace)
 
-        tm.that(
-            isinstance(captured.value.errors()[0]["ctx"]["error"], InvalidRequirement),
-            eq=True,
-        )
+        error = captured.value.errors()[0]
+        assert "ctx" in error
+        tm.that(isinstance(error["ctx"]["error"], InvalidRequirement), eq=True)
         tm.that(source.read_text(encoding="utf-8"), eq=content)
         tm.that(pyproject.read_bytes(), eq=original_pyproject)
 
@@ -218,8 +217,10 @@ class TestsFlextInfraModernizerFloorOwner:
             if u.Infra.constraint_specifier(version)
         )
         resolved = Version(version)
-        release = resolved.release
-        compatibility = f"{release[0]}.{release[1] if len(release) > 1 else 0}"
+        compatibility = (
+            f"{resolved.release[0]}."
+            f"{resolved.release[1] if len(resolved.release) > 1 else 0}"
+        )
         if resolved.epoch:
             compatibility = f"{resolved.epoch}!{compatibility}"
         original = Requirement(f"{name}[feature]~={compatibility}; os_name == 'posix'")
@@ -236,13 +237,12 @@ class TestsFlextInfraModernizerFloorOwner:
 
         tm.that(self._run(modernizer_workspace), eq=0)
 
-        payload = u.Cli.yaml_safe_load(source).unwrap()
-        infra = u.Cli.json_as_mapping(payload.get("Infra"))
-        codegen = u.Cli.json_as_mapping(infra.get("codegen"))
-        scaffold = u.Cli.json_as_mapping(codegen.get("scaffold"))
-        project = u.Cli.json_as_mapping(scaffold.get("project"))
-        profiles = u.Cli.json_as_sequence(project.get("dependency_profiles"))
-        profile = m.Infra.ScaffoldDependencyProfileSpec.model_validate(profiles[0])
+        project = u.Cli.yaml_safe_load(source).unwrap()
+        for key in ("Infra", "codegen", "scaffold", "project"):
+            project = u.Cli.json_as_mapping(project[key])
+        profile = m.Infra.ScaffoldDependencyProfileSpec.model_validate(
+            u.Cli.json_as_sequence(project["dependency_profiles"])[0],
+        )
         parsed = Requirement(profile.runtime[0])
         tm.that(parsed.extras, eq=original.extras)
         tm.that(parsed.marker == original.marker, eq=True)

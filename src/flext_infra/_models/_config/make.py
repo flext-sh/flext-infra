@@ -949,7 +949,10 @@ class FlextInfraConfigModelsMake(
                 if not verb.arguments and set(verb.profiles) == set(c.Infra.MakeProfile)
             }
             if set(self.violations_sweep_repair_verbs) - sweep_verbs:
-                msg = "make violations sweep requires declared selector-free verbs in every profile"
+                msg = (
+                    "make violations sweep requires declared selector-free verbs "
+                    "in every profile"
+                )
                 raise ValueError(msg)
             self._validate_standalone_gates(declared)
             # Why (hq-36xk, flext-lq86m): the guard that lived here read

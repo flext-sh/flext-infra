@@ -14,6 +14,7 @@ from flext_infra import c, infra, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModels
 from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
+    FlextInfraCodemodSemanticApply,
     FlextInfraCodemodSnapshotRefresh,
 )
 from flext_infra.refactor import (
@@ -26,6 +27,86 @@ from flext_infra.services import FlextInfraCliModProgress
 
 class FlextInfraRefactorRoutes:
     """Own the complete refactor command tuple."""
+
+    @staticmethod
+    def execute_rename_plan(
+        request: m.Infra.SemanticRenamePlanCommand,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Write an inventory-derived artifact, never a caller-authored source map.
+
+        Returns:
+            The first planning/write failure or the generated artifact receipt.
+        """
+        root = request.repository_root.resolve()
+        target = (root / request.output).resolve()
+        if not target.is_relative_to(root):
+            return r[t.Cli.ResultValue].fail("rename plan output escapes workspace")
+        observed = u.Cli.atomic_read_binary_file_state(root / request.output)
+        if observed.failure:
+            return r[t.Cli.ResultValue].from_failure(observed)
+        selections = m.Infra.SemanticRenameSelections.model_validate_json(
+            request.decisions
+        )
+        with infra.rope_workspace(root) as workspace:
+            planned = FlextInfraCodemodSemanticApply.build_rename_plan(
+                root, workspace, selections
+            )
+        if planned.failure:
+            return r[t.Cli.ResultValue].from_failure(planned)
+        before = observed.value
+        if any(
+            state.path == target
+            or (
+                before.inode is not None
+                and (state.device, state.inode) == (before.device, before.inode)
+            )
+            for state in planned.value.candidate.inputs
+        ):
+            return r[t.Cli.ResultValue].fail(
+                "rename plan output aliases a governed candidate input"
+            )
+        if before.content is not None:
+            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
+            if previous.candidate.workspace != root:
+                return r[t.Cli.ResultValue].fail(
+                    "rename plan output belongs to another workspace"
+                )
+        content = planned.value.model_dump_json(indent=2, round_trip=True)
+        if m.Infra.SemanticRenamePlan.model_validate_json(content) != planned.value:
+            return r[t.Cli.ResultValue].fail(
+                "rename artifact did not round-trip exactly"
+            )
+        authenticated = u.Cli.atomic_verify_binary_file_states(
+            planned.value.candidate.inputs
+        )
+        if authenticated.failure:
+            return r[t.Cli.ResultValue].from_failure(authenticated)
+        written = u.Cli.atomic_write_text_file_guarded(before, content + "\n")
+        if written.failure:
+            return r[t.Cli.ResultValue].from_failure(written)
+        cli.display_text(
+            f"semantic rename plan: {target} files={len(planned.value.edits)}"
+        )
+        return r[t.Cli.ResultValue].ok(value=True)
+
+    @staticmethod
+    def execute_rename_preview(
+        request: m.Infra.SemanticRenamePreviewCommand,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Read the artifact through the same mod consumer and native staging port.
+
+        Returns:
+            The original authentication, runtime or lint failure, or preview proof.
+        """
+        root = request.repository_root.resolve()
+        with infra.rope_workspace(root) as workspace:
+            return FlextInfraCodemodSemanticApply.consume_rename_plan(
+                m.Infra.ModCommand(
+                    repository_root=root, rename_plan=request.plan, check=True
+                ),
+                workspace,
+                infra.source_preview(root),
+            ).map(lambda accepted: accepted)
 
     @staticmethod
     def execute_move_module(
@@ -101,6 +182,24 @@ class FlextInfraRefactorRoutes:
         return infra.mod_text_candidate(request)
 
     refactor_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
+        m.Cli.ResultCommandRoute(
+            name="rename-plan",
+            help_text=(
+                "Generate a native semantic rename artifact "
+                "from explicit domain decisions"
+            ),
+            model_cls=m.Infra.SemanticRenamePlanCommand,
+            handler=execute_rename_plan,
+        ),
+        m.Cli.ResultCommandRoute(
+            name="rename-preview",
+            help_text=(
+                "Validate an authenticated rename artifact "
+                "in the native candidate runtime"
+            ),
+            model_cls=m.Infra.SemanticRenamePreviewCommand,
+            handler=execute_rename_preview,
+        ),
         m.Cli.ResultCommandRoute(
             name="move-module",
             help_text="Move one module and rewire its imports through Rope",
