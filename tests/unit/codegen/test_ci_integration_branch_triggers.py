@@ -245,6 +245,57 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(rendered, lacks=["continue-on-error"])
 
     @staticmethod
+    def test_tool_cache_keeps_new_generations_after_completed_failures() -> None:
+        """A rendered cache contract restores progress and never overwrites a generation."""
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
+            dist="cache-consumer",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="integration/cache-consumer",
+            ci_trigger_branches=(),
+        )
+        steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
+        restore = next(step for step in steps if step.get("id") == "tool-cache")
+        save = next(step for step in steps if step.get("name") == "Save tool caches")
+        restore_inputs = u.Cli.json_as_mapping(restore["with"])
+        save_inputs = u.Cli.json_as_mapping(save["with"])
+        primary_key = restore_inputs["key"]
+        prefixes_text = restore_inputs["restore-keys"]
+        assert isinstance(primary_key, str)
+        assert isinstance(prefixes_text, str)
+        prefixes = prefixes_text.splitlines()
+        tm.that(len(prefixes), eq=2)
+        tm.that(primary_key.startswith(prefixes[0]), eq=True)
+        tm.that(prefixes[0].startswith(prefixes[1]), eq=True)
+        tm.that(prefixes[0] != prefixes[1], eq=True)
+        tm.that(prefixes[1], has=spec.python_version)
+        tm.that(
+            primary_key,
+            has=["${{ github.run_id }}", "${{ github.run_attempt }}"],
+        )
+        tm.that(
+            save_inputs["key"],
+            eq="${{ steps.tool-cache.outputs.cache-primary-key }}",
+        )
+        tm.that(
+            save["if"],
+            has=[
+                "always()",
+                "!cancelled()",
+                "steps.tool-cache.outcome == 'success'",
+                "steps.tool-cache.outputs.cache-primary-key != ''",
+                "github.event_name == 'workflow_dispatch'",
+                "github.event.pull_request.head.repo.full_name == github.repository",
+            ],
+        )
+        tm.that(save["if"], lacks=["cache-hit", "success()"])
+        tm.that(save_inputs["path"], eq=restore_inputs["path"])
+        cache_action = spec.github_actions["cache"]
+        tm.that(
+            save["uses"],
+            eq=f"{cache_action.repository}/save@{cache_action.version}",
+        )
+
+    @staticmethod
     def test_testmon_save_requires_a_trusted_fresh_project_receipt() -> None:
         """Actions archives only the typed project database, never a cache tree."""
         spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(

@@ -556,6 +556,8 @@ class FlextInfraProtocolsBase(Protocol):
             cls,
             root: Path,
             profile: c.Infra.MakeProfile,
+            *,
+            inputs: m.Infra.CodegenInputs | None = None,
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
 
         @staticmethod

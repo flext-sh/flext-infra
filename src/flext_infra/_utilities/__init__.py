@@ -456,6 +456,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.workspace_fingerprint import (
         FlextInfraUtilitiesWorkspaceFingerprint,
     )
+    from flext_infra._utilities.workspace_inventory import (
+        FlextInfraUtilitiesWorkspaceInventory,
+    )
     from flext_infra._utilities.workspace_manifest import (
         FlextInfraUtilitiesWorkspaceManifest,
     )
@@ -647,6 +650,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
+    "FlextInfraUtilitiesWorkspaceInventory",
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
@@ -893,6 +897,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesTransformerHeaderParser": ".transformer_header_parser",
         "FlextInfraUtilitiesVersioning": ".versioning",
         "FlextInfraUtilitiesWorkspaceFingerprint": ".workspace_fingerprint",
+        "FlextInfraUtilitiesWorkspaceInventory": ".workspace_inventory",
         "FlextInfraUtilitiesWorkspaceManifest": ".workspace_manifest",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",

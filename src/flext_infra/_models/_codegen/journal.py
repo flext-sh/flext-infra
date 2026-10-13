@@ -40,6 +40,13 @@ class FlextInfraModelsCodegenJournalModels:
             m.Cli.AtomicFileState | None,
             m.Field(description="Exact staged state, or None for a planned deletion"),
         ] = None
+        source_states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Exact dependencies consumed by this destination",
+            ),
+        ] = ()
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Managed artifact persistence policy"),
@@ -458,6 +465,12 @@ class FlextInfraModelsCodegenJournalModels:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
+        source_paths: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description="Authenticated source identities consumed by this entry"
+            ),
+        ] = ()
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Declared persistence policy for this destination"),

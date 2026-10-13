@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
@@ -79,9 +80,10 @@ class FlextInfraPyprojectModernizerDocument:
         recovered = u.Infra.recover_live_pyproject_text(source)
         if recovered.failure:
             return result_type.from_failure(recovered)
-        payload_source = u.Cli.toml_mapping_from_text(recovered.value)
-        if payload_source is None:
+        document = u.Cli.toml_parse_text(recovered.value)
+        if document is None:
             return result_type.fail(f"invalid TOML: {path}")
+        payload_source = u.normalize_to_json_value(document.unwrap())
         validated: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
             payload_source,
@@ -93,6 +95,7 @@ class FlextInfraPyprojectModernizerDocument:
                 pyproject_path=path,
                 original_rendered=source,
                 payload=validated.value,
+                document=document,
             ),
         )
 
@@ -219,6 +222,7 @@ class FlextInfraPyprojectModernizerDocument:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        source_migration: m.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[t.StrSequence]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
@@ -226,6 +230,23 @@ class FlextInfraPyprojectModernizerDocument:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
+        if source_migration is not None:
+            migrated = u.Infra.rewrite_git_source_references(
+                state.payload, source_migration
+            )
+            if migrated.failure:
+                return r[t.StrSequence].from_failure(migrated)
+            if not migrated.value:
+                state.rendered = state.original_rendered
+                return r[t.StrSequence].ok(())
+            return self._render_document_state(
+                state,
+                migrated.value,
+                dry_run=dry_run,
+                skip_comments=True,
+                format_source=False,
+                preserve_layout=True,
+            )
         return self._render_document_state(
             state,
             self._apply_document_phases(
@@ -337,6 +358,7 @@ class FlextInfraPyprojectModernizerDocument:
         dry_run: bool,
         skip_comments: bool,
         format_source: bool = True,
+        preserve_layout: bool = False,
     ) -> p.Result[t.StrSequence]:
         """Order, annotate, and format one payload; write unless ``dry_run``.
 
@@ -347,8 +369,16 @@ class FlextInfraPyprojectModernizerDocument:
 
         """
         path = state.pyproject_path
-        doc = u.Cli.toml_document_from_mapping(state.payload)
-        self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
+        if preserve_layout:
+            if state.document is None:
+                return r[t.StrSequence].fail(
+                    f"original TOML document is unavailable: {path}"
+                )
+            doc = state.document
+            self._sync_document_values(doc, state.payload)
+        else:
+            doc = u.Cli.toml_document_from_mapping(state.payload)
+            self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
         rendered = doc.as_string()
         comment_changes: t.StrSequence = ()
         if not skip_comments:
@@ -372,6 +402,28 @@ class FlextInfraPyprojectModernizerDocument:
         if not dry_run:
             u.write_file(path, state.rendered, encoding=c.DEFAULT_ENCODING)
         return r[t.StrSequence].ok((*changes, *comment_changes))
+
+    @classmethod
+    def _sync_document_values(
+        cls,
+        document: t.Cli.TomlDocument | t.Cli.TomlTable,
+        payload: t.JsonMapping,
+    ) -> None:
+        """Synchronize changed semantic values through the original TOML tree."""
+        for key, value in payload.items():
+            if u.Cli.toml_value(document, key) == value:
+                continue
+            child = u.Cli.toml_table_child(document, key)
+            if child is not None and isinstance(value, Mapping):
+                cls._sync_document_values(child, value)
+            elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+                u.Cli.toml_sync_string_list(
+                    document,
+                    key,
+                    tuple(item for item in value if isinstance(item, str)),
+                )
+            else:
+                u.Cli.toml_sync_value(document, key, value)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerDocument"]

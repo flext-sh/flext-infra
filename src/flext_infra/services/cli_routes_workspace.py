@@ -10,8 +10,10 @@ from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import FlextInfraGitService, c, infra, m, p, t, u
+from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
+from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -70,8 +72,17 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             params,
             inputs=u.Infra.load_codegen_inputs(params.repository_root).unwrap(),
             load_inputs=u.Infra.load_codegen_inputs,
+            read_runtime_identity=FlextInfraWorkspaceRoutes._check_runtime_identity,
         ).unwrap()
         u.Cli.framework_exit(captured.process.raw_return_code)
+
+    @staticmethod
+    def _check_runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
+        """Compose actual installed Python provenance and declared scanners."""
+        return FlextInfraGateRegistry.default().runtime_identity(
+            gate_ids,
+            installed_identity=FlextInfraPytestRunner.installed_toolchain_identity(),
+        )
 
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]

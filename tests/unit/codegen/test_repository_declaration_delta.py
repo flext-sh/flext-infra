@@ -99,4 +99,3 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         )
 
         tm.that(after, eq=before)
-

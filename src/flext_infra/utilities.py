@@ -225,6 +225,9 @@ from flext_infra._utilities.workspace_manifest import (
 )
 from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
+from flext_infra._utilities.workspace_inventory import (
+    FlextInfraUtilitiesWorkspaceInventory,
+)
 
 
 class FlextInfraUtilities(FlextCliUtilities):
@@ -347,6 +350,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesTransformerHeaderParser,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
+        FlextInfraUtilitiesWorkspaceInventory,
         FlextInfraUtilitiesWorkspaceManifest,
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,

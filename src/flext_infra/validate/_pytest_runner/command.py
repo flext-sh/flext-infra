@@ -33,7 +33,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def _toolchain_testmon_environment() -> str:
+    def installed_toolchain_identity() -> str:
         """Fingerprint the interpreter and installed distribution provenance.
 
         Git branch dependencies can change commits while retaining the same
@@ -62,8 +62,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 f"{distribution.name}={distribution.version}:{identity!r}",
             )
         fingerprint = "\n".join((sys.version, *sorted(provenance)))
-        digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
-        return f"toolchain-{digest}"
+        return hashlib.sha256(fingerprint.encode()).hexdigest()
 
     def carries_slow_items(self, execution_mode: c.Infra.PytestExecutionMode) -> bool:
         """Whether this invocation may run slow-marked items.
@@ -158,7 +157,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             self._marker_expression(execution_mode).encode(),
         ).hexdigest()[:8]
         return (
-            f"{self._toolchain_testmon_environment()}-"
+            f"toolchain-{self.installed_toolchain_identity()[:12]}-"
             f"{self._config_testmon_digest()}-{scope}"
         )
 

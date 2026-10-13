@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.codemod._extract_duplicate import FlextInfraExtractDuplicatePhase
     from flext_infra.codemod._loop_phase_accessor_rename import (
         FlextInfraAccessorRenamePhase,
     )
@@ -51,6 +52,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCodemodSnapshotRefresh",
     "FlextInfraDuplicateApplyPhase",
+    "FlextInfraExtractDuplicatePhase",
     "FlextInfraImportNormalizationPhase",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -73,6 +75,7 @@ install_lazy_exports(
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",
         "FlextInfraCodemodSnapshotRefresh": ".snapshot_refresh",
         "FlextInfraDuplicateApplyPhase": "._loop_phase_duplicate_apply",
+        "FlextInfraExtractDuplicatePhase": "._extract_duplicate",
         "FlextInfraImportNormalizationPhase": "._loop_phase_import_normalization",
         "FlextInfraModGateEngine": ".batch_gates",
         "FlextInfraModReplacements": ".batch_replacements",

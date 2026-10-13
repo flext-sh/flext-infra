@@ -75,30 +75,3 @@ class FlextInfraConfigModelsRender:
                 ),
             ),
         ] = ()
-
-    class UvPackageSelectorSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Package selector for one official uv scoped dependency exclusion."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Selected package name")]
-        version: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional selected package version expression"),
-        ] = None
-
-    class UvScopedDependencyExclusionSpec(
-        FlextInfraConfigModelsContract.ConfigContract,
-    ):
-        """Project-routed official uv scoped dependency exclusion."""
-
-        project: Annotated[
-            t.NonEmptyStr,
-            m.Field(exclude=True, description="Owning project distribution route"),
-        ]
-        package: Annotated[
-            FlextInfraConfigModelsRender.UvPackageSelectorSpec,
-            m.Field(description="Package whose transitive edge is scoped"),
-        ]
-        dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Excluded transitive dependency names"),
-        ]

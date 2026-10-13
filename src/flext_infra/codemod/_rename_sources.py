@@ -10,9 +10,10 @@ import ast
 import io
 import re
 import tokenize
+from os.path import commonpath
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, c, config, m, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraRenameSources:
@@ -65,15 +66,22 @@ class FlextInfraRenameSources:
 
         """
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        ignored = config.Infra.codegen.source_scan_ignored
-        generated = {item.path for item in config.Infra.codegen.managed_files}
-        templates = u.Infra.codegen_template_sources(config.Infra.codegen)
-        config_dir = FlextInfraConfig.ssot_config_dir()
+        configuration_root = (
+            params.repository_root
+            if params.repository_root is not None
+            else Path(commonpath(roots))
+        )
+        codegen = u.Infra.load_codegen_inputs(configuration_root).unwrap().spec
+        campaigns = u.Infra.load_refactor_csv_campaigns(configuration_root).unwrap()
+        ignored = codegen.source_scan_ignored
+        generated = {item.path for item in codegen.managed_files}
+        templates = u.Infra.codegen_template_sources(codegen)
+        config_dir = configuration_root / c.CONFIG_DIR_NAME
         drivers = {
             Path(params.csv).resolve(),
             *(
                 (config_dir / campaign.csv).resolve()
-                for campaign in config.Infra.refactor_csv_campaigns.campaigns
+                for campaign in campaigns.campaigns
             ),
         }
         for root in roots:

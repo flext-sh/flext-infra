@@ -29,7 +29,7 @@ class FlextInfraAccessorOriginResolver:
     def __init__(self, rope_project: t.Infra.RopeProject) -> None:
         """Initialize with the shared Rope project of the migration run."""
         self._rope_project = rope_project
-        self._pymodules: dict[str, t.Infra.RopePyModule] = {}
+        self._pymodules: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
 
     @staticmethod
     def within_origin(definition_path: str, *, origin: str) -> bool:

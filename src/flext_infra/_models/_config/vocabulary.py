@@ -38,6 +38,7 @@ class FlextInfraConfigVocabulary:
         INTERNAL_FLEXT = "internal_flext"
         INTERNAL = "internal"
         THIRD_PARTY_FORK = "third_party_fork"
+
     @unique
     class GateAcceptancePolicy(StrEnum):
         """Whether evidence claims clean quality or complete diagnostic execution."""

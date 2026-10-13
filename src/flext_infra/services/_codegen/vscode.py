@@ -158,7 +158,7 @@ class FlextInfraCodegenVscodeMixin:
             The minimal override buckets the canonical merge can reproduce.
         """
         artifact_settings = cls._artifact_settings()
-        buckets: dict[str, t.MutableJsonMapping] = {
+        buckets: t.MutableMappingKV[str, t.JsonDict] = {
             "scalar_settings": {},
             "list_settings": {},
             "map_union_settings": {},
@@ -178,9 +178,11 @@ class FlextInfraCodegenVscodeMixin:
             if present and selected is not None:
                 field, normalized = selected
                 buckets[field][key] = normalized
-        return r[t.MutableJsonMapping].ok({
-            field: values for field, values in buckets.items() if values
-        })
+        deltas: t.MutableJsonMapping = {}
+        for field, values in buckets.items():
+            if values:
+                deltas[field] = values
+        return r[t.MutableJsonMapping].ok(deltas)
 
     @classmethod
     def _classify_vscode_setting(
@@ -189,7 +191,7 @@ class FlextInfraCodegenVscodeMixin:
         value: t.JsonValue,
         spec: m.Infra.CodegenVscodeSpec,
         expected: t.JsonMapping,
-        artifact_settings: t.JsonMapping,
+        artifact_settings: t.MappingKV[str, t.MappingKV[str, str | bool]],
     ) -> p.Result[t.Pair[tuple[str, t.JsonValue] | None, bool]]:
         """Classify one portable setting into its representable delta bucket.
 
@@ -678,9 +680,10 @@ class FlextInfraCodegenVscodeMixin:
         """
         if isinstance(value, str):
             for token, replacement in substitutions:
+                literal = replacement.replace("\\", "\\\\")
                 value = re.sub(
                     re.escape(token) + r"(?=$|[/\\:;\s])",
-                    lambda _match, replacement=replacement: replacement,
+                    literal,
                     value,
                 )
             return value

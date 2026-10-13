@@ -339,7 +339,7 @@ class TestsFlextInfraCodegenMakeVerbs:
 
         tm.that(
             makefile,
-            has="upg: _builtin_require_runtime_root _bootstrap_setup_tools",
+            has="upg: _bootstrap_setup_tools",
         )
         tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
         tm.that(makefile, has="_builtin-fix: _builtin_fix_all")

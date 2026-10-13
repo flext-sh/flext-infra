@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import shutil
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
@@ -83,7 +82,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             ValueError: If jscpd report target is not a physical file.
 
         """
-        binary = shutil.which(c.Infra.JSCPD_BINARY)
+        binary = self.resolve_binary()
         if binary is None:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -277,30 +276,19 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
-        """Read ``repository.duplication_trees`` from the governed manifest.
+        """Read duplication scope from the target's selected repository delta.
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
-        manifest_path = u.Infra.workspace_manifest_path(self._repository_root)
-        if not manifest_path.is_file():
-            return r[t.StrSequence].ok(())
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        loaded = u.Infra.load_codegen_inputs(self._repository_root)
         if loaded.failure:
-            return r[t.StrSequence].fail(
-                f"invalid workspace manifest ({manifest_path}): {loaded.error}",
-            )
-        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
-            m.Infra.WorkspaceManifestSpec,
-            loaded.value.data,
+            return r[t.StrSequence].from_failure(loaded)
+        repository = loaded.value.spec.repository
+        return r[t.StrSequence].ok(
+            repository.duplication_trees if repository is not None else (),
         )
-        if validated.failure:
-            return r[t.StrSequence].fail_op(
-                f"workspace manifest model validation ({manifest_path})",
-                validated.error,
-            )
-        return r[t.StrSequence].ok(tuple(validated.value.repository.duplication_trees))
 
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
@@ -422,7 +410,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             # The semantic classifier owns the verdict in both scopes: the
             # fleet union only widens WHICH clones are visible, never what
             # counts as one.
-            if not fleet and not cls.is_semantic_clone(duplicate, first, second):
+            if not cls.is_semantic_clone(duplicate, first, second):
                 continue
             first_span = cls.side_span_key(first)
             second_span = cls.side_span_key(second)

@@ -68,12 +68,6 @@ class FlextInfraUtilitiesWorkspaceManifest:
                         exclude_computed_fields=True,
                     ),
                 )
-        if legacy.candidate_dependencies:
-            error = ValueError(
-                "candidate dependency coordinates must be adopted by the "
-                "declared dependency provenance before manifest retirement",
-            )
-            return result_type.fail(str(error), exception=error)
         validated = u.validate_value(m.Infra.RepositoryDeltaSpec, values)
         if validated.failure:
             return result_type.from_failure(validated)

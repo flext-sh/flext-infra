@@ -31,6 +31,117 @@ class TestsFlextInfraTransactionDirectoryJournal:
     _TRANSACTION_ID = "a" * 32
 
     @staticmethod
+    @pytest.mark.parametrize("mutation", ["missing", "wrong-phase", "duplicate"])
+    @pytest.mark.parametrize("delivery", ["result", "raise"])
+    def test_persisted_journal_rejects_unowned_source_dependencies(
+        tmp_path: Path,
+        mutation: str,
+        delivery: str,
+    ) -> None:
+        """A persisted publication requires unique same-phase source authority."""
+        root = u.Tests.git_repository(tmp_path)
+        source_path = root / "source.txt"
+        target = root / "generated.md"
+        source_path.write_bytes(b"owned source\n")
+        target.write_bytes(b"original target\n")
+        source = tm.ok(
+            u.Cli.atomic_read_binary_file_state(source_path, required=True),
+        )
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(target, required=True),
+        )
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@source-authority-0": root}
+        original_errors: list[ValueError] = []
+
+        def reject_journal(
+            session: m.Infra.CodegenTransactionSession,
+            _publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            journal, snapshot = tm.ok(
+                FlextInfraMiseArtifactsJournal.read(session.plan.layout),
+            )
+            entry = journal.entries[0]
+            tm.that(entry.source_paths, eq=(source.path,))
+            if mutation == "duplicate":
+                corrupted = journal.model_copy(
+                    update={
+                        "entries": (
+                            entry.model_copy(
+                                update={
+                                    "source_paths": (*entry.source_paths, source.path)
+                                },
+                            ),
+                        ),
+                    },
+                )
+            else:
+                corrupted = journal.model_copy(
+                    update={
+                        "sources": (
+                            ()
+                            if mutation == "missing"
+                            else tuple(
+                                item.model_copy(update={"phase": "semantic"})
+                                for item in journal.sources
+                            )
+                        ),
+                    },
+                )
+            tm.ok(
+                u.Cli.atomic_write_binary_file_guarded(
+                    snapshot,
+                    corrupted.model_dump_json().encode(c.DEFAULT_ENCODING),
+                    permission_mode=snapshot.mode,
+                ),
+            )
+            with pytest.raises(ValueError, match="source dependenc") as rejected:
+                FlextInfraMiseArtifactsJournal.read(session.plan.layout)
+            original_errors.append(rejected.value)
+            if delivery == "raise":
+                raise rejected.value
+            return r[m.Infra.CodegenTransactionSession].fail(
+                str(rejected.value),
+                exception=rejected.value,
+            )
+
+        def publish(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, ()))
+            planned = m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=before,
+                desired_content=b"generated target\n",
+                desired_mode=before.mode,
+                source_states=(source,),
+                owner="docs",
+            )
+            return owner.publish_prepared_locked(
+                session,
+                lambda current: owner.append_phase_locked(
+                    current,
+                    "docs",
+                    (planned,),
+                    staged_validator=reject_journal,
+                ),
+            )
+
+        if delivery == "raise":
+            with pytest.raises(ValueError, match="source dependenc") as propagated:
+                owner.run_files_locked(roots, publish)
+            tm.that(propagated.value is original_errors[0], eq=True)
+        else:
+            rejected = owner.run_files_locked(roots, publish)
+            tm.fail(rejected, has="source dependenc")
+            tm.that(rejected.exception is original_errors[0], eq=True)
+            assert rejected.error_data is not None
+            tm.that(bool(rejected.error_data["cleanup_error"]), eq=True)
+        tm.that(target.read_bytes(), eq=before.content)
+        tm.that(source_path.read_bytes(), eq=source.content)
+
+    @staticmethod
     def test_live_artifact_verification_preserves_native_read_failure(
         tmp_path: Path,
     ) -> None:

@@ -81,6 +81,24 @@ class FlextInfraModelsWorkspace:
                 ),
             ),
         ]
+        native_exit_code: Annotated[
+            int | None,
+            m.Field(
+                description="Observed shell exit status; absent for in-process operations"
+            ),
+        ] = None
+        stage: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Original bootstrap stage reached before shell completion"
+            ),
+        ] = None
+        completed: Annotated[
+            bool | None,
+            m.Field(
+                description="Whether the original bootstrap reached its final stage"
+            ),
+        ] = None
         applicability: Annotated[
             str,
             m.Field(
@@ -136,6 +154,21 @@ class FlextInfraModelsWorkspace:
             t.VariadicTuple[Path],
             m.Field(description="Roots discovered once before the batch"),
         ]
+        candidate_sha: Annotated[
+            str | None,
+            m.Field(
+                pattern=c.Infra.GIT_COMMIT_OID_RE.pattern,
+                description="Observed Git candidate; absent when no candidate could be read",
+            ),
+        ] = None
+        candidate_read_exit_code: Annotated[
+            int | None,
+            m.Field(
+                description=(
+                    "Observed Git metadata read status; separate from operation completion"
+                ),
+            ),
+        ] = None
         receipts: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
             m.Field(description="Original outcomes in discovered order"),

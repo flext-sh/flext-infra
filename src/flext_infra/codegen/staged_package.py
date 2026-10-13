@@ -37,7 +37,7 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(discovered)
         layouts = discovered.value
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: dict[Path, m.Cli.AtomicFileState] = {}
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for path in updates:
             root = u.Infra.project_root(path)
             local = u.Infra.layout(root) if root is not None else None
@@ -107,7 +107,7 @@ class FlextInfraStagedPackage:
             )
         layouts[local.package_name] = local
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: dict[Path, m.Cli.AtomicFileState] = {}
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         pinned = cls._pin_closure(local, layouts, selected, states)
         if pinned.failure:
             return result_type.from_failure(pinned)
@@ -119,12 +119,13 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _workspace_layouts(
         workspace: Path,
-    ) -> p.Result[dict[str, m.Infra.RopeProjectLayout]]:
+    ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
 
+        result_type = r[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]
         declarations = u.Infra.git_submodule_declarations(workspace)
         if declarations.failure:
-            return r[dict[str, m.Infra.RopeProjectLayout]].from_failure(declarations)
-        layouts: dict[str, m.Infra.RopeProjectLayout] = {}
+            return result_type.from_failure(declarations)
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
         for repository in (
             workspace,
             *(workspace / declaration.path for declaration in declarations.value),
@@ -132,11 +133,11 @@ class FlextInfraStagedPackage:
             layout = u.Infra.layout(repository)
             if layout is not None:
                 if layout.package_name in layouts:
-                    return r[dict[str, m.Infra.RopeProjectLayout]].fail(
+                    return result_type.fail(
                         f"ambiguous candidate package: {layout.package_name}"
                     )
                 layouts[layout.package_name] = layout
-        return r[dict[str, m.Infra.RopeProjectLayout]].ok(layouts)
+        return result_type.ok(layouts)
 
     @staticmethod
     def _source_paths(layout: m.Infra.RopeProjectLayout) -> p.Result[list[Path]]:
@@ -188,7 +189,7 @@ class FlextInfraStagedPackage:
     def _pin_layout(
         cls,
         layout: m.Infra.RopeProjectLayout,
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[tuple[str, ...]]:
         paths = cls._source_paths(layout)
         if paths.failure:
@@ -212,9 +213,9 @@ class FlextInfraStagedPackage:
     def _pin_closure(
         cls,
         local: m.Infra.RopeProjectLayout,
-        layouts: dict[str, m.Infra.RopeProjectLayout],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
         selected: list[m.Infra.RopeProjectLayout],
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         queue = [local.package_name]
         while queue:
@@ -237,7 +238,7 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _pin_workspace_metadata(
         workspace: Path,
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         for path in (
             workspace / c.PYPROJECT_FILENAME,
@@ -251,7 +252,7 @@ class FlextInfraStagedPackage:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _absolute_imports(tree: ast.Module) -> dict[str, tuple[str, str]]:
+    def _absolute_imports(tree: ast.Module) -> t.MappingKV[str, t.StrPair]:
         return {
             alias.asname or alias.name: (node.module, alias.name)
             for node in tree.body
@@ -327,8 +328,8 @@ class FlextInfraStagedPackage:
         file: m.Infra.CodegenFilePlan,
         local: m.Infra.RopeProjectLayout,
         selected: list[m.Infra.RopeProjectLayout],
-        states: dict[Path, m.Cli.AtomicFileState],
-        layouts: dict[str, m.Infra.RopeProjectLayout],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.StagePackagePlan]:
         result_type = r[m.Infra.StagePackagePlan]
         if file.desired_content is None:

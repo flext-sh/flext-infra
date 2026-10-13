@@ -452,18 +452,6 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
 
-    class ManagedGitlinkSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One governed submodule with its provider-owned baseline branch."""
-
-        repository: Annotated[
-            FlextInfraConfigModelsRepository.RepositoryRef,
-            m.Field(description="Governed repository identity"),
-        ]
-        branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Declared gitlink branch (. follows the superproject)"),
-        ]
-
     class ScriptDispatchSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 

@@ -104,7 +104,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
         """
         token_changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         rewrite_ranges: t.MutableSequenceOf[t.Triple[int, int, str]] = []
-        skipped_by_definition: dict[str, int] = {}
+        skipped_by_definition: t.MutableMappingKV[str, int] = {}
         for token in generate_tokens(io.StringIO(source).readline):
             if token.type != NAME or token.string != rule.source_name:
                 continue
