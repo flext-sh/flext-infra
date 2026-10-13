@@ -17,8 +17,8 @@ from flext_cli import m
 
 from flext_infra import t
 from flext_infra._models import (
-    FlextInfraModelsCensus,
     FlextInfraModelsBase,
+    FlextInfraModelsCensus,
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorGrep,

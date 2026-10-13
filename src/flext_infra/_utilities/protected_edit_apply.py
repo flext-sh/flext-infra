@@ -69,14 +69,19 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 before_lints[path],
                 after_lints[path],
             )
-            test_fail = (
+            execution_errors = tuple(
+                error
+                for snapshot in (before_lints[path], after_lints[path])
+                for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(snapshot)
+            )
+            test_fail = None if execution_errors else (
                 FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(
                     path,
                     request,
                     new_errors,
                 )
             )
-            if not new_errors and not test_fail:
+            if not new_errors and not test_fail and not execution_errors:
                 continue
             failed = True
             reports.extend(
@@ -86,6 +91,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                     before_sources[path] or "",
                     new_errors,
                     test_fail,
+                    execution_errors=execution_errors,
                 ),
             )
         return (not failed, reports)
@@ -202,24 +208,25 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         )
 
         request.edit_fn()
-        new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
-            before,
-            FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-                py_file,
-                request.workspace,
-                gates=request.gates,
-            ),
+        after = FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
+            py_file, request.workspace, gates=request.gates,
+        )
+        new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(before, after)
+        execution_errors = tuple(
+            error
+            for snapshot in (before, after)
+            for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(snapshot)
         )
 
         test_fail: str | None = (
             None
-            if new_errors
+            if new_errors or execution_errors
             else FlextInfraUtilitiesProtectedEditApply._pytest_failure(
                 py_file,
                 request.workspace,
             ).fold(on_failure=lambda msg: msg, on_success=lambda _: None)
         )
-        if not new_errors and not test_fail:
+        if not new_errors and not test_fail and not execution_errors:
             return (True, [])
 
         report = FlextInfraUtilitiesProtectedEditApply._validation_failure_report_lines(
@@ -228,6 +235,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             request.before_source,
             new_errors,
             test_fail,
+            execution_errors=execution_errors,
         )
         return (False, report)
 

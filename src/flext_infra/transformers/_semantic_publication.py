@@ -70,8 +70,12 @@ class FlextInfraSemanticPublication:
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         *,
         candidate: m.Infra.StageSourcePlan,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Publish an accepted candidate under its complete original input guard.
+
+        Additional read-only driver snapshots belong to the transaction, not the
+        candidate's governed source inventory. Preserve every caller snapshot.
 
         Returns:
             Published paths, or the original pre-CAS identity failure.
@@ -101,12 +105,12 @@ class FlextInfraSemanticPublication:
                     desired_content=plan.desired_content,
                     desired_mode=plan.desired_mode,
                     changes=plan.changes,
-                    source_states=(*candidate.inputs, *plan.source_states),
+                    source_states=(*candidate.inputs, *inputs, *plan.source_states),
                 )
                 for plan in plans
             ),
             None,
-            inputs=candidate.inputs,
+            inputs=(*candidate.inputs, *inputs),
         )
         if analysis.failure:
             return r[tuple[Path, ...]].from_failure(analysis)

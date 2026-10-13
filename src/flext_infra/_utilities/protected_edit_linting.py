@@ -683,7 +683,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             findings_exit_codes=(
                 config.Infra.tooling.tools.ruff.findings_exit_codes
                 if tool_name == c.Infra.RUFF
-                else (c.Cli.EXIT_CODE_ERROR,)
+                else (c.Cli.EXIT_CODE_FAILURE,)
             ),
         )
         resource_error = (
@@ -710,8 +710,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
             execution_error=failure,
         )
 
-    @staticmethod
-    def _lint_report_errors(tool_name: str, source: str) -> p.Result[t.StrSequence]:
+    @classmethod
+    def _lint_report_errors(cls, tool_name: str, source: str) -> p.Result[t.StrSequence]:
         """Validate the selected tool's native machine report before counting findings.
 
         Returns:
@@ -719,22 +719,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         result = r[t.StrSequence]
         if tool_name == c.Infra.MYPY:
-            lines: list[str] = []
-            for line in source.splitlines():
-                if not line.strip():
-                    continue
-                diagnostic = u.validate_value(
-                    m.Infra.MypyDiagnostic, line, from_json=True, strict=True
-                )
-                if diagnostic.failure:
-                    return result.from_failure(diagnostic)
-                entry = diagnostic.value
-                lines.append(
-                    f"{entry.file}:{entry.line}:{entry.column}: "
-                    f"{entry.severity}: {entry.message} [{entry.code or ''}]"
-                    + (f"\n{entry.hint}" if entry.hint else "")
-                )
-            return result.ok(tuple(lines))
+            return cls._mypy_report_errors(source)
         if tool_name == c.Infra.PYRIGHT:
             report = u.validate_value(
                 m.Infra.PyrightReport, source, from_json=True, strict=True
@@ -763,6 +748,39 @@ class FlextInfraUtilitiesProtectedEditLinting:
             ))
         if tool_name != c.Infra.RUFF:
             return result.fail(f"unsupported lint report contract: {tool_name}")
+        return cls._ruff_report_errors(source)
+
+    @staticmethod
+    def _mypy_report_errors(source: str) -> p.Result[t.StrSequence]:
+        """Validate every native JSON-lines diagnostic, retaining hints and failures.
+
+        Returns:
+            Complete diagnostic lines, or the original malformed-report failure.
+        """
+        result = r[t.StrSequence]
+        lines: list[str] = []
+        for line in filter(str.strip, source.splitlines()):
+            diagnostic = u.validate_value(
+                m.Infra.MypyDiagnostic, line, from_json=True, strict=True
+            )
+            if diagnostic.failure:
+                return result.from_failure(diagnostic)
+            entry = diagnostic.value
+            lines.append(
+                f"{entry.file}:{entry.line}:{entry.column}: "
+                f"{entry.severity}: {entry.message} [{entry.code or ''}]"
+                + (f"\n{entry.hint}" if entry.hint else "")
+            )
+        return result.ok(tuple(lines))
+
+    @staticmethod
+    def _ruff_report_errors(source: str) -> p.Result[t.StrSequence]:
+        """Validate Ruff's complete native finding list before projecting diagnostics.
+
+        Returns:
+            Complete diagnostic lines, or the original malformed-report failure.
+        """
+        result = r[t.StrSequence]
         loaded = u.Cli.json_parse(source)
         if loaded.failure:
             return result.from_failure(loaded)
@@ -926,19 +944,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         introduced: t.MutableMappingKV[str, t.StrSequence] = {}
         normalize = FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line
-        for tool in dict.fromkeys((*before, *after)):
+        for tool, candidate in after.items():
             baseline = before.get(tool)
-            candidate = after.get(tool)
-            failures = tuple(
-                result.execution_error
-                for result in (baseline, candidate)
-                if result is not None and result.execution_error is not None
+            remaining = (
+                Counter(normalize(line) for line in baseline.errors)
+                if baseline is not None
+                else Counter[str]()
             )
-            remaining = Counter(
-                normalize(line) for line in baseline.errors
-            ) if baseline is not None else Counter[str]()
             added: list[str] = []
-            for line in candidate.errors if candidate is not None else ():
+            for line in candidate.errors:
                 identity = normalize(line)
                 if not identity:
                     continue
@@ -946,8 +960,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     remaining[identity] -= 1
                 else:
                     added.append(line)
-            if failures or added:
-                introduced[tool] = (*failures, *added)
+            if added:
+                introduced[tool] = tuple(added)
         return introduced
 
 

@@ -205,14 +205,8 @@ class FlextInfraAccessorMigrationReportMixin:
             m.Infra.AccessorMigrationFile.model_validate({
                 **report.model_dump(),
                 "lint_tools": tools,
-                "lint_before": {
-                    tool: tuple(before[Path(report.file)].get(tool, ()))
-                    for tool in tools
-                },
-                "lint_after": {
-                    tool: tuple(after[Path(report.file)].get(tool, ()))
-                    for tool in tools
-                },
+                "lint_before": before[Path(report.file)],
+                "lint_after": after[Path(report.file)],
                 "new_lint_errors": u.Infra.lint_new_errors(
                     before[Path(report.file)], after[Path(report.file)]
                 ),
@@ -275,7 +269,13 @@ class FlextInfraAccessorMigrationReportMixin:
                     t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
                 ]
             ].from_failure(previewed)
-        errors = tuple(
+        execution_errors = tuple(
+            f"{path}: {error}"
+            for path in paths
+            for snapshot in (before[path], previewed.value[path])
+            for error in u.Infra.lint_execution_errors(snapshot)
+        )
+        errors = execution_errors + tuple(
             f"{path}: {tool}: {line}"
             for path in paths
             for tool, lines in u.Infra.lint_new_errors(

@@ -168,6 +168,8 @@ class FlextInfraCodemodSemanticApply:
         artifact, driver = pair
         if artifact.candidate.workspace != root:
             return r[bool].fail("semantic rename candidate belongs to another workspace")
+        if any(state.path == driver.path for state in artifact.candidate.inputs):
+            return r[bool].fail("semantic rename driver aliases a governed source input")
         authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
@@ -209,10 +211,21 @@ class FlextInfraCodemodSemanticApply:
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
         if request.apply and not request.check and not request.dry_run_mode:
-            return r[bool].fail(
-                "semantic rename artifact driver requires guarded "
-                "publication integration"
+            originals = {state.path: state for state in artifact.candidate.inputs}
+            plans = tuple(
+                m.Infra.SemanticFilePlan(
+                    project=u.Infra.project_root(path) or root,
+                    path=path,
+                    before=originals[path],
+                    desired_content=source.encode(c.DEFAULT_ENCODING),
+                    desired_mode=originals[path].mode,
+                    changes=("authenticated semantic rename artifact",),
+                )
+                for path, source in artifact.candidate.updates.items()
             )
+            return FlextInfraSemanticPublication.publish_source_candidate(
+                plans, candidate=artifact.candidate, inputs=(driver,)
+            ).map(lambda _: True)
         return r[bool].ok(value=True)
 
     @classmethod
