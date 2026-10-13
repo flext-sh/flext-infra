@@ -66,7 +66,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         t.Triple[
             list[t.Pair[Path, str]],
             list[m.Infra.DocScope],
-            dict[str, list[str]],
+            t.MutableMappingKV[str, list[str]],
         ]
     ]:
         """Render the aggregate root pages and collect per-project inputs.
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                     t.Triple[
                         list[t.Pair[Path, str]],
                         list[m.Infra.DocScope],
-                        dict[str, list[str]],
+                        t.MutableMappingKV[str, list[str]],
                     ]
                 ].from_failure(src_exists)
             if src_exists.value:
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             t.Triple[
                 list[t.Pair[Path, str]],
                 list[m.Infra.DocScope],
-                dict[str, list[str]],
+                t.MutableMappingKV[str, list[str]],
             ]
         ].ok((rendered, project_scopes, dict(scope_modules)))
 

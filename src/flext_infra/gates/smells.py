@@ -118,7 +118,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
         """
         _ = ctx, check_dirs
-        binary = self._resolve_binary()
+        binary = self.resolve_binary()
         if binary is None:
             raise FileNotFoundError(c.Infra.QLTY_BINARY)
         return self._scan_command(binary, project_dir)
@@ -198,7 +198,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             The resulting ``p.Cli.CommandOutput``.
 
         """
-        binary = self._resolve_binary()
+        binary = self.resolve_binary()
         if binary is None:
             return self._unrunnable_scan_output(
                 f"{c.Infra.QLTY_BINARY} binary not found on PATH",

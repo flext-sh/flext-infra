@@ -16,6 +16,11 @@ from flext_cli import u
 
 from flext_infra import c, config, m, t
 from flext_infra._utilities import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -198,6 +203,7 @@ class FlextInfraUtilitiesDocsRender:
         path: str,
         *,
         is_dir: bool = False,
+        repository_root: Path,
     ) -> str:
         """Return a resolvable governance link for README or project docs.
 
@@ -214,9 +220,21 @@ class FlextInfraUtilitiesDocsRender:
         """
         if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
+            if prefix.rstrip("/") == c.Infra.GITHUB_REPO_URL.rstrip("/"):
+                inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                    repository_root,
+                ).unwrap()
+                branch = FlextInfraUtilitiesRepository.resolve_integration_branch(
+                    repository_root,
+                    preference=inputs.spec.branch_policy.integration_branch_preference,
+                    inputs=inputs,
+                ).unwrap()
+                return f"{prefix}/{kind}/{branch}/{path}"
             branches = tuple(
                 repo.branch
-                for repo in config.Infra.codegen.make.docs.github_repos
+                for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
+                    repository_root,
+                )
                 if prefix.rstrip("/").endswith(
                     f"/{repo.organization}/{repo.repository}",
                 )
@@ -351,10 +369,10 @@ class FlextInfraUtilitiesDocsRender:
             A thin pointer to the canonical Collection Rules.
 
         """
-        _ = scope
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
+            repository_root=scope.repository_root,
         )
         return [
             "## Collection Rules",
@@ -368,7 +386,9 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
+    def _quality_gates_lines(
+        scope: m.Infra.DocScope, *, link_prefix: str
+    ) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface.
 
         Why: the flext-quality-gates skill path does not exist; route to
@@ -381,6 +401,7 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
+            repository_root=scope.repository_root,
         )
         return [
             "## Quality Gates",
@@ -397,7 +418,9 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _governance_pointer_lines(*, link_prefix: str) -> t.SequenceOf[str]:
+    def _governance_pointer_lines(
+        scope: m.Infra.DocScope, *, link_prefix: str
+    ) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical governance surface.
 
         Returns:
@@ -407,19 +430,23 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
+            repository_root=scope.repository_root,
         )
         skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             ".agents/skills/",
+            repository_root=scope.repository_root,
             is_dir=True,
         )
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "docs/guides/onboarding.md",
+            repository_root=scope.repository_root,
         )
         governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "docs/GOVERNANCE.md",
+            repository_root=scope.repository_root,
         )
         return [
             "## Governance Pointer",
@@ -472,10 +499,12 @@ class FlextInfraUtilitiesDocsRender:
                 ),
                 "",
                 *FlextInfraUtilitiesDocsRender._quality_gates_lines(
+                    scope,
                     link_prefix=link_prefix,
                 ),
                 "",
                 *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
+                    scope,
                     link_prefix=link_prefix,
                 ),
             ],
@@ -560,10 +589,12 @@ class FlextInfraUtilitiesDocsRender:
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
             *FlextInfraUtilitiesDocsRender._quality_gates_lines(
+                scope,
                 link_prefix=link_prefix,
             ),
             "",
             *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
+                scope,
                 link_prefix=link_prefix,
             ),
             "- Full project portal: [`docs/index.md`](docs/index.md).",

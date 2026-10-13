@@ -178,6 +178,9 @@ print(json.dumps({
     WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
     )
+    WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
+    )
     CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
     )

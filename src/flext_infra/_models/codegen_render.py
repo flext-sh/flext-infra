@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
@@ -30,6 +31,10 @@ class FlextInfraModelsCodegenRender:
         gate_original_receipt_filename: Annotated[
             t.NonEmptyStr,
             m.Field(description="Public original native gate receipt filename"),
+        ]
+        setup_operations_report_directory: Annotated[
+            Path,
+            m.Field(description="Canonical setup operation report artifact directory"),
         ]
         docs_report_filenames: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -275,12 +280,6 @@ class FlextInfraModelsCodegenRender:
         constraint_dependencies: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Declared constraints; the uv pin is never kept"),
-        ]
-        exclude_dependencies: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
-            ],
-            m.Field(description="Scoped dependency exclusions routed to the project"),
         ]
         environments: Annotated[
             t.VariadicTuple[str],

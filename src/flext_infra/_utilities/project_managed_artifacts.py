@@ -9,7 +9,8 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import MutableMapping
-from functools import partial
+from copy import deepcopy
+from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
@@ -36,18 +37,98 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             The effective codegen declaration and exact consulted file snapshots.
         """
         result_type = r[m.Infra.CodegenInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            projections=projections,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        loaded = u.validate_value(
+            m.Infra.CodegenConfigSpec,
+            u.Cli.json_walk_path(document.value.values, ("Infra", "codegen")),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.CodegenInputs(
+                spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_repository_declaration_inputs(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
+        """Validate only repository policy through the same captured YAML layers.
+
+        An absent optional repository subsection declares no self-owned deltas.
+        Invalid declared policy retains its cause; unrelated editor or tool policy
+        belongs to its own typed consumer and does not determine topology.
+
+        Returns:
+            Strict repository policy with current consulted source snapshots.
+        """
+        result_type = r[m.Infra.RepositoryDeclarationInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        codegen = u.Cli.json_walk_path(document.value.values, ("Infra", "codegen"))
+        section = r[t.JsonMapping].create_from_callable(
+            partial(t.Cli.JSON_MAPPING_ADAPTER.validate_python, codegen),
+        )
+        if section.failure:
+            return result_type.from_failure(section)
+        loaded = u.validate_value(
+            m.Infra.RepositoryDeltaSpec,
+            section.value.get("repository", {}),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.RepositoryDeclarationInputs(
+                spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_config_document_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        filename: str,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+    ) -> p.Result[m.Infra.ConfigDocumentInputs]:
+        """Capture and compose one F.yaml through the same strict layer reader.
+
+        Returns:
+            The typed document and ordered snapshots, with no ambient source lookup.
+        """
+        result_type = r[m.Infra.ConfigDocumentInputs]
         elected = r[tuple[Path, ...]].create_from_callable(
             partial(
                 FlextInfraConfig.config_sources_for_repository,
                 repository_root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                filename=filename,
             ),
         )
         if elected.failure:
             return result_type.from_failure(elected)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             repository_root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            filename=filename,
         )
         selected = tuple(dict.fromkeys(layers))
         if any(projection.path not in selected[1:] for projection in projections):
@@ -63,9 +144,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             if observed.failure:
                 return result_type.from_failure(observed)
             snapshots.append(observed.value)
-        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+        loaded = r[t.JsonMapping].create_from_callable(
             partial(
-                cls._repository_codegen_spec,
+                cls._repository_config_document,
                 selected,
                 tuple(snapshots),
                 projections,
@@ -77,7 +158,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         if verified.failure:
             return result_type.from_failure(verified)
         return result_type.ok(
-            m.Infra.CodegenInputs(spec=loaded.value, sources=tuple(snapshots)),
+            m.Infra.ConfigDocumentInputs(
+                values=loaded.value,
+                sources=tuple(snapshots),
+            ),
         )
 
     @staticmethod
@@ -100,6 +184,30 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 )
                 return r[bool].fail(str(error), exception=error)
         return r[bool].ok(value=True)
+
+    @classmethod
+    def load_refactor_csv_campaigns(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RefactorCsvCampaignsSpec]:
+        """Elect only this target's declared campaigns through its F.yaml layers.
+
+        Returns:
+            The validated campaign declaration; generic defaults own an empty set.
+        """
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.INFRA_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return r[m.Infra.RefactorCsvCampaignsSpec].from_failure(document)
+        return u.validate_value(
+            m.Infra.RefactorCsvCampaignsSpec,
+            u.Cli.json_walk_path(
+                document.value.values,
+                ("Infra", "refactor_csv_campaigns"),
+            ),
+        )
 
     @classmethod
     def project_codegen_inputs(
@@ -171,6 +279,21 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         Returns:
             Validated configuration values from immutable source bytes.
         """
+        return deepcopy(
+            FlextInfraUtilitiesProjectManagedArtifacts._parsed_config_content(content),
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _parsed_config_content(content: bytes) -> t.JsonMapping:
+        """Memoize successful strict parsing of exact immutable source bytes.
+
+        Exceptions leave unchanged and are never cached. The admission owner
+        copies each successful value before exposing it to consumers.
+
+        Returns:
+            The validated document owned by this content memo.
+        """
         parsed = FlextStrictYamlConfigSource.unique_key_load(
             content.decode(c.DEFAULT_ENCODING),
         )
@@ -191,6 +314,27 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Raises:
             ValueError: If a captured configuration input has no bytes.
+        """
+        document = (
+            FlextInfraUtilitiesProjectManagedArtifacts._repository_config_document(
+                sources,
+                snapshots,
+                projections,
+            )
+        )
+        codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
+        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+
+    @staticmethod
+    def _repository_config_document(
+        sources: tuple[Path, ...],
+        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+    ) -> t.JsonMapping:
+        """Merge ordered captured F.yaml bytes and explicitly projected layers.
+
+        Returns:
+            The composed document; schema consumers validate their owned section.
         """
         merged: t.JsonDict = {}
         parse_document = (
@@ -219,8 +363,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 else dict(payload)
             )
             merged = FlextStrictYamlConfigSource.merge_values(merged, values)
-        codegen = u.Cli.json_walk_path(merged, ("Infra", "codegen"))
-        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+        return merged
 
     @staticmethod
     def compose_ruff_per_file_ignores(

@@ -685,6 +685,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 project=project.selector,
                 path=selector,
                 desired_staging=desired_staging,
+                source_paths=tuple(source.path for source in publication.source_states),
                 tracking=publication.tracking,
                 index_before=publication.index_before,
                 tracking_dependencies=publication.tracking_dependencies,

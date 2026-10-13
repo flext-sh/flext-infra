@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Self, override
 
 from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenTransaction
+from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
+    FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
@@ -236,6 +240,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+            migrated = self._migrate_repository_declarations(request)
+            if migrated.failure and (
+                migrated.error_code != c.Infra.ToolOutcome.ERROR.value
+                or not self.planning_issues
+            ):
+                return r[m.Infra.CodegenResult].from_failure(migrated)
         surface = c.Infra.CodegenConformSurface(request.what)
         if surface in {
             c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -274,6 +285,154 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 operation=lambda _scope_root: self._execute_plan(request),
             )
         return self._execute_plan(request)
+
+    def _migrate_repository_declarations(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[bool]:
+        """Publish explicit input migration before any runtime detector read.
+
+        Returns:
+            A complete migration receipt, retaining per-file failures and gains.
+        """
+        targets = u.Infra.repository_operation_targets(
+            request.root,
+            c.Infra.CodegenConformScope(request.scope),
+        )
+        if targets.failure:
+            return r[bool].from_failure(targets)
+        selected = tuple(
+            target
+            for target in targets.value
+            if target.managed is not False
+            and u.Infra.workspace_manifest_path(target.root).is_file()
+        )
+        if not selected:
+            return r[bool].ok(value=True)
+        roots = {
+            f"@repository-declaration-{index}": target.root
+            for index, target in enumerate(selected)
+        }
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+        )
+
+        def publish(scope_root: Path) -> p.Result[bool]:
+            files: list[m.Infra.CodegenFilePlan] = []
+            inputs: list[m.Cli.AtomicFileState] = []
+            issues: list[m.Infra.Issue] = []
+            first_exception: BaseException | None = None
+            for target in selected:
+                captured = u.Infra.load_codegen_inputs(target.root)
+                if captured.failure:
+                    planned: p.Result[m.Infra.CodegenPhaseAnalysis] = r[
+                        m.Infra.CodegenPhaseAnalysis
+                    ].from_failure(captured)
+                else:
+                    planned = self.repository_declaration_migration_plans(
+                        target.root,
+                        captured.value,
+                    )
+                if planned.failure:
+                    issues.append(
+                        m.Infra.Issue(
+                            file=str(u.Infra.workspace_manifest_path(target.root)),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=planned.error
+                            or "repository declaration migration failed",
+                        ),
+                    )
+                    if first_exception is None:
+                        first_exception = planned.exception
+                    continue
+                files.extend(planned.value.files)
+                inputs.extend(planned.value.inputs)
+                issues.extend(planned.value.issues)
+                if first_exception is None:
+                    first_exception = planned.value.exception
+            analysis = m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=tuple(files),
+                inputs=FlextInfraCodegenPreconditions.unique_states(tuple(inputs)),
+                issues=tuple(issues),
+                exception=first_exception,
+            )
+            published = transaction.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=tuple(
+                        sorted({
+                            file.path.parent
+                            for file in files
+                            if not file.path.parent.is_dir()
+                        }),
+                    ),
+                    validator=lambda: transaction.validate_phase_analysis_locked(
+                        analysis,
+                    ),
+                ),
+            )
+            if published.failure:
+                if published.error_code == c.Infra.ToolOutcome.ERROR.value:
+                    retained = self._retain_completed_migration_issues(published)
+                    if retained.failure:
+                        return retained
+                return r[bool].from_failure(published)
+            return r[bool].ok(value=True)
+
+        return transaction.run_files_locked(roots, publish)
+
+    def _retain_completed_migration_issues(
+        self,
+        published: p.Result[t.VariadicTuple[Path]],
+    ) -> p.Result[bool]:
+        """Carry a settled red publication into the existing final plan report.
+
+        Returns:
+            Typed residual issues retained with their original first cause.
+        """
+        metadata = published.error_data
+        if metadata is None:
+            return r[bool].fail(
+                "completed migration failure has no structured publication receipt",
+                exception=published.exception,
+            )
+
+        def parse() -> t.VariadicTuple[m.Infra.Issue]:
+            serialized = u.Cli.json_dumps(metadata["issues"]).unwrap()
+            wire = u.type_adapter(tuple[t.JsonMapping, ...]).validate_json(serialized)
+            return tuple(
+                m.Infra.Issue.model_validate_json(
+                    u.Cli.json_dumps(
+                        {
+                            key: value
+                            for key, value in issue.items()
+                            if key not in m.Infra.Issue.model_computed_fields
+                        },
+                    ).unwrap(),
+                )
+                for issue in wire
+            )
+
+        parsed = r[t.VariadicTuple[m.Infra.Issue]].create_from_callable(parse)
+        if parsed.failure:
+            return r[bool].fail(
+                parsed.error or "invalid completed migration issue receipt",
+                exception=published.exception or parsed.exception,
+            )
+        if not parsed.value:
+            return r[bool].fail(
+                "completed migration failure has no residual issue",
+                exception=published.exception,
+            )
+        self.planning_issues.extend(parsed.value)
+        if self.planning_exception is None:
+            self.planning_exception = published.exception
+        return r[bool].ok(value=True)
 
     def _execute_plan(
         self,
@@ -376,8 +535,42 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         verified_plans: list[m.Infra.CodegenPlan] = []
 
-        def verify() -> p.Result[bool]:
-            """Record the sole semantic verification receipt before commit."""
+        def verify(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
+            """Verify published gains without re-planning known failed targets."""
+            unchanged = not any(
+                u.Infra.codegen_file_requires_effect(file) for file in analysis.files
+            )
+            if plan.issues or unchanged:
+                destinations = transaction.validate_phase_analysis_locked(analysis)
+                if destinations.failure:
+                    return destinations
+                owned_paths = {
+                    file.path
+                    for file in analysis.files
+                    if u.Infra.codegen_file_requires_effect(file)
+                }
+                for file in analysis.files:
+                    sources = tuple(
+                        source
+                        for source in file.source_states
+                        if source.path not in owned_paths
+                    )
+                    if unchanged:
+                        if not isinstance(file.before, m.Cli.AtomicFileState):
+                            cause = ValueError(
+                                "unchanged bootstrap requires a physical file preimage: "
+                                f"{file.path}",
+                            )
+                            return r[bool].fail(str(cause), exception=cause)
+                        sources = (file.before, *sources)
+                    dependencies = FlextInfraMiseArtifactsVerification.states_current(
+                        sources,
+                    )
+                    if dependencies.failure:
+                        return dependencies
+                if unchanged and not plan.issues:
+                    verified_plans.append(plan)
+                return r[bool].ok(value=True)
             checked = self._verify_bootstrap(request)
             if checked.failure:
                 return r[bool].from_failure(checked)
@@ -412,7 +605,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         roots: t.MappingKV[str, Path],
         scope_root: Path,
         *,
-        validator: Callable[[], p.Result[bool]],
+        validator: Callable[[m.Infra.CodegenPhaseAnalysis], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Authorize the surface contract, then publish its changed files.
 
@@ -427,11 +620,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[t.VariadicTuple[Path]].fail(
                 f"bootstrap requires declared destinations for {surface}",
             )
-        expected_paths = {
-            (request.root.expanduser().resolve() / repository.path / path).resolve()
+        expected_owners = {
+            (request.root.expanduser().resolve() / repository.path / path).resolve(): (
+                request.root.expanduser().resolve() / repository.path
+            ).resolve()
             for repository in plan.repositories
             for path in destinations
         }
+        expected_paths = set(expected_owners)
         dependencies = {
             path
             for file in plan.files
@@ -456,9 +652,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 )
                 return r[t.VariadicTuple[Path]].fail(str(error), exception=error)
             expected_paths.update(dependencies)
+            expected_owners.update(
+                {
+                    dependency: file.project
+                    for file in plan.files
+                    for dependency in file.tracking_dependencies
+                },
+            )
         planned_paths = {file.path for file in plan.files}
         failed_paths = {Path(issue.file).resolve() for issue in plan.issues}
-        unaccounted = expected_paths - planned_paths - failed_paths
+        unaccounted = {
+            path
+            for path in expected_paths - planned_paths - failed_paths
+            if expected_owners[path] not in failed_paths
+        }
         if unaccounted or planned_paths - expected_paths:
             return r[t.VariadicTuple[Path]].fail(
                 f"bootstrap plan does not own the declared destinations for {surface}: "
@@ -475,8 +682,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[t.VariadicTuple[Path]].fail(
                 f"bootstrap cannot delete a declared destination for {surface}",
             )
-        if not changed:
-            return self._settle_unchanged_bootstrap(plan, validator=validator)
         inputs = {
             state.path: state for file in plan.files for state in file.source_states
         }
@@ -487,6 +692,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             issues=plan.issues,
             exception=plan.exception,
         )
+        if not changed:
+            return self._settle_unchanged_bootstrap(
+                plan,
+                validator=lambda: validator(analysis),
+            )
         return transaction.publish_file_phase_locked(
             scope_root,
             roots,
@@ -499,7 +709,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                         if not file.path.parent.is_dir()
                     }),
                 ),
-                validator=validator,
+                validator=lambda: validator(analysis),
             ),
             staged_validator=(
                 self._validate_mise_stage

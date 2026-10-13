@@ -169,14 +169,13 @@ scan_dirs = ["src"]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-include = ["/src/flext_infra/**", "/config/**"]
+include = ["/src/flext_infra/**"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/flext_infra" = "flext_infra"
-config = "flext_infra/config"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src/flext_infra/**", "/config/**"]
+include = ["/src/flext_infra/**"]
 
 [tool.mypy]
 mypy_path = ["src"]
@@ -537,6 +536,7 @@ runtime-evaluated-base-classes = [
   "flext_infra.m.FrozenModel",
   "flext_infra.m.ImmutableValueModel",
   "flext_infra.m.Infra.CensusOptions",
+  "flext_infra.m.Value",
   "flext_infra.maintenance.sonarcloud_client.FlextInfraSonarcloudClient",
   "flext_infra.release.FlextInfraReleaseArtifactMixin",
   "flext_infra.release.FlextInfraReleaseBoundaryMixin",
@@ -681,12 +681,6 @@ whitelines = 1
 constraint-dependencies = ["mypy<2.4.0"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-tests"
 
 [tool.interrogate]
 fail-under = 70

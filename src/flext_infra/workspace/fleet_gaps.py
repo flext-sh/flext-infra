@@ -281,7 +281,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             Counts keyed by canonical checkout root and executed quality gate.
         """
         result = r[t.MappingKV[tuple[Path, str], int]]
-        counts: dict[tuple[Path, str], int] = {}
+        counts: t.MutableMappingKV[tuple[Path, str], int] = {}
         if self.quality_receipts is None:
             return result.ok(counts)
         roots = frozenset(
@@ -350,7 +350,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         path: Path,
         summary: m.Infra.CheckReportSummary,
         roots: frozenset[Path],
-        counts: dict[tuple[Path, str], int],
+        counts: t.MutableMappingKV[tuple[Path, str], int],
     ) -> p.Result[bool]:
         """Add one receipt's full-project lint/Pyrefly counts, refusing ambiguity.
 

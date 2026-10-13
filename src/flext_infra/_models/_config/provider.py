@@ -77,8 +77,11 @@ class FlextInfraConfigModelsProvider:
             m.Field(gt=0, description="PR page bound; saturation fails the inventory"),
         ]
         lane_governance_file: Annotated[
-            Path,
-            m.Field(description="Global coordination SSOT, consumed without copying"),
+            Path | None,
+            m.Field(
+                default=None,
+                description="Explicit host coordination SSOT, unavailable when undeclared",
+            ),
         ]
         ci_trigger_branches: Annotated[
             t.VariadicTuple[t.NonEmptyStr],

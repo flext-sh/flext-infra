@@ -135,6 +135,11 @@ paths against that same topology; a frozen Git artifact is not a live local sour
 
 Operational Make prerequisites also verify that provenance before dispatch. An
 executable interpreter alone does not establish a valid development runtime.
+Submodule provisioning reads the selected checkout's actual `.gitmodules` in both
+workspace and standalone modes. A generated member projection cannot omit a newly
+declared checkout. An absent management flag inherits participation; explicit values
+are parsed by Git's native boolean GET operation. A malformed value fails before
+provisioning and preserves Git's diagnostic; it never becomes an exclusion.
 Run runtime actions through the root Make dispatcher. Its recipes use the
 setup-owned interpreter without selecting a member's lock for synchronization. Only
 setup and upgrade provision dependencies. A provenance failure is repaired through setup,
@@ -418,6 +423,46 @@ continue after a returned failure, and the original first failure remains the co
 result. The typed receipts in `.reports/setup-operations/` record actual roots, execution,
 native outcomes, returned paths and central issues; CI preserves those reports.
 
+The original tool bootstrap also publishes the elected operation report before
+Python or the installed Infra CLI is available. Its shell EXIT handler records
+the observed Git candidate, native exit status, reached bootstrap stage and
+explicit completion. The rendered report schema comes from the same Pydantic
+model; the runtime substitutes only validated scalar facts. Root and scope `.` in
+this early receipt resolve against the repository containing the report, rather
+than the invoking workspace's current directory. An interrupted bootstrap reports
+only that attempted root, with no invented member inventory or effect paths.
+Report transport errors preserve an earlier native failure and turn an otherwise
+successful operation into a reporting failure. CI uploads this structured receipt
+on every outcome without exporting command payloads, environment values or logs.
+Authentication admission runs inside this same bootstrap after its report
+handler is installed. The original credential failure therefore publishes its
+native exit status and `network-auth` stage before tool provisioning starts.
+Source archives without Git metadata retain a null candidate and the original
+Git read status separately; metadata absence does not add an installation
+prerequisite or confer eligibility for a candidate attestation.
+
+Explicit Git reference migration precedes a consumer's dependency resolution.
+Run the current tool owner's root Make operation with all four explicit inputs:
+
+```bash
+make -f "$TOOL_MAKEFILE" upg-sources \
+  SOURCE_ROOT="$CONSUMER_ROOT" SOURCE_URL_PREFIX="$GIT_SCOPE_PREFIX" \
+  SOURCE_REF_FROM="$RETIRED_REF" SOURCE_REF_TO="$INTEGRATED_REF"
+```
+
+The dispatcher uses the current elected tool environment and passes the typed
+reference triplet to the existing `deps modernize` owner. It does not depend on
+the consumer installing a newer Infra before repairing its own references.
+Missing inputs fail rather than selecting an implicit target. The URL directory
+prefix selects the authorized source owner; the old reference selects only the
+retired explicit reference. This mode preserves original URL transport,
+subdirectories, extras, markers and unrelated version constraints, including
+native UV and Poetry source selectors. It retains the consumer's TOML layout,
+integration branch and build backend, without running FLEXT architecture or
+runtime-floor phases. A partial request fails before writing; `--check` audits
+the same transition without mutation. The consumer's own `make upg` then owns
+resolution and lock publication.
+
 Normal test verbs remain incremental testmon only and omit the configured slow
 markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
 The explicit single-file operation runs incremental selection followed by complete
@@ -435,6 +480,16 @@ SQLite owner checkpoints and checks integrity before the runner releases its lea
 and exports the receipt. Cancelled, corrupt or incomplete runs cannot publish;
 a completed failing test run may save without changing its failing status, including
 when a later step fails. Publication never depends on a branch-name allowlist.
+
+Toolchain caches retain a separate immutable generation for each Actions run and
+attempt. Restore prefers the current lock and manifest inputs, then an earlier
+OS/Python generation within GitHub's repository and ref visibility rules. Save
+consumes the restore action's primary key and remains eligible after a completed
+failure or warm restore. Branch pushes, explicit dispatch and same-origin PRs may
+request publication; fork requests and cancelled runs do not. The native cache
+action's effective access mode still governs whether upload occurs. A successful
+save step alone proves no generation was stored: acceptance requires the actual
+saved key or cache record, including when a reserve collision was reported.
 
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also

@@ -159,6 +159,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         *,
         inputs: m.Infra.CodegenInputs,
         load_inputs: t.Callable[[Path], p.Result[m.Infra.CodegenInputs]],
+        read_runtime_identity: t.Callable[[t.StrSequence], p.Result[str]],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
@@ -197,7 +198,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             command,
             m.Infra.GateExecutionIntent(requested_gates=tuple(native_request.gates)),
             inputs=inputs,
-            runtime_identity=sys.version,
+            runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
         )
         u.Cli.atomic_write_text_file(
             report_root / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -234,7 +235,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             reports,
             report_root,
             inputs=load_inputs(root),
-            runtime_identity=sys.version,
+            runtime_identity=read_runtime_identity(native_request.gates),
         )
 
     @classmethod
@@ -255,9 +256,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         """
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-        policy = c.Infra.GateAcceptancePolicy(
-            inputs.spec.make.gate_acceptance_policy
-        )
+        policy = c.Infra.GateAcceptancePolicy(inputs.spec.make.gate_acceptance_policy)
         return m.Infra.GateCaptureStart(
             repository_root=root,
             gate=gate,
@@ -275,7 +274,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
             issue=identity.error if identity.failure else None,
             context_digest=cls._gate_capture_context_digest(
-                gate, intent, inputs, runtime_identity,
+                gate,
+                intent,
+                inputs,
+                runtime_identity,
             ),
             policy=policy,
             policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",
@@ -294,7 +296,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             f"{source.path.name}:"
             + (
                 u.Cli.sha256_bytes(source.content)
-                if source.content is not None else "absent"
+                if source.content is not None
+                else "absent"
             )
             for source in inputs.sources
         )
@@ -342,7 +345,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         report_root: Path,
         *,
         inputs: p.Result[m.Infra.CodegenInputs],
-        runtime_identity: str,
+        runtime_identity: p.Result[str],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Publish original native facts without rerunning or accepting the stage.
 
@@ -355,6 +358,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
         issue = started.issue
         if issue is None and inputs.failure:
             issue = inputs.error
+        elif issue is None and runtime_identity.failure:
+            issue = runtime_identity.error
         elif issue is None and after.failure:
             issue = after.error
         elif issue is None and cls._candidate_unsettled(
@@ -366,10 +371,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             issue = (
                 "original gate candidate is dirty, changed or has no declared origin"
             )
-        elif issue is None and started.context_digest != cls._gate_capture_context_digest(
-            started.gate, started.intent, inputs.value, runtime_identity,
+        elif (
+            issue is None
+            and started.context_digest
+            != cls._gate_capture_context_digest(
+                started.gate,
+                started.intent,
+                inputs.value,
+                runtime_identity.value,
+            )
         ):
-            issue = "original gate configuration or native runtime changed during execution"
+            issue = (
+                "original gate configuration or native runtime changed during execution"
+            )
         receipt: Path | None = None
         if issue is None:
             captured = cls._captured_gate_evidence(started, process, reports)

@@ -600,7 +600,8 @@ class FlextInfraCodegenTransaction(
 
         A phase that fails or raises after the journal was prepared recovers
         that journal here, while the lease is still held, and keeps the cause:
-        a failure is returned unchanged and an exception escapes unchanged.
+        a failure retains its code and cause with cleanup evidence, and an
+        exception escapes unchanged with any cleanup failure attached as a note.
         A failure whose owner already attempted or refused cleanup (it carries
         ``cleanup_error``) is returned as-is, never cleaned twice.
 
@@ -609,29 +610,25 @@ class FlextInfraCodegenTransaction(
 
         """
         layout = session.plan.layout
+
         try:
             outcome = operation(session)
         except Exception as exc:
-            recovered = self._recover_prepared(layout)
-            if recovered.failure:
-                exc.add_note(f"generation recovery failed: {recovered.error}")
+            self._recover_failure(layout, str(exc), exception=exc)
             raise
         if outcome.success or (
             outcome.error_data is not None and "cleanup_error" in outcome.error_data
         ):
             return outcome
-        recovered = self._recover_prepared(layout)
-        if recovered.failure:
-            return r[T].fail(
+        return r[T].from_failure(
+            self._recover_failure(
+                layout,
                 outcome.error or "generation phase failed",
-                error_code=outcome.error_code,
                 exception=outcome.exception,
-                error_data={
-                    **(outcome.error_data or {}),
-                    "cleanup_error": recovered.error,
-                },
-            )
-        return outcome
+                error_code=outcome.error_code,
+                error_data=outcome.error_data,
+            ),
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenTransaction"]

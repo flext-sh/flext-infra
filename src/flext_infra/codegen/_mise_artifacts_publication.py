@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra.codegen import FlextInfraMiseArtifactsVerification
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -44,6 +45,9 @@ class FlextInfraMisePublication:
         """
         if not u.Infra.codegen_file_requires_effect(plan):
             return r[bool].ok(value=True)
+        dependencies = cls._source_prerequisites(plan.source_states, {})
+        if dependencies.failure:
+            return dependencies
         before = files.read_state(plan.path, required=False)
         if before.failure:
             return r[bool].from_failure(before)
@@ -67,6 +71,9 @@ class FlextInfraMisePublication:
         )
         if staged_publication.failure:
             return r[bool].from_failure(staged_publication)
+        dependencies = cls._source_prerequisites(plan.source_states, {})
+        if dependencies.failure:
+            return dependencies
         published = files.write_publication(staged_publication.value)
         FlextInfraMisePublication._invalidate_project_document(plan.path)
         return published
@@ -96,6 +103,7 @@ class FlextInfraMisePublication:
                     project=plan.project,
                     before=before,
                     replacement=None,
+                    source_states=plan.source_states,
                     tracking=plan.tracking,
                     index_before=plan.index_before,
                     tracking_dependencies=plan.tracking_dependencies,
@@ -127,6 +135,7 @@ class FlextInfraMisePublication:
                 project=plan.project,
                 before=before,
                 replacement=staged.value,
+                source_states=plan.source_states,
                 tracking=plan.tracking,
                 index_before=plan.index_before,
                 tracking_dependencies=plan.tracking_dependencies,
@@ -146,6 +155,9 @@ class FlextInfraMisePublication:
         written: list[Path] = []
         retained: list[Path] = []
         issues: list[m.Infra.Issue] = []
+        published_states: t.MutableMappingKV[
+            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
+        ] = {}
         exception: BaseException | None = None
         total = len(publications)
         ordered = tuple(
@@ -158,6 +170,11 @@ class FlextInfraMisePublication:
                 publications,
                 written,
             )
+            if ready.success:
+                ready = FlextInfraMisePublication._source_prerequisites(
+                    publication.source_states,
+                    published_states,
+                )
             if ready.failure:
                 issues.append(
                     m.Infra.Issue(
@@ -216,6 +233,47 @@ class FlextInfraMisePublication:
                 publication.before.path,
             )
             written.append(publication.before.path)
+            receipt = files.read_state(
+                publication.before.path,
+                required=publication.replacement is not None,
+            )
+            expected_content = (
+                publication.replacement.content
+                if publication.replacement is not None
+                else None
+            )
+            expected_mode = (
+                publication.replacement.mode
+                if publication.replacement is not None
+                else None
+            )
+            if receipt.failure or (
+                receipt.value.content != expected_content
+                or receipt.value.mode != expected_mode
+            ):
+                cause = (
+                    receipt.exception or ValueError(receipt.error)
+                    if receipt.failure
+                    else ValueError(
+                        f"generated destination changed after publication: "
+                        f"{publication.before.path}",
+                    )
+                )
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(publication.before.path),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=str(cause),
+                    ),
+                )
+                exception = exception or cause
+                continue
+            published_states[publication.before.path] = (
+                publication.before,
+                receipt.value,
+            )
             if publication.index_before is not None:
                 retired = u.Infra.git_retire_index_file(
                     m.Infra.GitIndexRetirementRequest(
@@ -242,6 +300,37 @@ class FlextInfraMisePublication:
                 exception=exception,
             ),
         )
+
+    @staticmethod
+    def _source_prerequisites(
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
+        published: t.MappingKV[
+            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
+        ],
+    ) -> p.Result[bool]:
+        """Verify this target's inputs, rebinding only this phase's own writes.
+
+        Returns:
+            Exact dependency verification or its first native cause.
+        """
+        expected: list[m.Cli.AtomicFileState] = []
+        for source in sources:
+            receipt = published.get(source.path)
+            if receipt is None:
+                expected.append(source)
+                continue
+            before, after = receipt
+            if source != before:
+                cause = ValueError(
+                    f"generated dependency preimage differs: {source.path}",
+                )
+                return r[bool].fail(str(cause), exception=cause)
+            expected.append(after)
+        verified = FlextInfraMiseArtifactsVerification.states_current(tuple(expected))
+        if verified.failure and verified.exception is None:
+            cause = ValueError(verified.error)
+            return r[bool].fail(str(cause), exception=cause)
+        return verified
 
     @staticmethod
     def _tracking_prerequisites(
