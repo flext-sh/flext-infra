@@ -402,21 +402,25 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[int].from_failure(document)
         # TOML arrays are wire arrays; JSON mode preserves the strict tuple contract.
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
-        observed = FlextInfraWorkspaceDetector.load_repository_ref(repository_root)
+        observed = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
         if observed.failure:
             return r[int].from_failure(observed)
-        repository = observed.value
+        workspace = observed.value
         members = {
-            repository.distribution: repository.model_copy(
-                update={"path": Path()},
-            ),
+            repository.distribution: repository
+            for repository in workspace.subprojects
+            if repository.package
         }
-        if not repository.package and not any(
-            item.name == repository.distribution
+        if workspace.repository.package or any(
+            item.name == workspace.repository.distribution
             and (item.source.editable is not None or item.source.directory is not None)
             for item in locked.package
         ):
-            members.clear()
+            members[workspace.repository.distribution] = (
+                workspace.repository.model_copy(
+                    update={"path": Path()},
+                )
+            )
         # Local sources outside the declared member set must fail, not disappear.
         required = set(members)
         required.update(
