@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 
@@ -20,10 +20,8 @@ from flext_infra._models import (
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorGrep,
+    FlextInfraModelsScan,
 )
-
-if TYPE_CHECKING:
-    from flext_infra._models import FlextInfraModelsScan
 
 
 class FlextInfraModelsRefactor(
@@ -159,6 +157,18 @@ class FlextInfraModelsRefactor(
             t.NonNegativeInt, m.Field(description="Unchanged occurrences")
         ]
         introduced: Annotated[t.NonNegativeInt, m.Field(description="New occurrences")]
+        before_entries: Annotated[
+            t.VariadicTuple[t.NonNegativeInt],
+            m.Field(description="Finding indexes in the before evidence snapshot"),
+        ] = ()
+        after_entries: Annotated[
+            t.VariadicTuple[t.NonNegativeInt],
+            m.Field(description="Finding indexes in the after evidence snapshot"),
+        ] = ()
+        semantic_correspondence_proven: Annotated[
+            bool,
+            m.Field(description="Text multiplicity does not prove semantic identity"),
+        ] = False
 
     class ViolationsSweepReport(m.ContractModel):
         """Before/after receipt of one violations sweep.
@@ -204,6 +214,32 @@ class FlextInfraModelsRefactor(
         after_scan_error: Annotated[
             str | None, m.Field(description="After scan failure diagnostic")
         ] = None
+        before_evidence: Annotated[
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
+            m.Field(
+                description="Invocation-local full before evidence and byte digest"
+            ),
+        ] = None
+        after_evidence: Annotated[
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
+            m.Field(description="Invocation-local full after evidence and byte digest"),
+        ] = None
+        before_plan: Annotated[
+            FlextInfraModelsRefactorGrep.CodemodRulePlan | None,
+            m.Field(description="Before elected rules, providers, sources and digests"),
+        ] = None
+        after_plan: Annotated[
+            FlextInfraModelsRefactorGrep.CodemodRulePlan | None,
+            m.Field(description="After elected rules, providers, sources and digests"),
+        ] = None
+        before_source_sha256: Annotated[
+            t.StrMapping,
+            m.Field(description="Authenticated before source and catalog inventory"),
+        ] = m.Field(default_factory=dict[str, str])
+        after_source_sha256: Annotated[
+            t.StrMapping,
+            m.Field(description="Authenticated after source and catalog inventory"),
+        ] = m.Field(default_factory=dict[str, str])
 
         @property
         def increased_totals(self) -> t.StrSequence:

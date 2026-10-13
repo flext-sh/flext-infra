@@ -13,26 +13,20 @@ rule:
   all:
     - matches: semantic-type-context
     - any:
-      - all:
+        - all:
+            - any:
+                - pattern:
+                    context: "def f(x: List[$T]) -> None: ..."
+                    selector: generic_type
+                - pattern:
+                    context: "ALIAS = List[$T]"
+                    selector: subscript
+            - inside:
+                stopBy: end
+                kind: module
+                has:
+                  stopBy: end
+                  matches: list-imported-from-typing
         - pattern:
-            context: "def f(x: List[$T]) -> None: ..."
-            selector: generic_type
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: list-imported-from-typing
-      - all:
-        - pattern:
-            context: "ALIAS = List[$T]"
+            context: "ALIAS = typing.List[$T]"
             selector: subscript
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: list-imported-from-typing
-      - pattern:
-          context: "ALIAS = typing.List[$T]"
-          selector: subscript

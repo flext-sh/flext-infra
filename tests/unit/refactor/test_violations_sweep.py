@@ -227,3 +227,36 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(bool(report.repair_error), eq=True)
         delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that(delta.introduced, eq=1)
+
+    def test_detection_only_occurrences_persist_without_false_resolution(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """Repeated unchanged detect-only matches remain separate occurrences."""
+        root = mod_workspace
+        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=True)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root
+                / c.Infra.CODEMOD_CONFIG_RELPATH.parent
+                / c.Cli.RULES_DIR_NAME
+                / "sweep.yml",
+                LOCAL_GROWTH_RULE.replace("fix: marker = tuple()\n", ""),
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "unchanged.py",
+                "marker = dict()\nmarker = dict()\n",
+            )
+        )
+        tm.that(self._sweep(root), eq=0)
+        delta = next(
+            row
+            for row in self._receipt(root).rule_deltas
+            if row.rule_id == "sweep-growth"
+        )
+        tm.that(delta.before, eq=2)
+        tm.that(delta.persisted, eq=2)
+        tm.that(delta.resolved, eq=0)
+        tm.that(delta.introduced, eq=0)

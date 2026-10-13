@@ -199,6 +199,61 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.that(typings_text, has="from flext_core import t")
         tm.that(self._non_module_files(package_root), eq=())
 
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "type Alias = Literal['[']",
+            "type Alias = Literal['value']  # [ unmatched comment",
+            "type Alias[T] = tuple[T, Literal['[']]",
+        ],
+    )
+    def test_typing_alias_statement_spans_preserve_runtime_and_unrelated_source(
+        self,
+        tmp_path: Path,
+        declaration: str,
+    ) -> None:
+        """Move complete declarations, not brackets inside payloads or comments."""
+        project_root, package_root = self._build_project(tmp_path)
+        source_file = package_root / "service.py"
+        self._write_file(
+            source_file,
+            "from typing import Literal\n"
+            f"{declaration}\n"
+            "value = 'retained'\n"
+            "def retained() -> str:\n"
+            "    return value\n",
+        )
+        self._write_file(
+            package_root / "consumer.py",
+            "from demo_pkg.service import Alias, retained\nPublished = Alias\n",
+        )
+
+        u.Infra.rewrite_manual_typing_alias_violations(
+            project_root=project_root,
+            names_by_file={source_file: {"Alias"}},
+        )
+
+        source = source_file.read_text(encoding="utf-8")
+        target = (package_root / "typings.py").read_text(encoding="utf-8")
+        tm.that(source, has="value = 'retained'")
+        tm.that(source, has="def retained() -> str:")
+        tm.that(source, lacks=declaration)
+        tm.that(target, has=declaration)
+        tm.that(target, lacks="def retained")
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "from typing import get_args\n"
+                "from demo_pkg import consumer, service, typings\n"
+                "print(consumer.Published is typings.Alias)\n"
+                "print(consumer.retained() == service.value == 'retained')\n"
+                "args = get_args(typings.Alias.__value__)\n"
+                "print(get_args(args[-1]) == ('[',) "
+                "if typings.Alias.__type_params__ else args in (('[',), ('value',)))\n",
+                python_paths=(str(package_root.parent),),
+            ),
+            eq=["True"] * 3,
+        )
+
     @pytest.mark.parametrize("existing_target", [False, True])
     def test_typing_alias_cutover_preserves_all_consumer_bindings(
         self,

@@ -13,26 +13,20 @@ rule:
   all:
     - matches: semantic-type-context
     - any:
-      - all:
+        - all:
+            - any:
+                - pattern:
+                    context: "def f(x: Dict[$K, $V]) -> None: ..."
+                    selector: generic_type
+                - pattern:
+                    context: "ALIAS = Dict[$K, $V]"
+                    selector: subscript
+            - inside:
+                stopBy: end
+                kind: module
+                has:
+                  stopBy: end
+                  matches: dict-imported-from-typing
         - pattern:
-            context: "def f(x: Dict[$K, $V]) -> None: ..."
-            selector: generic_type
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: dict-imported-from-typing
-      - all:
-        - pattern:
-            context: "ALIAS = Dict[$K, $V]"
+            context: "ALIAS = typing.Dict[$K, $V]"
             selector: subscript
-        - inside:
-            stopBy: end
-            kind: module
-            has:
-              stopBy: end
-              matches: dict-imported-from-typing
-      - pattern:
-          context: "ALIAS = typing.Dict[$K, $V]"
-          selector: subscript

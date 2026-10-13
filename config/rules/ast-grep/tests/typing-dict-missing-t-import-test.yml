@@ -7,6 +7,13 @@ valid:
     from typing import Dict
     def f(x: Dict[str, int]) -> None: ...
   - |
+    from typing import Dict
+    ALIAS = Dict[str, int]
+    VALUE = Dict[str, int]()
+    def f(factory: type = Dict[str, int]): ...
+    field = Field(default_factory=Dict[str, int])
+    class Derived(Dict[str, int]): ...
+  - |
     from flext_core import t
     import typing
     def f(y: typing.Dict[str, int]) -> None: ...
@@ -29,3 +36,19 @@ invalid:
   - |
     from typing import Dict
     ALIAS: Dict[str, int] = {}
+  - |
+    from typing import Dict
+    type ALIAS = Dict[str, int]
+  - |
+    import typing
+    type ALIAS = typing.Dict[str, int]
+  - |
+    from typing import Dict
+    def local():
+        from flext_core import t
+    value: Dict[str, int]
+  - |
+    from typing import Dict, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: Dict[str, int]

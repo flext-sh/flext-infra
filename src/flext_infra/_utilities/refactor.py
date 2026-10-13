@@ -106,6 +106,9 @@ class FlextInfraUtilitiesRefactor:
         *,
         command: c.Infra.ModScanCommand,
         scope: t.StrSequence,
+        relative_path: Path = c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
+        repositories: t.StrSequence = (),
+        rule_ids: t.StrSequence = (),
     ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
         """Atomically replace the complete structured evidence for one mod scan.
 
@@ -117,6 +120,8 @@ class FlextInfraUtilitiesRefactor:
         if totals.failure:
             return r[m.Infra.ModScanEvidenceReceipt].from_failure(totals)
         repository_totals, rule_totals, class_totals = totals.value
+        repository_totals = dict.fromkeys(repositories, 0) | repository_totals
+        rule_totals = dict.fromkeys(rule_ids, 0) | rule_totals
         evidence = m.Infra.ModScanEvidence(
             schema_version=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             command=command,
@@ -134,7 +139,7 @@ class FlextInfraUtilitiesRefactor:
         content = (evidence.model_dump_json(indent=2) + "\n").encode(
             c.DEFAULT_ENCODING,
         )
-        report_path = root.resolve() / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
+        report_path = root.resolve() / relative_path
         published = FlextInfraUtilitiesRefactor._published_mod_scan_bytes(
             report_path,
             content,

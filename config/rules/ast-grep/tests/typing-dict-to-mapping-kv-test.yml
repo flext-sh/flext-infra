@@ -38,6 +38,33 @@ valid:
     from typing import Dict
     # Dict[...] named in a comment stays.
     VALUE = 1
+  # Values remain values even inside statements declaring annotations.
+  - |
+    from flext_core import t
+    from typing import Dict
+    ALIAS = Dict[str, int]
+    VALUE = Dict[str, int]()
+    def f(factory=Dict[str, int]): ...
+    field = Field(default_factory=Dict[str, int])
+    class Derived(Dict[str, int]): ...
+  - |
+    from flext_core import t
+    import typing
+    ALIAS: type = typing.Dict[str, int]
+    def f(factory: type = typing.Dict[str, int]): ...
+    field = Field(default_factory=typing.Dict[str, int])
+    class Derived(typing.Dict[str, int]): ...
+  # An import in another lexical scope does not bind the module annotation.
+  - |
+    from typing import Dict
+    def local():
+        from flext_core import t
+    value: Dict[str, int]
+  - |
+    from typing import Dict, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: Dict[str, int]
 # `invalid` MUST match and rewrite to t.MappingKV (module binds `t`).
 invalid:
   # bare name in a parameter annotation
@@ -55,13 +82,34 @@ invalid:
     from flext_core import t
     from typing import Dict
     ALIAS: Dict[str, int] = {}
-  # bare name in value position
+  # PEP 695 declares a type, unlike ordinary runtime alias assignment.
   - |
     from flext_core import t
     from typing import Dict
-    ALIAS = Dict[str, int]
+    type ALIAS = Dict[str, int]
   # attribute form needs no typing-import guard
   - |
     from flext_core import t
     import typing
     def f(y: typing.Dict[str, int]) -> None: ...
+  - |
+    from flext_core import t
+    import typing
+    type ALIAS = typing.Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Dict
+    value: tuple[Dict[str, int], ...] | None = None
+  - |
+    from flext_core import t
+    from typing import Dict
+    def f(value: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+        return value
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Dict[str, int] = Field(default_factory=dict[str, int])
+  - |
+    from flext_core import t
+    import typing
+    def f(value: typing.Dict[str, int] = typing.Dict[str, int]): ...

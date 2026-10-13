@@ -165,7 +165,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
         deltas = FlextInfraRefactorViolationsSweep.rule_deltas(before, after.value)
         cli.display_text(
-            f"ast: whole-catalog before={before.findings} after={after.value.findings}; "
+            f"ast: whole-catalog before={before.findings} "
+            f"after={after.value.findings}; "
             "text phases=0 semantic callbacks=0; corpus=full",
         )
         for delta in deltas:

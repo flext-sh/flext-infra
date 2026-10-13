@@ -39,6 +39,31 @@ valid:
 
     # A comment mentioning List[str] and typing.List[int] survives untouched.
     value = 1
+  - |
+    from flext_core import t
+    from typing import List
+    ALIAS = List[str]
+    VALUE = List[str]()
+    def f(factory=List[str]): ...
+    field = Field(default_factory=List[str])
+    class Derived(List[str]): ...
+  - |
+    from flext_core import t
+    import typing
+    ALIAS: type = typing.List[str]
+    def f(factory: type = typing.List[str]): ...
+    field = Field(default_factory=typing.List[str])
+    class Derived(typing.List[str]): ...
+  - |
+    from typing import List
+    def local():
+        from flext_core import t
+    value: List[str]
+  - |
+    from typing import List, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: List[str]
 # `invalid` MUST match: a real generic in a module that binds both `List` and
 # `t`, plus the dotted form which needs no `List` binding.
 invalid:
@@ -51,9 +76,30 @@ invalid:
     from flext_core import t
     from typing import List
 
-    ALIAS = List[str]
+    type ALIAS = List[str]
   - |
     from flext_core import t
     import typing
 
-    ALIAS = typing.List[str]
+    type ALIAS = typing.List[str]
+  - |
+    from flext_core import t
+    from typing import List
+    def f() -> List[str]: ...
+  - |
+    from flext_core import t
+    from typing import List
+    value: tuple[List[str], ...] | None = None
+  - |
+    from flext_core import t
+    from typing import List
+    def f(value: List[str] = list[str]()) -> List[str]:
+        return value
+  - |
+    from flext_core import t
+    import typing
+    value: typing.List[str] = Field(default_factory=list[str])
+  - |
+    from flext_core import t
+    import typing
+    def f(value: typing.List[str] = typing.List[str]): ...

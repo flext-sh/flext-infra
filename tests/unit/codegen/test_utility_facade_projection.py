@@ -51,16 +51,19 @@ class TestsFlextInfraUtilityFacadeProjection:
             '    marker = "facade"\n\n\n'
             'u = Utilities\n\n__all__ = ["Utilities", "u"]\n',
         )
-        policy = config.Infra.model_dump(by_alias=True)
-        policy["tooling"]["tools"]["ruff"]["line-length"] = width + width_delta
-        validated = config.Infra.model_validate(policy)
+        self._write(
+            root / "config" / "local-overrides.yaml",
+            "Infra:\n  tooling:\n    tools:\n      ruff:\n"
+            f"        line-length: {width + width_delta}\n",
+        )
         script = (
             "from pathlib import Path\n"
-            "from flext_infra import u\n"
+            "from flext_infra import config, u\n"
             "from tests import tm, u as test_u\n"
             f"root = Path({str(root)!r})\n"
             f"package = Path({str(package)!r})\n"
             f"facade = Path({str(facade)!r})\n"
+            f"assert config.Infra.tooling.tools.ruff.line_length == {width + width_delta}\n"
             "from importlib import import_module\n"
             f"before = import_module({(package.name + '.utilities')!r}).u\n"
             "expected = tuple(item.__name__ for item in before.__mro__)\n"
@@ -77,7 +80,6 @@ class TestsFlextInfraUtilityFacadeProjection:
             "PYTHONPATH": str(Path(__file__).resolve().parents[3])
             + ":"
             + str(package.parent),
-            "FLEXT_CONFIG_INFRA": validated.model_dump_json(by_alias=True),
         }
         result = tm.ok(
             u.Cli.run_raw(
@@ -113,7 +115,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "--config",
                     str(Path(__file__).resolve().parents[3] / c.PYPROJECT_FILENAME),
                     "--line-length",
-                    str(validated.tooling.tools.ruff.line_length),
+                    str(width + width_delta),
                     str(facade),
                     str(package / c.Infra.INIT_PY),
                 ),

@@ -94,6 +94,9 @@ class FlextInfraUtilitiesImportLaw:
         Layer-zero declarations cannot depend on their own namespace, even
         through a typing guard. Family assembly may retain canonical private
         imports; it cannot consume the facade it produces.
+
+        Returns:
+            The resulting ``Literal['layer0', 'family', 'consumer']``.
         """
         stems = tuple(part.lstrip("_") for part in module.split(".")[1:])
         if any(
