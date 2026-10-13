@@ -276,6 +276,16 @@ class FlextInfraModelsCodegenRender:
             t.VariadicTuple[str],
             m.Field(description="Declared constraints; the uv pin is never kept"),
         ]
+        override_dependencies: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                description=(
+                    "SSOT-declared PEP 508 overrides resolving a transitive "
+                    "graph's family pins to the declared integration line; "
+                    "empty leaves the member-computed staging behavior."
+                ),
+            ),
+        ] = ()
         exclude_dependencies: Annotated[
             t.VariadicTuple[
                 FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec

@@ -103,6 +103,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 constraint_dependencies=tuple(
                     codegen.toolchain.uv_constraint_dependencies,
                 ),
+                override_dependencies=tuple(
+                    codegen.toolchain.uv_override_dependencies,
+                ),
                 exclude_dependencies=cls.routed_uv_exclude_dependencies(render_inputs),
                 environments=tuple(codegen.toolchain.uv_environments),
             ),
