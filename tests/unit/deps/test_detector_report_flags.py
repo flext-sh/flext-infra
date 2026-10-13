@@ -29,7 +29,7 @@ class TestsFlextInfraDepsDetectorReportFlags:
     ) -> None:
         """Test real dependency and environment issues respect no fail."""
         root = real_detector_project
-        (root / "src/detector_fixture/undeclared.py").write_text(
+        (root / "src" / root.name.replace("-", "_") / "undeclared.py").write_text(
             "import undeclared_detector_dependency\n",
             encoding="utf-8",
         )

@@ -10,13 +10,80 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import c, m, main
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import tm, u
 
 
 class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_full_diagnostic_runs_one_native_scan(
+        mod_workspace: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The public whole-catalog summary consumes the existing scan receipt."""
+        exit_code = main(["refactor", "ast", "--repository-root", str(mod_workspace)])
+        console = capsys.readouterr()
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
+        )
+        tm.that(console.err.count("mod: start ast-grep scan"), eq=1)
+        tm.that(console.err.count("mod: capture bindings projects="), eq=1)
+        if evidence.findings:
+            tm.that(exit_code, ne=0)
+
+    @staticmethod
+    def test_selected_projects_share_capture_without_mixing_bindings(
+        tmp_path: Path,
+    ) -> None:
+        """One immutable capture keeps each same-spelling import's real owner."""
+        selections: list[m.Infra.CodemodBindingProject] = []
+        inputs: list[m.Cli.AtomicFileState] = []
+        for name in ("left", "right"):
+            project = u.Tests.mk_project(
+                tmp_path,
+                name,
+                pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
+                with_src=True,
+            )
+            owner = project / "owner.py"
+            owner.write_text(f"class Public:\n    value = '{name}'\n", encoding="utf-8")
+            consumer = project / "consumer.py"
+            consumer.write_text(
+                "from __future__ import annotations\n"
+                "from owner import Public\nvalue = Public\n",
+                encoding="utf-8",
+            )
+            inputs.append(
+                tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
+            )
+            selections.append(
+                m.Infra.CodemodBindingProject(
+                    root=project, source_paths=(consumer,), modules=()
+                )
+            )
+        snapshot = u.Infra.codemod_binding_snapshot(
+            tmp_path, tuple(inputs), projects=tuple(selections)
+        )
+        paths = [state.path for state in snapshot.states]
+        tm.that(len(paths), eq=len(set(paths)))
+        for selection in selections:
+            owner = selection.root / "owner.py"
+            tm.that(owner in paths)
+            owner.write_text("invalid syntax !!!\n", encoding="utf-8")
+            with u.Infra.codemod_binding_project(selection.root, snapshot) as (
+                project,
+                sources,
+            ):
+                consumer = selection.source_paths[0]
+                module = project.get_pymodule(project.get_resource(consumer.name))
+                offset = sources[consumer].rindex("Public")
+                tm.that(
+                    u.Infra.name_definition_resource_path(module, offset),
+                    eq=str(owner),
+                )
 
     @staticmethod
     def test_native_occurrences_share_authenticated_inputs(mod_workspace: Path) -> None:

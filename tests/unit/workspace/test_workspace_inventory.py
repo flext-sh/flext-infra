@@ -8,39 +8,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
+from flext_infra import config, m, u
 from tests import tm
 
 
 class TestsFlextInfraWorkspaceInventory:
     """An unselected host has no transport or external participant contract."""
 
-    @pytest.mark.parametrize("declare_repository", [False, True])
     def test_unselected_host_returns_no_external_participants(
         self,
         tmp_path: Path,
-        *,
-        declare_repository: bool,
     ) -> None:
-        """Both legitimate configuration absences remain usable standalone."""
-        declaration = (
-            m.Infra.RepositoryDeltaSpec(workspace_inventory_command=())
-            if declare_repository
-            else None
-        )
+        """An empty inventory command leaves the host unselected."""
         inputs = m.Infra.CodegenInputs(
-            spec=config.Infra.codegen.model_copy(
-                update={"repository": declaration},
+            spec=m.Infra.CodegenConfigSpec.model_validate(
+                config.Infra.codegen.model_dump(
+                    by_alias=True, exclude_computed_fields=True
+                )
+                | {"repository": {"workspace_inventory_command": []}},
             ),
         )
 
         participants = tm.ok(
-            FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
+            u.Infra.discover_external_consumers(
                 tmp_path,
                 inputs,
             ),

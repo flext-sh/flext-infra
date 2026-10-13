@@ -79,8 +79,6 @@ class FlextInfraModReplacements:
         Args:
             root: Repository root the finding paths are relative to.
             report: The scanned findings whose actionable fixes publish.
-            ensure_imports: Per rule ID, the module imports every applied
-                rewrite of that rule requires in the rewritten file.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -168,9 +166,6 @@ class FlextInfraModReplacements:
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
             return r[m.Infra.SemanticFilePlan].from_failure(updated)
-        completed = cls._complete_imports(updated.value, required_imports, path)
-        if completed.failure:
-            return r[m.Infra.SemanticFilePlan].from_failure(completed)
         bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for finding in findings:
             for state in finding.binding_states:

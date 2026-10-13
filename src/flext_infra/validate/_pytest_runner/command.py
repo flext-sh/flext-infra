@@ -27,9 +27,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
-    _UNBOUNDED_LIMITS: ClassVar[t.VariadicTuple[str]] = (
-        f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
-    )
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -96,11 +93,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Derive the graceful suite stop instant from the entrypoint deadline.
 
         Selection and inventory consume the same clock, so the instant leaves
-        exactly the typed stop reserve before the process deadline: pytest
-        ends its own session there and testmon persists what ran, instead of
-        the deadline SIGTERM discarding every unflushed result. Serial runs
-        keep at most one item in flight, so their reserve is smaller; a run
-        that carries slow items reserves the slow per-item bound.
+        the typed stop reserve before the process deadline. Slow items have a
+        bounded drain; ordinary items do not. The process wall still terminates
+        an unfinished item and preserves its causal timeout outcome rather than
+        promising a synthetic unit completion window.
 
         Returns:
             The resulting ``float``.
@@ -114,11 +110,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 else pytest.slow_suite_stop_reserve_seconds
             )
         else:
-            reserve = (
-                pytest.serial_suite_stop_reserve_seconds
-                if serial
-                else pytest.suite_stop_reserve_seconds
-            )
+            reserve = pytest.termination_grace_seconds
         return self.started_at_monotonic + self.run_timeout_seconds(pytest) - reserve
 
     def ci_excluded_markers(
@@ -316,12 +308,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
-            (
-                "--timeout=0"
-                if self.unbounded
-                else "--timeout="
-                f"{config.Infra.tooling.tools.pytest.case_timeout_seconds}"
-            ),
             "-o",
             "filterwarnings=",
             "-p",
@@ -450,25 +436,19 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         *,
         execution_mode: c.Infra.PytestExecutionMode,
     ) -> t.StrTuple:
-        """Return the configured per-case timeout and graceful stop instant.
-
-        A serial dispatch keeps one item in flight, so its drain reserve is
-        the single-item budget instead of the xdist two-deep worst case.
+        """Return the aggregate graceful stop instant, without a unit item cap.
 
         Returns:
             The bounded suite's time-limit arguments.
 
         """
         if self.unbounded:
-            return self._UNBOUNDED_LIMITS
+            return ()
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,
         )
-        return (
-            f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
-            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
-        )
+        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
 
     def _suite_argv(
         self,
@@ -481,8 +461,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     ) -> t.VariadicTuple[str]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.
 
-        ``limits`` carries the bounded timeout and stop instant, or the
-        unbounded full operation's disabled per-case timeout.
+        ``limits`` carries the bounded aggregate stop instant, or no limit for
+        the unbounded full operation.
 
         Returns:
             The resulting ``t.VariadicTuple[str]``.

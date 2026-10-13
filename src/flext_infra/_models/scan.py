@@ -12,7 +12,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
@@ -166,6 +166,28 @@ class FlextInfraModelsScan:
             t.JsonMapping,
             m.Field(
                 description="Complete validated ast-grep finding without field loss",
+            ),
+        ]
+
+    class ModScanSourceContext(m.ArbitraryTypesModel):
+        """One scan's per-file authentication and ownership indexes."""
+
+        source_states: Annotated[
+            t.MappingKV[Path, m.Cli.AtomicFileState],
+            m.Field(description="Exact sources captured before the native scan"),
+        ]
+        repository_roots: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Governed roots in nearest-owner precedence"),
+        ]
+        authenticated: Annotated[
+            t.MutableMappingKV[str, p.Result[t.Pair[Path, m.Cli.AtomicFileState]]],
+            m.Field(default_factory=dict, description="One authentication per file"),
+        ]
+        repositories: Annotated[
+            t.MutableMappingKV[Path, str],
+            m.Field(
+                default_factory=dict, description="One ownership election per file"
             ),
         ]
 

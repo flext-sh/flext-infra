@@ -22,13 +22,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraModCliRoute:
     """Exercise reporter behavior only through exported CLI and utility facades.
 
-    Every test here drives the real ``refactor mod`` CLI, which runs ast-grep
-    over a workspace, so they all belong to the declared slow class. Only one
-    method carried the marker while its four identical siblings ran under the
-    10s per-case budget: measured at 9.55s on an idle machine,
-    ``test_scan_keeps_prefix_rule_ids_exact`` exceeded it under parallel load
-    and failed as ``Timeout (>10.0s)``. The class-level marker states the cost
-    once instead of leaving four tests one scheduling decision away from red.
+    Every test drives the real ``refactor mod`` CLI over a workspace, so this
+    integration harness shares the declared slow policy.
     """
 
     @staticmethod

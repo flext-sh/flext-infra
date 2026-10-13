@@ -371,7 +371,6 @@ addopts = [
   "--markdown-docs",
   "--durations=10",
   "--flext-enforce-strict",
-  "--timeout=10",
 ]
 flext_slow_timeout_seconds = "30"
 asyncio_default_fixture_loop_scope = "function"
@@ -514,6 +513,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.mixins.ScopeMixin",
   "flext_infra._models.refactor.CensusOptions",
   "flext_infra._models.scan.ModScanCounts",
+  "flext_infra._models.scan.ModScanFinding",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",

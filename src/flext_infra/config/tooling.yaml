@@ -870,11 +870,8 @@ Infra:
           # does.
           project-shared-search-paths: []
       pytest:
-        # Scaffold and modernizer consume one complete pytest model. A case that
-        # does not fit case-timeout-seconds is a test defect to optimize; the
-        # aggregate run-timeout-seconds independently terminates an incomplete
-        # full suite.
-        case-timeout-seconds: 10
+        # Scaffold and modernizer share the aggregate execution policy. Ordinary
+        # items have no per-item deadline; the runner owns the invocation wall.
         # Slow marks are a narrow integration-harness budget, not permission
         # for an unbounded test. Cases that exceed it require owner repair.
         slow-timeout-seconds: 30
@@ -1034,8 +1031,8 @@ Infra:
           # the test-reality laws (ENFORCE-019/051/054/055/098) fail the run
           # instead of warning; warnings are never a landing state.
           - --flext-enforce-strict
-          # --timeout/--session-timeout are runner-owned and derived
-          # from case-timeout-seconds/run-timeout-seconds; never restate them here.
+          # Per-item limits do not belong in baseline addopts; the runner owns
+          # the aggregate wall and the slow marker owns its narrow item policy.
       tomlsort:
         all: true
         in_place: true

@@ -522,49 +522,47 @@ class FlextInfraModGateEngine:
                         }
                     )
                 )
-        facts = {
-            project: u.Infra.codemod_project_facts(
+        facts: dict[Path, m.Infra.CodemodProjectFacts] = {}
+        inputs: list[m.Cli.AtomicFileState] = []
+        selections: list[m.Infra.CodemodBindingProject] = []
+        for project, entries in grouped.items():
+            facts[project] = u.Infra.codemod_project_facts(
                 project,
                 tuple(
                     rules_by_id[rule_id]
                     for rule_id in dict.fromkeys(entry.rule_id for entry in entries)
                 ),
             )
-            for project, entries in grouped.items()
-        }
-        inputs = m.Infra.CodemodBindingSnapshot(
-            states=tuple(
-                entry.source_state
-                for project, entries in grouped.items()
-                for entry in entries
-                if entry.rule_id in facts[project].binding_rule_ids
-                and entry.source_state is not None
-            )
-        )
-        selected_sources = {
-            project: tuple(
-                dict.fromkeys(
-                    entry.source_state.path
+            selected = m.Infra.CodemodBindingSnapshot(
+                states=tuple(
+                    entry.source_state
                     for entry in entries
                     if entry.rule_id in facts[project].binding_rule_ids
                     and entry.source_state is not None
                 )
             )
-            for project, entries in grouped.items()
-        }
+            inputs.extend(selected.states)
+            if selected.states:
+                selections.append(
+                    m.Infra.CodemodBindingProject(
+                        root=project,
+                        source_paths=tuple(state.path for state in selected.states),
+                        modules=facts[project].binding_modules,
+                    )
+                )
+        sys.stderr.write(
+            f"mod: capture bindings projects={len(selections)} sources={len(inputs)}\n"
+        )
+        sys.stderr.flush()
         snapshot = u.Infra.codemod_binding_snapshot(
             root,
-            candidate_states if candidate_states else inputs.states,
-            projects=tuple(
-                m.Infra.CodemodBindingProject(
-                    root=project,
-                    source_paths=paths,
-                    modules=facts[project].binding_modules,
-                )
-                for project, paths in selected_sources.items()
-                if paths
-            ),
+            candidate_states or tuple(inputs),
+            projects=tuple(selections),
         )
+        sys.stderr.write(
+            f"mod: capture bindings completed inputs={len(snapshot.states)}\n"
+        )
+        sys.stderr.flush()
         admitted: list[m.Infra.ModScanFinding] = []
         for project, entries in grouped.items():
             selected = FlextInfraModGateEngine._admitted_project(
@@ -603,7 +601,9 @@ class FlextInfraModGateEngine:
             The resulting ``m.Infra.ModScanReport``.
 
         """
-        sys.stderr.write(f"mod: admit repository={root.name} findings={report.findings}\n")
+        sys.stderr.write(
+            f"mod: admit repository={root.name} findings={report.findings}\n"
+        )
         sys.stderr.flush()
         with u.Infra.codemod_binding_project(root, snapshot) as (project, sources):
             entries = tuple(
@@ -838,7 +838,7 @@ class FlextInfraModGateEngine:
         finding: t.MappingKV[str, t.JsonValue],
         root: Path,
         plan: t.Pair[Mapping[str, Path], frozenset[str]],
-        states: t.Pair[Mapping[Path, m.Cli.AtomicFileState], t.SequenceOf[Path]],
+        context: m.Infra.ModScanSourceContext,
     ) -> p.Result[m.Infra.ModScanFinding]:
         """Validate one JSONL finding into a typed, authenticated entry.
 
@@ -847,30 +847,31 @@ class FlextInfraModGateEngine:
 
         """
         rule_files_by_id, fixable_ids = plan
-        source_states, repository_roots = states
         rule_id = finding.get("ruleId")
         contract_error = cls._finding_contract_error(finding, line, rule_files_by_id)
         if contract_error is not None:
             return r[m.Infra.ModScanFinding].fail(contract_error)
         raw_replacement = finding.get("replacement")
         replacement = raw_replacement if isinstance(raw_replacement, str) else None
-        authenticated = cls._authenticated_snapshot(
-            root,
-            str(finding.get("file")),
-            source_states,
-        )
+        native_file = str(finding.get("file"))
+        if native_file not in context.authenticated:
+            context.authenticated[native_file] = cls._authenticated_snapshot(
+                root, native_file, context.source_states
+            )
+        authenticated = context.authenticated[native_file]
+        file_path = Path(native_file)
+        if file_path not in context.repositories:
+            context.repositories[file_path] = cls._finding_repository(
+                file_path, context.repository_roots, root
+            )
         if authenticated.failure:
             if authenticated.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
                 return r[m.Infra.ModScanFinding].ok(
                     m.Infra.ModScanFinding(
                         rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
                         rule_id=str(rule_id),
-                        repository=cls._finding_repository(
-                            Path(str(finding.get("file"))),
-                            repository_roots,
-                            root,
-                        ),
-                        file=Path(str(finding.get("file"))),
+                        repository=context.repositories[file_path],
+                        file=file_path,
                         range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                             finding.get("range"),
                         ),
@@ -903,7 +904,7 @@ class FlextInfraModGateEngine:
             m.Infra.ModScanFinding(
                 rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
                 rule_id=str(rule_id),
-                repository=cls._finding_repository(file_path, repository_roots, root),
+                repository=context.repositories[file_path],
                 file=file_path,
                 source_owner="generator"
                 if snapshot.content.decode(c.DEFAULT_ENCODING).startswith(
@@ -938,11 +939,14 @@ class FlextInfraModGateEngine:
 
         """
         entries: list[m.Infra.ModScanFinding] = []
-        repository_roots = tuple(
-            sorted(
-                u.Infra.governed_project_roots(root),
-                key=cls._path_depth,
-                reverse=True,
+        context = m.Infra.ModScanSourceContext(
+            source_states=source_states,
+            repository_roots=tuple(
+                sorted(
+                    u.Infra.governed_project_roots(root),
+                    key=cls._path_depth,
+                    reverse=True,
+                )
             ),
         )
         for match in re.finditer(rb"[^\n]+", stdout):
@@ -961,15 +965,29 @@ class FlextInfraModGateEngine:
                 parsed.value,
                 root,
                 (rule_files_by_id, fixable_ids),
-                (source_states, repository_roots),
+                context,
             )
             if entry.failure:
                 return r[m.Infra.ModScanReport].from_failure(entry)
             entries.append(entry.value)
+        authenticated_states = dict(source_states)
+        for authenticated in context.authenticated.values():
+            if authenticated.failure:
+                continue
+            state = authenticated.value[1]
+            observed = u.Cli.atomic_read_binary_file_state(
+                state.path, required=True
+            ).unwrap()
+            if observed != state:
+                return r[m.Infra.ModScanReport].fail(
+                    f"finding source changed during admission: {state.path}",
+                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+                )
+            authenticated_states[state.path] = state
         return r.ok(
             cls.recounted(
                 tuple(entries),
-                source_states=tuple(source_states.values()),
+                source_states=tuple(authenticated_states.values()),
             ),
         )
 
@@ -1055,6 +1073,7 @@ class FlextInfraModGateEngine:
         *,
         fix: bool,
         rule_ids: t.StrSequence | None = None,
+        plan: m.Infra.CodemodRulePlan | None = None,
         published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
         source_files: t.SequenceOf[Path] | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
@@ -1067,10 +1086,15 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
-        planned = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
-        if planned.failure:
-            return r[m.Infra.ModScanReport].from_failure(planned)
-        plan = planned.value
+        if plan is None:
+            planned = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
+            if planned.failure:
+                return r[m.Infra.ModScanReport].from_failure(planned)
+            plan = planned.value
+        elif rule_ids is not None or root.resolve() not in plan.project_rule_ids:
+            return r[m.Infra.ModScanReport].fail(
+                "precomposed scan plan requires its governed root and owns rule selection"
+            )
         reports: list[m.Infra.ModScanReport] = []
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
@@ -1095,7 +1119,7 @@ class FlextInfraModGateEngine:
         for ruleset in plan.rulesets:
             sys.stderr.write(
                 f"mod: ast-grep provider={ruleset.provider} "
-                f"rules={','.join(ruleset.rule_ids)}\n",
+                f"rules={len(ruleset.rule_ids)}\n",
             )
             sys.stderr.flush()
             ruleset_run = cls._ruleset_report(

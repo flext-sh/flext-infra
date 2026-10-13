@@ -49,6 +49,14 @@ Rope's inferred last assignment as a reaching-definition proof. Its immutable
 source graph carries descriptor-authenticated Python import-owner receipts into
 the guarded semantic publisher. All read-only dependency states must still match
 at the existing source barrier before any candidate is staged or written.
+The workspace elects the rules once per project and captures the selected
+projects' binding inputs in one inventory. File contents and Python parses are
+shared; import resolution retains each project's native lexical roots.
+Finding authentication and ownership are indexed by file within the scan,
+with a final descriptor check before admission. Evidence schema 2 stores every
+complete input once and keeps occurrence references to that inventory. Its
+counts derive from the occurrences; project, rule and class totals remain
+published, including zero rows.
 Strings, docstrings, `Literal` values and `Annotated` metadata retain their
 contents, including PEP 695 and assignment-style aliases. Actual type operands
 remain distinct from metadata; unrelated runtime assignments are not annotations.
