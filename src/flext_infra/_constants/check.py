@@ -408,12 +408,18 @@ class FlextInfraConstantsCheck:
         "**/rules/ast-grep/tests/**",
         "**/_cov.py",
         "**/_parts/**",
+        "**/package-lock.json",
     )
     "Generated Python surfaces and structured test-case parameterization files "
     "excluded semantically; Git owns artifact visibility. ast-grep rule "
     "fixtures mirror their rule pattern/fix text by design (the fix output IS "
     "the next stage's valid input), so jscpd would always report the fixture "
-    "pair; the corpus is validated by `ast-grep test`, never by clone count."
+    "pair; the corpus is validated by `ast-grep test`, never by clone count. "
+    "package-lock.json is npm's emission, not authored code: sibling packages "
+    "of one tool family share resolved dependency lines by construction, so "
+    "their overlap is a data coincidence the resolver owns, never a clone to "
+    "refactor (operator per-change authorization under the 2026-09-24 "
+    "suppression ruling, granted 2026-10-13)."
 
     # --- Extended duplication gate (R2 consumer+family scope) ---
     JSCPD_CONSUMER_FAMILY_SCOPE: ClassVar[bool] = True
