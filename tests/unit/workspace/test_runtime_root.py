@@ -1,4 +1,8 @@
-"""Runtime ownership through real standalone Git roots and submodules."""
+"""Runtime ownership through real standalone Git roots and submodules.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -20,7 +24,7 @@ class TestsFlextInfraRuntimeRoot:
         tmp_path: Path,
         ci: bool,
     ) -> None:
-        """Local members inherit; CI authenticates the member's own Git root."""
+        """Attached members inherit independently of the gate partition."""
         workspace = tmp_path / "workspace"
         origin = tmp_path / "origin"
         workspace.mkdir()
@@ -47,13 +51,13 @@ class TestsFlextInfraRuntimeRoot:
         try:
             os.environ[policy.variable] = policy.value if ci else policy.local_value
             observed = tm.ok(
-                u.Infra.git_runtime_root(
+                u.Infra.git_repository_root(
                     m.Infra.GitRepoRequest(repo_root=member),
                 ),
             )
             tm.that(
                 observed.repository_root,
-                eq=(member if ci else workspace).resolve(),
+                eq=workspace.resolve(),
             )
         finally:
             u.Tests.restore_env(policy.variable, original)
@@ -73,7 +77,7 @@ class TestsFlextInfraRuntimeRoot:
         try:
             os.environ[policy.variable] = policy.value if ci else policy.local_value
             observed = tm.ok(
-                u.Infra.git_runtime_root(
+                u.Infra.git_repository_root(
                     m.Infra.GitRepoRequest(repo_root=repository),
                 ),
             )
