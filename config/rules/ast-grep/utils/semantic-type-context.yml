@@ -7,21 +7,74 @@ rule:
   inside:
     kind: type
     stopBy: end
-    inside:
-      any:
-        - kind: assignment
+    any:
+      - inside:
+          kind: assignment
           field: type
-        - kind: typed_parameter
+      - inside:
+          kind: typed_parameter
           field: type
-        - kind: typed_default_parameter
+      - inside:
+          kind: typed_default_parameter
           field: type
-        - kind: function_definition
+      - inside:
+          kind: function_definition
           field: return_type
-        - kind: type_alias_statement
+      - inside:
+          kind: type_alias_statement
           field: right
   # Calls embedded in an annotation evaluate values, not type arguments.
+  # Annotated's first argument is a type; later arguments are runtime metadata.
+  # This is an argument-role boundary, never an exemption for Annotated types.
   not:
-    inside:
-      kind: call
-      stopBy:
-        kind: type
+    any:
+      - inside:
+          kind: call
+          stopBy:
+            kind: type
+      - inside:
+          kind: type
+          stopBy: end
+          follows:
+            kind: type
+            stopBy: end
+          inside:
+            kind: type_parameter
+            inside:
+              kind: generic_type
+              has:
+                kind: identifier
+                regex: "^Annotated$"
+      - inside:
+          kind: generic_type
+          stopBy: end
+          has:
+            kind: identifier
+            regex: "^Literal$"
+      - all:
+          - follows:
+              pattern: $_
+              stopBy: end
+          - inside:
+              kind: subscript
+              field: subscript
+              has:
+                field: value
+                regex: "^typing\\.Annotated$"
+      - inside:
+          stopBy: end
+          follows:
+            pattern: $_
+            stopBy: end
+          inside:
+            kind: subscript
+            field: subscript
+            has:
+              field: value
+              regex: "^typing\\.Annotated$"
+      - inside:
+          kind: subscript
+          stopBy: end
+          has:
+            field: value
+            regex: "^typing\\.Literal$"

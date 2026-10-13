@@ -224,6 +224,7 @@ class FlextInfraConstantsRefactor:
         PACKAGE_ROOT_INIT = "package-root-init"
         FAMILY_BASE = "family-base"
         FAMILY_BASE_FILE = "family-base-file"
+        LAYER_ZERO_FILE = "layer-zero-file"
         PAYLOAD_DECLARATION = "payload-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
         SAME_BINDING = "same-binding"

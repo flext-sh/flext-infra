@@ -216,11 +216,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         project_root, package_root = self._build_project(tmp_path)
         source_file = package_root / "service.py"
         self._write_file(
+            package_root / "typings.py",
+            "from __future__ import annotations\n\nfrom typing import Literal\n",
+        )
+        self._write_file(
             source_file,
-            "from typing import Literal\n"
+            "from __future__ import annotations\n\nfrom typing import Literal\n\n"
             f"{declaration}\n"
             "value = 'retained'\n"
-            "def retained() -> str:\n"
+            "def retained() -> Literal['retained']:\n"
             "    return value\n",
         )
         self._write_file(
@@ -236,7 +240,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         source = source_file.read_text(encoding="utf-8")
         target = (package_root / "typings.py").read_text(encoding="utf-8")
         tm.that(source, has="value = 'retained'")
-        tm.that(source, has="def retained() -> str:")
+        tm.that(source, has="def retained() -> Literal['retained']:")
         tm.that(source, lacks=declaration)
         tm.that(target, has=declaration)
         tm.that(target, lacks="def retained")

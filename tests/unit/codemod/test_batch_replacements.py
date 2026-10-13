@@ -26,6 +26,12 @@ class TestsFlextInfraBatchReplacements:
         *,
         generated: bool = False,
     ) -> m.Infra.ModScanReport:
+        policy = path.parent / "pyproject.toml"
+        if not policy.exists():
+            policy.write_text(
+                "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+                "[tool.ruff.lint]\nselect = ['F401', 'F821']\n",
+            )
         path.write_bytes(content)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
         start = content.index(b"before")
@@ -186,6 +192,26 @@ class TestsFlextInfraBatchReplacements:
             tm.that(result.error, has="F821")
             tm.that(path.read_bytes(), eq=original)
 
+    def test_one_regressive_rule_rejects_the_whole_candidate(
+        self, tmp_path: Path
+    ) -> None:
+        """A valid peer rewrite never publishes ahead of a rejected rule."""
+        root = u.Tests.git_repository(tmp_path)
+        good = root / "a_good.py"
+        bad = root / "z_bad.py"
+        good_before = b'value = "before"\n'
+        bad_before = b"before = 1\nvalue = before\n"
+        accepted = self._report(good, good_before).entries[0]
+        rejected = self._report(bad, bad_before).entries[0]
+        result = FlextInfraModReplacements.publish(
+            root,
+            FlextInfraModGateEngine.recounted((accepted, rejected)),
+        )
+        tm.fail(result)
+        tm.that(result.error, has="F821")
+        tm.that(good.read_bytes(), eq=good_before)
+        tm.that(bad.read_bytes(), eq=bad_before)
+
     @staticmethod
     def test_emptied_statement_publishes_formatter_clean_file(
         tmp_path: Path,
@@ -198,6 +224,10 @@ class TestsFlextInfraBatchReplacements:
         """
         root = u.Tests.git_repository(tmp_path)
         path = root / "tests" / "unit" / "test_demo.py"
+        (root / "pyproject.toml").write_text(
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+            "[tool.ruff.lint]\nselect = ['F401', 'F821']\n",
+        )
         path.parent.mkdir(parents=True)
         original = (
             b'"""Demo."""\n\n__all__ = ["X"]\n\n\ndef t() -> None:\n    assert True\n'

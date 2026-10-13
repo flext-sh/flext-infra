@@ -1,10 +1,9 @@
 # Settings/config import boundary (operator-ruling-2026-10-08-settings-config-imports
 # and operator-ruling-2026-10-08-settings-config-boundary).
 #
-# A settings/config module is any module whose path has a segment starting with
-# `settings` or `config` (with or without a leading underscore): the root
-# `_settings.py`/`_config.py`, each family's `settings*.py`/`config*.py` part,
-# and config subpackages such as `_models/_config/`. Inside its own namespace it
+# A layer-zero module owns config/settings before entering any facade family.
+# Family-domain config declarations such as `_models/_config/` remain model
+# assembly, not layer zero. The typed import-law classifier owns this fact. It
 # imports nothing from its own namespace, including TYPE_CHECKING imports.
 # Anything from another namespace is allowed (the own-package context decides
 # which namespace is the module's own). The family internals of c/t/p/m/u may
@@ -29,7 +28,8 @@ ignores:
 metadata:
   context:
     MODULE:
-      is: own-package
+      - is: own-package
+      - is: layer-zero-file
 rule:
   all:
     - kind: dotted_name
@@ -64,7 +64,8 @@ ignores:
 metadata:
   context:
     MODULE:
-      is: own-package
+      - is: own-package
+      - is: layer-zero-file
 rule:
   any:
     - kind: import_from_statement

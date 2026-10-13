@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import override
+from uuid import uuid4
 
 from flext_cli import cli
 
@@ -149,6 +150,17 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         before = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        invocation = destination.parent / destination.stem / uuid4().hex
+        if rule_ids is not None:
+            receipt = u.Infra.publish_mod_scan_evidence(
+                root, before, command=c.Infra.ModScanCommand.SCAN,
+                scope=u.Infra.ast_grep_scan_targets(root),
+                relative_path=invocation / "before.json",
+            ).unwrap()
+            cli.display_text(
+                f"ast: whole-catalog before evidence={receipt.path} sha256={receipt.sha256}",
+            )
         current = (
             FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids).unwrap()
             if rule_ids is not None
@@ -163,6 +175,14 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"ast: whole-catalog after scan failed: {after.error}; "
                 f"selected apply: {outcome.error if outcome.failure else 'fixed point'}",
             )
+        receipt = u.Infra.publish_mod_scan_evidence(
+            root, after.value, command=c.Infra.ModScanCommand.SCAN,
+            scope=u.Infra.ast_grep_scan_targets(root),
+            relative_path=invocation / "after.json",
+        ).unwrap()
+        cli.display_text(
+            f"ast: whole-catalog after evidence={receipt.path} sha256={receipt.sha256}",
+        )
         deltas = FlextInfraRefactorViolationsSweep.rule_deltas(before, after.value)
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
@@ -219,9 +239,13 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
             applied = FlextInfraModGateEngine.scan(root, fix=True, rule_ids=rule_ids)
+            if rule_ids is None:
+                applied.unwrap()
             if applied.failure:
                 return r[t.Cli.ResultValue].from_failure(applied)
             scanned = FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids)
+            if rule_ids is None:
+                scanned.unwrap()
             if scanned.failure:
                 return r[t.Cli.ResultValue].from_failure(scanned)
             current = scanned.value

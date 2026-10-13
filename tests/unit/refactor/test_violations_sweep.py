@@ -1,6 +1,6 @@
 """Refactor violations-sweep: repair through the canonical verbs, prove reduction.
 
-Every case drives the public ``refactor violations-sweep`` CLI over the real
+Cases drive the public ``refactor violations-sweep`` CLI or service over the real
 mod-workspace fixture with a recording Makefile standing in for the repair
 verbs, so the sweep's own scans, receipt, and always-reducing verdict are the
 behavior under test.
@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, m, main, u
+from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import tm
 
 if TYPE_CHECKING:
@@ -131,21 +132,32 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(report.before, eq=report.after)
         tm.that(report.increased_totals, eq=())
 
-    def test_rerun_republishes_identical_receipt(
+    def test_rerun_preserves_prior_evidence_with_identical_counts(
         self,
         mod_workspace: Path,
     ) -> None:
-        """A second sweep over the unchanged tree rewrites the same bytes."""
+        """A second sweep preserves the first invocation's authenticated snapshots."""
         root = mod_workspace
         self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=False)
-        receipt_path = root / c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        tm.that(self._sweep(root), eq=0)
+        first = self._receipt(root)
+        assert first.before_evidence is not None
+        assert first.after_evidence is not None
+        before_bytes = first.before_evidence.path.read_bytes()
+        after_bytes = first.after_evidence.path.read_bytes()
 
         tm.that(self._sweep(root), eq=0)
-        first = receipt_path.read_bytes()
 
-        tm.that(self._sweep(root), eq=0)
-
-        tm.that(receipt_path.read_bytes(), eq=first)
+        second = self._receipt(root)
+        assert second.before_evidence is not None
+        assert second.after_evidence is not None
+        tm.that(second.before, eq=first.before)
+        tm.that(list(second.rule_deltas), eq=list(first.rule_deltas))
+        tm.that(second.before_evidence.path, ne=first.before_evidence.path)
+        tm.that(first.before_evidence.path.read_bytes(), eq=before_bytes)
+        tm.that(first.after_evidence.path.read_bytes(), eq=after_bytes)
+        tm.that(u.Cli.sha256_bytes(before_bytes), eq=first.before_evidence.sha256)
+        tm.that(u.Cli.sha256_bytes(after_bytes), eq=first.after_evidence.sha256)
 
     def test_growing_total_fails_and_still_publishes_the_receipt(
         self,
@@ -227,6 +239,94 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(bool(report.repair_error), eq=True)
         delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that(delta.introduced, eq=1)
+        assert report.before_evidence is not None
+        assert report.after_evidence is not None
+        tm.that(delta.semantic_correspondence_proven, eq=False)
+        tm.that(len(delta.before_entries), eq=delta.before)
+        tm.that(len(delta.after_entries), eq=delta.after)
+        for index in delta.after_entries:
+            entry = report.after_evidence.evidence.entries[index]
+            tm.that(entry.rule_id, eq=delta.rule_id)
+            tm.that(bool(entry.range), eq=True)
+            assert entry.source_state is not None
+            assert entry.source_state.content is not None
+            tm.that(
+                report.after_source_sha256[str(entry.source_state.path)],
+                eq=u.Cli.sha256_bytes(entry.source_state.content),
+            )
+
+    def test_clean_local_rule_retains_zero_inventory_and_provider_identity(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """An elected rule and governed project remain visible with no findings."""
+        root = mod_workspace
+        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=True)
+        tm.that(self._sweep(root), eq=0)
+        report = self._receipt(root)
+        assert report.before_evidence is not None
+        assert report.before_plan is not None
+        rows = {(row.repository, row.rule_id) for row in report.rule_deltas}
+        expected = {
+            (project.name, rule.id)
+            for project in u.Infra.governed_project_roots(root)
+            for rule in report.before_plan.rules
+        }
+        tm.that(rows, eq=expected)
+        delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
+        tm.that((delta.before, delta.after, delta.introduced), eq=(0, 0, 0))
+        rule = next(
+            rule for rule in report.before_plan.rules if rule.id == delta.rule_id
+        )
+        tm.that(bool(rule.digest), eq=True)
+        tm.that(
+            report.before_source_sha256[str(rule.resource.resolve())],
+            eq=u.Cli.sha256_bytes(rule.resource.read_bytes()),
+        )
+        tm.that(bool(rule.provider), eq=True)
+
+    @pytest.mark.parametrize("secondary", ["scan", "publication"])
+    def test_first_repair_failure_survives_secondary_failure(
+        self,
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+        secondary: str,
+    ) -> None:
+        """Real filesystem failures must not replace the first Make diagnostic."""
+        root = mod_workspace
+        broken = (
+            root / c.Infra.CODEMOD_CONFIG_RELPATH
+            if secondary == "scan"
+            else root / c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        )
+        sabotage = (
+            f"\t@printf 'invalid: [\\n' > '{broken}'\n"
+            if secondary == "scan"
+            else f"\t@mkdir -p '{broken}'\n"
+        )
+        self._prepare(
+            root,
+            makefile=(
+                ".PHONY: fix fmt mod\n"
+                "fix:\n\t@printf '%s\\n' '$@' >> ran.txt\n"
+                + sabotage
+                + "\t@printf 'original-repair-failure\\n' >&2\n"
+                "\t@false\nfmt mod:\n\t@printf '%s\\n' '$@' >> ran.txt\n"
+            ),
+            local_rule=True,
+        )
+        result = FlextInfraRefactorViolationsSweep(repository_root=root).execute()
+        tm.fail(result, has="original-repair-failure")
+        captured = capsys.readouterr()
+        tm.that("secondary" in captured.err, eq=True)
+        tm.that(
+            list(self._verbs_ran(root)), eq=[c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS[0]]
+        )
+        if secondary == "scan":
+            report = self._receipt(root)
+            tm.that("original-repair-failure" in (report.repair_error or ""), eq=True)
+            tm.that(bool(report.after_scan_error), eq=True)
+            tm.that(report.after_evidence, eq=None)
 
     def test_detection_only_occurrences_persist_without_false_resolution(
         self,

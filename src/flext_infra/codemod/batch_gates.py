@@ -1013,7 +1013,11 @@ class FlextInfraModGateEngine:
             return r[m.Infra.ModScanReport].from_failure(receipt)
         cls._report_evidence(receipt.value)
         if fix:
-            published = FlextInfraModReplacements.publish(root, complete_report)
+            published = FlextInfraModReplacements.publish(
+                root,
+                complete_report,
+                exact_replacements=rule_ids is not None,
+            )
             if published.failure:
                 return r[m.Infra.ModScanReport].from_failure(published)
         return r[m.Infra.ModScanReport].ok(complete_report)

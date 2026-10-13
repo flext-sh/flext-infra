@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from functools import cache
 from pathlib import Path
 from typing import Literal
 
@@ -98,14 +97,13 @@ class FlextInfraUtilitiesImportLaw:
         Returns:
             The resulting ``Literal['layer0', 'family', 'consumer']``.
         """
-        stems = tuple(part.lstrip("_") for part in module.split(".")[1:])
-        if any(
-            stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)) for stem in stems
-        ):
-            return "layer0"
-        families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
-        if any(family.module in stems for family in families):
-            return "family"
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        for part in module.split(".")[1:]:
+            stem = part.lstrip("_")
+            if any(stem == family.module for family in families.values()):
+                return "family"
+            if stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)):
+                return "layer0"
         return "consumer"
 
     @staticmethod
@@ -134,7 +132,6 @@ class FlextInfraUtilitiesImportLaw:
         )
 
     @staticmethod
-    @cache
     def import_lazy_exports(
         project_root: Path,
         package: str,
@@ -144,9 +141,9 @@ class FlextInfraUtilitiesImportLaw:
         The package resolves under ``src/`` or the project root (internal
         tiers). Relative targets resolve against the package; a target naming
         another distribution (``flext_cli``) stays absolute. The parse is
-        memoized per ``(project_root, package)``: one governed-file scan
-        resolves the same root exports once per namespace, never once per
-        module.
+        memoized by the existing source parser using the exact published
+        content. Each lookup resolves the current file, so same-process
+        publication and newly created packages cannot retain retired routes.
 
         Returns:
             The published name to absolute defining module mapping, or

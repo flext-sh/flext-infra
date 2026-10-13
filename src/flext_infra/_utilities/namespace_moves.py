@@ -350,23 +350,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return source
 
     @staticmethod
-    def _bracket_delta(line: str) -> int:
-        """Return the net bracket depth one source line opens.
-
-        Returns:
-            The resulting ``int``.
-
-        """
-        return (
-            line.count("(")
-            - line.count(")")
-            + line.count("[")
-            - line.count("]")
-            + line.count("{")
-            - line.count("}")
-        )
-
-    @staticmethod
     def _moved_alias_line(
         stripped: str,
         line: str,
@@ -406,35 +389,39 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             The resulting ``(moved lines, kept lines, first moved line
             number)`` triple.
 
+        Raises:
+            ValueError: If typing alias move requires an independent statement span.
         """
-        moved_lines: t.MutableSequenceOf[str] = []
-        moved_line_numbers: t.MutableSequenceOf[int] = []
-        kept_lines: t.MutableSequenceOf[str] = []
-        open_brackets = 0
-        for line_number, line in enumerate(lines, start=1):
-            stripped = line.strip()
-            if open_brackets > 0:
-                # The moved statement opened brackets it has not closed yet:
-                # this line is a continuation of the same statement and must
-                # move with it, or the kept source keeps orphan fragments that
-                # no longer parse. The continuation joins its statement entry
-                # so every downstream consumer parses whole statements.
-                if moved_lines:
-                    moved_lines[-1] = f"{moved_lines[-1]}\n{line}"
-                moved_line_numbers.append(line_number)
-                open_brackets += cls._bracket_delta(line)
+        module = ast.parse("\n".join(lines))
+        moved_lines: list[str] = []
+        ranges: list[t.IntPair] = []
+        for node in module.body:
+            first_line = lines[node.lineno - 1]
+            moved = (
+                first_line
+                if isinstance(node, ast.TypeAlias)
+                and node.name.id in public_alias_names
+                else cls._moved_alias_line(
+                    first_line.strip(), first_line, public_alias_names
+                )
+            )
+            if moved is None:
                 continue
-            moved = cls._moved_alias_line(stripped, line, public_alias_names)
-            if moved is not None:
-                moved_lines.append(moved)
-                moved_line_numbers.append(line_number)
-                open_brackets = cls._bracket_delta(line)
-            else:
-                kept_lines.append(line)
+            end_line = node.end_lineno or node.lineno
+            if node.col_offset or any(
+                other is not node
+                and other.lineno <= end_line
+                and (other.end_lineno or other.lineno) >= node.lineno
+                for other in module.body
+            ):
+                msg = "typing alias move requires an independent statement span"
+                raise ValueError(msg)
+            moved_lines.append("\n".join((moved, *lines[node.lineno : end_line])))
+            ranges.append((node.lineno - 1, end_line))
         return (
-            list(moved_lines),
-            list(kept_lines),
-            min(moved_line_numbers) if moved_line_numbers else 0,
+            moved_lines,
+            cls._lines_without_ranges(lines, ranges),
+            min(start + 1 for start, _end in ranges) if ranges else 0,
         )
 
     @staticmethod

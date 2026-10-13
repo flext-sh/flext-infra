@@ -471,7 +471,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].fail(message)
             self.progress.emit(
                 "mod: joint AST, semantic, and text fixed point verified "
-                "with zero findings",
+                "with zero AST/text findings",
             )
             return r[t.Cli.ResultValue].ok(value=True)
 

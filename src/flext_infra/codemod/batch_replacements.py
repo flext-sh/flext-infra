@@ -66,7 +66,13 @@ class FlextInfraModReplacements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def publish(cls, root: Path, report: m.Infra.ModScanReport) -> p.Result[bool]:
+    def publish(
+        cls,
+        root: Path,
+        report: m.Infra.ModScanReport,
+        *,
+        exact_replacements: bool = False,
+    ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
 
         Returns:
@@ -84,7 +90,12 @@ class FlextInfraModReplacements:
                 grouped.setdefault(root / finding.file, []).append(finding)
         plans: list[m.Infra.SemanticFilePlan] = []
         for path, findings in sorted(grouped.items()):
-            plan = cls._path_plan(root, path, findings)
+            plan = cls._path_plan(
+                root,
+                path,
+                findings,
+                exact_replacements=exact_replacements,
+            )
             if plan.failure:
                 return r[bool].from_failure(plan)
             plans.append(plan.value)
@@ -102,6 +113,8 @@ class FlextInfraModReplacements:
         root: Path,
         path: Path,
         findings: t.SequenceOf[m.Infra.ModScanFinding],
+        *,
+        exact_replacements: bool = False,
     ) -> p.Result[m.Infra.SemanticFilePlan]:
         """Validate one path's actionable findings into one publication plan.
 
@@ -115,8 +128,13 @@ class FlextInfraModReplacements:
                 f"actionable finding lacks authenticated state: {path}",
             )
         replacements: list[t.Triple[int, int, bytes]] = []
+        observed = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
         for finding in findings:
-            if finding.source_state != before or finding.replacement is None:
+            if (
+                finding.source_state != before
+                or finding.replacement is None
+                or observed != before
+            ):
                 return r[m.Infra.SemanticFilePlan].fail(
                     f"inconsistent actionable finding source: {path}",
                 )
@@ -132,9 +150,6 @@ class FlextInfraModReplacements:
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
             return r[m.Infra.SemanticFilePlan].from_failure(updated)
-        candidate = cls._normalized_candidate(root, path, before.content, updated.value)
-        if candidate.failure:
-            return r[m.Infra.SemanticFilePlan].from_failure(candidate)
         bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for finding in findings:
             for state in finding.binding_states:
@@ -142,12 +157,18 @@ class FlextInfraModReplacements:
                     return r[m.Infra.SemanticFilePlan].fail(
                         f"binding snapshots disagree: {state.path}",
                     )
-        return r[m.Infra.SemanticFilePlan].ok(
-            m.Infra.SemanticFilePlan(
+        return cls._normalized_candidate(
+            root,
+            path,
+            before.content,
+            updated.value,
+            exact_replacements=exact_replacements,
+        ).map(
+            lambda content: m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
                 before=before,
-                desired_content=candidate.value,
+                desired_content=content,
                 desired_mode=before.mode,
                 changes=tuple(finding.rule_id for finding in findings),
                 source_states=tuple(bindings.values()),
@@ -221,6 +242,8 @@ class FlextInfraModReplacements:
         path: Path,
         before: bytes,
         candidate: bytes,
+        *,
+        exact_replacements: bool = False,
     ) -> p.Result[bytes]:
         """Judge final normalized bytes before the atomic publisher has effects.
 
@@ -234,22 +257,26 @@ class FlextInfraModReplacements:
             gates=(c.Infra.LINT,),
             source=before.decode(c.DEFAULT_ENCODING),
         )
-        normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
-            root,
-            path,
-            candidate.decode(c.DEFAULT_ENCODING),
-        )
-        if normalized.failure:
-            return r[bytes].from_failure(normalized)
-        module = cst.parse_module(normalized.value)
-        stripped = module.visit(FlextInfraDeadScaffold())
-        if stripped.code.count("TYPE_CHECKING") == 1:
-            stripped = stripped.visit(FlextInfraOrphanImport())
-        final = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
-            root,
-            path,
-            stripped.code,
-        )
+        if exact_replacements:
+            final: p.Result[str] = r[str].ok(candidate.decode(c.DEFAULT_ENCODING))
+            cst.parse_module(final.value)
+        else:
+            normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+                root,
+                path,
+                candidate.decode(c.DEFAULT_ENCODING),
+            )
+            if normalized.failure:
+                return r[bytes].from_failure(normalized)
+            module = cst.parse_module(normalized.value)
+            stripped = module.visit(FlextInfraDeadScaffold())
+            if stripped.code.count("TYPE_CHECKING") == 1:
+                stripped = stripped.visit(FlextInfraOrphanImport())
+            final = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+                root,
+                path,
+                stripped.code,
+            )
         if final.failure:
             return r[bytes].from_failure(final)
         introduced = u.Infra.lint_new_errors(

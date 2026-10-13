@@ -64,6 +64,22 @@ valid:
     if TYPE_CHECKING:
         from flext_core import t
     value: List[str]
+  - |
+    from flext_core import t
+    from typing import Annotated, List
+    value: Annotated[int, List[str]]
+  - |
+    from flext_core import t
+    from typing import List, Literal
+    value: Literal[List[str]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[int, typing.List[str]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Literal[typing.List[str]]
 # `invalid` MUST match: a real generic in a module that binds both `List` and
 # `t`, plus the dotted form which needs no `List` binding.
 invalid:
@@ -103,3 +119,31 @@ invalid:
     from flext_core import t
     import typing
     def f(value: typing.List[str] = typing.List[str]): ...
+  - |
+    from flext_core import t
+    from typing import Annotated, List
+    value: Annotated[List[str], Field(default_factory=List[str])]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[typing.List[str], typing.List[str]]
+  # Executed after the engine fixes it: aliases are types, factories are values.
+  - |
+    from flext_core import m, t
+    from typing import List, get_origin
+    LEGACY = List[str]
+    FACTORY = list[str]
+    type Contract = List[str]
+    class LegacyBase(List[str]): ...
+    class Payload(m.ArbitraryTypesModel):
+        values: List[str] = m.Field(default_factory=list[str])
+    def make(values: List[str] = list[str]()) -> List[str]:
+        return values
+    assert get_origin(LEGACY) is list
+    assert FACTORY() == []
+    assert isinstance(LegacyBase(), list)
+    assert Payload().values == []
+    assert Payload().values is not Payload().values
+    assert make() == []
+    assert not callable(t.SequenceOf)
+    assert Contract.__value__ == t.SequenceOf[str]

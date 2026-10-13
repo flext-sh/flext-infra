@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 import pytest
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.version import Version
 
 from tests import c, tm, u
 
@@ -265,10 +267,80 @@ class TestsFlextInfraDepsModernizerHelpers:
     def test_rewrite_requirement_constraint_preserves_extras_and_markers() -> None:
         """Verify rewrite requirement constraint preserves extras and markers."""
         locked_version = c.Tests.RELEASE_VERSION_TARGET
-        tm.that(
+        rewritten = tm.not_none(
             u.Infra.rewrite_requirement_constraint(
                 "httpx[socks]>=0.1; python_version < '3.14'",
                 resolved_versions={"httpx": locked_version},
             ),
-            eq=f"httpx[socks]>={locked_version}; python_version < '3.14'",
         )
+        parsed = Requirement(rewritten)
+        original = Requirement("httpx[socks]>=0.1; python_version < '3.14'")
+        tm.that(parsed.extras, eq=original.extras)
+        tm.that(parsed.marker, eq=original.marker)
+        tm.that(str(parsed.specifier), eq=f">={locked_version}")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "constraint",
+        [
+            "",
+            ">=1",
+            "~=1.4.5",
+            "~=1.4",
+            "==1.4.*",
+            "==1.4.7",
+            "===1.4.7",
+            ">1.4.6,<2,!=1.5",
+            ">=1,<=1.6,!=1.5.*",
+        ],
+    )
+    def test_rewrite_intersects_original_domain_with_floor(constraint: str) -> None:
+        """Raising a floor never admits a version the declared policy excluded."""
+        original = Requirement(f"example[feature]{constraint}; os_name == 'posix'")
+        floor = "1.4.7"
+        versions = {"example": floor}
+        rewritten = tm.not_none(
+            u.Infra.rewrite_requirement_constraint(
+                str(original), resolved_versions=versions
+            )
+        )
+        parsed = Requirement(rewritten)
+        tm.that(parsed.name, eq=original.name)
+        tm.that(parsed.extras, eq=original.extras)
+        tm.that(parsed.marker, eq=original.marker)
+        for candidate in ("1.4.4", "1.4.6", floor, "1.4.8", "1.5", "1.6", "2"):
+            tm.that(
+                parsed.specifier.contains(candidate),
+                eq=(
+                    original.specifier.contains(candidate)
+                    and Version(candidate) >= Version(floor)
+                ),
+            )
+        tm.that(
+            u.Infra.rewrite_requirement_constraint(
+                rewritten, resolved_versions=versions
+            ),
+            none=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("separator", ["@", " @ ", "\t@\t"])
+    def test_rewrite_preserves_direct_reference(separator: str) -> None:
+        """PEP 508 direct references remain source-owned regardless of whitespace."""
+        requirement = (
+            f"example[feature]{separator}https://example.org/example.whl"
+            " ; os_name == 'posix'"
+        )
+        tm.that(
+            u.Infra.rewrite_requirement_constraint(
+                requirement, resolved_versions={"example": "1.4.7"}
+            ),
+            none=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("requirement", ["example>=broken", "example; broken", ""])
+    def test_rewrite_rejects_invalid_requirement(requirement: str) -> None:
+        """Invalid declarations retain the native parser diagnostic, even if unresolved."""
+        with pytest.raises(InvalidRequirement):
+            u.Infra.rewrite_requirement_constraint(requirement, resolved_versions={})

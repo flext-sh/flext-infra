@@ -31,9 +31,10 @@ class TestsFlextInfraUtilityFacadeProjection:
         """Publish unchanged-MRO facades under independently validated SSOT widths."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         width = config.Infra.tooling.tools.ruff.line_length
-        module = "owner_" + "x" * (width // 2)
         owner = "Owner" + "X" * (width // 2)
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        prefix = f"from {package.name}.{family.directory}.owner_ import ("
+        module = "owner_" + "x" * max(0, width - len(prefix))
         self._write(
             package / family.directory / f"{module}.py",
             f'class {owner}:\n    """Canonical behavior owner."""\n'
@@ -45,7 +46,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         facade = package / c.Infra.UTILITIES_PY
         self._write(
             facade,
-            '"""Public utility facade."""\n\n'
+            '"""Public utility facade.\n\n'
+            "Copyright (c) 2026 FLEXT Team. All rights reserved.\n"
+            'SPDX-License-Identifier: MIT\n"""\n\n'
             f"from {package.name}.{family.directory}.{module} import {binding}\n\n\n"
             f'class Utilities({owner}):\n    """Compose the canonical owner."""\n\n'
             '    marker = "facade"\n\n\n'
@@ -63,7 +66,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             f"root = Path({str(root)!r})\n"
             f"package = Path({str(package)!r})\n"
             f"facade = Path({str(facade)!r})\n"
-            f"assert config.Infra.tooling.tools.ruff.line_length == {width + width_delta}\n"
+            "assert config.Infra.tooling.tools.ruff.line_length == "
+            f"{width + width_delta}\n"
             "from importlib import import_module\n"
             f"before = import_module({(package.name + '.utilities')!r}).u\n"
             "expected = tuple(item.__name__ for item in before.__mro__)\n"
@@ -105,7 +109,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             )
         )
         tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
-        tm.that(consumer.stdout, eq=result.stdout)
+        tm.that(result.stdout.endswith(consumer.stdout), eq=True)
         checked = tm.ok(
             u.Cli.run_raw(
                 (

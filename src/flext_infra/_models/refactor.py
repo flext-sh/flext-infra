@@ -235,11 +235,11 @@ class FlextInfraModelsRefactor(
         before_source_sha256: Annotated[
             t.StrMapping,
             m.Field(description="Authenticated before source and catalog inventory"),
-        ] = m.Field(default_factory=dict[str, str])
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
         after_source_sha256: Annotated[
             t.StrMapping,
             m.Field(description="Authenticated after source and catalog inventory"),
-        ] = m.Field(default_factory=dict[str, str])
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
 
         @property
         def increased_totals(self) -> t.StrSequence:

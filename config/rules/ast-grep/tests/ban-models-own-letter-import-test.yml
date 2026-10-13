@@ -18,17 +18,21 @@ valid:
   # a different binding.
   - |
     from ai_hub import mextra
-  # An aliased member binds the alias, not the letter.
-  - |
-    from ai_hub import m as aliased
   # A root binding without a letter component reaches no family facade.
   - |
     import ai_hub
-  # Body-nested imports bind nothing at module scope.
+invalid:
+  - |
+    from ai_hub import m as aliased
   - |
     def load() -> None:
         from ai_hub import m
-invalid:
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import m
+  - |
+    import ai_hub.models
   # The producer binds its own letter from the own root.
   - |
     from ai_hub import m

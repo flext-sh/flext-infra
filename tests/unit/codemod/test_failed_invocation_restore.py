@@ -10,13 +10,176 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import main
 from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraFailedInvocationProgress:
     """Failures preserve accepted progress and newer independent source states."""
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_ast_scan_selects_two_exact_ids_without_prefix_matches(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """CSV selection elects exact rules, not regex or prefix neighbours."""
+        selected = ("selection.first", "selection.second")
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                name: (
+                    f"id: {name}\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  pattern: value = dict()\n"
+                )
+                for name in (*selected, "selection.first-extra", "selectionXfirst")
+            },
+        )
+        source = "value = dict()\n"
+        sample = mod_workspace / "sample.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=selected))
+        tm.that(tuple(rule.id for rule in plan.rules), eq=selected)
+        tm.that(
+            tuple(rule_id for ruleset in plan.rulesets for rule_id in ruleset.rule_ids),
+            eq=selected,
+        )
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            ",".join(selected),
+        ])
+        capture = capsys.readouterr()
+        console = capture.out + capture.err
+        report = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(exit_code, ne=0)
+        tm.that(report.findings, eq=len(selected))
+        tm.that(set(report.totals_by_rule), eq=set(selected))
+        tm.that(console, has="text phases=0 semantic callbacks=0; corpus=full")
+        tm.that(console, lacks="selection.first-extra")
+        tm.that(console, lacks="selectionXfirst")
+        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        ("selection", "diagnostic"),
+        [
+            ("missing-rule-id", "unknown codemod rule IDs"),
+            ("", "non-empty exact rule IDs"),
+            ("known,", "non-empty exact rule IDs"),
+            ("known,known", "duplicate codemod rule IDs"),
+        ],
+    )
+    def test_ast_invalid_selection_fails_before_scan_or_effects(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+        selection: str,
+        diagnostic: str,
+    ) -> None:
+        """Invalid selections neither publish scan evidence nor rewrite source."""
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {"known": "id: known\nlanguage: Python\nrule:\n  pattern: dict()\n"},
+        )
+        sample = mod_workspace / "sample.py"
+        before = sample.read_bytes()
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            selection,
+            "--apply",
+        ])
+        capture = capsys.readouterr()
+        console = capture.out + capture.err
+        tm.that(exit_code, ne=0)
+        tm.that(console, has=diagnostic)
+        tm.that(console, lacks="mod: start")
+        tm.that(console, lacks="validate ast-grep rule fixtures")
+        tm.that(sample.read_bytes(), eq=before)
+        tm.that(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).exists(),
+            eq=False,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_ast_selected_apply_preserves_unmatched_ast_and_text_sources(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Selected authenticated fixes do not execute other rules or callbacks."""
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                name: (
+                    f"id: {name}\nlanguage: Python\nseverity: warning\n"
+                    f'rule:\n  pattern: {name} = "before"\n'
+                    f'fix: {name} = "after"\n'
+                )
+                for name in ("selected", "unselected")
+            },
+        )
+        sample = mod_workspace / "selection.py"
+        stem = u.derive_class_stem(mod_workspace.name.replace("_", "-"))
+        source = (
+            '"""Selection fixture."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from typing import TYPE_CHECKING\n\n"
+            "if TYPE_CHECKING:\n    pass\n\n\n"
+            f"class {stem}Selection:\n"
+            '    """Independent rule targets."""\n\n'
+            '    selected = "before"\n'
+            '    unselected = "before"\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        untouched = mod_workspace / "sample.py"
+        untouched_before = untouched.read_bytes()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n  - id: text-sentinel\n"
+                "    include: ['selection.py']\n"
+                "    find: 'before'\n    replace: 'text-phase-ran'\n",
+            )
+        )
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            "selected",
+            "--apply",
+        ])
+        capture = capsys.readouterr()
+        console = capture.out + capture.err
+        tm.that(exit_code, eq=0, msg=console)
+        tm.that(
+            sample.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=source.replace('selected = "before"', 'selected = "after"', 1),
+        )
+        tm.that(untouched.read_bytes(), eq=untouched_before)
+        tm.that(console, has="whole-catalog before=")
+        tm.that(console, has="text phases=0 semantic callbacks=0; corpus=full")
+        tm.that(console, lacks="apply sed-by-list cascade")
+        tm.that(console, lacks="mod: phase ")
+        report = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(report.totals_by_rule.get("unselected"), eq=1)
+        tm.that(report.totals_by_rule.get("selected", 0), eq=0)
 
     @staticmethod
     @pytest.mark.slow

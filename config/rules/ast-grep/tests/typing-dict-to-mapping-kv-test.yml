@@ -65,6 +65,22 @@ valid:
     if TYPE_CHECKING:
         from flext_core import t
     value: Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Annotated, Dict
+    value: Annotated[int, Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Dict, Literal
+    value: Literal[Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[int, typing.Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Literal[typing.Dict[str, int]]
 # `invalid` MUST match and rewrite to t.MappingKV (module binds `t`).
 invalid:
   # bare name in a parameter annotation
@@ -113,3 +129,31 @@ invalid:
     from flext_core import t
     import typing
     def f(value: typing.Dict[str, int] = typing.Dict[str, int]): ...
+  - |
+    from flext_core import t
+    from typing import Annotated, Dict
+    value: Annotated[Dict[str, int], Field(default_factory=Dict[str, int])]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  # Executed after the engine fixes it: aliases are types, factories are values.
+  - |
+    from flext_core import m, t
+    from typing import Dict, get_origin
+    LEGACY = Dict[str, int]
+    FACTORY = dict[str, int]
+    type Contract = Dict[str, int]
+    class LegacyBase(Dict[str, int]): ...
+    class Payload(m.ArbitraryTypesModel):
+        values: Dict[str, int] = m.Field(default_factory=dict[str, int])
+    def make(values: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+        return values
+    assert get_origin(LEGACY) is dict
+    assert FACTORY() == {}
+    assert isinstance(LegacyBase(), dict)
+    assert Payload().values == {}
+    assert Payload().values is not Payload().values
+    assert make() == {}
+    assert not callable(t.MappingKV)
+    assert Contract.__value__ == t.MappingKV[str, int]

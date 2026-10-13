@@ -366,8 +366,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``t.Infra.LintSnapshot``.
 
         """
-        command_cwd = cls._command_cwd(py_file, workspace)
-
         # Every gate is an independent subprocess -- _run_lint_gate
         # builds its own command and returns a value, touching no shared state.
         # Running any one of them ahead of the pool made a snapshot cost that
@@ -393,7 +391,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 cls._run_lint_gate,
                 py_file=py_file,
                 workspace=workspace,
-                command_cwd=command_cwd,
                 tool_name=entry[0],
                 template=entry[1],
             ): entry[0]
@@ -441,7 +438,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         py_file: Path,
         workspace: Path,
-        command_cwd: Path,
         tool_name: str,
         template: t.StrSequence,
         source: str | None = None,
@@ -452,6 +448,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``m.Infra.LintGateResult``.
 
         """
+        command_cwd = cls._command_cwd(py_file, workspace)
         cmd = cls._lint_command(
             py_file,
             workspace,
@@ -544,7 +541,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``t.Infra.LintSnapshot``.
 
         Raises:
-            ValueError: If the source is provided but the selected lint tools do not include Ruff.
+            ValueError: If source snapshots select a tool other than Ruff.
         """
         selected_tools = cls._selected_lint_tools(gates)
         if source is not None:
@@ -555,7 +552,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 cls._run_lint_gate(
                     py_file=py_file,
                     workspace=workspace,
-                    command_cwd=cls._command_cwd(py_file, workspace),
                     tool_name=selected_tools[0][0],
                     template=selected_tools[0][1],
                     source=source,

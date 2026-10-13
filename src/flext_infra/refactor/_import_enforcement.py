@@ -227,6 +227,16 @@ class FlextInfraImportNormalization(
                     target == scope.namespace and alias.name == scope.family_letter
                 ):
                     continue
+                if node in state.tree.body and any(
+                    isinstance(statement, ast.Assign | ast.AnnAssign)
+                    and (alias.asname or alias.name)
+                    in cls._module_bindings(
+                        ast.Module(body=[statement], type_ignores=[]),
+                    )
+                    for statement in state.tree.body
+                ):
+                    # The existing binding repair removes this redundant import.
+                    continue
                 msg = (
                     f"{scope.file_path}: family imports its own facade: "
                     f"{target}.{alias.name}"

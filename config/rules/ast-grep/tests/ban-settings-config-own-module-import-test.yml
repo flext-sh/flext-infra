@@ -1,6 +1,9 @@
 id: ban-settings-config-own-module-import
 valid:
   - |
+    from pydantic_settings import BaseSettings
+invalid:
+  - |
     from flext_infra._settings import FlextInfraSettings
   - |
     from flext_infra._constants.config import FlextInfraConstantsConfig
@@ -8,7 +11,14 @@ valid:
     from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
   - |
     from flext_infra._models.base import FlextInfraModelsBase
-invalid:
+  - |
+    import flext_infra
+  - |
+    import flext_infra._settings as upstream
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_infra._models.base import FlextInfraModelsBase
   - |
     from flext_infra._constants import FlextInfraConstantsCodegenProject
   - |
