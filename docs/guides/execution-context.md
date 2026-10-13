@@ -234,6 +234,13 @@ from the primary checkout or Git common directory. The generated Makefile, gener
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
+Authenticated source previews keep their staged source root separate from this runtime
+owner. Candidate validation uses the same typed `RUNTIME_ROOT` selection as fresh-import;
+an explicitly declared root is not re-elected through Git attachment. Managed base
+interpreter symlinks inside a physical environment are valid, but the candidate process
+must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
+borrowed from another checkout fails before candidate checks or publication.
+
 ## Mise toolchain
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
