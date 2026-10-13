@@ -820,10 +820,7 @@ class FlextInfraCodegenTransaction(
             return r[T].from_failure(
                 self._recover_failure(
                     layout,
-                    outcome.error or "generation phase failed",
-                    exception=outcome.exception,
-                    error_code=outcome.error_code,
-                    error_data=outcome.error_data,
+                    outcome,
                 ),
             )
         return outcome
