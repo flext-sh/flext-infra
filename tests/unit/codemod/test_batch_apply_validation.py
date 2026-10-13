@@ -208,31 +208,27 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         """The native pipeline supplies companion imports before leaving syntax."""
         u.Tests.provision_checkout(mod_workspace)
         sample = mod_workspace / "sample.py"
+        owner = u.derive_class_stem(mod_workspace.name)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 sample,
                 '"""Adapter runtime contract."""\n'
                 "from __future__ import annotations\n\n"
                 "from typing import Annotated\n"
-                "from pydantic import TypeAdapter\n"
-                "from flext_core import t\n\n"
-                f"adapter = TypeAdapter({contract})\n"
-                'assert adapter.validate_python({"name": "value"}) '
-                '== {"name": "value"}\n',
+                "from flext_core import t, u\n\n"
+                f"class {owner}:\n"
+                "    @staticmethod\n"
+                "    def main() -> None:\n"
+                f"        adapter = u.type_adapter({contract})\n"
+                '        assert adapter.validate_python({"name": "value"}) '
+                '== {"name": "value"}\n\n'
+                f"{owner}.main()\n",
             ),
         )
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
-        tm.that(
-            any(
-                item.rule_id.startswith("pydantic-adapter-typeform")
-                for item in before.entries
-            ),
-            eq=True,
-        )
-        tm.that(
-            any(item.rule_id == "pydantic-typeform-import" for item in before.entries),
-            eq=False,
-        )
+        rule_ids = {item.rule_id for item in before.entries}
+        tm.that(any(rule.startswith("pydantic-adapter-typeform") for rule in rule_ids))
+        tm.that("pydantic-typeform-import" in rule_ids, eq=False)
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
@@ -248,7 +244,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             first = sample.read_bytes()
             tm.that(progress.validated, eq=True)
             after = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
-            tm.that(after.actionable, eq=0)
+            tm.that(len(after.entries), eq=0)
             tm.ok(service.execute())
             tm.that(sample.read_bytes(), eq=first)
 
