@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
 
 
 class FlextInfraRefactorViolationsSweep(
@@ -52,6 +53,13 @@ class FlextInfraRefactorViolationsSweep(
             root,
             verbs,
             projects,
+            m.Infra.ViolationsSweepSources(
+                plan=before_scan.value[2],
+                scope=before_scan.value[1].evidence.scope,
+                repository_roots=projects,
+                sha256=before_scan.value[3],
+                ast_report=before_scan.value[0],
+            ),
         )
         after_scan = self._scan_evidence(root, invocation / "after.json")
         report = m.Infra.ViolationsSweepReport(
@@ -155,7 +163,9 @@ class FlextInfraRefactorViolationsSweep(
         if focused.failure:
             return result.from_failure(focused)
         verbs = (
-            tuple(verb.strip() for verb in self.repair_verbs.split(","))
+            ("audit",)
+            if self.audit_rules
+            else tuple(verb.strip() for verb in self.repair_verbs.split(","))
             if self.repair_verbs is not None
             else config.Infra.codegen.make.violations_sweep_repair_verbs
         )
@@ -180,6 +190,7 @@ class FlextInfraRefactorViolationsSweep(
         root: Path,
         verbs: t.StrSequence,
         projects: t.SequenceOf[Path],
+        initial: m.Infra.ViolationsSweepSources,
     ) -> t.Quad[
         t.StrSequence,
         t.SequenceOf[m.Infra.ViolationsSweepStage],
@@ -195,6 +206,19 @@ class FlextInfraRefactorViolationsSweep(
         stages: list[m.Infra.ViolationsSweepStage] = []
         failed_verb: str | None = None
         repair_failure: p.Result[bool] | None = None
+        inventory = (
+            tuple(
+                sorted({
+                    rule.id
+                    for project in projects
+                    for plan in (u.Infra.codemod_rule_plan(project),)
+                    if plan.success
+                    for rule in plan.value.rules
+                })
+            )
+            if self.audit_rules
+            else ()
+        )
         for verb in verbs:
             blocked = repair_failure is not None
             for project in projects if verb == "audit" else (root,):
@@ -221,10 +245,23 @@ class FlextInfraRefactorViolationsSweep(
                         )
                     )
                     continue
-                stage, repaired = self._run_stage(
-                    root,
-                    project,
-                    verb,
+                stage, repaired = (
+                    self._run_rule_audit(project, inventory, initial)
+                    if self.audit_rules
+                    else self._run_stage(
+                        root,
+                        project,
+                        verb,
+                        previous=next(
+                            (
+                                stage.audit_after
+                                for stage in reversed(stages)
+                                if stage.repository_root == project.resolve()
+                                and stage.audit_after is not None
+                            ),
+                            initial,
+                        ),
+                    )
                 )
                 stages.append(stage)
                 if repaired.failure and repair_failure is None:
@@ -241,6 +278,8 @@ class FlextInfraRefactorViolationsSweep(
         root: Path,
         project: Path,
         verb: str,
+        *,
+        previous: m.Infra.ViolationsSweepSources | None = None,
     ) -> t.Pair[m.Infra.ViolationsSweepStage, p.Result[bool]]:
         """Invoke one canonical operation and preserve audit checks even on failure.
 
@@ -252,12 +291,16 @@ class FlextInfraRefactorViolationsSweep(
             if verb == "audit"
             else (c.Infra.MAKE, verb)
         )
-        before = cls._source_snapshot(root) if verb == "audit" else None
+        before = cls._source_snapshot(project, observe=True, previous=previous)
         started = monotonic()
         executed = (
             u.Cli.run_raw(command, cwd=root)
-            if before is None or before.success
-            else r[p.Cli.CommandOutput].from_failure(before)
+            if before.success and not before.value.observation_errors
+            else (
+                r[p.Cli.CommandOutput].fail("; ".join(before.value.observation_errors))
+                if before.success
+                else r[p.Cli.CommandOutput].from_failure(before)
+            )
         )
         duration = monotonic() - started
         output = executed.value if executed.success else None
@@ -274,7 +317,11 @@ class FlextInfraRefactorViolationsSweep(
                 f"forwarded_signal={output.outcome.forwarded_signal}: "
                 f"{(output.stderr or output.stdout).strip()}",
             )
-        after = cls._source_snapshot(root) if verb == "audit" else None
+        after = cls._source_snapshot(
+            project,
+            observe=True,
+            previous=before.value if before.success else None,
+        )
         unchanged: bool | None = None
         inspection_error: str | None = None
         if after is not None:
@@ -289,19 +336,19 @@ class FlextInfraRefactorViolationsSweep(
                     and before.value.scope == after.value.scope
                     and before.value.repository_roots == after.value.repository_roots
                 )
-                if not unchanged:
+                if not unchanged and verb == "audit":
                     inspection_error = (
                         "audit changed governed source bytes, rule plan or inventory"
                     )
                     if verdict.success:
                         verdict = r[bool].fail(inspection_error)
-        return m.Infra.ViolationsSweepStage(
+        stage = m.Infra.ViolationsSweepStage(
             repository_root=project.resolve(),
             cwd=root.resolve(),
             command=command,
             verb=verb,
             duration=duration,
-            invoked=before is None or before.success,
+            invoked=before.success and not before.value.observation_errors,
             outcome=(
                 m.Cli.ProcessOutcome(
                     raw_return_code=output.outcome.raw_return_code,
@@ -318,7 +365,17 @@ class FlextInfraRefactorViolationsSweep(
             audit_after=after.value if after is not None and after.success else None,
             source_inventory_unchanged=unchanged,
             inspection_error=inspection_error,
-        ), verdict
+        )
+        stage = u.Infra.violations_audit_comparison(
+            project,
+            stage,
+            tuple(rule.id for rule in before.value.plan.rules)
+            if before.success
+            else (),
+        )
+        if stage.error and verdict.success:
+            verdict = r[bool].fail(stage.error)
+        return stage, verdict
 
     @staticmethod
     def _scan_evidence(
@@ -364,11 +421,13 @@ class FlextInfraRefactorViolationsSweep(
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             scanned.value,
-            command=c.Infra.ModScanCommand.SCAN,
-            scope=snapshot.scope,
-            relative_path=destination,
-            repositories=repositories,
-            rule_ids=tuple(rule.id for rule in snapshot.plan.rules),
+            publication=m.Infra.ModScanPublication(
+                command=c.Infra.ModScanCommand.SCAN,
+                scope=snapshot.scope,
+                relative_path=destination,
+                repositories=repositories,
+                rule_ids=tuple(rule.id for rule in snapshot.plan.rules),
+            ),
         )
         if receipt.failure:
             return result.from_failure(receipt)
@@ -380,7 +439,13 @@ class FlextInfraRefactorViolationsSweep(
         ))
 
     @classmethod
-    def _source_snapshot(cls, root: Path) -> p.Result[m.Infra.ViolationsSweepSources]:
+    def _source_snapshot(
+        cls,
+        root: Path,
+        *,
+        observe: bool = False,
+        previous: m.Infra.ViolationsSweepSources | None = None,
+    ) -> p.Result[m.Infra.ViolationsSweepSources]:
         """Read the existing scan inventory without executing another native scan.
 
         Returns:
@@ -412,18 +477,126 @@ class FlextInfraRefactorViolationsSweep(
             return r[m.Infra.ViolationsSweepSources].fail(
                 "violations sweep project topology changed during observation",
             )
+        snapshot = m.Infra.ViolationsSweepSources(
+            plan=plan,
+            scope=targets,
+            states=tuple(states),
+            repository_roots=projects,
+            sha256={
+                str(state.path): u.Cli.sha256_bytes(state.content)
+                for state in states
+                if state.content is not None
+            },
+        )
         return r[m.Infra.ViolationsSweepSources].ok(
-            m.Infra.ViolationsSweepSources(
-                plan=plan,
-                scope=targets,
-                states=tuple(states),
-                repository_roots=projects,
-                sha256={
-                    str(state.path): u.Cli.sha256_bytes(state.content)
-                    for state in states
-                    if state.content is not None
-                },
+            cls._observed_snapshot(root, snapshot, previous) if observe else snapshot,
+        )
+
+    @staticmethod
+    def _observed_snapshot(
+        root: Path,
+        snapshot: m.Infra.ViolationsSweepSources,
+        previous: m.Infra.ViolationsSweepSources | None,
+    ) -> m.Infra.ViolationsSweepSources:
+        """Observe native AST, text and Ruff through their existing owners.
+
+        Returns:
+            Full native evidence; failed scanners remain explicitly unobserved.
+        """
+        ast_scan = (
+            r[m.Infra.ModScanReport].ok(previous.ast_report)
+            if previous is not None
+            and previous.ast_report is not None
+            and previous.sha256 == snapshot.sha256
+            and previous.plan == snapshot.plan
+            and previous.scope == snapshot.scope
+            else FlextInfraModGateEngine.scan(root, fix=False)
+        )
+        text_scan = FlextInfraModTextGateEngine.scan(root, fix=False)
+        lint = u.Infra.lint_snapshots(
+            tuple(
+                state.path for state in snapshot.states if state.path.suffix == ".py"
+            ),
+            root,
+            gates=(c.Infra.RUFF,),
+        )
+        validated = FlextInfraRefactorViolationsSweep._validate_scan_sources(
+            root,
+            snapshot.scope,
+            snapshot.states,
+            snapshot.plan,
+        )
+        return m.Infra.ViolationsSweepSources(
+            plan=snapshot.plan,
+            scope=snapshot.scope,
+            states=snapshot.states,
+            repository_roots=snapshot.repository_roots,
+            sha256=snapshot.sha256,
+            ast_report=ast_scan.value if ast_scan.success else None,
+            text_report=text_scan.value if text_scan.success else None,
+            lint={str(path): findings for path, findings in lint.items()},
+            observation_errors=tuple(
+                str(result.error)
+                for result in (ast_scan, text_scan, validated)
+                if result.failure
+            ),
+        )
+
+    def _run_rule_audit(
+        self,
+        project: Path,
+        inventory: t.StrSequence,
+        initial: m.Infra.ViolationsSweepSources,
+    ) -> t.Pair[m.Infra.ViolationsSweepStage, p.Result[bool]]:
+        """Read the complete elected catalog for one repository, without Make effects.
+
+        Returns:
+            Per-rule dispositions and full collateral evidence for this observation.
+        """
+        started = monotonic()
+        before = self._source_snapshot(project, observe=True, previous=initial)
+        after = self._source_snapshot(
+            project,
+            observe=True,
+            previous=before.value if before.success else None,
+        )
+        failure = before if before.failure else after if after.failure else None
+        errors = (
+            (str(failure.error),)
+            if failure is not None
+            else (*before.value.observation_errors, *after.value.observation_errors)
+        )
+        stage = m.Infra.ViolationsSweepStage(
+            repository_root=project.resolve(),
+            cwd=self.repository_root.resolve(),
+            command=("flext-infra", "refactor", "violations-sweep", "--audit-rules"),
+            verb="audit-rules",
+            duration=monotonic() - started,
+            invoked=True,
+            outcome=None,
+            error="; ".join(errors) if errors else None,
+            audit_before=before.value if before.success else None,
+            audit_after=after.value if after.success else None,
+        )
+        if failure is not None:
+            stage = stage.model_copy(
+                update={
+                    "rule_evaluations": tuple(
+                        m.Infra.ViolationsRuleEvaluation(
+                            repository=project.name,
+                            rule_id=rule_id,
+                            status="failed",
+                            delta=None,
+                            error=str(failure.error),
+                        )
+                        for rule_id in inventory
+                    ),
+                }
             )
+            return stage, r[bool].from_failure(failure)
+        stage = u.Infra.violations_audit_comparison(project, stage, inventory)
+        return stage, (
+            r[bool].fail(stage.error) if stage.error else r[bool].ok(value=True)
         )
 
     @staticmethod

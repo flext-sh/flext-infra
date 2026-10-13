@@ -16,6 +16,9 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities.protected_edit_linting import (
+    FlextInfraUtilitiesProtectedEditLinting,
+)
 
 
 class FlextInfraUtilitiesRefactor:
@@ -90,6 +93,113 @@ class FlextInfraUtilitiesRefactor:
                     )
                 )
         return tuple(deltas)
+
+    @staticmethod
+    def violations_audit_comparison(
+        project: Path,
+        stage: m.Infra.ViolationsSweepStage,
+        inventory: t.StrSequence,
+    ) -> m.Infra.ViolationsSweepStage:
+        """Compare native rule and collateral observations without aggregate masking.
+
+        Returns:
+            The stage receipt with every rule's actual disposition and collateral.
+        """
+        if stage.audit_before is None or stage.audit_after is None:
+            return stage.model_copy(
+                update={"error": "native audit snapshot unavailable"}
+            )
+        before, after = stage.audit_before, stage.audit_after
+        deltas = (
+            FlextInfraUtilitiesRefactor.rule_deltas(
+                before.ast_report,
+                after.ast_report,
+                inventory=tuple((project.name, rule.id) for rule in before.plan.rules),
+            )
+            if before.ast_report is not None and after.ast_report is not None
+            else ()
+        )
+        rows = {row.rule_id: row for row in deltas if row.repository == project.name}
+        evaluations = tuple(
+            m.Infra.ViolationsRuleEvaluation(
+                repository=project.name,
+                rule_id=rule_id,
+                status="observed"
+                if rule_id in rows
+                else (
+                    "failed"
+                    if rule_id in {rule.id for rule in before.plan.rules}
+                    else "not_applicable"
+                ),
+                delta=rows.get(rule_id),
+                error=stage.error,
+            )
+            for rule_id in sorted(
+                set(inventory) | {rule.id for rule in before.plan.rules}
+            )
+        )
+        lint = {
+            path: FlextInfraUtilitiesProtectedEditLinting.lint_new_errors(
+                (before.lint or {}).get(path, {}),
+                findings,
+            )
+            for path, findings in (after.lint or {}).items()
+        }
+        introduced = (
+            FlextInfraUtilitiesRefactor.text_introduced_findings(
+                before.text_report,
+                after.text_report,
+            )
+            if before.text_report is not None and after.text_report is not None
+            else None
+        )
+        unchanged = before.sha256 == after.sha256 and before.plan == after.plan
+        error = (
+            stage.error
+            or "; ".join((*before.observation_errors, *after.observation_errors))
+            or (
+                "read-only rule audit changed source or introduced findings"
+                if (not unchanged and stage.verb in {"audit", "audit-rules"})
+                or any(row.introduced for row in deltas)
+                or any(lint.values())
+                or introduced
+                else None
+            )
+        )
+        return stage.model_copy(
+            update={
+                "rule_evaluations": evaluations,
+                "introduced_lint": (
+                    lint if before.lint is not None and after.lint is not None else None
+                ),
+                "introduced_text": introduced,
+                "source_inventory_unchanged": unchanged,
+                "inspection_error": error,
+                "error": error,
+            }
+        )
+
+    @staticmethod
+    def text_introduced_findings(
+        before: m.Infra.ModTextReport,
+        after: m.Infra.ModTextReport,
+    ) -> tuple[m.Infra.ModTextFinding, ...]:
+        """Consume baseline text occurrences once, never collapsing duplicates.
+
+        Returns:
+            Actual native text findings introduced relative to the baseline.
+        """
+        remaining = Counter(
+            (entry.file, entry.rule_id, entry.text) for entry in before.entries
+        )
+        introduced: list[m.Infra.ModTextFinding] = []
+        for entry in after.entries:
+            identity = (entry.file, entry.rule_id, entry.text)
+            if remaining[identity]:
+                remaining[identity] -= 1
+            else:
+                introduced.append(entry)
+        return tuple(introduced)
 
     @staticmethod
     def string_list(value: t.JsonValue | None) -> t.StrSequence:
@@ -168,11 +278,7 @@ class FlextInfraUtilitiesRefactor:
         root: Path,
         report: m.Infra.ModScanReport,
         *,
-        command: c.Infra.ModScanCommand,
-        scope: t.StrSequence,
-        relative_path: Path = c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
-        repositories: t.StrSequence = (),
-        rule_ids: t.StrSequence = (),
+        publication: m.Infra.ModScanPublication,
     ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
         """Atomically replace the complete structured evidence for one mod scan.
 
@@ -184,13 +290,15 @@ class FlextInfraUtilitiesRefactor:
         if totals.failure:
             return r[m.Infra.ModScanEvidenceReceipt].from_failure(totals)
         repository_totals, rule_totals, class_totals = totals.value
-        repository_totals = dict.fromkeys(repositories, 0) | repository_totals
-        rule_totals = dict.fromkeys(rule_ids, 0) | rule_totals
+        repository_totals = (
+            dict.fromkeys(publication.repositories, 0) | repository_totals
+        )
+        rule_totals = dict.fromkeys(publication.rule_ids, 0) | rule_totals
         evidence = m.Infra.ModScanEvidence(
             schema_version=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
-            command=command,
+            command=publication.command,
             root=root.resolve(),
-            scope=tuple(scope),
+            scope=tuple(publication.scope),
             findings=report.findings,
             actionable=report.actionable,
             detection_only=report.detection_only,
@@ -203,7 +311,7 @@ class FlextInfraUtilitiesRefactor:
         content = (evidence.model_dump_json(indent=2) + "\n").encode(
             c.DEFAULT_ENCODING,
         )
-        report_path = root.resolve() / relative_path
+        report_path = root.resolve() / publication.relative_path
         published = FlextInfraUtilitiesRefactor._published_mod_scan_bytes(
             report_path,
             content,

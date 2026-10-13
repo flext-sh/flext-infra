@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -179,11 +179,18 @@ class FlextInfraModelsRefactor(
                 description="Comma-separated rule focus; full catalog stays observed"
             ),
         ] = None
+        audit_rules: Annotated[
+            bool,
+            m.Field(
+                alias="audit-rules",
+                description="Read-only native rule audit for every governed repository",
+            ),
+        ] = False
         repair_verbs: Annotated[
             str | None,
             m.Field(
                 alias="repair-verbs",
-                description="Ordered comma-separated Make verbs; default from Make policy",
+                description="Ordered Make verbs; default from canonical Make policy",
             ),
         ] = None
 
@@ -201,7 +208,7 @@ class FlextInfraModelsRefactor(
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(
                 exclude=True,
-                description="In-memory scan authentication; receipts retain byte digests",
+                description="Scan authentication states; receipts retain byte digests",
             ),
         ] = ()
         sha256: Annotated[
@@ -210,6 +217,45 @@ class FlextInfraModelsRefactor(
         repository_roots: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Observed governed project topology"),
+        ]
+        ast_report: Annotated[
+            FlextInfraModelsScan.ModScanReport | None,
+            m.Field(
+                description="Actual complete elected rule scan, None if unobserved"
+            ),
+        ] = None
+        text_report: Annotated[
+            FlextInfraModelsScan.ModTextReport | None,
+            m.Field(description="Actual native text scan, None if unobserved"),
+        ] = None
+        lint: Annotated[
+            t.MappingKV[str, t.Infra.LintSnapshot] | None,
+            m.Field(description="Canonical Ruff snapshots by source path"),
+        ] = None
+        observation_errors: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Native observation failures, never empty success proof"
+            ),
+        ] = ()
+
+    class ViolationsRuleEvaluation(m.ContractModel):
+        """Actual elected rule disposition, without inventing counts on failure."""
+
+        repository: Annotated[str, m.Field(description="Observed repository identity")]
+        rule_id: Annotated[str, m.Field(description="Exact requested rule identity")]
+        status: Annotated[
+            Literal["observed", "not_applicable", "failed"],
+            m.Field(
+                description="Native observation or explicit unavailable disposition"
+            ),
+        ]
+        delta: Annotated[
+            FlextInfraModelsRefactor.ViolationsRuleDelta | None,
+            m.Field(description="Occurrence evidence only for successful native scans"),
+        ]
+        error: Annotated[
+            str | None, m.Field(description="Original observation failure")
         ]
 
     class ViolationsSweepStage(m.ContractModel):
@@ -252,12 +298,24 @@ class FlextInfraModelsRefactor(
         source_inventory_unchanged: Annotated[
             bool | None,
             m.Field(
-                description="Source bytes, inventory and plan equality; None is unproven"
+                description="Source, inventory and plan equality; None is unproven"
             ),
         ] = None
         inspection_error: Annotated[
             str | None,
             m.Field(description="Inspection failure independent of process error"),
+        ] = None
+        rule_evaluations: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsRuleEvaluation],
+            m.Field(description="Every rule's actual disposition in this repository"),
+        ] = ()
+        introduced_lint: Annotated[
+            t.MappingKV[str, t.Infra.LintSnapshot] | None,
+            m.Field(description="Introduced Ruff occurrences, None if unobserved"),
+        ] = None
+        introduced_text: Annotated[
+            t.VariadicTuple[FlextInfraModelsScan.ModTextFinding] | None,
+            m.Field(description="Introduced text occurrences, None if unobserved"),
         ] = None
 
     class ViolationsSweepReport(m.ContractModel):

@@ -211,7 +211,7 @@ class TestsFlextInfraFailedInvocationProgress:
                 cwd=mod_workspace,
             )
         )
-        tm.that(runtime.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(runtime.outcome), eq=True)
         tm.that(runtime.stdout.strip(), eq="after before")
         tm.that(runtime.stderr, eq="")
 

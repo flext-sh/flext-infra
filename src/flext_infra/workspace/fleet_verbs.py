@@ -34,13 +34,12 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
     members: Annotated[
         t.StrSequence | None,
         m.Field(
-            default=None,
             description=(
                 "Restrict the run to the named workspace members; an "
                 "undeclared name fails loud instead of being ignored"
             ),
         ),
-    ]
+    ] = None
 
     @override
     def execute(self) -> p.Result[m.Infra.LifecycleReport]:

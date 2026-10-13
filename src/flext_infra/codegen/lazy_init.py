@@ -14,7 +14,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -208,7 +207,7 @@ class FlextInfraCodegenLazyInit(
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         target_roots = 0
         for root in roots:
-            import_roots = FlextInfraUtilitiesRopeCore.import_project_roots(root)
+            import_roots = u.Infra.import_project_roots(root)
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
                 rope_repository_root=import_roots[0],

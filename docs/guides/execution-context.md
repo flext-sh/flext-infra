@@ -325,6 +325,12 @@ codemod gate is their one verdict. Preserve mutability, inheritance, imports, an
 collection; validate the transformation through the public interface before widening
 the batch. Structural refactors go through `make mod`.
 
+`make mod-rules` inspects the full governed source inventory without rewriting it.
+The text catalog composes Infra's shared rules with each project's local
+`config/rules/mod/sed.yaml`. A domain-specific rule belongs to that project's
+catalog; copying it into the shared catalog creates an ambiguous owner and blocks
+the scan. Rule IDs remain unique across the composed catalogs.
+
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes
 and local bindings. Unsupported references, ambiguous bindings and uncertain

@@ -141,6 +141,31 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
 
     @staticmethod
+    def test_workspace_selection_includes_member_without_root_selector(
+        tmp_path: Path,
+    ) -> None:
+        """The workspace recipe must not narrow the backend to its root alone."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        complete = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+        ).execute()
+        root_only = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            selected_projects=(".",),
+            apply_changes=False,
+        ).execute()
+
+        tm.that(complete.failure, eq=False)
+        tm.that(root_only.failure, eq=False)
+        tm.that(complete.value.automated_change_count > 0, eq=True)
+        tm.that(root_only.value.automated_change_count, eq=0)
+        tm.that(complete.value.files_scanned > root_only.value.files_scanned, eq=True)
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
+
+    @staticmethod
     def test_dry_run_reports_pending_change_and_writes_nothing(
         tmp_path: Path,
     ) -> None:

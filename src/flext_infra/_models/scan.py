@@ -24,6 +24,25 @@ from flext_infra._models import (
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
+    class ModScanPublication(m.ContractModel):
+        """Typed invocation metadata for the existing scan evidence publisher."""
+
+        command: Annotated[
+            c.Infra.ModScanCommand, m.Field(description="Actual native scan operation")
+        ]
+        scope: Annotated[
+            t.StrSequence, m.Field(description="Actual governed scan scope")
+        ]
+        relative_path: Annotated[
+            Path, m.Field(description="Invocation evidence destination under root")
+        ] = c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
+        repositories: Annotated[
+            t.StrSequence, m.Field(description="Observed repository inventory")
+        ] = ()
+        rule_ids: Annotated[
+            t.StrSequence, m.Field(description="Actual elected rule inventory")
+        ] = ()
+
     class DetectorContext(m.ArbitraryTypesModel):
         """Bundles common parameters passed to every detect_file classmethod."""
 

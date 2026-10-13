@@ -78,7 +78,11 @@ class TestsFlextInfraRefactorViolationsSweep:
 
     @staticmethod
     def _makefile(recipe: str = "", *, first_only: bool = False) -> str:
-        """Provide the configured operations without freezing the Make policy."""
+        """Provide the configured operations without freezing the Make policy.
+
+        Returns:
+            An executable Makefile derived from the current canonical verb policy.
+        """
         verbs = tuple(
             dict.fromkeys(config.Infra.codegen.make.violations_sweep_repair_verbs)
         )
@@ -446,6 +450,38 @@ class TestsFlextInfraRefactorViolationsSweep:
         )
         tm.that((root / "ran.txt").exists(), eq=False)
 
+    def test_native_rule_audit_never_invokes_make_and_keeps_collateral(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """Read-only audit observes every elected rule, plus real Ruff and text."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
+        tm.that(self._sweep(root, "--audit-rules", "--rules", "sweep-growth"), eq=0)
+        tm.that((root / "ran.txt").exists(), eq=False)
+        report = self._receipt(root)
+        stage = report.stages[0]
+        tm.that(stage.verb, eq="audit-rules")
+        tm.that(stage.outcome, eq=None)
+        tm.that(stage.source_inventory_unchanged, eq=True)
+        assert stage.audit_before is not None
+        assert stage.audit_after is not None
+        tm.that(stage.audit_before.text_report is not None, eq=True)
+        tm.that(stage.audit_after.text_report is not None, eq=True)
+        tm.that(stage.audit_before.lint is not None, eq=True)
+        tm.that(stage.audit_after.lint is not None, eq=True)
+        tm.that(any((stage.introduced_lint or {}).values()), eq=False)
+        tm.that(stage.introduced_text, eq=())
+        row = next(
+            row for row in stage.rule_evaluations if row.rule_id == "sweep-growth"
+        )
+        tm.that(row.status, eq="observed")
+        assert row.delta is not None
+        tm.that(row.delta.persisted, eq=1)
+        tm.that(row.delta.resolved, eq=0)
+        tm.that(row.delta.introduced, eq=0)
+
     def test_public_sequence_records_each_canonical_operation(
         self,
         mod_workspace: Path,
@@ -467,7 +503,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             tm.that(stage.cwd, eq=root.resolve())
             tm.that(stage.invoked, eq=True)
             assert stage.outcome is not None
-            tm.that(stage.outcome.raw_return_code, eq=0)
+            tm.that(u.Cli.process_succeeded(stage.outcome), eq=True)
             tm.that(stage.outcome.timed_out, eq=False)
             tm.that(stage.duration >= 0, eq=True)
         audit = report.stages[-1]

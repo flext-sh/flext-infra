@@ -178,10 +178,9 @@ class FlextInfraConfigModelsArtifact:
         repository: Annotated[
             FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
             m.Field(
-                default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
                 description="This repository's self-owned declaration differences",
             ),
-        ]
+        ] = m.Field(default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec)
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
             t.VariadicTuple[str | FlextInfraConfigModelsArtifact.RetiredProjectionSpec],

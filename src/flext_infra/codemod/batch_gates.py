@@ -748,11 +748,12 @@ class FlextInfraModGateEngine:
             The nearest governed repository name, else the scanned root name.
 
         """
+        source_path = (root / file_path).resolve()
         return next(
             (
                 candidate.name
                 for candidate in repository_roots
-                if file_path.is_relative_to(candidate)
+                if source_path.is_relative_to(candidate)
             ),
             root.resolve().name,
         )
@@ -1050,10 +1051,12 @@ class FlextInfraModGateEngine:
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             complete_report,
-            command=(
-                c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
+            publication=m.Infra.ModScanPublication(
+                command=(
+                    c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
+                ),
+                scope=targets,
             ),
-            scope=targets,
         )
         if receipt.failure:
             return r[m.Infra.ModScanReport].from_failure(receipt)

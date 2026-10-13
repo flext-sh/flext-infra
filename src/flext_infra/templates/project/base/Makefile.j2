@@ -1238,7 +1238,7 @@ _builtin_fix_namespace: _builtin_require_environment
 {% endif %}
 
 _builtin_fix_accessors: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor accessor-migrate --repository-root "$(PROJECT_ROOT)" --projects . --apply
+	@$(PROJECT_FLEXT_INFRA) refactor accessor-migrate --repository-root "$(PROJECT_ROOT)"{% if make_profile != "workspace" %} --projects .{% endif %} --apply
 
 # Selector-free public verbs map one-to-one to their canonical implementation;
 # each implementation owns one fixed operation.

@@ -159,9 +159,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             receipt = u.Infra.publish_mod_scan_evidence(
                 root,
                 before,
-                command=c.Infra.ModScanCommand.SCAN,
-                scope=u.Infra.ast_grep_scan_targets(root),
-                relative_path=invocation / "before.json",
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=u.Infra.ast_grep_scan_targets(root),
+                    relative_path=invocation / "before.json",
+                ),
             ).unwrap()
             cli.display_text(
                 f"ast: whole-catalog before evidence={receipt.path} sha256={receipt.sha256}",
@@ -187,9 +189,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             after.value,
-            command=c.Infra.ModScanCommand.SCAN,
-            scope=u.Infra.ast_grep_scan_targets(root),
-            relative_path=invocation / "after.json",
+            publication=m.Infra.ModScanPublication(
+                command=c.Infra.ModScanCommand.SCAN,
+                scope=u.Infra.ast_grep_scan_targets(root),
+                relative_path=invocation / "after.json",
+            ),
         )
         if receipt.failure:
             sys.stderr.write(
