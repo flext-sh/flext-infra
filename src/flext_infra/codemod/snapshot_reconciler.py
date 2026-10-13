@@ -157,7 +157,6 @@ class FlextInfraCodemodSnapshotReconciler:
     def stale_snapshots(
         cls,
         config_root: Path,
-        active_rule_ids: frozenset[str],
     ) -> t.StrSequence:
         """Describe every committed snapshot projection no current test produces.
 
@@ -171,8 +170,16 @@ class FlextInfraCodemodSnapshotReconciler:
             The resulting ``t.StrSequence``.
 
         """
+        directories = cls.fixture_directories(config_root)
+        active_rule_ids = frozenset(
+            rule.id
+            for rule in u.Infra.codemod_catalog_rules(
+                str(config_root),
+                config_root / c.Infra.CODEMOD_CONFIG_FILENAME,
+            ).unwrap()
+        )
         stale: list[str] = []
-        for test_dir in cls.fixture_directories(config_root).test_dirs:
+        for test_dir in directories.test_dirs:
             snapshot_dir = test_dir / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
             if not snapshot_dir.is_dir():
                 continue

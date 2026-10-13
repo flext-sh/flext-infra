@@ -113,7 +113,9 @@ class FlextInfraModelsRefactorGrep:
         ]
         module_absence: Annotated[
             bool,
-            m.Field(description="Native predicate is exclusively absence at module root"),
+            m.Field(
+                description="Native predicate is exclusively absence at module root"
+            ),
         ] = False
         expected: Annotated[
             int | None,

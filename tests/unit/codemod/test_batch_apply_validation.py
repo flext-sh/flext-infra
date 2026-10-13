@@ -12,14 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, main
+from flext_infra import infra, main
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from tests import tm, u
+from tests import tm, u, c, m
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:
@@ -344,8 +344,10 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 u.Cli.run((
                     sys.executable,
                     "-c",
-                    "import runpy, sys; "
-                    "assert runpy.run_path(sys.argv[1])['value'] == 2",
+                    (
+                        "import runpy, sys; "
+                        "assert runpy.run_path(sys.argv[1])['value'] == 2"
+                    ),
                     str(sample),
                 ))
             )

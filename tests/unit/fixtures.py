@@ -180,8 +180,7 @@ def _provision_consumer_template(
     development = ", ".join(
         f'"{u.Tests.flext_source(name) if name.startswith("flext-") else requirement}"'
         for requirement in config.Infra.codegen.scaffold.project.dev
-        if (name := u.Infra.dep_name(requirement)) is not None
-        and name != distribution
+        if (name := u.Infra.dep_name(requirement)) is not None and name != distribution
     )
     root = u.Tests.mk_project(
         parent,
@@ -551,7 +550,9 @@ def duplicate_project(
         A physical checkout with its declared dependencies and managed tools.
     """
     distribution = "flext-demo"
-    parent = _run_scoped(_run_root(tmp_path_factory), "consumer-templates", distribution)
+    parent = _run_scoped(
+        _run_root(tmp_path_factory), "consumer-templates", distribution
+    )
     parent.mkdir(parents=True, exist_ok=True)
     receipt = parent / _DETECTOR_UPGRADE_RECEIPT
     with u.Infra.codegen_transaction_lease(receipt):

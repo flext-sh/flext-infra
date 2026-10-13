@@ -30,9 +30,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         return tm.ok(
             u.Infra.repository_baseline_branch(
                 repo_root,
-                preference=tuple(
-                    config.Infra.codegen.branch_policy.integration_branch_preference,
-                ),
+                declared_branch=config.Infra.codegen.branch_policy.integration_branch,
             ),
         )
 

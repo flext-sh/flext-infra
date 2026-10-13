@@ -133,13 +133,9 @@ class FlextInfraUtilitiesCodemodRules:
             selected=runtime_closure.difference({root_name}),
         )
         universal_order = cls._provider_order(universal, indexed)
-        if universal_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(universal_order)
         runtime_order = cls._provider_order(runtime, indexed)
-        if runtime_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(runtime_order)
         providers: list[t.Pair[str, Path]] = []
-        for name in (*universal_order.value, *runtime_order.value):
+        for name in (*universal_order, *runtime_order):
             provider_config = universal.get(name) or runtime.get(name)
             if provider_config is None:
                 return r[m.Infra.CodemodRulePlan].fail(
@@ -423,7 +419,7 @@ class FlextInfraUtilitiesCodemodRules:
         cls,
         providers: t.MappingKV[str, Path],
         indexed: t.MappingKV[str, Distribution],
-    ) -> p.Result[t.StrSequence]:
+    ) -> t.StrSequence:
 
         selected = frozenset(providers)
         edges = {
@@ -434,17 +430,10 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        try:
-            ordered = FlextInfraUtilitiesDependencies.dependency_order(
-                tuple(selected),
-                dependencies=lambda name: edges.get(name, ()),
-            )
-        except ValueError as exc:
-            return r[t.StrSequence].fail(
-                f"codemod provider cycle: {exc}",
-                exception=exc,
-            )
-        return r[t.StrSequence].ok(ordered)
+        return FlextInfraUtilitiesDependencies.dependency_order(
+            tuple(selected),
+            dependencies=lambda name: edges[name],
+        )
 
     @staticmethod
     def _provider_config(name: str) -> Path | None:
@@ -570,7 +559,7 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRuleset]]``.
 
         """
-        parsed = cls._rules(provider, provider_config)
+        parsed = cls.codemod_catalog_rules(provider, provider_config)
         if parsed.failure:
             return r[t.SequenceOf[m.Infra.CodemodRuleset]].from_failure(parsed)
         elected: list[str] = []
@@ -646,12 +635,16 @@ class FlextInfraUtilitiesCodemodRules:
         )
 
     @classmethod
-    def _rules(
+    def codemod_catalog_rules(
         cls,
         provider: str,
         config: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
+        """Read the complete declared catalog before execution scope election.
 
+        Returns:
+            Every validated rule declaration owned by the provider configuration.
+        """
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -856,16 +849,17 @@ class FlextInfraUtilitiesCodemodRules:
             and detector.get("kind") == "module"
             and isinstance(negative, Mapping)
             and (
-                set(negative) == {"has"}
-                and isinstance(negative.get("has"), Mapping)
-                or set(negative) == {"any"}
-                and isinstance(alternatives, list)
-                and bool(alternatives)
-                and all(
-                    isinstance(item, Mapping)
-                    and set(item) == {"has"}
-                    and isinstance(item.get("has"), Mapping)
-                    for item in alternatives
+                (set(negative) == {"has"} and isinstance(negative.get("has"), Mapping))
+                or (
+                    set(negative) == {"any"}
+                    and isinstance(alternatives, list)
+                    and bool(alternatives)
+                    and all(
+                        isinstance(item, Mapping)
+                        and set(item) == {"has"}
+                        and isinstance(item.get("has"), Mapping)
+                        for item in alternatives
+                    )
                 )
             )
             and not context.value

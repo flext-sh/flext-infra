@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 
-from flext_infra import config, m
+from flext_infra import config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -30,21 +30,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Selected projects of the composed census service."""
-            ...
-
-        @property
-        def kind_names(self) -> t.StrSequence | None:
-            """Normalized symbol-kind filters of the census service."""
-            ...
-
-        @property
-        def rule_names(self) -> t.StrSequence | None:
-            """Normalized analysis filters of the census service."""
-            ...
-
-        @property
-        def family_names(self) -> t.StrSequence | None:
-            """Normalized family filters of the census service."""
             ...
 
         @staticmethod
@@ -134,12 +119,14 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             The resulting ``m.Infra.WorkspaceReport``.
 
         """
-        kind_names = self.kind_names
-        rule_names = self.rule_names
+        kind_names = u.Infra.normalize_sequence_values(self.options.kinds)
+        rule_names = u.Infra.normalize_sequence_values(self.options.rules)
         scan_config = m.Infra.ScanConfig(
             kind_names=kind_names,
             rule_names=rule_names,
-            selected_families=self._selected_families(self.family_names),
+            selected_families=self._selected_families(
+                u.Infra.normalize_sequence_values(self.options.families),
+            ),
             selected_kinds=frozenset(kind_names) if kind_names else None,
             selected_rules=frozenset(rule_names) if rule_names else None,
             include_object_references=self._should_collect_object_references(

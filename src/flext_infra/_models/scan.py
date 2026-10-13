@@ -120,7 +120,10 @@ class FlextInfraModelsScan:
             str | None, m.Field(description="Authenticated native rule document digest")
         ] = None
         module_absence: Annotated[
-            bool, m.Field(description="Occurrence anchored by native module absence predicate")
+            bool,
+            m.Field(
+                description="Occurrence anchored by native module absence predicate"
+            ),
         ] = False
         file: Annotated[Path, m.Field(description="Workspace-relative finding path")]
         source_owner: Annotated[
@@ -177,6 +180,13 @@ class FlextInfraModelsScan:
         """Verified structural findings and actionable rewrite targets."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...] | None,
+            m.Field(
+                description="Complete authenticated scan inventory, including zero findings"
+            ),
+        ] = None
 
         findings: Annotated[
             t.NonNegativeInt,

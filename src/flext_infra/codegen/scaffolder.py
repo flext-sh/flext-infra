@@ -69,10 +69,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.repository_root)
-            selected_projects = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
-            )
+            selected_projects = tuple(u.Infra.projects(self.repository_root).unwrap())
         return [
             self._scaffold_project(project, dry_run=dry_run)
             for project in selected_projects

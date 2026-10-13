@@ -12,28 +12,57 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, infra, m, p, r
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from flext_infra import config, infra
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraImportNormalization,
 )
 from flext_infra.transformers import FlextInfraSemanticPublication
+from tests import tm, u, c, m, p, r
+
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
 
     @staticmethod
+    def test_input_union_preserves_shared_identity_and_rejects_conflicts(
+        tmp_path: Path,
+    ) -> None:
+        """One source authority survives repeats; neither conflicting order wins."""
+        source = tmp_path / "source.py"
+        source.write_bytes(b"VALUE = 1\n")
+        first = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        absent = tm.ok(u.Cli.atomic_read_binary_file_state(tmp_path / "optional"))
+        shared = m.Cli.AtomicFileState.model_validate_json(first.model_dump_json())
+        tm.that(
+            tm.ok(
+                FlextInfraCodegenPreconditions.unique_states((
+                    first,
+                    absent,
+                    shared,
+                    absent,
+                ))
+            ),
+            eq=(first, absent),
+        )
+        source.write_bytes(b"VALUE = 2\n")
+        changed = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        for observations in ((first, changed), (changed, first)):
+            tm.fail(
+                FlextInfraCodegenPreconditions.unique_states(observations),
+                has=str(source),
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((changed, absent)))
+
+    @staticmethod
     def test_cold_public_cli_composes_semantic_ports_without_an_import_cycle() -> None:
         """A fresh native CLI process must finish API composition before dispatch."""
-        result = tm.ok(
-            u.Cli.run((sys.executable, "-I", "-m", "flext_infra", "--help"))
-        )
+        result = tm.ok(u.Cli.run((sys.executable, "-I", "-m", "flext_infra", "--help")))
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
@@ -76,6 +105,14 @@ class TestsFlextInfraSemanticPublication:
             "        return bool(value)\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        consumer = package / "consumer.py"
+        consumer.write_text(
+            f'"""Observed callable consumer.\n\n{notice}\n"""\n\n'
+            "from __future__ import annotations\n\n"
+            f"from {package.name}.service import FlextSemanticService\n\n"
+            'VALUE = FlextSemanticService.predicate("domain")\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
         with infra.rope_workspace(root) as workspace:
             artifact = tm.ok(
                 FlextInfraCodemodSemanticApply.build_rename_plan(
@@ -94,11 +131,17 @@ class TestsFlextInfraSemanticPublication:
                     ),
                 )
             )
+        tm.that(consumer in artifact.candidate.updates, eq=True)
         driver = root / "rename.artifact"
         tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
-        return artifact, tm.ok(
-            u.Cli.atomic_read_binary_file_state(driver, required=True)
+        captured = tm.ok(u.Cli.atomic_read_binary_file_state(driver, required=True))
+        tm.that(
+            m.Infra.SemanticRenamePlan.model_validate_json(
+                tm.not_none(captured.content)
+            ),
+            eq=artifact,
         )
+        return artifact, captured
 
     @staticmethod
     @pytest.mark.parametrize("drift", ["none", "driver", "source", "snapshot"])
@@ -133,7 +176,10 @@ class TestsFlextInfraSemanticPublication:
             driver.path.write_bytes(tm.not_none(driver.content) + b"\n")
         elif drift == "source":
             source.write_bytes(source.read_bytes() + b"\n# Shared source update\n")
-        before = {state.path: state.path.read_bytes() for state in candidate.inputs}
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(state.path))
+            for state in candidate.inputs
+        )
         driver_bytes = driver.path.read_bytes()
         inputs = (
             (tm.ok(u.Cli.atomic_read_binary_file_state(driver.path, required=True)),)
@@ -147,15 +193,20 @@ class TestsFlextInfraSemanticPublication:
             tm.that(tm.ok(published), eq=tuple(candidate.updates))
             for path, desired in candidate.updates.items():
                 tm.that(path.read_bytes(), eq=desired.encode(c.DEFAULT_ENCODING))
+            before = tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(state.path))
+                for state in candidate.inputs
+            )
             tm.fail(
                 FlextInfraSemanticPublication.publish_source_candidate(
                     plans, candidate=candidate, inputs=(driver,)
                 )
             )
+        elif drift == "snapshot":
+            tm.fail(published, has=f"two states for {driver.path}")
         else:
             tm.fail(published)
-            for path, content in before.items():
-                tm.that(path.read_bytes(), eq=content)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(before))
         tm.that(driver.path.read_bytes(), eq=driver_bytes)
 
     @staticmethod

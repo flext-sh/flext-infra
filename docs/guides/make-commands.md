@@ -216,6 +216,18 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   invocation-local before/after evidence remains preserved alongside it. Root
   audit success or unchanged totals alone never prove every project green.
 
+  The default is an independent ordered sweep policy, not a second public-verb
+  registry. `MakeVerbSpec` declares names, arguments, descriptions, activation
+  production and profile applicability, but no repair-effect classification.
+  Registry order and `make.workflow` therefore cannot derive the sweep sequence:
+  the workflow also includes provisioning and validation and omits structural
+  repair. `check_gates_fixable` describes gates consumed by one repair operation,
+  not the ordering or selection of Make operations. Even mutating operations may
+  generate projections, remove artifacts or publish releases, so mutation alone
+  is not sweep eligibility. Keep this policy explicit until a canonical semantic
+  operation contract can determine both its membership and execution order;
+  never infer either from verb names, help text or Make recipes.
+
 ## Mandatory unsafe repair channel (operator law 2026-10-05)
 
 **`make fix` ALWAYS runs `ruff check --fix --unsafe-fixes --preview`. This is a direct

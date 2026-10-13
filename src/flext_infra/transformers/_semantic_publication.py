@@ -14,6 +14,7 @@ from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -34,6 +35,7 @@ class FlextInfraSemanticPublication:
         validator: Callable[[], p.Result[bool]] | None = None,
         codegen: m.Infra.CodegenConfigSpec | None = None,
         projection_roots: t.VariadicTuple[Path] = (),
+        published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Publish each guarded file and report byte and caller acceptance.
 
@@ -62,6 +64,7 @@ class FlextInfraSemanticPublication:
             projection_roots=projection_roots,
             validator=validator,
             source_guard=None,
+            published_files=published_files,
         )
 
     @classmethod
@@ -91,29 +94,18 @@ class FlextInfraSemanticPublication:
             return r[tuple[Path, ...]].fail(
                 "semantic plans differ from accepted candidate"
             )
-        originals = {state.path: state for state in candidate.inputs}
-        if any(originals.get(plan.path) != plan.before for plan in plans):
-            return r[tuple[Path, ...]].fail(
-                "semantic originals differ from accepted candidate"
-            )
         analysis = cls._semantic_phase_analysis(
-            tuple(
-                m.Infra.SemanticFilePlan(
-                    project=plan.project,
-                    path=plan.path,
-                    before=plan.before,
-                    desired_content=plan.desired_content,
-                    desired_mode=plan.desired_mode,
-                    changes=plan.changes,
-                    source_states=(*candidate.inputs, *inputs, *plan.source_states),
-                )
-                for plan in plans
-            ),
+            plans,
             None,
             inputs=(*candidate.inputs, *inputs),
         )
         if analysis.failure:
             return r[tuple[Path, ...]].from_failure(analysis)
+        originals = {state.path: state for state in candidate.inputs}
+        if any(originals.get(plan.path) != plan.before for plan in plans):
+            return r[tuple[Path, ...]].fail(
+                "semantic originals differ from accepted candidate"
+            )
         return cls._publish_joint_analysis(
             analysis.value,
             repository_root=candidate.workspace,
@@ -146,12 +138,15 @@ class FlextInfraSemanticPublication:
         Returns:
             The complete analysis or its first planning failure.
         """
-        files = cls._concrete_file_plans(plans, codegen)
-        if files.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(files)
-        snapshots = cls._semantic_input_snapshots(plans, inputs=inputs)
+        snapshots = FlextInfraCodegenPreconditions.unique_states((
+            *inputs,
+            *(state for plan in plans for state in (plan.before, *plan.source_states)),
+        ))
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
+        files = cls._concrete_file_plans(plans, codegen, source_states=snapshots.value)
+        if files.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(files)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
@@ -188,6 +183,7 @@ class FlextInfraSemanticPublication:
         validator: Callable[[], p.Result[bool]] | None,
         source_guard: Callable[[], p.Result[bool]] | None,
         input_roots: t.VariadicTuple[Path] = (),
+        published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Keep semantic and generated phases in the same recoverable journal.
 
@@ -249,7 +245,9 @@ class FlextInfraSemanticPublication:
                     )
                     if published.failure:
                         return r[tuple[Path, ...]].from_failure(published)
-                return transaction.commit_locked(published.value, validate_published)
+                return transaction.commit_locked(
+                    published.value, validate_published, published_files=published_files
+                )
 
             return transaction.publish_prepared_locked(started.value, apply)
 
@@ -271,35 +269,6 @@ class FlextInfraSemanticPublication:
             if checked.failure or not checked.value:
                 return checked
         return r[bool].ok(value=True)
-
-    @classmethod
-    def _semantic_input_snapshots(
-        cls,
-        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
-        *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Authenticate one snapshot per semantic input path.
-
-        Returns:
-            The ordered first snapshots of every semantic input.
-
-        """
-        snapshots: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        for state in inputs:
-            if snapshots.setdefault(state.path, state) != state:
-                return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
-                    f"semantic input snapshots disagree: {state.path}"
-                )
-        for plan in plans:
-            for state in (plan.before, *plan.source_states):
-                if snapshots.setdefault(state.path, state) != state:
-                    return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
-                        f"semantic input snapshots disagree: {state.path}",
-                    )
-        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(
-            tuple(snapshots.values()),
-        )
 
     @staticmethod
     def _semantic_phase_roots(
@@ -323,6 +292,8 @@ class FlextInfraSemanticPublication:
     def _concrete_file_plans(
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         codegen: m.Infra.CodegenConfigSpec | None,
+        *,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Convert every changed semantic plan into one owned codegen file plan.
 
@@ -363,7 +334,7 @@ class FlextInfraSemanticPublication:
                     before=plan.before,
                     desired_content=plan.desired_content,
                     desired_mode=plan.desired_mode,
-                    source_states=(plan.before, *plan.source_states),
+                    source_states=source_states,
                     owner="semantic",
                 ),
             )

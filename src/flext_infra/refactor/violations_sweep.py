@@ -228,11 +228,10 @@ class FlextInfraRefactorViolationsSweep(
             if self.repair_verbs is not None
             else config.Infra.codegen.make.violations_sweep_repair_verbs
         )
-        admissible = {
-            verb.name
-            for verb in config.Infra.codegen.make.verbs
-            if not verb.arguments and set(verb.profiles) == set(c.Infra.MakeProfile)
-        }
+        admissible = u.Infra.selector_free_make_verbs(
+            config.Infra.codegen.make.verbs,
+            tuple(c.Infra.MakeProfile),
+        )
         if not verbs or any(verb not in admissible for verb in verbs):
             return result.fail(
                 "violations sweep requires declared selector-free Make verbs: "

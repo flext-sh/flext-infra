@@ -64,7 +64,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         ).unwrap()
         integration = FlextInfraUtilitiesRepository.resolve_integration_branch(
             root,
-            preference=inputs.spec.branch_policy.integration_branch_preference,
+            policy_branch=inputs.spec.branch_policy.integration_branch,
             inputs=inputs,
         ).unwrap()
         declarations: list[t.Triple[str, str, Path]] = []

@@ -81,10 +81,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.repository_root)
-            discovered = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
-            )
+            discovered = tuple(u.Infra.projects(self.repository_root).unwrap())
             scope = frozenset(self.project_names or ())
             selected_projects = (
                 tuple(p for p in discovered if p.path.name in scope)

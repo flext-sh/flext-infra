@@ -54,7 +54,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         project = u.Tests.project_spec(repository.distribution)
         integration = m.Infra.WorkspaceIntegrationSpec(
             provider=repository.provider,
-            branch=config.Infra.codegen.branch_policy.integration_branch_preference[0],
+            branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         legacy = m.Infra.WorkspaceManifestSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,

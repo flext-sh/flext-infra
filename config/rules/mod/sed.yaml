@@ -515,7 +515,7 @@ rules:
     replace: |2-
               repository = u.Tests.repository_ref(repo.name)
               infra = u.Tests.repository_ref("flext-infra")
-              integration = config.Infra.codegen.branch_policy.integration_branch_preference[0]
+              integration = config.Infra.codegen.branch_policy.integration_branch
               (repo / "pyproject.toml").write_text(
   - id: codegen-main-fixture-add-infra-requirement
     distributions: [flext-infra]

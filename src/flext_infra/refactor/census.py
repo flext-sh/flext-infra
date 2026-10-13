@@ -61,8 +61,8 @@ class FlextInfraRefactorCensus(
         exclude=True,
         description="Injected authenticated source preview capability",
     )
-    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = m.Field(
-        exclude=True, description="Injected candidate Rope workspace factory"
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
     )
 
     @property
@@ -78,24 +78,6 @@ class FlextInfraRefactorCensus(
             self.options.impact_map_output,
         )
         return path
-
-    @property
-    @override
-    def kind_names(self) -> t.StrSequence | None:
-        """Normalized symbol-kind filters."""
-        return u.Infra.normalize_sequence_values(self.options.kinds)
-
-    @property
-    @override
-    def rule_names(self) -> t.StrSequence | None:
-        """Normalized violation-rule filters."""
-        return u.Infra.normalize_sequence_values(self.options.rules)
-
-    @property
-    @override
-    def family_names(self) -> t.StrSequence | None:
-        """Normalized family filters."""
-        return u.Infra.normalize_sequence_values(self.options.families)
 
     @property
     @override
@@ -145,8 +127,9 @@ class FlextInfraRefactorCensus(
         ) as rope:
             constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
             if (
-                self.rule_names is not None
-                and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in self.rule_names
+                (rule_names := u.Infra.normalize_sequence_values(self.options.rules))
+                is not None
+                and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in rule_names
             ):
                 planned_constants = FlextInfraCodemodSemanticApply.census_constants(
                     self.root,
@@ -178,9 +161,8 @@ class FlextInfraRefactorCensus(
             duplicate_plans: t.VariadicTuple[m.Infra.DuplicateCurePlan] = ()
             duplicate_files = duplicate_copies = duplicate_bindings = 0
             if (
-                self.rule_names is not None
-                and c.Infra.CensusRule.DUPLICATE in self.rule_names
-            ):
+                rule_names := u.Infra.normalize_sequence_values(self.options.rules)
+            ) is not None and c.Infra.CensusRule.DUPLICATE in rule_names:
                 cure = FlextInfraCodemodDuplicateApply.census_duplicates(
                     self.root,
                     rope,

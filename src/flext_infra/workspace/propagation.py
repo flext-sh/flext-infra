@@ -116,7 +116,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             )
         base = u.Infra.resolve_integration_branch(
             consumer_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=consumer.integration_branch,
         )
         if base.failure:
@@ -229,7 +229,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
         member_root = self.root / member.path
         base = u.Infra.resolve_integration_branch(
             member_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=(
                 workspace.integration.branch
                 if workspace.integration is not None

@@ -203,7 +203,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             if rule_ids is not None
             else before
         )
-        published_plans: list[m.Infra.SemanticFilePlan] = []
+        published_plans: list[m.Infra.CodegenStagedFile] = []
         outcome = cls._converge(
             root, current, rule_ids=rule_ids, published_plans=published_plans
         )
@@ -306,7 +306,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         current: m.Infra.ModScanReport,
         *,
         rule_ids: t.StrSequence | None = None,
-        published_plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] | None = None,
+        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 

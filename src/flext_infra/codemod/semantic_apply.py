@@ -352,7 +352,9 @@ class FlextInfraCodemodSemanticApply:
                 m.Infra.RunCommand(
                     repository_root=candidate_root,
                     projects=projects,
-                    reports_dir=str(m.Infra.RunCommand(repository_root=root).reports_dir_path),
+                    reports_dir=str(
+                        m.Infra.RunCommand(repository_root=root).reports_dir_path
+                    ),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
@@ -647,7 +649,9 @@ class FlextInfraCodemodSemanticApply:
                         m.Infra.RunCommand(
                             repository_root=root,
                             reports_dir=str(
-                                m.Infra.RunCommand(repository_root=reports_root).reports_dir_path
+                                m.Infra.RunCommand(
+                                    repository_root=reports_root
+                                ).reports_dir_path
                             ),
                             projects=tuple(
                                 str(project.relative_to(root))

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m, p, r, t
+from tests import c, m, p, r, t
 from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
@@ -23,6 +23,183 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraFileParticipantRecovery:
     """Recover prepared file-only journals through their physical owners."""
+
+    @staticmethod
+    def _validate_failed_publication(
+        session: m.Infra.CodegenTransactionSession,
+        failure_kind: str,
+        cause: RuntimeError,
+    ) -> p.Result[bool]:
+        """Exercise native rejection, journal replacement, or unowned cleanup bytes.
+
+        Returns:
+            The consumer verdict, leaving real settlement faults for the transaction.
+        """
+        if failure_kind == "cleanup":
+            participant = session.plan.layout.file_participants[0]
+            (participant.transaction_root / "foreign.bin").write_bytes(b"foreign\n")
+        if failure_kind == "settlement":
+            journal = session.journal_state.path
+            saved = journal.with_suffix(".preserved")
+            journal.rename(saved)
+            journal.write_bytes(saved.read_bytes())
+            journal.chmod(saved.stat().st_mode)
+        if failure_kind == "exception":
+            raise cause
+        if failure_kind == "validator":
+            return r[bool].fail(str(cause), exception=cause)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "failure_kind",
+        ["target", "validator", "exception", "settlement", "cleanup", "evidence"],
+    )
+    @pytest.mark.parametrize("deleted", [False, True])
+    def test_failed_commit_exports_only_authenticated_retained_effects(
+        tmp_path: Path,
+        failure_kind: str,
+        *,
+        deleted: bool,
+    ) -> None:
+        """Failure preserves admitted correspondence without claiming acceptance."""
+        root = u.Tests.git_repository(tmp_path)
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@semantic": root}
+        targets = (root / "first.py", root / "second.py")
+        for target in targets:
+            target.write_bytes(b"before\n")
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            for target in targets
+        )
+        receipts: list[m.Infra.CodegenStagedFile] = []
+        cause = RuntimeError("explicit consumer rejection")
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            session = tm.ok(owner.begin_files_locked(scope, roots, ()))
+            plans = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=before.path,
+                    before=before,
+                    desired_content=None if deleted else b"after\n",
+                    desired_mode=None if deleted else before.mode,
+                    owner="semantic",
+                )
+                for before in originals
+            )
+
+            def staged(
+                current: m.Infra.CodegenTransactionSession,
+                _files: t.VariadicTuple[m.Infra.CodegenStagedFile],
+            ) -> p.Result[m.Infra.CodegenTransactionSession]:
+                if failure_kind == "target":
+                    targets[1].write_bytes(b"concurrent\n")
+                return r[m.Infra.CodegenTransactionSession].ok(current)
+
+            session = tm.ok(
+                owner.append_phase_locked(
+                    session,
+                    "semantic",
+                    plans,
+                    staged_validator=staged,
+                )
+            )
+            if failure_kind == "evidence":
+                report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+                report.unlink()
+                report.mkdir()
+
+            return owner.commit_locked(
+                session,
+                lambda: (
+                    TestsFlextInfraFileParticipantRecovery._validate_failed_publication(
+                        session,
+                        failure_kind,
+                        cause,
+                    )
+                ),
+                published_files=receipts,
+            )
+
+        if failure_kind == "exception":
+            with pytest.raises(RuntimeError) as raised:
+                owner.run_files_locked(roots, publish)
+            tm.that(raised.value is cause, eq=True)
+        else:
+            failed = owner.run_files_locked(roots, publish)
+            tm.fail(failed)
+            if failure_kind == "validator":
+                tm.that(failed.exception is cause, eq=True)
+        expected = targets[:1] if failure_kind == "target" else targets
+        tm.that(tuple(receipt.before.path for receipt in receipts), eq=expected)
+        for receipt in receipts:
+            tm.that(receipt.before, eq=originals[targets.index(receipt.before.path)])
+            current = tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    receipt.before.path,
+                    required=not deleted,
+                )
+            )
+            if deleted:
+                tm.that(current.content, eq=None)
+                tm.that(receipt.replacement, eq=None)
+            else:
+                tm.that(receipt.replacement, eq=current)
+
+    @staticmethod
+    @pytest.mark.parametrize("drift", ["none", "restored", "same-bytes"])
+    def test_rejected_commit_exports_only_live_endpoint_receipts(
+        tmp_path: Path,
+        drift: str,
+    ) -> None:
+        """Restored bytes or a replaced inode cannot authenticate a retained effect."""
+        root = u.Tests.git_repository(tmp_path)
+        target = root / "source.py"
+        target.write_bytes(b"original\n")
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@semantic": root}
+        receipts: list[m.Infra.CodegenStagedFile] = []
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            session = tm.ok(owner.begin_files_locked(scope, roots, ()))
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=original,
+                desired_content=b"final\n",
+                desired_mode=original.mode,
+                owner="semantic",
+            )
+            session = tm.ok(owner.append_phase_locked(session, "semantic", (plan,)))
+
+            def reject() -> p.Result[bool]:
+                if drift != "none":
+                    target.rename(target.with_suffix(".preserved"))
+                    target.write_bytes(
+                        tm.not_none(original.content)
+                        if drift == "restored"
+                        else b"final\n"
+                    )
+                    target.chmod(tm.not_none(original.mode))
+                return r[bool].fail("consumer rejected")
+
+            return owner.commit_locked(session, reject, published_files=receipts)
+
+        tm.fail(owner.run_files_locked(roots, publish), has="consumer rejected")
+        tm.that(len(receipts), eq=1 if drift == "none" else 0)
+        if drift == "none":
+            tm.that(receipts[0].before, eq=original)
+            tm.that(
+                receipts[0].replacement,
+                eq=tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            )
 
     @staticmethod
     def test_late_authored_initializer_is_retained_instead_of_overwritten(

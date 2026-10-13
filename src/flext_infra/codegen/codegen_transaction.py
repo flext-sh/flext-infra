@@ -278,7 +278,19 @@ class FlextInfraCodegenTransaction(
         if current.failure:
             return r[bool].from_failure(current)
         if current.value != manifest:
-            return r[bool].fail("source preview candidate changed during validation")
+            before = {entry.path: entry for entry in (manifest.root, *manifest.entries)}
+            after = {
+                entry.path: entry
+                for entry in (current.value.root, *current.value.entries)
+            }
+            changed = tuple(
+                str(path.relative_to(manifest.root.path))
+                for path in sorted(before.keys() | after.keys())
+                if before.get(path) != after.get(path)
+            )
+            return r[bool].fail(
+                f"source preview candidate changed during validation: {changed}"
+            )
         originals = FlextInfraStagedPackage.source_inputs_current(plan)
         if originals.failure:
             return r[bool].from_failure(originals)

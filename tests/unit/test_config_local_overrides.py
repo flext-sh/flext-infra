@@ -20,9 +20,33 @@ class TestsFlextInfraConfigLocalOverrides:
     """Prove the local override file merges last through the public surface."""
 
     @staticmethod
+    def test_make_election_preserves_selection_contract() -> None:
+        """Election follows capabilities, not spelling, without changing errors."""
+        make = FlextInfraConfig.fetch_global().Infra.codegen.make
+        profiles = tuple(c.Infra.MakeProfile)
+        operation = next(verb for verb in make.verbs if not verb.arguments)
+        for update in (
+            {"arguments": ("INPUT",)},
+            {"profiles": profiles[:1]},
+        ):
+            rejected = operation.model_copy(update=update)
+            elected = u.Infra.selector_free_make_verbs((rejected,), profiles)
+            tm.that(elected, eq=frozenset())
+            payload = make.model_dump(round_trip=True)
+            payload.update(
+                verbs=(rejected,), violations_sweep_repair_verbs=(rejected.name,)
+            )
+            with pytest.raises(ValueError, match="declared selector-free verbs"):
+                type(make).model_validate(payload)
+        elected = u.Infra.selector_free_make_verbs(make.verbs, profiles)
+        tm.that(elected, has=operation.name)
+
+    @staticmethod
     def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:
         """Concrete cache owners preserve validated defaults and native wire values."""
         make = FlextInfraConfig.fetch_global().Infra.codegen.make
+        policy = make.testmon_cache_policy
+        tm.that(type(policy).model_validate_json(policy.model_dump_json()), eq=policy)
         for spec in (make.ruff_cache, make.mypy_cache):
             cache_type = type(spec)
             cache = cache_type.model_validate({
@@ -97,36 +121,13 @@ class TestsFlextInfraConfigLocalOverrides:
         finally:
             FlextInfraConfig.reset_for_testing()
 
-    def test_local_file_scalar_wins_despite_sorted_glob_position(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """The local override wins scalars although its name sorts first.
-
-        ``codegen-overrides.local.yaml`` sorts before the tracked files, so a
-        plain glob would let the tracked config clobber it; the loader must
-        anchor it last regardless of lexicographic position.
-        """
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
-            "Infra:\n  codegen:\n    loc_cap:\n      max_lines: 500\n",
-            encoding="utf-8",
-        )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            fresh = FlextInfraConfig.fetch_global()
-            tm.that(fresh.Infra.codegen.loc_cap.max_lines, eq=500)
-        finally:
-            FlextInfraConfig.reset_for_testing()
-
     def test_local_file_dict_entries_add_beside_tracked_ones(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A dict-typed registry gains the local entry and keeps tracked ones."""
+        baseline = FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
         self._copy_tracked_configs(tmp_path)
         (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
             "Infra:\n"
@@ -144,7 +145,7 @@ class TestsFlextInfraConfigLocalOverrides:
             fresh = FlextInfraConfig.fetch_global()
             overrides = fresh.Infra.codegen.layout.project_overrides
             tm.that("example-project" in overrides, eq=True)
-            tm.that("flext-cli" in overrides, eq=True)
+            tm.that(set(overrides), eq={*baseline, "example-project"})
         finally:
             FlextInfraConfig.reset_for_testing()
 

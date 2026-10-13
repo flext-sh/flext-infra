@@ -72,7 +72,7 @@ class FlextInfraModReplacements:
         report: m.Infra.ModScanReport,
         *,
         exact_replacements: bool = False,
-        published_plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] | None = None,
+        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
 
@@ -107,11 +107,10 @@ class FlextInfraModReplacements:
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
+            published_files=published_plans,
         )
         if published.failure:
             return r[bool].from_failure(published)
-        if published_plans is not None:
-            published_plans.extend(plan for plan in plans if plan.path in published.value)
         return r[bool].ok(value=True)
 
     @classmethod

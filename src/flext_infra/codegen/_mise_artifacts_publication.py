@@ -156,6 +156,7 @@ class FlextInfraMisePublication:
 
         """
         written: list[Path] = []
+        admitted: list[m.Infra.CodegenStagedFile] = []
         retained: list[Path] = []
         issues: list[m.Infra.Issue] = []
         published_states: t.MutableMappingKV[
@@ -203,19 +204,21 @@ class FlextInfraMisePublication:
                     f"target={publication.before.path}",
                 )
                 continue
-            changed = (
-                files.write_publication(
-                    publication
-                    if (
-                        publication.phase
-                        in {
-                            c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                            c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                        }
-                        or publication.tracking == "runtime-local"
-                    )
-                    else publication.model_copy(update={"before": observed.value}),
+            admitted_publication = publication
+            if (
+                observed.success
+                and publication.phase
+                not in {
+                    c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                }
+                and publication.tracking != "runtime-local"
+            ):
+                admitted_publication = publication.model_copy(
+                    update={"before": observed.value}
                 )
+            changed = (
+                files.write_publication(admitted_publication)
                 if observed.success
                 else r[bool].from_failure(observed)
             )
@@ -277,6 +280,15 @@ class FlextInfraMisePublication:
                 publication.before,
                 receipt.value,
             )
+            admitted.append(
+                admitted_publication.model_copy(
+                    update={
+                        "replacement": receipt.value
+                        if publication.replacement is not None
+                        else None
+                    }
+                )
+            )
             if publication.index_before is not None:
                 retired = u.Infra.git_retire_index_file(
                     m.Infra.GitIndexRetirementRequest(
@@ -298,6 +310,7 @@ class FlextInfraMisePublication:
         return r[m.Infra.CodegenPhaseOutcome].ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
+                published_files=tuple(admitted),
                 retained_files=tuple(retained),
                 issues=tuple(issues),
                 exception=exception,

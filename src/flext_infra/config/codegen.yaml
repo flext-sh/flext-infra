@@ -369,16 +369,9 @@ Infra:
       # hardcodes a fleet branch name.
       ci_trigger_branches:
       - main
-      # Ordered names tried against live Git to derive each repository's
-      # baseline. The FLEXT fleet integrates on 0.12.0-dev, which is a release
-      # name and therefore belongs here rather than inside the package: a
-      # constant shipped with flext-infra cannot know a consumer's release line.
-      # The conventional names follow so a governed repository outside this
-      # fleet still resolves without declaring anything.
-      integration_branch_preference:
-      - develop
-      - dev
-      - main
+      # The one versioned line this fleet integrates on (SSOT — no fallback
+      # probe list; the model probes exactly this line against live Git).
+      integration_branch: "0.12.0-dev"
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
@@ -528,6 +521,8 @@ Infra:
         user_home_environment_variable: HOME
         home_cache_directory: .cache
         external_storage_directory: flext/infra/mypy
+      ruff_cache:
+        external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
       ci:
         variable: CI

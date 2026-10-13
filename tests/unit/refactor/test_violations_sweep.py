@@ -16,10 +16,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, main, u
+from flext_infra import config, main
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
-from tests import tm
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -40,6 +40,123 @@ LOCAL_GROWTH_RULE = (
 @pytest.mark.slow
 class TestsFlextInfraRefactorViolationsSweep:
     """Behavior contract for the ``refactor violations-sweep`` verb."""
+
+    @pytest.mark.parametrize("drift", ["none", "inode", "parent", "removed"])
+    def test_actual_publication_identity_and_complete_resolution_inventory(
+        self, mod_workspace: Path, drift: str
+    ) -> None:
+        """Real admitted states reject byte-identical drift and unexplained deletion."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=False)
+        u.Tests.declare_codemod_rules(
+            root,
+            {
+                "repair-marker": LOCAL_GROWTH_RULE.replace(
+                    "sweep-growth", "repair-marker"
+                ),
+                "resolve-future": (
+                    "id: resolve-future\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  pattern: marker = tuple()\nfix: |\n"
+                    "  from __future__ import annotations\n  marker = list()\n"
+                ),
+            },
+        )
+        tm.ok(u.Tests.create_python_environment(root))
+        parent = root / "src"
+        parent.mkdir(exist_ok=True)
+        sample, victim = parent / "accounting.py", root / "victim.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
+        tm.ok(u.Cli.atomic_write_text_file(victim, "value = 1\n"))
+        before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        quiet_before = (
+            tm.ok(
+                FlextInfraModGateEngine.scan(
+                    root, fix=False, rule_ids=("repair-marker",)
+                )
+            )
+            if drift == "removed"
+            else None
+        )
+        if quiet_before is not None:
+            tm.that(
+                any(
+                    entry.file == victim.relative_to(root)
+                    for entry in quiet_before.entries
+                ),
+                eq=False,
+            )
+            assert quiet_before.source_states is not None
+            tm.that(
+                any(state.path == victim for state in quiet_before.source_states),
+                eq=True,
+            )
+        chain: list[m.Infra.CodegenStagedFile] = []
+        for index, rule_id in enumerate(("repair-marker", "resolve-future")):
+            tm.ok(
+                FlextInfraModGateEngine.scan(
+                    root, fix=True, rule_ids=(rule_id,), published_plans=chain
+                )
+            )
+            observed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+            if index == 0:
+                u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
+                assert observed.source_states is not None
+                admitted = next(item for item in chain if item.before.path == sample)
+                tm.that(
+                    admitted.replacement,
+                    eq=next(
+                        item for item in observed.source_states if item.path == sample
+                    ),
+                )
+                if drift == "inode":
+                    replacement = sample.with_suffix(".replacement")
+                    tm.ok(
+                        u.Cli.atomic_write_text_file(
+                            replacement, sample.read_text(encoding=c.DEFAULT_ENCODING)
+                        )
+                    )
+                    replacement.replace(sample)
+                elif drift == "parent":
+                    preserved = parent.with_name("preserved-source")
+                    parent.rename(preserved)
+                    parent.mkdir()
+                    for child in preserved.iterdir():
+                        child.rename(parent / child.name)
+                    preserved.rmdir()
+                elif drift == "removed":
+                    victim.unlink()
+                if drift != "none":
+                    changed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+                    with pytest.raises(
+                        ValueError, match="identity drift|unexplained removal"
+                    ):
+                        u.Infra.rule_deltas(
+                            before, changed, publication_chain=tuple(chain)
+                        )
+                    if quiet_before is not None:
+                        quiet_after = tm.ok(
+                            FlextInfraModGateEngine.scan(
+                                root, fix=False, rule_ids=("repair-marker",)
+                            )
+                        )
+                        with pytest.raises(ValueError, match="unexplained removal"):
+                            u.Infra.rule_deltas(
+                                quiet_before,
+                                quiet_after,
+                                publication_chain=tuple(chain),
+                            )
+        if drift == "none":
+            rows = u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
+            future = next(
+                row for row in rows if row.rule_id == "require-future-annotations"
+            )
+            tm.that(future.resolved, eq=1)
+            tm.that(future.semantic_correspondence_proven, eq=True)
+        else:
+            with pytest.raises(
+                ValueError, match="identity continuity|unexplained removal"
+            ):
+                u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
 
     def test_native_lint_failure_keeps_independent_scan_evidence(
         self,
@@ -121,31 +238,47 @@ class TestsFlextInfraRefactorViolationsSweep:
         sample = mod_workspace / "accounting.py"
         tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * copies))
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
-        chain: list[m.Infra.SemanticFilePlan] = []
-        tm.ok(FlextInfraModGateEngine.scan(
-            mod_workspace, fix=True, rule_ids=("repair-marker",), published_plans=chain
-        ))
+        chain: list[m.Infra.CodegenStagedFile] = []
+        tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=True,
+                rule_ids=("repair-marker",),
+                published_plans=chain,
+            )
+        )
         after = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         tm.that(len(chain), eq=1)
         rows = {
             row.rule_id: row
-            for row in u.Infra.rule_deltas(before, after, publication_chain=tuple(chain))
+            for row in u.Infra.rule_deltas(
+                before, after, publication_chain=tuple(chain)
+            )
         }
         absence = rows["absent-class"]
         tm.that((absence.before, absence.after, absence.introduced), eq=(1, 1, 0))
         tm.that(absence.semantic_correspondence_proven, eq=True)
         calls = rows["violating-call"]
-        tm.that((calls.before, calls.after, calls.introduced), eq=(copies, copies, copies))
+        tm.that(
+            (calls.before, calls.after, calls.introduced), eq=(copies, copies, copies)
+        )
         tm.that(calls.semantic_correspondence_proven, eq=False)
         tm.that(rows["violating-declaration"].introduced, eq=copies)
         tm.that(rows["module-with-declaration"].introduced, eq=1)
-        tm.that(rows["module-with-declaration"].semantic_correspondence_proven, eq=False)
-        with pytest.raises(ValueError, match="byte continuity broken"):
+        tm.that(
+            rows["module-with-declaration"].semantic_correspondence_proven, eq=False
+        )
+        with pytest.raises(ValueError, match="identity continuity broken"):
             u.Infra.rule_deltas(before, after, publication_chain=(*chain, *chain))
-        duplicated = FlextInfraModGateEngine.recounted((
-            *after.entries,
-            next(entry for entry in after.entries if entry.rule_id == "absent-class"),
-        ))
+        duplicated = FlextInfraModGateEngine.recounted(
+            (
+                *after.entries,
+                next(
+                    entry for entry in after.entries if entry.rule_id == "absent-class"
+                ),
+            ),
+            source_states=after.source_states,
+        )
         duplicate_rows = {
             row.rule_id: row
             for row in u.Infra.rule_deltas(
@@ -153,35 +286,46 @@ class TestsFlextInfraRefactorViolationsSweep:
             )
         }
         tm.that(duplicate_rows["absent-class"].introduced, eq=1)
-        lexical = {
-            row.rule_id: row for row in u.Infra.rule_deltas(before, after)
-        }
+        with pytest.raises(ValueError, match="lacks complete source inventory"):
+            u.Infra.rule_deltas(
+                before,
+                after.model_copy(update={"source_states": None}),
+                publication_chain=tuple(chain),
+            )
+        lexical = {row.rule_id: row for row in u.Infra.rule_deltas(before, after)}
         tm.that(lexical["absent-class"].introduced, eq=1)
-        with pytest.raises(ValueError, match="lacks publication proof"):
+        with pytest.raises(ValueError, match="source identity drift"):
             u.Infra.rule_deltas(before, after, publication_chain=())
-        drifted = after.model_copy(update={
-            "entries": tuple(
-                entry.model_copy(update={
-                    "source_state": entry.source_state.model_copy(
-                        update={"content": b"marker = tuple()\n"}
+        drifted = after.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(
+                        update={
+                            "source_state": entry.source_state.model_copy(
+                                update={"content": b"marker = tuple()\n"}
+                            )
+                        }
                     )
-                })
-                if entry.file == sample.relative_to(mod_workspace)
-                and entry.module_absence
-                and entry.source_state is not None
-                else entry
-                for entry in after.entries
-            )
-        })
-        with pytest.raises(ValueError, match="native root|source drift"):
+                    if entry.file == sample.relative_to(mod_workspace)
+                    and entry.module_absence
+                    and entry.source_state is not None
+                    else entry
+                    for entry in after.entries
+                )
+            }
+        )
+        with pytest.raises(ValueError, match="differs from complete scan inventory"):
             u.Infra.rule_deltas(before, drifted, publication_chain=tuple(chain))
-        changed_catalog = after.model_copy(update={
-            "entries": tuple(
-                entry.model_copy(update={"catalog_digest": "changed-catalog"})
-                if entry.rule_id == "absent-class" else entry
-                for entry in after.entries
-            )
-        })
+        changed_catalog = after.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update={"catalog_digest": "changed-catalog"})
+                    if entry.rule_id == "absent-class"
+                    else entry
+                    for entry in after.entries
+                )
+            }
+        )
         with pytest.raises(ValueError, match="catalog correspondence changed"):
             u.Infra.rule_deltas(before, changed_catalog, publication_chain=tuple(chain))
 

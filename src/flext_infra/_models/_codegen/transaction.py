@@ -73,7 +73,7 @@ class FlextInfraModelsCodegenTransactionModels:
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",
         )
-        workspace_packages: t.StrSequence = m.Field(
+        workspace_packages: t.VariadicTuple[str] = m.Field(
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
@@ -357,6 +357,11 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
+        published_files: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+        ] = m.Field(
+            default=(), exclude=True, description="Actual admitted states across phases"
+        )
         retained_files: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Authored destinations retained during per-file election",

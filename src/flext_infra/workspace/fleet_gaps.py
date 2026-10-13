@@ -219,9 +219,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         """
         base = u.Infra.resolve_integration_branch(
             repo_root,
-            preference=(
-                config.Infra.codegen.branch_policy.integration_branch_preference
-            ),
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=declared,
         )
         if base.failure:

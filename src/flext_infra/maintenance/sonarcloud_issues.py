@@ -87,7 +87,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         token, key = credentials.value
         branch = u.Infra.repository_baseline_branch(
             self.repository_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            declared_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         if branch.failure:
             return result_type.from_failure(branch)

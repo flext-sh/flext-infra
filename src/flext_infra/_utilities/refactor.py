@@ -117,16 +117,22 @@ class FlextInfraUtilitiesRefactor:
                     msg = f"publication receipt is not an admitted destination: {path}"
                     raise ValueError(msg)
                 endpoints[path] = (
-                    previous[0] if previous else receipt.before, receipt.replacement
+                    previous[0] if previous else receipt.before,
+                    receipt.replacement,
                 )
             for path in sources[0].keys() | sources[1].keys() | endpoints.keys():
                 original, final = endpoints.get(
                     path, (sources[0].get(path), sources[0].get(path))
                 )
                 expected_before = (
-                    original if original is not None and original.content is not None else None
+                    original
+                    if original is not None and original.content is not None
+                    else None
                 )
-                if sources[0].get(path) != expected_before or sources[1].get(path) != final:
+                if (
+                    sources[0].get(path) != expected_before
+                    or sources[1].get(path) != final
+                ):
                     msg = f"publication source identity drift or unexplained removal: {path}"
                     raise ValueError(msg)
         proven: set[tuple[str, str]] = set()
@@ -164,7 +170,9 @@ class FlextInfraUtilitiesRefactor:
                     state = entry.source_state
                     offsets = entry.range.get("byteOffset")
                     if (
-                        state is None or state.content is None or not entry.catalog_digest
+                        state is None
+                        or state.content is None
+                        or not entry.catalog_digest
                     ):
                         msg = f"module occurrence lacks authentication: {entry.file}"
                         raise ValueError(msg)

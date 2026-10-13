@@ -352,10 +352,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 issues.extend(planned.value.issues)
                 if first_exception is None:
                     first_exception = planned.value.exception
+            snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
+            if snapshots.failure:
+                return r[bool].from_failure(snapshots)
             analysis = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
                 files=tuple(files),
-                inputs=FlextInfraCodegenPreconditions.unique_states(tuple(inputs)),
+                inputs=snapshots.value,
                 issues=tuple(issues),
                 exception=first_exception,
             )

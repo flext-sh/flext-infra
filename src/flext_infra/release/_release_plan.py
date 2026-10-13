@@ -247,9 +247,7 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         """
         return u.Infra.repository_baseline_branch(
             root,
-            preference=tuple(
-                config.Infra.codegen.branch_policy.integration_branch_preference,
-            ),
+            declared_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
 
     @staticmethod

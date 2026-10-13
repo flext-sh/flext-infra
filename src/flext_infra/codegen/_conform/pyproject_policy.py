@@ -82,7 +82,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             # checkout when the manifest does not declare it.
             branch = u.Infra.resolve_integration_branch(
                 target.root,
-                preference=codegen.branch_policy.integration_branch_preference,
+                policy_branch=codegen.branch_policy.integration_branch,
             )
             if branch.failure:
                 return r[str].from_failure(branch)
