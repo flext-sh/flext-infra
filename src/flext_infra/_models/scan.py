@@ -169,6 +169,16 @@ class FlextInfraModelsScan:
             t.NonNegativeInt,
             m.Field(description="Findings whose declared fix is byte-identical"),
         ]
+        deferred: Annotated[
+            t.NonNegativeInt,
+            m.Field(
+                description=(
+                    "Findings deferred because their source bytes changed "
+                    "during scanning; publication never applies them and "
+                    "the next scan re-authenticates or stops reporting them"
+                ),
+            ),
+        ] = 0
         files: Annotated[
             frozenset[Path],
             m.Field(description="Files containing findings"),
