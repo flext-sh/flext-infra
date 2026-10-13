@@ -487,16 +487,32 @@ class FlextInfraModGateEngine:
         Returns:
             Findings admitted by their own project's rules and semantic context.
         """
+        elected = {
+            project: frozenset(rule_ids)
+            for project, rule_ids in project_rule_ids.items()
+        }
         projects = sorted(
-            project_rule_ids, key=FlextInfraModGateEngine._path_depth, reverse=True
+            elected, key=FlextInfraModGateEngine._path_depth, reverse=True
         )
         grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
+        owners: dict[Path, t.Pair[Path, Path]] = {}
         for entry in report.entries:
-            source = u.Infra.codemod_source_path(root, entry.file)
-            owner = next(
-                project for project in projects if source.is_relative_to(project)
-            )
-            if entry.rule_id in project_rule_ids[owner]:
+            if entry.file not in owners:
+                source = (
+                    entry.source_state.path
+                    if entry.source_state is not None
+                    else u.Infra.codemod_source_path(root, entry.file)
+                )
+                owners[entry.file] = (
+                    source,
+                    next(
+                        project
+                        for project in projects
+                        if source.is_relative_to(project)
+                    ),
+                )
+            source, owner = owners[entry.file]
+            if entry.rule_id in elected[owner]:
                 grouped.setdefault(owner, []).append(
                     entry.model_copy(
                         update={
@@ -506,13 +522,57 @@ class FlextInfraModGateEngine:
                         }
                     )
                 )
+        facts = {
+            project: u.Infra.codemod_project_facts(
+                project,
+                tuple(
+                    rules_by_id[rule_id]
+                    for rule_id in dict.fromkeys(entry.rule_id for entry in entries)
+                ),
+            )
+            for project, entries in grouped.items()
+        }
+        inputs = m.Infra.CodemodBindingSnapshot(
+            states=tuple(
+                entry.source_state
+                for project, entries in grouped.items()
+                for entry in entries
+                if entry.rule_id in facts[project].binding_rule_ids
+                and entry.source_state is not None
+            )
+        )
+        selected_sources = {
+            project: tuple(
+                dict.fromkeys(
+                    entry.source_state.path
+                    for entry in entries
+                    if entry.rule_id in facts[project].binding_rule_ids
+                    and entry.source_state is not None
+                )
+            )
+            for project, entries in grouped.items()
+        }
+        snapshot = u.Infra.codemod_binding_snapshot(
+            root,
+            candidate_states if candidate_states else inputs.states,
+            projects=tuple(
+                m.Infra.CodemodBindingProject(
+                    root=project,
+                    source_paths=paths,
+                    modules=facts[project].binding_modules,
+                )
+                for project, paths in selected_sources.items()
+                if paths
+            ),
+        )
         admitted: list[m.Infra.ModScanFinding] = []
         for project, entries in grouped.items():
             selected = FlextInfraModGateEngine._admitted_project(
                 project,
                 FlextInfraModGateEngine.recounted(tuple(entries)),
                 rules_by_id,
-                candidate_states,
+                facts[project],
+                snapshot,
             )
             admitted.extend(
                 entry.model_copy(
@@ -529,7 +589,8 @@ class FlextInfraModGateEngine:
         root: Path,
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
-        candidate_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        facts: m.Infra.CodemodProjectFacts,
+        snapshot: m.Infra.CodemodBindingSnapshot,
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -542,54 +603,12 @@ class FlextInfraModGateEngine:
             The resulting ``m.Infra.ModScanReport``.
 
         """
-        facts = u.Infra.codemod_project_facts(
-            root,
-            tuple(rules_by_id[entry.rule_id] for entry in report.entries),
-        )
-        selected_ids, modules = u.Infra.codemod_binding_requirements(
-            tuple(
-                rules_by_id[rule_id]
-                for rule_id in sorted({entry.rule_id for entry in report.entries})
-            ),
-        )
-        states = (
-            tuple(
-                state
-                for state in candidate_states
-                if state.path.is_relative_to(root.resolve())
-            )
-            if candidate_states
-            else tuple(
-                {
-                    entry.source_state.path: entry.source_state
-                    for entry in report.entries
-                    if entry.rule_id in selected_ids and entry.source_state is not None
-                }.values(),
-            )
-        )
-        sys.stderr.write(
-            f"mod: binding snapshot repository={root.name} "
-            f"findings={report.findings} sources={len(states)}\n",
-        )
+        sys.stderr.write(f"mod: admit repository={root.name} findings={report.findings}\n")
         sys.stderr.flush()
-        snapshot = (
-            u.Infra.codemod_binding_snapshot(
-                root,
-                states,
-                modules,
-            )
-            if states
-            else None
-        )
-        if snapshot is not None and candidate_states:
-            closure = {state.path: state for state in snapshot.states}
-            closure.update({state.path: state for state in candidate_states})
-            snapshot = snapshot.model_copy(update={"states": tuple(closure.values())})
-        closed = snapshot or m.Infra.CodemodBindingSnapshot(states=())
-        with u.Infra.codemod_binding_project(root, closed) as (project, sources):
+        with u.Infra.codemod_binding_project(root, snapshot) as (project, sources):
             entries = tuple(
                 entry.model_copy(update={"binding_states": snapshot.states})
-                if snapshot is not None and entry.rule_id in selected_ids
+                if entry.rule_id in facts.binding_rule_ids
                 else entry
                 for entry in report.entries
                 if u.Infra.codemod_context_admits(

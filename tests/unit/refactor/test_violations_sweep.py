@@ -103,6 +103,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 eq=True,
             )
         chain: list[m.Infra.CodegenStagedFile] = []
+        observed = before
         for index, rule_id in enumerate(("repair-marker", "resolve-future")):
             tm.ok(
                 FlextInfraModGateEngine.scan(
@@ -140,7 +141,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 if drift != "none":
                     changed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
                     with pytest.raises(
-                        ValueError, match="identity drift|unexplained removal"
+                        ValueError, match=r"identity drift|unexplained removal"
                     ):
                         u.Infra.rule_deltas(
                             before, changed, publication_chain=tuple(chain)
@@ -164,7 +165,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             tm.that(future.semantic_correspondence_proven, eq=True)
         else:
             with pytest.raises(
-                ValueError, match="identity continuity|unexplained removal"
+                ValueError, match=r"identity continuity|unexplained removal"
             ):
                 u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
 

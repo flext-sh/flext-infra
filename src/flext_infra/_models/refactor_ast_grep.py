@@ -243,6 +243,14 @@ class FlextInfraModelsRefactorGrep:
             frozenset[c.Infra.CodemodContextPredicate],
             m.Field(description="Context predicates these facts were built for"),
         ]
+        binding_rule_ids: Annotated[
+            frozenset[str],
+            m.Field(description="Elected rules requiring occurrence source proof"),
+        ]
+        binding_modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Elected semantic owner modules"),
+        ]
         import_graph: Annotated[
             t.MappingKV[str, frozenset[str]],
             m.Field(
