@@ -78,6 +78,8 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 sources=sources,
             )
             tm.that(verdict, eq=False)
+            late = live.with_name("late.py")
+            late.write_text("from demo.live import value\n", encoding="utf-8")
             with pytest.raises(
                 ValueError, match="absent from the project import graph"
             ):
@@ -85,7 +87,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                     m.Infra.CodemodAdmission(
                         root=project,
                         rule=rule,
-                        file_path=live,
+                        file_path=late,
                         captures={
                             "MODULE": {"text": "demo.live"},
                             "NAME": {"text": "value"},

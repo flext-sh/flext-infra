@@ -377,8 +377,8 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
     def workspace_dependency_order(
         cls,
         root: Path,
-        repositories: t.SequenceOf[m.Infra.RepositoryRef],
-    ) -> t.SequenceOf[m.Infra.RepositoryRef]:
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+    ) -> t.StrSequence:
         """Order declared packages by their actual runtime dependency graph.
 
         Returns:
@@ -410,7 +410,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             tuple(sorted(by_name)),
             dependencies=lambda name: graph[name],
         )
-        return tuple(by_name[name] for name in order)
+        return tuple(by_name[name].distribution for name in order)
 
     @staticmethod
     def dependency_waves(
