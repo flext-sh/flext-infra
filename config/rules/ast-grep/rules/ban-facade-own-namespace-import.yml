@@ -1,0 +1,116 @@
+# The facade letters' producers never bind their own product (the import law,
+# operator-ruling-2026-10-08-import-law).
+#
+# Every FLEXT package publishes its family letters (c, t, p, m, u, config,
+# settings) as runtime aliases from the package root; the modules inside the
+# private family trees are the ones that PRODUCE those letters. A producer that
+# binds its own letter — `from ai_hub import c` inside `_constants/**`,
+# `import ai_hub.c` inside `_models/**` — reaches for a facade that is still
+# being assembled from the very declarations the module carries, so the binding
+# is an import cycle by construction and a hidden self-dependency even when the
+# resolver tolerates it. The canonical form for a producer that needs a sibling
+# declaration is the private submodule import (`from ai_hub._typings.base
+# import ...`); the root-letter binding has no legitimate producer-side use.
+#
+# The file scope is the letter-producing surface: the private family trees
+# (`_constants/`, `_typings/`, `models/` as `_models/`, `_protocols/`,
+# `_utilities/`) and the settings/config family modules (the root
+# `_settings.py`/`_config.py`, each `settings*`/`config*` part and each
+# `_settings*/`/`_config*/` subpackage). No module on that surface may bind an
+# own-package letter from the own-package root. This is the general form of the
+# per-package contract ban-infra-utility-module-self-facade-import owns for
+# flext-infra's utilities tree; that rule keeps its scope, and this rule owns
+# the whole producer surface across every FLEXT package.
+#
+# Bound names are matched exactly: `from pkg import carbon` binds a different
+# name and never matches, and an aliased member (`from pkg import t as
+# typings`) binds the alias, not the letter, so it stays outside this law. The
+# plain-import form (`import pkg.c`) binds the package but imports the letter
+# as a submodule, which is the same root-letter reach. Imports nested in a
+# function or class body bind nothing at module scope and are the sanctioned
+# late-binding form, so only module-level imports match.
+#
+# Genericity: the rule never names a package. The imported module's root is
+# captured as $MODULE (or the dotted path as $PATH for the plain-import form)
+# and the engine admits the finding only when that root is the scanned
+# project's own package (context own-package, read from the project's declared
+# package name) — the same guard ban-private-import and the namespace law use.
+# A letter imported from another package (`from flext_core import m` inside
+# ai-hub's `_models/base.py`) is a legitimate cross-package facade binding and
+# never matches.
+#
+# Detection-only: the repair rebinds the consumer to the private submodule
+# that owns the declaration, which the import relocation phases author from
+# the live dependency graph.
+id: ban-facade-own-namespace-import
+language: python
+severity: error
+files:
+  - "**/_constants/**/*.py"
+  - "**/_typings/**/*.py"
+  - "**/_models/**/*.py"
+  - "**/_protocols/**/*.py"
+  - "**/_utilities/**/*.py"
+  - "**/_settings*.py"
+  - "**/_config*.py"
+  - "**/settings*.py"
+  - "**/config*.py"
+  - "**/_settings*/**/*.py"
+  - "**/_config*/**/*.py"
+ignores:
+  - "**/__init__.py"
+  - "**/tests/**"
+  - "**/examples/**"
+  - "**/conftest.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    A facade-letter producer never binds its own package's c/t/p/m/u/config/
+    settings letter from the own package root; sibling declarations are
+    imported through their private submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    # `from <own-pkg> import c, m, u`: the bound name is a family letter. The
+    # module_name field is excluded so only imported members are matched, and
+    # the direct module parent keeps function-local imports legal.
+    - kind: dotted_name
+      pattern: $NAME
+      not:
+        inside:
+          kind: import_from_statement
+          field: module_name
+      inside:
+        kind: import_from_statement
+        inside:
+          kind: module
+        has:
+          field: module_name
+          kind: dotted_name
+          pattern: $MODULE
+          not:
+            regex: "\\."
+    # `import <own-pkg>.c` (bare or aliased): the letter is reached as a
+    # submodule of the own root.
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(?:c|t|p|m|u|config|settings)$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^(?:c|t|p|m|u|config|settings)$"
+message: >-
+  A facade-letter producer binds its own package's letter from the own-package
+  root: the facade is still being assembled by this module's own family tree.
+  Import the sibling declaration through its private submodule instead.
