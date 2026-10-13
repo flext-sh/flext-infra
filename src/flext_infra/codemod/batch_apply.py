@@ -200,11 +200,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     ).unwrap()
         seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
         while after_ast.actionable:
-            state = tuple(sorted(
-                (str(path), plan.desired_content.hex())
-                for path, plan in plans.items()
-                if plan.desired_content is not None
-            ))
+            state = tuple(
+                sorted(
+                    (str(path), plan.desired_content.hex())
+                    for path, plan in plans.items()
+                    if plan.desired_content is not None
+                )
+            )
             if state in seen:
                 msg = "mod syntax cascade cycle before semantic publication"
                 raise RuntimeError(msg)
@@ -216,11 +218,15 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 for source in (plan.before, *plan.source_states):
                     if source.path not in plans:
                         inputs.setdefault(source.path, source)
-                plans[plan.path] = plan if original is None else plan.model_copy(
-                    update={
-                        "before": original.before,
-                        "changes": (*original.changes, *plan.changes),
-                    }
+                plans[plan.path] = (
+                    plan
+                    if original is None
+                    else plan.model_copy(
+                        update={
+                            "before": original.before,
+                            "changes": (*original.changes, *plan.changes),
+                        }
+                    )
                 )
             candidate = FlextInfraStagedPackage.plan_sources(
                 root,

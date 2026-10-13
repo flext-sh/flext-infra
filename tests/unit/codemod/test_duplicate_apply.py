@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, infra, m
-from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,

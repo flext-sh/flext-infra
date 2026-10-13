@@ -562,6 +562,8 @@ Infra:
         # both hooks locally with prek and installs none under CI=Y.
       pre_commit: true
       pre_push: true
+      # Public refactor violations-sweep default; custom sequences use verbs below.
+      violations_sweep_repair_verbs: [fix, fmt, mod]
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: audit, contexts: [ local, ci ] }

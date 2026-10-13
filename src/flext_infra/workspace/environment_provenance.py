@@ -375,12 +375,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         descriptor = namespace.get(attribute)
         outer = (
             descriptor.__func__
-<<<<<<< HEAD
             if isinstance(descriptor, p.Infra.FunctionDescriptor)
-=======
-            if descriptor is not None
-            and type(descriptor) in {classmethod, staticmethod}
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             else descriptor
         )
         if not isfunction(outer) or id(outer) != definition_identity:

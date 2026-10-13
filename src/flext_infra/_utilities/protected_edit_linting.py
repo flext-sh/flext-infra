@@ -464,8 +464,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
             command = (*command, "--outputjson")
         elif tool_name == c.Infra.PYREFLY:
             command = (
-                *command, "--output-format", c.Infra.OUTPUT_JSON,
-                "-o", "-", "--summary=none",
+                *command,
+                "--output-format",
+                c.Infra.OUTPUT_JSON,
+                "-o",
+                "-",
+                "--summary=none",
             )
         if (
             tool_name == c.Infra.PYREFLY
@@ -735,16 +739,22 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 m.Infra.PyrightReport, source, from_json=True, strict=True
             )
             return report.flat_map(
-                lambda observed: result.ok(tuple(
-                    f"{entry.file}:"
-                    f"{entry.range.start.line + 1 if entry.range else 0}:"
-                    f"{entry.range.start.character + 1 if entry.range else 0}: "
-                    f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                    for entry in observed.general_diagnostics
-                    if entry.severity in {"error", "warning"}
-                ))
-                if observed.summary.files_analyzed
-                else result.fail("pyright analyzed no files for the selected source")
+                lambda observed: (
+                    result.ok(
+                        tuple(
+                            f"{entry.file}:"
+                            f"{entry.range.start.line + 1 if entry.range else 0}:"
+                            f"{entry.range.start.character + 1 if entry.range else 0}: "
+                            f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
+                            for entry in observed.general_diagnostics
+                            if entry.severity in {"error", "warning"}
+                        )
+                    )
+                    if observed.summary.files_analyzed
+                    else result.fail(
+                        "pyright analyzed no files for the selected source"
+                    )
+                )
             )
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
@@ -827,7 +837,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 or issue.value.line < 1
                 or issue.value.column < 1
             ):
-                return result.fail("Ruff JSON finding has invalid native diagnostic fields")
+                return result.fail(
+                    "Ruff JSON finding has invalid native diagnostic fields"
+                )
             errors.append(issue.value.formatted)
         return result.ok(tuple(errors))
 

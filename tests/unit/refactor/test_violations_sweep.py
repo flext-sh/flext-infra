@@ -50,7 +50,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
         tm.ok(
-            u.Cli.atomic_write_text_file(root / "ruff.toml", "line-length = 'invalid'\n")
+            u.Cli.atomic_write_text_file(
+                root / "ruff.toml", "line-length = 'invalid'\n"
+            )
         )
         tm.that(self._sweep(root, "--audit-rules"), ne=0)
         report = self._receipt(root)
@@ -74,7 +76,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
         assert snapshot.ast_report is not None
         tm.that(
-            any(entry.rule_id == "sweep-growth" for entry in snapshot.ast_report.entries),
+            any(
+                entry.rule_id == "sweep-growth" for entry in snapshot.ast_report.entries
+            ),
             eq=True,
         )
 

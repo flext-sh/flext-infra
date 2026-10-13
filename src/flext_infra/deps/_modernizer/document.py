@@ -416,7 +416,9 @@ class FlextInfraPyprojectModernizerDocument:
             child = u.Cli.toml_table_child(document, key)
             if child is not None and isinstance(value, Mapping):
                 cls._sync_document_values(child, value)
-            elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+            elif isinstance(value, list) and all(
+                isinstance(item, str) for item in value
+            ):
                 u.Cli.toml_sync_string_list(
                     document,
                     key,

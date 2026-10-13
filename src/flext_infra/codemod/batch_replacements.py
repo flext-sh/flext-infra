@@ -231,7 +231,9 @@ class FlextInfraModReplacements:
             )
             if normalized.failure:
                 return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(normalized)
-            accepted.append(plan.model_copy(update={"desired_content": normalized.value}))
+            accepted.append(
+                plan.model_copy(update={"desired_content": normalized.value})
+            )
         return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(accepted))
 
     @staticmethod

@@ -158,11 +158,7 @@ class FlextInfraCodegenVscodeMixin:
             The minimal override buckets the canonical merge can reproduce.
         """
         artifact_settings = cls._artifact_settings()
-<<<<<<< HEAD
         buckets: dict[str, dict[str, t.JsonValue]] = {
-=======
-        buckets: t.MutableMappingKV[str, t.JsonDict] = {
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             "scalar_settings": {},
             "list_settings": {},
             "map_union_settings": {},
@@ -182,16 +178,10 @@ class FlextInfraCodegenVscodeMixin:
             if present and selected is not None:
                 field, normalized = selected
                 buckets[field][key] = normalized
-<<<<<<< HEAD
-        deltas: t.MutableJsonMapping = {
-            field: values for field, values in buckets.items() if values
-        }
-=======
         deltas: t.MutableJsonMapping = {}
         for field, values in buckets.items():
             if values:
                 deltas[field] = values
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         return r[t.MutableJsonMapping].ok(deltas)
 
     @classmethod
@@ -693,11 +683,7 @@ class FlextInfraCodegenVscodeMixin:
                 literal = replacement.replace("\\", "\\\\")
                 value = re.sub(
                     re.escape(token) + r"(?=$|[/\\:;\s])",
-<<<<<<< HEAD
-                    replacement.replace("\\", r"\\"),
-=======
                     literal,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                     value,
                 )
             return value

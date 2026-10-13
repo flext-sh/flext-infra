@@ -46,9 +46,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def _protected_write_reports(
         updates: t.MappingKV[Path, str],
         before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[
-            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
-        ],
+        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports.
@@ -72,13 +70,19 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             execution_errors = tuple(
                 error
                 for snapshot in (before_lints[path], after_lints[path])
-                for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(snapshot)
+                for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(
+                    snapshot
+                )
             )
-            test_fail = None if execution_errors else (
-                FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(
-                    path,
-                    request,
-                    new_errors,
+            test_fail = (
+                None
+                if execution_errors
+                else (
+                    FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(
+                        path,
+                        request,
+                        new_errors,
+                    )
                 )
             )
             if not new_errors and not test_fail and not execution_errors:
@@ -209,13 +213,19 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
         request.edit_fn()
         after = FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-            py_file, request.workspace, gates=request.gates,
+            py_file,
+            request.workspace,
+            gates=request.gates,
         )
-        new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(before, after)
+        new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
+            before, after
+        )
         execution_errors = tuple(
             error
             for snapshot in (before, after)
-            for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(snapshot)
+            for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(
+                snapshot
+            )
         )
 
         test_fail: str | None = (

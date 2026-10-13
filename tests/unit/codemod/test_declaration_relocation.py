@@ -504,7 +504,8 @@ class TestsFlextInfraDeclarationRelocation:
         target = next(path for path in sources if path.parent.name == "_models")
         sources[origin] = (
             "from typing import TYPE_CHECKING as Checking\n"
-            f"if Checking:\n    {dependency}\n" + sources[origin]
+            f"if Checking:\n    {dependency}\n"
+            + sources[origin]
             + f"\ndef shadow({shadow}: str) -> str:\n    return {shadow}\n"
         )
         if conflict:
@@ -529,7 +530,9 @@ class TestsFlextInfraDeclarationRelocation:
                     ),
                 )
                 proposed = dict(sources)
-                proposed.update({edit.file_path: edit.updated_source for edit in planned})
+                proposed.update({
+                    edit.file_path: edit.updated_source for edit in planned
+                })
                 tm.that(
                     tm.ok(
                         u.Infra.plan_semantic_cutover(
@@ -562,7 +565,7 @@ class TestsFlextInfraDeclarationRelocation:
                         "assert m.Payload.model_validate({'amount': '2.5'}).amount "
                         "== Decimal('2.5'); "
                         "assert m.Payload.model_validate({'amount': '2.5'}).model_dump_json() "
-                        "== '{\"amount\":\"2.5\"}'; "
+                        '== \'{"amount":"2.5"}\'; '
                         "assert shadow('lexical') == 'lexical'"
                     ),
                 ),

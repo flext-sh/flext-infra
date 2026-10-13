@@ -292,6 +292,12 @@ class FlextInfraConfigModelsArtifact:
                 ),
             ),
         ]
+        uv_exclude_dependencies: Annotated[
+            t.VariadicTuple[
+                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
+            ],
+            m.Field(description="Project-scoped official uv dependency exclusions"),
+        ] = ()
         sonarcloud: Annotated[
             FlextInfraConfigModelsRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
@@ -592,7 +598,9 @@ class FlextInfraConfigModelsArtifact:
         ]
         sources: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(exclude=True, description="Exact consulted configuration input states"),
+            m.Field(
+                exclude=True, description="Exact consulted configuration input states"
+            ),
         ] = ()
 
     class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):

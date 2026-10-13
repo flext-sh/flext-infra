@@ -102,10 +102,10 @@ class TestsFlextInfraMisePinBootstrap:
         report = m.Infra.WorkspaceOperationReport.model_validate_json(
             (tmp_path / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH).read_bytes()
         )
-        tm.that(report.scope, eq=(Path("."),))
+        tm.that(report.scope, eq=(Path(),))
         tm.that(len(report.receipts), eq=1)
         receipt = report.receipts[0]
-        tm.that(receipt.root, eq=Path("."))
+        tm.that(receipt.root, eq=Path())
         tm.that(receipt.executed, eq=True)
         tm.that(receipt.completed, eq=False)
         tm.that(receipt.native_exit_code, eq=2)

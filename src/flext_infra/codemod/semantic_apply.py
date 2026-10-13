@@ -172,9 +172,13 @@ class FlextInfraCodemodSemanticApply:
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         artifact, driver = pair
         if artifact.candidate.workspace != root:
-            return r[bool].fail("semantic rename candidate belongs to another workspace")
+            return r[bool].fail(
+                "semantic rename candidate belongs to another workspace"
+            )
         if any(state.path == driver.path for state in artifact.candidate.inputs):
-            return r[bool].fail("semantic rename driver aliases a governed source input")
+            return r[bool].fail(
+                "semantic rename driver aliases a governed source input"
+            )
         authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
         if authenticated.failure:
             return r[bool].from_failure(authenticated)

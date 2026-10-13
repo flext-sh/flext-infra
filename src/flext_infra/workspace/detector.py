@@ -387,7 +387,8 @@ class FlextInfraWorkspaceDetector(
         dependency. An absent flag inherits participation. Managed entries
         resolve their package identity from a provisioned checkout; setup may
         retain an unprovisioned entry as its parsed Git declaration only.
-                Returns:
+
+        Returns:
                     The resulting ``p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]``.
 
         """

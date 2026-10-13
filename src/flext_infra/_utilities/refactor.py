@@ -306,7 +306,9 @@ class FlextInfraUtilitiesRefactor:
             f"{path}: {error}"
             for snapshot in (before, after)
             for path, receipt in (snapshot.lint or {}).items()
-            for error in FlextInfraUtilitiesProtectedEditLinting.lint_execution_errors(receipt)
+            for error in FlextInfraUtilitiesProtectedEditLinting.lint_execution_errors(
+                receipt
+            )
         )
         coverage = (
             m.Infra.ViolationsEngineCoverage(

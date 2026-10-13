@@ -152,12 +152,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateCaptureRequest,
         *,
         inputs: m.Infra.CodegenInputs,
-<<<<<<< HEAD
         load_inputs: Callable[[Path], p.Result[m.Infra.CodegenInputs]],
-=======
-        load_inputs: t.Callable[[Path], p.Result[m.Infra.CodegenInputs]],
-        read_runtime_identity: t.Callable[[t.StrSequence], p.Result[str]],
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
+        read_runtime_identity: Callable[[t.StrSequence], p.Result[str]],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
@@ -198,13 +194,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 intent=m.Infra.GateExecutionIntent(
                     requested_gates=tuple(native_request.gates),
                 ),
-                runtime_identity=sys.version,
+                runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
             ),
             inputs=inputs,
-<<<<<<< HEAD
-=======
-            runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         )
         u.Cli.atomic_write_text_file(
             report_root / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -241,13 +233,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 process=process,
                 reports=reports,
                 report_root=report_root,
-                runtime_identity=sys.version,
+                runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
             ),
             inputs=load_inputs(root),
-<<<<<<< HEAD
-=======
-            runtime_identity=read_runtime_identity(native_request.gates),
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         )
 
     @classmethod
@@ -283,17 +271,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
             issue=identity.error if identity.failure else None,
             context_digest=cls._gate_capture_context_digest(
-<<<<<<< HEAD
                 request.gate,
                 request.intent,
                 inputs,
                 request.runtime_identity,
-=======
-                gate,
-                intent,
-                inputs,
-                runtime_identity,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             ),
             policy=policy,
             policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",
@@ -362,10 +343,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateCaptureFinishRequest,
         *,
         inputs: p.Result[m.Infra.CodegenInputs],
-<<<<<<< HEAD
-=======
-        runtime_identity: p.Result[str],
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Publish original native facts without rerunning or accepting the stage.
 
@@ -379,8 +356,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
         issue = started.issue
         if issue is None and inputs.failure:
             issue = inputs.error
-        elif issue is None and runtime_identity.failure:
-            issue = runtime_identity.error
         elif issue is None and after.failure:
             issue = after.error
         elif issue is None and cls._candidate_unsettled(
@@ -399,11 +374,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 started.gate,
                 started.intent,
                 inputs.value,
-<<<<<<< HEAD
                 request.runtime_identity,
-=======
-                runtime_identity.value,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             )
         ):
             issue = (

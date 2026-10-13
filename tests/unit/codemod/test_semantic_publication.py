@@ -156,9 +156,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
                 eq=True,
             )
-            published = {
-                path: path.read_bytes() for path in artifact.candidate.updates
-            }
+            published = {path: path.read_bytes() for path in artifact.candidate.updates}
             for path, desired in artifact.candidate.updates.items():
                 tm.that(published[path], eq=desired.encode(c.DEFAULT_ENCODING))
             tm.fail(

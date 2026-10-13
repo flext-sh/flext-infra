@@ -127,7 +127,9 @@ class FlextInfraSemanticPublication:
             ),
             source_guard=lambda: u.Cli.atomic_verify_binary_file_states(
                 analysis.value.inputs
-            ).flat_map(lambda _: FlextInfraStagedPackage.source_inputs_current(candidate)),
+            ).flat_map(
+                lambda _: FlextInfraStagedPackage.source_inputs_current(candidate)
+            ),
             input_roots=candidate.roots,
         )
 

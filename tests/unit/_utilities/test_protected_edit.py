@@ -39,9 +39,12 @@ def _provision_edited_sample(
 @pytest.mark.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
     @staticmethod
-    @pytest.mark.parametrize("mode", ["empty", "malformed", "signal", "timeout", "launch"])
+    @pytest.mark.parametrize(
+        "mode", ["empty", "malformed", "signal", "timeout", "launch"]
+    )
     def test_native_lint_failure_never_becomes_a_diagnostic_zero(
-        tmp_path: Path, mode: str,
+        tmp_path: Path,
+        mode: str,
     ) -> None:
         """Real process failures retain their native receipt without invented findings."""
         programs = {
@@ -59,7 +62,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         receipt = u.Infra.lint_gate_result(c.Infra.RUFF, executed)
         tm.that(receipt.errors, eq=())
         tm.that(receipt.execution_error is not None, eq=True)
-        tm.that(u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False)
+        tm.that(
+            u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False
+        )
         tm.that(
             u.Infra.lint_new_errors(
                 {receipt.tool_name: receipt}, {receipt.tool_name: receipt}

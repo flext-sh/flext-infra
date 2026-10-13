@@ -149,10 +149,7 @@ class TestsFlextInfraGithubGateAttestation:
                 request,
                 inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
                 load_inputs=u.Infra.load_codegen_inputs,
-<<<<<<< HEAD
-=======
                 read_runtime_identity=self._runtime_identity,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             )
         )
         second = tm.ok(
@@ -160,10 +157,7 @@ class TestsFlextInfraGithubGateAttestation:
                 request,
                 inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
                 load_inputs=u.Infra.load_codegen_inputs,
-<<<<<<< HEAD
-=======
                 read_runtime_identity=self._runtime_identity,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             )
         )
         assert first.receipt is not None
@@ -251,10 +245,7 @@ class TestsFlextInfraGithubGateAttestation:
                     request,
                     inputs=inputs,
                     load_inputs=u.Infra.load_codegen_inputs,
-<<<<<<< HEAD
-=======
                     read_runtime_identity=self._runtime_identity,
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 )
             )
             assert captured.receipt is not None

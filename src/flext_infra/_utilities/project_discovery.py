@@ -11,7 +11,6 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_cli import u
 
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (

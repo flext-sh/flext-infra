@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import shutil
 import stat
 import sys
@@ -391,7 +392,7 @@ class FlextInfraModGateEngine:
         command: t.StrSequence,
         *,
         finding_exit_code: int | None = None,
-    ) -> p.Result[p.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandBytesOutput]:
         """Run one AST tool and preserve its documented finding status.
 
         Resolve and authenticate in Make's declared tool-owning invocation
@@ -399,7 +400,7 @@ class FlextInfraModGateEngine:
         directory, so neither a shim nor that directory can select another tool.
 
         Returns:
-            The resulting ``p.Result[p.Cli.CommandOutput]``.
+            The resulting ``p.Result[p.Cli.CommandBytesOutput]``.
 
         """
         # Consumer scratch directories never own the invocation's runtime tools.
@@ -409,43 +410,44 @@ class FlextInfraModGateEngine:
         ).parent
         binary = u.Infra.managed_mise_binary(command[0], owner_root)
         if binary.failure:
-            return r[p.Cli.CommandOutput].from_failure(binary)
+            return r[p.Cli.CommandBytesOutput].from_failure(binary)
         sys.stderr.write(
             f"mod: start {' '.join(command[:2])} args={max(0, len(command) - 2)}\n",
         )
         sys.stderr.flush()
-        run = u.Cli.run_raw(
+        run = u.Cli.run_bytes(
             (str(binary.value), *command[1:]),
             cwd=root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if run.failure:
-            return r[p.Cli.CommandOutput].from_failure(run)
+            return r[p.Cli.CommandBytesOutput].from_failure(run)
         output = run.value
         sys.stderr.write(
             f"mod: finish {command[0]} exit={output.outcome.raw_return_code} "
-            f"duration={output.duration:.2f}s stdout_chars={len(output.stdout)}\n",
+            f"duration={output.duration:.2f}s stdout_bytes={len(output.stdout)}\n",
         )
         sys.stderr.flush()
         if output.outcome.raw_return_code != 0:
             if (
                 output.outcome.raw_return_code == finding_exit_code
-                and output.stdout.strip()
+                and output.stdout
+                and not output.stdout.isspace()
             ):
-                return r[p.Cli.CommandOutput].ok(output)
+                return r[p.Cli.CommandBytesOutput].ok(output)
             detail = "\n".join(
-                stream.strip()
+                stream.decode("utf-8").strip()
                 for stream in (output.stdout, output.stderr)
-                if stream.strip()
+                if stream and not stream.isspace()
             )
-            return r[p.Cli.CommandOutput].fail(
+            return r[p.Cli.CommandBytesOutput].fail(
                 f"{command[0]} exited with code "
                 f"{output.outcome.raw_return_code}: {detail}",
             )
-        stderr = output.stderr.strip()
+        stderr = output.stderr.decode("utf-8").strip()
         if stderr:
-            return r[p.Cli.CommandOutput].fail(stderr)
-        return r[p.Cli.CommandOutput].ok(output)
+            return r[p.Cli.CommandBytesOutput].fail(stderr)
+        return r[p.Cli.CommandBytesOutput].ok(output)
 
     @staticmethod
     def _path_depth(path: Path) -> int:
@@ -547,14 +549,20 @@ class FlextInfraModGateEngine:
                 for rule_id in sorted({entry.rule_id for entry in report.entries})
             ),
         )
-        states = tuple(
-            state for state in candidate_states if state.path.is_relative_to(root.resolve())
-        ) if candidate_states else tuple(
-            {
-                entry.source_state.path: entry.source_state
-                for entry in report.entries
-                if entry.rule_id in selected_ids and entry.source_state is not None
-            }.values(),
+        states = (
+            tuple(
+                state
+                for state in candidate_states
+                if state.path.is_relative_to(root.resolve())
+            )
+            if candidate_states
+            else tuple(
+                {
+                    entry.source_state.path: entry.source_state
+                    for entry in report.entries
+                    if entry.rule_id in selected_ids and entry.source_state is not None
+                }.values(),
+            )
         )
         sys.stderr.write(
             f"mod: binding snapshot repository={root.name} "
@@ -893,7 +901,7 @@ class FlextInfraModGateEngine:
     @classmethod
     def _parse_findings(
         cls,
-        stdout: str,
+        stdout: bytes,
         root: Path,
         rule_files_by_id: Mapping[str, Path],
         fixable_ids: frozenset[str],
@@ -918,8 +926,8 @@ class FlextInfraModGateEngine:
                 reverse=True,
             ),
         )
-        for raw_line in stdout.splitlines():
-            line = raw_line.strip()
+        for match in re.finditer(rb"[^\n]+", stdout):
+            line = match.group().strip()
             if not line:
                 continue
             parsed = u.Cli.json_parse(line)
@@ -930,7 +938,7 @@ class FlextInfraModGateEngine:
                     f"ast-grep JSONL finding is not an object: {line}",
                 )
             entry = cls._line_finding(
-                line,
+                line.decode("utf-8"),
                 parsed.value,
                 root,
                 (rule_files_by_id, fixable_ids),
@@ -1024,7 +1032,7 @@ class FlextInfraModGateEngine:
         if run.failure:
             return r[m.Infra.ModScanReport].from_failure(run)
         sys.stderr.write(
-            f"mod: parse native JSONL chars={len(run.value.stdout)}\n",
+            f"mod: parse native JSONL bytes={len(run.value.stdout)}\n",
         )
         sys.stderr.flush()
         report = cls._parse_findings(
@@ -1040,7 +1048,10 @@ class FlextInfraModGateEngine:
             error_findings = sum(
                 entry.payload.get("severity") == "error" for entry in report.entries
             )
-            cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
+            cls._validate_finding_receipt(
+                run.value.stderr.decode("utf-8"),
+                error_findings,
+            ).unwrap()
         return r[m.Infra.ModScanReport].ok(
             cls._admitted(root, report, rules_by_id, project_rule_ids),
         )
@@ -1141,16 +1152,20 @@ class FlextInfraModGateEngine:
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root)
         states = tuple(
-            state.model_copy(update={
-                "content": candidate.updates[state.path].encode(c.DEFAULT_ENCODING)
-                if state.path in candidate.updates
-                else state.content,
-            })
+            state.model_copy(
+                update={
+                    "content": candidate.updates[state.path].encode(c.DEFAULT_ENCODING)
+                    if state.path in candidate.updates
+                    else state.content,
+                }
+            )
             for state in candidate.inputs
         )
         physical = {
-            view_root / state.path.relative_to(root.resolve()):
-            u.Cli.atomic_read_binary_file_state(
+            view_root
+            / state.path.relative_to(
+                root.resolve()
+            ): u.Cli.atomic_read_binary_file_state(
                 view_root / state.path.relative_to(root.resolve()), required=True
             ).unwrap()
             for state in states
@@ -1163,22 +1178,32 @@ class FlextInfraModGateEngine:
             run = cls._run_tool(
                 view_root,
                 u.Infra.ast_grep_scan_command(
-                    ruleset.config, rule_ids=ruleset.rule_ids,
-                    targets=targets, json_stream=True,
+                    ruleset.config,
+                    rule_ids=ruleset.rule_ids,
+                    targets=targets,
+                    json_stream=True,
                 ),
                 finding_exit_code=1,
             )
             if run.failure:
                 return r[m.Infra.ModScanReport].from_failure(run)
             parsed = cls._parse_findings(
-                run.value.stdout, view_root,
-                {rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids},
-                frozenset(ruleset.fixable_rule_ids), physical,
+                run.value.stdout,
+                view_root,
+                {
+                    rule_id: rules_by_id[rule_id].resource
+                    for rule_id in ruleset.rule_ids
+                },
+                frozenset(ruleset.fixable_rule_ids),
+                physical,
             ).unwrap()
             if run.value.outcome.raw_return_code != 0:
                 receipt = cls._validate_finding_receipt(
-                    run.value.stderr,
-                    sum(entry.payload.get("severity") == "error" for entry in parsed.entries),
+                    run.value.stderr.decode("utf-8"),
+                    sum(
+                        entry.payload.get("severity") == "error"
+                        for entry in parsed.entries
+                    ),
                 )
                 if receipt.failure:
                     return r[m.Infra.ModScanReport].from_failure(receipt)
@@ -1188,14 +1213,22 @@ class FlextInfraModGateEngine:
                     if entry.file.is_absolute()
                     else entry.file
                 )
-                entries.append(entry.model_copy(update={
-                    "file": relative,
-                    "source_state": logical[(root / relative).resolve()],
-                }))
+                entries.append(
+                    entry.model_copy(
+                        update={
+                            "file": relative,
+                            "source_state": logical[(root / relative).resolve()],
+                        }
+                    )
+                )
         report = cls._admitted(
-            root, cls.recounted(tuple(entries)), rules_by_id,
-            plan.project_rule_ids, tuple(
-                state for state in states
+            root,
+            cls.recounted(tuple(entries)),
+            rules_by_id,
+            plan.project_rule_ids,
+            tuple(
+                state
+                for state in states
                 if state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
             ),
         )

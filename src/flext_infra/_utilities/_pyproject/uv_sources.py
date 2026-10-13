@@ -217,6 +217,23 @@ class FlextInfraUtilitiesPyprojectUvSources(
         else:
             u.Cli.toml_remove_key_if_present(uv, "environments")
 
+    @staticmethod
+    def _sync_uv_excludes(
+        uv: t.Cli.TomlTable,
+        resolution: m.Infra.UvResolutionSpec,
+    ) -> None:
+        """Render scoped exclusions without the configuration-only project route."""
+        exclude_payload = list(
+            t.Cli.JSON_LIST_ADAPTER.validate_python([
+                item.model_dump(mode="json", exclude_none=True)
+                for item in resolution.exclude_dependencies
+            ]),
+        )
+        if exclude_payload:
+            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
+
     @classmethod
     def _sync_uv_sources(
         cls,
@@ -279,7 +296,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             resolution.model_copy(update={"constraint_dependencies": constraints}),
         )
         cls._sync_uv_environments(uv, resolution)
-        u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
+        cls._sync_uv_excludes(uv, resolution)
         cls._sync_member_sources(uv, members)
         return r[bool].ok(value=True)
 

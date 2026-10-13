@@ -36,12 +36,12 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         completion facts replace tokens in the original shell's EXIT handler.
         """
         report = m.Infra.WorkspaceOperationReport(
-            root=Path("."),
+            root=Path(),
             operation="tool-bootstrap",
-            scope=(Path("."),),
+            scope=(Path(),),
             receipts=(
                 m.Infra.WorkspaceOperationReceipt(
-                    root=Path("."),
+                    root=Path(),
                     executed=True,
                     outcome=None,
                 ),

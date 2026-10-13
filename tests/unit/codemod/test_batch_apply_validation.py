@@ -288,19 +288,24 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             "from __future__ import annotations\n\nvalue = 0\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
-        final = "2" if outcome == "converged" else (
-            "0" if outcome == "cycle" else "missing_candidate_binding"
+        final = (
+            "2"
+            if outcome == "converged"
+            else ("0" if outcome == "cycle" else "missing_candidate_binding")
         )
-        u.Tests.declare_codemod_rules(mod_workspace, {
-            "first-wave": (
-                "id: first-wave\nlanguage: Python\nseverity: error\n"
-                "rule:\n  pattern: value = 0\nfix: value = 1\n"
-            ),
-            "second-wave": (
-                "id: second-wave\nlanguage: Python\nseverity: error\n"
-                f"rule:\n  pattern: value = 1\nfix: value = {final}\n"
-            ),
-        })
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                "first-wave": (
+                    "id: first-wave\nlanguage: Python\nseverity: error\n"
+                    "rule:\n  pattern: value = 0\nfix: value = 1\n"
+                ),
+                "second-wave": (
+                    "id: second-wave\nlanguage: Python\nseverity: error\n"
+                    f"rule:\n  pattern: value = 1\nfix: value = {final}\n"
+                ),
+            },
+        )
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
@@ -320,12 +325,14 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             tm.ok(service.execute())
             first = sample.read_bytes()
             tm.that(progress.validated, eq=True)
-            tm.ok(u.Cli.run((
-                sys.executable,
-                "-c",
-                "import runpy, sys; assert runpy.run_path(sys.argv[1])['value'] == 2",
-                str(sample),
-            )))
+            tm.ok(
+                u.Cli.run((
+                    sys.executable,
+                    "-c",
+                    "import runpy, sys; assert runpy.run_path(sys.argv[1])['value'] == 2",
+                    str(sample),
+                ))
+            )
             tm.ok(service.execute())
             tm.that(sample.read_bytes(), eq=first)
 

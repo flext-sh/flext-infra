@@ -146,7 +146,9 @@ class FlextInfraModelsBase:
         ] = m.Field(default_factory=tuple)
         output: Annotated[
             m.Cli.CommandOutput | None,
-            m.Field(description="Original native streams, duration and process outcome"),
+            m.Field(
+                description="Original native streams, duration and process outcome"
+            ),
         ] = None
         execution_error: Annotated[
             t.NonEmptyStr | None,
@@ -154,7 +156,9 @@ class FlextInfraModelsBase:
         ] = None
         error_code: Annotated[
             str | None,
-            m.Field(description="Original Result failure code when no process launched"),
+            m.Field(
+                description="Original Result failure code when no process launched"
+            ),
         ] = None
         error_data: Annotated[
             t.JsonMapping | None,

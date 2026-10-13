@@ -103,19 +103,42 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 constraint_dependencies=tuple(
                     codegen.toolchain.uv_constraint_dependencies,
                 ),
-<<<<<<< HEAD
                 override_dependencies=tuple(
                     codegen.toolchain.uv_override_dependencies,
                 ),
                 exclude_dependencies=cls.routed_uv_exclude_dependencies(render_inputs),
-=======
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 environments=tuple(codegen.toolchain.uv_environments),
             ),
             options=u.Infra.PyprojectConformOptions(
                 flext_line=flext_line.value,
                 repository_root=target.root,
             ),
+        )
+
+    @staticmethod
+    def routed_uv_exclude_dependencies(
+        render_inputs: m.Infra.CodegenRenderInputs,
+    ) -> t.VariadicTuple[m.Infra.UvScopedDependencyExclusionSpec]:
+        """Route reverse-edge exclusions only to locally installed projects.
+
+        Args:
+            render_inputs: The codegen render inputs containing the target and
+            workspace.
+
+        Returns:
+            A tuple of scoped dependency exclusion specifications routed to the local
+            project.
+        """
+        target = render_inputs.target
+        local = {target.repository.distribution}
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
+            local.update(
+                member.distribution for member in render_inputs.workspace.subprojects
+            )
+        return tuple(
+            item
+            for item in render_inputs.codegen.uv_exclude_dependencies
+            if item.project in local
         )
 
     @classmethod

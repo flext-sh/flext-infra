@@ -535,16 +535,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         verified_plans: list[m.Infra.CodegenPlan] = []
 
-<<<<<<< HEAD
-        def verify() -> p.Result[bool]:
-            """Record the sole semantic verification receipt before commit.
+        def verify(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
+            """Verify published gains without re-planning known failed targets.
+
+            Args:
+                analysis: The codegen phase analysis to verify.
 
             Returns:
-                Whether semantic verification succeeded.
+                A result indicating whether the verification succeeded.
             """
-=======
-        def verify(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
-            """Verify published gains without re-planning known failed targets."""
             unchanged = not any(
                 u.Infra.codegen_file_requires_effect(file) for file in analysis.files
             )
@@ -579,7 +578,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 if unchanged and not plan.issues:
                     verified_plans.append(plan)
                 return r[bool].ok(value=True)
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             checked = self._verify_bootstrap(request)
             if checked.failure:
                 return r[bool].from_failure(checked)
