@@ -1,16 +1,50 @@
 id: rewire-transformer-header-private-call
 snapshots:
-  FlextInfraUtilitiesTransformerHeader.alias_locally_bound(source, alias):
-    fixed: u.Infra.alias_locally_bound(source, alias)
+  ? |
+    from flext_infra import u
+
+    FlextInfraUtilitiesTransformerHeader.alias_locally_bound(source, alias)
+  : fixed: |
+      from flext_infra import u
+
+      u.Infra.alias_locally_bound(source, alias)
     labels:
     - source: FlextInfraUtilitiesTransformerHeader.alias_locally_bound(source, alias)
       style: primary
+      start: 27
+      end: 98
+    - source: from flext_infra import u
+      style: secondary
       start: 0
-      end: 71
-  FlextInfraUtilitiesTransformerHeader.ensure_alias_import(source, module, alias):
-    fixed: u.Infra.ensure_alias_import(source, module, alias)
+      end: 25
+    - source: |
+        from flext_infra import u
+
+        FlextInfraUtilitiesTransformerHeader.alias_locally_bound(source, alias)
+      style: secondary
+      start: 0
+      end: 99
+  ? |
+    from flext_infra import u
+
+    FlextInfraUtilitiesTransformerHeader.ensure_alias_import(source, module, alias)
+  : fixed: |
+      from flext_infra import u
+
+      u.Infra.ensure_alias_import(source, module, alias)
     labels:
     - source: FlextInfraUtilitiesTransformerHeader.ensure_alias_import(source, module, alias)
       style: primary
+      start: 27
+      end: 106
+    - source: from flext_infra import u
+      style: secondary
       start: 0
-      end: 79
+      end: 25
+    - source: |
+        from flext_infra import u
+
+        FlextInfraUtilitiesTransformerHeader.ensure_alias_import(source, module, alias)
+      style: secondary
+      start: 0
+      end: 107
