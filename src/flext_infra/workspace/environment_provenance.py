@@ -51,7 +51,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[int]``.
 
         """
-        runtime_root = u.Infra.git_runtime_root(
+        runtime_root = u.Infra.git_repository_root(
             m.Infra.GitRepoRequest(repo_root=repository_root),
         )
         if runtime_root.failure:

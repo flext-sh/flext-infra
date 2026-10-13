@@ -139,6 +139,8 @@ operations itself. Only `upg` resolves moving Git branches; `setup` installs the
 exact committed lock without changing it.
 
 Every repository runs independently in remote CI, including a superproject.
+Remote checkout never initializes members. The CI gate token does not change
+physical Git attachment or local hook environment ownership.
 The existing native editable policy remains unchanged: local workspace source
 entries retain each member's declared `path` and `editable` values; CI installs
 with `--no-editable`. There is no second installer or post-install editable

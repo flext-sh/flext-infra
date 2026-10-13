@@ -296,13 +296,9 @@ export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_directory }}
 # or member, uses the workspace runtime. A member resolves the Git superproject
 # that checks it out as a submodule; a checkout without one (a standalone clone,
 # a linked worktree) owns its runtime.
-ifneq ($(filter {{ make.ci.value }},$({{ make.ci.variable }})),)
-override REPOSITORY_ROOT := $(MAKEFILE_ROOT)
-else
 override REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && if root=$$(git rev-parse --show-superproject-working-tree); then if [ -n "$$root" ]; then cd "$$root" && pwd -P; else pwd -P; fi; else status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; pwd -P; fi)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
-endif
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
@@ -671,8 +667,8 @@ _builtin-pre-commit: _builtin_require_environment
 # not require a satisfied committed mise.lock either. Its bootstrap half runs
 # `mise lock --bump` first (native resolution; no stage and no prior install),
 # then installs from the fresh lock. The lifecycle verifies native UV ownership
-# before resolving its physical uv.lock; attachment selects the environment,
-# not the lock. A converged attached member then aligns its containing root once.
+# before resolving its physical uv.lock. Attached members delegate to their
+# containing root, which owns both the shared environment and its locks.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
 upg: TOOL_BOOTSTRAP_RESOLVE := 1
@@ -783,11 +779,8 @@ endif
 # Setup installs the committed uv.lock and never writes it (lock law: only
 # `make upg` writes locks); uv owns the venv: `uv sync --python` creates or
 # replaces it against the declared interpreter.
-# Governed gitlinks are provisioned in every context, GitHub Actions included:
-# the workspace projections (Makefile, pyproject, .gitignore, dependabot, docs)
-# derive from the member checkouts, so a member-less CI checkout would render a
-# different workspace and break the gen fixed point. Provisioned
-# members are read as libraries; no verb gates them from here.
+# Local setup provisions declared gitlinks. CI consumes the committed lock
+# without initializing member checkouts.
 _builtin_setup_environment: $(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),,_builtin_setup_submodules)
 	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(RUNTIME_ROOT)/Makefile" setup; \
@@ -801,7 +794,7 @@ endif
 
 # `upg` is the only recipe that resolves. Its bootstrap half ran
 # `mise lock --bump` (native resolution into the committed mise.lock) and
-# installed exactly that lock; this lifecycle upgrades every uv.lock (which
+# installed exactly that lock; this lifecycle upgrades the owned uv.lock (which
 # carries the generator itself), provisions its environment frozen from it,
 # and conforms dependency floors. The floors land in the codegen SSOT, so
 # `gen` projects them into every pyproject and renders the managed tool
