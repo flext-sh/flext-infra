@@ -687,14 +687,7 @@ class FlextInfraExtractDuplicatePhase:
             lines.append(f"{base}) -> None:\n")
         else:
             lines.append(f"{base}def {helper_name}() -> None:\n")
-        lines.extend((
-            f'{body}"""{cls._SUMMARY}\n',
-            "\n",
-            f"{body}Returns:\n",
-            f"{body}    None.\n",
-            "\n",
-            f'{body}"""\n',
-        ))
+        lines.append(f'{body}"""{cls._SUMMARY}"""\n')
         lines.extend(cls._body_lines(block_text, indent))
         lines.append("\n")
         return lines

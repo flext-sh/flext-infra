@@ -29,7 +29,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         repository_root: Path,
         *,
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
-        include_local: bool = True,
     ) -> p.Result[m.Infra.CodegenInputs]:
         """Load one root's full policy through the ordered strict YAML source.
 
@@ -50,7 +49,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             repository_root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        selected = tuple(dict.fromkeys(layers if include_local else layers[:2]))
+        selected = tuple(dict.fromkeys(layers))
         if any(projection.path not in selected[1:] for projection in projections):
             error = ValueError(
                 "projected codegen declaration is outside elected layers"
@@ -65,41 +64,147 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 return result_type.from_failure(observed)
             snapshots.append(observed.value)
         loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
-            partial(cls._repository_codegen_spec, selected, projections),
+            partial(
+                cls._repository_codegen_spec,
+                selected,
+                tuple(snapshots),
+                projections,
+            ),
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
-            if observed.failure:
-                return result_type.from_failure(observed)
-            if observed.value != before:
-                error = ValueError(
-                    f"codegen configuration changed during read: {before.path}"
-                )
-                return result_type.fail(str(error), exception=error)
+        verified = cls._verify_unchanged_snapshots(snapshots)
+        if verified.failure:
+            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.CodegenInputs(spec=loaded.value, sources=tuple(snapshots)),
         )
 
     @staticmethod
+    def _verify_unchanged_snapshots(
+        snapshots: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Fail when a consulted configuration file changed during loading.
+
+        Returns:
+            Success when every snapshot still matches its consulted bytes.
+
+        """
+        for before in snapshots:
+            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != before:
+                error = ValueError(
+                    f"codegen configuration changed during read: {before.path}"
+                )
+                return r[bool].fail(str(error), exception=error)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def project_codegen_inputs(
+        cls,
+        repository_root: Path,
+        captured: m.Infra.CodegenInputs,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        include_local: bool = True,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Project pending layers from captured bytes without rereading their sources.
+
+        Returns:
+            A validated preview retaining the original input identities.
+        """
+        result_type = r[m.Infra.CodegenInputs]
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if not captured.sources:
+            error = ValueError("codegen projection requires captured library inputs")
+            return result_type.fail(str(error), exception=error)
+        if captured.sources[0].path != layers[0] or any(
+            state.path not in layers for state in captured.sources
+        ):
+            error = ValueError("captured codegen inputs do not belong to this root")
+            return result_type.fail(str(error), exception=error)
+        selected = tuple(
+            dict.fromkeys(
+                layers if include_local else layers[:2],
+            ),
+        )
+        if any(projection.path not in selected[1:] for projection in projections):
+            error = ValueError(
+                "projected codegen declaration is outside elected layers"
+            )
+            return result_type.fail(str(error), exception=error)
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            partial(
+                cls._repository_codegen_spec,
+                selected,
+                captured.sources,
+                projections,
+            ),
+        )
+        return loaded.map(
+            lambda spec: m.Infra.CodegenInputs(spec=spec, sources=captured.sources),
+        )
+
+    @staticmethod
+    def read_codegen_config_document(content: bytes) -> p.Result[t.JsonMapping]:
+        """Parse captured YAML bytes through the single strict config transport.
+
+        Returns:
+            A mapping, including the source's defined empty-document representation.
+        """
+        return r[t.JsonMapping].create_from_callable(
+            partial(
+                FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document,
+                content,
+            ),
+        )
+
+    @staticmethod
+    def _parse_codegen_config_document(content: bytes) -> t.JsonMapping:
+        """Apply the strict source's mapping and empty-document contracts.
+
+        Returns:
+            Validated configuration values from immutable source bytes.
+        """
+        parsed = FlextStrictYamlConfigSource.unique_key_load(
+            content.decode(c.DEFAULT_ENCODING),
+        )
+        return (
+            {} if parsed is None else t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        )
+
+    @staticmethod
     def _repository_codegen_spec(
         sources: tuple[Path, ...],
+        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
     ) -> m.Infra.CodegenConfigSpec:
         """Compose ordered original and projected layers with the public merge owner.
 
         Returns:
             The validated full repository codegen policy.
+
+        Raises:
+            ValueError: If a captured configuration input has no bytes.
         """
         merged: t.JsonDict = {}
         for path in sources:
-            source = FlextStrictYamlConfigSource(
-                FlextInfraConfig,
-                yaml_file=(path,),
-                deep_merge=True,
-            )
-            payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(source())
+            captured = next((item for item in snapshots if item.path == path), None)
+            if captured is None:
+                payload: t.JsonMapping = {}
+            else:
+                content = captured.content
+                if content is None:
+                    msg = f"captured config input has no bytes: {path}"
+                    raise ValueError(msg)
+                payload = FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document(
+                    content,
+                )
             projected = next(
                 (item for item in projections if item.path == path),
                 None,

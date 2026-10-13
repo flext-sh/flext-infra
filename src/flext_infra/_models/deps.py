@@ -206,7 +206,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         payload: Annotated[
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
-        ] = m.Field(default_factory=dict[str, t.JsonValue])
+        ] = m.Field(default_factory=t.JsonDict)
 
     class PackagedDataSelection(m.ContractModel):
         """Validated data inputs separated by Hatch selection semantics."""

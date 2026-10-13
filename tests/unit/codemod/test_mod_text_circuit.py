@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,6 +26,67 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraModTextGateEngine:
     """Exercise the declarative sed-by-list engine through its public scan."""
+
+    @staticmethod
+    @pytest.mark.parametrize("change", ["remove", "change", "add"])
+    def test_foreign_source_changes_do_not_veto_owned_publication(
+        mod_workspace: Path, change: str
+    ) -> None:
+        """A real unrelated filesystem edit cannot reject the selected target."""
+        package = mod_workspace / "src" / "mod_workspace"
+        foreign = package / "a_foreign.py"
+        target = package / "z_selected.py"
+        added = package / "new_foreign.py"
+        tm.ok(u.Cli.atomic_write_text_file(foreign, 'value = "foreign"\n'))
+        tm.ok(u.Cli.atomic_write_text_file(target, 'value = "before"\n'))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: owned-publication\n"
+                f"    include: ['{target.relative_to(mod_workspace).as_posix()}']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n",
+            )
+        )
+        active = True
+        armed = True
+
+        def alter_foreign_source() -> None:
+            """Apply one independent physical edit during the selected read."""
+            nonlocal armed
+            armed = False
+            if change == "remove":
+                foreign.unlink()
+            elif change == "change":
+                foreign.write_text('value = "independent"\n', encoding="utf-8")
+            else:
+                added.write_text('value = "independent"\n', encoding="utf-8")
+
+        sys.addaudithook(
+            lambda event, arguments: (
+                alter_foreign_source()
+                if active
+                and armed
+                and event == "open"
+                and arguments
+                and isinstance(arguments[0], str)
+                and Path(arguments[0]).name == target.name
+                else None
+            )
+        )
+        try:
+            tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
+        finally:
+            active = False
+        tm.that(armed, eq=False)
+        tm.that(target.read_text(encoding="utf-8"), eq='value = "after"\n')
+        if change == "remove":
+            tm.that(foreign.exists(), eq=False)
+        elif change == "change":
+            tm.that(foreign.read_text(encoding="utf-8"), eq='value = "independent"\n')
+        else:
+            tm.that(added.read_text(encoding="utf-8"), eq='value = "independent"\n')
 
     @staticmethod
     def test_external_consumer_inherits_provider_and_composes_local_rules(
@@ -470,13 +532,13 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(document.read_text(encoding="utf-8"), eq=changed_document)
 
     @pytest.mark.parametrize("raise_failure", [False, True])
-    def test_text_phase_validation_failure_recovers_published_files(
+    def test_text_phase_validation_failure_preserves_published_files(
         self,
         mod_workspace: Path,
         *,
         raise_failure: bool,
     ) -> None:
-        """The public transaction owner restores its batch after validator failure."""
+        """Validation failures preserve accepted publication and the first cause."""
         paths = self._publication_inputs(mod_workspace)
         states = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -535,7 +597,7 @@ class TestsFlextInfraModTextGateEngine:
             result = transaction.run_files_locked(roots, publish)
             tm.fail(result, has="text publication acceptance rejected")
         for state in states:
-            tm.that(state.path.read_bytes(), eq=state.content)
+            tm.that(state.path.read_bytes(), eq=b'value = "after"\n')
         tm.that(tuple(mod_workspace.rglob("*.semantic-staging")), empty=True)
 
     @staticmethod

@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 import traceback
 from collections.abc import MutableMapping
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
@@ -1208,39 +1209,75 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(indexed)
         if live.failure:
             return result_type.from_failure(live)
-        loaded = FlextInfraCodegenVscodeMixin.load_vscode_inputs(request.root)
+        loaded = u.Infra.load_codegen_inputs(request.root)
         if loaded.failure:
             return result_type.from_failure(loaded)
+        baseline = u.Infra.project_codegen_inputs(
+            request.root,
+            loaded.value,
+            include_local=False,
+        )
+        if baseline.failure:
+            return result_type.from_failure(baseline)
         project = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
             request.root,
             indexed.value,
-            spec=loaded.value.spec,
+            spec=baseline.value.spec.vscode,
         )
         if project.failure:
             return result_type.from_failure(project)
-        composed = FlextInfraCodegenVscodeMixin.compose_vscode_delta(
-            loaded.value.spec,
-            project.value,
-        )
-        if composed.failure:
-            return result_type.from_failure(composed)
-        local = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
-            request.root,
-            live.value,
-            spec=composed.value,
-        )
-        if local.failure:
-            return result_type.from_failure(local)
-        effective = FlextInfraCodegenVscodeMixin.compose_vscode_delta(
-            composed.value,
-            local.value,
-        )
-        if effective.failure:
-            return result_type.from_failure(effective)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             request.root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
+        if project.value.values and layers[1].resolve() == layers[0].resolve():
+            error = ValueError(
+                "project editor declarations share the distributed defaults: "
+                f"{layers[1]}",
+            )
+            return result_type.fail(str(error), exception=error)
+        projections = (
+            (
+                m.Infra.CodegenLayerProjection(
+                    path=layers[1],
+                    values={
+                        "Infra": {"codegen": {"vscode": dict(project.value.values)}}
+                    },
+                ),
+            )
+            if project.value.values
+            else ()
+        )
+        composed = u.Infra.project_codegen_inputs(
+            request.root,
+            loaded.value,
+            projections=projections,
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        local = FlextInfraCodegenVscodeMixin.vscode_local_declaration_delta(
+            request.root,
+            indexed.value,
+            live.value,
+            spec=composed.value.spec.vscode,
+        )
+        if local.failure:
+            return result_type.from_failure(local)
+        if local.value.values:
+            projections = (
+                *projections,
+                m.Infra.CodegenLayerProjection(
+                    path=layers[2],
+                    values={"Infra": {"codegen": {"vscode": dict(local.value.values)}}},
+                ),
+            )
+        effective = u.Infra.project_codegen_inputs(
+            request.root,
+            loaded.value,
+            projections=projections,
+        )
+        if effective.failure:
+            return result_type.from_failure(effective)
         declarations: list[m.Infra.CodegenFilePlan] = []
         for path, delta in zip(layers[1:], (project.value, local.value), strict=True):
             if not delta.values:
@@ -1251,14 +1288,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     f"{path}",
                 )
                 return result_type.fail(str(error), exception=error)
-            planned = cls._vscode_declaration_plan(request.root, path, delta)
+            planned = cls._vscode_declaration_plan(
+                request.root,
+                path,
+                delta,
+                sources=loaded.value.sources,
+            )
             if planned.failure:
                 return result_type.from_failure(planned)
             declarations.append(planned.value)
         binding = cls._vscode_merged_plan(
             request.model_copy(
                 update={
-                    "vscode_spec": effective.value,
+                    "vscode_spec": effective.value.spec.vscode,
                     "source_states": loaded.value.sources,
                 },
             ),
@@ -1289,6 +1331,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         root: Path,
         path: Path,
         delta: m.Infra.CodegenVscodeDeclarationDelta,
+        *,
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Merge captured project YAML through its canonical config primitive.
 
@@ -1300,14 +1344,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         if captured.failure:
             return result_type.from_failure(captured)
         before = captured.value.before
+        original = next((state for state in sources if state.path == path), None)
+        if original is not None and before != original:
+            error = ValueError(
+                f"editor declaration changed after input capture: {path}"
+            )
+            return result_type.fail(str(error), exception=error)
+        if (
+            original is None
+            and isinstance(before, m.Cli.AtomicFileState)
+            and before.content is not None
+        ):
+            error = ValueError(
+                f"editor declaration appeared after input capture: {path}"
+            )
+            return result_type.fail(str(error), exception=error)
         payload: t.JsonMapping = {}
         if isinstance(before, m.Cli.AtomicFileState) and before.content is not None:
-            decoded = r[str].create_from_callable(
-                lambda: before.content.decode(c.DEFAULT_ENCODING),
-            )
-            if decoded.failure:
-                return result_type.from_failure(decoded)
-            parsed = u.Cli.yaml_parse(decoded.value)
+            parsed = u.Infra.read_codegen_config_document(before.content)
             if parsed.failure:
                 return result_type.from_failure(parsed)
             payload = parsed.value
@@ -1358,10 +1412,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         if not path.is_file():
             return r[str].ok("")
-        read = u.Cli.files_read_text(path)
+        read = u.Cli.atomic_read_binary_file_state(path, required=True)
         if read.failure:
             return r[str].from_failure(read)
-        return r[str].ok(read.value)
+        content = read.value.content
+        if content is None:
+            error = ValueError(f"governed artifact has no captured bytes: {path}")
+            return r[str].fail(str(error), exception=error)
+        return r[str].create_from_callable(partial(content.decode, c.DEFAULT_ENCODING))
 
     @classmethod
     def _decide_governed_plan(
@@ -1451,10 +1509,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         spec = request.vscode_spec
         sources = request.source_states
         if spec is None:
-            loaded = FlextInfraCodegenVscodeMixin.load_vscode_inputs(request.root)
+            loaded = u.Infra.load_codegen_inputs(request.root)
             if loaded.failure:
                 return result_type.from_failure(loaded)
-            spec = loaded.value.spec
+            spec = loaded.value.spec.vscode
             sources = loaded.value.sources
         merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
             request.root,
@@ -1472,6 +1530,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if merged_plan.failure:
             return result_type.from_failure(merged_plan)
+        before = merged_plan.value.before
+        if isinstance(before, m.Cli.AtomicFileState) and before.content != (
+            request.current.encode(c.DEFAULT_ENCODING)
+            if request.current
+            else (b"" if before.content is not None else None)
+        ):
+            error = ValueError(
+                f"editor settings changed during planning: {merged_plan.value.path}",
+            )
+            return result_type.fail(str(error), exception=error)
         return result_type.ok(
             (
                 merged_plan.value.model_copy(

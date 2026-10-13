@@ -131,17 +131,27 @@ class FlextInfraRefactorCensus(
                 self.rule_names is not None
                 and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in self.rule_names
             ):
-                constant_edits = FlextInfraCodemodSemanticApply.census_constants(
+                planned_constants = FlextInfraCodemodSemanticApply.census_constants(
                     self.root,
                     rope,
                     apply=self.apply_changes and not self.effective_dry_run,
-                ).unwrap()
-                cli.display_text(
-                    "census: constant-consumers "
-                    f"files={len(constant_edits)} "
-                    f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
-                    f"applied={self.apply_changes and not self.effective_dry_run}",
                 )
+                if planned_constants.failure:
+                    # An unprovable constant-consumer phase is reported
+                    # read-only: the census never aborts the other actionable
+                    # rewrites the mod loop already applied.
+                    cli.display_text(
+                        "census: constant-consumers read-only "
+                        f"reason={planned_constants.error or 'unprovable rewrite'}",
+                    )
+                else:
+                    constant_edits = planned_constants.value
+                    cli.display_text(
+                        "census: constant-consumers "
+                        f"files={len(constant_edits)} "
+                        f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
+                        f"applied={self.apply_changes and not self.effective_dry_run}",
+                    )
             impact_report = self._collect_report(
                 rope, source_preview=self.source_preview
             )

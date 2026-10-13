@@ -135,7 +135,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         result_type = r[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]
         extra: list[str] = []
-        evidence_by_path: dict[str, str] = {}
+        evidence_by_path: t.StrDict = {}
         for retired in config.Infra.codegen.retired_projections:
             declared = retired if isinstance(retired, str) else retired.path
             relative = Path(declared)

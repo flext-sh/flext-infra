@@ -21,6 +21,49 @@ class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
 
     @staticmethod
+    def test_full_config_loader_binds_policy_and_captured_projection(
+        tmp_path: Path,
+    ) -> None:
+        """Gate policy and editor settings share one explicit root and source receipt."""
+        root = tmp_path / "consumer"
+        directory = root / c.CONFIG_DIR_NAME
+        directory.mkdir(parents=True)
+        path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
+        baseline = config.Infra.codegen.make.gate_acceptance_policy
+        chosen = next(policy for policy in type(baseline) if policy != baseline)
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {
+                        "codegen": {"make": {"gate_acceptance_policy": chosen.value}}
+                    }
+                },
+            ),
+        )
+        captured = tm.ok(u.Infra.load_codegen_inputs(root))
+        tm.that(captured.spec.make.gate_acceptance_policy, eq=chosen)
+        tm.that(
+            tm.ok(FlextInfraCodegen.load_vscode_spec(root)),
+            eq=captured.spec.vscode,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {
+                        "codegen": {"make": {"gate_acceptance_policy": baseline.value}}
+                    }
+                },
+            ),
+        )
+        projected = tm.ok(u.Infra.project_codegen_inputs(root, captured))
+        tm.that(projected.spec.make.gate_acceptance_policy, eq=chosen)
+        fresh = tm.ok(u.Infra.load_codegen_inputs(root))
+        tm.that(fresh.spec.make.gate_acceptance_policy, eq=baseline)
+        tm.that(projected.sources, eq=captured.sources)
+
+    @staticmethod
     def test_portable_declaration_rejects_unrepresentable_list_replacement(
         tmp_path: Path,
     ) -> None:

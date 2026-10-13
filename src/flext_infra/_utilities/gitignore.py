@@ -163,6 +163,22 @@ class FlextInfraUtilitiesGitignore:
             markers,
             destination,
         )
+        return FlextInfraUtilitiesGitignore._apply_runtime_suffix(
+            composed,
+            runtime_suffix,
+        )
+
+    @staticmethod
+    def _apply_runtime_suffix(
+        composed: p.Result[str],
+        runtime_suffix: str,
+    ) -> p.Result[str]:
+        """Re-append the runtime tracking policy after preserved external blocks.
+
+        Returns:
+            The composed gitignore with its declared runtime policy restored.
+
+        """
         if composed.failure or not runtime_suffix:
             return composed
         separator = "" if composed.value.endswith("\n\n") else "\n"

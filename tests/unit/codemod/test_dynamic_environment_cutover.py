@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra, settings
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDynamicEnvironmentCutover:
@@ -80,7 +80,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         tm.that(remaining, empty=True)
         path.write_text(sources[path], encoding="utf-8")
         key = str(config.Infra.codegen.make.mypy_cache.data_home_environment_variable)
-        environment: dict[str, str] = {} if value is None else {key: value}
+        environment: t.StrDict = {} if value is None else {key: value}
         mode = "missing-required" if required and value is None else "value"
         output = tm.ok(
             u.Cli.run_raw(

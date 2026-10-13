@@ -10,7 +10,7 @@ import ast
 import importlib.util
 from pathlib import Path
 
-from flext_infra import c
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesRopeSourceBasesAliases:
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         cls._stdlib_backing_cache[target] = backing or ""
         return backing
 
-    _stdlib_backing_cache: dict[str, str] | None = None
+    _stdlib_backing_cache: t.StrDict | None = None
 
     @classmethod
     def lazy_module_aliases(
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         module: str,
         path: Path,
         source: str,
-    ) -> dict[str, str]:
+    ) -> t.StrDict:
         """Read the ``install_lazy_exports`` namespace alias map of one module.
 
         The canonical package facade binds its public namespace names (``m``,
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         # A required initializer that does not parse remains a real input error.
         parsed = ast.parse(source, filename=str(path))
         package = module
-        aliases: dict[str, str] = {}
+        aliases: t.StrDict = {}
         for node in ast.walk(parsed):
             if not (
                 isinstance(node, ast.Call)
