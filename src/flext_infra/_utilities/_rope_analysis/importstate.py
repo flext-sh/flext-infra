@@ -244,11 +244,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def superclass_name(superclass: t.Infra.RopePyObject) -> str:
         """Return a class name from Rope classes or inferred class instances.
 
-        Invalid semantic kinds and unnamed types fail at the boundary. A
-        cyclic inferred type chain yields an empty name — the callers fall
-        back to the declared AST bases (fleet-automation 2026-10-12: the
-        composed facade families legitimately present rope with self-referent
-        inferred types; a census must not die on them).
+        Invalid semantic kinds, unnamed classes and cyclic inferred chains
+        yield an empty name — the callers fall back to the declared AST
+        bases (fleet-automation 2026-10-12: the composed lazy facade
+        families legitimately present rope with self-referent or
+        non-class inferred pyobjects; a census must not die on them).
 
         Returns:
             The SDK class name, resolving inferred instances through their
@@ -268,10 +268,6 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             The source-defined or builtin class name.
 
-        Raises:
-            TypeError: If the semantic object is neither a class nor an instance.
-            ValueError: If its class has no name.
-
         """
         visited_ids = visited or frozenset()
         superclass_id = id(superclass)
@@ -285,12 +281,13 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 visited=visited_ids | {superclass_id},
             )
         if not FlextInfraUtilitiesRopeRuntime.abstract_class(superclass):
-            msg = "Rope superclass is not a class or inferred instance"
-            raise TypeError(msg)
+            # Rope's inference yields non-class pyobjects for composed lazy
+            # facades; an unresolvable kind is an empty name — the census
+            # caller falls back to the declared AST bases.
+            return ""
         name = superclass.get_name()
         if not name:
-            msg = "Rope superclass has no class name"
-            raise ValueError(msg)
+            return ""
         return name
 
     @staticmethod
