@@ -58,6 +58,12 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
         " Never edit this projection.\n"
         "# @flext-regenerate: make gen\n"
     )
+    # Render provenance: the composition owner appends the running generator's
+    # identity so every emitted artifact names the motor that rendered it.
+    # A skew between this stamp and the consumed motor is drift the fixed-point
+    # verbs detect (conform --mode check); the stamp makes the drift report
+    # name both sides instead of a bare byte diff.
+    RENDERED_BY_MARKER: ClassVar[str] = "# @flext-rendered-by: flext-infra "
     DEV_OPTIONAL_DEPS_MARKER: ClassVar[str] = (
         "# [MANAGED] consolidated development dependencies"
     )

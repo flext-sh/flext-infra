@@ -264,6 +264,7 @@ class TestsFlextInfraPytestRunner:
 
         assert runner.run_timeout_seconds(policy) == expected
         command = runner.build_command(report)
+        tm.that(any(arg.startswith("--timeout") for arg in command), eq=False)
         stop = next(
             item
             for item in command
@@ -274,7 +275,7 @@ class TestsFlextInfraPytestRunner:
             eq=pytest.approx(
                 runner.started_at_monotonic
                 + expected
-                - policy.suite_stop_reserve_seconds,
+                - policy.termination_grace_seconds,
             ),
         )
 
@@ -733,43 +734,7 @@ class TestsFlextInfraPytestRunner:
         recorded = (report_dir / "command.txt").read_text()
         tm.that(recorded, has="--testmon-noselect")
         tm.that(recorded, lacks=c.Infra.PYTEST_SUITE_STOP_OPTION)
-        tm.that(recorded, has="--timeout=0")
-
-    @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("ci_context", [False, True])
-    def test_full_outlives_the_configured_case_budget(
-        cached_runner_project: Path,
-        *,
-        ci_context: bool,
-    ) -> None:
-        """A real slow case exceeds the configured budget and completes in full."""
-        policy = config.Infra.tooling.tools.pytest
-        runner = u.Tests.PytestRunner.runner_for(
-            cached_runner_project, ci_context=ci_context
-        ).model_copy(
-            update={"unbounded": True},
-        )
-        (cached_runner_project / runner.target / "test_outlives_budget.py").write_text(
-            "import time\nimport pytest\n\n"
-            f"@pytest.mark.{policy.slow_marker}\n"
-            "def test_outlives_budget():\n"
-            f"    time.sleep({policy.case_timeout_seconds + 1})\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        tm.that(tm.ok(runner.execute_full()), eq=0)
-        reports = cached_runner_project / runner.reports
-        tm.that(
-            u.Tests.PytestRunner.summary(reports),
-            has=["executed=2", "failed=0", "errors=0", "exit=0"],
-        )
-        latest = (reports / "latest.txt").read_text().strip()
-        context = m.Infra.PytestRunContext.model_validate_json(
-            (reports / latest / "run-context.json").read_text(),
-        )
-        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(context.deadline_monotonic, none=True)
-        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(recorded, lacks="--timeout")
 
     @staticmethod
     @pytest.mark.slow

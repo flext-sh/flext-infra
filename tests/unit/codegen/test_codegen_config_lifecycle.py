@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
 from tests import tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 
@@ -55,7 +54,6 @@ print("generated config: frozen YAML, subclass identity, independent settings")
         process = tm.ok(
             u.Cli.run_raw(
                 [sys.executable, "-c", script, str(root)],
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(

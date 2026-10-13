@@ -65,6 +65,11 @@ class FlextInfraUtilitiesWorkspaceManifest:
                         include=fields.intersection(
                             m.Infra.RepositoryPolicyOverlaySpec.model_fields,
                         ),
+                        # Why: the overlay's ``project`` is the selector that
+                        # matched this policy (the distribution name string);
+                        # the delta's ``project`` is ProjectSpec metadata. The
+                        # selector is admission, never delta content.
+                        exclude={"project"},
                         exclude_computed_fields=True,
                     ),
                 )

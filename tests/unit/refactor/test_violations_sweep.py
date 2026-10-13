@@ -743,14 +743,14 @@ class TestsFlextInfraRefactorViolationsSweep:
         """A second sweep preserves the first invocation's authenticated snapshots."""
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=False)
-        tm.that(self._sweep(root), ne=0)
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
         first = self._receipt(root)
         assert first.before_evidence is not None
         assert first.after_evidence is not None
         before_bytes = first.before_evidence.path.read_bytes()
         after_bytes = first.after_evidence.path.read_bytes()
 
-        tm.that(self._sweep(root), ne=0)
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
 
         second = self._receipt(root)
         assert second.before_evidence is not None
@@ -1077,10 +1077,17 @@ class TestsFlextInfraRefactorViolationsSweep:
         captured = capsys.readouterr()
         tm.that(exit_code, eq=0, msg=captured.out + captured.err)
         tm.that((root / "ran.txt").exists(), eq=False)
-        tm.that(self._sweep(root, "--audit-rules"), eq=0)
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
+        report = self._receipt(root)
+        assert report.before_plan is not None
+        tm.that(
+            {row.rule_id for row in report.stages[0].rule_evaluations},
+            eq={rule.id for rule in report.before_plan.rules},
+        )
+        tm.that(report.stages[0].inspection_error, empty=False)
         row = next(
             row
-            for row in self._receipt(root).stages[0].rule_evaluations
+            for row in report.stages[0].rule_evaluations
             if row.rule_id == "sweep-growth"
         )
         assert row.delta is not None

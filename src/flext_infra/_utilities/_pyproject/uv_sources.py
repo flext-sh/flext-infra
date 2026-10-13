@@ -11,7 +11,10 @@ from collections.abc import Mapping
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDependencyRequirements,
+)
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
@@ -139,20 +142,21 @@ class FlextInfraUtilitiesPyprojectUvSources(
         requirement for that distribution during staging. The candidate
         manifest owns this temporary pin; the committed lock owns normal
         resolutions when no candidate is declared (flext-oe420).
+
+        Declared members retain their local-source overrides. The implicit
+        root is never a member override: replacing its requirement also
+        replaces uv's dependency-group selection.
         """
-        dependency_extras = FlextInfraUtilitiesDependencies.dependency_extras
-        # Why (fleet-automation 2026-10-13): a standalone consumer whose
-        # transitive graph pins a family member on another integration ref
-        # declares the SSOT override list (org layer); it replaces the
-        # member-computed staging list. Empty keeps the staging behavior.
         overrides = list(resolution.override_dependencies) or [
-            f"{name}{dependency_extras(requirements, name)}"
+            f"{name}{FlextInfraUtilitiesDependencyRequirements.dependency_extras(requirements, name)}"
             for name in sorted(local_members)
         ]
-        overrides.extend(
-            f"{name}{dependency_extras(requirements, name)} @ {source}"
-            for name, source in sorted(candidate_sources.items())
-        )
+        for name, source in sorted(candidate_sources.items()):
+            extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                requirements,
+                name,
+            )
+            overrides.append(f"{name}{extras} @ {source}")
         if overrides:
             u.Cli.toml_sync_string_list(
                 uv,
@@ -243,9 +247,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             else ()
         )
         root_names = (
-            (workspace.repository.distribution,)
-            if workspace.repository.package
-            else ()
+            (workspace.repository.distribution,) if workspace.repository.package else ()
         )
         local_names = (
             *root_names,

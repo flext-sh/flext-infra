@@ -100,9 +100,9 @@ class TestsFlextInfraCodemodDuplicateApply:
     def _workspace(duplicate_project: Path) -> tuple[Path, Path]:
         """One governed fixture workspace with a provisioned interpreter.
 
-        The shared fixture clones a run-scoped ``make upg`` template and runs
-        frozen ``make setup`` in the clone, installing the declared runtime
-        dependencies and tools into its own physical environment.
+        The installed session owner provisions one physical worker environment.
+        Each exclusive case restores source and report state at the same path,
+        so editable imports resolve this case without cloning or running setup.
 
         Returns:
             The repository root and its source package.

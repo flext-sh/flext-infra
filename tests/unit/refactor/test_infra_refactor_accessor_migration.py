@@ -379,7 +379,11 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     def test_local_functions_retain_nested_class_method_discovery(
         tmp_path: Path,
     ) -> None:
-        """Local bindings and nested introducing classes remain in the same inventory."""
+        """Local bindings and nested introducing classes remain in the same inventory.
+
+        Args:
+            tmp_path: The temporary path provided by pytest for creating isolated test files.
+        """
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
         policy = m.MethodShapeParams.model_validate(
             c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]

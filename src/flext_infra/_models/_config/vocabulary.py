@@ -60,6 +60,7 @@ class FlextInfraConfigVocabulary:
     RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
+    DEPS: ClassVar[str] = "deps"
 
     GATE_TOOLS_BY_KIND: ClassVar[t.MappingKV[GateKind, t.MappingKV[str, t.StrPair]]] = (
         MappingProxyType({
@@ -90,6 +91,10 @@ class FlextInfraConfigVocabulary:
                 FRESH_IMPORT: (
                     "Flext Fresh-Process Import Gate",
                     "internal://flext-infra/fresh-import",
+                ),
+                DEPS: (
+                    "Flext Dependency Declaration Gate",
+                    "internal://flext-infra/deps",
                 ),
                 "index-declarations": (
                     "Flext Index Declarations Gate",

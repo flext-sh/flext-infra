@@ -31,6 +31,59 @@ class TestsFlextInfraTransactionDirectoryJournal:
     _TRANSACTION_ID = "a" * 32
 
     @staticmethod
+    def test_mise_snapshot_separates_render_inputs_from_local_config_sources(
+        tmp_path: Path,
+    ) -> None:
+        """Mixed render provenance authenticates without widening local config sets."""
+        root = u.Tests.git_repository(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(root)
+        config_dir = root / c.CONFIG_DIR_NAME
+        config_dir.mkdir()
+        local = config_dir / "scenario.yaml"
+        local.write_text("scenario: initial\n", encoding="utf-8")
+        template = tmp_path / "template.j2"
+        template.write_text("{{ scenario }}\n", encoding="utf-8")
+        template_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(template, required=True),
+        )
+        assert template_state.content is not None
+        config_sources = tm.ok(u.Infra.snapshot_config_sources(root))
+        local_state = next(source for source in config_sources if source.path == local)
+        assert local_state.content is not None
+        owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
+        planner = FlextInfraMiseWorkspacePlanner(owner)
+        layout = tm.ok(planner.layout_from_selectors(root, (".",)))
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                layout.projects[0].config, required=True
+            ),
+        )
+        config_plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=before.path,
+            before=before,
+            desired_content=before.content,
+            desired_mode=before.mode,
+            source_states=(template_state, *config_sources),
+        )
+
+        observed = tm.ok(planner.snapshot(layout, (config_plan,)))
+
+        tm.that(observed.projects[0].config.sources, eq=config_sources)
+        tm.ok(FlextInfraMiseArtifactsVerification.sources(observed))
+        template.write_text("{{ changed }}\n", encoding="utf-8")
+        tm.fail(planner.snapshot(layout, (config_plan,)), has=str(template))
+        template.write_bytes(template_state.content)
+        local.write_text("scenario: changed\n", encoding="utf-8")
+        tm.fail(planner.snapshot(layout, (config_plan,)), has=str(local))
+        local.write_bytes(local_state.content)
+        (config_dir / "added.yaml").write_text("added: true\n", encoding="utf-8")
+        tm.fail(
+            FlextInfraMiseArtifactsVerification.sources(observed),
+            has="Mise sources changed",
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("mutation", ["missing", "wrong-phase", "duplicate"])
     @pytest.mark.parametrize("delivery", ["result", "raise"])
     def test_persisted_journal_rejects_unowned_source_dependencies(

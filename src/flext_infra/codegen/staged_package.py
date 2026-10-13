@@ -56,12 +56,24 @@ class FlextInfraStagedPackage:
                 before.path
                 for before in inputs
                 if before.path.suffix in {".py", ".pyi"}
+                # Read-only evidence needs no pinned rope layout: the
+                # rule-fixture scratch lives outside the workspace, and a
+                # standalone consumer's venv lives INSIDE its checkout —
+                # installed packages are exactly the site-packages segment
+                # (platform convention, not a declared list).
+                and before.path.is_relative_to(workspace)
+                and "site-packages" not in before.path.parts
             ),
         ))
         for path in source_paths:
             resolved = cls._source_layout(path, layouts)
             if resolved.failure:
-                return result_type.from_failure(resolved)
+                if path in normalized:
+                    return result_type.from_failure(resolved)
+                # Evidence-only inputs (an installed family package inside a
+                # standalone consumer's venv, the rule-fixture scratch) are
+                # read outside any rope layout; only rewrite targets need one.
+                continue
             local = resolved.value
             if not any(item.project_root == local.project_root for item in selected):
                 pinned = cls._pin_closure(
@@ -77,7 +89,17 @@ class FlextInfraStagedPackage:
         if metadata.failure:
             return result_type.from_failure(metadata)
         for before in inputs:
-            if states.get(before.path) != before:
+            observed = states.get(before.path)
+            if observed is None:
+                # Evidence-only input: never pinned (installed packages and
+                # scratch views live outside every rope layout), so it owns
+                # no fresh observation. A rewrite target always has one.
+                if before.path in normalized:
+                    return result_type.fail(
+                        f"candidate original source identity changed: {before.path}",
+                    )
+                continue
+            if observed != before:
                 return result_type.fail(
                     f"candidate original source identity changed: {before.path}",
                 )
@@ -106,12 +128,17 @@ class FlextInfraStagedPackage:
     ) -> p.Result[dict[Path, str]]:
         """Elect one contained physical destination per desired source.
 
+        Every desired destination must be a contained, physical, unambiguous
+        workspace path. Captured input evidence may legitimately originate
+        outside the workspace: the codemod rule fixtures and preview views
+        stage under the declared scratch (outside every source root by
+        law), and their AtomicFileStates travel with the candidate as
+        journal evidence — they are never write destinations.
+
         Returns:
             Desired sources or the first ambiguous, foreign or symlinked path.
         """
         result_type = r[dict[Path, str]]
-        if any(not before.path.is_relative_to(workspace) for before in inputs):
-            return result_type.fail("candidate original source escapes workspace")
         normalized: dict[Path, str] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):

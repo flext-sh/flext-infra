@@ -159,8 +159,10 @@ class FlextInfraCodegenTransaction(
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
-        environment = u.Infra.runtime_environment_dir(runtime_root)
-        interpreter = u.Infra.runtime_python(runtime_root)
+        environment = u.Infra.runtime_environment_dir(
+            plan.workspace, runtime_root=runtime_root
+        )
+        interpreter = u.Infra.runtime_python(plan.workspace, runtime_root=runtime_root)
         if environment.is_symlink() or not environment.is_dir():
             return r[bool].fail(f"candidate runtime must be physical: {environment}")
         observed = u.Cli.atomic_plan_directory_chain(environment)

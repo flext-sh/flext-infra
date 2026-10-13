@@ -10,11 +10,13 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, r, t
 from flext_cli import u
+
+from flext_infra import c, p, r, t
 from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,
+    FlextInfraDepsGate,
     FlextInfraDirenvGate,
     FlextInfraDuplicationGate,
     FlextInfraFreshImportGate,
@@ -88,6 +90,7 @@ class FlextInfraGateRegistry:
         return (
             FlextInfraRuffLintGate,
             FlextInfraConflictMarkersGate,
+            FlextInfraDepsGate,
             FlextInfraRuffFormatGate,
             FlextInfraPyreflyGate,
             FlextInfraMypyGate,

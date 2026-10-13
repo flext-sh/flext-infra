@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, settings, t, u
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -260,7 +260,10 @@ class FlextInfraAccessorMigrationReportMixin:
             plan.updates,
             validate,
             inputs=plan.inputs,
-            runtime_root=plan.workspace,
+            runtime_root=u.Infra.runtime_environment_dir(
+                plan.workspace,
+                runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            ).parent,
         )
         if previewed.failure:
             return r[

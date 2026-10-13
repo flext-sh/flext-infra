@@ -241,8 +241,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             root=self.repository_root,
         )
         if (
-            c.Infra.CodegenConformMode(request.mode)
-            is c.Infra.CodegenConformMode.APPLY
+            c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY
             and self.surface_contract(
                 c.Infra.CodegenConformSurface(request.what),
             ).complete_governed

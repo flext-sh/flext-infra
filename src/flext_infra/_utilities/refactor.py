@@ -664,6 +664,13 @@ class FlextInfraUtilitiesRefactor:
             repository_totals[entry.repository] += 1
             rule_totals[entry.rule_id] += 1
             class_totals[entry.classification] += 1
+        bindings = {
+            id(entry.binding_states): entry.binding_states for entry in report.entries
+        }
+        binding_paths = {
+            identity: tuple(state.path for state in states)
+            for identity, states in bindings.items()
+        }
         evidence = m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             "inputs": m.Infra.CodemodBindingSnapshot(
@@ -675,12 +682,7 @@ class FlextInfraUtilitiesRefactor:
                             for entry in report.entries
                             if entry.source_state is not None
                         ),
-                        chain.from_iterable(
-                            {
-                                id(entry.binding_states): entry.binding_states
-                                for entry in report.entries
-                            }.values()
-                        ),
+                        chain.from_iterable(bindings.values()),
                     )
                 )
             ),
@@ -692,13 +694,13 @@ class FlextInfraUtilitiesRefactor:
             "totals_by_rule": dict(sorted(rule_totals.items())),
             "entries": tuple(
                 m.Infra.ModScanFindingReference(
-                    **{name: getattr(entry, name) for name in type(entry).model_fields},
+                    **entry.model_dump(exclude_computed_fields=True),
                     source_path=(
                         entry.source_state.path
                         if entry.source_state is not None
                         else None
                     ),
-                    binding_paths=tuple(state.path for state in entry.binding_states),
+                    binding_paths=binding_paths[id(entry.binding_states)],
                 )
                 for entry in report.entries
             ),
@@ -708,9 +710,7 @@ class FlextInfraUtilitiesRefactor:
                 indent=2, exclude=set(type(evidence).model_computed_fields)
             )
             + "\n"
-        ).encode(
-            c.DEFAULT_ENCODING,
-        )
+        ).encode(c.DEFAULT_ENCODING)
         report_path = root.resolve() / publication.relative_path
         published = FlextInfraUtilitiesRefactor._published_mod_scan_bytes(
             report_path,

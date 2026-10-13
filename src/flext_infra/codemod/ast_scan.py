@@ -69,17 +69,20 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         planned = u.Infra.codemod_rule_plan(self.repository_root, rule_ids=rule_ids)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
-        rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
         if not self.effective_dry_run:
-            return self._execute_apply(self.repository_root, rules, rule_ids=rule_ids)
+            return self._execute_apply(
+                self.repository_root,
+                tuple(dict.fromkeys(rule.resource for rule in planned.value.rules)),
+                rule_ids=rule_ids,
+            )
         ast_report = FlextInfraModGateEngine.scan(
             self.repository_root,
             fix=False,
-            rule_ids=rule_ids,
+            plan=planned.value,
         ).unwrap()
         if rule_ids is not None:
             return self._selected_scan_outcome(planned.value, ast_report)
-        return self._full_scan_outcome(self.repository_root, planned.value, rules)
+        return self._full_scan_outcome(self.repository_root, planned.value, ast_report)
 
     @staticmethod
     def _selected_scan_outcome(
@@ -117,7 +120,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _full_scan_outcome(
         root: Path,
         planned: m.Infra.CodemodRulePlan,
-        rules: t.SequenceOf[Path],
+        ast_report: m.Infra.ModScanReport,
     ) -> p.Result[t.Cli.ResultValue]:
         """Render both full-corpus cascades and refuse any remaining finding.
 
@@ -125,7 +128,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        ast_report = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         text_report = FlextInfraModTextGateEngine.scan(
             root,
             fix=False,
@@ -143,7 +145,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"[{entry.text!r}]",
             )
         cli.display_text(
-            f"ast: scanned {len(rules)} rule file(s) from "
+            f"ast: scanned {len({rule.resource for rule in planned.rules})} rule file(s) from "
             f"{len(planned.rulesets)} provider(s); "
             f"{ast_report.findings} ast-grep finding(s) "
             f"({ast_report.actionable} actionable), "
