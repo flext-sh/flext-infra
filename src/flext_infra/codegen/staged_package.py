@@ -66,7 +66,12 @@ class FlextInfraStagedPackage:
         for path in source_paths:
             resolved = cls._source_layout(path, layouts)
             if resolved.failure:
-                return result_type.from_failure(resolved)
+                if path in normalized:
+                    return result_type.from_failure(resolved)
+                # Evidence-only inputs (an installed family package inside a
+                # standalone consumer's venv, the rule-fixture scratch) are
+                # read outside any rope layout; only rewrite targets need one.
+                continue
             local = resolved.value
             if not any(item.project_root == local.project_root for item in selected):
                 pinned = cls._pin_closure(
