@@ -177,6 +177,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
+        Raises:
+            ValueError: If ast.
         """
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()

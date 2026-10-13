@@ -42,6 +42,9 @@ class FlextInfraUtilitiesDocsGithubLinks:
         Returns:
             Declared URL, branch and exact local checkout facts.
 
+        Raises:
+            ValueError: If documentation Git declaration has no branch; or if GitHub
+                declaration must name one owner and repository.
         """
         root = (
             FlextInfraUtilitiesGit

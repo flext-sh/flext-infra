@@ -55,7 +55,8 @@ class TestsFlextInfraRefactorImportNormalization:
                     "-c",
                     (
                         "from demo_pkg.consumer import value, sibling, literal; "
-                        "assert value == 'published'; assert sibling('local') == 'local'; "
+                        "assert value == 'published'; assert sibling('local') == "
+                        "'local'; "
                         "assert literal == 'files'"
                     ),
                 ),

@@ -76,7 +76,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
         tm.ok(u.Cli.atomic_write_text_file(victim, "value = 1\n"))
         state = tm.ok(u.Cli.atomic_read_binary_file_state(sample))
-        tm.that(m.Cli.AtomicFileState.model_validate_json(state.model_dump_json()), eq=state)
+        tm.that(
+            m.Cli.AtomicFileState.model_validate_json(state.model_dump_json()), eq=state
+        )
         before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
         quiet_before = (
             tm.ok(
@@ -220,7 +222,8 @@ class TestsFlextInfraRefactorViolationsSweep:
             {
                 "repair-marker": (
                     "id: repair-marker\nlanguage: Python\nseverity: warning\n"
-                    "rule:\n  pattern: marker = dict(source)\nfix: marker = list(source)\n"
+                    "rule:\n  pattern: marker = dict(source)\nfix: marker = "
+                    "list(source)\n"
                 ),
                 "absent-class": (
                     "id: absent-class\nlanguage: Python\nseverity: warning\n"
@@ -374,8 +377,14 @@ class TestsFlextInfraRefactorViolationsSweep:
             )
         with pytest.raises(ValueError, match="deferred differs"):
             m.Infra.ModScanEvidence.model_validate({
-                **evidence.model_dump(mode="json"),
-                "deferred": evidence.deferred + 1,
+                **evidence.model_dump(
+                    mode="python", exclude=set(type(evidence).model_computed_fields)
+                ),
+                "totals_by_class": {
+                    **evidence.totals_by_class,
+                    c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT: evidence.deferred
+                    + 1,
+                },
             })
         plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace))
         inventory = tuple(

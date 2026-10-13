@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from tests import m
@@ -73,7 +73,7 @@ class TestsFlextInfraCodegenScaffolder:
         [result] = scaffolder.run(projects=[self._project_info(project)])
         tm.that(len(result.files_created), eq=5)
         pkg = project / "src" / "test_project"
-        for mod in u.Tests.src_module_files():
+        for mod, _suffix, _base, _description in c.Infra.SRC_MODULES:
             tm.that((pkg / mod).exists(), eq=True)
 
     def test_creates_only_missing_modules(self, tmp_path: Path) -> None:
@@ -98,7 +98,7 @@ class TestsFlextInfraCodegenScaffolder:
         [result] = scaffolder.run(projects=[self._project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(len(tests_created), eq=5)
-        for mod in u.Tests.src_module_files():
+        for mod, _suffix, _base, _description in c.Infra.TESTS_MODULES:
             tm.that((tests_dir / mod).exists(), eq=True)
         constants_source = (tests_dir / "constants.py").read_text(encoding="utf-8")
         tm.that(constants_source, has="from flext_tests import FlextTestsConstants")

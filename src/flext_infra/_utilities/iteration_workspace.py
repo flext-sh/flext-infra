@@ -34,6 +34,12 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         Roots are relative to the repository containing the published report.
         Only closed stage/outcome labels, a validated Git OID and native scalar
         completion facts replace tokens in the original shell's EXIT handler.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If bootstrap report requires one elected scalar field.
         """
         report = m.Infra.WorkspaceOperationReport(
             root=Path(),

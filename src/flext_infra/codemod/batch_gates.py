@@ -1037,6 +1037,7 @@ class FlextInfraModGateEngine:
         fix: bool,
         rule_ids: t.StrSequence | None = None,
         published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
+        source_files: t.SequenceOf[Path] | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
 
@@ -1053,7 +1054,7 @@ class FlextInfraModGateEngine:
         plan = planned.value
         reports: list[m.Infra.ModScanReport] = []
         rules_by_id = {rule.id: rule for rule in plan.rules}
-        targets = u.Infra.ast_grep_scan_targets(root)
+        targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
         source_paths: set[Path] = set()
         for target in targets:
             path = root / target
@@ -1103,7 +1104,7 @@ class FlextInfraModGateEngine:
         }
         if current_paths != set(
             source_states
-        ) or targets != u.Infra.ast_grep_scan_targets(root):
+        ) or targets != u.Infra.ast_grep_scan_targets(root, source_files=source_files):
             return r[m.Infra.ModScanReport].fail(
                 "native scan source inventory changed: "
                 f"{sorted(current_paths ^ set(source_states))}"

@@ -604,7 +604,11 @@ class FlextInfraCodemodSemanticApply:
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
         reports_root: Path,
     ) -> p.Result[bool]:
-        """Check the same public contract in a staged or published workspace."""
+        """Check the same public contract in a staged or published workspace.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
         with workspace_factory(root, None) as workspace:
             return cls._validate_published(root, preflight, workspace, reports_root)
 

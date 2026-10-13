@@ -568,7 +568,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     if unchanged:
                         if not isinstance(file.before, m.Cli.AtomicFileState):
                             cause = ValueError(
-                                "unchanged bootstrap requires a physical file preimage: "
+                                "unchanged bootstrap requires a physical file "
+                                "preimage: "
                                 f"{file.path}",
                             )
                             return r[bool].fail(str(cause), exception=cause)

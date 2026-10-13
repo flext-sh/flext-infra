@@ -499,7 +499,17 @@ class FlextInfraModelsCodegenJournalModels:
 
         @m.model_validator(mode="after")
         def _validate_group_preimage(self) -> Self:
-            """Bind group recovery authority to the original authenticated bytes."""
+            """Bind group recovery authority to the original authenticated bytes.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If independent entry cannot carry group recovery authority;
+                    or if dependent group requires a durable original preimage; or if
+                    dependent group preimage differs from original bytes; or if absent
+                    group original cannot carry a preimage.
+            """
             if self.dependency_group is None:
                 if (
                     self.original_content_hex is not None

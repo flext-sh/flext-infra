@@ -54,7 +54,14 @@ class FlextInfraModelsCodemod:
         def unique_inputs(
             cls, states: tuple[m.Cli.AtomicFileState, ...]
         ) -> tuple[m.Cli.AtomicFileState, ...]:
-            """Store each authenticated input once; conflicting identities fail."""
+            """Store each authenticated input once; conflicting identities fail.
+
+            Returns:
+                The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
+
+            Raises:
+                ValueError: If binding source snapshots disagree.
+            """
             indexed: dict[Path, m.Cli.AtomicFileState] = {}
             for state in states:
                 if indexed.setdefault(state.path, state) != state:

@@ -56,6 +56,8 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         Returns:
             The resulting ``m.Infra.WorkspaceEnforcementReport``.
 
+        Raises:
+            ValueError: If namespace scope requires one owned module.
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
         if not project_roots:
@@ -85,7 +87,12 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
             path for paths in files_by_project.values() for path in paths
         )
         before_plan = u.Infra.codemod_rule_plan(self._repository_root).unwrap()
-        before = FlextInfraModGateEngine.scan(self._repository_root, fix=False).unwrap()
+        source_files = tuple(sorted(scoped)) if module is not None else None
+        before = FlextInfraModGateEngine.scan(
+            self._repository_root,
+            fix=False,
+            source_files=source_files,
+        ).unwrap()
         before = before.model_copy(
             update={
                 "entries": tuple(
@@ -100,10 +107,13 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
                 if module is not None:
                     FlextInfraImportNormalization.apply_files(project_root, py_files)
                 relocation_ids = tuple(cascade.relocation_by_rule(project_root))
-                if not relocation_ids:
+                if not relocation_ids or not py_files:
                     continue
                 current = FlextInfraModGateEngine.scan(
-                    project_root, fix=False, rule_ids=relocation_ids
+                    project_root,
+                    fix=False,
+                    rule_ids=relocation_ids,
+                    source_files=py_files,
                 ).unwrap()
                 cascade.run(
                     project_root=project_root,
@@ -115,7 +125,11 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
                     gates=gates,
                 )
         after = (
-            FlextInfraModGateEngine.scan(self._repository_root, fix=False).unwrap()
+            FlextInfraModGateEngine.scan(
+                self._repository_root,
+                fix=False,
+                source_files=source_files,
+            ).unwrap()
             if apply
             else before
         )
