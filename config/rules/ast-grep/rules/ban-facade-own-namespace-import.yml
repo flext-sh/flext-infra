@@ -63,20 +63,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(c|constants)$"
@@ -117,20 +111,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(t|typings)$"
@@ -171,20 +159,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(m|models)$"
@@ -225,20 +207,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(p|protocols)$"
@@ -279,20 +255,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(u|utilities)$"
@@ -334,20 +304,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.config$"
@@ -389,20 +353,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.settings$"

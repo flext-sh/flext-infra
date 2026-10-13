@@ -55,7 +55,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             'u = Utilities\n\n__all__ = ["Utilities", "u"]\n',
         )
         self._write(
-            root / "config" / "local-overrides.yaml",
+            root / "config" / "codegen-overrides.local.yaml",
             "Infra:\n  tooling:\n    tools:\n      ruff:\n"
             f"        line-length: {width + width_delta}\n",
         )
@@ -75,13 +75,13 @@ class TestsFlextInfraUtilityFacadeProjection:
             "rendered = tm.not_none(u.Infra.render_utility_facade(package))\n"
             "tm.ok(u.Cli.atomic_write_text_file(facade, rendered))\n"
             "assert u.Infra.render_utility_facade(package) == rendered\n"
-            "tm.ok(test_u.Tests.materialize_lazy_init(\n"
-            "    test_u.Tests.create_lazy_init_service(root)))\n"
+            "service = test_u.Tests.create_lazy_init_service(root)\n"
+            "service.target_module = package.name\n"
+            "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "initializer = package / '__init__.py'\n"
             "published = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
             "    initializer, required=True))\n"
-            "tm.ok(test_u.Tests.materialize_lazy_init(\n"
-            "    test_u.Tests.create_lazy_init_service(root)))\n"
+            "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "assert tm.ok(u.Cli.atomic_read_binary_file_state(\n"
             "    initializer, required=True)) == published\n"
             "assert u.Infra.render_utility_facade(package) == rendered\n"

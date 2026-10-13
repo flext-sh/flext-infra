@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import concurrent.futures
 import difflib
 import os
@@ -15,6 +16,10 @@ from collections.abc import Iterable, MutableMapping
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
+
+import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_cli import u
 
@@ -36,7 +41,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         path: Path,
         source: str,
         *,
-        remove_unused_imports: bool = False,
+        before_source: str | None = None,
     ) -> p.Result[str]:
         """Normalize candidate imports and format with the destination's policy.
 
@@ -45,13 +50,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
         project_root = cls._command_cwd(path, repository_root)
+        if before_source is not None:
+            source = cls.remove_orphaned_imports(before_source, source)
         checked = u.Cli.run(
             [
                 executable,
                 "check",
                 *config.Infra.codegen.make.ruff.lint_fix,
                 "--select",
-                "I,F401,W" if remove_unused_imports else "I,W",
+                "I,W",
                 "--stdin-filename",
                 str(path),
                 "-",
@@ -82,6 +89,56 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ),
                 timeout=c.Infra.TIMEOUT_SHORT,
             ).map(lambda formatted: formatted.stdout),
+        )
+
+    @staticmethod
+    def remove_orphaned_imports(original: str, proposed: str) -> str:
+        """Remove only imports whose last executable use the transformation removed.
+
+        Returns:
+            The candidate retaining existing unused, string, and exported bindings.
+        """
+        before = ast.parse(original)
+        after = ast.parse(proposed)
+        lost = {
+            item.id
+            for item in ast.walk(before)
+            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)
+        } - {
+            item.id
+            for item in ast.walk(after)
+            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)
+        }
+        strings = tuple(
+            item.value
+            for item in ast.walk(after)
+            if isinstance(item, ast.Constant) and isinstance(item.value, str)
+        )
+        lost = {name for name in lost if not any(name in value for value in strings)}
+        context = CodemodContext()
+        for imported in ast.walk(after):
+            if not isinstance(imported, ast.Import | ast.ImportFrom):
+                continue
+            for alias in imported.names:
+                if (alias.asname or alias.name.split(".")[0]) not in lost:
+                    continue
+                module = (
+                    "." * imported.level + (imported.module or "")
+                    if isinstance(imported, ast.ImportFrom)
+                    else alias.name
+                )
+                RemoveImportsVisitor.remove_unused_import(
+                    context,
+                    module,
+                    alias.name if isinstance(imported, ast.ImportFrom) else None,
+                    alias.asname,
+                )
+        return (
+            RemoveImportsVisitor(context)
+            .transform_module(
+                cst.parse_module(proposed),
+            )
+            .code
         )
 
     @classmethod

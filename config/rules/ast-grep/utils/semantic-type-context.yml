@@ -35,46 +35,22 @@ rule:
       - inside:
           kind: type
           stopBy: end
-          follows:
-            kind: type
-            stopBy: end
+          nthChild: n+2
           inside:
             kind: type_parameter
             inside:
-              kind: generic_type
-              has:
-                kind: identifier
-                regex: "^Annotated$"
+              matches: typing-annotated-form
       - inside:
-          kind: generic_type
+          matches: typing-literal-form
           stopBy: end
-          has:
-            kind: identifier
-            regex: "^Literal$"
       - all:
-          - follows:
-              pattern: $_
-              stopBy: end
+          - nthChild: n+3
           - inside:
               kind: subscript
-              field: subscript
-              has:
-                field: value
-                regex: "^typing\\.Annotated$"
+              matches: typing-annotated-form
       - inside:
           stopBy: end
-          follows:
-            pattern: $_
-            stopBy: end
+          nthChild: n+3
           inside:
             kind: subscript
-            field: subscript
-            has:
-              field: value
-              regex: "^typing\\.Annotated$"
-      - inside:
-          kind: subscript
-          stopBy: end
-          has:
-            field: value
-            regex: "^typing\\.Literal$"
+            matches: typing-annotated-form

@@ -31,20 +31,13 @@ metadata:
       - is: own-package
       - is: layer-zero-file
 rule:
-  all:
-    - kind: dotted_name
-    - not:
-        inside:
-          kind: import_from_statement
-          field: module_name
-    - inside:
-        kind: import_from_statement
-        has:
-          field: module_name
-          kind: dotted_name
-          pattern: $MODULE
-          not:
-            regex: "\\."
+  matches: root-imported-name
+  inside:
+    stopBy: end
+    kind: import_from_statement
+    has:
+      field: module_name
+      pattern: $MODULE
 message: >-
   Layer-zero settings/config imports from its own root `$MODULE`, including
   TYPE_CHECKING: use native or valid upstream contracts, never its own namespace.

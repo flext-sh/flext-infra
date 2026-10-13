@@ -855,7 +855,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         local_workspace: m.Infra.WorkspaceSpec,
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]]:
-        """Plan one repository's governed files and its retired projections.
+        """Plan governed files and retirements using the target's elected config.
 
         Returns:
             The resulting ``p.Result[t.Pair[list[m.Infra.CodegenFilePlan],
@@ -865,7 +865,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         result_type = r[
             t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]
         ]
-        config_spec = config.Infra.codegen
+        loaded = u.Infra.load_codegen_inputs(target.root)
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        config_spec = loaded.value.spec
         if contract.runtime_bindings:
             repository_plan = self.plan_runtime_bindings(target, config_spec)
         elif (

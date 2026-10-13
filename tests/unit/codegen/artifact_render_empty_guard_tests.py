@@ -26,7 +26,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     and was emitted verbatim: consumers inspected the directory, saw the
     artifact present, and concluded the capability was delivered while every
     step it owns was silently absent. The render funnel owns the refusal:
-    empty render in, typed failure out, naming the template, the
+    empty render in, typed planning issue out, naming the template, the
     destination, and the declaration cause.
     """
 
@@ -35,7 +35,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tmp_path: Path,
         content: str,
     ) -> tuple[p.Result[m.Infra.CodegenPlan], Path, Path]:
-        """Plan a real declared template with isolated config and source inputs.
+        """Plan a template declared through the target's repository-local config.
 
         Returns:
             The planning result, template source path, and destination path.
@@ -90,24 +90,27 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     def test_empty_render_fails_loud_naming_template_and_cause(
         tmp_path: Path,
     ) -> None:
-        """A 0-byte render is a typed failure naming template and cause."""
+        """A 0-byte render produces a planning issue naming template and cause."""
         refused, source, destination = (
             TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
                 tmp_path,
                 "",
             )
         )
-        tm.that(refused.failure, eq=True)
+        plan = tm.ok(refused)
+        tm.that(bool(plan.issues), eq=True)
+        diagnostic = "\n".join(issue.message for issue in plan.issues)
         tm.that(
-            refused.error,
+            diagnostic,
             has=str(source),
         )
         tm.that(
-            refused.error,
+            diagnostic,
             has=destination.name,
         )
-        tm.that(refused.error, has="render produced no content")
-        tm.that(refused.error, has="consumer declaration error")
+        tm.that(diagnostic, has="render produced no content")
+        tm.that(diagnostic, has="consumer declaration error")
+        tm.that(any(file.path == destination for file in plan.files), eq=False)
         tm.that(destination.exists(), eq=False)
 
     @staticmethod
@@ -119,10 +122,13 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             tmp_path,
             "  \n\t\n",
         )
-        tm.that(refused.failure, eq=True)
-        tm.that(refused.error, has="stage=templates ")
-        tm.that(refused.error, has="repository=")
-        tm.that(refused.error, has="publishing a 0-byte artifact is forbidden")
+        plan = tm.ok(refused)
+        tm.that(bool(plan.issues), eq=True)
+        diagnostic = "\n".join(issue.message for issue in plan.issues)
+        tm.that(diagnostic, has="stage=templates ")
+        tm.that(diagnostic, has="repository=")
+        tm.that(diagnostic, has="publishing a 0-byte artifact is forbidden")
+        tm.that(any(file.path == destination for file in plan.files), eq=False)
         tm.that(destination.exists(), eq=False)
 
     @staticmethod
@@ -137,5 +143,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         tm.that(kept.failure, eq=False)
         plan = tm.ok(kept)
+        tm.that(bool(plan.issues), eq=False)
         tm.that(u.Tests.planned_text(plan, destination.name), eq=content)
         tm.that(destination.exists(), eq=False)

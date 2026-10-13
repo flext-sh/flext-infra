@@ -575,6 +575,7 @@ class FlextInfraModGateEngine:
             non_actionable_with_fix=classes.count(
                 c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX,
             ),
+            deferred=classes.count(c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT),
             files=frozenset(entry.file for entry in entries),
             entries=entries,
         )
@@ -697,9 +698,14 @@ class FlextInfraModGateEngine:
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure:
             return r[t.Pair[Path, m.Cli.AtomicFileState]].from_failure(observed)
-        if observed.value != snapshot:
+        if observed.value.content != snapshot.content:
             return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
                 f"finding source changed during scanning: {resolved_file}",
+                error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+            )
+        if observed.value != snapshot:
+            return r[t.Pair[Path, m.Cli.AtomicFileState]].ok(
+                (file_path, observed.value),
             )
         return r[t.Pair[Path, m.Cli.AtomicFileState]].ok((file_path, snapshot))
 
@@ -730,6 +736,27 @@ class FlextInfraModGateEngine:
             return outcome.ok((True, c.Infra.ModScanFindingClass.ACTIONABLE))
         return outcome.ok((False, c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX))
 
+    @staticmethod
+    def _finding_repository(
+        file_path: Path,
+        repository_roots: t.SequenceOf[Path],
+        root: Path,
+    ) -> str:
+        """Return the governed repository name owning one finding path.
+
+        Returns:
+            The nearest governed repository name, else the scanned root name.
+
+        """
+        return next(
+            (
+                candidate.name
+                for candidate in repository_roots
+                if file_path.is_relative_to(candidate)
+            ),
+            root.resolve().name,
+        )
+
     @classmethod
     def _line_finding(
         cls,
@@ -751,12 +778,35 @@ class FlextInfraModGateEngine:
         contract_error = cls._finding_contract_error(finding, line, rule_files_by_id)
         if contract_error is not None:
             return r[m.Infra.ModScanFinding].fail(contract_error)
+        raw_replacement = finding.get("replacement")
+        replacement = raw_replacement if isinstance(raw_replacement, str) else None
         authenticated = cls._authenticated_snapshot(
             root,
             str(finding.get("file")),
             source_states,
         )
         if authenticated.failure:
+            if authenticated.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                return r[m.Infra.ModScanFinding].ok(
+                    m.Infra.ModScanFinding(
+                        rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
+                        rule_id=str(rule_id),
+                        repository=cls._finding_repository(
+                            Path(str(finding.get("file"))),
+                            repository_roots,
+                            root,
+                        ),
+                        file=Path(str(finding.get("file"))),
+                        range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                            finding.get("range"),
+                        ),
+                        text=str(finding.get("text")),
+                        replacement=replacement,
+                        actionable=False,
+                        classification=c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT,
+                        payload=t.Cli.JSON_MAPPING_ADAPTER.validate_python(finding),
+                    ),
+                )
             return r[m.Infra.ModScanFinding].from_failure(authenticated)
         file_path, snapshot = authenticated.value
         if snapshot.content is None:
@@ -775,19 +825,11 @@ class FlextInfraModGateEngine:
         if classified.failure:
             return r[m.Infra.ModScanFinding].from_failure(classified)
         actionable, classification = classified.value
-        repository = next(
-            (
-                candidate.name
-                for candidate in repository_roots
-                if file_path.is_relative_to(candidate)
-            ),
-            root.resolve().name,
-        )
         return r[m.Infra.ModScanFinding].ok(
             m.Infra.ModScanFinding(
                 rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
                 rule_id=str(rule_id),
-                repository=repository,
+                repository=cls._finding_repository(file_path, repository_roots, root),
                 file=file_path,
                 source_owner="generator"
                 if snapshot.content.decode(c.DEFAULT_ENCODING).startswith(
@@ -865,6 +907,7 @@ class FlextInfraModGateEngine:
                 non_actionable_with_fix=counts[
                     c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
                 ],
+                deferred=counts[c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT],
                 files=frozenset(files),
                 entries=tuple(entries),
             ),
@@ -1015,7 +1058,7 @@ class FlextInfraModGateEngine:
         if fix:
             published = FlextInfraModReplacements.publish(
                 root,
-                complete_report,
+                cls.authored(complete_report),
                 exact_replacements=rule_ids is not None,
             )
             if published.failure:

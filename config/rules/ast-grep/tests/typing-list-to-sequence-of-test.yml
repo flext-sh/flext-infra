@@ -80,8 +80,29 @@ valid:
     from flext_core import t
     import typing
     value: typing.Literal[typing.List[str]]
-# `invalid` MUST match: a real generic in a module that binds both `List` and
-# `t`, plus the dotted form which needs no `List` binding.
+  - |
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import u as t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import t
+    from typing import List
+    def f(t, value: List[str]): ...
+  - |
+    from flext_core import t
+    from typing import List
+    t = None
+    value: List[str]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import List
+    value: List[str]
+# `invalid` MUST match and fix to the exact list alias, never an abstraction.
 invalid:
   - |
     from flext_core import t
@@ -127,7 +148,7 @@ invalid:
     from flext_core import t
     import typing
     value: typing.Annotated[typing.List[str], typing.List[str]]
-  # Executed after the engine fixes it: aliases are types, factories are values.
+  # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t
     from typing import List, get_origin
@@ -147,6 +168,12 @@ invalid:
     payload = Payload()
     payload.values.append("example")
     assert payload.values == ["example"]
+    payload.values[0] = "updated"
+    payload.values.extend(["another"])
+    payload.values.sort()
+    assert payload.values.copy() + ["last"] == ["another", "updated", "last"]
+    assert Payload.model_validate({"values": ("input",)}).values == ["input"]
+    assert Payload.model_json_schema()["properties"]["values"]["type"] == "array"
     assert make() == []
     assert not callable(get_origin(Contract.__value__))
     assert Contract.__value__ == make.__annotations__["return"]

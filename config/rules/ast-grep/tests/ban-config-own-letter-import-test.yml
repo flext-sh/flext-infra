@@ -5,6 +5,8 @@
 # layer zero, even when this narrower document does not match them.
 id: ban-config-own-letter-import
 valid:
+  - |
+    from ai_hub import configextra as config
   # Not the config alias; the stronger boundary owns this finding.
   - |
     from ai_hub import m

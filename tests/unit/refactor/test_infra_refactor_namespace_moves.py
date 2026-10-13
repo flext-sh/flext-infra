@@ -217,7 +217,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         source_file = package_root / "service.py"
         self._write_file(
             source_file,
-            "from __future__ import annotations\n\nfrom typing import Literal\n\n"
+            "from __future__ import annotations\n\n"
+            "from collections import deque as PublishedQueue\n"
+            "from typing import Literal\n\n"
             f"{declaration}\n"
             "value = 'retained'\n"
             "def retained() -> str:\n"
@@ -248,12 +250,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 "from demo_pkg import consumer, service, typings\n"
                 "print(consumer.Published is typings.Alias)\n"
                 "print(consumer.retained() == service.value == 'retained')\n"
+                "print(service.PublishedQueue([1]).popleft() == 1)\n"
                 "args = get_args(typings.Alias.__value__)\n"
                 "print(get_args(args[-1]) == ('[',) "
                 "if typings.Alias.__type_params__ else args in (('[',), ('value',)))\n",
                 python_paths=(str(package_root.parent),),
             ),
-            eq=["True"] * 3,
+            eq=["True"] * 4,
         )
         sources = {
             path: path.read_text(encoding="utf-8")

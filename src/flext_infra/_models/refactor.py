@@ -199,8 +199,11 @@ class FlextInfraModelsRefactor(
         ]
         states: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Atomic source states actually observed"),
-        ]
+            m.Field(
+                exclude=True,
+                description="In-memory scan authentication; receipts retain byte digests",
+            ),
+        ] = ()
         sha256: Annotated[
             t.StrMapping, m.Field(description="Source and catalog byte digests")
         ]

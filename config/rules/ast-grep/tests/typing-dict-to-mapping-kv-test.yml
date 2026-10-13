@@ -81,7 +81,29 @@ valid:
     from flext_core import t
     import typing
     value: typing.Literal[typing.Dict[str, int]]
-# `invalid` MUST match and preserve mutability through the imported `t` facade.
+  - |
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+  - |
+    from flext_core import u as t
+    from typing import Dict
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Dict
+    def f(t, value: Dict[str, int]): ...
+  - |
+    from flext_core import t
+    from typing import Dict
+    t = None
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+# `invalid` MUST match and fix to the exact dict alias, never an abstraction.
 invalid:
   # bare name in a parameter annotation
   - |
@@ -137,7 +159,7 @@ invalid:
     from flext_core import t
     import typing
     value: typing.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
-  # Executed after the engine fixes it: aliases are types, factories are values.
+  # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t
     from typing import Dict, get_origin
@@ -157,6 +179,12 @@ invalid:
     payload = Payload()
     payload.values["example"] = 1
     assert payload.values["example"] == 1
+    payload.values.update({"updated": 2})
+    assert payload.values.copy() | {"last": 3} == {"example": 1, "updated": 2, "last": 3}
+    payload.values |= {"last": 3}
+    assert payload.values.pop("last") == 3
+    assert Payload.model_validate({"values": {"input": "4"}}).values == {"input": 4}
+    assert Payload.model_json_schema()["properties"]["values"]["type"] == "object"
     assert make() == {}
     assert not callable(get_origin(Contract.__value__))
     assert Contract.__value__ == make.__annotations__["return"]

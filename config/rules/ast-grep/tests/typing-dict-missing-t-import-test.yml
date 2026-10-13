@@ -1,5 +1,5 @@
 id: typing-dict-missing-t-import
-# `valid` MUST NOT match: the module binds `t` (the auto-fixing rule owns it),
+# `valid` MUST NOT match: the module binds canonical `t` (its companion owns it),
 # `Dict` is not typing's, or the text is not a type node.
 valid:
   - |
@@ -46,6 +46,28 @@ invalid:
     from typing import Dict
     def local():
         from flext_core import t
+    value: Dict[str, int]
+  - |
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+  - |
+    from flext_core import u as t
+    from typing import Dict
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Dict
+    def f(t, value: Dict[str, int]): ...
+  - |
+    from flext_core import t
+    from typing import Dict
+    t = None
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import Dict
     value: Dict[str, int]
   - |
     from typing import Dict, TYPE_CHECKING

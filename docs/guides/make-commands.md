@@ -198,13 +198,23 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   missing native output and duplicate full-project repo/gate selections fail
   before hygiene probes. The auditor never searches by time or combines counts
   from multiple captures of the same repo/gate.
-- `flext-infra refactor violations-sweep` measures the repository's mod scan
-  totals, runs the canonical repair sequence (`make fix`, `make fmt`,
-  `make mod`) in order, measures again, and publishes
-  `.reports/refactor/violations-sweep.json`. The command FAILS the moment any
-  total increased: automation may reduce a tree's violations, never grow
-  them. A sweep over a tree the repair sequence cannot improve is a
-  zero-delta success.
+- `flext-infra refactor violations-sweep` observes the full governed mod catalog
+  before and after an ordered canonical Make sequence. Its default comes from
+  `Infra.codegen.make.violations_sweep_repair_verbs`; `--repair-verbs` accepts a
+  comma-separated sequence from the typed selector-free Make vocabulary,
+  including generation, namespace repair and audit. `--rules` validates exact
+  rule IDs for audit-only focus; a focused request refuses unfiltered repair
+  verbs before effects. Isolated mutation belongs to `refactor ast --rules`.
+  Focus never hides other rules or projects from regression detection. Audit
+  runs independently against every discovered project's Makefile from the
+  workspace root and must preserve the authenticated Python source/catalog
+  bytes, rule plan and inventory. Receipts retain each operation's cwd, timing,
+  raw process outcome, audit snapshots and failed/unexecuted verdicts. Introduced
+  occurrences, increased totals, operation failures and audit mutations remain
+  failures, with the first cause preserved after inspection/publication failure.
+  The latest receipt is `.reports/refactor/violations-sweep.json`; full
+  invocation-local before/after evidence remains preserved alongside it. Root
+  audit success or unchanged totals alone never prove every project green.
 
 ## Mandatory unsafe repair channel (operator law 2026-10-05)
 

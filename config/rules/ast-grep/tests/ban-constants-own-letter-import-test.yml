@@ -5,6 +5,10 @@
 # stays legal.
 id: ban-constants-own-letter-import
 valid:
+  - |
+    from ai_hub import cextra as c
+  - |
+    from c import unrelated
   # A different letter from the own root is legal facade assembly.
   - |
     from ai_hub import settings
@@ -22,6 +26,10 @@ valid:
   - |
     import ai_hub
 invalid:
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import c as aliased
   - |
     from ai_hub import c as aliased
   - |

@@ -882,6 +882,7 @@ class TestsFlextInfraRefactorImportNormalization:
         [
             "from demo_pkg import t",
             "from demo_pkg import settings",
+            "from demo_pkg import settings as own",
             "from demo_pkg._models.base import DemoModelsBase",
             "from demo_pkg._settings import DemoSettings",
             "from ._settings import DemoSettings",
@@ -904,6 +905,19 @@ class TestsFlextInfraRefactorImportNormalization:
                 project_root=project,
                 file_path=package / f"_{role}.py",
                 source=source,
+            )
+
+    @classmethod
+    @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    def test_layer_zero_role_uses_architecture_not_substring(cls, role: str) -> None:
+        """A domain configuration name cannot override its enclosing family."""
+        tm.that(u.Infra.import_module_role(f"demo_pkg._{role}"), eq="layer0")
+        tm.that(u.Infra.import_module_role(f"demo_pkg.{role}_sources"), eq="layer0")
+        tm.that(u.Infra.import_module_role(f"demo_pkg.{role}uration"), eq="consumer")
+        for family in u.Infra.facade_families().values():
+            tm.that(
+                u.Infra.import_module_role(f"demo_pkg.{family.directory}._{role}.base"),
+                eq="family",
             )
 
     @classmethod

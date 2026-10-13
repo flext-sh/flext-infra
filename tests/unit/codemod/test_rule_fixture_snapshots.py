@@ -27,7 +27,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tmp_path: Path,
         collection: str,
     ) -> None:
-        """Validate real engine fixes and execute the staged Python consumer."""
+        """Validate real fixes and execute concrete collection/Pydantic contracts."""
         owner = Path(__file__).resolve().parents[3]
         demo = self._owner(tmp_path)
         catalog = self._catalog(tmp_path)
@@ -42,6 +42,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         for name in (
             "semantic-type-context",
+            "typing-annotated-form",
+            "typing-literal-form",
             "t-locally-bound",
             f"typing-{collection}-generic",
             f"{collection}-imported-from-typing",

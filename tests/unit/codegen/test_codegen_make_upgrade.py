@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from tests import c, t, tm, u
+from flext_infra import config, r
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -598,7 +598,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 r"\$\(UV\) lock --check\b",
                 regex=True,
             ),
-            eq={"_upg_converge", "_builtin-audit"},
+            eq={"_upg_converge", "_upg_reconcile_locks", "_builtin-audit"},
         )
         tm.that(
             self._recipe_targets_containing(makefile, "codegen mise-proof"),
@@ -733,13 +733,33 @@ class TestsFlextInfraCodegenMakeUpgrade:
             tmp_path / "runtime-owner",
             c.Infra.MakeProfile.WORKSPACE,
         )
-        source = u.Tests.resolved_make_checkout(
-            resolved_make_templates[c.Infra.MakeProfile.STANDALONE],
-            tmp_path / "member-source",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        branch = u.Tests.checkout_integration(source)
         member = u.Tests.repository_ref("member", path=Path("member"))
+        repository = u.Tests.repository_ref(member.distribution)
+        source = tmp_path / "member-source"
+        beads = u.Tests.beads_project(repository.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            source,
+            repository.distribution,
+            beads=u.Tests.WorktreeFixture.BeadsIdentity(
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            ),
+        )
+        plan = u.Tests.conform_plan(
+            source,
+            u.Tests.workspace_spec(
+                repository,
+                project=u.Tests.project_spec(repository.name),
+            ),
+        )
+        tm.ok(
+            u.Tests.materialize_codegen_plans(
+                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plan.files),
+            ),
+        )
+        u.Tests.commit_git_changes(source, "render independent upgrade consumer")
+        branch = u.Tests.checkout_integration(source)
         u.Tests.git_bootstrap(
             root,
             (
@@ -787,6 +807,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         (checkout / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
             "post-upg:\n"
             '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
+            '\t@$(UV) lock --check --project "$(PROJECT_ROOT)"\n'
             "\t@printf '%s\\n' 'member-runtime-reconciled'\n"
             "\t@printf '%s\\n' 'member-hook-stop' >&2; exit 29\n",
             encoding="utf-8",
@@ -808,5 +829,5 @@ class TestsFlextInfraCodegenMakeUpgrade:
             has=["root-runtime-reconciled", "member-runtime-reconciled"],
         )
         tm.that(process.stderr, has="member-hook-stop")
-        tm.that((root / "root-upgrade-started").exists(), eq=False)
+        tm.that((root / "root-upgrade-started").exists(), eq=True)
         tm.that((checkout / ".venv").exists(), eq=False)

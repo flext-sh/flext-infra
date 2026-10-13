@@ -242,7 +242,10 @@ class FlextInfraUtilitiesRefactor:
             ]
         ]
         classified = (
-            report.actionable + report.detection_only + report.non_actionable_with_fix
+            report.actionable
+            + report.detection_only
+            + report.non_actionable_with_fix
+            + report.deferred
         )
         if classified != report.findings or report.findings != len(report.entries):
             return result_type.fail(
@@ -268,6 +271,7 @@ class FlextInfraUtilitiesRefactor:
             c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: (
                 report.non_actionable_with_fix
             ),
+            c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT: report.deferred,
         }
         if class_totals != expected_class_totals:
             return result_type.fail(

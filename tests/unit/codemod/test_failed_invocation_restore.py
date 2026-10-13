@@ -217,6 +217,108 @@ class TestsFlextInfraFailedInvocationProgress:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("apply", [False, True])
+    def test_default_ast_scan_and_apply_reject_warning_findings_without_fix(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+        *,
+        apply: bool,
+    ) -> None:
+        """Mechanical quiescence cannot accept a warning-level no-fix finding."""
+        rule_id = "no-fix-warning"
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                rule_id: (
+                    f"id: {rule_id}\nlanguage: Python\nseverity: warning\n"
+                    'rule:\n  pattern: value = "unresolved"\n'
+                ),
+            },
+        )
+        sample = mod_workspace / "sample.py"
+        source = 'value = "unresolved"\n'
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            *(["--apply"] if apply else []),
+        ])
+        capture = capsys.readouterr()
+        tm.that(exit_code, ne=0, msg=capture.out + capture.err)
+        tm.that(capture.out + capture.err, lacks="mechanical fixed point verified")
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        entries = tuple(entry for entry in evidence.entries if entry.rule_id == rule_id)
+        tm.that(len(entries), eq=1)
+        tm.that(entries[0].actionable, eq=False)
+        tm.that(
+            entries[0].classification, eq=c.Infra.ModScanFindingClass.DETECTION_ONLY
+        )
+        tm.that(entries[0].payload["severity"], eq="warning")
+        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_failed_selected_apply_keeps_native_cause_when_after_scan_fails(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """A real receipt rejection retains accepted bytes and its primary cause."""
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
+        rule_id = "selected-receipt"
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                rule_id: (
+                    f"id: {rule_id}\nlanguage: Python\nseverity: warning\n"
+                    'rule:\n  pattern: selected = "before"\n'
+                    'fix: selected = "after"\n'
+                    "metadata:\n  expected: 1\n"
+                ),
+            },
+        )
+        sample = mod_workspace / "receipt.py"
+        stem = u.derive_class_stem(mod_workspace.name.replace("_", "-"))
+        source = (
+            '"""Selected receipt consumer."""\n\n'
+            "from __future__ import annotations\n\n\n"
+            f"class {stem}Receipt:\n"
+            '    """A native selected-rule target."""\n\n'
+            '    selected = "before"\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        result = FlextInfraCodemodAstScan(
+            repository_root=mod_workspace,
+            rules=rule_id,
+            apply_changes=True,
+        ).execute()
+        expected = f"ast-grep rule {rule_id} declares 1 finding(s), scan produced 0"
+        tm.fail(result, has=expected)
+        tm.that(result.error, eq=expected)
+        capture = capsys.readouterr()
+        tm.that(capture.err, has="secondary whole-catalog after scan failure")
+        tm.that(capture.err, has=expected)
+        tm.that(capture.err, has="accepted writes retained; no rollback performed")
+        tm.that(
+            sample.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=source.replace('selected = "before"', 'selected = "after"'),
+        )
+        destination = mod_workspace / c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        before_paths = tuple(
+            (destination.parent / destination.stem).glob("*/before.json")
+        )
+        tm.that(len(before_paths), eq=1)
+        before = m.Infra.ModScanEvidence.model_validate_json(
+            before_paths[0].read_bytes()
+        )
+        tm.that(before.totals_by_rule.get(rule_id), eq=1)
+        tm.that(before_paths[0].with_name("after.json").exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.slow
     def test_failed_mechanical_cycle_retains_accepted_rewrite(
         mod_workspace: Path,
     ) -> None:

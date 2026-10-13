@@ -199,6 +199,28 @@ class TestsFlextInfraRopeAnalysis:
 
     @staticmethod
     @pytest.mark.parametrize(
+        "declaration",
+        [
+            "def invalid():\n    pass\nclass Consumer(invalid):\n    pass\n",
+            "class Consumer(missing):\n    pass\n",
+            "class Parent:\n    pass\nclass Consumer(Parent, missing):\n    pass\n",
+        ],
+    )
+    def test_class_info_refuses_incomplete_superclass_lineage(
+        tmp_path: Path,
+        declaration: str,
+    ) -> None:
+        """SDK-omitted bases cannot turn an invalid class into a root namespace."""
+        project, package = u.Tests.demo_project(tmp_path)
+        source = package / "consumer.py"
+        source.write_text(declaration, encoding="utf-8")
+        with u.Infra.open_project(project) as rope_project:
+            resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
+            with pytest.raises(ValueError, match="Unresolved Rope superclass lineage"):
+                u.Infra.resolve_class_info(rope_project, resource)
+
+    @staticmethod
+    @pytest.mark.parametrize(
         ("statement", "suffix"),
         [
             ("from . import Owner as Local", ".inner.leaf.Owner"),

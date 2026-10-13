@@ -6,6 +6,12 @@ valid:
     import pydantic
 invalid:
   - |
+    from flext_infra import settings as own
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_infra import t as own
+  - |
     from flext_infra import config
   - |
     from flext_infra import settings

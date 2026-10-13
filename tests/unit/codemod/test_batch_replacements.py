@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, t
+from flext_infra import c, m, main, t
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
 from tests import tm, u
@@ -79,14 +80,49 @@ class TestsFlextInfraBatchReplacements:
             b"from __future__ import annotations\n\n"
             b"from typing import TYPE_CHECKING\n\n"
             b"if TYPE_CHECKING:\n    from pathlib import Path\n\n"
-            b'value = "before"\n__all__ = ("value",)\n'
+            b'value: Path = "before"\n__all__ = ("value",)\n'
         )
         report = self._report(path, original)
+        statement = b'value: Path = "before"'
+        start = original.index(statement)
+        offsets: t.JsonDict = {"start": start, "end": start + len(statement)}
+        finding = report.entries[0].model_copy(
+            update={
+                "text": statement.decode(),
+                "replacement": 'value = "after"',
+                "range": {"byteOffset": offsets},
+                "payload": {"replacementOffsets": offsets, "severity": "error"},
+            }
+        )
+        report = report.model_copy(update={"entries": (finding,)})
         tm.ok(FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_text(), lacks="TYPE_CHECKING")
         tm.that(path.read_text(), lacks="from pathlib import Path")
         tm.that(path.read_text(), has='value = "after"')
         tm.that(path.read_text(), has='__all__ = ("value",)')
+
+    def test_existing_reexport_and_side_effect_import_survive_normalization(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A fewer-findings cleanup never deletes an unchanged public binding."""
+        root = u.Tests.git_repository(tmp_path)
+        path = root / "subject.py"
+        original = b'from pathlib import Path\nimport os\nvalue = "before"\n'
+        tm.ok(FlextInfraModReplacements.publish(root, self._report(path, original)))
+        output = tm.ok(
+            u.Cli.run([
+                sys.executable,
+                "-I",
+                "-c",
+                (
+                    "import runpy; "
+                    f"exports = runpy.run_path({str(path)!r}); "
+                    "print(exports['Path']('survives')); print(exports['os'].name)"
+                ),
+            ])
+        )
+        tm.that(output.stdout, has="survives")
 
     def test_generator_findings_remain_visible_and_unmodified(
         self,
@@ -103,31 +139,95 @@ class TestsFlextInfraBatchReplacements:
         tm.that(report.findings, eq=1)
         tm.that(path.read_bytes(), eq=original)
 
+    @pytest.mark.slow
+    @pytest.mark.parametrize("selected", [False, True])
     def test_generator_evidence_never_blocks_authored_rewrites(
         self,
-        tmp_path: Path,
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+        *,
+        selected: bool,
     ) -> None:
-        """Test generator evidence never blocks authored rewrites."""
-        root = u.Tests.git_repository(tmp_path)
-        original = b'value = "before"\n'
-        authored = self._report(root / "authored.py", original).entries[0]
-        generated = self._report(
-            root / "generated.py",
-            original,
-            generated=True,
-        ).entries[0]
-        evidence = generated.model_copy(
-            update={
-                "replacement": None,
-                "actionable": False,
-                "classification": c.Infra.ModScanFindingClass.DETECTION_ONLY,
+        """Real actionable generated findings block acceptance, not authored progress."""
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
+        rule_id = "mixed-generator-boundary"
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                rule_id: (
+                    f"id: {rule_id}\nlanguage: Python\nseverity: warning\n"
+                    'rule:\n  pattern: value = "before"\n'
+                    'fix: value = "after"\n'
+                ),
             },
         )
-        report = FlextInfraModGateEngine.recounted((authored, evidence))
-        tm.ok(FlextInfraModReplacements.publish(root, report))
-        tm.that((root / "authored.py").read_bytes(), eq=b'value = "after"\n')
-        tm.that((root / "generated.py").read_bytes(), eq=original)
-        tm.that(FlextInfraModGateEngine.authored(report).entries, eq=(authored,))
+        stem = u.derive_class_stem(mod_workspace.name.replace("_", "-"))
+        sources = {
+            label: (
+                (f"{c.Infra.AUTOGEN_HEADER}\n" if label == "generated" else "")
+                + '"""Generator boundary fixture."""\n\n'
+                + "from __future__ import annotations\n\n\n"
+                + f"class {stem}{label.title()}:\n"
+                + '    """Independent rewrite target."""\n\n'
+                + '    value = "before"\n'
+            )
+            for label in ("authored", "generated")
+        }
+        for label, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(mod_workspace / f"{label}.py", source))
+        applied = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=True,
+                rule_ids=(rule_id,) if selected else None,
+            )
+        )
+        entries = tuple(entry for entry in applied.entries if entry.rule_id == rule_id)
+        tm.that(len(entries), eq=2)
+        tm.that({entry.source_owner for entry in entries}, eq={"authored", "generator"})
+        tm.that(all(entry.actionable for entry in entries), eq=True)
+        receipt = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(receipt.command, eq=c.Infra.ModScanCommand.APPLY)
+        tm.that(receipt.totals_by_rule[rule_id], eq=2)
+        tm.that(
+            tuple(entry for entry in receipt.entries if entry.rule_id == rule_id),
+            eq=entries,
+        )
+        authored = mod_workspace / "authored.py"
+        generated = mod_workspace / "generated.py"
+        tm.that(
+            authored.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=sources["authored"].replace('value = "before"', 'value = "after"'),
+        )
+        tm.that(
+            generated.read_bytes(), eq=sources["generated"].encode(c.DEFAULT_ENCODING)
+        )
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--apply",
+            *(["--rules", rule_id] if selected else []),
+        ])
+        capture = capsys.readouterr()
+        tm.that(exit_code, ne=0, msg=capture.out + capture.err)
+        tm.that(capture.out + capture.err, lacks="fixed point verified")
+        remaining = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        blocking = tuple(
+            entry for entry in remaining.entries if entry.rule_id == rule_id
+        )
+        tm.that(len(blocking), eq=1)
+        tm.that(blocking[0].source_owner, eq="generator")
+        tm.that(blocking[0].actionable, eq=True)
+        tm.that(blocking[0].classification, eq=c.Infra.ModScanFindingClass.ACTIONABLE)
+        tm.that(
+            generated.read_bytes(), eq=sources["generated"].encode(c.DEFAULT_ENCODING)
+        )
 
     @pytest.mark.parametrize(
         "changed",

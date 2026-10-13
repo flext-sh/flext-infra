@@ -245,7 +245,7 @@ class TestsFlextInfraModernizerFloorOwner:
         profile = m.Infra.ScaffoldDependencyProfileSpec.model_validate(profiles[0])
         parsed = Requirement(profile.runtime[0])
         tm.that(parsed.extras, eq=original.extras)
-        tm.that(parsed.marker, eq=original.marker)
+        tm.that(parsed.marker == original.marker, eq=True)
         tm.that(profile.codegen, eq=(direct,))
         tm.that(parsed.specifier.contains(version), eq=True)
         tm.that(str(parsed.specifier), has=f"~={compatibility}")

@@ -38,6 +38,103 @@ class FlextInfraRefactorViolationsSweep(
 
         """
         root = self.repository_root
+        selection = self._validated_selection()
+        if selection.failure:
+            return r[m.Infra.ViolationsSweepReport].from_failure(selection)
+        rule_ids, verbs = selection.value
+        projects = tuple(u.Infra.governed_project_roots(root))
+        destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        invocation = destination.parent / destination.stem / uuid4().hex
+        before_scan = self._scan_evidence(root, invocation / "before.json")
+        if before_scan.failure:
+            return r[m.Infra.ViolationsSweepReport].from_failure(before_scan)
+        repairs = self._repair_stages(
+            root,
+            verbs,
+            projects,
+        )
+        after_scan = self._scan_evidence(root, invocation / "after.json")
+        report = m.Infra.ViolationsSweepReport(
+            schema_version=c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION,
+            repository_root=root.resolve(),
+            repair_verbs=tuple(verbs),
+            focused_rule_ids=rule_ids or (),
+            repository_roots=projects,
+            stages=tuple(repairs[1]),
+            before=m.Infra.ViolationsTotals.from_scan_report(before_scan.value[0]),
+            after=(
+                m.Infra.ViolationsTotals.from_scan_report(after_scan.value[0])
+                if after_scan.success
+                else None
+            ),
+            rule_deltas=(
+                u.Infra.rule_deltas(
+                    before_scan.value[0],
+                    after_scan.value[0],
+                    inventory=tuple(
+                        sorted({
+                            (repository, rule_id)
+                            for receipt in (before_scan.value[1], after_scan.value[1])
+                            for repository in receipt.evidence.totals_by_repository
+                            for rule_id in receipt.evidence.totals_by_rule
+                        })
+                    ),
+                )
+                if after_scan.success
+                else ()
+            ),
+            completed_verbs=tuple(repairs[0]),
+            failed_verb=repairs[2],
+            repair_error=str(repairs[3].error) if repairs[3] is not None else None,
+            after_scan_error=str(after_scan.error) if after_scan.failure else None,
+            before_evidence=before_scan.value[1],
+            after_evidence=after_scan.value[1] if after_scan.success else None,
+            before_plan=before_scan.value[2],
+            after_plan=after_scan.value[2] if after_scan.success else None,
+            before_source_sha256=before_scan.value[3],
+            after_source_sha256=after_scan.value[3] if after_scan.success else None,
+        )
+        published = u.Infra.publish_refactor_report_evidence(
+            root,
+            report,
+            relative_path=invocation / destination.name,
+        )
+        if published.success:
+            published = u.Infra.publish_refactor_report_evidence(
+                root,
+                report,
+                relative_path=destination,
+            )
+        for label, outcome in (("scan", after_scan), ("publication", published)):
+            if outcome.failure and repairs[3] is not None:
+                sys.stderr.write(
+                    f"violations sweep secondary {label} failure: {outcome.error}\n",
+                )
+        if repairs[3] is not None or after_scan.failure or published.failure:
+            return r[m.Infra.ViolationsSweepReport].from_failure(
+                repairs[3]
+                if repairs[3] is not None
+                else (after_scan if after_scan.failure else published),
+            )
+        if any(delta.introduced for delta in report.rule_deltas):
+            return r[m.Infra.ViolationsSweepReport].fail(
+                "violations sweep introduced finding occurrences",
+            )
+        if report.increased_totals:
+            return r[m.Infra.ViolationsSweepReport].fail(
+                "violations sweep grew " + ", ".join(report.increased_totals),
+            )
+        return r[m.Infra.ViolationsSweepReport].ok(report)
+
+    def _validated_selection(
+        self,
+    ) -> p.Result[t.Pair[t.StrSequence | None, t.StrSequence]]:
+        """Validate the existing sweep request before source or Make effects.
+
+        Returns:
+            The elected rule identities and declared selector-free verbs.
+        """
+        result = r[t.Pair[t.StrSequence | None, t.StrSequence]]
         if any(
             selector is not None
             for selector in (
@@ -46,7 +143,7 @@ class FlextInfraRefactorViolationsSweep(
                 self.project_filter,
             )
         ):
-            return r[m.Infra.ViolationsSweepReport].fail(
+            return result.fail(
                 "violations sweep requires the full governed project inventory",
             )
         rule_ids = (
@@ -54,9 +151,9 @@ class FlextInfraRefactorViolationsSweep(
             if self.rules is not None
             else None
         )
-        focused = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
+        focused = u.Infra.codemod_rule_plan(self.repository_root, rule_ids=rule_ids)
         if focused.failure:
-            return r[m.Infra.ViolationsSweepReport].from_failure(focused)
+            return result.from_failure(focused)
         verbs = (
             tuple(verb.strip() for verb in self.repair_verbs.split(","))
             if self.repair_verbs is not None
@@ -68,21 +165,32 @@ class FlextInfraRefactorViolationsSweep(
             if not verb.arguments and set(verb.profiles) == set(c.Infra.MakeProfile)
         }
         if not verbs or any(verb not in admissible for verb in verbs):
-            return r[m.Infra.ViolationsSweepReport].fail(
+            return result.fail(
                 "violations sweep requires declared selector-free Make verbs: "
                 + ", ".join(verb for verb in verbs if verb not in admissible),
             )
         if rule_ids is not None and any(verb != "audit" for verb in verbs):
-            return r[m.Infra.ViolationsSweepReport].fail(
+            return result.fail(
                 "selected-rule mutation is not implemented; no repair verb invoked",
             )
-        projects = tuple(u.Infra.governed_project_roots(root))
-        destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
-        invocation = destination.parent / destination.stem / uuid4().hex
-        before_scan = self._scan_evidence(root, invocation / "before.json")
-        if before_scan.failure:
-            return r[m.Infra.ViolationsSweepReport].from_failure(before_scan)
-        before = m.Infra.ViolationsTotals.from_scan_report(before_scan.value[0])
+        return result.ok((rule_ids, verbs))
+
+    def _repair_stages(
+        self,
+        root: Path,
+        verbs: t.StrSequence,
+        projects: t.SequenceOf[Path],
+    ) -> t.Quad[
+        t.StrSequence,
+        t.SequenceOf[m.Infra.ViolationsSweepStage],
+        str | None,
+        p.Result[bool] | None,
+    ]:
+        """Run the declared sequence and retain every invoked or blocked stage.
+
+        Returns:
+            Completed verbs, stage receipts, first failed verb and original failure.
+        """
         completed: list[str] = []
         stages: list[m.Infra.ViolationsSweepStage] = []
         failed_verb: str | None = None
@@ -125,82 +233,7 @@ class FlextInfraRefactorViolationsSweep(
             if repair_failure is not None:
                 continue
             completed.append(verb)
-        after_scan = self._scan_evidence(root, invocation / "after.json")
-        after = (
-            None
-            if after_scan.failure
-            else m.Infra.ViolationsTotals.from_scan_report(after_scan.value[0])
-        )
-        deltas = (
-            u.Infra.rule_deltas(
-                before_scan.value[0],
-                after_scan.value[0],
-                inventory=tuple(
-                    sorted({
-                        (repository, rule_id)
-                        for receipt in (before_scan.value[1], after_scan.value[1])
-                        for repository in receipt.evidence.totals_by_repository
-                        for rule_id in receipt.evidence.totals_by_rule
-                    })
-                ),
-            )
-            if after_scan.success
-            else ()
-        )
-        report = m.Infra.ViolationsSweepReport(
-            schema_version=c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION,
-            repository_root=root.resolve(),
-            repair_verbs=tuple(verbs),
-            focused_rule_ids=rule_ids or (),
-            repository_roots=projects,
-            stages=tuple(stages),
-            before=before,
-            after=after,
-            rule_deltas=tuple(deltas),
-            completed_verbs=tuple(completed),
-            failed_verb=failed_verb,
-            repair_error=(
-                str(repair_failure.error) if repair_failure is not None else None
-            ),
-            after_scan_error=str(after_scan.error) if after_scan.failure else None,
-            before_evidence=before_scan.value[1],
-            after_evidence=after_scan.value[1] if after_scan.success else None,
-            before_plan=before_scan.value[2],
-            after_plan=after_scan.value[2] if after_scan.success else None,
-            before_source_sha256=before_scan.value[3],
-            after_source_sha256=after_scan.value[3] if after_scan.success else None,
-        )
-        published = u.Infra.publish_refactor_report_evidence(
-            root,
-            report,
-            relative_path=invocation / destination.name,
-        )
-        if published.success:
-            published = u.Infra.publish_refactor_report_evidence(
-                root,
-                report,
-                relative_path=destination,
-            )
-        for label, outcome in (("scan", after_scan), ("publication", published)):
-            if outcome.failure and repair_failure is not None:
-                sys.stderr.write(
-                    f"violations sweep secondary {label} failure: {outcome.error}\n",
-                )
-        if repair_failure is not None or after_scan.failure or published.failure:
-            return r[m.Infra.ViolationsSweepReport].from_failure(
-                repair_failure
-                if repair_failure is not None
-                else (after_scan if after_scan.failure else published),
-            )
-        if any(delta.introduced for delta in report.rule_deltas):
-            return r[m.Infra.ViolationsSweepReport].fail(
-                "violations sweep introduced finding occurrences",
-            )
-        if report.increased_totals:
-            return r[m.Infra.ViolationsSweepReport].fail(
-                "violations sweep grew " + ", ".join(report.increased_totals),
-            )
-        return r[m.Infra.ViolationsSweepReport].ok(report)
+        return tuple(completed), tuple(stages), failed_verb, repair_failure
 
     @classmethod
     def _run_stage(

@@ -143,6 +143,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades while retaining accepted progress.
 
+        Selected failures remain primary over later scan or publication failures.
+        Post-apply observations never roll back accepted selected writes.
+
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
@@ -178,7 +181,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"whole-catalog after scan failure: {after.error}; "
                 "accepted writes retained; no rollback performed\n",
             )
-            return outcome if outcome.failure else r[t.Cli.ResultValue].from_failure(after)
+            return (
+                outcome if outcome.failure else r[t.Cli.ResultValue].from_failure(after)
+            )
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             after.value,
@@ -192,7 +197,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"after evidence publication failure: {receipt.error}; "
                 "accepted writes retained; no rollback performed\n",
             )
-            return outcome if outcome.failure else r[t.Cli.ResultValue].from_failure(receipt)
+            return (
+                outcome
+                if outcome.failure
+                else r[t.Cli.ResultValue].from_failure(receipt)
+            )
         cli.display_text(
             f"ast: whole-catalog after evidence={receipt.value.path} "
             f"sha256={receipt.value.sha256}",
@@ -286,10 +295,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 validate_receipts=True,
             ).unwrap()
         remaining_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        if remaining_ast.actionable or text.findings:
+        if remaining_ast.findings or text.findings:
             return r[t.Cli.ResultValue].fail(
                 f"ast fixed point retains findings: {remaining_ast.findings} "
-                f"ast-grep ({remaining_ast.actionable} actionable), "
+                f"ast-grep ({remaining_ast.actionable} actionable, "
+                f"{remaining_ast.detection_only} detection-only), "
                 f"{text.findings} sed-by-list; run make mod for the "
                 "semantic phases",
             )

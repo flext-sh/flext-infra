@@ -5,6 +5,8 @@
 # layer zero, even when this narrower document does not match them.
 id: ban-settings-own-letter-import
 valid:
+  - |
+    from ai_hub import settingsextra as settings
   # Not the settings alias; the stronger boundary owns this finding.
   - |
     from ai_hub import m

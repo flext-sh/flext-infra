@@ -276,7 +276,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         parsed = Requirement(rewritten)
         original = Requirement("httpx[socks]>=0.1; python_version < '3.14'")
         tm.that(parsed.extras, eq=original.extras)
-        tm.that(parsed.marker, eq=original.marker)
+        tm.that(parsed.marker == original.marker, eq=True)
         tm.that(str(parsed.specifier), eq=f">={locked_version}")
 
     @staticmethod
@@ -307,7 +307,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         parsed = Requirement(rewritten)
         tm.that(parsed.name, eq=original.name)
         tm.that(parsed.extras, eq=original.extras)
-        tm.that(parsed.marker, eq=original.marker)
+        tm.that(parsed.marker == original.marker, eq=True)
         for candidate in ("1.4.4", "1.4.6", floor, "1.4.8", "1.5", "1.6", "2"):
             tm.that(
                 parsed.specifier.contains(candidate),

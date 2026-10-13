@@ -5,6 +5,8 @@
 # stays legal.
 id: ban-protocols-own-letter-import
 valid:
+  - |
+    from ai_hub import pextra as p
   # A different letter from the own root is legal facade assembly.
   - |
     from ai_hub import t

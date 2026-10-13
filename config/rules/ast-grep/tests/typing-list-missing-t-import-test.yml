@@ -1,5 +1,5 @@
 id: typing-list-missing-t-import
-# `valid` MUST NOT match: the module binds `t` (the auto-fixing rule owns it),
+# `valid` MUST NOT match: the module binds canonical `t` (its companion owns it),
 # `List` is not the typing generic, or the occurrence is text rather than code.
 valid:
   - |
@@ -38,6 +38,28 @@ invalid:
     from typing import List
     def local():
         from flext_core import t
+    value: List[str]
+  - |
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import u as t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import t
+    from typing import List
+    def f(t, value: List[str]): ...
+  - |
+    from flext_core import t
+    from typing import List
+    t = None
+    value: List[str]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import List
     value: List[str]
   - |
     from typing import List, TYPE_CHECKING

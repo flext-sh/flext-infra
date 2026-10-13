@@ -835,7 +835,10 @@ endif
 # Attached members retain independent locks but observe the physical root
 # environment. Resolve that root before frozen setup and floor observation,
 # then reconcile it again after member generation before activating hooks.
-# The final root upgrade still owns the root's generation and lifecycle hooks.
+# Final generation is followed by native reconciliation of every governed
+# independent lock from a fresh Make parse of the generated topology. The root
+# owns the shared install; attached-member hooks follow root convergence, never
+# precede another root generation that could invalidate their lock receipt.
 # The producer half of `gen` publishes this Makefile. A recipe never names a
 # target after that point from a file it did not parse: when publication
 # changed the Makefile, the upgrade hands off to a fresh `make upg` that
@@ -886,12 +889,29 @@ _upg_converge:
 	@$(SELF_MAKE) _builtin_require_mise
 	$(call RUN_PUBLIC_ACTIVATE,gen)
 	@$(SELF_MAKE) gen
+	@$(SELF_MAKE) _upg_reconcile_locks
+	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --mode check
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
-	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg UPG_HANDOFF=; \
 	fi
+	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
+
+.PHONY: _upg_reconcile_locks
+_upg_reconcile_locks:
+	@set -eu; \
+	for project in "$(PROJECT_ROOT)" $(if $(filter workspace,$(MAKE_PROFILE)),$(foreach member,$(WORKSPACE_SUBPROJECTS),"$(PROJECT_ROOT)/$(member)")); do \
+		owner="$$($(UV) workspace dir --project "$$project")"; \
+		if [ "$$owner" != "$$project" ]; then \
+			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the independent-project topology before upgrading.\n' "$$owner" "$$project" >&2; \
+			exit 2; \
+		fi; \
+		printf 'upg: reconciling independent lock %s\n' "$$project"; \
+		$(UV) lock --project "$$project"; \
+		$(UV) lock --check --project "$$project"; \
+		printf 'upg: native lock satisfied %s\n' "$$project"; \
+	done
 
 .PHONY: _upg_activated
 _upg_activated:

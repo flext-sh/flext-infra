@@ -263,7 +263,7 @@ class FlextInfraModReplacements:
                 root,
                 path,
                 candidate.decode(c.DEFAULT_ENCODING),
-                remove_unused_imports=True,
+                before_source=before.decode(c.DEFAULT_ENCODING),
             )
             if normalized.failure:
                 return r[bytes].from_failure(normalized)
@@ -273,7 +273,7 @@ class FlextInfraModReplacements:
                 root,
                 path,
                 stripped.code,
-                remove_unused_imports=True,
+                before_source=before.decode(c.DEFAULT_ENCODING),
             )
         if final.failure:
             return r[bytes].from_failure(final)

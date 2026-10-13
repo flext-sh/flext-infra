@@ -102,7 +102,10 @@ class FlextInfraUtilitiesImportLaw:
             stem = part.lstrip("_")
             if any(stem == family.module for family in families.values()):
                 return "family"
-            if stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)):
+            if any(
+                stem == role or stem.startswith(f"{role}_")
+                for role in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+            ):
                 return "layer0"
             if stem in config.Infra.tooling.lazy_init.import_layer_order:
                 return "consumer"
