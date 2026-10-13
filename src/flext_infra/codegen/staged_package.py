@@ -106,12 +106,17 @@ class FlextInfraStagedPackage:
     ) -> p.Result[dict[Path, str]]:
         """Elect one contained physical destination per desired source.
 
+        Every desired destination must be a contained, physical, unambiguous
+        workspace path. Captured input evidence may legitimately originate
+        outside the workspace: the codemod rule fixtures and preview views
+        stage under the declared scratch (outside every source root by
+        law), and their AtomicFileStates travel with the candidate as
+        journal evidence — they are never write destinations.
+
         Returns:
             Desired sources or the first ambiguous, foreign or symlinked path.
         """
         result_type = r[dict[Path, str]]
-        if any(not before.path.is_relative_to(workspace) for before in inputs):
-            return result_type.fail("candidate original source escapes workspace")
         normalized: dict[Path, str] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):
