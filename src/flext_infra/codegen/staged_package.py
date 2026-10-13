@@ -56,6 +56,11 @@ class FlextInfraStagedPackage:
                 before.path
                 for before in inputs
                 if before.path.suffix in {".py", ".pyi"}
+                # Read-only evidence may live outside the workspace (an
+                # installed family package inside a standalone consumer's
+                # venv, the rule-fixture scratch): only rewrite targets
+                # need a pinned rope layout.
+                and before.path.is_relative_to(workspace)
             ),
         ))
         for path in source_paths:
