@@ -78,11 +78,63 @@ class TestsFlextInfraPyprojectConformTopologySources:
             environments=tuple(toolchain.uv_environments),
         )
 
-    def test_root_members_use_local_path_sources_of_any_family(
+    @pytest.mark.parametrize("package", [False, True])
+    def test_self_override_has_a_local_root_source(self, package: bool) -> None:
+        """A packaged root's override resolves to its own implicit uv workspace."""
+        workspace = self._workspace(role=self._ROLE.STANDALONE)
+        workspace = workspace.model_copy(
+            update={
+                "repository": workspace.repository.model_copy(
+                    update={"package": package},
+                ),
+            },
+        )
+        source = (
+            f'[project]\nname = "{workspace.repository.distribution}"\n'
+            'version = "0.1.0"\ndependencies = []\n'
+        )
+        options = u.Infra.PyprojectConformOptions(
+            flext_line=u.Tests.integration(),
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
+        uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
+        tm.that(
+            u.Tests.toml_mapping(uv.get("sources")),
+            eq=(
+                {workspace.repository.distribution: {"workspace": True}}
+                if package
+                else {}
+            ),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
+            eq=((workspace.repository.distribution,) if package else ()),
+        )
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                rendered,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        tm.that(repeated, eq=rendered)
+
+    def test_root_members_keep_portable_git_sources_of_any_family(
         self,
         tmp_path: Path,
     ) -> None:
-        """Local requirements use the declared workspace independently of family."""
+        """The lock's declared Git graph does not require local member paths."""
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
@@ -133,11 +185,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             u.Tests.toml_mapping(uv.get("sources")),
             eq={
-                ref.distribution: {
-                    "path": ref.path.as_posix(),
-                    "editable": ref.editable,
-                }
-                for ref in workspace.subprojects
+                **(
+                    {workspace.repository.distribution: {"workspace": True}}
+                    if workspace.repository.package
+                    else {}
+                ),
             },
         )
         groups = u.Tests.toml_mapping(parsed.get("dependency-groups"))
@@ -288,11 +340,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             f"{provider.distribution}[feature]"
             in u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
-            eq=True,
+            eq=False,
         )
         tm.that(
-            u.Tests.toml_mapping(uv["sources"])[provider.distribution],
-            eq={"path": provider.path.as_posix(), "editable": provider.editable},
+            provider.distribution in u.Tests.toml_mapping(uv.get("sources")),
+            eq=False,
         )
         tm.that(
             tm.ok(
@@ -830,7 +882,14 @@ class TestsFlextInfraPyprojectConformTopologySources:
             if tool
             else None
         )
-        tm.that(not uv_sources, eq=True)
+        tm.that(
+            uv_sources,
+            eq={
+                str(u.Tests.toml_mapping(parsed.get("project"))["name"]): {
+                    "workspace": True,
+                },
+            },
+        )
 
     def test_member_render_is_context_independent(self) -> None:
         """A member renders identically attached or standalone, without nesting.
@@ -869,7 +928,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
         tm.that("workspace" not in uv, eq=True)
-        tm.that("sources" not in uv, eq=True)
+        tm.that(
+            uv.get("sources"),
+            eq={consumer.distribution: {"workspace": True}},
+        )
         self._assert_direct_source(rendered, runtime)
         detached = tm.ok(
             u.Infra.pyproject_conform(
@@ -1019,7 +1081,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
         tm.that(group, eq=(self._inline_requirement(core),))
-        tm.that(not uv_sources, eq=True)
+        tm.that(
+            uv_sources,
+            eq={workspace.repository.distribution: {"workspace": True}},
+        )
 
     def test_member_requirement_with_a_foreign_url_fails_provenance(self) -> None:
         """A member dependency cannot point at a URL its manifest does not own."""

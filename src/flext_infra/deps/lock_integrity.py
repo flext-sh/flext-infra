@@ -11,7 +11,7 @@ import tomllib
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, p, r, t
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 
 
 class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
@@ -71,10 +71,17 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             The resulting ``p.Result[bool]``.
 
         """
+        selected = u.Infra.git_runtime_root(
+            m.Infra.GitRepoRequest(repo_root=self.repository_root),
+        )
+        if selected.failure:
+            return r[bool].from_failure(selected)
         failures: t.StrSequence = tuple(
             failure
             for lock_filename in (c.Infra.MISE_LOCK_FILENAME, c.Infra.UV_LOCK_FILENAME)
-            for failure in self._verify_lock(self.repository_root / lock_filename)
+            for failure in self._verify_lock(
+                selected.value.repository_root / lock_filename,
+            )
         )
         if failures:
             return r[bool].fail("; ".join(failures))

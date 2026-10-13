@@ -132,6 +132,25 @@ by hand.
 
 ## Dependency locks
 
+An attached project inherits both locks and the physical environment of its
+Git superproject. Its `make setup` and `make upg` delegate to that root before
+installing tools or resolving dependencies. A standalone checkout owns those
+operations itself. Only `upg` resolves moving Git branches; `setup` installs the
+exact committed lock without changing it.
+
+Every repository runs independently in remote CI, including a superproject.
+The portable lock selects Git artifacts without requiring materialized member
+checkouts. Local workspace setup first installs that complete locked graph,
+then binds the declared local packages in runtime dependency order without
+resolving a second graph. Dependency compatibility and editable provenance
+remain mandatory after binding. CI installs noneditable artifacts and executes
+their installed code rather than injecting a source checkout.
+
+A packaged project's self override has a matching `tool.uv.sources` entry
+with `workspace = true`; this refers only to the implicit root project.
+Content-only roots have neither entry. Sources, overrides and Make routing
+come from the generator and are never repaired in their projections.
+
 Configuration declares `latest`. `make upg` is the only verb that resolves newer
 releases and writes the committed `uv.lock` and `mise.lock`. `make setup` installs
 from committed locks; `make gen` and `make fmt` neither install nor upgrade tools.
