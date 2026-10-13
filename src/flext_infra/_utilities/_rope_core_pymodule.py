@@ -70,14 +70,22 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                 offset: int = line_start + match.start()
                 if pyname is None:
                     return offset
-                if pymodule is not None and (
-                    FlextInfraUtilitiesRopeRuntime.name_definition_resource_path(
-                        pymodule,
-                        offset,
-                        expected_binding=pyname,
+                if pymodule is None:
+                    continue
+                try:
+                    anchored = (
+                        FlextInfraUtilitiesRopeRuntime.name_definition_resource_path(
+                            pymodule,
+                            offset,
+                            expected_binding=pyname,
+                        )
                     )
-                    is not None
-                ):
+                except exceptions.RopeError:
+                    # A candidate token Rope cannot evaluate (out-of-package
+                    # scripts, unresolved stubs) is simply not the binding:
+                    # it neither matches nor aborts the anchor search.
+                    continue
+                if anchored is not None:
                     matching_offsets.append(offset)
         if len(matching_offsets) > 1:
             msg = f"rope definition binding token is ambiguous: {symbol}:{line}"
