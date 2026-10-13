@@ -1030,6 +1030,10 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
+          # The cross-layer enforcement catalog runs strict in every suite:
+          # the test-reality laws (ENFORCE-019/051/054/055/098) fail the run
+          # instead of warning; warnings are never a landing state.
+          - --flext-enforce-strict
           # --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
       tomlsort:

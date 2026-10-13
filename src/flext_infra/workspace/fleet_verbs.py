@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, override
 
+from flext_core import t
 from flext_infra import c, config, m, p, r, s, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -30,6 +31,16 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
         c.Infra.FleetVerb,
         m.Field(description="Mutating verb carried to every governed member"),
     ]
+    members: Annotated[
+        t.StrSequence | None,
+        m.Field(
+            default=None,
+            description=(
+                "Restrict the run to the named workspace members; an "
+                "undeclared name fails loud instead of being ignored"
+            ),
+        ),
+    ]
 
     @override
     def execute(self) -> p.Result[m.Infra.LifecycleReport]:
@@ -48,9 +59,10 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             return r[m.Infra.LifecycleReport].fail(
                 f"fleet verbs require a workspace root: {root}",
             )
-        scope = tuple(
-            root / member.path for member in u.Infra.mutable_flext_members(workspace)
-        )
+        selected_members = self._selected_members(workspace)
+        if selected_members.failure:
+            return r[m.Infra.LifecycleReport].from_failure(selected_members)
+        scope = tuple(root / member.path for member in selected_members.value)
         # The service contract stores enum values; str() reads either form.
         verb = str(self.verb)
         output_dir = root / c.Infra.FLEET_REPORT_RELATIVE_PATH.with_suffix("")
@@ -146,6 +158,29 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
         """
         read = u.Cli.files_read_text(output_file)
         return read.value if read.success else str(read.error)
+
+    def _selected_members(
+        self,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[t.SequenceOf[m.Infra.RepositoryRef]]:
+        """Apply the member filter to the declared mutable members.
+
+        Returns:
+            The selected members in declared order, or the failure naming
+            every undeclared requested member.
+        """
+        declared = tuple(u.Infra.mutable_flext_members(workspace))
+        if not self.members:
+            return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(declared)
+        selected = frozenset(self.members)
+        unknown = sorted(selected - {member.name for member in declared})
+        if unknown:
+            return r[t.SequenceOf[m.Infra.RepositoryRef]].fail(
+                "fleet verbs: undeclared member name(s): " + ", ".join(unknown),
+            )
+        return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(
+            tuple(member for member in declared if member.name in selected),
+        )
 
 
 __all__: list[str] = ["FlextInfraWorkspaceFleetVerbs"]

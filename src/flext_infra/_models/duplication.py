@@ -58,10 +58,13 @@ class FlextInfraModelsDuplication:
                 description=(
                     "Scan this governed workspace's declared members together in "
                     "one cross-project jscpd run; the member set is derived from "
-                    "the workspace composition and is never listed here"
+                    "the workspace composition and is never listed here. Default "
+                    "on: a clone shared between two projects is a finding, never "
+                    "a per-project blind spot; a standalone checkout degrades to "
+                    "its own scope"
                 ),
             ),
-        ] = False
+        ] = True
 
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""
