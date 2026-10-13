@@ -13,12 +13,12 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from flext_infra import FlextInfraConfig, c, config, m, t
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 # Concrete-owner imports: this module resolves during the root's lazy ``u``
 # export, when the root namespace is still initializing — a root from-import

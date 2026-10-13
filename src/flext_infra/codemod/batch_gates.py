@@ -1086,7 +1086,8 @@ class FlextInfraModGateEngine:
             plan = planned.value
         elif rule_ids is not None or root.resolve() not in plan.project_rule_ids:
             return r[m.Infra.ModScanReport].fail(
-                "precomposed scan plan requires its governed root and owns rule selection"
+                "precomposed scan plan requires its governed root and owns rule "
+                "selection"
             )
         reports: list[m.Infra.ModScanReport] = []
         rules_by_id = {rule.id: rule for rule in plan.rules}

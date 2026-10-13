@@ -17,10 +17,10 @@ from flext_cli import u
 from flext_infra import c, config, m, t
 from flext_infra._utilities import FlextInfraUtilitiesDocs
 from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 
 class FlextInfraUtilitiesDocsRender:

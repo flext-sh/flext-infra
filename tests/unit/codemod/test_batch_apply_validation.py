@@ -19,7 +19,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from tests import tm, u, c, m
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:

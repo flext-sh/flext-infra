@@ -220,14 +220,14 @@ from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
 )
+from flext_infra._utilities.workspace_inventory import (
+    FlextInfraUtilitiesWorkspaceInventory,
+)
 from flext_infra._utilities.workspace_manifest import (
     FlextInfraUtilitiesWorkspaceManifest,
 )
 from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
 
 
 class FlextInfraUtilities(FlextCliUtilities):

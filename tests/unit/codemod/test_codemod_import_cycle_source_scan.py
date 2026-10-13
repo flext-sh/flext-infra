@@ -97,8 +97,10 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 )
 
     @staticmethod
+    @pytest.mark.parametrize("reuse_config", [False, True])
     def test_generated_source_tree_is_outside_the_scan_targets(
         tmp_path: Path,
+        reuse_config: bool,
     ) -> None:
         """`make mod` targets only the inventory its semantic phases index.
 
@@ -120,7 +122,12 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         generated.parent.mkdir(parents=True)
         generated.write_text("from grpc import _utilities\n", encoding="utf-8")
 
-        targets = u.Infra.ast_grep_scan_targets(project)
+        targets = u.Infra.ast_grep_scan_targets(
+            project,
+            refactor_config=(
+                u.Infra.load_refactor_config(project) if reuse_config else None
+            ),
+        )
 
         tm.that(targets, has=live.relative_to(project).as_posix())
         tm.that(targets, lacks=generated.relative_to(project).as_posix())

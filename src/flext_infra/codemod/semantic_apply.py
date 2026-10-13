@@ -882,7 +882,9 @@ class FlextInfraCodemodSemanticApply:
             if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
             and not ignored.intersection(path.relative_to(root).parts[:-1])
         )
-        for target in u.Infra.ast_grep_scan_targets(root):
+        for target in u.Infra.ast_grep_scan_targets(
+            root, refactor_config=refactor_config
+        ):
             candidate = root / target
             if ignored.intersection(candidate.relative_to(root).parts):
                 continue

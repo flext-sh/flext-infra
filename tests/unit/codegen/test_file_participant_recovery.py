@@ -10,12 +10,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import c, m, p, r, t
 from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import tm, u
+from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
