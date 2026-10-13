@@ -8,9 +8,11 @@
 #
 # The `_segment` anywhere in the imported module path is the private marker
 # (the layout law: every additional class lives in its own module, private
-# modules start with `_`). A test that needs a private symbol is testing the
-# module's shape, not its observable behavior — rewrite it against the public
-# facade, or delete it.
+# modules start with `_`), EXCEPT the tests tier's own shared namespaces —
+# importing `tests._utilities.<owner>` is the sanctioned shared-owner pattern
+# (the tests facade composes exactly those modules), not a reach-in. A test
+# that needs a private symbol is testing the module's shape, not its observable
+# behavior — rewrite it against the public facade, or delete it.
 #
 # Detection-only: the replacement imports the public facade the owner exposes.
 id: ban-test-own-private-import
@@ -31,6 +33,10 @@ rule:
   has:
     field: module_name
     regex: '(^|\.)_\w'
+  not:
+    has:
+      field: module_name
+      regex: '^tests(\.|$)'
 message: >-
   Test imports an own-package private module ($_segment in the path). Tests
   validate observable behavior through public facades only — import the public

@@ -8,9 +8,13 @@
 # result. The Test Reality Law (ADR-0021) removes such tests, not the runtime.
 #
 # Any attribute access whose attribute name ends in `_calls` or `_requests`
-# inside a test tier matches. Environment isolation (`monkeypatch.setenv`,
-# `delenv`, `chdir`) stays legal under `ban-test-doubles` and is untouched
-# here: it isolates reality, it does not record interactions.
+# inside a test tier matches. The recorder doubles' own home
+# (`tests/_utilities/**`) is ignored — those files IMPLEMENT the recorders,
+# and a class reading its own fields is the mechanism, not an interaction
+# assertion about a production module. Environment isolation
+# (`monkeypatch.setenv`, `delenv`, `chdir`) stays legal under
+# `ban-test-doubles` and is untouched here: it isolates reality, it does not
+# record interactions.
 #
 # Detection-only: rewrite the scenario against the observable result, or
 # delete the test.
@@ -21,6 +25,9 @@ files:
   - "**/tests/**/*.py"
   - "**/examples/**/*.py"
   - "**/conftest.py"
+ignores:
+  - "**/tests/_utilities/**"
+  - "**/tests/_*/**"
 rule:
   kind: attribute
   has:
