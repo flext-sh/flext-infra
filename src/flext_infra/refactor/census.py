@@ -13,7 +13,10 @@ from typing import override
 from flext_cli import cli
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.codemod import (
+    FlextInfraCodemodDuplicateApply,
+    FlextInfraCodemodSemanticApply,
+)
 from flext_infra.refactor import (
     FlextInfraRefactorCensusCollectHelpersMixin,
     FlextInfraRefactorCensusCollectMixin,
@@ -146,10 +149,39 @@ class FlextInfraRefactorCensus(
                 rope, source_preview=self.source_preview
             )
             report = impact_report
+            duplicate_plans: t.VariadicTuple[m.Infra.DuplicateCurePlan] = ()
+            duplicate_files = duplicate_copies = duplicate_bindings = 0
+            if (
+                self.rule_names is not None
+                and c.Infra.CensusRule.DUPLICATE in self.rule_names
+            ):
+                cure = FlextInfraCodemodDuplicateApply.census_duplicates(
+                    self.root,
+                    rope,
+                    impact_report.duplicates,
+                    apply=self.apply_changes and not self.effective_dry_run,
+                ).unwrap()
+                duplicate_plans = cure.plans
+                duplicate_files = cure.files_changed
+                duplicate_copies = cure.copies_removed
+                duplicate_bindings = cure.bindings_rewired
+                cli.display_text(
+                    "census: duplicate-cure "
+                    f"files={duplicate_files} "
+                    f"copies={duplicate_copies} "
+                    f"bindings={duplicate_bindings} "
+                    f"plans={len(duplicate_plans)} "
+                    f"applied={self.apply_changes and not self.effective_dry_run}",
+                )
+                if duplicate_files:
+                    rope.reload()
+                    report = self._collect_report(
+                        rope, source_preview=self.source_preview
+                    )
             if (
                 self.apply_changes
                 and not self.effective_dry_run
-                and self._apply_removal_candidates(rope, impact_report)
+                and self._apply_removal_candidates(rope, report)
             ):
                 report = self._collect_report(rope, source_preview=self.source_preview)
         finalized = report.model_copy(
@@ -159,6 +191,10 @@ class FlextInfraRefactorCensus(
                 "constant_consumer_bindings": sum(
                     len(edit.changes) for edit in constant_edits
                 ),
+                "duplicate_cure_files": duplicate_files,
+                "duplicate_cure_copies": duplicate_copies,
+                "duplicate_cure_bindings": duplicate_bindings,
+                "duplicate_cure_plans": duplicate_plans,
             },
         )
         return finalized, impact_report

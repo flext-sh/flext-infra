@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from flext_infra.codemod._loop_phase_accessor_rename import (
         FlextInfraAccessorRenamePhase,
     )
+    from flext_infra.codemod._loop_phase_duplicate_apply import (
+        FlextInfraDuplicateApplyPhase,
+    )
     from flext_infra.codemod._loop_phase_import_normalization import (
         FlextInfraImportNormalizationPhase,
     )
@@ -29,6 +32,7 @@ if TYPE_CHECKING:
     from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
     from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
     from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
+    from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
     from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from flext_infra.codemod.snapshot_reconciler import (
         FlextInfraCodemodSnapshotReconciler,
@@ -42,9 +46,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraApplyRenames",
     "FlextInfraCodemodAstScan",
     "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodDuplicateApply",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCodemodSnapshotRefresh",
+    "FlextInfraDuplicateApplyPhase",
     "FlextInfraImportNormalizationPhase",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -62,9 +68,11 @@ install_lazy_exports(
         "FlextInfraApplyRenames": ".apply_renames",
         "FlextInfraCodemodAstScan": ".ast_scan",
         "FlextInfraCodemodBatchApply": ".batch_apply",
+        "FlextInfraCodemodDuplicateApply": ".duplicate_apply",
         "FlextInfraCodemodSemanticApply": ".semantic_apply",
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",
         "FlextInfraCodemodSnapshotRefresh": ".snapshot_refresh",
+        "FlextInfraDuplicateApplyPhase": "._loop_phase_duplicate_apply",
         "FlextInfraImportNormalizationPhase": "._loop_phase_import_normalization",
         "FlextInfraModGateEngine": ".batch_gates",
         "FlextInfraModReplacements": ".batch_replacements",

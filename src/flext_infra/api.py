@@ -25,6 +25,7 @@ from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraDuplicateApplyPhase,
     FlextInfraImportNormalizationPhase,
     FlextInfraModTextGateEngine,
     FlextInfraNamespaceRelocationPhase,
@@ -306,6 +307,7 @@ class FlextInfra(
                 phase_callbacks=(
                     FlextInfraImportNormalizationPhase(),
                     FlextInfraNamespaceRelocationPhase(),
+                    FlextInfraDuplicateApplyPhase(),
                     FlextInfraAccessorRenamePhase(),
                 ),
             ).execute()

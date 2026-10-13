@@ -419,12 +419,12 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             first = u.Cli.json_deep_mapping(duplicate, "firstFile")
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
-            first_name = cls._report_file_name(first)
-            second_name = cls._report_file_name(second)
-            if not fleet and not cls._is_semantic_clone(duplicate, first, second):
+            first_name = cls.report_file_name(first)
+            second_name = cls.report_file_name(second)
+            if not fleet and not cls.is_semantic_clone(duplicate, first, second):
                 continue
-            first_span = cls._side_span_key(first)
-            second_span = cls._side_span_key(second)
+            first_span = cls.side_span_key(first)
+            second_span = cls.side_span_key(second)
             # The two sides of a clone are the same span only when the same
             # directory reached jscpd twice (the double-scan artifact): that is
             # never an owned clone. The same file with two different spans is
@@ -490,7 +490,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return raw, None
 
     @classmethod
-    def _report_file_name(cls, side: t.JsonMapping) -> str:
+    def report_file_name(cls, side: t.JsonMapping) -> str:
         """Return one jscpd clone side's on-disk file name.
 
         Returns:
@@ -500,14 +500,14 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return cls._report_name_parts(side)[0]
 
     @classmethod
-    def _side_span_key(cls, side: t.JsonMapping) -> str:
+    def side_span_key(cls, side: t.JsonMapping) -> str:
         """Return one clone side's on-disk span identity.
 
         Returns:
             The clone side's ``<file>:<start-line>:<end-line>`` identity.
 
         """
-        name = cls._report_file_name(side)
+        name = cls.report_file_name(side)
         start = u.Cli.json_nested_int(side, "startLoc", "line", default=0)
         end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
         return f"{name}:{start}:{end}"
@@ -542,7 +542,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @classmethod
-    def _is_semantic_clone(
+    def is_semantic_clone(
         cls,
         duplicate: t.JsonMapping,
         first: t.JsonMapping,
