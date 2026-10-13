@@ -440,26 +440,23 @@ class FlextInfraModelsScan:
                     msg = f"mod scan {field} differs from authenticated entries"
                     raise ValueError(msg)
             indexed = {state.path: state for state in self.inputs.states}
-            entries = tuple(
-                entry.model_copy(
-                    update={
-                        "source_state": (
-                            indexed[entry.source_path]
-                            if entry.source_path is not None
-                            else None
-                        ),
-                        "binding_states": tuple(
-                            indexed[path] for path in entry.binding_paths
-                        ),
-                    }
+            bindings: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
+            entries = []
+            for entry in self.entries:
+                source = None if entry.source_path is None else indexed[entry.source_path]
+                if entry.binding_paths not in bindings:
+                    bindings[entry.binding_paths] = tuple(
+                        indexed[path] for path in entry.binding_paths
+                    )
+                entries.append(
+                    entry.model_copy(
+                        update={
+                            "source_state": source,
+                            "binding_states": bindings[entry.binding_paths],
+                        }
+                    )
                 )
-                for entry in self.entries
-            )
-            return (
-                self
-                if entries == self.entries
-                else self.model_copy(update={"entries": entries})
-            )
+            return self.model_copy(update={"entries": tuple(entries)})
 
     class ModScanEvidenceReceipt(m.ArbitraryTypesModel):
         """Authenticated publication identity and its exact evidence payload."""

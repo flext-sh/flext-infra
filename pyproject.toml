@@ -685,6 +685,9 @@ environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
 override-dependencies = ["flext-infra"]
 
+[tool.uv.sources.flext-infra]
+workspace = true
+
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true

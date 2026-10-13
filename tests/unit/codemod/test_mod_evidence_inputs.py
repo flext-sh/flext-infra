@@ -86,14 +86,19 @@ class TestsFlextInfraModEvidenceInputs:
                 )
 
     @staticmethod
-    def test_native_occurrences_share_authenticated_inputs(mod_workspace: Path) -> None:
-        """Every occurrence survives while each complete input is stored once."""
+    @pytest.mark.parametrize(("occurrences", "resources"), [(2, 0), (96, 32)])
+    def test_native_occurrences_share_authenticated_inputs(
+        mod_workspace: Path, occurrences: int, resources: int
+    ) -> None:
+        """Distinct binding groups share inputs through both JSON publication paths."""
         source = mod_workspace / "consumer.py"
         marker = "descriptor evidence sentinel"
         source.write_text(
             f"# {marker}\nfrom __future__ import annotations\n"
-            "def first(value: str) -> str:\n    return str(value)\n"
-            "def second(value: str) -> str:\n    return str(value)\n",
+            + "".join(
+                f"def call_{index}(value: str) -> str:\n    return str(value)\n"
+                for index in range(occurrences)
+            ),
             encoding="utf-8",
         )
         report = tm.ok(
@@ -101,15 +106,38 @@ class TestsFlextInfraModEvidenceInputs:
                 mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
             )
         )
-        tm.that(report.findings, eq=2)
+        tm.that(report.findings, eq=occurrences)
         snapshot = u.Infra.codemod_binding_snapshot(
             mod_workspace, (tm.not_none(report.entries[0].source_state),)
         )
+        inputs = list(snapshot.states)
+        for index in range(resources):
+            resource = mod_workspace / f"binding_{index}.py"
+            resource.write_text(f"value = {index}\n", encoding="utf-8")
+            inputs.append(
+                tm.ok(u.Cli.atomic_read_binary_file_state(resource, required=True))
+            )
+        bindings = (tuple(inputs), (inputs[0],), tuple(reversed(inputs)), ())
         report = report.model_copy(
             update={
                 "entries": tuple(
-                    entry.model_copy(update={"binding_states": snapshot.states})
-                    for entry in report.entries
+                    entry.model_copy(
+                        update={
+                            "binding_states": bindings[index % len(bindings)],
+                            **(
+                                {
+                                    "source_state": None,
+                                    "classification": (
+                                        c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
+                                    ),
+                                    "actionable": False,
+                                }
+                                if index == occurrences - 1
+                                else {}
+                            ),
+                        }
+                    )
+                    for index, entry in enumerate(report.entries)
                 )
             }
         )
@@ -125,18 +153,51 @@ class TestsFlextInfraModEvidenceInputs:
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
         tm.that(encoded.count(marker.encode("utf-8")), eq=1)
+        tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
+        tm.that(restored.deferred, eq=1)
+        shared: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
         for original, occurrence in zip(report.entries, restored.entries, strict=True):
             tm.that(occurrence.payload, eq=original.payload)
             tm.that(occurrence.source_state, eq=original.source_state)
             tm.that(occurrence.binding_states, eq=original.binding_states)
+            tm.that(occurrence.classification, eq=original.classification)
+            tm.that(
+                occurrence.binding_states
+                is shared.setdefault(occurrence.binding_paths, occurrence.binding_states)
+            )
         tm.that(
             len(restored.inputs.states),
             eq=len({
                 state.path
-                for state in (*tm.not_none(report.source_states), *snapshot.states)
+                for state in (*tm.not_none(report.source_states), *inputs)
             }),
         )
-        tm.that(restored.entries[0].source_state is restored.entries[1].source_state)
+        nested_path = tm.ok(
+            u.Infra.publish_refactor_report_evidence(
+                mod_workspace, receipt, relative_path=Path("nested-evidence.json")
+            )
+        )
+        nested = m.Infra.ModScanEvidenceReceipt.model_validate_json(
+            nested_path.read_bytes()
+        )
+        tm.that(nested.evidence, eq=restored)
+        tm.that(nested.sha256, eq=u.Cli.sha256_bytes(nested.path.read_bytes()))
+        for reference in (
+            {"source_path": mod_workspace / "absent.py"},
+            {"binding_paths": (mod_workspace / "absent.py",)},
+        ):
+            tampered = restored.model_copy(
+                update={
+                    "entries": (
+                        restored.entries[0].model_copy(update=reference),
+                        *restored.entries[1:],
+                    )
+                }
+            )
+            with pytest.raises(KeyError):
+                m.Infra.ModScanEvidence.model_validate_json(
+                    tampered.model_dump_json(round_trip=True)
+                )
         with pytest.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(

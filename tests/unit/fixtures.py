@@ -219,36 +219,27 @@ def _provision_consumer_template(parent: Path) -> Path:
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
-    upgrade = tm.ok(
-        u.Tests.run_isolated_make(
-            ["upg"],
-            cwd=root,
-            env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
-            capture=False,
-        ),
-    )
-    _write_receipt(parent / _CONSUMER_UPGRADE_RECEIPT, upgrade)
-    tm.that(
-        u.Cli.process_succeeded(upgrade.outcome),
-        eq=True,
-        msg=upgrade.stdout + upgrade.stderr,
-    )
-    u.Tests.git_bootstrap(root, ("add", "-A"))
-    u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
-    setup = tm.ok(
-        u.Tests.run_isolated_make(
-            ["setup"],
-            cwd=root,
-            env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
-            capture=False,
-        ),
-    )
-    _write_receipt(parent / _INFRA_SETUP_RECEIPT, setup)
-    tm.that(
-        u.Cli.process_succeeded(setup.outcome),
-        eq=True,
-        msg=setup.stdout + setup.stderr,
-    )
+    for verb, receipt in (
+        ("upg", _CONSUMER_UPGRADE_RECEIPT),
+        ("setup", _INFRA_SETUP_RECEIPT),
+    ):
+        output = tm.ok(
+            u.Tests.run_isolated_make(
+                [verb],
+                cwd=root,
+                env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+                capture=False,
+            ),
+        )
+        _write_receipt(parent / receipt, output)
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+        if verb == "upg":
+            u.Tests.git_bootstrap(root, ("add", "-A"))
+            u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
     environment = u.Infra.runtime_environment_dir(root)
     tm.that(environment.is_symlink(), eq=False)
     tm.that((environment / "pyvenv.cfg").is_file(), eq=True)

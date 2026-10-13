@@ -328,13 +328,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         ))
         # Provider discovery expands the inventory, never the owners eligible
         # for a reference. Its declared inheritance lineage elects those owners.
+        base_imports: MutableMapping[str, t.StrTuple] = {}
         while True:
             inherited_statements = tuple(
                 statement
                 for module, (source, _package) in modules.items()
                 if directories.intersection(module.split("."))
                 or module.endswith((".typings", ".models", ".utilities"))
-                for statement in cls._behavior_base_imports(source)
+                for statement in (
+                    base_imports[source]
+                    if source in base_imports
+                    else base_imports.setdefault(
+                        source, cls._behavior_base_imports(source)
+                    )
+                )
             )
             expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
                 sources, (*statements, *inherited_statements)
@@ -433,13 +440,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         member, ast.FunctionDef | ast.AsyncFunctionDef
                     ) or member.name.startswith("_"):
                         continue
-                    if (
-                        utility_directory in parts
-                        and declaration.name in exports
-                        and not member.name.startswith("_")
-                        and cls._behavior_member_binding(declaration, member.name)
-                        is member
-                    ):
+                    if cls._behavior_member_binding(declaration, member.name) is member:
                         owners.setdefault((parts[0], member.name), []).append((
                             module,
                             declaration.name,
@@ -613,18 +614,28 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     c.Infra.UTILITIES_PY
                 ).directory,
             )
+
+            def rewrite(
+                path: Path,
+                source: str,
+                modules: t.MappingKV[str, t.Pair[str, bool]] = modules,
+                ownership: t.Pair[
+                    t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+                    frozenset[t.Quad[str, str, str, str]],
+                ] = ownership,
+            ) -> t.Infra.TransformResult:
+                return cls.rewrite_behavior_consumer(
+                    m.Infra.SemanticBehaviorRewriteRequest(
+                        path=path,
+                        source=source,
+                        modules=modules,
+                        ownership=ownership,
+                    ),
+                )
+
             planned = cls._semantic_edits(
                 cls._editable_sources(owner_sources),
-                lambda path, source, modules=modules, ownership=ownership: (
-                    cls.rewrite_behavior_consumer(
-                        m.Infra.SemanticBehaviorRewriteRequest(
-                            path=path,
-                            source=source,
-                            modules=modules,
-                            ownership=ownership,
-                        ),
-                    )
-                ),
+                rewrite,
             )
             if planned.failure:
                 return planned

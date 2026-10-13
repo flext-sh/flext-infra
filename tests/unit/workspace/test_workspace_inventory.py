@@ -17,20 +17,14 @@ from tests import tm
 class TestsFlextInfraWorkspaceInventory:
     """Host selection and typed ingress retain native failures."""
 
-    @pytest.mark.parametrize("payload", [None, '{"entries":[]}', "{", "[]", ""])
+    @pytest.mark.parametrize("text", [None, '{"entries":[]}', "{", "[]", ""])
     def test_host_selection_preserves_native_failures(
         self,
         tmp_path: Path,
-        payload: str | None,
+        text: str | None,
     ) -> None:
         """Validate real host stdout and preserve native transport/ingress failures."""
-        command = (
-            ("printf", "%s", payload)
-            if payload
-            else ("false",)
-            if payload == ""
-            else ()
-        )
+        command = ("printf", "%s", text) if text else ("false",) if text == "" else ()
         inputs = m.Infra.CodegenInputs(
             spec=m.Infra.CodegenConfigSpec.model_validate(
                 config.Infra.codegen.model_dump(
@@ -41,9 +35,9 @@ class TestsFlextInfraWorkspaceInventory:
         )
 
         discovered = u.Infra.discover_external_consumers(tmp_path, inputs)
-        if payload in {"{", "[]", ""}:
+        if text in {"{", "[]", ""}:
             tm.fail(discovered)
-            exception = discovered.exception
-            assert payload == "" or isinstance(exception, e.PydanticValidationError)
+            if text:
+                tm.that(discovered.exception, is_=e.PydanticValidationError)
         else:
             tm.that(tm.ok(discovered), empty=True)
