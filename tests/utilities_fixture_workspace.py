@@ -137,7 +137,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             The resulting ``t.Triple[Path, Path, Path]``.
 
         """
-        workspace = tmp_path / "workspace"
+        workspace = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
+            tmp_path, "workspace", pyproject=pyproject,
+        )
         project = workspace / project_name
         package = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.src_package(
             project,

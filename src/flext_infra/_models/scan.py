@@ -17,6 +17,7 @@ from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
+    FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
 )
@@ -133,12 +134,16 @@ class FlextInfraModelsScan:
         ] = "authored"
         source_state: Annotated[
             m.Cli.AtomicFileState | None,
-            m.Field(description="Exact source snapshot authenticated before scanning"),
+            m.Field(
+                exclude=True,
+                description="Live source snapshot; evidence stores its input once",
+            ),
         ] = None
         binding_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(
-                description="Closed occurrence-binding source receipts",
+                exclude=True,
+                description="Live binding inputs; evidence stores their inventory once",
             ),
         ] = m.Field(default_factory=tuple)
         range: Annotated[
@@ -164,6 +169,18 @@ class FlextInfraModelsScan:
                 description="Complete validated ast-grep finding without field loss",
             ),
         ]
+
+        @m.computed_field
+        @property
+        def source_path(self) -> Path | None:
+            """Reference the single authenticated evidence input, when present."""
+            return self.source_state.path if self.source_state is not None else None
+
+        @m.computed_field
+        @property
+        def binding_paths(self) -> tuple[Path, ...]:
+            """Reference every closed binding input without repeating its content."""
+            return tuple(state.path for state in self.binding_states)
 
     class ModReplacementOffsets(m.ContractModel):
         """UTF-8 byte coordinates supplied by the ast-grep JSON contract."""
@@ -364,8 +381,17 @@ class FlextInfraModelsScan:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         schema_version: Annotated[
-            Literal[1],
-            m.Field(description="Exact structured evidence schema"),
+            int,
+            m.Field(
+                strict=True,
+                ge=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+                le=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+                description="Exact structured evidence schema",
+            ),
+        ]
+        inputs: Annotated[
+            FlextInfraModelsCodemod.CodemodBindingSnapshot,
+            m.Field(description="Single authenticated inventory for all occurrences"),
         ]
         command: Annotated[
             c.Infra.ModScanCommand,
@@ -388,6 +414,52 @@ class FlextInfraModelsScan:
             t.MappingKV[str, t.NonNegativeInt],
             m.Field(description="Complete finding totals by rule identifier"),
         ]
+
+        @m.model_validator(mode="wrap")
+        @classmethod
+        def hydrate_occurrence_inputs(
+            cls, value: t.ModelInput, handler: p.ModelWrapValidatorHandler[Self]
+        ) -> Self:
+            """Resolve persisted references through the typed closed inventory."""
+            if not isinstance(value, Mapping):
+                return handler(value)
+            occurrences = value["entries"]
+            result = handler({
+                **value,
+                "entries": [
+                    {
+                        key: item
+                        for key, item in entry.items()
+                        if key
+                        not in FlextInfraModelsScan.ModScanFinding.model_computed_fields
+                    }
+                    if isinstance(entry, Mapping)
+                    else entry
+                    for entry in occurrences
+                ],
+            })
+            indexed = {state.path: state for state in result.inputs.states}
+            return result.model_copy(
+                update={
+                    "entries": tuple(
+                        entry.model_copy(
+                            update={
+                                "source_state": (
+                                    indexed[Path(raw["source_path"])]
+                                    if raw["source_path"] is not None
+                                    else None
+                                ),
+                                "binding_states": tuple(
+                                    indexed[Path(path)] for path in raw["binding_paths"]
+                                ),
+                            }
+                        )
+                        if isinstance(raw, Mapping)
+                        else entry
+                        for entry, raw in zip(result.entries, occurrences, strict=True)
+                    ),
+                }
+            )
 
     class ModScanEvidenceReceipt(m.ArbitraryTypesModel):
         """Authenticated publication identity and its exact evidence payload."""

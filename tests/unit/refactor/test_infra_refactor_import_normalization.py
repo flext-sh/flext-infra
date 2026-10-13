@@ -922,8 +922,19 @@ class TestsFlextInfraRefactorImportNormalization:
             file_path=package / "_config.py",
             source=source,
         )
-        tm.that(result, eq=None)
-        (package / "_config.py").write_text(source, encoding="utf-8")
+        normalized = result if result is not None else source
+        tm.that(normalized, has="from flext_core import FlextConfig")
+        tm.that(normalized, has="from pydantic import JsonValue")
+        tm.that(normalized, lacks="from demo_pkg import")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=package / "_config.py",
+                source=normalized,
+            ),
+            eq=None,
+        )
+        (package / "_config.py").write_text(normalized, encoding="utf-8")
         outcome = tm.ok(
             u.Cli.run_raw(
                 (

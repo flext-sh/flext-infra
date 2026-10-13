@@ -201,8 +201,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-mod profile-mod-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-mod profile-mod-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg upg-sources build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg upg-sources build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -859,6 +859,34 @@ _activated-profile-mod-report: _builtin_require_environment
 
 
 
+profile-mod-rules: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-mod-rules,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-mod-rules)
+
+.PHONY: _activated-profile-mod-rules
+
+_activated-profile-mod-rules: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-mod-rules,$(call RUN_PUBLIC,profile-mod-rules))
+
+
+
+
+profile-mod-rules-report: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-mod-rules-report,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-mod-rules-report)
+
+.PHONY: _activated-profile-mod-rules-report
+
+_activated-profile-mod-rules-report: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-mod-rules-report,$(call RUN_PUBLIC,profile-mod-rules-report))
+
+
+
+
 fmt: _builtin_require_workspace
 
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-fmt,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fmt)
@@ -1116,6 +1144,20 @@ _activated-mod: _builtin_require_environment
 
 
 
+mod-rules: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-mod-rules,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-mod-rules)
+
+.PHONY: _activated-mod-rules
+
+_activated-mod-rules: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-mod-rules,$(call RUN_PUBLIC,mod-rules))
+
+
+
+
 mod-text: _builtin_require_workspace
 
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-mod-text,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-mod-text)
@@ -1310,6 +1352,14 @@ profile-mod-report:
 	@printf '  %-16s %s\n' 'profile-mod-report' 'Render the canonical codemod profile from the last profiling invocation.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod-report to execute it.'
 
+profile-mod-rules:
+	@printf '  %-16s %s\n' 'profile-mod-rules' 'Profile the complete read-only rule diagnostic and retain its native failure outcome.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod-rules to execute it.'
+
+profile-mod-rules-report:
+	@printf '  %-16s %s\n' 'profile-mod-rules-report' 'Render the profile of the complete read-only rule diagnostic.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod-rules-report to execute it.'
+
 fmt:
 	@printf '  %-16s %s\n' 'fmt' 'Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make fmt to execute it.'
@@ -1385,6 +1435,10 @@ initialize:
 mod:
 	@printf '  %-16s %s\n' 'mod' 'Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make mod to execute it.'
+
+mod-rules:
+	@printf '  %-16s %s\n' 'mod-rules' 'Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make mod-rules to execute it.'
 
 mod-text:
 	@printf '  %-16s %s\n' 'mod-text' 'Apply the declared Sed text rules with exact receipts and guarded publication.'
@@ -1487,6 +1541,10 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'profile-mod-report' 'Render the canonical codemod profile from the last profiling invocation.';
 
+	@printf '  %-16s %s\n' 'profile-mod-rules' 'Profile the complete read-only rule diagnostic and retain its native failure outcome.';
+
+	@printf '  %-16s %s\n' 'profile-mod-rules-report' 'Render the profile of the complete read-only rule diagnostic.';
+
 	@printf '  %-16s %s\n' 'fmt' 'Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.';
 
 	@printf '  %-16s %s\n' 'fix' 'Apply the safe fixes of ruff check --fix --preview plus every other configured safe correction; never deletes information. Ruff is the rule; change code, never ruff.';
@@ -1524,6 +1582,8 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'initialize' 'Materialize the declared package initializer graph.';
 
 	@printf '  %-16s %s\n' 'mod' 'Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.';
+
+	@printf '  %-16s %s\n' 'mod-rules' 'Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.';
 
 	@printf '  %-16s %s\n' 'mod-text' 'Apply the declared Sed text rules with exact receipts and guarded publication.';
 

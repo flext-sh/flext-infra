@@ -243,6 +243,15 @@ class FlextInfraModelsCodegenTransactionModels:
 
             """
             entry_paths = tuple(entry.path for entry in self.entries)
+            staging_paths = tuple(
+                path
+                for entry in self.entries
+                for path in (entry.desired_staging, entry.original_staging)
+                if path is not None
+            )
+            if len(set(staging_paths)) != len(staging_paths):
+                msg = "journal preimage/replacement staging has competing owners"
+                raise ValueError(msg)
             if len(set(entry_paths)) != len(entry_paths):
                 msg = "codegen journal destination paths must be unique"
                 raise ValueError(msg)

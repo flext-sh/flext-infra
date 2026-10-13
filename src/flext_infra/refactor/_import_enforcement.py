@@ -155,16 +155,13 @@ class FlextInfraImportNormalization(
 
     @staticmethod
     def _unalias_imports(*, state_scope: str, source: str) -> str:
-        """Remove own-package import aliases without changing shadowed bindings.
+        """Remove own-package aliases, refusing capture of shadowed bindings.
 
         Returns:
             Source with references bound to the imported identity renamed.
 
-        Raises:
-            ValueError: When the published name would capture another binding.
         """
         tree = ast.parse(source)
-        parents = FlextInfraImportNormalization._parent_map(tree)
         selected = {
             (alias.asname, f"{node.module}.{alias.name}"): alias.name
             for node in ast.walk(tree)
@@ -174,10 +171,7 @@ class FlextInfraImportNormalization(
             for alias in node.names
             if alias.asname is not None
             and alias.asname != alias.name
-            and not (
-                alias.asname in c.Infra.ALIAS_NAMES
-                and FlextInfraImportNormalization._inside_type_checking(node, parents)
-            )
+            and alias.asname not in c.Infra.ALIAS_NAMES
         }
         if not selected:
             return source
@@ -207,7 +201,10 @@ class FlextInfraImportNormalization(
                 target = next(iter(targets))
                 if target == original_node.value:
                     return updated_node
-                scope = self.get_metadata(ScopeProvider, original_node)
+                scope = self.get_metadata(ScopeProvider, original_node, None)
+                if scope is None:
+                    msg = f"import alias reference has no scope: {original_node.value}"
+                    raise ValueError(msg)
                 if scope[target]:
                     msg = f"import alias destination is occupied: {target}"
                     raise ValueError(msg)
@@ -230,6 +227,7 @@ class FlextInfraImportNormalization(
                     names=tuple(
                         alias.with_changes(asname=None)
                         if alias.asname is not None
+                        and isinstance(alias.asname.name, cst.Name)
                         and (
                             alias.asname.name.value,
                             f"{module}.{get_full_name_for_node(alias.name)}",

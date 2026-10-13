@@ -804,7 +804,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     "file": finding.get("filename"),
                     "line": location.get("row"),
                     "column": location.get("column"),
-                    "code": finding.get("name"),
+                    "code": finding.get("code"),
                     "message": finding.get("message"),
                 },
                 strict=True,

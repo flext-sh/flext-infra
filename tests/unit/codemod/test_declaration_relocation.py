@@ -16,6 +16,7 @@ import pytest
 
 from flext_infra import infra, p, r
 from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
@@ -631,7 +632,10 @@ class TestsFlextInfraDeclarationRelocation:
             )
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
-        blocked = target if refused == "destination" else package / "models.py"
+        blocked = target if refused == "destination" else target.parent / "__init__.py"
+        if refused == "exposure":
+            blocked.write_text("", encoding="utf-8")
+            sources[blocked] = ""
         independent = root / "independent.py"
         independent.write_text("VALUE = 'before'\n", encoding="utf-8")
         independent_before = tm.ok(
@@ -660,6 +664,12 @@ class TestsFlextInfraDeclarationRelocation:
                     dependency_group=package.name,
                 )
             )
+        if refused == "exposure":
+            exposure = tm.ok(FlextInfraCodegenLazyInit(repository_root=root).plan_files())
+            plans.extend(
+                item.model_copy(update={"dependency_group": package.name})
+                for item in exposure.files if item.path == blocked
+            )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
@@ -681,7 +691,7 @@ class TestsFlextInfraDeclarationRelocation:
             return r[m.Infra.CodegenTransactionSession].ok(session)
 
         def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            started = transaction.begin_files_locked(scope, {root.name: root}, ())
+            started = transaction.begin_files_locked(scope, {f"@{root.name}": root}, ())
             if started.failure:
                 return r[t.VariadicTuple[Path]].from_failure(started)
             admitted = transaction.append_phase_locked(
@@ -694,7 +704,7 @@ class TestsFlextInfraDeclarationRelocation:
                 return r[t.VariadicTuple[Path]].from_failure(admitted)
             return transaction.commit_locked(admitted.value, published_files=receipts)
 
-        failed = transaction.run_files_locked(root, {root.name: root}, publish)
+        failed = transaction.run_files_locked({f"@{root.name}": root}, publish)
         tm.fail(failed)
         tm.that(independent.read_text(encoding="utf-8"), eq="VALUE = 'after'\n")
         tm.that(
@@ -713,9 +723,9 @@ class TestsFlextInfraDeclarationRelocation:
                     "-c",
                     (
                         f"from {package.name}.consumer import build; "
-                        f"from {package.name} import u; "
+                        f"from {package.name} import m; "
                         "from independent import VALUE; "
-                        "assert build().__class__ is u.Payload; "
+                        "assert not hasattr(m, 'Payload'); "
                         "assert build().count == 3; assert VALUE == 'after'"
                     ),
                 ),

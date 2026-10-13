@@ -501,15 +501,30 @@ class FlextInfraModelsCodegenJournalModels:
         def _validate_group_preimage(self) -> Self:
             """Bind group recovery authority to the original authenticated bytes."""
             if self.dependency_group is None:
-                if self.original_content_hex is not None or self.original_staging is not None or self.group_admitted or self.recover_group:
-                    raise ValueError("independent entry cannot carry group recovery authority")
+                if (
+                    self.original_content_hex is not None
+                    or self.original_staging is not None
+                    or self.group_admitted
+                    or self.recover_group
+                ):
+                    msg = "independent entry cannot carry group recovery authority"
+                    raise ValueError(msg)
             elif self.original_exists:
                 if self.original_content_hex is None or self.original_staging is None:
-                    raise ValueError("dependent group requires a durable original preimage")
-                if sha256(bytes.fromhex(self.original_content_hex)).hexdigest() != self.original_sha256:
-                    raise ValueError("dependent group preimage differs from original bytes")
-            elif self.original_content_hex is not None or self.original_staging is not None:
-                raise ValueError("absent group original cannot carry a preimage")
+                    msg = "dependent group requires a durable original preimage"
+                    raise ValueError(msg)
+                if (
+                    sha256(bytes.fromhex(self.original_content_hex)).hexdigest()
+                    != self.original_sha256
+                ):
+                    msg = "dependent group preimage differs from original bytes"
+                    raise ValueError(msg)
+            elif (
+                self.original_content_hex is not None
+                or self.original_staging is not None
+            ):
+                msg = "absent group original cannot carry a preimage"
+                raise ValueError(msg)
             return self
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")

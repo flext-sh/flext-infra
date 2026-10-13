@@ -846,7 +846,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     entry.model_copy(
                         update={
                             "group_admitted": entry.group_admitted
-                            or destination.value in admitted_paths,
+                            or (
+                                entry.dependency_group is not None
+                                and destination.value in admitted_paths
+                            ),
                             "recover_group": entry.recover_group
                             or entry.dependency_group in failed_groups,
                         }

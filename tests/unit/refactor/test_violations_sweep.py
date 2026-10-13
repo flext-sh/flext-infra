@@ -25,7 +25,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-LOCAL_RULE_CATALOG = "ruleDirs:\n  - rules\ntestConfigs: []\n"
+LOCAL_RULE_CATALOG = (
+    f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
+    "ruleDirs:\n  - rules\ntestConfigs: []\n"
+)
 
 LOCAL_GROWTH_RULE = (
     "id: sweep-growth\n"
@@ -53,11 +56,11 @@ class TestsFlextInfraRefactorViolationsSweep:
             {
                 "repair-marker": LOCAL_GROWTH_RULE.replace(
                     "sweep-growth", "repair-marker"
-                ),
+                ).replace("tuple()", "()"),
                 "resolve-future": (
                     "id: resolve-future\nlanguage: Python\nseverity: warning\n"
-                    "rule:\n  pattern: marker = tuple()\nfix: |\n"
-                    "  from __future__ import annotations\n  marker = list()\n"
+                    "rule:\n  pattern: marker = ()\nfix: |\n"
+                    "  from __future__ import annotations\n  marker = []\n"
                 ),
                 "absent-future": (
                     "id: absent-future\nlanguage: Python\nseverity: warning\n"
@@ -215,7 +218,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             {
                 "repair-marker": (
                     "id: repair-marker\nlanguage: Python\nseverity: warning\n"
-                    "rule:\n  pattern: marker = dict()\nfix: marker = list()\n"
+                    "rule:\n  pattern: marker = dict(source)\nfix: marker = list(source)\n"
                 ),
                 "absent-class": (
                     "id: absent-class\nlanguage: Python\nseverity: warning\n"
@@ -224,24 +227,26 @@ class TestsFlextInfraRefactorViolationsSweep:
                 ),
                 "violating-call": (
                     "id: violating-call\nlanguage: Python\nseverity: warning\n"
-                    "rule:\n  kind: call\n  regex: '^(dict|list)\\(\\)$'\n"
+                    "rule:\n  kind: call\n  regex: '^(dict|list)\\(source\\)$'\n"
                 ),
                 "violating-declaration": (
                     "id: violating-declaration\nlanguage: Python\nseverity: warning\n"
                     "rule:\n  kind: expression_statement\n"
-                    "  regex: '^marker = (dict|list)\\(\\)$'\n"
+                    "  regex: '^marker = (dict|list)\\(source\\)$'\n"
                 ),
                 "module-with-declaration": (
                     "id: module-with-declaration\nlanguage: Python\nseverity: warning\n"
                     "rule:\n  kind: module\n  has:\n"
                     "    kind: expression_statement\n"
-                    "    regex: '^marker = (dict|list)\\(\\)$'\n"
+                    "    regex: '^marker = (dict|list)\\(source\\)$'\n"
                 ),
             },
         )
         sample = mod_workspace / "accounting.py"
         tm.ok(
-            u.Cli.atomic_write_text_file(sample, prefix + "marker = dict()\n" * copies)
+            u.Cli.atomic_write_text_file(
+                sample, prefix + "source = ()\n" + "marker = dict(source)\n" * copies
+            )
         )
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         chain: list[m.Infra.CodegenStagedFile] = []

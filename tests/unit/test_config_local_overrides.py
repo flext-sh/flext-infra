@@ -33,16 +33,25 @@ class TestsFlextInfraConfigLocalOverrides:
             {"profiles": profiles[:1]},
         ):
             rejected = operation.model_copy(update=update)
-            candidate = make.model_copy(update={"verbs": (rejected,)})
-            tm.that(rejected.name in candidate.selector_free_verbs, eq=False)
+            eligible = u.Infra.selector_free_make_verb(
+                rejected.arguments,
+                rejected.profiles,
+                profiles,
+            )
+            tm.that(eligible, eq=False)
             payload = make.model_dump(round_trip=True)
             payload.update(
                 verbs=(rejected,), violations_sweep_repair_verbs=(rejected.name,)
             )
             with pytest.raises(ValueError, match="declared selector-free verbs"):
                 type(make).model_validate(payload)
-        candidate = make.model_copy(update={"verbs": (operation,)})
-        tm.that(operation.name in candidate.selector_free_verbs, eq=True)
+        eligible = u.Infra.selector_free_make_verb(
+            operation.arguments,
+            operation.profiles,
+            profiles,
+        )
+        tm.that(eligible, eq=True)
+        tm.that("selector_free_verbs" in make.model_dump(), eq=False)
 
     @staticmethod
     def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:

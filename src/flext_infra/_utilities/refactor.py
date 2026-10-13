@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping
+from itertools import chain
 from pathlib import Path
 
 from flext_cli import u
@@ -651,16 +652,34 @@ class FlextInfraUtilitiesRefactor:
             repository_totals[entry.repository] += 1
             rule_totals[entry.rule_id] += 1
             class_totals[entry.classification] += 1
-        evidence = m.Infra.ModScanEvidence(
-            schema_version=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
-            command=publication.command,
-            root=root.resolve(),
-            scope=tuple(publication.scope),
-            totals_by_class=class_totals,
-            totals_by_repository=dict(sorted(repository_totals.items())),
-            totals_by_rule=dict(sorted(rule_totals.items())),
-            entries=report.entries,
-        )
+        evidence = m.Infra.ModScanEvidence.model_validate({
+            "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+            "inputs": m.Infra.CodemodBindingSnapshot(
+                states=tuple(
+                    chain(
+                        report.source_states or (),
+                        (
+                            entry.source_state
+                            for entry in report.entries
+                            if entry.source_state is not None
+                        ),
+                        chain.from_iterable(
+                            {
+                                id(entry.binding_states): entry.binding_states
+                                for entry in report.entries
+                            }.values()
+                        ),
+                    )
+                )
+            ),
+            "command": publication.command,
+            "root": root.resolve(),
+            "scope": tuple(publication.scope),
+            "totals_by_class": class_totals,
+            "totals_by_repository": dict(sorted(repository_totals.items())),
+            "totals_by_rule": dict(sorted(rule_totals.items())),
+            "entries": report.entries,
+        })
         content = (evidence.model_dump_json(indent=2) + "\n").encode(
             c.DEFAULT_ENCODING,
         )

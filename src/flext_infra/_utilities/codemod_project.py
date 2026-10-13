@@ -537,11 +537,10 @@ class FlextInfraUtilitiesCodemodProject(
         Raises:
             ValueError: If binding source snapshots disagree.
         """
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        for state in source_states:
-            if states.setdefault(state.path.resolve(), state) != state:
-                msg = f"binding source snapshots disagree: {state.path}"
-                raise ValueError(msg)
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
+            state.path.resolve(): state
+            for state in m.Infra.CodemodBindingSnapshot(states=source_states).states
+        }
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as project,
             project.frozen_layout(),

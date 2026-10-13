@@ -745,7 +745,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def mod_workspace(tmp_path: Path) -> Path:
+def mod_workspace(installed_dependency_path: Path) -> Path:
     """Create the shared real workspace for the public refactor-mod CLI.
 
     Returns:
@@ -754,9 +754,21 @@ def mod_workspace(tmp_path: Path) -> Path:
     """
     project_document = u.read_project_document_cached(_PROJECT_ROOT)
     project = u.build_project_metadata(_PROJECT_ROOT, project_document)
-    workspace = tmp_path / "mod_workspace"
+    workspace = installed_dependency_path / "mod_workspace"
     author_name = tm.ok(u.Cli.json_dumps(project.project.authors[0].name))
     tm.ok(u.Cli.ensure_dir(workspace))
+    metadata = (
+        installed_dependency_path
+        / f"{workspace.name}-{project.project.version}.dist-info"
+    )
+    tm.ok(u.Cli.ensure_dir(metadata))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            metadata / "METADATA",
+            f"Metadata-Version: 2.1\nName: {workspace.name.replace('_', '-')}\n"
+            f"Version: {project.project.version}\n",
+        )
+    )
     tm.ok(
         u.Cli.atomic_write_text_file(
             workspace / c.PYPROJECT_FILENAME,
