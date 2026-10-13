@@ -328,33 +328,6 @@ class FlextInfraConfigModelsMake(
                     raise ValueError(msg)
             return self
 
-    class MakeWorkInProgressSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Predicate the generated CI merge guard applies to pull request heads.
-
-        A GitHub Draft selects no job; a promoted PR whose head commit subject
-        marks work in progress cannot merge into a protected integration
-        branch. The predicate is DATA so the lock is declared and auditable
-        rather than improvised per repository.
-        """
-
-        head_subject_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Regex patterns that mark a commit subject as work-in-progress; "
-                    "matched case-insensitively by the merge guard"
-                ),
-            ),
-        ]
-        merge_lock_target_branches: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Target branches that are blocked for WIP merges",
-            ),
-        ]
-
     class MakeRuffSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
@@ -745,10 +718,6 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = ("markdown-format",)
-        work_in_progress: Annotated[
-            FlextInfraConfigModelsMake.MakeWorkInProgressSpec,
-            m.Field(description="WIP branch and draft PR gate predicate"),
-        ]
         pre_commit: Annotated[
             Literal[True],
             m.Field(

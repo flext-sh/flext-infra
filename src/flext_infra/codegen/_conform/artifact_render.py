@@ -650,6 +650,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
                 gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
+                setup_operations_report_directory=(
+                    c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
+                ),
                 make_profile=target.make_profile,
                 gascity_enabled=target.gascity_enabled,
                 repository_branch=branch,
@@ -756,6 +759,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
+                bootstrap_report_shell_literal=(
+                    u.Infra.bootstrap_operation_report_shell_literal()
+                ),
+                bootstrap_report_relative_path=(
+                    c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
+                ),
                 pytest=pytest,
                 dist=target.repository.distribution,
                 infra_cli=config.Infra.name,

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from ruamel.yaml.comments import CommentedMap
@@ -20,20 +20,26 @@ if TYPE_CHECKING:
 class FlextInfraDepsFloorProfileWriter:
     """Rewrite dependency_profiles floors from the provisioned runtime."""
 
+<<<<<<< HEAD
     @classmethod
     def _source_paths(cls, root: Path) -> t.SequenceOf[Path]:
         """Elect the local owner from the caller's typed workspace declaration.
+=======
+    @staticmethod
+    def _source_paths(root: Path) -> t.SequenceOf[m.Cli.AtomicFileState]:
+        """Elect writable source layers that actually declare dependency profiles.
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            Captured configuration states owned by this operation's root.
 
         Raises:
-            ValueError: If ambiguous dependency floor owners in; or if dependency floor
-                configuration is outside workspace; or if dependency floor owner is not
-                writable in this workspace.
+            ValueError: If a declaring source escapes its owner, lacks captured
+                bytes, or contains invalid dependency profiles.
 
         """
         root = root.resolve()
+<<<<<<< HEAD
         manifests = u.Infra.load_workspace_manifest(root).unwrap()
         relative = Path(c.Infra.CODEGEN_CONFIG_DIR) / c.Infra.CODEGEN_CONFIG_FILENAME
         local = root / relative
@@ -60,11 +66,37 @@ class FlextInfraDepsFloorProfileWriter:
         sources = tuple(owner / relative for owner in owners)
         for source in sources:
             if not source.resolve().is_relative_to(root):
+=======
+        captured = u.Infra.load_config_document_inputs(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        ).unwrap()
+        sources: list[m.Cli.AtomicFileState] = []
+        for source in captured.sources:
+            if not source.path.is_relative_to(root):
+                continue
+            if not source.path.resolve().is_relative_to(root):
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 message = (
-                    f"dependency floor configuration is outside workspace: {source}"
+                    "dependency floor configuration is outside its owner: "
+                    f"{source.path}"
                 )
                 raise ValueError(message)
-        return sources
+            if source.content is None:
+                message = (
+                    f"dependency floor source has no captured bytes: {source.path}"
+                )
+                raise ValueError(message)
+            document = u.Infra.read_codegen_config_document(source.content).unwrap()
+            profiles = u.Cli.json_walk_path(
+                document,
+                ("Infra", "codegen", "scaffold", "project", "dependency_profiles"),
+            )
+            if profiles is None:
+                continue
+            FlextInfraDepsFloorProfileWriter._validated_sections(document, source.path)
+            sources.append(source)
+        return tuple(sources)
 
     @classmethod
     def _declares_local_profiles(cls, root: Path, local: Path) -> bool:
@@ -103,9 +135,9 @@ class FlextInfraDepsFloorProfileWriter:
         """Update dependency_profiles in the caller's local codegen owner.
 
         ``root`` is the modernizer's own declared ``--repository-root``.
-        A workspace declares its infrastructure member through its typed
-        manifest; a standalone owner carries its own configuration. Neither
-        route consults the installed package location.
+        Only authenticated layers inside this root that explicitly declare
+        profiles are writable. A consumer delta containing other settings
+        carries no dependency-floor publication authority.
 
         Returns a list of change descriptions for the deps report.
 
@@ -116,23 +148,33 @@ class FlextInfraDepsFloorProfileWriter:
         sources = cls._source_paths(root)
         if not sources:
             return ()
-        (ssot_path,) = sources
-        document = cls._loaded_document(ssot_path)
-        sections = cls._validated_sections(document, ssot_path)
-        changes = cls._rewrite_profiles(
-            sections,
-            ssot_path,
-            resolved_versions=resolved_versions,
-            internal_names=internal_names,
-        )
-        if not changes:
-            return ()
-
-        # Dump back with comments preserved
-        dumped = u.Cli.yaml_roundtrip_dump_text(document).unwrap()
-        u.Cli.atomic_write_text_file(ssot_path, dumped).unwrap()
-
-        return changes
+        changes: list[str] = []
+        for source in sources:
+            ssot_path = source.path
+            document = cls._loaded_document(ssot_path)
+            observed = u.Cli.atomic_read_binary_file_state(
+                ssot_path, required=True
+            ).unwrap()
+            if observed != source:
+                message = f"dependency floor source changed during read: {ssot_path}"
+                raise ValueError(message)
+            sections = cls._validated_sections(document, ssot_path)
+            rewritten = cls._rewrite_profiles(
+                sections,
+                ssot_path,
+                resolved_versions=resolved_versions,
+                internal_names=internal_names,
+            )
+            if not rewritten:
+                continue
+            dumped = u.Cli.yaml_roundtrip_dump_text(document).unwrap()
+            u.Cli.atomic_write_binary_file_guarded(
+                source,
+                dumped.encode(c.DEFAULT_ENCODING),
+                permission_mode=source.mode,
+            ).unwrap()
+            changes.extend(rewritten)
+        return tuple(changes)
 
     @staticmethod
     def _loaded_document(ssot_path: Path) -> CommentedMap:

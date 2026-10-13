@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraConfig, m, r, s, t, u
+from flext_infra import c, FlextInfraConfig, m, r, s, t, u
 from flext_infra._conform_wiring import FlextInfraConformWiring
 from flext_infra._preview_wiring import FlextInfraPreviewWiring
 from flext_infra.check import FlextInfraWorkspaceChecker
@@ -262,8 +262,11 @@ class FlextInfra(
 
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        config = FlextInfraConfig.fetch_global().Infra.refactor_csv_campaigns
-        config_dir = FlextInfraConfig.ssot_config_dir()
+        selected = u.Infra.load_refactor_csv_campaigns(root)
+        if selected.failure:
+            return r[t.Cli.ResultValue].from_failure(selected)
+        config = selected.value
+        config_dir = root / c.CONFIG_DIR_NAME
         config_root = config_dir.resolve()
         repository_root = root.resolve()
         campaigns: list[m.Infra.ApplyRenamesInput] = []
@@ -283,6 +286,7 @@ class FlextInfra(
                     )
             campaigns.append(
                 m.Infra.ApplyRenamesInput(
+                    repository_root=root,
                     csv=str(csv),
                     roots=tuple(str(path) for path in campaign_roots),
                     apply=request.apply
@@ -399,14 +403,24 @@ class FlextInfra(
                 m.Infra.WorkspaceProjectContext(cwd=resolved),
             )
         root = identity.value.repo_root
-        if not u.Infra.workspace_manifest_path(root).is_file():
+        captured = u.Infra.load_codegen_inputs(root)
+        if captured.failure:
+            return r[m.Infra.WorkspaceProjectContext].from_failure(captured)
+        if captured.value.spec.repository is None:
             return r[m.Infra.WorkspaceProjectContext].ok(
                 m.Infra.WorkspaceProjectContext(cwd=resolved, identity=identity.value),
             )
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            root,
+            inputs=captured.value,
+        )
         if workspace.failure:
             return r[m.Infra.WorkspaceProjectContext].from_failure(workspace)
-        target = FlextInfraWorkspaceDetector.conform_target(root, workspace.value)
+        target = FlextInfraWorkspaceDetector.conform_target(
+            root,
+            workspace.value,
+            inputs=captured.value,
+        )
         if target.failure:
             return r[m.Infra.WorkspaceProjectContext].from_failure(target)
         return r[m.Infra.WorkspaceProjectContext].ok(

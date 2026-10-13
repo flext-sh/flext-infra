@@ -61,6 +61,18 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
+        bootstrap_report_shell_literal: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Shell-quoted elected operation report scalar transport"
+            ),
+        ]
+        bootstrap_report_relative_path: Annotated[
+            Path,
+            m.Field(
+                description="Repository-relative early bootstrap evidence destination"
+            ),
+        ]
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             c.Infra.MakeProfile,

@@ -28,6 +28,9 @@ class FlextInfraPyprojectModernizerRun:
         skip_check: bool
         skip_comments: bool
         rewrite_constraints: bool
+        git_source_url_prefix: str | None
+        git_source_ref_from: str | None
+        git_source_ref_to: str | None
 
         @property
         def root(self) -> Path: ...
@@ -52,6 +55,7 @@ class FlextInfraPyprojectModernizerRun:
             canonical_dev: t.StrSequence,
             dry_run: bool,
             skip_comments: bool,
+            source_migration: m.Infra.GitSourceReferenceMigration | None = None,
         ) -> p.Result[t.StrSequence]: ...
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
@@ -129,6 +133,34 @@ class FlextInfraPyprojectModernizerRun:
         """
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
+        source_migration: m.Infra.GitSourceReferenceMigration | None = None
+        source_options = (
+            self.git_source_url_prefix,
+            self.git_source_ref_from,
+            self.git_source_ref_to,
+        )
+        if any(value is not None for value in source_options):
+            prefix, old_ref, new_ref = source_options
+            if prefix is None or old_ref is None or new_ref is None:
+                u.Cli.error(
+                    "Git reference migration requires URL prefix, source ref and target ref together"
+                )
+                return 2
+            if not prefix.endswith("/"):
+                u.Cli.error(
+                    "Git source URL prefix must end with '/' to preserve owner boundaries"
+                )
+                return 2
+            if self.rewrite_constraints:
+                u.Cli.error(
+                    "Git reference migration and runtime constraint rewriting are separate operations"
+                )
+                return 2
+            source_migration = m.Infra.GitSourceReferenceMigration(
+                url_prefix=prefix,
+                source_ref=old_ref,
+                target_ref=new_ref,
+            )
         # Modernization writes only the requested repository root and its
         # declared subprojects, never siblings.
         include_root = not self.project_names or "." in self.project_names
@@ -147,11 +179,20 @@ class FlextInfraPyprojectModernizerRun:
             skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
             project_paths=project_paths.value,
         )
-        files = {*(() if found.failure else found.value)}
+        if found.failure:
+            u.Cli.error(found.error or "pyproject discovery failed")
+            return 2
+        files = {*found.value}
         if include_root and root_pyproject.is_file():
             files.add(root_pyproject)
-        canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            u.Infra.canonical_dev_dependencies_from_payload(validated.value.payload),
+        canonical_dev: t.StrSequence = (
+            ()
+            if source_migration is not None
+            else t.Infra.STR_SEQ_ADAPTER.validate_python(
+                u.Infra.canonical_dev_dependencies_from_payload(
+                    validated.value.payload
+                ),
+            )
         )
         scanned = self._scan_documents(
             sorted(files),
@@ -159,6 +200,7 @@ class FlextInfraPyprojectModernizerRun:
             root_pyproject,
             canonical_dev=canonical_dev,
             dry_run=dry_run,
+            source_migration=source_migration,
         )
         if scanned.failure:
             u.Cli.error(scanned.error or "document scan failed")
@@ -167,6 +209,8 @@ class FlextInfraPyprojectModernizerRun:
         total = self._report_violations(violations, dry_run=dry_run)
         if check_mode and total > 0:
             return 1
+        if source_migration is not None:
+            return 0
         return (
             0
             if dry_run or self.skip_check
@@ -230,6 +274,7 @@ class FlextInfraPyprojectModernizerRun:
         *,
         canonical_dev: t.StrSequence,
         dry_run: bool,
+        source_migration: m.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[
         t.Triple[
             t.MappingKV[str, t.StrSequence],
@@ -270,6 +315,7 @@ class FlextInfraPyprojectModernizerRun:
                     canonical_dev=canonical_dev,
                     dry_run=dry_run,
                     skip_comments=self.skip_comments,
+                    source_migration=source_migration,
                 )
                 if processed.failure:
                     return outcome.from_failure(processed)

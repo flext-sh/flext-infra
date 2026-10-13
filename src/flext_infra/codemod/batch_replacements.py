@@ -119,6 +119,7 @@ class FlextInfraModReplacements:
         findings: t.SequenceOf[m.Infra.ModScanFinding],
         *,
         exact_replacements: bool = False,
+        compose_only: bool = False,
     ) -> p.Result[m.Infra.SemanticFilePlan]:
         """Validate one path's actionable findings into one publication plan.
 
@@ -132,7 +133,11 @@ class FlextInfraModReplacements:
                 f"actionable finding lacks authenticated state: {path}",
             )
         replacements: list[t.Triple[int, int, bytes]] = []
-        observed = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        observed = (
+            before
+            if compose_only
+            else u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        )
         for finding in findings:
             if (
                 finding.source_state != before
@@ -162,13 +167,18 @@ class FlextInfraModReplacements:
                     return r[m.Infra.SemanticFilePlan].fail(
                         f"binding snapshots disagree: {state.path}",
                     )
-        return cls._normalized_candidate(
-            root,
-            path,
-            before.content,
-            updated.value,
-            exact_replacements=exact_replacements,
-        ).map(
+        candidate = (
+            r[bytes].ok(updated.value)
+            if compose_only
+            else cls._normalized_candidate(
+                root,
+                path,
+                before.content,
+                updated.value,
+                exact_replacements=exact_replacements,
+            )
+        )
+        return candidate.map(
             lambda content: m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
@@ -179,6 +189,50 @@ class FlextInfraModReplacements:
                 source_states=tuple(bindings.values()),
             ),
         )
+
+    @classmethod
+    def compose(
+        cls, root: Path, report: m.Infra.ModScanReport
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
+        """Compose authenticated candidate bytes without admission or live effects.
+
+        Returns:
+            Exact syntax plans; final normalization and gates belong to convergence.
+        """
+        grouped: MutableMapping[Path, list[m.Infra.ModScanFinding]] = {}
+        for finding in report.entries:
+            if finding.actionable and finding.source_owner != "generator":
+                grouped.setdefault(root / finding.file, []).append(finding)
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for path, findings in sorted(grouped.items()):
+            planned = cls._path_plan(root, path, findings, compose_only=True)
+            if planned.failure:
+                return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(planned)
+            plans.append(planned.value)
+        return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(plans))
+
+    @classmethod
+    def admit(
+        cls, root: Path, plans: t.SequenceOf[m.Infra.SemanticFilePlan]
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
+        """Normalize and judge only complete syntax candidates against originals.
+
+        Returns:
+            Accepted plans or the first native admission failure.
+        """
+        accepted: list[m.Infra.SemanticFilePlan] = []
+        for plan in plans:
+            if plan.before.content is None or plan.desired_content is None:
+                return r[tuple[m.Infra.SemanticFilePlan, ...]].fail(
+                    f"syntax candidate lacks authenticated bytes: {plan.path}"
+                )
+            normalized = cls._normalized_candidate(
+                root, plan.path, plan.before.content, plan.desired_content
+            )
+            if normalized.failure:
+                return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(normalized)
+            accepted.append(plan.model_copy(update={"desired_content": normalized.value}))
+        return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(accepted))
 
     @staticmethod
     def _finding_replacement(

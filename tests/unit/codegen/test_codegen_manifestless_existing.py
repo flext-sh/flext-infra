@@ -83,7 +83,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
         # A dotted target (``Class.member``) resolves through attribute access,
         # so the seeded class carries each declared member.
-        targets: dict[Path, dict[str, set[str]]] = {}
+        targets: t.MutableMappingKV[Path, t.MutableMappingKV[str, set[str]]] = {}
         for entries in declared_groups:
             for target in entries.values():
                 module_name, _, attribute = str(target).partition(":")

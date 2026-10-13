@@ -669,6 +669,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return m.Infra.LintGateResult(
                 tool_name=tool_name,
                 execution_error=str(executed.error),
+                error_code=executed.error_code,
+                error_data=executed.error_data,
             )
         output = m.Cli.CommandOutput.model_validate(
             executed.value, from_attributes=True
@@ -711,7 +713,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
 
     @classmethod
-    def _lint_report_errors(cls, tool_name: str, source: str) -> p.Result[t.StrSequence]:
+    def _lint_report_errors(
+        cls, tool_name: str, source: str
+    ) -> p.Result[t.StrSequence]:
         """Validate the selected tool's native machine report before counting findings.
 
         Returns:
@@ -724,28 +728,28 @@ class FlextInfraUtilitiesProtectedEditLinting:
             report = u.validate_value(
                 m.Infra.PyrightReport, source, from_json=True, strict=True
             )
-            if report.failure:
-                return result.from_failure(report)
-            if not report.value.summary.files_analyzed:
-                return result.fail("pyright analyzed no files for the selected source")
-            return result.ok(tuple(
-                f"{entry.file}:"
-                f"{entry.range.start.line + 1 if entry.range else 0}:"
-                f"{entry.range.start.character + 1 if entry.range else 0}: "
-                f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                for entry in report.value.general_diagnostics
-            ))
+            return report.flat_map(
+                lambda observed: result.ok(tuple(
+                    f"{entry.file}:"
+                    f"{entry.range.start.line + 1 if entry.range else 0}:"
+                    f"{entry.range.start.character + 1 if entry.range else 0}: "
+                    f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
+                    for entry in observed.general_diagnostics
+                ))
+                if observed.summary.files_analyzed
+                else result.fail("pyright analyzed no files for the selected source")
+            )
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
                 m.Infra.PyreflyReport, source, from_json=True, strict=True
             )
-            if pyrefly.failure:
-                return result.from_failure(pyrefly)
-            return result.ok(tuple(
-                f"{entry.path}:{entry.line}:{entry.column}: "
-                f"{entry.severity}: {entry.description} [{entry.name}]"
-                for entry in pyrefly.value.errors
-            ))
+            return pyrefly.map(
+                lambda observed: tuple(
+                    f"{entry.path}:{entry.line}:{entry.column}: "
+                    f"{entry.severity}: {entry.description} [{entry.name}]"
+                    for entry in observed.errors
+                )
+            )
         if tool_name != c.Infra.RUFF:
             return result.fail(f"unsupported lint report contract: {tool_name}")
         return cls._ruff_report_errors(source)

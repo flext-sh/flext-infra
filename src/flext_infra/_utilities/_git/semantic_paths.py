@@ -9,9 +9,14 @@ from __future__ import annotations
 import os
 from importlib import import_module
 from pathlib import Path
+from typing import IO, cast
 
 from flext_cli import u as cli_u
 from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
+<<<<<<< HEAD
+=======
+from gitdb.util import LockedFD
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
 
 from flext_infra import m, p, r
 from flext_infra._utilities._git import (
@@ -73,7 +78,11 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         entry = entries[0]
         return m.Infra.GitIndexFileState(
             entry=entry,
+<<<<<<< HEAD
             content=cls._state_blob_payload(request.repo_root, entry.oid),
+=======
+            content=cast("IO[bytes]", repo.odb.stream(bytes.fromhex(entry.oid))).read(),
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         )
 
     @classmethod
@@ -136,10 +145,14 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             raise TypeError(msg)
         committed = False
         try:
+<<<<<<< HEAD
             descriptor = lock.open(write=True, stream=False)
             if type(descriptor) is not int:
                 msg = "the index lock did not return a raw file descriptor"
                 raise TypeError(msg)
+=======
+            descriptor = cast("int", lock.open(write=True, stream=False))
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             FlextInfraUtilitiesGitSemanticPathsMixin._write_index_replacement(
                 request,
                 index_path,

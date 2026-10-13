@@ -37,6 +37,7 @@ class FlextInfraAccessorOriginResolver:
             ValueError: If the specified module is unknown.
         """
         self._rope_project = rope_project
+<<<<<<< HEAD
         self._root = Path(rope_project.root.real_path)
         self._pymodules: dict[str, t.Infra.RopePyModule] = {}
         self._bindings: dict[str, dict[str, list[p.Infra.RopePyName]]] = {}
@@ -63,6 +64,9 @@ class FlextInfraAccessorOriginResolver:
         if module is not None and self._rope_project.find_module(module) is None:
             msg = f"unknown accessor module selector: {module}"
             raise ValueError(msg)
+=======
+        self._pymodules: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
 
     def within_origin(self, definition_path: str, *, origin: str) -> bool:
         """Compare the canonical module identity, not a directory substring.

@@ -93,13 +93,6 @@ class FlextInfraConfigModelsMakeDocs:
                 description="Placeholder GitHub orgs that must be rewritten",
             ),
         ] = ("organization",)
-        github_repos: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMakeDocs.DocsGithubRepoSpec],
-            m.Field(
-                default=(),
-                description="Governed org/repo/branch map for cross-repo doc URLs",
-            ),
-        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_actions(self) -> Self:

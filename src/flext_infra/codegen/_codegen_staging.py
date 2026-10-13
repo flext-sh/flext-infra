@@ -343,6 +343,7 @@ class FlextInfraCodegenStaging:
                     project=file_plan.project,
                     before=before,
                     replacement=replacement,
+                    source_states=file_plan.source_states,
                     tracking=file_plan.tracking,
                     index_before=file_plan.index_before,
                     tracking_dependencies=file_plan.tracking_dependencies,

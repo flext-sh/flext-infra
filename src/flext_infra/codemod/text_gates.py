@@ -81,6 +81,16 @@ class FlextInfraModTextGateEngine:
             elected = cls._elected_rules(project)
             if elected.failure:
                 return r[t.VariadicTuple[Path]].from_failure(elected)
+            issues = cls._include_issues(project, elected.value[2])
+            if issues:
+                error = ValueError(issues[0].message)
+                return r[t.VariadicTuple[Path]].fail(
+                    "\n".join(issue.formatted for issue in issues),
+                    exception=error,
+                    error_data={
+                        "issues": tuple(issue.model_dump() for issue in issues)
+                    },
+                )
             sources = cls._source_paths(project, elected.value[2])
             if sources.failure:
                 return sources
@@ -470,6 +480,30 @@ class FlextInfraModTextGateEngine:
             )
         return r[m.Infra.ModTextRule].ok(rule)
 
+    @classmethod
+    def _include_issues(
+        cls,
+        root: Path,
+        rules: t.VariadicTuple[m.Infra.ModTextRule],
+    ) -> t.VariadicTuple[m.Infra.Issue]:
+        """Report declared formats outside this phase's existing source contract.
+
+        Returns:
+            Central issues for unsupported explicit input declarations. A scope
+            glob without a suffix still selects the canonical Python inventory.
+        """
+        return tuple(
+            cls._source_issue(
+                root / pattern,
+                f"text rule {rule.rule_id} declares an unsupported input: {pattern}",
+            )
+            for rule in rules
+            for pattern in rule.include
+            if Path(pattern).suffix
+            and Path(pattern).suffix != c.Infra.EXT_PYTHON
+            and Path(pattern).suffix != ".md"
+        )
+
     @staticmethod
     def _source_paths(
         root: Path,
@@ -810,11 +844,40 @@ class FlextInfraModTextGateEngine:
             files.update(prefix / path for path in report.files)
             plans.extend(analysis.files)
             actionable += report.actionable
+<<<<<<< HEAD
             conflicting_dependencies.update(cls._conflicting_inputs(analysis, inputs))
         if conflicting_dependencies:
             plans = cls._without_conflicting_plans(
                 plans, conflicting_dependencies, issues
             )
+=======
+            for state in project_inputs if project_plans else ():
+                previous = inputs.setdefault(state.path, state)
+                if previous != state:
+                    conflicting_dependencies.add(state.path)
+        if conflicting_dependencies:
+            affected = tuple(
+                plan
+                for plan in plans
+                if any(
+                    state.path in conflicting_dependencies
+                    for state in plan.source_states
+                )
+            )
+            for plan in affected:
+                dependencies = tuple(
+                    str(state.path)
+                    for state in plan.source_states
+                    if state.path in conflicting_dependencies
+                )
+                issues.append(
+                    cls._source_issue(
+                        plan.path,
+                        f"text dependency identity changed during planning: {dependencies}",
+                    )
+                )
+            plans = [plan for plan in plans if plan not in affected]
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             inputs = {
                 state.path: state for plan in plans for state in plan.source_states
             }
@@ -934,6 +997,7 @@ class FlextInfraModTextGateEngine:
                 ]
             ].from_failure(context)
         catalogues, identity, rules = context.value
+        include_issues = cls._include_issues(root, rules)
         sources = cls._source_paths(root, rules)
         if sources.failure:
             return r[
@@ -952,6 +1016,17 @@ class FlextInfraModTextGateEngine:
         if scanned.failure:
             return scanned
         report, analysis = scanned.value
+        if include_issues:
+            analysis = analysis.model_copy(
+                update={
+                    "issues": (*include_issues, *analysis.issues),
+                    "exception": ValueError(include_issues[0].message),
+                }
+            )
+            scanned = r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
+                report,
+                analysis,
+            ))
         if validate_receipts:
             failed_rules: set[str] = set()
             receipt_issues: list[m.Infra.Issue] = []

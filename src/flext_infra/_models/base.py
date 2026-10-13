@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, t
 
@@ -149,9 +149,24 @@ class FlextInfraModelsBase:
             m.Field(description="Original native streams, duration and process outcome"),
         ] = None
         execution_error: Annotated[
-            str | None,
+            t.NonEmptyStr | None,
             m.Field(description="Execution or report failure, independent of findings"),
         ] = None
+        error_code: Annotated[
+            str | None,
+            m.Field(description="Original Result failure code when no process launched"),
+        ] = None
+        error_data: Annotated[
+            t.JsonMapping | None,
+            m.Field(description="Original Result failure metadata"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _require_execution_evidence(self) -> Self:
+            if self.output is None and self.execution_error is None:
+                msg = "lint gate requires a native output or an execution failure"
+                raise ValueError(msg)
+            return self
 
     class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""

@@ -35,7 +35,10 @@ class FlextInfraUtilitiesDocsFix:
 
         """
         if FlextInfraUtilitiesDocs.docs_is_secure_web_url(raw_link):
-            return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(raw_link)
+            return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(
+                raw_link,
+                repository_root=md_file.parent,
+            )
         result: str | None = None
         if not (
             FlextInfraUtilitiesDocs.docs_is_external(raw_link)

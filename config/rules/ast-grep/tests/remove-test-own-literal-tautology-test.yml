@@ -1,0 +1,28 @@
+id: remove-test-own-literal-tautology
+valid:
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT == runtime.timeout
+  - tm.that(result.value, eq=c.Tests.CASES)
+  - |
+    from tests import tm
+    assert result.failure
+  - "assert left == 3"
+  - |
+    from flext_core import c, tm
+    tm.that(c.Core.TIMEOUT, lte=runtime.deadline)
+invalid:
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30
+  - |
+    from tests import settings, tm
+    tm.that(settings.Tests.workers, eq=4)
+  - "assert result.success or result.failure"
+  - |
+    from flext_core import r
+    result = r.Ok(1)
+    assert result.failure or result.success
+  - |
+    from flext_core import config
+    assert config.Api.base_url == "https://example"

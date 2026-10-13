@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, config, m, r, u
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraMisePublication,
@@ -244,7 +244,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
                 path=filepath,
                 before=before.value,
                 desired_content=content.encode(c.DEFAULT_ENCODING),
-                desired_mode=0o644,
+                desired_mode=config.Infra.codegen.modes.file_default,
                 owner="codegen",
             )
             written = FlextInfraMisePublication.publish_file_plan(

@@ -8,22 +8,37 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import urlsplit
 
 import pytest
 
-from flext_infra import config
+from flext_infra import c, config, m
 from tests import tm, u
-
-pytestmark = pytest.mark.remote
 
 
 class TestsFlextInfraMisePinBootstrap:
     """Setup stays frozen while upgrade can establish the first self pin."""
 
+    class BootstrapRenderContext(m.Value):
+        """Declared bootstrap inputs passed through the real template consumer."""
+
+        toolchain: Annotated[
+            m.Infra.ToolchainSpec, m.Field(description="Original declared toolchain")
+        ]
+        make: Annotated[m.Infra.MakeSpec, m.Field(description="Original Make contract")]
+        bootstrap_report_shell_literal: Annotated[
+            str, m.Field(description="Elected operation report scalar transport")
+        ]
+        bootstrap_report_relative_path: Annotated[
+            Path, m.Field(description="Canonical report destination")
+        ]
+
     @staticmethod
-    def _project(tmp_path: Path) -> None:
+    def _project(tmp_path: Path, *, git_metadata: bool = True) -> None:
         """Render the real bootstrap macro with the declared self-managed tool."""
+        if git_metadata:
+            u.Tests.initialize_git_repo(tmp_path)
         toolchain = config.Infra.codegen.toolchain
         template_root = u.Infra.codegen_templates_root(config.Infra.codegen)
         shutil.copyfile(
@@ -35,10 +50,25 @@ class TestsFlextInfraMisePinBootstrap:
             '{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe %}'
             '{{ tool_bootstrap_recipe("bootstrap", "$(PROJECT_ROOT)", '
             "toolchain, [toolchain.mise_selector], "
-            '"printf recovered > recovered.txt", make) }}',
+            '"printf recovered > recovered.txt", make, '
+            "bootstrap_report_shell_literal, bootstrap_report_relative_path, false) }}",
             encoding="utf-8",
         )
-        recipe = tm.ok(u.Cli.template_render(template, config.Infra.codegen))
+        recipe = tm.ok(
+            u.Cli.template_render(
+                template,
+                TestsFlextInfraMisePinBootstrap.BootstrapRenderContext(
+                    toolchain=toolchain,
+                    make=config.Infra.codegen.make,
+                    bootstrap_report_shell_literal=(
+                        u.Infra.bootstrap_operation_report_shell_literal()
+                    ),
+                    bootstrap_report_relative_path=(
+                        c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
+                    ),
+                ),
+            ),
+        )
         (tmp_path / "Makefile").write_text(
             "PROJECT_ROOT := $(CURDIR)\n"
             "setup: bootstrap\n"
@@ -54,14 +84,45 @@ class TestsFlextInfraMisePinBootstrap:
         )
         tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
 
-    def test_setup_preserves_a_missing_self_pin(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("git_metadata", [False, True])
+    def test_setup_preserves_a_missing_self_pin(
+        self, tmp_path: Path, *, git_metadata: bool
+    ) -> None:
         """Frozen setup cannot resolve a missing lock or start its lifecycle."""
-        self._project(tmp_path)
+        self._project(tmp_path, git_metadata=git_metadata)
         setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=tmp_path))
         tm.that(u.Cli.process_succeeded(setup.outcome), eq=False)
-        tm.that(setup.stderr, has="pins no")
+        tm.that(
+            setup.stderr,
+            has="pins no",
+            msg=setup.stderr + "\n" + (tmp_path / "Makefile").read_text(),
+        )
         tm.that((tmp_path / "mise.lock").exists(), eq=False)
         tm.that((tmp_path / "recovered.txt").exists(), eq=False)
+        report = m.Infra.WorkspaceOperationReport.model_validate_json(
+            (tmp_path / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH).read_bytes()
+        )
+        tm.that(report.scope, eq=(Path("."),))
+        tm.that(len(report.receipts), eq=1)
+        receipt = report.receipts[0]
+        tm.that(receipt.root, eq=Path("."))
+        tm.that(receipt.executed, eq=True)
+        tm.that(receipt.completed, eq=False)
+        tm.that(receipt.native_exit_code, eq=2)
+        tm.that(receipt.stage, eq="lock-pin")
+        tm.that(receipt.files, eq=())
+        if git_metadata:
+            tm.that(
+                report.candidate_sha,
+                eq=tm.ok(
+                    u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=tmp_path)
+                ).strip(),
+            )
+            tm.that(report.candidate_read_exit_code, eq=0)
+        else:
+            tm.that(report.candidate_sha, eq=None)
+            tm.not_none(report.candidate_read_exit_code)
+            tm.that(report.candidate_read_exit_code != 0, eq=True)
 
     @staticmethod
     @pytest.mark.parametrize("enabled", [False, True])
@@ -104,6 +165,7 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that("tool_config" in document, eq=False)
 
     @pytest.mark.slow
+    @pytest.mark.remote
     def test_upgrade_recovers_a_missing_self_pin(self, tmp_path: Path) -> None:
         """Upgrade resolves the first pin and runs the verified native release."""
         self._project(tmp_path)

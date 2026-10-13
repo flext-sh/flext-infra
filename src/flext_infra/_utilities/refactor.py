@@ -302,6 +302,12 @@ class FlextInfraUtilitiesRefactor:
             and before.ast_report is not None
             and after.ast_report is not None
         )
+        lint_failures = tuple(
+            f"{path}: {error}"
+            for snapshot in (before, after)
+            for path, receipt in (snapshot.lint or {}).items()
+            for error in FlextInfraUtilitiesProtectedEditLinting.lint_execution_errors(receipt)
+        )
         coverage = (
             m.Infra.ViolationsEngineCoverage(
                 repository=project.name,
@@ -332,7 +338,8 @@ class FlextInfraUtilitiesRefactor:
                 if before.lint is not None and after.lint is not None
                 else "NOT_EXECUTED",
                 cause=(
-                    "lint snapshots lack complete native rule IDs "
+                    "; ".join(lint_failures)
+                    or "lint snapshots lack complete native rule IDs "
                     "and per-project zero-rule applicability metadata"
                 ),
             ),
@@ -370,6 +377,7 @@ class FlextInfraUtilitiesRefactor:
         error = (
             stage.error
             or "; ".join((*before.observation_errors, *after.observation_errors))
+            or "; ".join(lint_failures)
             or next(
                 (
                     cause

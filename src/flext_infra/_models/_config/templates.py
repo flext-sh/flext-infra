@@ -96,6 +96,21 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="JSON-compatible declaration fragment"),
         ]
 
+    class ConfigDocumentInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """One composed F.yaml document with its consulted physical sources."""
+
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(description="Strictly parsed and ordered configuration document"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Exact physical files consulted by this document",
+            ),
+        ] = ()
+
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold artifact and its typed rendering owner."""
 

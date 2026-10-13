@@ -60,6 +60,15 @@ class FlextInfraPyprojectModernizerBase(
             description="Caller-owned project ManagedArtifacts resolution",
         ),
     ] = None
+    git_source_url_prefix: t.NonEmptyStr | None = m.Infra.ModernizeCommand.model_fields[
+        "git_source_url_prefix"
+    ]
+    git_source_ref_from: t.NonEmptyStr | None = m.Infra.ModernizeCommand.model_fields[
+        "git_source_ref_from"
+    ]
+    git_source_ref_to: t.NonEmptyStr | None = m.Infra.ModernizeCommand.model_fields[
+        "git_source_ref_to"
+    ]
     tomlsort_sort_first: t.StrSequence = m.Field(
         default_factory=_config_sort_first,
         exclude=True,

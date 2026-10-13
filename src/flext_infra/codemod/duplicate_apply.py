@@ -19,9 +19,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import builtins
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
@@ -31,43 +30,6 @@ from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping, MutableSet
-
-
-class _Definition(NamedTuple):
-    """One candidate definition of a duplicate group, read and verified."""
-
-    item: m.Infra.Object
-    path: Path
-    source: str
-    statement: ast.stmt | None
-    body: str
-    consumers: int
-    layer: int
-
-
-class _CopyCure(NamedTuple):
-    """One planned copy removal with its proven consumer rebindings."""
-
-    definition: _Definition
-    consumer_files: t.VariadicTuple[Path]
-    in_module_uses: int
-
-
-class _GroupCure(NamedTuple):
-    """One planned trivial cure for a whole duplicate group."""
-
-    owner: _CopyCure
-    copies: t.VariadicTuple[_CopyCure]
-    edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit]
-
-
-class _Deletion(NamedTuple):
-    """One copy deletion the cure plans to publish."""
-
-    path: Path
-    name: str
-    line: int
-    project: str
 
 
 class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
@@ -81,35 +43,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     """
 
     name: str = "duplicate-apply"
-
-    _BUILTIN_NAMES: ClassVar[frozenset[str]] = frozenset(dir(builtins))
-
-    _PURE_CONSTRUCTORS: ClassVar[frozenset[str]] = frozenset({
-        "bool",
-        "bytes",
-        "complex",
-        "dict",
-        "float",
-        "frozenset",
-        "int",
-        "list",
-        "range",
-        "set",
-        "str",
-        "tuple",
-    })
-
-    _TRIVIAL_KINDS: ClassVar[frozenset[str]] = frozenset({
-        "assignment",
-        "class",
-        "constant",
-        "function",
-    })
-
-    _DELETE_ACTION: str = "delete-copy"
-    _REBIND_ACTION: str = "rebind-import"
-    _BIND_ACTION: str = "bind-owner"
-    _KEEP_ACTION: str = "keep-owner"
 
     # ---------------------------------------------------------------- surface
 
@@ -132,7 +65,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         working: MutableMapping[Path, str] = {}
         edits: list[m.Infra.SemanticMigrationEdit] = []
         plans: list[m.Infra.DuplicateCurePlan] = []
-        deletions: list[_Deletion] = []
+        deletions: list[m.Infra.DuplicateDeletion] = []
         bindings = 0
         for group in groups:
             planned = cls._plan_group(
@@ -147,7 +80,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             edits.extend(planned.edits)
             cls._collect_working(working, planned.edits)
             deletions.extend(
-                _Deletion(
+                m.Infra.DuplicateDeletion(
                     path=copy.definition.path,
                     name=group.name,
                     line=copy.definition.item.line,
@@ -190,11 +123,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         *,
         layers: t.MappingKV[Path, int],
         working: MutableMapping[Path, str],
-    ) -> m.Infra.DuplicateCurePlan | _GroupCure:
+    ) -> m.Infra.DuplicateCurePlan | m.Infra.DuplicateGroupCure:
         """Plan one group either as a trivial cure or as a manual plan.
 
         Returns:
-            A ``_GroupCure`` for the trivial tier or a typed plan.
+            A ``m.Infra.DuplicateGroupCure`` for the trivial tier or a typed plan.
 
         """
         definitions = cls._definitions(group, layers=layers)
@@ -226,7 +159,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             if isinstance(copy_edits, str):
                 return cls._group_plan(group, definitions, copy_edits)
             edits.extend(copy_edits)
-        return _GroupCure(
+        return m.Infra.DuplicateGroupCure(
             owner=cure.owner,
             copies=tuple(copy for copy in cure.copies if copy is not cure.owner),
             edits=tuple(edits),
@@ -237,7 +170,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         group: m.Infra.DuplicateGroup,
-        definitions: t.SequenceOf[_Definition],
+        definitions: t.SequenceOf[m.Infra.DuplicateDefinition],
     ) -> str | None:
         """Return why the group is outside the trivial contract, or ``None``.
 
@@ -260,7 +193,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         return None
 
     @classmethod
-    def _definition_blocker(cls, definition: _Definition) -> str | None:
+    def _definition_blocker(cls, definition: m.Infra.DuplicateDefinition) -> str | None:
         """Return why one definition is outside the trivial contract.
 
         Returns:
@@ -286,7 +219,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 "a definition is not module-level",
             ),
             (
-                definition.item.kind not in cls._TRIVIAL_KINDS,
+                definition.item.kind not in c.Infra.DUPLICATE_TRIVIAL_KINDS,
                 (
                     "definition kind is outside the trivial contract: "
                     f"{definition.item.kind}"
@@ -308,20 +241,20 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         group: m.Infra.DuplicateGroup,
         *,
         layers: t.MappingKV[Path, int],
-    ) -> t.SequenceOf[_Definition]:
+    ) -> t.SequenceOf[m.Infra.DuplicateDefinition]:
         """Read every group definition with its exact statement body.
 
         Returns:
             The resulting definitions ordered by file and line.
 
         """
-        definitions: list[_Definition] = []
+        definitions: list[m.Infra.DuplicateDefinition] = []
         for item in group.definitions:
             path = Path(item.file_path).resolve()
             source = path.read_text(encoding=c.DEFAULT_ENCODING)
             statement = cls._definition_statement(source, item)
             definitions.append(
-                _Definition(
+                m.Infra.DuplicateDefinition(
                     item=item,
                     path=path,
                     source=source,
@@ -416,12 +349,12 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             if (
                 isinstance(node, ast.Name)
                 and isinstance(node.ctx, ast.Load)
-                and node.id not in cls._BUILTIN_NAMES
+                and node.id not in c.Infra.DUPLICATE_BUILTIN_NAMES
             ):
                 return False
             if isinstance(node, ast.Call) and not (
                 isinstance(node.func, ast.Name)
-                and node.func.id in cls._PURE_CONSTRUCTORS
+                and node.func.id in c.Infra.DUPLICATE_PURE_CONSTRUCTORS
             ):
                 return False
         return True
@@ -467,8 +400,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     def _consumer_cure(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        definitions: t.SequenceOf[_Definition],
-    ) -> _GroupCure | str:
+        definitions: t.SequenceOf[m.Infra.DuplicateDefinition],
+    ) -> m.Infra.DuplicateGroupCure | str:
         """Partition every copy's rope occurrences into rewritable consumers.
 
         Returns:
@@ -476,7 +409,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             consumer forms exceed the trivial contract.
 
         """
-        cure_copies: list[_CopyCure] = []
+        cure_copies: list[m.Infra.DuplicateCopyCure] = []
         for definition in definitions:
             located = cls._located_occurrences(rope_workspace, definition)
             if isinstance(located, str):
@@ -504,7 +437,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 if path not in consumer_files:
                     consumer_files.append(path)
             cure_copies.append(
-                _CopyCure(
+                m.Infra.DuplicateCopyCure(
                     definition=definition,
                     consumer_files=tuple(sorted(consumer_files)),
                     in_module_uses=in_module_uses,
@@ -523,7 +456,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 copy.definition.item.line,
             ),
         )
-        return _GroupCure(
+        return m.Infra.DuplicateGroupCure(
             owner=owner,
             copies=tuple(cure_copies),
             edits=(),
@@ -533,7 +466,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     def _located_occurrences(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        definition: _Definition,
+        definition: m.Infra.DuplicateDefinition,
     ) -> t.SequenceOf[t.Pair[Path, int]] | str:
         """Locate every rope occurrence of one definition's binding.
 
@@ -635,8 +568,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         group: m.Infra.DuplicateGroup,
-        owner: _CopyCure,
-        copy: _CopyCure,
+        owner: m.Infra.DuplicateCopyCure,
+        copy: m.Infra.DuplicateCopyCure,
     ) -> t.SequenceOf[m.Infra.SemanticMigrationEdit] | str:
         """Plan one copy's deletion plus its consumer and in-module rebinds.
 
@@ -668,7 +601,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         name: str,
         owner_module: str,
-        copy: _CopyCure,
+        copy: m.Infra.DuplicateCopyCure,
     ) -> m.Infra.SemanticMigrationEdit | str:
         """Plan one copy module's statement deletion and its in-module rebind.
 
@@ -718,7 +651,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         *,
         name: str,
         owner_module: str,
-        copy: _CopyCure,
+        copy: m.Infra.DuplicateCopyCure,
     ) -> t.SequenceOf[m.Infra.SemanticMigrationEdit] | str:
         """Rebind every consumer import of one copy onto the owner module.
 
@@ -756,7 +689,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     def _remove_statement(
         cls,
         source: str,
-        definition: _Definition,
+        definition: m.Infra.DuplicateDefinition,
     ) -> str | None:
         """Delete one definition statement from its module source.
 
@@ -804,7 +737,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         working: t.MappingKV[Path, str],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
-        deletions: t.SequenceOf[_Deletion],
+        deletions: t.SequenceOf[m.Infra.DuplicateDeletion],
     ) -> p.Result[bool]:
         """Normalize every planned source and publish the journaled batch.
 
@@ -899,7 +832,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     def _published_residue(
         cls,
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
-        deletions: t.SequenceOf[_Deletion],
+        deletions: t.SequenceOf[m.Infra.DuplicateDeletion],
     ) -> str | None:
         """Return the first planned rewrite the published sources contradict.
 
@@ -954,7 +887,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     def _group_plan(
         cls,
         group: m.Infra.DuplicateGroup,
-        definitions: t.SequenceOf[_Definition],
+        definitions: t.SequenceOf[m.Infra.DuplicateDefinition],
         reason: str,
     ) -> m.Infra.DuplicateCurePlan:
         """Build the manual assisted-cure plan of one non-trivial group.
@@ -976,7 +909,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             m.Infra.DuplicateCureEdit(
                 file_path=owner.path,
                 line=owner.item.line,
-                action=cls._KEEP_ACTION,
+                action=c.Infra.DUPLICATE_KEEP_ACTION,
                 detail=f"keep owner {owner.item.module_name}.{group.name}",
             ),
         ]
@@ -984,7 +917,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             m.Infra.DuplicateCureEdit(
                 file_path=copy.path,
                 line=copy.item.line,
-                action=cls._DELETE_ACTION,
+                action=c.Infra.DUPLICATE_DELETE_ACTION,
                 detail=(
                     "unify into the owner and delete this definition of "
                     f"{group.name} after rewiring its consumers"
@@ -1142,7 +1075,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             kind="clone",
             origin="jscpd",
             reason=(
-                "structural clone: similar but not identical code is never auto-unified"
+                "structural clone: automated extraction has no proven owner, "
+                "captured-binding, and consumer-rebinding contract"
             ),
             owner_file_path=Path(owner_side[1]),
             owner_line=side_line(owner_side[0]),
@@ -1150,7 +1084,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 m.Infra.DuplicateCureEdit(
                     file_path=Path(owner_side[1]),
                     line=side_line(owner_side[0]),
-                    action=cls._KEEP_ACTION,
+                    action=c.Infra.DUPLICATE_KEEP_ACTION,
                     detail=(
                         f"extend this owner block ({owner_side[2]}, {lines} "
                         "lines) and rewire the clone's consumers onto a "
@@ -1160,7 +1094,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 m.Infra.DuplicateCureEdit(
                     file_path=Path(other_side[1]),
                     line=side_line(other_side[0]),
-                    action=cls._DELETE_ACTION,
+                    action=c.Infra.DUPLICATE_DELETE_ACTION,
                     detail=(
                         f"delete the clone block ({other_side[2]}) after the "
                         "manual rewire"

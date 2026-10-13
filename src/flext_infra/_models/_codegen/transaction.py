@@ -167,7 +167,8 @@ class FlextInfraModelsCodegenTransactionModels:
                     generate a transaction root; or if codegen journal destination paths
                     must be unique; or if codegen journal entry has no project
                     participant; or if codegen journal directory paths must be unique;
-                    or if codegen journal directory has no project participant.
+                    or if codegen journal directory has no project participant; or if
+                    a source dependency is duplicated or lacks same-phase authority.
 
             """
             participants: t.VariadicTuple[
@@ -186,6 +187,17 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             self._validate_staging_authority()
             self._validate_participant_coverage(selectors)
+            source_keys = {(source.phase, source.path) for source in self.sources}
+            for entry in self.entries:
+                if len(set(entry.source_paths)) != len(entry.source_paths):
+                    msg = "journal entry source dependencies must be unique"
+                    raise ValueError(msg)
+                if any(
+                    (entry.phase, path) not in source_keys
+                    for path in entry.source_paths
+                ):
+                    msg = "journal entry source dependency has no same-phase authority"
+                    raise ValueError(msg)
             staging_paths = tuple(intent.before.path for intent in self.staging_intents)
             if len(set(staging_paths)) != len(staging_paths):
                 msg = "staging intention paths must have unique authority"

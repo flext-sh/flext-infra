@@ -155,7 +155,6 @@ class FlextInfraSemanticPublication:
     @staticmethod
     def _guard_source_inputs(
         source_guard: Callable[[], p.Result[bool]] | None,
-        input_roots: t.VariadicTuple[Path] = (),
     ) -> p.Result[bool]:
         """Preserve native pre-publication refusal and reject a false verdict.
 
@@ -180,6 +179,7 @@ class FlextInfraSemanticPublication:
         projection_roots: t.VariadicTuple[Path],
         validator: Callable[[], p.Result[bool]] | None,
         source_guard: Callable[[], p.Result[bool]] | None,
+        input_roots: t.VariadicTuple[Path] = (),
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Keep semantic and generated phases in the same recoverable journal.
 

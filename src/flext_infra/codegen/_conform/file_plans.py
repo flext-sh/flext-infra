@@ -10,8 +10,11 @@ from functools import partial
 from pathlib import Path
 
 from flext_core import FlextStrictYamlConfigSource
-from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
+from flext_infra import FlextInfraConfig, c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
+from flext_infra._utilities.workspace_inventory import (
+    FlextInfraUtilitiesWorkspaceInventory,
+)
 
 
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
@@ -77,7 +80,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         cls,
         root: Path,
         inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Project captured self-owned declarations before retiring their input.
 
         This is an explicit migration operation, not a configuration source.
@@ -85,16 +88,33 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         library, repository and local layers.
 
         Returns:
-            The guarded declaration followed by dependent manifest retirement.
+            The guarded own declaration and independent retirement diagnostics.
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
         legacy_path = u.Infra.workspace_manifest_path(root)
         captured = u.Cli.atomic_read_binary_file_state(legacy_path, required=False)
         if captured.failure:
             return result_type.from_failure(captured)
         if captured.value.content is None:
+<<<<<<< HEAD
             return result_type.ok(())
         delta = cls._repository_migration_delta(captured.value.content)
+=======
+            return result_type.ok(
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                    files=(),
+                    inputs=inputs.sources,
+                ),
+            )
+        parsed = u.Infra.read_codegen_config_document(captured.value.content)
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
+        if legacy.failure:
+            return result_type.from_failure(legacy)
+        delta = u.Infra.repository_declaration_delta(legacy.value)
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         if delta.failure:
             return result_type.from_failure(delta)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
@@ -227,7 +247,61 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
         if declaration.failure:
             return result_type.from_failure(declaration)
+<<<<<<< HEAD
         retirement = cls._absent_file_plan(root, captured.path)
+=======
+        retirement_obstacles: list[str] = []
+        first_exception: BaseException | None = None
+        if legacy.value.external_consumers:
+            discovered = (
+                FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
+                    root,
+                    inputs,
+                )
+            )
+            if discovered.failure:
+                retirement_obstacles.append(str(discovered.error))
+                first_exception = discovered.exception
+            else:
+                covered = {consumer.root for consumer in discovered.value}
+                missing = tuple(
+                    consumer
+                    for consumer in legacy.value.external_consumers
+                    if consumer.root.resolve() not in covered
+                )
+                if missing:
+                    retirement_obstacles.append(
+                        "manifest retirement requires verified public host inventory "
+                        "coverage for its external consumers: "
+                        + ", ".join(str(consumer.root) for consumer in missing),
+                    )
+        if legacy.value.candidate_dependencies:
+            retirement_obstacles.append(
+                "candidate dependency coordinates must be adopted by the "
+                "declared dependency provenance before manifest retirement",
+            )
+        if retirement_obstacles:
+            exception = first_exception or ValueError(retirement_obstacles[0])
+            return result_type.ok(
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                    files=(declaration.value,),
+                    inputs=(*inputs.sources, captured.value),
+                    issues=tuple(
+                        m.Infra.Issue(
+                            file=str(legacy_path),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=message,
+                        )
+                        for message in retirement_obstacles
+                    ),
+                    exception=exception,
+                ),
+            )
+        retirement = cls._absent_file_plan(root, legacy_path)
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         if retirement.failure:
             return result_type.from_failure(retirement)
         if retirement.value.before != captured:
@@ -235,12 +309,18 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 "repository declaration changed after migration input capture",
             )
             return result_type.fail(str(error), exception=error)
-        return result_type.ok((
-            declaration.value,
-            retirement.value.model_copy(
-                update={"tracking_dependencies": (declaration.value.path,)},
+        return result_type.ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=(
+                    declaration.value,
+                    retirement.value.model_copy(
+                        update={"tracking_dependencies": (declaration.value.path,)},
+                    ),
+                ),
+                inputs=(*inputs.sources, captured.value),
             ),
-        ))
+        )
 
     @staticmethod
     def file_plan(
@@ -356,9 +436,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
 
     @staticmethod
-    def _retired_destinations() -> p.Result[
-        t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]
-    ]:
+    def _retired_destinations(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]:
         """Collect declared retired projections with their removal evidence.
 
         Returns:
@@ -369,7 +449,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         result_type = r[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]
         extra: list[str] = []
         evidence_by_path: t.StrDict = {}
-        for retired in config.Infra.codegen.retired_projections:
+        for retired in codegen.retired_projections:
             declared = retired if isinstance(retired, str) else retired.path
             relative = Path(declared)
             if relative.is_absolute() or ".." in relative.parts:
@@ -389,6 +469,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         cls,
         root: Path,
         profile: c.Infra.MakeProfile,
+        *,
+        inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan removal of generated projections this profile no longer renders.
 
@@ -401,13 +483,18 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
 
         """
+        if inputs is None:
+            loaded = u.Infra.load_codegen_inputs(root)
+            if loaded.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(loaded)
+            inputs = loaded.value
         planned: list[m.Infra.CodegenFilePlan] = []
         destinations: list[str] = [
             entry.destination
-            for entry in config.Infra.codegen.templates.entries
+            for entry in inputs.spec.templates.entries
             if profile not in entry.profiles and "{" not in entry.destination
         ]
-        collected = cls._retired_destinations()
+        collected = cls._retired_destinations(inputs.spec)
         if collected.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(collected)
         extra_destinations, evidence_by_path = collected.value
@@ -432,7 +519,11 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                     absent_plan,
                 )
-            planned.append(absent_plan.value)
+            planned.append(
+                absent_plan.value.model_copy(
+                    update={"source_states": inputs.sources},
+                ),
+            )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
 

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,91 @@ def _provision_edited_sample(
 
 @pytest.mark.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
+    @staticmethod
+    @pytest.mark.parametrize("mode", ["empty", "malformed", "signal", "timeout", "launch"])
+    def test_native_lint_failure_never_becomes_a_diagnostic_zero(
+        tmp_path: Path, mode: str,
+    ) -> None:
+        """Real process failures retain their native receipt without invented findings."""
+        programs = {
+            "empty": f"raise SystemExit({c.Cli.EXIT_CODE_FAILURE})",
+            "malformed": "print('{}')",
+            "signal": "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
+            "timeout": "import time; time.sleep(30)",
+        }
+        command = (
+            (str(tmp_path / "absent-lint-executable"),)
+            if mode == "launch"
+            else (sys.executable, "-c", programs[mode])
+        )
+        executed = u.Cli.run_raw(command, cwd=tmp_path, timeout=1)
+        receipt = u.Infra.lint_gate_result(c.Infra.RUFF, executed)
+        tm.that(receipt.errors, eq=())
+        tm.that(receipt.execution_error is not None, eq=True)
+        tm.that(u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False)
+        tm.that(
+            u.Infra.lint_new_errors(
+                {receipt.tool_name: receipt}, {receipt.tool_name: receipt}
+            ),
+            eq={},
+        )
+        if executed.failure:
+            tm.that(receipt.output, eq=None)
+            tm.that(receipt.execution_error, eq=executed.error)
+        else:
+            tm.that(receipt.output is not None, eq=True)
+            if receipt.output is not None:
+                tm.that(
+                    receipt.output.outcome.model_dump(),
+                    eq={
+                        "raw_return_code": executed.value.outcome.raw_return_code,
+                        "timed_out": executed.value.outcome.timed_out,
+                        "forwarded_signal": executed.value.outcome.forwarded_signal,
+                    },
+                )
+                tm.that(receipt.output.stdout, eq=executed.value.stdout)
+                tm.that(receipt.output.stderr, eq=executed.value.stderr)
+
+    @staticmethod
+    def test_configuration_failure_is_not_cached_as_clean_lint(
+        tmp_path: Path,
+    ) -> None:
+        """Changing only the native configuration must recover a failed snapshot."""
+        project_config, py_file, _, _ = _provision_edited_sample(tmp_path)
+        configuration = tmp_path / c.PYPROJECT_FILENAME
+        u.Infra.clear_snapshot_cache()
+        configuration.write_text(
+            project_config + "[tool.ruff]\nline-length = 'invalid'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        failed = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(failed), empty=False)
+        tm.that(failed[c.Infra.RUFF].errors, eq=())
+        configuration.write_text(project_config, encoding=c.DEFAULT_ENCODING)
+        recovered = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(recovered), eq=())
+        tm.that(recovered[c.Infra.RUFF].errors, eq=())
+        tm.that(recovered[c.Infra.RUFF].output is not None, eq=True)
+        u.Infra.clear_snapshot_cache()
+
+    @staticmethod
+    def test_native_ruff_findings_retain_violation_exit_separately(
+        tmp_path: Path,
+    ) -> None:
+        """A validated native finding is not a launch or report failure."""
+        _, py_file, _, _ = _provision_edited_sample(tmp_path)
+        py_file.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
+        snapshot = u.Infra.lint_snapshot(
+            py_file, tmp_path, gates=(c.Infra.RUFF,), source="import os\n"
+        )
+        receipt = snapshot[c.Infra.RUFF]
+        tm.that(receipt.errors, empty=False)
+        tm.that(receipt.execution_error, eq=None)
+        tm.that(receipt.output is not None, eq=True)
+        if receipt.output is not None:
+            tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
+        tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
+
     @staticmethod
     @pytest.fixture
     def provisioned_workspace(tmp_path: Path) -> None:

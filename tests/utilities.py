@@ -114,6 +114,9 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
             return m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
                 gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
+                setup_operations_report_directory=(
+                    c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
+                ),
                 make_profile=make_profile,
                 repository_branch=repository_branch,
                 ci_trigger_branches=ci_trigger_branches,

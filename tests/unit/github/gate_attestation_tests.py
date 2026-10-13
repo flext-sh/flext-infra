@@ -16,11 +16,21 @@ import pytest
 from flext_cli import u as cli_u
 
 from flext_infra import c, m, p
-from tests import tm, u
+from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from tests import t, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
     """Behavior tests for local SSH-signed gate attestations."""
+
+    @staticmethod
+    def _runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
+        """Read real installed provenance and selected native scanner identities."""
+        return FlextInfraGateRegistry.default().runtime_identity(
+            gate_ids,
+            installed_identity=FlextInfraPytestRunner.installed_toolchain_identity(),
+        )
 
     @staticmethod
     def _signed_repository(root: Path) -> Path:
@@ -139,6 +149,10 @@ class TestsFlextInfraGithubGateAttestation:
                 request,
                 inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
                 load_inputs=u.Infra.load_codegen_inputs,
+<<<<<<< HEAD
+=======
+                read_runtime_identity=self._runtime_identity,
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             )
         )
         second = tm.ok(
@@ -146,6 +160,10 @@ class TestsFlextInfraGithubGateAttestation:
                 request,
                 inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
                 load_inputs=u.Infra.load_codegen_inputs,
+<<<<<<< HEAD
+=======
+                read_runtime_identity=self._runtime_identity,
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             )
         )
         assert first.receipt is not None
@@ -233,6 +251,10 @@ class TestsFlextInfraGithubGateAttestation:
                     request,
                     inputs=inputs,
                     load_inputs=u.Infra.load_codegen_inputs,
+<<<<<<< HEAD
+=======
+                    read_runtime_identity=self._runtime_identity,
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
                 )
             )
             assert captured.receipt is not None
@@ -296,6 +318,7 @@ class TestsFlextInfraGithubGateAttestation:
                 ),
                 inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
                 load_inputs=u.Infra.load_codegen_inputs,
+                read_runtime_identity=self._runtime_identity,
             )
         )
         assert captured.process.raw_return_code != 0

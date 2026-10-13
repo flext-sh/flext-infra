@@ -150,6 +150,31 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class ExtraPathsCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
+    class GitSourceReferenceMigration(m.ContractModel):
+        """Explicit source scope and reference transition; no source conversion."""
+
+        url_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://[^/?#]+/[^?#]+/$",
+                description="Canonical Git URL directory prefix selecting dependency sources",
+            ),
+        ]
+        source_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[^\s@#;]+$",
+                description="Only this existing explicit Git reference may change",
+            ),
+        ]
+        target_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[^\s@#;]+$",
+                description="Operator-declared replacement Git reference",
+            ),
+        ]
+
     class ModernizeCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
 
@@ -181,6 +206,23 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = False
+        git_source_url_prefix: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                alias="git-source-url-prefix",
+                description="Explicit Git source URL scope",
+            ),
+        ] = None
+        git_source_ref_from: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                alias="git-source-ref-from", description="Explicit reference to migrate"
+            ),
+        ] = None
+        git_source_ref_to: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
+        ] = None
 
     # Codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.
@@ -207,6 +249,17 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict[str, t.JsonValue])
+<<<<<<< HEAD
+=======
+        document: Annotated[
+            t.Cli.TomlDocument | None,
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Original parsed TOML tree retaining authored layout and comments",
+            ),
+        ] = None
+>>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
 
     class PackagedDataSelection(m.ContractModel):
         """Validated data inputs separated by Hatch selection semantics."""

@@ -563,6 +563,16 @@ class FlextInfraImportNormalizationRoutesMixin(
                     alias.name,
                     seen | {identity},
                 )
+        if isinstance(binding, ast.Assign) and isinstance(binding.value, ast.Name):
+            # A module-level alias such as ``t = FlextTypes`` re-exports the
+            # named declaration; follow it so every facet root's alias form
+            # resolves to its source declaration.
+            return cls._declaration_identity(
+                scope,
+                module,
+                binding.value.id,
+                seen | {identity},
+            )
         if not isinstance(
             binding,
             ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,

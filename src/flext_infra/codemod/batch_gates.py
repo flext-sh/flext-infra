@@ -483,6 +483,7 @@ class FlextInfraModGateEngine:
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         project_rule_ids: t.MappingKV[Path, t.StrSequence],
+        candidate_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> m.Infra.ModScanReport:
         """Evaluate each source against its nearest governed project's plan.
 
@@ -508,6 +509,7 @@ class FlextInfraModGateEngine:
                 project,
                 FlextInfraModGateEngine.recounted(tuple(entries)),
                 rules_by_id,
+                candidate_states,
             )
             admitted.extend(
                 entry.model_copy(
@@ -522,6 +524,7 @@ class FlextInfraModGateEngine:
         root: Path,
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
+        candidate_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -544,7 +547,7 @@ class FlextInfraModGateEngine:
                 for rule_id in sorted({entry.rule_id for entry in report.entries})
             ),
         )
-        states = tuple(
+        states = candidate_states or tuple(
             {
                 entry.source_state.path: entry.source_state
                 for entry in report.entries
@@ -1115,6 +1118,81 @@ class FlextInfraModGateEngine:
             if published.failure:
                 return r[m.Infra.ModScanReport].from_failure(published)
         return r[m.Infra.ModScanReport].ok(complete_report)
+
+    @classmethod
+    def scan_candidate(
+        cls,
+        root: Path,
+        view_root: Path,
+        candidate: m.Infra.StageSourcePlan,
+    ) -> p.Result[m.Infra.ModScanReport]:
+        """Scan an immutable overlay with the original catalog and logical policy.
+
+        Returns:
+            Full-catalog findings authenticated to candidate bytes and bindings.
+        """
+        plan = u.Infra.codemod_rule_plan(root).unwrap()
+        rules_by_id = {rule.id: rule for rule in plan.rules}
+        targets = u.Infra.ast_grep_scan_targets(root)
+        states = tuple(
+            state.model_copy(update={
+                "content": candidate.updates[state.path].encode(c.DEFAULT_ENCODING)
+                if state.path in candidate.updates
+                else state.content,
+            })
+            for state in candidate.inputs
+        )
+        physical = {
+            view_root / state.path.relative_to(root.resolve()):
+            u.Cli.atomic_read_binary_file_state(
+                view_root / state.path.relative_to(root.resolve()), required=True
+            ).unwrap()
+            for state in states
+            if state.content is not None
+            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+        }
+        logical = {state.path: state for state in states}
+        entries: list[m.Infra.ModScanFinding] = []
+        for ruleset in plan.rulesets:
+            run = cls._run_tool(
+                view_root,
+                u.Infra.ast_grep_scan_command(
+                    ruleset.config, rule_ids=ruleset.rule_ids,
+                    targets=targets, json_stream=True,
+                ),
+                finding_exit_code=1,
+            )
+            if run.failure:
+                return r[m.Infra.ModScanReport].from_failure(run)
+            parsed = cls._parse_findings(
+                run.value.stdout, view_root,
+                {rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids},
+                frozenset(ruleset.fixable_rule_ids), physical,
+            ).unwrap()
+            if run.value.outcome.raw_return_code != 0:
+                receipt = cls._validate_finding_receipt(
+                    run.value.stderr,
+                    sum(entry.payload.get("severity") == "error" for entry in parsed.entries),
+                )
+                if receipt.failure:
+                    return r[m.Infra.ModScanReport].from_failure(receipt)
+            entries.extend(
+                entry.model_copy(update={
+                    "source_state": logical[(root / entry.file).resolve()],
+                })
+                for entry in parsed.entries
+            )
+        report = cls._admitted(
+            root, cls.recounted(tuple(entries)), rules_by_id,
+            plan.project_rule_ids, tuple(
+                state for state in states
+                if state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            ),
+        )
+        declared = cls._validate_expected_receipts(plan.rules, report)
+        if declared.failure:
+            return r[m.Infra.ModScanReport].from_failure(declared)
+        return r[m.Infra.ModScanReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraModGateEngine"]

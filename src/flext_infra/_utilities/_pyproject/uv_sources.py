@@ -217,36 +217,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
         else:
             u.Cli.toml_remove_key_if_present(uv, "environments")
 
-    @staticmethod
-    def _sync_uv_excludes(
-        uv: t.Cli.TomlTable,
-        resolution: m.Infra.UvResolutionSpec,
-    ) -> None:
-        """Sync the uv scoped exclude-dependencies payload.
-
-        Project is a flext-infra routing key only; uv scoped form is
-        {package={name, version?}, dependencies=[...]} (uv settings docs).
-        Emit on every owning pyproject so standalone CI clones resolve;
-        do not gate on owns_uv_root_policy (that stripped member excludes).
-        """
-        exclude_payload = list(
-            t.Cli.JSON_LIST_ADAPTER.validate_python([
-                {
-                    key: value
-                    for key, value in item.model_dump(
-                        mode="json",
-                        exclude_none=True,
-                    ).items()
-                    if key != "project"
-                }
-                for item in resolution.exclude_dependencies
-            ]),
-        )
-        if exclude_payload:
-            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-
     @classmethod
     def _sync_uv_sources(
         cls,
@@ -309,7 +279,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             resolution.model_copy(update={"constraint_dependencies": constraints}),
         )
         cls._sync_uv_environments(uv, resolution)
-        cls._sync_uv_excludes(uv, resolution)
+        u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         cls._sync_member_sources(uv, members)
         return r[bool].ok(value=True)
 
