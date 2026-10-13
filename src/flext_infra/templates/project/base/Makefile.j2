@@ -546,9 +546,12 @@ override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
 ifeq ($(GEN_INIT_ONLY),)
-ifneq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
+# Why (fleet-automation 2026-10-12): the custom surface loads in every
+# non-bootstrap context, CI included — RUN_PUBLIC_POST fires post-<verb>
+# hooks whenever the declared-targets list names them, so a CI-excluded
+# include made every member with a post hook fail with "no rule for
+# post-<verb>" exactly when the pipeline ran the activation half.
 {{ makefile_custom_include }}
-endif
 endif
 ifeq ($(APPROVAL_CONTEXT),{{ make.ci.value }})
 override {{ make.ci.variable }} := {{ make.ci.value }}

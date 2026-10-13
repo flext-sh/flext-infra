@@ -73,7 +73,8 @@ class FlextInfraRefactorCensusObjectsMixin:
 
         """
         return (
-            not item.is_facade_member
+            item.reference_evidence_collected
+            and not item.is_facade_member
             and item.references_count == 0
             and not item.name.startswith("_")
             and not FlextInfraRefactorCensusObjectsMixin._is_pytest_entry_point(item)
