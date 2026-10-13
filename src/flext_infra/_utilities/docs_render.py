@@ -847,7 +847,6 @@ class FlextInfraUtilitiesDocsRender:
             "site_title",
             scope.name,
         )
-        version = FlextInfraUtilitiesDocsRender._declared_or(data, "version", "unknown")
         description = FlextInfraUtilitiesDocsRender._declared_or(
             data,
             "description",
@@ -864,7 +863,7 @@ class FlextInfraUtilitiesDocsRender:
             c.Infra.GENERATED_HEADER,
             "",
             f"- Package: `{scope.package_name}`",
-            f"- Version: `{version}`",
+            f"- Version: `{data.get('version', '')}`",
             f"- Description: {description}",
             f"- Doc summary: {doc_summary}",
             f"- Classifiers: {classifiers}",
