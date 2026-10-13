@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, infra, m, p
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
@@ -18,7 +19,6 @@ from flext_infra.codemod import (
     FlextInfraModGateEngine,
     FlextInfraNamespaceRelocationPhase,
 )
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import tm, u
 

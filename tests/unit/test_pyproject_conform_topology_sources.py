@@ -115,6 +115,14 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
+        tm.that(
+            u.Tests.toml_mapping(uv.get("sources")),
+            eq={},
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
+            eq=(),
+        )
         if package:
             tm.that(
                 u.Tests.toml_mapping(uv.get("sources")),
@@ -134,11 +142,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(repeated, eq=rendered)
 
-    def test_root_members_keep_portable_git_sources_of_any_family(
+    def test_root_members_use_local_path_sources_of_any_family(
         self,
         tmp_path: Path,
     ) -> None:
-        """The lock's declared Git graph does not require local member paths."""
+        """Local requirements use their declared native editable source policy."""
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
@@ -189,11 +197,13 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             u.Tests.toml_mapping(uv.get("sources")),
             eq={
-                **(
-                    {workspace.repository.distribution: {"workspace": True}}
-                    if workspace.repository.package
-                    else {}
-                ),
+                **{
+                    ref.distribution: {
+                        "path": ref.path.as_posix(),
+                        "editable": ref.editable,
+                    }
+                    for ref in workspace.subprojects
+                },
             },
         )
         groups = u.Tests.toml_mapping(parsed.get("dependency-groups"))
@@ -342,12 +352,13 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq=True,
         )
         tm.that(
-            "override-dependencies" in uv,
-            eq=False,
+            f"{provider.distribution}[feature]"
+            in u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
+            eq=True,
         )
         tm.that(
-            provider.distribution in u.Tests.toml_mapping(uv.get("sources")),
-            eq=False,
+            u.Tests.toml_mapping(uv["sources"])[provider.distribution],
+            eq={"path": provider.path.as_posix(), "editable": provider.editable},
         )
         tm.that(
             tm.ok(
@@ -887,11 +898,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(
             uv_sources,
-            eq={
-                str(u.Tests.toml_mapping(parsed.get("project"))["name"]): {
-                    "workspace": True,
-                },
-            },
+            eq=None,
         )
 
     def test_member_render_is_context_independent(self) -> None:
@@ -933,7 +940,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that("workspace" not in uv, eq=True)
         tm.that(
             uv.get("sources"),
-            eq={consumer.distribution: {"workspace": True}},
+            eq=None,
         )
         self._assert_direct_source(rendered, runtime)
         detached = tm.ok(
@@ -1086,7 +1093,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(group, eq=(self._inline_requirement(core),))
         tm.that(
             uv_sources,
-            eq={workspace.repository.distribution: {"workspace": True}},
+            eq=None,
         )
 
     def test_member_requirement_with_a_foreign_url_fails_provenance(self) -> None:

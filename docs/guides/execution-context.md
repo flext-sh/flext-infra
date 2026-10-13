@@ -139,17 +139,16 @@ operations itself. Only `upg` resolves moving Git branches; `setup` installs the
 exact committed lock without changing it.
 
 Every repository runs independently in remote CI, including a superproject.
-The portable lock selects Git artifacts without requiring materialized member
-checkouts. Local workspace setup first installs that complete locked graph,
-then binds the declared local packages in runtime dependency order without
-resolving a second graph. Dependency compatibility and editable provenance
-remain mandatory after binding. CI installs noneditable artifacts and executes
-their installed code rather than injecting a source checkout.
+Remote checkout never initializes members. The CI gate token does not change
+physical Git attachment or local hook environment ownership.
+The existing native editable policy remains unchanged: local workspace source
+entries retain each member's declared `path` and `editable` values; CI installs
+with `--no-editable`. There is no second installer or post-install editable
+overlay. Shared lock ownership does not change those source declarations.
 
-A packaged project's self override has a matching `tool.uv.sources` entry
-with `workspace = true`; this refers only to the implicit root project.
-Content-only roots have neither entry. Sources, overrides and Make routing
-come from the generator and are never repaired in their projections.
+The current project retains its native uv identity. Local source overrides apply
+to declared members, never to the current project itself. Sources, overrides and
+Make routing come from the generator and are never repaired in their projections.
 
 Configuration declares `latest`. `make upg` is the only verb that resolves newer
 releases and writes the committed `uv.lock` and `mise.lock`. `make setup` installs
@@ -189,8 +188,9 @@ manifest declares it, and a commit in a hand-written source fails. Fix the setup
 
 A workspace root preserves declared Git requirements and binds its package members
 through `[tool.uv.sources]` entries containing their declared local `path` and
-`editable` values. No repository declares a native `[tool.uv.workspace]`: each
-repository owns its lock independently. Publishable members retain the same inline
+`editable` values. No repository declares a native `[tool.uv.workspace]`.
+Standalone repositories own their locks; attached members use their containing
+workspace's locks exclusively. Publishable members retain the same inline
 Git provenance whether attached or standalone; only the containing root owns the
 local source overlay and the shared runtime environment. Regenerate that root with
 `make gen` and reconcile its lock with `make upg` when the local binding changes.

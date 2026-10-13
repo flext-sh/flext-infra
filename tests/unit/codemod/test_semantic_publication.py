@@ -20,7 +20,7 @@ from flext_infra.refactor import (
     FlextInfraImportNormalization,
 )
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import tm, u, c, m, p, r
+from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
     from tests import t

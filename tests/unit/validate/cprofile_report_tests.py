@@ -66,7 +66,10 @@ class TestsFlextInfraCProfileReport:
         blocked = tmp_path / "blocked-parent"
         blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
         consumer = (
-            "import runpy, sys\n"
+            "import faulthandler, runpy, signal, sys\n"
+            "faulthandler.register(signal.SIGUSR1)\n"
+            "from flext_cli import cli\n"
+            "from flext_infra import main\n"
             "sys.stdout.close()\n"
             "module = sys.argv[1]\n"
             "sys.argv = sys.argv[1:]\n"
@@ -93,6 +96,7 @@ class TestsFlextInfraCProfileReport:
         )
         tm.that(u.Cli.process_succeeded(reference.outcome), eq=False)
         tm.that(profiled.outcome.raw_return_code, eq=reference.outcome.raw_return_code)
+        tm.that(reference.stderr, lacks="KeyboardInterrupt")
         tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
         primary_trace, secondary_trace = profiled.stderr.split(
             "profile publication failed:\n", maxsplit=1

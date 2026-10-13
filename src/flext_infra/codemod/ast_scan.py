@@ -145,7 +145,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"[{entry.text!r}]",
             )
         cli.display_text(
-            f"ast: scanned {len({rule.resource for rule in planned.rules})} rule file(s) from "
+            f"ast: scanned {len({rule.resource for rule in planned.rules})} rule "
+            f"file(s) from "
             f"{len(planned.rulesets)} provider(s); "
             f"{ast_report.findings} ast-grep finding(s) "
             f"({ast_report.actionable} actionable), "

@@ -10,8 +10,9 @@ import ast
 from operator import itemgetter
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m, p, t
-from flext_cli import u as census_u
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
@@ -746,7 +747,7 @@ class FlextInfraUtilitiesRopeInventory:
             # evidence. The record reports an uncollected search — never an
             # unused classification — instead of failing the whole census
             # for one unanchorable symbol.
-            census_u.Cli.info(
+            u.Cli.info(
                 "rope census reference evidence unavailable: "
                 f"{options.resource.path}:{line}:{name}: {anchor_diagnostic}",
             )

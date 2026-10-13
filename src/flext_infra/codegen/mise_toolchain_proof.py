@@ -11,7 +11,9 @@ at the first defect, that what runs is what the lock pins:
 3. self-containment — ``mise which <binary> --tool <key>@<version>`` and every
    symlink hop it resolves through stay inside that root;
 4. real version — the tool's declared ``version_probe`` reports the locked
-   version.
+   version;
+5. runtime lint inventory — every executable declared by ``c.Infra.LINT_TOOLS``
+   exists in the invoking virtual environment, never a host PATH substitute.
 
 There is no fallback, retry, or warning-only mode.
 
@@ -456,6 +458,19 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
                 f"executable={sys.executable} version={sys.version.split()[0]} "
                 f"prefix={sys.prefix} base={sys.base_prefix} "
                 f"expected-base={python_root.value}"
+            )
+        for name, command in c.Infra.LINT_TOOLS:
+            binary = Path(sys.executable).parent / (
+                command[0] + (".exe" if os.name == "nt" else "")
+            )
+            if not binary.is_file() or not os.access(binary, os.X_OK):
+                return r[bool].fail(
+                    f"Declared lint tool {name} is not executable in the runtime: "
+                    f"{binary}; repair the declared lock with make upg, "
+                    "then provision with make setup"
+                )
+            self.logger.info(
+                "runtime_lint_tool_proven", tool=name, executable=str(binary)
             )
         return r[bool].ok(value=True)
 

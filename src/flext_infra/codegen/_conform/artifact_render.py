@@ -775,6 +775,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             target.canonical_project_name,
             pytest.run_timeout_seconds,
         )
+        order = (
+            u.Infra.workspace_dependency_order(target.root, workspace.subprojects)
+            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+            else ()
+        )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
                 bootstrap_report_shell_literal=(
@@ -791,9 +796,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 package=target.repository.package,
                 workspace_repositories=(
                     tuple(
-                        u.Infra.workspace_dependency_order(
-                            target.root,
+                        sorted(
                             workspace.subprojects,
+                            key=lambda repository: order.index(
+                                repository.distribution,
+                            ),
                         ),
                     )
                     if target.make_profile is c.Infra.MakeProfile.WORKSPACE

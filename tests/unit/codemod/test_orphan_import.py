@@ -50,7 +50,9 @@ class TestsFlextInfraOrphanImport:
         tm.that(self._render(source), eq=source)
 
     def test_orphan_import_drops_after_the_block_is_gone(self) -> None:
-        source = "from typing import TYPE_CHECKING\n\ndef read() -> int:\n    return 0\n"
+        source = (
+            "from typing import TYPE_CHECKING\n\ndef read() -> int:\n    return 0\n"
+        )
         tm.that(self._render(source), lacks="TYPE_CHECKING")
 
     def test_scanner_reads_the_guard_not_the_import(self) -> None:

@@ -71,7 +71,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             The resulting ``p.Result[bool]``.
 
         """
-        selected = u.Infra.git_runtime_root(
+        selected = u.Infra.git_repository_root(
             m.Infra.GitRepoRequest(repo_root=self.repository_root),
         )
         if selected.failure:

@@ -11,7 +11,6 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
@@ -92,21 +91,20 @@ class FlextInfraUtilitiesProjectDiscovery(
         if loaded.failure:
             return result_type.from_failure(loaded)
         repository = loaded.value.spec.repository
-        if repository is not None:
-            if repository.codegen == c.Infra.CodegenKind.NONE:
-                return result_type.ok(
-                    m.Infra.WorkspaceOperationApplicability(
-                        applicable=False,
-                        reason="Repository declaration disables code generation",
-                    ),
-                )
-            if mutating and repository.read_only:
-                return result_type.ok(
-                    m.Infra.WorkspaceOperationApplicability(
-                        applicable=False,
-                        reason="Repository declaration is read-only",
-                    ),
-                )
+        if repository.codegen == c.Infra.CodegenKind.NONE:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Repository declaration disables code generation",
+                ),
+            )
+        if mutating and repository.read_only:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Repository declaration is read-only",
+                ),
+            )
         return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
 
     @classmethod
@@ -124,7 +122,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             repository_root,
         ).unwrap()
         repository = loaded.spec.repository
-        if repository is None or repository.refactor is None:
+        if repository.refactor is None:
             return packaged
         return repository.refactor
 
@@ -317,6 +315,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         repository_root: Path,
         *,
         source_files: t.SequenceOf[Path] | None = None,
+        refactor_config: m.Infra.RefactorConfigSpec | None = None,
     ) -> t.StrSequence:
         """Return only governed handwritten Python surfaces as scan targets.
 
@@ -335,7 +334,8 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         """
         resolved_root = repository_root.resolve()
-        refactor_config = cls.load_refactor_config(resolved_root)
+        if refactor_config is None:
+            refactor_config = cls.load_refactor_config(resolved_root)
         scan_dirs = refactor_config.project_scan_dirs
         targets: set[str] = set()
         for project in cls.governed_project_roots(resolved_root):
