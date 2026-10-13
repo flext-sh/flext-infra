@@ -293,7 +293,13 @@ class FlextInfraWorkspaceDetector(
                 kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=u.Infra.layout(repository_root) is not None,
-                editable=composed,
+                # The checkout's own root package is its environment's
+                # editable install by the uv contract — the lock records
+                # `editable = "."` for the project root in every standalone
+                # checkout, and the provenance law compares this flag
+                # against that record. Workspace-attached members carry
+                # their attachment; the self root carries the contract.
+                editable=composed or path == Path(),
                 read_only=False,
             ),
         )
