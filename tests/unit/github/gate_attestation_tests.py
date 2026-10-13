@@ -395,7 +395,7 @@ class TestsFlextInfraGithubGateAttestation:
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
-        """Original reaped timeout state stays operational failure under either policy."""
+        """A reaped timeout cannot borrow an earlier complete report."""
         signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         source = m.Infra.GateCommandEvidence.model_validate_json(

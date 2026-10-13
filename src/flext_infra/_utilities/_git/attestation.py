@@ -158,6 +158,30 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
 
     @classmethod
+    def _candidate_unsettled(
+        cls,
+        started: m.Infra.GateCaptureStart,
+        *,
+        head_oid: str | None,
+        origin_remote: str | None,
+        root: Path,
+    ) -> bool:
+        """Report whether the candidate moved, dirtied, or lacks an origin.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        repo = cls._repo(root)
+        dirty = started.dirty is not False or repo.is_dirty(untracked_files=False)
+        moved = (
+            started.commit_sha != head_oid
+            or started.tree_sha != repo.head.commit.tree.hexsha
+        )
+        relocated = started.repository != origin_remote
+        return dirty or moved or relocated or started.repository is None
+
+    @classmethod
     def git_finish_gate_capture(
         cls,
         started: m.Infra.GateCaptureStart,
@@ -176,13 +200,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
         issue = started.issue
         if after.failure:
             issue = after.error
-        elif (
-            started.dirty is not False
-            or cls._repo(root).is_dirty(untracked_files=False)
-            or started.commit_sha != after.value.head_oid
-            or started.tree_sha != cls._repo(root).head.commit.tree.hexsha
-            or started.repository != after.value.origin_remote
-            or started.repository is None
+        elif cls._candidate_unsettled(
+            started,
+            head_oid=after.value.head_oid,
+            origin_remote=after.value.origin_remote,
+            root=root,
         ):
             issue = (
                 "original gate candidate is dirty, changed or has no declared origin"
@@ -346,15 +368,18 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 "gate attestation requires the candidate's declared origin",
             )
         repository = FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin)
-        if (
-            evidence.commit_sha != identity.value.head_oid
-            or evidence.tree_sha != repo.head.commit.tree.hexsha
-            or evidence.repository != repository
-            or evidence.context_digest != request.context_digest
-            or evidence.policy != request.policy
-            or evidence.policy_digest != request.policy_digest
-            or tuple(request.gates) != (evidence.gate,)
-        ):
+        receipt_matches = (
+            evidence.commit_sha == identity.value.head_oid
+            and evidence.tree_sha == repo.head.commit.tree.hexsha
+            and evidence.repository == repository
+            and evidence.context_digest == request.context_digest
+        )
+        policy_matches = (
+            evidence.policy == request.policy
+            and evidence.policy_digest == request.policy_digest
+            and tuple(request.gates) == (evidence.gate,)
+        )
+        if not (receipt_matches and policy_matches):
             return r[m.Infra.GateAttestationPredicate].fail(
                 "original gate receipt does not match candidate, context or stage",
             )
@@ -433,16 +458,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
         evidence: m.Infra.GateExecutionFacts,
     ) -> p.Result[bool]:
         process = evidence.process
-        if (
-            evidence.result_digest
-            != f"sha256:{
-                u.Cli.sha256_content(process.model_dump_json(round_trip=True))
-            }"
-            or process.timed_out
+        digest_matches = evidence.result_digest == (
+            f"sha256:{u.Cli.sha256_content(process.model_dump_json(round_trip=True))}"
+        )
+        process_incomplete = (
+            process.timed_out
             or process.forwarded_signal is not None
             or process.raw_return_code < 0
-            or evidence.native_outcome == c.Infra.ToolOutcome.ERROR
             or process.raw_return_code not in {0, 1}
+        )
+        if (
+            not digest_matches
+            or evidence.native_outcome == c.Infra.ToolOutcome.ERROR
+            or process_incomplete
             or (
                 evidence.native_outcome == c.Infra.ToolOutcome.CLEAN
                 and process.raw_return_code != 0
@@ -611,22 +639,27 @@ class FlextInfraUtilitiesGitAttestationMixin(
         diagnostics = m.Infra.PytestDiagnostics.model_validate_json(
             diagnostics_source.value
         )
-        if (
-            process != expected_process
-            or process.timed_out
-            or process.forwarded_signal is not None
-            or process.raw_return_code not in {0, 1}
-            or accounting.inventory_count is None
-            or not accounting.executed_count
-            or accounting.executed_count != accounting.reported_count
-            or accounting.executed_count + accounting.deselected_count
-            != accounting.inventory_count
-            or len(diagnostics.reported_node_ids) != accounting.reported_count
-            or diagnostics.error_count
-            or diagnostics.collection_failed_count
-            or diagnostics.collection_skipped_count
-            or diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases)
-        ):
+        process_valid = (
+            process == expected_process
+            and not process.timed_out
+            and process.forwarded_signal is None
+            and process.raw_return_code in {0, 1}
+        )
+        accounting_valid = (
+            accounting.inventory_count is not None
+            and bool(accounting.executed_count)
+            and accounting.executed_count == accounting.reported_count
+            and accounting.executed_count + accounting.deselected_count
+            == accounting.inventory_count
+        )
+        diagnostics_valid = (
+            len(diagnostics.reported_node_ids) == accounting.reported_count
+            and not diagnostics.error_count
+            and not diagnostics.collection_failed_count
+            and not diagnostics.collection_skipped_count
+            and diagnostics.skipped_count <= len(diagnostics.connectivity_skip_cases)
+        )
+        if not (process_valid and accounting_valid and diagnostics_valid):
             return result_type.fail(
                 "test reports contain incomplete or operational execution"
             )

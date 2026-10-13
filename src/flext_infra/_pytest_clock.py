@@ -42,6 +42,43 @@ class FlextInfraPytestClock:
         return cls.profiler
 
     @staticmethod
+    def _guard_staging_identity(staging: Path, identity: os.stat_result) -> None:
+        """Fail when the staging file no longer matches its recorded identity.
+
+        Args:
+            staging: The staging path whose live identity is compared.
+            identity: The device and inode captured when the file was opened.
+
+        Raises:
+            OSError: If the live device and inode differ from ``identity``.
+        """
+        current = staging.stat(follow_symlinks=False)
+        if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
+            msg = "profile staging identity changed"
+            raise OSError(errno.ESTALE, msg)
+
+    @staticmethod
+    def _discard_staging(staging: Path, identity: os.stat_result) -> None:
+        """Remove the staging file or attach its cleanup failure to the active error.
+
+        Args:
+            staging: The staging path replaced by a successful publication.
+            identity: The device and inode that authorize the removal.
+
+        Raises:
+            OSError: If cleanup fails while no earlier exception is active.
+        """
+        failure = sys.exception()
+        try:
+            if staging.exists() or staging.is_symlink():
+                FlextInfraPytestClock._guard_staging_identity(staging, identity)
+                staging.unlink()
+        except OSError as cleanup_failure:
+            if failure is None:
+                raise
+            failure.add_note(f"profile staging cleanup failed: {cleanup_failure}")
+
+    @staticmethod
     def publish_profile(profile: cProfile.Profile, output: Path) -> None:
         """Publish native pstats atomically without exposing an incomplete artifact.
 
@@ -53,46 +90,23 @@ class FlextInfraPytestClock:
             OSError: If ``(current.st_dev, current.st_ino) != (identity.st_dev,
                 identity.st_ino)``; or if ``failure is None``.
         """
-        stream = tempfile.NamedTemporaryFile(
-            mode="wb",
+        descriptor, name = tempfile.mkstemp(
             dir=output.parent,
             prefix=f".{output.name}.",
             suffix=".tmp",
-            delete=False,
         )
-        staging = Path(stream.name)
-        identity = os.fstat(stream.fileno())
+        staging = Path(name)
+        identity = os.fstat(descriptor)
         try:
-            with stream:
+            with os.fdopen(descriptor, "wb") as stream:
                 profile.create_stats()
                 marshal.dump(profile.stats, stream)
                 stream.flush()
                 os.fsync(stream.fileno())
-            current = staging.stat(follow_symlinks=False)
-            if (current.st_dev, current.st_ino) != (
-                identity.st_dev,
-                identity.st_ino,
-            ):
-                raise OSError(errno.ESTALE, "profile staging identity changed")
+            FlextInfraPytestClock._guard_staging_identity(staging, identity)
             Path(staging).replace(output)
         finally:
-            failure = sys.exception()
-            try:
-                if staging.exists() or staging.is_symlink():
-                    current = staging.stat(follow_symlinks=False)
-                    if (current.st_dev, current.st_ino) != (
-                        identity.st_dev,
-                        identity.st_ino,
-                    ):
-                        raise OSError(
-                            errno.ESTALE,
-                            "profile staging identity changed before cleanup",
-                        )
-                    staging.unlink()
-            except OSError as cleanup_failure:
-                if failure is None:
-                    raise
-                failure.add_note(f"profile staging cleanup failed: {cleanup_failure}")
+            FlextInfraPytestClock._discard_staging(staging, identity)
 
     @classmethod
     def register_signal_checkpoint(

@@ -50,7 +50,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             repository_root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        selected = layers if include_local else layers[:2]
+        selected = tuple(dict.fromkeys(layers if include_local else layers[:2]))
         if any(projection.path not in selected[1:] for projection in projections):
             error = ValueError("projected codegen declaration is outside elected layers")
             return result_type.fail(str(error), exception=error)
