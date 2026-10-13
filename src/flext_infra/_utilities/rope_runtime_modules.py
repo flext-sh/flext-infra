@@ -467,7 +467,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             raise TypeError(msg)
         pair: p.Infra.RopeRuntimeSequence = result
         size = len(pair)
-        if not isinstance(result, tuple) or size != 2:
+        source_binding_pair_size = 2
+        if not isinstance(result, tuple) or size != source_binding_pair_size:
             msg = "Rope add_import returned an invalid source and binding pair"
             raise TypeError(msg)
         source, binding = pair[0], pair[1]

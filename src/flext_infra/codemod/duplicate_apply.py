@@ -863,20 +863,12 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             residue = cls._published_residue(edits, deletions)
             if residue is not None:
                 return r[bool].fail(residue)
-            projects: list[str] = []
-            for plan in semantic_plans:
-                project = u.Infra.project_root(plan.path)
-                if project is None:
-                    continue
-                project_name = str(project.relative_to(root))
-                if project_name not in projects:
-                    projects.append(project_name)
             return FlextInfraWorkspaceChecker(
                 repository_root=root,
             ).execute_payload(
                 m.Infra.RunCommand(
                     repository_root=root,
-                    projects=tuple(sorted(projects)),
+                    projects=cls._publication_projects(root, semantic_plans),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
@@ -887,6 +879,24 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             validator=verify,
             projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
         ).map(_published_true)
+
+    @staticmethod
+    def _publication_projects(
+        root: Path,
+        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+    ) -> tuple[str, ...]:
+        """Collect the governed projects affected by the publication batch.
+
+        Returns:
+            Sorted, unique project paths relative to the repository root.
+
+        """
+        projects: set[str] = set()
+        for plan in plans:
+            project = u.Infra.project_root(plan.path)
+            if project is not None:
+                projects.add(str(project.relative_to(root)))
+        return tuple(sorted(projects))
 
     @classmethod
     def _published_residue(

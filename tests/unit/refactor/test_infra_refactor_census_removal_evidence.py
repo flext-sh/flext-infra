@@ -9,8 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 
-from flext_infra import m
+from flext_infra import infra, m
 from flext_infra.refactor.census import FlextInfraRefactorCensus
+from tests import tm
 
 
 class TestsFlextInfraRefactorCensusRemovalEvidence:
@@ -41,11 +42,8 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             project="demo",
             module_name="generate",
             scope_path=name,
-        ).model_copy(
-            update={
-                "references_count": references_count,
-                "reference_evidence_collected": evidence_collected,
-            },
+            references_count=references_count,
+            reference_evidence_collected=evidence_collected,
         )
 
     def test_zero_references_without_evidence_is_not_unused(self) -> None:
@@ -58,7 +56,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
 
         assert FlextInfraRefactorCensus.is_unused(record) is False
 
-    def test_zero_references_with_evidenceis_unused(self) -> None:
+    def test_zero_references_with_evidence_is_unused(self) -> None:
         """A completed search over zero references classifies the definition."""
         record = self._object(
             name="PublicThing",
@@ -77,3 +75,28 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
         )
 
         assert FlextInfraRefactorCensus.is_unused(record) is False
+
+    @staticmethod
+    def test_service_composes_validated_options(tmp_path: Path) -> None:
+        """Service construction retains request filters and immutable options."""
+        options = m.Infra.CensusInput(
+            repository_root=tmp_path,
+            kinds=("function",),
+            rules=("unused",),
+            families=("c",),
+            json_output=str(tmp_path / "census.json"),
+            impact_map_output=str(tmp_path / "impact.json"),
+            include_local_scopes=False,
+        )
+        service = FlextInfraRefactorCensus(
+            repository_root=options.repository_root,
+            source_preview=infra.source_preview(options.repository_root),
+            options=options,
+        )
+        tm.that(service.options, is_=options)
+        tm.that(service.kind_names, eq=options.kinds)
+        tm.that(service.rule_names, eq=options.rules)
+        tm.that(service.family_names, eq=options.families)
+        tm.that(service.json_output_path, eq=Path(options.json_output or ""))
+        tm.that(service.impact_map_output_path, eq=Path(options.impact_map_output or ""))
+        tm.that(service.options.include_local_scopes, eq=options.include_local_scopes)

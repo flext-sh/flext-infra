@@ -38,22 +38,8 @@ class FlextInfraDepsFloorProfileWriter:
         relative = Path(c.Infra.CODEGEN_CONFIG_DIR) / c.Infra.CODEGEN_CONFIG_FILENAME
         local = root / relative
         owners: t.MutableSequenceOf[Path] = []
-        if local.exists() or local.is_symlink():
-            if not local.resolve().is_relative_to(root):
-                message = (
-                    f"dependency floor configuration is outside workspace: {local}"
-                )
-                raise ValueError(message)
-            document = cls._loaded_document(local)
-            project = u.Cli.json_deep_mapping(
-                document,
-                "Infra",
-                "codegen",
-                "scaffold",
-                "project",
-            )
-            if "dependency_profiles" in project:
-                owners.append(root)
+        if cls._declares_local_profiles(root, local):
+            owners.append(root)
         for manifest in manifests:
             for member in manifest.members:
                 if member.distribution != config.Infra.name:
@@ -79,6 +65,32 @@ class FlextInfraDepsFloorProfileWriter:
                 )
                 raise ValueError(message)
         return sources
+
+    @classmethod
+    def _declares_local_profiles(cls, root: Path, local: Path) -> bool:
+        """Inspect an existing local configuration without crossing the workspace.
+
+        Returns:
+            Whether the local project declares dependency profiles.
+
+        Raises:
+            ValueError: If the configuration resolves outside the workspace.
+
+        """
+        if not (local.exists() or local.is_symlink()):
+            return False
+        if not local.resolve().is_relative_to(root):
+            message = f"dependency floor configuration is outside workspace: {local}"
+            raise ValueError(message)
+        document = cls._loaded_document(local)
+        project = u.Cli.json_deep_mapping(
+            document,
+            "Infra",
+            "codegen",
+            "scaffold",
+            "project",
+        )
+        return "dependency_profiles" in project
 
     @classmethod
     def rewrite_profiles_from_resolution(

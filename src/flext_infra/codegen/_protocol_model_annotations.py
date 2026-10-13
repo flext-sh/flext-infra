@@ -207,7 +207,12 @@ class FlextInfraCodegenProtocolModelAnnotations:
 
     @staticmethod
     def _is_parameter_list(value: p.AttributeProbe) -> TypeIs[list[p.AttributeProbe]]:
-        """Narrow the runtime list whose annotation elements are inspected later."""
+        """Narrow the runtime list whose annotation elements are inspected later.
+
+        Returns:
+            Whether the value is a list of annotation parameters.
+
+        """
         return isinstance(value, list)
 
     @classmethod

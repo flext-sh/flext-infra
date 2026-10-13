@@ -248,10 +248,12 @@ class TestsFlextInfraUtilitiesGatesMixin:
             repository_root=workspace,
             apply_changes=resolved.apply_changes,
             dry_run=resolved.dry_run,
-            impact_map_output=resolved.impact_map_output,
-            include_local_scopes=resolved.include_local_scopes,
-            kinds=resolved.kinds,
-            rules=rules,
+            options=m.Infra.CensusOptions(
+                impact_map_output=resolved.impact_map_output,
+                include_local_scopes=resolved.include_local_scopes,
+                kinds=resolved.kinds,
+                rules=rules,
+            ),
         ).execute()
         tm.ok(result)
         report: m.Infra.WorkspaceReport = result.unwrap()

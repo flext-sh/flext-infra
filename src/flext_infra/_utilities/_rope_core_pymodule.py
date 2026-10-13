@@ -152,6 +152,10 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
             RuntimeError: If rope module import table unavailable for.
 
         """
+        runtime_errors: t.VariadicTuple[type[BaseException]] = (
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            TypeError,
+        )
         try:
             module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
                 rope_project,
@@ -160,10 +164,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                     resource,
                 ),
             )
-        except (
-            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
-            TypeError,
-        ) as exc:
+        except runtime_errors as exc:
             msg = (
                 "rope module import table unavailable for "
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"

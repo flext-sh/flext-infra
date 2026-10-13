@@ -69,8 +69,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
             )
         census = FlextInfraRefactorCensus(
             source_preview=self.source_preview,
-            include_local_scopes=False,
-            kinds=("constant",),
+            options=m.Infra.CensusOptions(
+                include_local_scopes=False,
+                kinds=("constant",),
+            ),
         ).model_copy(update={"repository_root": self.repository_root})
         census_report = census.build_report()
         modified_files = self.modified_python_files(self.repository_root)
