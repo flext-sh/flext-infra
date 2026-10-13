@@ -312,7 +312,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
-    def ast_grep_scan_targets(cls, repository_root: Path) -> t.StrSequence:
+    def ast_grep_scan_targets(
+        cls,
+        repository_root: Path,
+        *,
+        source_files: t.SequenceOf[Path] | None = None,
+    ) -> t.StrSequence:
         """Return only governed handwritten Python surfaces as scan targets.
 
         A workspace root is not itself a Python source surface. Passing ``.`` to
@@ -324,6 +329,9 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         Returns:
             Only governed handwritten Python surfaces as scan targets.
+
+        Raises:
+            ValueError: If a requested source is outside the governed inventory.
 
         """
         resolved_root = repository_root.resolve()
@@ -346,13 +354,26 @@ class FlextInfraUtilitiesProjectDiscovery(
                         targets,
                     )
         nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
-        return tuple(
+        eligible = {
             target
-            for target in sorted(targets)
+            for target in targets
             if not cls._is_nonparticipant(
                 resolved_root / target, resolved_root, nonparticipants
             )
-        )
+        }
+        if source_files is not None:
+            selected = {
+                path.resolve().relative_to(resolved_root).as_posix()
+                for path in source_files
+            }
+            if not selected or selected - eligible:
+                msg = (
+                    f"native source scope is outside governed inventory: "
+                    f"{sorted(selected - eligible)}"
+                )
+                raise ValueError(msg)
+            eligible.intersection_update(selected)
+        return tuple(sorted(eligible))
 
     @staticmethod
     def _collect_scan_dir_targets(

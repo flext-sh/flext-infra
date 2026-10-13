@@ -401,6 +401,7 @@ class TestsFlextInfraModCliRoute:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 config_path,
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n",
             ),
         )

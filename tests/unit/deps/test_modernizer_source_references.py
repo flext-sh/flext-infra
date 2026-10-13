@@ -1,4 +1,9 @@
-"""Migrate explicit Git refs through the public modernizer without changing sources."""
+"""Migrate explicit Git refs through the public modernizer without changing sources.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+tests/unit/deps/test_modernizer_source_references
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

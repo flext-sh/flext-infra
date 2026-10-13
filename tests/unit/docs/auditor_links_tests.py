@@ -237,6 +237,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_stale_organization(tmp_path: Path) -> None:
+            """Test github stale organization."""
             repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
             docs = tmp_path / "docs"
@@ -256,6 +257,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_wrong_branch(tmp_path: Path) -> None:
+            """Test github wrong branch."""
             repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             docs = tmp_path / "docs"
             docs.mkdir()
@@ -273,6 +275,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_rewrite_fix(tmp_path: Path) -> None:
+            """Test github rewrite fix."""
             repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
             docs = tmp_path / "docs"

@@ -34,7 +34,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrMapping:
-        """Keep native cache writes outside authenticated source candidates."""
+        """Keep native cache writes outside authenticated source candidates.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+        """
         return {
             **(super()._check_env(project_dir, ctx) or {}),
             c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(

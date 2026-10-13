@@ -58,7 +58,10 @@ class TestsFlextInfraModEvidenceInputs:
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
         tm.that(encoded.count(marker.encode("utf-8")), eq=1)
-        tm.that(restored.entries, eq=report.entries)
+        for original, occurrence in zip(report.entries, restored.entries, strict=True):
+            tm.that(occurrence.payload, eq=original.payload)
+            tm.that(occurrence.source_state, eq=original.source_state)
+            tm.that(occurrence.binding_states, eq=original.binding_states)
         tm.that(
             len(restored.inputs.states),
             eq=len({

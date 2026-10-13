@@ -639,7 +639,11 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
     @classmethod
     def _provider(cls, site: Path) -> tuple[Path, Path]:
-        """Declare a real installed distribution and its governed fixture catalog."""
+        """Declare a real installed distribution and its governed fixture catalog.
+
+        Returns:
+            The resulting ``tuple[Path, Path]``.
+        """
         name = "snapshot-fixture-provider"
         package = site / name.replace("-", "_")
         pyproject = u.Tests.WorktreeFixture.write_python_project(package, name)

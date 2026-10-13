@@ -868,10 +868,6 @@ class TestsFlextInfraSemanticPhaseContract:
             payload={},
         )
         report = m.Infra.ModScanReport(
-            findings=1,
-            actionable=0,
-            detection_only=1,
-            non_actionable_with_fix=0,
             files=frozenset({path}),
             entries=(finding,),
         )

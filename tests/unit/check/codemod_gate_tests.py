@@ -34,7 +34,6 @@ class TestsFlextInfraCodemodGate:
         tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
         project = installed_dependency_path / "scanner_contract"
         (project / "src").mkdir(parents=True)
-        (project / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         metadata = installed_dependency_path / "scanner_contract-1.0.0.dist-info"
         metadata.mkdir()
         (metadata / "METADATA").write_text(
@@ -344,11 +343,11 @@ class TestsFlextInfraCodemodGate:
         tm.that(result.passed, eq=False)
         receipt = result.gates["codemod"].raw_receipt
         assert receipt is not None
-        reports = receipt.parent.parent
+        reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",
         )
-        tm.that(markdown, has=f"| {project.relative_to(tmp_path).as_posix()} | FAIL |")
+        tm.that(markdown, has=f"| {project.name} | FAIL |")
         tm.that(markdown, has="contract-second")
         sarif = m.Infra.SarifReport.model_validate_json(
             (reports / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(encoding="utf-8"),

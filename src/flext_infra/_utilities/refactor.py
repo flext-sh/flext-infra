@@ -105,7 +105,10 @@ class FlextInfraUtilitiesRefactor:
                         entry.source_state is None
                         or indexed.get(entry.source_state.path) != entry.source_state
                     ):
-                        msg = f"finding differs from complete scan inventory: {entry.file}"
+                        msg = (
+                            f"finding differs from complete scan inventory: "
+                            f"{entry.file}"
+                        )
                         raise ValueError(msg)
                 sources.append(indexed)
             for receipt in publication_chain:
@@ -147,13 +150,19 @@ class FlextInfraUtilitiesRefactor:
                     raise ValueError(msg)
         proven: set[tuple[str, str]] = set()
         topology = sorted(projects, key=lambda item: len(item.parts), reverse=True)
-        counters: list[dict[tuple[str, str], Counter[tuple[str, str]]]] = []
-        indexes: list[dict[tuple[str, str], list[int]]] = []
+        counters: t.ListOf[
+            t.MutableMappingKV[
+                t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
+            ]
+        ] = []
+        indexes: t.ListOf[t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]]] = []
         for report in (before, after):
-            occurrences: dict[tuple[str, str], Counter[tuple[str, str]]] = defaultdict(
-                Counter
+            occurrences: t.MutableMappingKV[
+                t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
+            ] = defaultdict(Counter)
+            positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = (
+                defaultdict(list)
             )
-            positions: dict[tuple[str, str], list[int]] = defaultdict(list)
             for index, entry in enumerate(report.entries):
                 if isinstance(entry, m.Infra.ModScanFinding):
                     repository = entry.repository
@@ -219,8 +228,11 @@ class FlextInfraUtilitiesRefactor:
         ):
             repository, rule_id = key
             original, final = before_entries[key], after_entries[key]
-            persisted = (original & final).total()
-            before_count, after_count = original.total(), final.total()
+            persisted = sum(
+                min(original[identity], final[identity])
+                for identity in original.keys() & final.keys()
+            )
+            before_count, after_count = sum(original.values()), sum(final.values())
             deltas.append(
                 m.Infra.ViolationsRuleDelta(
                     repository=repository,
@@ -678,9 +690,25 @@ class FlextInfraUtilitiesRefactor:
             "totals_by_class": class_totals,
             "totals_by_repository": dict(sorted(repository_totals.items())),
             "totals_by_rule": dict(sorted(rule_totals.items())),
-            "entries": report.entries,
+            "entries": tuple(
+                m.Infra.ModScanFindingReference(
+                    **{name: getattr(entry, name) for name in type(entry).model_fields},
+                    source_path=(
+                        entry.source_state.path
+                        if entry.source_state is not None
+                        else None
+                    ),
+                    binding_paths=tuple(state.path for state in entry.binding_states),
+                )
+                for entry in report.entries
+            ),
         })
-        content = (evidence.model_dump_json(indent=2) + "\n").encode(
+        content = (
+            evidence.model_dump_json(
+                indent=2, exclude=set(type(evidence).model_computed_fields)
+            )
+            + "\n"
+        ).encode(
             c.DEFAULT_ENCODING,
         )
         report_path = root.resolve() / publication.relative_path

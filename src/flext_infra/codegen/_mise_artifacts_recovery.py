@@ -1,4 +1,4 @@
-"""Retire authenticated generation staging without undoing published files.
+"""Recover failed journaled dependency groups and retain independent effects.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, u
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraMiseRecovery:
-    """Preserve every live destination while retiring owned staging."""
+    """Recover failed dependent groups while preserving independent published gains."""
 
     @staticmethod
     def execute(
@@ -77,7 +78,11 @@ class FlextInfraMiseRecovery:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[bool]:
-        """Consume only preimages selected by the durable group recovery decision."""
+        """Consume only preimages selected by the durable group recovery decision.
+
+        Returns:
+            Whether every selected effect was safely recovered.
+        """
         for entry in reversed(journal.entries):
             if entry.dependency_group is None or not entry.recover_group:
                 continue
@@ -94,7 +99,11 @@ class FlextInfraMiseRecovery:
         journal: m.Infra.CodegenTransactionJournal,
         entry: m.Infra.CodegenJournalEntry,
     ) -> p.Result[bool]:
-        """Compensate only an admitted effect or its exact staged inode identity."""
+        """Compensate only an admitted effect or its exact staged inode identity.
+
+        Returns:
+            Whether this authenticated destination required compensation.
+        """
         path = files.resolve_transaction(
             layout, entry.path, purpose="dependent-group recovery"
         )
@@ -126,7 +135,9 @@ class FlextInfraMiseRecovery:
             entry.original_file_attributes,
             entry.original_reparse_tag,
         )
-        if identity == original:
+        if identity == original or (
+            not entry.original_exists and current.content is None
+        ):
             return r[bool].ok(value=False)
         desired = (
             entry.desired_parent_device,
@@ -140,8 +151,6 @@ class FlextInfraMiseRecovery:
             entry.desired_reparse_tag,
         )
         if not entry.original_exists:
-            if current.content is None:
-                return r[bool].ok(value=False)
             if identity != desired:
                 return (
                     r[bool].fail(f"admitted group destination changed: {path.value}")
@@ -149,6 +158,28 @@ class FlextInfraMiseRecovery:
                     else r[bool].ok(value=False)
                 )
             return files.delete_state(current)
+        return FlextInfraMiseRecovery._restore_original(
+            layout,
+            journal,
+            entry,
+            current,
+            matches_desired=identity == desired,
+        )
+
+    @staticmethod
+    def _restore_original(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        entry: m.Infra.CodegenJournalEntry,
+        current: m.Cli.AtomicFileState,
+        *,
+        matches_desired: bool,
+    ) -> p.Result[bool]:
+        """Bind compensation to its persisted preimage and target receipt.
+
+        Returns:
+            Whether the journal-owned preimage was consumed.
+        """
         if entry.original_staging is None or entry.original_content_hex is None:
             return r[bool].fail(f"group preimage missing: {entry.path}")
         backup_path = files.resolve_transaction(
@@ -164,28 +195,75 @@ class FlextInfraMiseRecovery:
             ),
             None,
         )
-        if intent is None or intent.created is None:
+        if (
+            intent is None
+            or intent.created is None
+            or intent.created.sha256 != entry.original_sha256
+        ):
             return r[bool].fail(f"group preimage has no physical receipt: {entry.path}")
         receipt = intent.created
         if (
+            current.parent_device,
+            current.parent_inode,
             current.device,
             current.inode,
             current.mode,
             files.digest(current.content) if current.content is not None else None,
-        ) == (receipt.device, receipt.inode, receipt.mode, receipt.sha256):
+            current.link_count,
+            current.file_attributes,
+            current.reparse_tag,
+        ) == (
+            entry.original_parent_device,
+            entry.original_parent_inode,
+            receipt.device,
+            receipt.inode,
+            receipt.mode,
+            receipt.sha256,
+            receipt.link_count,
+            receipt.file_attributes,
+            receipt.reparse_tag,
+        ):
             return r[bool].ok(value=False)
-        if identity != desired:
+        if not matches_desired or (
+            not entry.desired_exists and not entry.group_admitted
+        ):
             return (
-                r[bool].fail(f"admitted group destination changed: {path.value}")
-                if entry.group_admitted
+                r[bool].fail(
+                    "admitted group destination changed or lacks deletion "
+                    f"receipt: {entry.path}"
+                )
+                if entry.group_admitted or matches_desired
                 else r[bool].ok(value=False)
             )
-        if not entry.desired_exists and not entry.group_admitted:
-            return r[bool].fail(f"group deletion has no admitted receipt: {entry.path}")
-        backup = files.read_state(backup_path.value, required=True)
+        return FlextInfraMiseRecovery._authenticated_preimage(
+            backup_path.value,
+            entry,
+            receipt,
+        ).flat_map(
+            lambda preimage: u.Cli.atomic_publish_staged_binary_file_guarded(
+                current, preimage
+            ).map(lambda _: True)
+        )
+
+    @staticmethod
+    def _authenticated_preimage(
+        path: Path,
+        entry: m.Infra.CodegenJournalEntry,
+        receipt: m.Cli.AtomicPhysicalTreeEntry,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Read the exact preimage authorized by the journal's staging intention.
+
+        Returns:
+            The authenticated physical preimage snapshot.
+        """
+        backup = files.read_state(path, required=True)
         if backup.failure:
-            return r[bool].from_failure(backup)
+            return r[m.Cli.AtomicFileState].from_failure(backup)
         preimage = backup.value
+        if entry.original_content_hex is None:
+            return r[m.Cli.AtomicFileState].fail(
+                f"group preimage bytes missing: {entry.path}"
+            )
         if (
             (
                 preimage.parent_device,
@@ -214,10 +292,10 @@ class FlextInfraMiseRecovery:
             or preimage.content != bytes.fromhex(entry.original_content_hex)
             or receipt.sha256 != entry.original_sha256
         ):
-            return r[bool].fail(f"group preimage identity changed: {entry.path}")
-        return u.Cli.atomic_publish_staged_binary_file_guarded(current, preimage).map(
-            lambda _: True
-        )
+            return r[m.Cli.AtomicFileState].fail(
+                f"group preimage identity changed: {entry.path}"
+            )
+        return r[m.Cli.AtomicFileState].ok(preimage)
 
 
 __all__: list[str] = ["FlextInfraMiseRecovery"]

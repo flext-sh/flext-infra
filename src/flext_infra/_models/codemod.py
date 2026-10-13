@@ -54,13 +54,34 @@ class FlextInfraModelsCodemod:
         def unique_inputs(
             cls, states: tuple[m.Cli.AtomicFileState, ...]
         ) -> tuple[m.Cli.AtomicFileState, ...]:
-            """Store each authenticated input once; conflicting identities fail."""
+            """Store each authenticated input once; conflicting identities fail.
+
+            Returns:
+                The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
+
+            Raises:
+                ValueError: If binding source snapshots disagree.
+            """
             indexed: dict[Path, m.Cli.AtomicFileState] = {}
             for state in states:
-                if indexed.setdefault(state.path, state) != state:
+                previous = indexed.setdefault(state.path, state)
+                if previous is not state and previous != state:
                     msg = f"binding source snapshots disagree: {state.path}"
                     raise ValueError(msg)
             return tuple(indexed.values())
+
+    class CodemodBindingProject(m.ArbitraryTypesModel):
+        """One selected project's lexical roots within a shared input capture."""
+
+        root: Annotated[Path, m.Field(description="Native project resolution root")]
+        source_paths: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Authenticated consumer paths requiring admission"),
+        ]
+        modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Symbol owners elected by this project's findings"),
+        ]
 
     class AstGrepDiagnostic(m.FlexibleModel):
         """Required native RuleMatch fields, with zero-based source coordinates.

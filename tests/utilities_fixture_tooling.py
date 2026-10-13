@@ -340,7 +340,14 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             root,
             origin_url=origin_url,
         )
-        setup = tm.ok(cls.run_isolated_make(["setup"], cwd=root, capture=False))
+        setup = tm.ok(
+            cls.run_isolated_make(
+                ["setup"],
+                cwd=root,
+                env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+                capture=False,
+            ),
+        )
         TestsFlextInfraUtilitiesDepsMixin.record_dependency_command_output(setup)
         tm.ok(
             u.Cli.atomic_write_text_file(

@@ -41,23 +41,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             ),
         )
 
-    @staticmethod
-    def _facts() -> m.Infra.CodemodProjectFacts:
-        """Return cycle facts whose graph contains no module.
-
-        Returns:
-            Cycle facts whose graph contains no module.
-
-        """
-        return m.Infra.CodemodProjectFacts(
-            own_package=None,
-            predicates=frozenset({c.Infra.CodemodContextPredicate.IMPORT_CYCLE}),
-            import_graph={},
-            import_modules={},
-            import_cycles={},
-            runtime_modules=frozenset(),
-        )
-
     def test_legado_is_outside_the_scanned_import_graph(
         self,
         tmp_path: Path,
@@ -75,7 +58,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         live = project / "src" / "demo" / "live.py"
         live.write_text("value = 1\n", encoding="utf-8")
         rule = self._cycle_rule()
-        facts = self._facts()
+        facts = u.Infra.codemod_project_facts(project, (rule,))
 
         with u.Infra.codemod_binding_project(
             project, m.Infra.CodemodBindingSnapshot(states=())
