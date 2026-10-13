@@ -16,24 +16,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m, main, u
+from flext_infra import c, config, m, main, u
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-
-RECORDING_MAKEFILE = (
-    ".PHONY: fix fmt mod\nfix fmt mod:\n\t@printf '%s\\n' '$@' >> ran.txt\n"
-)
-
-MOD_GROWS_MAKEFILE = (
-    ".PHONY: fix fmt mod\n"
-    "fix fmt mod:\n"
-    "\t@printf '%s\\n' '$@' >> ran.txt\n"
-    "\t@printf 'marker = dict()\\n' > violating.py\n"
-)
 
 LOCAL_RULE_CATALOG = "ruleDirs:\n  - rules\ntestConfigs: []\n"
 
@@ -49,6 +38,18 @@ LOCAL_GROWTH_RULE = (
 
 class TestsFlextInfraRefactorViolationsSweep:
     """Behavior contract for the ``refactor violations-sweep`` verb."""
+
+    @staticmethod
+    def _makefile(recipe: str = "", *, first_only: bool = False) -> str:
+        """Provide the configured operations without freezing the Make policy."""
+        verbs = config.Infra.codegen.make.violations_sweep_repair_verbs
+        names = " ".join(verbs)
+        recording = "\t@printf '%s\\n' '$@' >> ran.txt\n"
+        if first_only:
+            return f".PHONY: {names}\n{verbs[0]}:\n{recording}{recipe}" + (
+                f"{' '.join(verbs[1:])}:\n\t@true\n" if len(verbs) > 1 else ""
+            )
+        return f".PHONY: {names}\n{names}:\n{recording}{recipe}"
 
     @staticmethod
     def _prepare(root: Path, *, makefile: str, local_rule: bool) -> None:
@@ -72,7 +73,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             )
 
     @staticmethod
-    def _sweep(root: Path) -> int:
+    def _sweep(root: Path, *options: str) -> int:
         """Run the public violations-sweep CLI once.
 
         Returns:
@@ -84,6 +85,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             c.Infra.VIOLATIONS_SWEEP_ROUTE_NAME,
             "--repository-root",
             str(root),
+            *options,
         ])
 
     @staticmethod
@@ -116,13 +118,13 @@ class TestsFlextInfraRefactorViolationsSweep:
     ) -> None:
         """The canonical sequence runs in order and no total moves."""
         root = mod_workspace
-        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=False)
+        self._prepare(root, makefile=self._makefile(), local_rule=False)
 
         tm.that(self._sweep(root), eq=0)
 
         tm.that(
             list(self._verbs_ran(root)),
-            eq=list(c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS),
+            eq=list(config.Infra.codegen.make.violations_sweep_repair_verbs),
         )
         report = self._receipt(root)
         tm.that(
@@ -131,6 +133,11 @@ class TestsFlextInfraRefactorViolationsSweep:
         )
         tm.that(report.before, eq=report.after)
         tm.that(report.increased_totals, eq=())
+        for field in ("before_source_sha256", "after_source_sha256"):
+            with pytest.raises(ValueError, match=field):
+                m.Infra.ViolationsSweepReport.model_validate(
+                    report.model_dump(exclude={field}),
+                )
 
     def test_rerun_preserves_prior_evidence_with_identical_counts(
         self,
@@ -138,7 +145,7 @@ class TestsFlextInfraRefactorViolationsSweep:
     ) -> None:
         """A second sweep preserves the first invocation's authenticated snapshots."""
         root = mod_workspace
-        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=False)
+        self._prepare(root, makefile=self._makefile(), local_rule=False)
         tm.that(self._sweep(root), eq=0)
         first = self._receipt(root)
         assert first.before_evidence is not None
@@ -170,7 +177,11 @@ class TestsFlextInfraRefactorViolationsSweep:
         catalog's; the law under test is that every total only moves down.
         """
         root = mod_workspace
-        self._prepare(root, makefile=MOD_GROWS_MAKEFILE, local_rule=True)
+        self._prepare(
+            root,
+            makefile=self._makefile("\t@printf 'marker = dict()\\n' > violating.py\n"),
+            local_rule=True,
+        )
 
         tm.that(self._sweep(root), ne=0)
 
@@ -194,11 +205,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         root = mod_workspace
         self._prepare(
             root,
-            makefile=(
-                ".PHONY: fix fmt mod\n"
-                "fix:\n\t@rm original*.py\n"
-                "\t@printf 'marker = dict()\\n' > introduced.py\n"
-                "fmt mod:\n\t@true\n"
+            makefile=self._makefile(
+                "\t@rm original*.py\n\t@printf 'marker = dict()\\n' > introduced.py\n",
+                first_only=True,
             ),
             local_rule=True,
         )
@@ -225,22 +234,25 @@ class TestsFlextInfraRefactorViolationsSweep:
         root = mod_workspace
         self._prepare(
             root,
-            makefile=(
-                ".PHONY: fix fmt mod\n"
-                "fix:\n\t@printf 'marker = dict()\\n' > introduced.py\n"
-                "\t@false\nfmt mod:\n\t@true\n"
+            makefile=self._makefile(
+                "\t@printf 'marker = dict()\\n' > introduced.py\n\t@false\n",
+                first_only=True,
             ),
             local_rule=True,
         )
         tm.that(self._sweep(root), ne=0)
         report = self._receipt(root)
-        tm.that(report.failed_verb, eq=c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS[0])
+        tm.that(
+            report.failed_verb,
+            eq=config.Infra.codegen.make.violations_sweep_repair_verbs[0],
+        )
         tm.that(report.completed_verbs, eq=())
         tm.that(bool(report.repair_error), eq=True)
         delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that(delta.introduced, eq=1)
         assert report.before_evidence is not None
         assert report.after_evidence is not None
+        assert report.after_source_sha256 is not None
         tm.that(delta.semantic_correspondence_proven, eq=False)
         tm.that(len(delta.before_entries), eq=delta.before)
         tm.that(len(delta.after_entries), eq=delta.after)
@@ -261,7 +273,7 @@ class TestsFlextInfraRefactorViolationsSweep:
     ) -> None:
         """An elected rule and governed project remain visible with no findings."""
         root = mod_workspace
-        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=True)
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.that(self._sweep(root), eq=0)
         report = self._receipt(root)
         assert report.before_evidence is not None
@@ -306,12 +318,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         )
         self._prepare(
             root,
-            makefile=(
-                ".PHONY: fix fmt mod\n"
-                "fix:\n\t@printf '%s\\n' '$@' >> ran.txt\n"
-                + sabotage
-                + "\t@printf 'original-repair-failure\\n' >&2\n"
-                "\t@false\nfmt mod:\n\t@printf '%s\\n' '$@' >> ran.txt\n"
+            makefile=self._makefile(
+                sabotage + "\t@printf 'original-repair-failure\\n' >&2\n\t@false\n",
+                first_only=True,
             ),
             local_rule=True,
         )
@@ -320,13 +329,19 @@ class TestsFlextInfraRefactorViolationsSweep:
         captured = capsys.readouterr()
         tm.that("secondary" in captured.err, eq=True)
         tm.that(
-            list(self._verbs_ran(root)), eq=[c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS[0]]
+            list(self._verbs_ran(root)),
+            eq=[config.Infra.codegen.make.violations_sweep_repair_verbs[0]],
         )
         if secondary == "scan":
             report = self._receipt(root)
             tm.that("original-repair-failure" in (report.repair_error or ""), eq=True)
             tm.that(bool(report.after_scan_error), eq=True)
             tm.that(report.after_evidence, eq=None)
+            tm.that(report.after_source_sha256, eq=None)
+            with pytest.raises(
+                ValueError, match="requires an authenticated after scan"
+            ):
+                _ = report.increased_totals
 
     def test_detection_only_occurrences_persist_without_false_resolution(
         self,
@@ -334,7 +349,7 @@ class TestsFlextInfraRefactorViolationsSweep:
     ) -> None:
         """Repeated unchanged detect-only matches remain separate occurrences."""
         root = mod_workspace
-        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=True)
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root
@@ -360,3 +375,23 @@ class TestsFlextInfraRefactorViolationsSweep:
         tm.that(delta.persisted, eq=2)
         tm.that(delta.resolved, eq=0)
         tm.that(delta.introduced, eq=0)
+
+    def test_selected_rule_cannot_invoke_unfiltered_repairs(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """An unsupported isolation request fails before any Make side effect."""
+        root = mod_workspace
+        self._prepare(root, makefile=RECORDING_MAKEFILE, local_rule=True)
+        tm.that(
+            main([
+                c.Infra.CLI_GROUP_REFACTOR,
+                c.Infra.VIOLATIONS_SWEEP_ROUTE_NAME,
+                "--repository-root",
+                str(root),
+                "--rules",
+                "sweep-growth",
+            ]),
+            ne=0,
+        )
+        tm.that((root / "ran.txt").exists(), eq=False)

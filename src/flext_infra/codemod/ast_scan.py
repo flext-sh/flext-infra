@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import override
 from uuid import uuid4
@@ -23,7 +24,6 @@ from flext_cli import cli
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
-from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -154,7 +154,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         invocation = destination.parent / destination.stem / uuid4().hex
         if rule_ids is not None:
             receipt = u.Infra.publish_mod_scan_evidence(
-                root, before, command=c.Infra.ModScanCommand.SCAN,
+                root,
+                before,
+                command=c.Infra.ModScanCommand.SCAN,
                 scope=u.Infra.ast_grep_scan_targets(root),
                 relative_path=invocation / "before.json",
             ).unwrap()
@@ -171,19 +173,31 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             return outcome
         after = FlextInfraModGateEngine.scan(root, fix=False)
         if after.failure:
-            return r[t.Cli.ResultValue].fail(
-                f"ast: whole-catalog after scan failed: {after.error}; "
-                f"selected apply: {outcome.error if outcome.failure else 'fixed point'}",
+            sys.stderr.write(
+                f"ast: {'secondary ' if outcome.failure else ''}"
+                f"whole-catalog after scan failure: {after.error}; "
+                "accepted writes retained; no rollback performed\n",
             )
+            return outcome if outcome.failure else r[t.Cli.ResultValue].from_failure(after)
         receipt = u.Infra.publish_mod_scan_evidence(
-            root, after.value, command=c.Infra.ModScanCommand.SCAN,
+            root,
+            after.value,
+            command=c.Infra.ModScanCommand.SCAN,
             scope=u.Infra.ast_grep_scan_targets(root),
             relative_path=invocation / "after.json",
-        ).unwrap()
-        cli.display_text(
-            f"ast: whole-catalog after evidence={receipt.path} sha256={receipt.sha256}",
         )
-        deltas = FlextInfraRefactorViolationsSweep.rule_deltas(before, after.value)
+        if receipt.failure:
+            sys.stderr.write(
+                f"ast: {'secondary ' if outcome.failure else ''}"
+                f"after evidence publication failure: {receipt.error}; "
+                "accepted writes retained; no rollback performed\n",
+            )
+            return outcome if outcome.failure else r[t.Cli.ResultValue].from_failure(receipt)
+        cli.display_text(
+            f"ast: whole-catalog after evidence={receipt.value.path} "
+            f"sha256={receipt.value.sha256}",
+        )
+        deltas = u.Infra.rule_deltas(before, after.value)
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
             f"after={after.value.findings}; "
@@ -199,7 +213,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             return outcome
         if any(delta.introduced for delta in deltas):
             return r[t.Cli.ResultValue].fail(
-                "ast: selected apply introduced whole-catalog finding occurrences",
+                "ast: selected apply introduced whole-catalog finding occurrences; "
+                "accepted writes retained; no rollback performed",
             )
         return outcome
 

@@ -104,14 +104,15 @@ class FlextInfraUtilitiesImportLaw:
                 return "family"
             if stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)):
                 return "layer0"
+            if stem in config.Infra.tooling.lazy_init.import_layer_order:
+                return "consumer"
         return "consumer"
 
     @staticmethod
     def import_direct_module(namespace_dir: Path, file_path: Path) -> bool:
         """Return whether one module keeps direct leaf imports.
 
-        A settings/config module (any path segment starting with ``settings``
-        or ``config``, with or without leading underscores) and a family
+        A layer-zero settings/config module and a family
         ``base.py`` (a ``base.py`` inside a private ``_<family>/`` package)
         retain their upstream/direct providers instead of re-entering the
         namespace's lazy root. This routing constraint does not exempt them

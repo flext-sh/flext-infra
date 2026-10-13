@@ -14,10 +14,11 @@
 # self-dependency even when the resolver tolerates it.
 #
 # The law is per letter, exactly as the operator ciphered it. Importing a
-# DIFFERENT letter from the own root is facade assembly, which remains legal
-# (consumption-law.md:52), and the tooling layer order makes the common
-# cruze forward-legal (`t < m`: `_models/**` importing `t` is family
-# assembly, never a finding). So each letter gets its own document, scoped to
+# DIFFERENT letter is subject to the independent strict layer-direction law
+# (`t < m`: `_models/**` importing `t` is forward family assembly). Layer-zero
+# config/settings cannot import ANY own-namespace object; the companion
+# settings-config-boundary rule enforces that stronger boundary. Each letter
+# gets its own document, scoped to
 # its own producer tree, banning only its own letter; one document per letter
 # in the style of settings-config-boundary.yml, whose per-file-family
 # documents this file mirrors. `ban-infra-utility-module-self-facade-import`

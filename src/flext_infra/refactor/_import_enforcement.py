@@ -13,7 +13,6 @@ from flext_infra import c, m, t, u
 from flext_infra.refactor import (
     FlextInfraImportNormalizationPlacementMixin,
     FlextInfraImportNormalizationRoutesMixin,
-    FlextInfraRefactorCensusApplyFormattingMixin,
 )
 
 
@@ -70,7 +69,7 @@ class FlextInfraImportNormalization(
                 import_graph=import_graph,
             )
             candidate = normalized if normalized is not None else source
-            candidate = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            candidate = u.Infra.normalize_source(
                 project_root,
                 file_path,
                 candidate,
@@ -227,13 +226,18 @@ class FlextInfraImportNormalization(
                     target == scope.namespace and alias.name == scope.family_letter
                 ):
                     continue
-                if node in state.tree.body and any(
-                    isinstance(statement, ast.Assign | ast.AnnAssign)
-                    and (alias.asname or alias.name)
-                    in cls._module_bindings(
-                        ast.Module(body=[statement], type_ignores=[]),
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and target == scope.namespace
+                    and node in state.tree.body
+                    and any(
+                        isinstance(statement, ast.Assign | ast.AnnAssign)
+                        and (alias.asname or alias.name)
+                        in cls._module_bindings(
+                            ast.Module(body=[statement], type_ignores=[]),
+                        )
+                        for statement in state.tree.body
                     )
-                    for statement in state.tree.body
                 ):
                     # The existing binding repair removes this redundant import.
                     continue
@@ -285,9 +289,9 @@ class FlextInfraImportNormalization(
         return next(
             (
                 letter
+                for part in (*relative.parts[:-1], relative.stem)
                 for letter, family in u.Infra.facade_families().items()
-                if family.directory in relative.parts[:-1]
-                or relative.stem == family.module
+                if part in {family.directory, family.module}
             ),
             None,
         )

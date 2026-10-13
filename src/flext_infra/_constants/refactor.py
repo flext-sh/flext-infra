@@ -34,6 +34,8 @@ class FlextInfraConstantsRefactor:
     "Canonical single-file evidence snapshot for the latest mod scan."
     MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
     "Exact structured mod evidence schema version."
+    MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
+    "Typed failure code: one finding's source bytes changed during scanning."
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."
     ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
@@ -58,8 +60,6 @@ class FlextInfraConstantsRefactor:
     "Canonical single-file receipt for the latest violations sweep."
     VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
     "Exact structured violations-sweep report schema version."
-    VIOLATIONS_SWEEP_REPAIR_VERBS: ClassVar[t.StrSequence] = ("fix", "fmt", "mod")
-    "Canonical repair sequence the sweep runs between its two mod scans."
     LINT_REPORT_COUNT_LINE: ClassVar[t.RegexPattern] = re.compile(
         r"^- lint: (?:PASS|FAIL) \((\d+) issues\)$",
         re.MULTILINE,
@@ -117,6 +117,7 @@ class FlextInfraConstantsRefactor:
         ACTIONABLE = "actionable"
         DETECTION_ONLY = "detection_only"
         NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
+        DEFERRED_SOURCE_DRIFT = "deferred_source_drift"
 
     @unique
     class CodemodRelocation(StrEnum):
@@ -201,6 +202,10 @@ class FlextInfraConstantsRefactor:
 
         ``family-base-file`` proves that the finding is the immediate base
         leaf of a private family with a declared sibling facade.
+
+        ``layer-zero-file`` uses the import-law role classifier: the first
+        architectural segment owns the role, so a family's nested config
+        declarations are not settings/config singleton modules.
 
         ``later-layer`` compares with the layer the rule names in ``arg`` when
         it names one.

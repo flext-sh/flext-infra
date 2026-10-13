@@ -14,8 +14,6 @@ import libcst as cst
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
-from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
-from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -261,21 +259,21 @@ class FlextInfraModReplacements:
             final: p.Result[str] = r[str].ok(candidate.decode(c.DEFAULT_ENCODING))
             cst.parse_module(final.value)
         else:
-            normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            normalized = u.Infra.normalize_source(
                 root,
                 path,
                 candidate.decode(c.DEFAULT_ENCODING),
+                remove_unused_imports=True,
             )
             if normalized.failure:
                 return r[bytes].from_failure(normalized)
             module = cst.parse_module(normalized.value)
             stripped = module.visit(FlextInfraDeadScaffold())
-            if stripped.code.count("TYPE_CHECKING") == 1:
-                stripped = stripped.visit(FlextInfraOrphanImport())
-            final = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            final = u.Infra.normalize_source(
                 root,
                 path,
                 stripped.code,
+                remove_unused_imports=True,
             )
         if final.failure:
             return r[bytes].from_failure(final)

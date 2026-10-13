@@ -290,6 +290,8 @@ class TestsFlextInfraSemanticPublication:
                 validator=validate,
             ),
         )
+        initializer = package / c.Infra.INIT_PY
+        published = initializer.read_bytes()
         tm.ok(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
@@ -298,6 +300,7 @@ class TestsFlextInfraSemanticPublication:
                 validator=validate,
             ),
         )
+        tm.that(initializer.read_bytes(), eq=published)
 
     @staticmethod
     @pytest.mark.parametrize("accepted", [False, True])

@@ -821,6 +821,13 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(description="Ordered canonical public verbs"),
         ]
+        violations_sweep_repair_verbs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Default ordered violations-sweep Make operations",
+            ),
+        ]
         common_arguments: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Named controls accepted by every generated Make verb"),
@@ -935,6 +942,14 @@ class FlextInfraConfigModelsMake(
             declared = {verb.name for verb in self.verbs}
             if len(declared) != len(self.verbs):
                 msg = "make public verb names must be unique"
+                raise ValueError(msg)
+            sweep_verbs = {
+                verb.name
+                for verb in self.verbs
+                if not verb.arguments and set(verb.profiles) == set(c.Infra.MakeProfile)
+            }
+            if set(self.violations_sweep_repair_verbs) - sweep_verbs:
+                msg = "make violations sweep requires declared selector-free verbs in every profile"
                 raise ValueError(msg)
             self._validate_standalone_gates(declared)
             # Why (hq-36xk, flext-lq86m): the guard that lived here read

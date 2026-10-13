@@ -1,7 +1,7 @@
 # Detection-only companion of typing-list-to-sequence-of.
 #
 # Flags a legacy `List[T]` / `typing.List[T]` generic whose module does NOT bind
-# the typings facade `t`. The canonical form is `t.SequenceOf[T]`, but a blind
+# the typings facade `t`. The canonical form is `t.MutableSequenceOf[T]`, but a blind
 # rewrite here would emit an undefined name (`t`), causing Ruff F821 / Pyrefly
 # missing-name. This rule has NO `fix:` on purpose: the `t` import must be added
 # first (`from <ns> import ..., t`), after which typing-list-to-sequence-of
@@ -31,7 +31,7 @@ rule:
             stopBy: end
             matches: t-locally-bound
 message: >-
-  typing.List must become t.SequenceOf[T], but this module does not import `t`.
+  typing.List must become t.MutableSequenceOf[T], but this module does not import `t`.
   Add the typings import first, then typing-list-to-sequence-of rewrites it. No
   auto-fix here to avoid emitting an undefined name (Ruff F821 / Pyrefly).
 ---
@@ -42,7 +42,8 @@ message: >-
 #
 # ast-grep metavariables never cross a `matches` boundary, so the rule re-binds
 # the matched node with its own `pattern: $WHOLE` and derives the canonical text
-# with a `replace` transform rather than the retired `t.SequenceOf[$T]` fix.
+# with a `replace` transform. List is mutable: a read-only Sequence alias would
+# invalidate mutations and conflict with the preserved native field factories.
 id: typing-list-to-sequence-of
 language: python
 severity: error
@@ -61,7 +62,7 @@ transform:
     replace:
       source: $WHOLE
       replace: "^(?:typing\\.)?List"
-      by: "t.SequenceOf"
+      by: "t.MutableSequenceOf"
 fix: $NEW
 message: >-
-  typing.List is retired; the canonical sequence annotation is t.SequenceOf[T].
+  typing.List is retired; preserve its mutable contract with t.MutableSequenceOf[T].

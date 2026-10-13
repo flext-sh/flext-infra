@@ -74,28 +74,23 @@ class FlextInfraAccessorMigrationRewriteMixin:
         if resource is None:
             return source, ()
         resolver = FlextInfraAccessorOriginResolver(rope_project)
-        updated_source = source
-        changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
-        for rule in self._AUTOMATED_RULES:
-            updated_source, rule_changes = self._rename_symbol_tokens(
-                updated_source,
-                rule=rule,
-                file_path=py_file,
-                resolver=resolver,
-            )
-            changes.extend(rule_changes)
-        return updated_source, tuple(changes)
+        return self._rename_symbol_tokens(
+            source,
+            rules=self._AUTOMATED_RULES,
+            file_path=py_file,
+            resolver=resolver,
+        )
 
     @classmethod
     def _rename_symbol_tokens(
         cls,
         source: str,
         *,
-        rule: m.Infra.AccessorMigrationRule,
+        rules: t.SequenceOf[m.Infra.AccessorMigrationRule],
         file_path: Path,
         resolver: FlextInfraAccessorOriginResolver,
     ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
-        """Rename only origin-owned occurrences of one rule's source name.
+        """Resolve every catalog occurrence against the unchanged Rope source.
 
         Returns:
             The resulting ``t.Pair[str,
@@ -104,10 +99,12 @@ class FlextInfraAccessorMigrationRewriteMixin:
         """
         token_changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         rewrite_ranges: t.MutableSequenceOf[t.Triple[int, int, str]] = []
-        skipped_by_definition: dict[str, int] = {}
+        rules_by_name = {rule.source_name: rule for rule in rules}
+        skipped_by_definition: dict[t.Pair[str, str], int] = {}
         for token in generate_tokens(io.StringIO(source).readline):
-            if token.type != NAME or token.string != rule.source_name:
+            if token.type != NAME or token.string not in rules_by_name:
                 continue
+            rule = rules_by_name[token.string]
             line, column = token.start
             start = cls._offset_from_position(source, line, column)
             end = start + len(rule.source_name)
@@ -116,7 +113,9 @@ class FlextInfraAccessorMigrationRewriteMixin:
                 definition,
                 origin=rule.origin,
             ):
-                skipped_by_definition[definition or "an unresolved module"] = line
+                skipped_by_definition.setdefault(
+                    (rule.source_name, definition or "an unresolved module"), line
+                )
                 continue
             rewrite_ranges.append((start, end, rule.replacement_name))
             token_changes.append(
@@ -129,10 +128,11 @@ class FlextInfraAccessorMigrationRewriteMixin:
                     reason=rule.reason,
                 ),
             )
-        for definition, first_line in sorted(
+        for (source_name, definition), first_line in sorted(
             skipped_by_definition.items(),
             key=itemgetter(1),
         ):
+            rule = rules_by_name[source_name]
             token_changes.append(
                 m.Infra.AccessorMigrationChange(
                     file=str(file_path),

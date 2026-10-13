@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -180,6 +181,39 @@ class TestsFlextInfraFailedInvocationProgress:
         )
         tm.that(report.totals_by_rule.get("unselected"), eq=1)
         tm.that(report.totals_by_rule.get("selected", 0), eq=0)
+        destination = mod_workspace / c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        before_paths = tuple(
+            (destination.parent / destination.stem).glob("*/before.json")
+        )
+        tm.that(len(before_paths), eq=1)
+        before_evidence = m.Infra.ModScanEvidence.model_validate_json(
+            before_paths[0].read_bytes(),
+        )
+        after_evidence = m.Infra.ModScanEvidence.model_validate_json(
+            before_paths[0].with_name("after.json").read_bytes(),
+        )
+        tm.that(before_evidence.totals_by_rule.get("selected"), eq=1)
+        tm.that(after_evidence.totals_by_rule.get("selected", 0), eq=0)
+        tm.that(after_evidence.totals_by_rule.get("unselected"), eq=1)
+        runtime = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "import runpy, sys; namespace = runpy.run_path(sys.argv[1]); "
+                        "consumer = namespace[sys.argv[2]]; "
+                        "print(consumer.selected, consumer.unselected)"
+                    ),
+                    str(sample),
+                    f"{stem}Selection",
+                ),
+                cwd=mod_workspace,
+            )
+        )
+        tm.that(runtime.outcome.raw_return_code, eq=0)
+        tm.that(runtime.stdout.strip(), eq="after before")
+        tm.that(runtime.stderr, eq="")
 
     @staticmethod
     @pytest.mark.slow

@@ -26,9 +26,6 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
 from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -831,7 +828,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root
-            normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            normalized = u.Infra.normalize_source(
                 root,
                 path,
                 working[path],

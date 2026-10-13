@@ -145,9 +145,11 @@ class TestsFlextInfraRopeAnalysis:
         [
             ("value = object", "object"),
             ("value = Exception", "Exception"),
+            ("value = Exception()", "Exception"),
             ("class Parent:\n    pass\nvalue = Parent", "Parent"),
             ("class Parent:\n    pass\nvalue = Parent()", "Parent"),
             ("from .provider import Parent\nvalue = Parent", "Parent"),
+            ("from .provider import Parent\nvalue = Parent()", "Parent"),
         ],
     )
     def test_superclass_name_uses_the_sdk_class_or_instance_type(
@@ -174,6 +176,8 @@ class TestsFlextInfraRopeAnalysis:
         ("declaration", "message"),
         [
             ("def value():\n    pass\n", "not a class or inferred instance"),
+            ("value = len\n", "not a class or inferred instance"),
+            ("import os as value\n", "not a class or inferred instance"),
             ("value = missing\n", "cyclic Rope superclass type"),
         ],
     )

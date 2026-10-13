@@ -170,6 +170,93 @@ class FlextInfraModelsRefactor(
             m.Field(description="Text multiplicity does not prove semantic identity"),
         ] = False
 
+    class ViolationsSweepRequest(m.ContractModel):
+        """Public sweep controls; focus never narrows regression observation."""
+
+        rules: Annotated[
+            str | None,
+            m.Field(
+                description="Comma-separated rule focus; full catalog stays observed"
+            ),
+        ] = None
+        repair_verbs: Annotated[
+            str | None,
+            m.Field(
+                alias="repair-verbs",
+                description="Ordered comma-separated Make verbs; default from Make policy",
+            ),
+        ] = None
+
+    class ViolationsSweepSources(m.ContractModel):
+        """Authenticated inventory shared by full scans and audit observations."""
+
+        plan: Annotated[
+            FlextInfraModelsRefactorGrep.CodemodRulePlan,
+            m.Field(description="Elected full rule catalog and provider digests"),
+        ]
+        scope: Annotated[
+            t.StrSequence, m.Field(description="Governed Python scan scope")
+        ]
+        states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(description="Atomic source states actually observed"),
+        ]
+        sha256: Annotated[
+            t.StrMapping, m.Field(description="Source and catalog byte digests")
+        ]
+        repository_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Observed governed project topology"),
+        ]
+
+    class ViolationsSweepStage(m.ContractModel):
+        """One invoked canonical operation, including independent audit evidence."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Operation's project root")
+        ]
+        cwd: Annotated[Path, m.Field(description="Actual Make working directory")]
+        command: Annotated[
+            t.StrSequence, m.Field(description="Exact invoked Make argv")
+        ]
+        verb: Annotated[str, m.Field(description="Canonical Make operation")]
+        duration: Annotated[
+            t.NonNegativeFloat,
+            m.Field(description="Elapsed monotonic seconds"),
+        ]
+        invoked: Annotated[
+            bool,
+            m.Field(description="Whether Make was invoked"),
+        ] = True
+        outcome: Annotated[
+            m.Cli.ProcessOutcome | None,
+            m.Field(description="Original process exit, timeout and signal state"),
+        ]
+        error: Annotated[
+            str | None,
+            m.Field(description="Original operation or inspection failure"),
+        ]
+        audit_before: Annotated[
+            FlextInfraModelsRefactor.ViolationsSweepSources | None,
+            m.Field(
+                description="Authenticated source snapshot immediately before audit"
+            ),
+        ] = None
+        audit_after: Annotated[
+            FlextInfraModelsRefactor.ViolationsSweepSources | None,
+            m.Field(description="After audit snapshot, retained for failed operations"),
+        ] = None
+        source_inventory_unchanged: Annotated[
+            bool | None,
+            m.Field(
+                description="Source bytes, inventory and plan equality; None is unproven"
+            ),
+        ] = None
+        inspection_error: Annotated[
+            str | None,
+            m.Field(description="Inspection failure independent of process error"),
+        ] = None
+
     class ViolationsSweepReport(m.ContractModel):
         """Before/after receipt of one violations sweep.
 
@@ -190,6 +277,18 @@ class FlextInfraModelsRefactor(
             t.StrSequence,
             m.Field(description="Canonical verbs the sweep ran, in order"),
         ]
+        focused_rule_ids: Annotated[
+            t.StrSequence,
+            m.Field(description="Requested focus; full catalog stays observed"),
+        ] = ()
+        repository_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Discovered governed project topology"),
+        ] = ()
+        stages: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsSweepStage],
+            m.Field(description="Independent operation receipts in invocation order"),
+        ] = ()
         before: Annotated[
             FlextInfraModelsRefactor.ViolationsTotals,
             m.Field(description="Scan totals before the repair sequence"),
@@ -235,11 +334,13 @@ class FlextInfraModelsRefactor(
         before_source_sha256: Annotated[
             t.StrMapping,
             m.Field(description="Authenticated before source and catalog inventory"),
-        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
+        ] = m.Field()
         after_source_sha256: Annotated[
-            t.StrMapping,
-            m.Field(description="Authenticated after source and catalog inventory"),
-        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
+            t.StrMapping | None,
+            m.Field(
+                description="Authenticated after inventory, or None when unobserved"
+            ),
+        ] = m.Field()
 
         @property
         def increased_totals(self) -> t.StrSequence:
@@ -248,9 +349,13 @@ class FlextInfraModelsRefactor(
             Returns:
                 The resulting ``t.StrSequence``.
 
+            Raises:
+                ValueError: The after scan or its source inventory is unobserved.
+
             """
-            if self.after is None:
-                return ()
+            if self.after is None or self.after_source_sha256 is None:
+                msg = "violations sweep comparison requires an authenticated after scan"
+                raise ValueError(msg)
             return tuple(
                 name
                 for name in (

@@ -77,6 +77,13 @@ class TestsFlextInfraUtilityFacadeProjection:
             "assert u.Infra.render_utility_facade(package) == rendered\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(\n"
             "    test_u.Tests.create_lazy_init_service(root)))\n"
+            "initializer = package / '__init__.py'\n"
+            "published = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
+            "    initializer, required=True))\n"
+            "tm.ok(test_u.Tests.materialize_lazy_init(\n"
+            "    test_u.Tests.create_lazy_init_service(root)))\n"
+            "assert tm.ok(u.Cli.atomic_read_binary_file_state(\n"
+            "    initializer, required=True)) == published\n"
             "assert u.Infra.render_utility_facade(package) == rendered\n"
             "print(repr(expected))\n"
         )

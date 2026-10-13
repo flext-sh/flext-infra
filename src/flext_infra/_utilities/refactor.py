@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import MutableMapping
 from pathlib import Path
 
@@ -26,6 +27,69 @@ class FlextInfraUtilitiesRefactor:
 
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
+
+    @staticmethod
+    def rule_deltas(
+        before: m.Infra.ModScanReport,
+        after: m.Infra.ModScanReport,
+        *,
+        inventory: tuple[tuple[str, str], ...] = (),
+    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+        """Compare lexical multiplicities, without asserting semantic correspondence.
+
+        Returns:
+            Per-repository and per-rule occurrence deltas.
+        """
+        deltas: list[m.Infra.ViolationsRuleDelta] = []
+        if before.entries or after.entries or inventory:
+            # Positions move during formatting; retain exact matched text and file,
+            # and compare multiplicities rather than collapsing duplicate matches.
+            before_entries = Counter(
+                (entry.repository, entry.rule_id, entry.file, entry.text)
+                for entry in before.entries
+            )
+            after_entries = Counter(
+                (entry.repository, entry.rule_id, entry.file, entry.text)
+                for entry in after.entries
+            )
+            for repository, rule_id in sorted(
+                set(inventory)
+                | {(key[0], key[1]) for key in before_entries | after_entries}
+            ):
+                keys = {
+                    key
+                    for key in before_entries | after_entries
+                    if key[:2] == (repository, rule_id)
+                }
+                persisted = sum(
+                    min(before_entries[key], after_entries[key]) for key in keys
+                )
+                before_count = sum(before_entries[key] for key in keys)
+                after_count = sum(after_entries[key] for key in keys)
+                deltas.append(
+                    m.Infra.ViolationsRuleDelta(
+                        repository=repository,
+                        rule_id=rule_id,
+                        before=before_count,
+                        after=after_count,
+                        resolved=before_count - persisted,
+                        persisted=persisted,
+                        introduced=after_count - persisted,
+                        before_entries=tuple(
+                            index
+                            for index, entry in enumerate(before.entries)
+                            if (entry.repository, entry.rule_id)
+                            == (repository, rule_id)
+                        ),
+                        after_entries=tuple(
+                            index
+                            for index, entry in enumerate(after.entries)
+                            if (entry.repository, entry.rule_id)
+                            == (repository, rule_id)
+                        ),
+                    )
+                )
+        return tuple(deltas)
 
     @staticmethod
     def string_list(value: t.JsonValue | None) -> t.StrSequence:

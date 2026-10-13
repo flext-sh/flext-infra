@@ -7,7 +7,7 @@ id: ban-constants-own-letter-import
 valid:
   # A different letter from the own root is legal facade assembly.
   - |
-    from ai_hub import t
+    from ai_hub import settings
   # The canonical producer form: the sibling through its private submodule.
   - |
     from ai_hub._constants.base import AiHubConstantsBase

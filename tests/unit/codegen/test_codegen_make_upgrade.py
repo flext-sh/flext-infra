@@ -765,11 +765,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         u.Tests.commit_git_changes(root, "attach upgrade consumer")
         pyproject = root / c.PYPROJECT_FILENAME
-        document = dict(u.Tests.toml_payload(pyproject.read_text(encoding="utf-8")))
-        project = dict(u.Tests.toml_mapping(document["project"]))
+        document = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
+        project = tm.not_none(u.Cli.toml_table_child(document, "project"))
         version = str(project["version"]).partition("+")[0]
         project["version"] = f"{version}+upgradeprobe"
-        document["project"] = project
         tm.ok(u.Cli.atomic_write_text_file(pyproject, u.Cli.toml_dumps(document)))
         (root / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
             "pre-upg:\n"

@@ -11,10 +11,10 @@ import difflib
 import os
 import sys
 from collections import Counter
-from collections.abc import MutableMapping
+from collections.abc import Iterable, MutableMapping
 from itertools import islice
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
@@ -22,9 +22,115 @@ from flext_infra import c, config, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
+if TYPE_CHECKING:
+    from flext_infra import p
+
 
 class FlextInfraUtilitiesProtectedEditLinting:
     """Shared linting and path helpers for protected edit workflows."""
+
+    @classmethod
+    def normalize_source(
+        cls,
+        repository_root: Path,
+        path: Path,
+        source: str,
+        *,
+        remove_unused_imports: bool = False,
+    ) -> p.Result[str]:
+        """Normalize candidate imports and format with the destination's policy.
+
+        Returns:
+            Normalized source, or the original Ruff subprocess failure.
+        """
+        executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
+        project_root = cls._command_cwd(path, repository_root)
+        checked = u.Cli.run(
+            [
+                executable,
+                "check",
+                *config.Infra.codegen.make.ruff.lint_fix,
+                "--select",
+                "I,F401,W" if remove_unused_imports else "I,W",
+                "--stdin-filename",
+                str(path),
+                "-",
+            ],
+            cwd=project_root,
+            options=m.Cli.ProcessOptions(
+                input_data=source,
+                env=cls._command_env(),
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+            ),
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        return checked.flat_map(
+            lambda output: u.Cli.run(
+                [
+                    executable,
+                    "format",
+                    *config.Infra.codegen.make.ruff.format_apply,
+                    "--stdin-filename",
+                    str(path),
+                    "-",
+                ],
+                cwd=project_root,
+                options=m.Cli.ProcessOptions(
+                    input_data=output.stdout,
+                    env=cls._command_env(),
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                ),
+                timeout=c.Infra.TIMEOUT_SHORT,
+            ).map(lambda formatted: formatted.stdout),
+        )
+
+    @classmethod
+    def normalize_touched_files(
+        cls,
+        paths: Iterable[Path],
+        repository_root: Path,
+    ) -> None:
+        """Normalize published imports and whitespace with each destination's policy.
+
+        Published files retain unused imports: the removal planner owns their
+        removal, not this formatting pass.
+
+        Raises:
+            RuntimeError: If a Ruff subprocess rejects the touched files.
+        """
+        grouped: MutableMapping[Path, list[str]] = {}
+        for path in sorted({path.resolve() for path in paths if path.is_file()}):
+            grouped.setdefault(cls._command_cwd(path, repository_root), []).append(
+                str(path)
+            )
+        if not grouped:
+            return
+        executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
+        for project_root, existing in grouped.items():
+            for arguments in (
+                (
+                    "check",
+                    *config.Infra.codegen.make.ruff.lint_fix,
+                    "--select",
+                    "I,W",
+                ),
+                ("format", *config.Infra.codegen.make.ruff.format_apply),
+            ):
+                result = u.Cli.run_checked(
+                    [executable, *arguments, *existing],
+                    cwd=project_root,
+                    options=m.Cli.ProcessOptions(
+                        env=cls._command_env(),
+                        remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                    ),
+                    timeout=c.Infra.TIMEOUT_SHORT,
+                )
+                if result.failure:
+                    msg = (
+                        f"ruff {arguments[0]} failed for touched files: "
+                        f"{result.error}; files={existing!r}"
+                    )
+                    raise RuntimeError(msg)
 
     @staticmethod
     def unified_diff_lines(
@@ -535,7 +641,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         gates: t.StrSequence | None = None,
         source: str | None = None,
     ) -> t.Infra.LintSnapshot:
-        """Run selected lint tools on *py_file*, concurrent and content-cached.
+        """Run selected tools, or uncached Ruff on candidate source at *py_file*.
+
+        Candidate stdin retains the destination's filename and configuration;
+        it never materializes the proposed bytes on the live filesystem.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.
@@ -618,7 +727,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         before: t.Infra.LintSnapshot,
         after: t.Infra.LintSnapshot,
     ) -> t.Infra.LintSnapshot:
-        """Return only lint errors introduced relative to *before*.
+        """Return introduced diagnostic occurrences, ignoring shifted coordinates.
+
+        Matching consumes each baseline occurrence once; resolving another rule
+        never compensates for a new message or an additional identical finding.
 
         Returns:
             Only lint errors introduced relative to *before*.

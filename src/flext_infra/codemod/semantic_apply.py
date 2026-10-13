@@ -14,7 +14,6 @@ from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 
@@ -705,7 +704,7 @@ class FlextInfraCodemodSemanticApply:
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root
-            normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            normalized = u.Infra.normalize_source(
                 root,
                 path,
                 updated[path],

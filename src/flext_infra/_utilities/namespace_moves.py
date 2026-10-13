@@ -14,6 +14,7 @@ from flext_core import u as core_u
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
+    FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
@@ -235,21 +236,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             target_file: expected_target_source,
             source_file: source,
         }
-        ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
-            candidate_writes,
-            request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=project_root,
-                expected_sources=candidate_expected,
-                gates=gates,
-            ),
+        FlextInfraUtilitiesRefactorNamespaceMoves._write_declaration_move(
+            project_root=project_root,
+            gates=gates,
+            writes=candidate_writes,
+            expected_sources=candidate_expected,
         )
-        if not ok:
-            FlextInfraUtilitiesRefactorNamespaceMoves._restore_rejected_writes(
-                written=candidate_writes,
-                expected_sources=candidate_expected,
-            )
-            msg = "named block move failed validation: " + "; ".join(reports)
-            raise RuntimeError(msg)
         return (source_file, target_file, tuple(moved))
 
     @staticmethod
@@ -558,19 +550,24 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         ast.parse("\n".join(kept_lines))
 
     @staticmethod
-    def _write_alias_move(
+    def _write_declaration_move(
         *,
         project_root: Path,
         gates: t.StrSequence | None,
         writes: t.MappingKV[Path, str],
         expected_sources: t.MappingKV[Path, str | None],
     ) -> None:
-        """Publish atomically.
+        """Normalize every staged declaration and consumer before atomic publication.
 
         Raises:
             RuntimeError: If the protected writer rejects the candidate.
         """
-        candidate_writes = dict(writes)
+        candidate_writes = {
+            path: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
+                project_root, path, source
+            ).unwrap()
+            for path, source in writes.items()
+        }
         candidate_expected = dict(expected_sources)
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             candidate_writes,
@@ -641,7 +638,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             writes,
             expected_sources,
         )
-        cls._write_alias_move(
+        cls._write_declaration_move(
             project_root=project_root,
             gates=gates,
             writes=writes,

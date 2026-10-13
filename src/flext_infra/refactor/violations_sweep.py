@@ -6,25 +6,27 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shlex
 import sys
-from collections import Counter
 from pathlib import Path
+from time import monotonic
 from typing import override
 from uuid import uuid4
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 
 
-class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
+class FlextInfraRefactorViolationsSweep(
+    m.Infra.ViolationsSweepRequest,
+    s[m.Infra.ViolationsSweepReport],
+):
     """Run canonical repairs and reject introduced finding occurrences.
 
-    The sweep measures the repository's mod scan totals, runs the repository's
-    own canonical repair verbs in order (``make fix``, ``make fmt``,
-    ``make mod`` — the same surface every agent and developer runs), measures
-    again, and fails the command the moment any total increased: automation
-    may reduce a tree's violations, never grow them. The before/after totals
-    are published as one receipt under the repository's reports.
+    Rule focus is validated against the elected plan, never passed to the full
+    before/after scans. Repairs use the configured default or a public ordered
+    sequence of selector-free Make verbs. Audit inspects each discovered project
+    separately and must preserve the governed source and catalog inventory.
     """
 
     @override
@@ -36,6 +38,45 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         root = self.repository_root
+        if any(
+            selector is not None
+            for selector in (
+                self.target_module,
+                self.target_namespace,
+                self.project_filter,
+            )
+        ):
+            return r[m.Infra.ViolationsSweepReport].fail(
+                "violations sweep requires the full governed project inventory",
+            )
+        rule_ids = (
+            tuple(rule_id.strip() for rule_id in self.rules.split(","))
+            if self.rules is not None
+            else None
+        )
+        focused = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
+        if focused.failure:
+            return r[m.Infra.ViolationsSweepReport].from_failure(focused)
+        verbs = (
+            tuple(verb.strip() for verb in self.repair_verbs.split(","))
+            if self.repair_verbs is not None
+            else config.Infra.codegen.make.violations_sweep_repair_verbs
+        )
+        admissible = {
+            verb.name
+            for verb in config.Infra.codegen.make.verbs
+            if not verb.arguments and set(verb.profiles) == set(c.Infra.MakeProfile)
+        }
+        if not verbs or any(verb not in admissible for verb in verbs):
+            return r[m.Infra.ViolationsSweepReport].fail(
+                "violations sweep requires declared selector-free Make verbs: "
+                + ", ".join(verb for verb in verbs if verb not in admissible),
+            )
+        if rule_ids is not None and any(verb != "audit" for verb in verbs):
+            return r[m.Infra.ViolationsSweepReport].fail(
+                "selected-rule mutation is not implemented; no repair verb invoked",
+            )
+        projects = tuple(u.Infra.governed_project_roots(root))
         destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
         invocation = destination.parent / destination.stem / uuid4().hex
         before_scan = self._scan_evidence(root, invocation / "before.json")
@@ -43,14 +84,46 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             return r[m.Infra.ViolationsSweepReport].from_failure(before_scan)
         before = m.Infra.ViolationsTotals.from_scan_report(before_scan.value[0])
         completed: list[str] = []
+        stages: list[m.Infra.ViolationsSweepStage] = []
         failed_verb: str | None = None
-        repair_failure: p.Result[p.Cli.CommandOutput] | None = None
-        for verb in c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS:
-            repaired = u.Cli.run_checked([c.Infra.MAKE, verb], cwd=root)
-            if repaired.failure:
-                failed_verb = verb
-                repair_failure = repaired
-                break
+        repair_failure: p.Result[bool] | None = None
+        for verb in verbs:
+            blocked = repair_failure is not None
+            for project in projects if verb == "audit" else (root,):
+                if blocked:
+                    stages.append(
+                        m.Infra.ViolationsSweepStage(
+                            repository_root=project.resolve(),
+                            cwd=root.resolve(),
+                            command=(
+                                (
+                                    c.Infra.MAKE,
+                                    "-f",
+                                    str(project / c.Infra.MAKEFILE_FILENAME),
+                                    verb,
+                                )
+                                if verb == "audit"
+                                else (c.Infra.MAKE, verb)
+                            ),
+                            verb=verb,
+                            duration=0,
+                            invoked=False,
+                            outcome=None,
+                            error=f"not invoked after failed {failed_verb}",
+                        )
+                    )
+                    continue
+                stage, repaired = self._run_stage(
+                    root,
+                    project,
+                    verb,
+                )
+                stages.append(stage)
+                if repaired.failure and repair_failure is None:
+                    failed_verb = verb
+                    repair_failure = repaired
+            if repair_failure is not None:
+                continue
             completed.append(verb)
         after_scan = self._scan_evidence(root, invocation / "after.json")
         after = (
@@ -59,7 +132,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             else m.Infra.ViolationsTotals.from_scan_report(after_scan.value[0])
         )
         deltas = (
-            self.rule_deltas(
+            u.Infra.rule_deltas(
                 before_scan.value[0],
                 after_scan.value[0],
                 inventory=tuple(
@@ -77,7 +150,10 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         report = m.Infra.ViolationsSweepReport(
             schema_version=c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION,
             repository_root=root.resolve(),
-            repair_verbs=tuple(c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS),
+            repair_verbs=tuple(verbs),
+            focused_rule_ids=rule_ids or (),
+            repository_roots=projects,
+            stages=tuple(stages),
             before=before,
             after=after,
             rule_deltas=tuple(deltas),
@@ -92,7 +168,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             before_plan=before_scan.value[2],
             after_plan=after_scan.value[2] if after_scan.success else None,
             before_source_sha256=before_scan.value[3],
-            after_source_sha256=after_scan.value[3] if after_scan.success else {},
+            after_source_sha256=after_scan.value[3] if after_scan.success else None,
         )
         published = u.Infra.publish_refactor_report_evidence(
             root,
@@ -126,68 +202,90 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             )
         return r[m.Infra.ViolationsSweepReport].ok(report)
 
-    @staticmethod
-    def rule_deltas(
-        before: m.Infra.ModScanReport,
-        after: m.Infra.ModScanReport,
-        *,
-        inventory: tuple[tuple[str, str], ...] = (),
-    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
-        """Compare lexical multiplicities, without asserting semantic correspondence.
+    @classmethod
+    def _run_stage(
+        cls,
+        root: Path,
+        project: Path,
+        verb: str,
+    ) -> t.Pair[m.Infra.ViolationsSweepStage, p.Result[bool]]:
+        """Invoke one canonical operation and preserve audit checks even on failure.
 
         Returns:
-            Per-repository and per-rule occurrence deltas.
+            The process receipt and its causal verdict.
         """
-        deltas: list[m.Infra.ViolationsRuleDelta] = []
-        if before.entries or after.entries or inventory:
-            # Positions move during formatting; retain exact matched text and file,
-            # and compare multiplicities rather than collapsing duplicate matches.
-            before_entries = Counter(
-                (entry.repository, entry.rule_id, entry.file, entry.text)
-                for entry in before.entries
+        command = (
+            (c.Infra.MAKE, "-f", str(project / c.Infra.MAKEFILE_FILENAME), verb)
+            if verb == "audit"
+            else (c.Infra.MAKE, verb)
+        )
+        before = cls._source_snapshot(root) if verb == "audit" else None
+        started = monotonic()
+        executed = (
+            u.Cli.run_raw(command, cwd=root)
+            if before is None or before.success
+            else r[p.Cli.CommandOutput].from_failure(before)
+        )
+        duration = monotonic() - started
+        output = executed.value if executed.success else None
+        verdict = (
+            r[bool].from_failure(executed)
+            if executed.failure
+            else r[bool].ok(value=True)
+        )
+        if output is not None and not u.Cli.process_succeeded(output.outcome):
+            verdict = r[bool].fail(
+                f"failed ({output.outcome.raw_return_code}): "
+                f"{shlex.join(list(command))}: "
+                f"timed_out={output.outcome.timed_out}, "
+                f"forwarded_signal={output.outcome.forwarded_signal}: "
+                f"{(output.stderr or output.stdout).strip()}",
             )
-            after_entries = Counter(
-                (entry.repository, entry.rule_id, entry.file, entry.text)
-                for entry in after.entries
-            )
-            for repository, rule_id in sorted(
-                set(inventory)
-                | {(key[0], key[1]) for key in before_entries | after_entries}
-            ):
-                keys = {
-                    key
-                    for key in before_entries | after_entries
-                    if key[:2] == (repository, rule_id)
-                }
-                persisted = sum(
-                    min(before_entries[key], after_entries[key]) for key in keys
+        after = cls._source_snapshot(root) if verb == "audit" else None
+        unchanged: bool | None = None
+        inspection_error: str | None = None
+        if after is not None:
+            if after.failure:
+                inspection_error = str(after.error)
+                if verdict.success:
+                    verdict = r[bool].from_failure(after)
+            elif before is not None and before.success:
+                unchanged = (
+                    before.value.plan == after.value.plan
+                    and before.value.sha256 == after.value.sha256
+                    and before.value.scope == after.value.scope
+                    and before.value.repository_roots == after.value.repository_roots
                 )
-                before_count = sum(before_entries[key] for key in keys)
-                after_count = sum(after_entries[key] for key in keys)
-                deltas.append(
-                    m.Infra.ViolationsRuleDelta(
-                        repository=repository,
-                        rule_id=rule_id,
-                        before=before_count,
-                        after=after_count,
-                        resolved=before_count - persisted,
-                        persisted=persisted,
-                        introduced=after_count - persisted,
-                        before_entries=tuple(
-                            index
-                            for index, entry in enumerate(before.entries)
-                            if (entry.repository, entry.rule_id)
-                            == (repository, rule_id)
-                        ),
-                        after_entries=tuple(
-                            index
-                            for index, entry in enumerate(after.entries)
-                            if (entry.repository, entry.rule_id)
-                            == (repository, rule_id)
-                        ),
+                if not unchanged:
+                    inspection_error = (
+                        "audit changed governed source bytes, rule plan or inventory"
                     )
+                    if verdict.success:
+                        verdict = r[bool].fail(inspection_error)
+        return m.Infra.ViolationsSweepStage(
+            repository_root=project.resolve(),
+            cwd=root.resolve(),
+            command=command,
+            verb=verb,
+            duration=duration,
+            invoked=before is None or before.success,
+            outcome=(
+                m.Cli.ProcessOutcome(
+                    raw_return_code=output.outcome.raw_return_code,
+                    timed_out=output.outcome.timed_out,
+                    forwarded_signal=output.outcome.forwarded_signal,
                 )
-        return tuple(deltas)
+                if output is not None
+                else None
+            ),
+            error=str(verdict.error) if verdict.failure else None,
+            audit_before=before.value
+            if before is not None and before.success
+            else None,
+            audit_after=after.value if after is not None and after.success else None,
+            source_inventory_unchanged=unchanged,
+            inspection_error=inspection_error,
+        ), verdict
 
     @staticmethod
     def _scan_evidence(
@@ -214,11 +312,53 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
                 t.StrMapping,
             ]
         ]
+        captured = FlextInfraRefactorViolationsSweep._source_snapshot(root)
+        if captured.failure:
+            return result.from_failure(captured)
+        snapshot = captured.value
+        scanned = FlextInfraModGateEngine.scan(root, fix=False)
+        if scanned.failure:
+            return result.from_failure(scanned)
+        validated = FlextInfraRefactorViolationsSweep._validate_scan_sources(
+            root,
+            snapshot.scope,
+            snapshot.states,
+            snapshot.plan,
+        )
+        if validated.failure:
+            return result.from_failure(validated)
+        repositories = tuple(project.name for project in snapshot.repository_roots)
+        receipt = u.Infra.publish_mod_scan_evidence(
+            root,
+            scanned.value,
+            command=c.Infra.ModScanCommand.SCAN,
+            scope=snapshot.scope,
+            relative_path=destination,
+            repositories=repositories,
+            rule_ids=tuple(rule.id for rule in snapshot.plan.rules),
+        )
+        if receipt.failure:
+            return result.from_failure(receipt)
+        return result.ok((
+            scanned.value,
+            receipt.value,
+            snapshot.plan,
+            snapshot.sha256,
+        ))
+
+    @classmethod
+    def _source_snapshot(cls, root: Path) -> p.Result[m.Infra.ViolationsSweepSources]:
+        """Read the existing scan inventory without executing another native scan.
+
+        Returns:
+            Authenticated source, scope, topology and elected catalog identities.
+        """
         planned = u.Infra.codemod_rule_plan(root)
         if planned.failure:
-            return result.from_failure(planned)
+            return r[m.Infra.ViolationsSweepSources].from_failure(planned)
         plan = planned.value
         targets = u.Infra.ast_grep_scan_targets(root)
+        projects = tuple(u.Infra.governed_project_roots(root))
         paths = {rule.resource.resolve() for rule in plan.rules}
         paths.update(ruleset.config.resolve() for ruleset in plan.rulesets)
         for target in targets:
@@ -230,43 +370,28 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         for path in sorted(paths):
             state = u.Cli.atomic_read_binary_file_state(path, required=True)
             if state.failure:
-                return result.from_failure(state)
+                return r[m.Infra.ViolationsSweepSources].from_failure(state)
             states.append(state.value)
-        scanned = FlextInfraModGateEngine.scan(root, fix=False)
-        if scanned.failure:
-            return result.from_failure(scanned)
-        validated = FlextInfraRefactorViolationsSweep._validate_scan_sources(
-            root,
-            targets,
-            states,
-            plan,
-        )
+        validated = cls._validate_scan_sources(root, targets, states, plan)
         if validated.failure:
-            return result.from_failure(validated)
-        repositories = tuple(
-            project.name for project in u.Infra.governed_project_roots(root)
+            return r[m.Infra.ViolationsSweepSources].from_failure(validated)
+        if projects != tuple(u.Infra.governed_project_roots(root)):
+            return r[m.Infra.ViolationsSweepSources].fail(
+                "violations sweep project topology changed during observation",
+            )
+        return r[m.Infra.ViolationsSweepSources].ok(
+            m.Infra.ViolationsSweepSources(
+                plan=plan,
+                scope=targets,
+                states=tuple(states),
+                repository_roots=projects,
+                sha256={
+                    str(state.path): u.Cli.sha256_bytes(state.content)
+                    for state in states
+                    if state.content is not None
+                },
+            )
         )
-        receipt = u.Infra.publish_mod_scan_evidence(
-            root,
-            scanned.value,
-            command=c.Infra.ModScanCommand.SCAN,
-            scope=targets,
-            relative_path=destination,
-            repositories=repositories,
-            rule_ids=tuple(rule.id for rule in plan.rules),
-        )
-        if receipt.failure:
-            return result.from_failure(receipt)
-        return result.ok((
-            scanned.value,
-            receipt.value,
-            plan,
-            {
-                str(state.path): u.Cli.sha256_bytes(state.content)
-                for state in states
-                if state.content is not None
-            },
-        ))
 
     @staticmethod
     def _validate_scan_sources(

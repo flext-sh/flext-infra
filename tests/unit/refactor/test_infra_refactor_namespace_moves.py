@@ -216,20 +216,17 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         project_root, package_root = self._build_project(tmp_path)
         source_file = package_root / "service.py"
         self._write_file(
-            package_root / "typings.py",
-            "from __future__ import annotations\n\nfrom typing import Literal\n",
-        )
-        self._write_file(
             source_file,
             "from __future__ import annotations\n\nfrom typing import Literal\n\n"
             f"{declaration}\n"
             "value = 'retained'\n"
-            "def retained() -> Literal['retained']:\n"
+            "def retained() -> str:\n"
             "    return value\n",
         )
         self._write_file(
             package_root / "consumer.py",
-            "from demo_pkg.service import Alias, retained\nPublished = Alias\n",
+            "from demo_pkg.service import Alias, retained\nPublished = Alias\n"
+            "__all__ = ('Published', 'retained')\n",
         )
 
         u.Infra.rewrite_manual_typing_alias_violations(
@@ -239,10 +236,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
 
         source = source_file.read_text(encoding="utf-8")
         target = (package_root / "typings.py").read_text(encoding="utf-8")
-        tm.that(source, has="value = 'retained'")
-        tm.that(source, has="def retained() -> Literal['retained']:")
+        tm.that(source, has='value = "retained"')
+        tm.that(source, has="def retained() -> str:")
+        tm.that(source, lacks="from typing import Literal")
         tm.that(source, lacks=declaration)
-        tm.that(target, has=declaration)
+        tm.that(target, has="type Alias")
         tm.that(target, lacks="def retained")
         tm.that(
             u.Tests.run_lazy_init_probe(
@@ -257,6 +255,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             ),
             eq=["True"] * 3,
         )
+        sources = {
+            path: path.read_text(encoding="utf-8")
+            for path in package_root.rglob("*.py")
+        }
+        u.Infra.rewrite_manual_typing_alias_violations(
+            project_root=project_root,
+            names_by_file={source_file: {"Alias"}},
+        )
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @pytest.mark.parametrize("existing_target", [False, True])
     def test_typing_alias_cutover_preserves_all_consumer_bindings(

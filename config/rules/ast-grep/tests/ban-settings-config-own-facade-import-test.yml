@@ -3,7 +3,7 @@ valid:
   - |
     from flext_infra._settings import FlextInfraSettings
   - |
-    from pydantic import JsonValue
+    import pydantic
 invalid:
   - |
     from flext_infra import config

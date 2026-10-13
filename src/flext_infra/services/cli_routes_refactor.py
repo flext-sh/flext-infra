@@ -193,9 +193,10 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name=c.Infra.VIOLATIONS_SWEEP_ROUTE_NAME,
             help_text=(
-                "Run the canonical repair sequence (make fix, make fmt, "
-                "make mod) between two mod scans; the command fails the "
-                "when findings are introduced; publishes partial failure evidence"
+                "Run an ordered --repair-verbs canonical Make sequence with "
+                "optional --rules focus between full-catalog scans; audit runs "
+                "independently for every discovered project and must preserve "
+                "sources; introduced findings and partial failures remain red"
             ),
             model_cls=FlextInfraRefactorViolationsSweep,
             handler=FlextInfraRefactorViolationsSweep.execute_command,

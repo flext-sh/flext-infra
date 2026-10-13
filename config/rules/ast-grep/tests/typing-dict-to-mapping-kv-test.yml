@@ -81,7 +81,7 @@ valid:
     from flext_core import t
     import typing
     value: typing.Literal[typing.Dict[str, int]]
-# `invalid` MUST match and rewrite to t.MappingKV (module binds `t`).
+# `invalid` MUST match and preserve mutability through the imported `t` facade.
 invalid:
   # bare name in a parameter annotation
   - |
@@ -154,6 +154,9 @@ invalid:
     assert isinstance(LegacyBase(), dict)
     assert Payload().values == {}
     assert Payload().values is not Payload().values
+    payload = Payload()
+    payload.values["example"] = 1
+    assert payload.values["example"] == 1
     assert make() == {}
-    assert not callable(t.MappingKV)
-    assert Contract.__value__ == t.MappingKV[str, int]
+    assert not callable(get_origin(Contract.__value__))
+    assert Contract.__value__ == make.__annotations__["return"]

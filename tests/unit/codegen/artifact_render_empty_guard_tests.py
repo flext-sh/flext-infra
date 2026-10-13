@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraConfig, c, config
+from flext_infra import FlextInfraConfig, c
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import tm, u
 
@@ -41,23 +41,22 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             The planning result, template source path, and destination path.
 
         """
+        root = tmp_path / "project"
+        root.mkdir()
+        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
         entry = next(
             entry
-            for entry in config.Infra.codegen.templates.entries
+            for entry in codegen.templates.entries
             if entry.destination == c.Infra.MAKEFILE_FILENAME
         )
-        source = entry.source
-        if source is None:
-            pytest.fail("the declared Makefile renderer must have a template source")
+        source = tm.not_none(entry.source)
         templates = tmp_path / "templates"
-        shutil.copytree(u.Infra.codegen_templates_root(config.Infra.codegen), templates)
+        shutil.copytree(u.Infra.codegen_templates_root(codegen), templates)
         # A nonempty conditional source renders exactly the supplied test content.
         (templates / source).write_text(
             "{% if false %}undeclared capability{% endif %}" + content,
             encoding="utf-8",
         )
-        root = tmp_path / "project"
-        root.mkdir()
         _, _, local_config = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -69,6 +68,8 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 {"Infra": {"codegen": {"templates": {"root": str(templates)}}}},
             ),
         )
+        effective = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        tm.that(u.Infra.codegen_templates_root(effective), eq=templates)
         u.Tests.copy_tracked_mise_seeds(root)
         repository = u.Tests.repository_ref("fixture-project")
         workspace = u.Tests.workspace_spec(

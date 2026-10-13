@@ -91,7 +91,7 @@ class FlextInfraAccessorMigrationReportMixin:
         before: t.Infra.LintSnapshot = {}
         after: t.Infra.LintSnapshot = {}
         if automated_changes:
-            if self.effective_dry_run and include_preview:
+            if self.effective_dry_run:
                 before, after = u.Infra.preview_source_lint(
                     py_file,
                     self.repository_root,
@@ -99,15 +99,11 @@ class FlextInfraAccessorMigrationReportMixin:
                     source_preview=source_preview,
                     gates=self.gate_names,
                 )
-            elif not self.effective_dry_run:
-                before = (
-                    u.Infra.lint_snapshot(
-                        py_file,
-                        self.repository_root,
-                        gates=self.gate_names,
-                    )
-                    if include_preview
-                    else {}
+            else:
+                before = u.Infra.lint_snapshot(
+                    py_file,
+                    self.repository_root,
+                    gates=self.gate_names,
                 )
                 ok, report = u.Infra.protected_source_write(
                     py_file,
@@ -128,29 +124,19 @@ class FlextInfraAccessorMigrationReportMixin:
                             reason=" ; ".join(report[:3]) or "protected write failed",
                         ),
                     )
-                after = (
-                    u.Infra.lint_snapshot(
-                        py_file,
-                        self.repository_root,
-                        gates=self.gate_names,
-                    )
-                    if include_preview
-                    else {}
+                after = u.Infra.lint_snapshot(
+                    py_file,
+                    self.repository_root,
+                    gates=self.gate_names,
                 )
-            else:
-                before = {}
-                after = {}
-            if include_preview:
-                lint_before = self._freeze_lints(before)
-                lint_after = self._freeze_lints(after)
-                new_lint_errors = self._freeze_lints(
-                    u.Infra.lint_new_errors(before, after),
-                )
+            lint_before = self._freeze_lints(before)
+            lint_after = self._freeze_lints(after)
+            new_lint_errors = self._freeze_lints(
+                u.Infra.lint_new_errors(before, after),
+            )
         return m.Infra.AccessorMigrationFile(
             file=str(py_file),
-            lint_tools=tuple(self.lint_tool_names)
-            if automated_changes and include_preview
-            else (),
+            lint_tools=tuple(self.lint_tool_names) if automated_changes else (),
             automated_changes=tuple(automated_changes),
             warnings=tuple(warnings),
             diff=self._diff(py_file, source, updated_source)
@@ -209,6 +195,9 @@ class FlextInfraAccessorMigrationReportMixin:
             f"lint_tools: {', '.join(report.lint_tools)}",
         ]
         for tool in report.lint_tools:
+            if tool not in report.lint_before_totals:
+                lines.append(f"lint-totals:{tool} not-executed (no automated rewrites)")
+                continue
             lines.append(
                 f"lint-totals:{tool} "
                 f"before={report.lint_before_totals.get(tool, 0)} "

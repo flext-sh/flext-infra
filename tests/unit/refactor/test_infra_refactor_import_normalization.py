@@ -840,24 +840,40 @@ class TestsFlextInfraRefactorImportNormalization:
     ) -> None:
         """Layer-zero modules retain native/upstream contracts, not own imports."""
         project, package = cls._project(tmp_path)
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import ClassVar\n"
+            "from pydantic import JsonValue\n"
+            "from flext_core import FlextConfig\n"
+            "class DemoConfig(FlextConfig):\n"
+            "    CONFIG_FILENAMES: ClassVar[tuple[str, ...]] = ()\n"
+            "    value: JsonValue = 'native'\n"
+        )
         result = FlextInfraImportNormalization.normalize_source(
             project_root=project,
             file_path=package / "_config.py",
-            source=(
-                "from __future__ import annotations\n"
-                "\n"
-                "from typing import ClassVar\n"
-                "from pydantic import JsonValue\n"
-                "from flext_core import FlextConfig\n"
-                "\n"
-                "\n"
-                "class DemoConfig(FlextConfig):\n"
-                "    CONFIG_FILENAMES: ClassVar[tuple[str, ...]] = ()\n"
-                "    value: JsonValue = 'native'\n"
-            ),
+            source=source,
         )
-
         tm.that(result, eq=None)
+        (package / "_config.py").write_text(source, encoding="utf-8")
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg._config import DemoConfig; "
+                        "value = DemoConfig(value={'native': [1, 'contract']}); "
+                        "assert value.model_dump()['value'] == "
+                        "{'native': [1, 'contract']}"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(outcome.exit_code, eq=0)
+        tm.that(outcome.stderr, eq="")
 
     @classmethod
     @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
@@ -966,6 +982,23 @@ class TestsFlextInfraRefactorImportNormalization:
                     file_path=package / families[letter].directory / "declaration.py",
                     source=f"value = {name}.Value\n",
                 )
+            module = package / families[letter].directory / "annotations.py"
+            normalized = cls._normalize(
+                project,
+                module,
+                "from __future__ import annotations\n"
+                f"def describe(value: {name}.Value) -> str:\n    return 'value'\n",
+            )
+            tm.that(
+                normalized,
+                has=f"if TYPE_CHECKING:\n    from demo_pkg import {name}\n",
+            )
+            tm.that(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project, file_path=module, source=normalized
+                ),
+                eq=None,
+            )
 
     @classmethod
     def test_internal_tier_alias_binds_through_tier_root(cls, tmp_path: Path) -> None:

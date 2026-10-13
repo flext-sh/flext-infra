@@ -1,11 +1,11 @@
 # Shape only: the engine admits a finding when the imported module's root is
 # the scanned project's own package (context own-package). The law is per
-# letter: this producer tree bans only its own letter `settings` — a different
-# letter from the own root is facade assembly (consumption-law.md:52) and
-# stays legal.
+# letter: this document detects its own `settings` alias. The companion
+# settings-config-boundary rule rejects ALL other own-namespace imports at
+# layer zero, even when this narrower document does not match them.
 id: ban-settings-own-letter-import
 valid:
-  # A different letter from the own root is legal facade assembly.
+  # Not the settings alias; the stronger boundary owns this finding.
   - |
     from ai_hub import m
   # The canonical producer form: the sibling through its private submodule.

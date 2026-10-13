@@ -144,6 +144,9 @@ invalid:
     assert isinstance(LegacyBase(), list)
     assert Payload().values == []
     assert Payload().values is not Payload().values
+    payload = Payload()
+    payload.values.append("example")
+    assert payload.values == ["example"]
     assert make() == []
-    assert not callable(t.SequenceOf)
-    assert Contract.__value__ == t.SequenceOf[str]
+    assert not callable(get_origin(Contract.__value__))
+    assert Contract.__value__ == make.__annotations__["return"]

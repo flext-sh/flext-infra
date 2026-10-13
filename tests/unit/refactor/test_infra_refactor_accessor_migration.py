@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from flext_infra import c, infra
+from flext_infra import c, config, infra
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -46,6 +46,9 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
     workspace, project, pkg = u.Tests.namespace_workspace(
         tmp_path,
         package_name="flext_core",
+        pyproject=(
+            f"[project]\nname='sample'\nversion='{config.Infra.project.version}'\n"
+        ),
     )
     origin_file = pkg / "legacy.py"
     _ = origin_file.write_text(_legacy_module_source(), encoding="utf-8")
@@ -60,6 +63,74 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
 
 class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     """Behavior contract for test_infra_refactor_accessor_migration."""
+
+    @staticmethod
+    def test_catalog_rules_resolve_against_one_original_source(tmp_path: Path) -> None:
+        """Earlier renames must not shift later rules' semantic coordinates."""
+        workspace, origin_file, foreign_file = _materialize_fixture(tmp_path)
+        declarations = "\n\n".join(
+            f"def {name}(flag: bool) -> bool:\n    return flag"
+            for name in c.ENFORCEMENT_ACCESSOR_RENAMES
+        )
+        calls = ", ".join(f"{name}(True)" for name in c.ENFORCEMENT_ACCESSOR_RENAMES)
+        source = f"{declarations}\n\nvalue = ({calls})\n"
+        _ = origin_file.write_text(source, encoding="utf-8")
+        _ = foreign_file.write_text(source, encoding="utf-8")
+
+        result = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+        ).execute()
+
+        tm.that(result.failure, eq=False)
+        tm.that(
+            result.value.automated_change_count,
+            eq=len(c.ENFORCEMENT_ACCESSOR_RENAMES) * 2,
+        )
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
+        tm.that(foreign_file.read_text(encoding="utf-8"), eq=source)
+        actual = tuple(
+            (change.original_name, change.replacement_name)
+            for file_report in result.value.files
+            for change in file_report.automated_changes
+        )
+        for name, (replacement, _reason) in c.ENFORCEMENT_ACCESSOR_RENAMES.items():
+            tm.that(actual.count((name, replacement)), eq=2)
+
+    @staticmethod
+    def test_preview_limit_does_not_limit_validation(tmp_path: Path) -> None:
+        """A display limit cannot remove a candidate from lint accounting."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        _ = (origin_file.parent / "another.py").write_text(
+            _legacy_module_source(), encoding="utf-8"
+        )
+        limited = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+            preview_limit=1,
+        ).execute()
+        complete = FlextInfraAccessorMigrationOrchestrator(
+            source_preview=infra.source_preview(workspace),
+            repository_root=workspace,
+            apply_changes=False,
+        ).execute()
+
+        tm.that(limited.failure, eq=False)
+        tm.that(complete.failure, eq=False)
+        tm.that(len(limited.value.files), eq=1)
+        tm.that(
+            limited.value.automated_change_count,
+            eq=complete.value.automated_change_count,
+        )
+        tm.that(limited.value.lint_before_totals, eq=complete.value.lint_before_totals)
+        tm.that(limited.value.lint_after_totals, eq=complete.value.lint_after_totals)
+        tm.that(
+            limited.value.new_lint_error_totals,
+            eq=complete.value.new_lint_error_totals,
+        )
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
 
     @staticmethod
     def test_dry_run_reports_pending_change_and_writes_nothing(
@@ -187,6 +258,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         workspace, _project, pkg = u.Tests.namespace_workspace(
             tmp_path,
             package_name="flext_core",
+            pyproject=(
+                f"[project]\nname='sample'\nversion='{config.Infra.project.version}'\n"
+            ),
         )
         advisory_file = pkg / "advisory.py"
         _ = advisory_file.write_text(
