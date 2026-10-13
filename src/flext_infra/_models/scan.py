@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
@@ -447,6 +448,15 @@ class FlextInfraModelsScan:
             for classification, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items():
                 if self.totals_by_class[classification] != getattr(self, field):
                     msg = f"mod scan {field} differs from authenticated entries"
+                    raise ValueError(msg)
+            for field, totals in (
+                ("repository", self.totals_by_repository),
+                ("rule_id", self.totals_by_rule),
+            ):
+                counted = Counter(dict.fromkeys(totals, 0))
+                counted.update(getattr(entry, field) for entry in self.entries)
+                if dict(counted) != dict(totals):
+                    msg = f"mod scan {field} totals differ from authenticated entries"
                     raise ValueError(msg)
             indexed = {state.path: state for state in self.inputs.states}
             bindings = tuple(

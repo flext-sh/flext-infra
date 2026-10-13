@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
+
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -86,6 +88,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             pending_files=pending_files,
             issues=session.issues,
             exception=session.exception,
+            sources=session.journal.sources,
+            outputs=session.journal.outputs,
+            generator_sources=session.journal.generator_sources,
+            source_topology=session.journal.source_topology,
+            scope_roots=session.journal.scope_roots,
         )
         report_path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         digest = u.Cli.sha256_content(outcome.model_dump_json())
@@ -114,6 +121,97 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 error_code=c.Infra.ToolOutcome.ERROR.value,
             )
         return r[m.Infra.CodegenTransactionSession].ok(session)
+
+    def bind_publication_proof(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
+        scope_roots: t.VariadicTuple[Path] = (),
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Persist the complete native output set without rendering or byte copies."""
+        outputs = {item.path: item for item in session.journal.outputs}
+        admitted = {item.before.path: item for item in session.published_files}
+        for plan in plans:
+            actual = admitted.get(plan.path)
+            if actual is not None and actual.replacement is not None:
+                state: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
+                    actual.replacement
+                )
+            elif actual is not None:
+                absent = FlextInfraMiseArtifactsFiles.read_state(
+                    plan.path,
+                    required=False,
+                )
+                if absent.failure:
+                    return r[m.Infra.CodegenTransactionSession].from_failure(absent)
+                if absent.value.content is not None:
+                    return r[m.Infra.CodegenTransactionSession].fail(
+                        f"published deletion changed before proof: {plan.path}",
+                    )
+                state = absent.value
+            else:
+                state = plan.before
+            record = FlextInfraMiseArtifactsJournal.source_record(
+                "output",
+                state,
+                path=plan.path,
+            )
+            if record.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(record)
+            outputs[plan.path] = record.value
+        generator_sources = session.journal.generator_sources
+        if not generator_sources:
+            namespaces = {
+                base.__module__.partition(".")[0]
+                for base in u.__mro__
+                if base.__module__.partition(".")[0] not in sys.stdlib_module_names
+            }
+            paths = {
+                Path(module.__spec__.origin).absolute()
+                for module in tuple(sys.modules.values())
+                if module is not None
+                and module.__spec__ is not None
+                and module.__spec__.origin is not None
+                and module.__spec__.name.partition(".")[0] in namespaces
+            }
+            records: list[m.Infra.CodegenJournalSource] = []
+            for path in sorted(paths):
+                observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+                if observed.failure:
+                    return r[m.Infra.CodegenTransactionSession].from_failure(observed)
+                record = FlextInfraMiseArtifactsJournal.source_record(
+                    "generator",
+                    observed.value,
+                )
+                if record.failure:
+                    return r[m.Infra.CodegenTransactionSession].from_failure(record)
+                records.append(record.value)
+            generator_sources = tuple(records)
+        journal = session.journal.model_copy(
+            update={
+                "outputs": tuple(outputs.values()),
+                "generator_sources": generator_sources,
+                "source_topology": source_topology or session.journal.source_topology,
+                "scope_roots": scope_roots or session.journal.scope_roots,
+            }
+        )
+        written = self._write_journal(
+            session.plan.layout,
+            journal,
+            expected=session.journal_state,
+        )
+        if written.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(written)
+        return r[m.Infra.CodegenTransactionSession].ok(
+            session.model_copy(
+                update={
+                    "journal": journal,
+                    "journal_state": written.value,
+                }
+            )
+        )
 
     def participant_policy(
         self,

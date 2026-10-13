@@ -142,7 +142,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         manifest owns this temporary pin; the committed lock owns normal
         resolutions when no candidate is declared (flext-oe420).
 
-        Only the declared SSOT override list reaches the rendered key: uv
+        Declared candidate policy and workspace topology own overrides: uv
         already unifies a repository's own distribution to its editable root
         (the committed pre-override lock carried one ``flext-infra =
         editable "."`` entry with the full dev group), while a rendered
@@ -274,11 +274,22 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ),
             }),
         )
+        # Erase transitive direct Git origins so the topology's local sources win.
+        # Never override the root itself: that drops its native development group.
         cls._sync_uv_candidates(
             uv,
             candidate_sources,
             local_requirements,
-            resolution,
+            resolution.model_copy(
+                update={
+                    "override_dependencies": tuple(
+                        dict.fromkeys((
+                            *resolution.override_dependencies,
+                            *(member.distribution for member in members),
+                        ))
+                    ),
+                },
+            ),
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         cls._sync_uv_constraints(
@@ -310,13 +321,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         for source_name in source_names:
             entry = u.Cli.toml_table_child(sources, source_name)
             if source_name not in wanted and (
-                source_name.startswith("flext-")
-                or (
-                    entry is not None
-                    and any(
-                        u.Cli.toml_value(entry, key) is not None
-                        for key in ("workspace", "path")
-                    )
+                entry is not None
+                and any(
+                    u.Cli.toml_value(entry, key) is not None
+                    for key in ("workspace", "path")
                 )
             ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)

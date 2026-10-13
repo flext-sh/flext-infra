@@ -60,6 +60,29 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class SccReport(m.RootModel[tuple[SccLanguage, ...]]):
         """Native SCC groups, including an empty scan; malformed JSON fails."""
 
+    class DeptryError(m.ContractModel):
+        """Native deptry rule identity and complete diagnostic message."""
+
+        code: Annotated[str, m.Field(min_length=1, strict=True)]
+        message: Annotated[str, m.Field(min_length=1, strict=True)]
+
+    class DeptryLocation(m.ContractModel):
+        """Native deptry location; dependency declarations have null positions."""
+
+        file: Annotated[str, m.Field(min_length=1, strict=True)]
+        line: Annotated[int | None, m.Field(ge=0, strict=True)]
+        column: Annotated[int | None, m.Field(ge=0, strict=True)]
+
+    class DeptryDiagnostic(m.ContractModel):
+        """Required deptry JSON record, never a partially recognized mapping."""
+
+        error: FlextInfraModelsGates.DeptryError
+        module: Annotated[str, m.Field(min_length=1, strict=True)]
+        location: FlextInfraModelsGates.DeptryLocation
+
+    class DeptryNativeReport(m.RootModel[tuple[DeptryDiagnostic, ...]]):
+        """Native deptry JSON array; only a valid empty array means no findings."""
+
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""
 

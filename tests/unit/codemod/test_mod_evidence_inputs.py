@@ -125,6 +125,7 @@ class TestsFlextInfraModEvidenceInputs:
             (inputs[0],),
             tuple(reversed(inputs)),
             (),
+            tuple(inputs[:1]),
         )
         report = report.model_copy(
             update={
@@ -265,6 +266,23 @@ class TestsFlextInfraModEvidenceInputs:
             m.Infra.ModScanEvidence.model_validate_json(
                 tampered_graph.model_dump_json(round_trip=True)
             )
+        for field in ("totals_by_repository", "totals_by_rule"):
+            totals = dict(getattr(restored, field))
+            totals[next(iter(totals))] += 1
+            with pytest.raises(m.ValidationError, match="totals differ"):
+                m.Infra.ModScanEvidence.model_validate_json(
+                    restored.model_copy(update={field: totals}).model_dump_json(
+                        round_trip=True
+                    )
+                )
+        with pytest.raises(m.ValidationError):
+            m.Infra.ModScanEvidence.model_validate_json(
+                restored.model_copy(
+                    update={
+                        "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION - 1
+                    }
+                ).model_dump_json(round_trip=True)
+            )
         with pytest.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(
@@ -272,3 +290,34 @@ class TestsFlextInfraModEvidenceInputs:
                     snapshot.states[0].model_copy(update={"content": b"changed"}),
                 )
             )
+
+    @staticmethod
+    def test_empty_scan_retains_zero_inventory(mod_workspace: Path) -> None:
+        """An empty native result publishes a complete zero-count inventory."""
+        source = mod_workspace / "consumer.py"
+        source.write_text("value = 1\n", encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=0)
+        receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                report,
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=(str(source),),
+                    repositories=(mod_workspace.name,),
+                    rule_ids=("ban-pass-through-wrapper",),
+                ),
+            )
+        )
+        restored = m.Infra.ModScanEvidence.model_validate_json(
+            receipt.path.read_bytes()
+        )
+        tm.that(restored.entries, eq=())
+        tm.that(restored.binding_graphs, eq=())
+        tm.that(restored.totals_by_repository, eq={mod_workspace.name: 0})
+        tm.that(restored.totals_by_rule, eq={"ban-pass-through-wrapper": 0})

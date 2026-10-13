@@ -645,6 +645,28 @@ class FlextInfraUtilitiesRefactor:
         return r[bool].ok(value=True)
 
     @staticmethod
+    def mod_scan_inputs(
+        report: m.Infra.ModScanReport,
+    ) -> m.Infra.CodemodBindingSnapshot:
+        """Union captured sources and distinct binding graphs once per operation."""
+        bindings = {
+            id(entry.binding_states): entry.binding_states for entry in report.entries
+        }
+        return m.Infra.CodemodBindingSnapshot(
+            states=tuple(
+                chain(
+                    report.source_states or (),
+                    (
+                        entry.source_state
+                        for entry in report.entries
+                        if entry.source_state is not None
+                    ),
+                    chain.from_iterable(bindings.values()),
+                )
+            )
+        )
+
+    @staticmethod
     def publish_mod_scan_evidence(
         root: Path,
         report: m.Infra.ModScanReport,
@@ -681,19 +703,7 @@ class FlextInfraUtilitiesRefactor:
         evidence = m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             "binding_graphs": tuple(graphs),
-            "inputs": m.Infra.CodemodBindingSnapshot(
-                states=tuple(
-                    chain(
-                        report.source_states or (),
-                        (
-                            entry.source_state
-                            for entry in report.entries
-                            if entry.source_state is not None
-                        ),
-                        chain.from_iterable(bindings.values()),
-                    )
-                )
-            ),
+            "inputs": FlextInfraUtilitiesRefactor.mod_scan_inputs(report),
             "command": publication.command,
             "root": root.resolve(),
             "scope": tuple(publication.scope),

@@ -13,6 +13,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, u
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraFlextBindingService
 
 
@@ -45,9 +46,10 @@ class FlextInfraWorkspaceLockCompleteness:
             The resulting ``p.Result[int]``.
 
         """
+        project_root = repository_root.resolve()
         resolved = u.Cli.run(
-            (c.Infra.UV, "workspace", "dir", "--project", str(repository_root)),
-            cwd=repository_root,
+            (c.Infra.UV, "workspace", "dir", "--project", str(project_root)),
+            cwd=project_root,
         )
         if resolved.failure:
             return r[int].from_failure(resolved)
@@ -69,19 +71,33 @@ class FlextInfraWorkspaceLockCompleteness:
             if payload.failure:
                 return r[int].from_failure(payload)
             locked = m.Infra.LockedEnvironment.model_validate(payload.value)
-            owner = lock_path.parent
+            if lock_path.name != c.Infra.UV_LOCK_FILENAME:
+                return r[int].fail(f"{lock_path}: not a native UV lock path")
+            owned = FlextInfraCodegenConform.require_own_lock(lock_path.parent)
+            if owned.failure:
+                return r[int].from_failure(owned)
+            owner = owned.value.resolve()
+            python = u.Infra.runtime_python(owner)
+            environment = FlextInfraFlextBindingService.consumer_marker_environment(
+                consumer_root=owner,
+                python=python,
+            )
+            if environment.failure:
+                return r[int].from_failure(environment)
             checked = u.Cli.run(
-                (c.Infra.UV, "lock", "--check", "--project", str(owner)),
+                (
+                    c.Infra.UV,
+                    "lock",
+                    "--check",
+                    "--project",
+                    str(owner),
+                    "--python",
+                    str(python),
+                ),
                 cwd=owner,
             )
             if checked.failure:
                 return r[int].from_failure(checked)
-            environment = FlextInfraFlextBindingService.consumer_marker_environment(
-                consumer_root=owner,
-                python=u.Infra.runtime_python(owner),
-            )
-            if environment.failure:
-                return r[int].from_failure(environment)
             facts = environment.value
             packages = tuple(
                 item
@@ -110,21 +126,32 @@ class FlextInfraWorkspaceLockCompleteness:
                 if parsed.failure:
                     return r[int].from_failure(parsed)
                 document = parsed.value
-                # Native --check validates every source slot; the canonical
-                # manifest model validates owned data before requirement selection.
-                manifest = u.PyprojectDocument.model_validate(
-                    u.Cli.toml_as_mapping(document),
-                )
-                if manifest.project is None:
+                manifest_payload = u.Cli.toml_as_mapping(document)
+                if manifest_payload is None:
                     return r[int].fail(
-                        f"{root}: locked local project has no project table",
+                        f"{root}: locked local manifest is not a TOML mapping",
                     )
+                project = u.Cli.json_as_mapping(manifest_payload.get(c.Infra.PROJECT))
+                manifest = m.Infra.DepsToml.MemberRequirements.model_validate(
+                    {
+                        "name": project.get(c.Infra.NAME),
+                        "dependencies": project.get(c.Infra.DEPENDENCIES, ()),
+                        "optional_dependencies": project.get(
+                            c.Infra.OPTIONAL_DEPENDENCIES,
+                            {},
+                        ),
+                        "dependency_groups": manifest_payload.get(
+                            c.Infra.DEPENDENCY_GROUPS,
+                            {},
+                        ),
+                    },
+                )
                 pending.append(
                     m.Infra.LockedDependency(
-                        name=manifest.project.name,
+                        name=manifest.name,
                         version=item.version,
                         source=item.source,
-                        extra=tuple(item.optional_dependencies),
+                        extra=tuple(manifest.optional_dependencies),
                     ),
                 )
                 for line in u.Infra.active_session_requirements(

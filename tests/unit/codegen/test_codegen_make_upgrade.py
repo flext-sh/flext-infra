@@ -387,15 +387,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
             makefile,
             lacks=["MISE_LOCKFILE=false", "$$mise_without_lock", "$$mise_from_lock"],
         )
-        # Activation proves the installed identities before any post-setup hook.
-        activated = makefile.split("_setup_activated:\n", 1)[1].split("\n\n", 1)[0]
-        tm.that(activated, has="mise-proof")
+        # Setup provisions; audit owns the toolchain lock verdict.
         audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]
         tm.that(
             audit,
             has=[
                 "$(UV) pip check",
                 "workspace verify-environment",
+                "codegen mise-proof",
             ],
         )
         tm.that(
@@ -630,7 +629,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.that(
             self._recipe_targets_containing(makefile, "codegen mise-proof"),
-            eq={"_setup_activated"},
+            eq={"_builtin-audit"},
         )
         tm.that(makefile, lacks=["_builtin_setup_lock_verdict"])
         audit = makefile.split("_builtin-audit:\n", 1)[1].split("\n_builtin-", 1)[0]

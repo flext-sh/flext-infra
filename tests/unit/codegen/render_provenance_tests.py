@@ -7,8 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import importlib.metadata
-import json
+import shutil
 from pathlib import Path
+from shlex import quote
 
 import pytest
 
@@ -48,7 +49,9 @@ class TestsFlextInfraRenderProvenance:
         )
         override = tmp_path / "caller-source"
         marker = tmp_path / "undeclared-controller-executed"
-        for source in (project / "flext-infra" / "src", override):
+        nested = project / "flext-infra"
+        tm.that(nested.exists(), eq=False)
+        for source in (nested / "src", override):
             package = source / "flext_infra"
             package.mkdir(parents=True, exist_ok=True)
             (package / c.Infra.INIT_PY).write_text(
@@ -59,17 +62,17 @@ class TestsFlextInfraRenderProvenance:
         custom = project / c.Infra.CUSTOM_MAKE_FILENAME
         original = custom.read_bytes()
         probe = (
-            "import importlib.metadata as md,json,pathlib,flext_infra; "
+            "import importlib.metadata as md,pathlib,flext_infra; "
             f"d=md.distribution({config.Infra.name!r}); "
             "p=pathlib.Path(flext_infra.__file__).resolve(); "
-            "print(json.dumps({'file':str(p),'owned':any("
-            "d.locate_file(f).resolve()==p for f in d.files)}))"
+            "print('controller-file='+str(p)); print('controller-owned='+str(any("
+            "d.locate_file(f).resolve()==p for f in d.files)))"
         )
         try:
             custom.write_bytes(
                 original
                 + (
-                    f"\npost-help:\n\t@$(PROJECT_INFRA_RUN) -c {u.Cli.quote(probe)}\n"
+                    f"\npost-help:\n\t@$(PROJECT_INFRA_RUN) -c {quote(probe)}\n"
                     '\t@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"\n'
                 ).encode(c.DEFAULT_ENCODING)
             )
@@ -91,8 +94,17 @@ class TestsFlextInfraRenderProvenance:
             )
         finally:
             custom.write_bytes(original)
+            shutil.rmtree(nested)
         tm.that(process.outcome.raw_return_code, eq=0, msg=process.stderr)
-        observed = json.loads(next(line for line in process.stdout.splitlines() if line.startswith('{"file":')))
-        tm.that(observed["owned"], eq=True)
-        tm.that(Path(observed["file"]).is_relative_to(u.Infra.runtime_environment_dir(project)), eq=True)
+        tm.that(process.stdout, has="controller-owned=True")
+        selected = Path(
+            next(
+                line.removeprefix("controller-file=")
+                for line in process.stdout.splitlines()
+                if line.startswith("controller-file=")
+            )
+        )
+        tm.that(
+            selected.is_relative_to(u.Infra.runtime_environment_dir(project)), eq=True
+        )
         tm.that(marker.exists(), eq=False)

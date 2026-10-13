@@ -428,10 +428,8 @@ _bootstrap_setup_tools:
 		mise_resolved=1; \
 		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
 	fi; \
-	if [ -z "$$mise_pin" ]; then \
-		printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2; \
-		exit 2; \
-	fi; \
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
+	if [ -n "$$mise_pin" ]; then \
 	bootstrap_stage=platform; \
 	case "$$(uname -s)/$$(uname -m)" in \
 		Linux/x86_64) mise_platform=linux-x64 ;; \
@@ -456,7 +454,6 @@ _bootstrap_setup_tools:
 		sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
 		*) printf 'ERROR: mise.lock has no sha256 for github:jdx/mise on %s\n' "$$mise_platform" >&2; exit 2 ;; \
 	esac; \
-	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 	mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
 	if [ ! -x "$$mise_bootstrap_bin" ]; then \
 		printf 'setup: recovering github:jdx/mise %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
@@ -480,6 +477,11 @@ _bootstrap_setup_tools:
 		printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
 		exit 2; \
 	fi; \
+	else \
+		mise_bootstrap_bin="$$(command -v mise)"; \
+		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
+		printf 'setup: declared self-pin is absent; provisioning with host Mise %s (%s); make audit owns lock admission\n' "$$mise_receipt" "$$mise_bootstrap_bin"; \
+	fi; \
 	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
 	bootstrap_stage=tool-lock; \
 	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" ]; then \
@@ -489,21 +491,12 @@ _bootstrap_setup_tools:
 	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"; \
 	bootstrap_stage=shims; \
 	"$$mise_bootstrap_bin" reshim; \
-	printf 'setup: mise %s provisioned from mise.lock\n' "$$mise_receipt"; \
+	printf 'setup: mise %s provisioning complete\n' "$$mise_receipt"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
 	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${MISE_SHIMS_DIR}:$${PATH}" "CI=$(CI)" $(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE); \
 	bootstrap_stage=complete; bootstrap_completed=true
 _bootstrap_setup_tools: _builtin_require_workspace
-
-# UV, not Git attachment or runtime environment selection, owns lock discovery.
-.PHONY: _builtin_require_upg_lock_owner
-_builtin_require_upg_lock_owner:
-	@set -eu; owner="$$($(UV) workspace dir --project "$(PROJECT_ROOT)")"; \
-	if [ "$$owner" != "$(PROJECT_ROOT)" ]; then \
-		printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the independent-project topology before upgrading.\n' "$$owner" "$(PROJECT_ROOT)" >&2; \
-		exit 2; \
-	fi
 
 # Every repository evaluates only itself: a workspace root consumes its members
 # as installed libraries and each member runs its own lifecycle in its own
@@ -535,13 +528,13 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
 SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
-	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
-	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"; \
 	setup_scope="self"; \
 	if [ "$(strip $(CI))" = "Y" ]; then setup_scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope"; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply
+	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply; \
+	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
+	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -1524,11 +1517,7 @@ _setup_lifecycle:
 # integrity, the toolchain reality proof - belong to `make audit`, which CI runs
 # right after setup; `make upg` cures them and never depends on setup.
 .PHONY: _setup_activated
-# The reality proof runs before post-setup: every declared tool must be the
-# mise.lock release, self-contained in its install root, reporting the locked
-# version (codegen mise-proof). The first defect fails setup; no fallback.
 _setup_activated:
-	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(command -v $(UV))"
 	@set -eu; \
 	case "$(strip $(CI)): $(CUSTOM_DECLARED_TARGETS) " in \
 		Y:*) ;; \
@@ -1930,21 +1919,9 @@ endif
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# Upgrade installs the trusted frozen tool closure, then projects dependency
-# inputs before native resolution. It never requires the final environment to
-# be healthy before the producer can derive its dependency closure.
-# After generation, reconcile admitted independent locks and the runtime lock,
-# install the complete environment, then activate the produced surfaces.
-# Attached projects own their lock upgrade and align the containing root once;
-# the root never recursively upgrades a member. Gates stay with make check.
-# UV sources remain the only installer input for native editable selection.
-# The producer half of `gen` publishes this Makefile. A recipe never names a
-# target after that point from a file it did not parse: when publication
-# changed the Makefile, the upgrade hands off to a fresh `make upg` that
-# parses the new file and converges there (its own producer half is then a
-# fixed point); otherwise `_upg_converge`, defined by this same file,
-# finishes it. A second change inside the hand-off is a gen fixed-point
-# defect and fails loud.
+# Provision the frozen producer before corrective projection, without runtime
+# admission. Independent locks settle before the containing runtime aligns.
+# Reparse a changed dispatcher once; a second change fails the fixed point.
 .PHONY: _upg_lifecycle _upg_converge
 
 _builtin-upg-sources: _builtin_require_environment
@@ -1979,13 +1956,9 @@ _upg_lifecycle: _builtin_setup_submodules
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
 	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope self --mode apply
-	@$(SELF_MAKE) _builtin_require_upg_lock_owner
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope all --mode apply
+	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
-	@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		$(UV) lock --project "$(RUNTIME_ROOT)" --upgrade --refresh; \
-	fi
-	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@mise -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"
@@ -2008,15 +1981,15 @@ _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@mise -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"
+	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
+		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg; \
+	fi
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
 	$(call RUN_PUBLIC_ACTIVATE,gen)
 	@$(SELF_MAKE) gen
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _builtin_setup_environment
-	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg; \
-	fi
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
@@ -2027,7 +2000,7 @@ _upg_reconcile_locks:
 	if [ "$(strip $(CI))" != "Y" ]; then \
 		members="$$($(PROJECT_FLEXT_INFRA) workspace editable-members --repository-root "$(PROJECT_ROOT)")"; \
 	fi; \
-	printf '%s\n' . "$$members" | while IFS= read -r relative; do \
+	printf '%s\n' "$$members" . | while IFS= read -r relative; do \
 		if [ -z "$$relative" ]; then continue; fi; \
 		project="$(PROJECT_ROOT)"; \
 		if [ "$$relative" != . ]; then project="$(PROJECT_ROOT)/$$relative"; fi; \
@@ -2040,10 +2013,6 @@ _upg_reconcile_locks:
 		$(UV) lock --project "$$project"; \
 		$(UV) lock --check --project "$$project"; \
 	done
-	@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		$(UV) lock --project "$(RUNTIME_ROOT)"; \
-		$(UV) lock --check --project "$(RUNTIME_ROOT)"; \
-	fi
 
 .PHONY: _upg_activated
 _upg_activated:
@@ -2449,6 +2418,7 @@ ifneq ($(CI),Y)
 endif
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
+	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(command -v $(UV))"
 _builtin-status: _builtin_status_diagnostics
 	@$(PROJECT_FLEXT_INFRA) workspace signing-identity --repo-root "$(PROJECT_ROOT)"
 _builtin-verify-clean: _builtin_require_environment

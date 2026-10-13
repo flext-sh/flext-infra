@@ -32,11 +32,13 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         tm.that(first.optional_dependencies is second.optional_dependencies, eq=False)
         tm.that(first.dev_dependencies is second.dev_dependencies, eq=False)
         tm.that(
-            m.Infra.LockedPackage.model_validate_json(first.model_dump_json(by_alias=True)),
+            m.Infra.LockedPackage.model_validate_json(
+                first.model_dump_json(by_alias=True),
+            ),
             eq=first,
         )
 
-    @pytest.mark.parametrize("missing", ("name", "version", "source"))
+    @pytest.mark.parametrize("missing", ["name", "version", "source"])
     def test_required_locked_identity_never_defaults(self, missing: str) -> None:
         """Collection defaults cannot turn an incomplete identity into a package."""
         package = m.Infra.LockedPackage.model_validate_json(
@@ -86,6 +88,24 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         tm.ok(FlextInfraWorkspaceLockCompleteness.validate(duplicate_project))
         tm.that(lock.read_bytes(), eq=before)
 
+    def test_malformed_manifest_groups_fail_without_lock_mutation(
+        self,
+        duplicate_project: Path,
+    ) -> None:
+        """Native manifest validation precedes permissive requirement extraction."""
+        lock = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        before = lock.read_bytes()
+        path = duplicate_project / c.PYPROJECT_FILENAME
+        document = tm.ok(u.Cli.toml_read_document(path))
+        u.Cli.toml_sync_value(
+            document,
+            c.Infra.DEPENDENCY_GROUPS,
+            {"invalid-audit-group": [42]},
+        )
+        tm.ok(u.Cli.files_write_text(path, u.Cli.toml_dumps(document)))
+        tm.fail(FlextInfraWorkspaceLockCompleteness.validate(duplicate_project))
+        tm.that(lock.read_bytes(), eq=before)
+
     def test_a_partial_lock_fails_loud_without_repairing_it(
         self, duplicate_project: Path
     ) -> None:
@@ -132,10 +152,15 @@ class TestsFlextInfraWorkspaceLockCompleteness:
                         u.Cli.json_as_mapping(entry).get("metadata"),
                     ),
                     "requires-dist": [
+                        *u.Cli.json_as_sequence(
+                            u.Cli.json_as_mapping(
+                                u.Cli.json_as_mapping(entry).get("metadata"),
+                            ).get("requires-dist"),
+                        ),
                         {
                             "name": "inactive-audit-dependency",
                             "marker": marker,
-                        }
+                        },
                     ],
                 },
             }

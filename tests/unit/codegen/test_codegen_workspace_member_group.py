@@ -42,6 +42,20 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         )[0]
         tm.that("pip install" in environment, eq=False)
         tm.that("sync --project" in environment, eq=False)
+        lifecycle = rendered.split("_upg_lifecycle:", 1)[1].split(
+            "\n_upg_install_runtime:", 1
+        )[0]
+        tm.that(
+            lifecycle.index("_upg_install_runtime")
+            < lifecycle.index("--what pyproject"),
+            eq=True,
+        )
+        tm.that("PROJECT_INFRA_PYTHONPATH" in rendered, eq=False)
+        setup = rendered.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
+        tm.that(
+            setup.index("--what runtime-bindings") < setup.index("verify-environment"),
+            eq=True,
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -66,6 +80,12 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             next(item for item in first.files if item.path == root_pyproject),
         )
         sources = u.Tests.toml_table_at(rendered, "tool", "uv", "sources")
+        tm.that(
+            set(
+                u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies")
+            ),
+            eq={member.distribution for member in members},
+        )
         for member in members:
             tm.that(
                 sources[member.distribution],

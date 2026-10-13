@@ -96,10 +96,8 @@ mise -C "{{ project_root }}" install --locked --yes{% for tool in install_tools 
 		mise_resolved=1; \
 		mise_pin="$$( {{ mise_lock_pin_reader(project_root, mise_selector) }} )"; \
 	fi; \
-	if [ -z "$$mise_pin" ]; then \
-		printf 'ERROR: mise.lock pins no {{ mise_selector }} release; run make upg\n' >&2; \
-		exit 2; \
-	fi; \
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
+	if [ -n "$$mise_pin" ]; then \
 	bootstrap_stage=platform; \
 	case "$$(uname -s)/$$(uname -m)" in \
 {% for host, platform in toolchain.mise_platforms_by_host.items() %}		{{ host }}) mise_platform={{ platform }} ;; \
@@ -118,7 +116,6 @@ mise -C "{{ project_root }}" install --locked --yes{% for tool in install_tools 
 		sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
 		*) printf 'ERROR: mise.lock has no sha256 for {{ mise_selector }} on %s\n' "$$mise_platform" >&2; exit 2 ;; \
 	esac; \
-	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
 	mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
 	if [ ! -x "$$mise_bootstrap_bin" ]; then \
 		printf 'setup: recovering {{ mise_selector }} %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
@@ -142,6 +139,11 @@ mise -C "{{ project_root }}" install --locked --yes{% for tool in install_tools 
 		printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
 		exit 2; \
 	fi; \
+	else \
+		mise_bootstrap_bin="$$(command -v mise)"; \
+		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
+		printf 'setup: declared self-pin is absent; provisioning with host Mise %s (%s); make audit owns lock admission\n' "$$mise_receipt" "$$mise_bootstrap_bin"; \
+	fi; \
 {#- Project setup never writes the host shim farm: a shim is bound to the mise
     that wrote it, so every install and reshim the bootstrap and its lifecycle
     run writes a farm scoped to the running release instead (measured: a
@@ -156,7 +158,7 @@ mise -C "{{ project_root }}" install --locked --yes{% for tool in install_tools 
 	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --locked --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
 	bootstrap_stage=shims; \
 	"$$mise_bootstrap_bin" reshim; \
-	printf 'setup: mise %s provisioned from mise.lock\n' "$$mise_receipt"; \
+	printf 'setup: mise %s provisioning complete\n' "$$mise_receipt"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
 	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${MISE_SHIMS_DIR}:$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}; \
