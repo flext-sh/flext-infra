@@ -583,6 +583,18 @@ class FlextInfraConfigModelsArtifact:
                 raise ValueError(msg)
             return self
 
+    class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """Full effective codegen policy and its ordered consulted snapshots."""
+
+        spec: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            m.Field(description="Validated effective repository codegen declaration"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(exclude=True, description="Exact consulted config input states"),
+        ] = ()
+
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""
 

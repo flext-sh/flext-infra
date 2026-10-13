@@ -120,7 +120,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
         command: t.StrTuple,
         intent: m.Infra.GateExecutionIntent,
     ) -> m.Infra.GateCaptureStart:
-        """Inspect the candidate before its original producer executes."""
+        """Inspect the candidate before its original producer executes.
+
+        Returns:
+            The retained pre-execution capture record.
+
+        """
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         policy = c.Infra.GateAcceptancePolicy(
             config.Infra.codegen.make.gate_acceptance_policy
@@ -160,7 +165,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
         reports: t.VariadicTuple[m.Infra.GateReportEvidence],
         report_root: Path,
     ) -> p.Result[m.Infra.GateCaptureReport]:
-        """Publish original native facts without rerunning or accepting the stage."""
+        """Publish original native facts without rerunning or accepting the stage.
+
+        Returns:
+            The retained capture report or its first failure.
+
+        """
         root = started.repository_root
         after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         issue = started.issue
@@ -425,7 +435,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         process = evidence.process
         if (
             evidence.result_digest
-            != f"sha256:{u.Cli.sha256_content(process.model_dump_json(round_trip=True))}"
+            != f"sha256:{
+                u.Cli.sha256_content(process.model_dump_json(round_trip=True))
+            }"
             or process.timed_out
             or process.forwarded_signal is not None
             or process.raw_return_code < 0

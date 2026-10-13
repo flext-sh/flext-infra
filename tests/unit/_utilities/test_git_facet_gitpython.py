@@ -102,7 +102,7 @@ class TestsFlextInfraGitFacet:
         self,
         tmp_path: Path,
     ) -> None:
-        """An outside staging operation leaves its new index bytes and live data intact."""
+        """An outside staging operation leaves new index bytes and live data intact."""
         repository = u.Tests.git_repository(tmp_path, "consumer")
         artifact = repository / "runtime.json"
         artifact.write_text('{"initial": true}\n', encoding=c.DEFAULT_ENCODING)
