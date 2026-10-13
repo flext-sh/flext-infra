@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING, override
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.environment_provenance import (
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
 if TYPE_CHECKING:
     from pathlib import Path

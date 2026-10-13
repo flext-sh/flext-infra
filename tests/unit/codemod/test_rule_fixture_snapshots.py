@@ -40,26 +40,16 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 ),
             )
         )
-        for fixture in (source_catalog / "tests").glob("result-*-*-test.yml"):
-            if fixture.stem.startswith((
-                "result-recovery-",
-                "result-journal-",
-                "result-directory-",
-            )):
+        plan = tm.ok(u.Infra.codemod_rule_plan(tmp_path))
+        selected = tuple(item.id for item in plan.rules if item.resource == rule)
+        for fixture in (source_catalog / "tests").glob("*.yml"):
+            if tm.ok(u.Cli.yaml_safe_load(fixture))["id"] in selected:
                 tm.ok(
                     u.Cli.atomic_write_text_file(
                         self._catalog(tmp_path) / "tests" / fixture.name,
                         fixture.read_text(encoding=c.DEFAULT_ENCODING),
                     )
                 )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                self._catalog(tmp_path) / "tests" / "result-failure-rebind-test.yml",
-                (source_catalog / "tests" / "result-failure-rebind-test.yml").read_text(
-                    encoding=c.DEFAULT_ENCODING
-                ),
-            )
-        )
         tm.ok(
             FlextInfraModGateEngine.refresh_rule_snapshots(
                 tmp_path, (demo, rule), apply=True
@@ -79,6 +69,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "        if result.failure:\n"
             "            result = other\n"
             "            return self._recover_failure(layout, result.error or 'context')\n"
+            "    def effectful(self, layout, result, context):\n"
+            "        if result.failure:\n"
+            "            return self._recover_failure(layout, result.error or context())\n"
+            "    def getter(self, layout):\n"
+            "        if self.result.failure:\n"
+            "            return self._recover_failure(layout, self.result.error or 'context')\n"
             "class Foreign:\n"
             "    def _recover_failure(self, layout, text, **kwargs):\n"
             "        return text\n"
@@ -87,8 +83,6 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "            return self._recover_failure(layout, result.error or 'context')\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
-        plan = tm.ok(u.Infra.codemod_rule_plan(tmp_path))
-        selected = tuple(item.id for item in plan.rules if item.resource == rule)
         report = tm.ok(
             FlextInfraModGateEngine.scan(tmp_path, fix=False, rule_ids=selected)
         )

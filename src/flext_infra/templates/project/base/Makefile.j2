@@ -823,36 +823,14 @@ endif
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# `upg` is the only recipe that resolves. Its bootstrap half ran
-# `mise lock --bump` (native resolution into the committed mise.lock) and
-# installed exactly that lock; this lifecycle upgrades the owned uv.lock (which
-# carries the generator itself), provisions its environment frozen from it,
-# and conforms dependency floors. The floors land in the codegen SSOT, so
-# `gen` projects them into every pyproject and renders the managed tool
-# manifests (.mise.toml) of the upgraded generator. Only the producer half of
-# `gen` runs before the relock: its activation half demands the Mise release
-# the lock pins (`_builtin_require_environment`), and the lock still reflects
-# the manifest the generator was provisioned with until it is resolved from
-# the rendered one, so activation runs after the relock and its install. A
-# rendered manifest that moves the Mise self-pin therefore converges in one
-# run. The upgraded generator may also project requirements the first uv
-# resolution never saw (a runtime dependency its codegen SSOT declares), so
-# uv.lock is resolved again from the projected pyproject and the environment
-# reinstalled from it right after the producer half: one run converges for
-# both locks, never a second `make upg`. Resolve that regenerated
-# manifest before the second frozen install proves the committed mise.lock
-# satisfies it (mise has no `lock --check`: the locked install IS the
-# satisfaction check), `_builtin_require_mise` re-proves the pinned release,
-# and the convergence fixed point must hold before the upgrade publishes.
-# Gates are not part of the upgrade: `make check` stays its own verb. Branch-tracked git dependencies are moving sources by
-# declaration (workspace.yaml owns the branch): --refresh re-reads their
-# metadata so a stale cached requires-dist can never block or skew the
-# resolution. Like `setup`, it runs the declared pre-/post-upg lifecycle
-# hooks, post-upg inside the activated environment.
-# Attached members delegate before this lifecycle starts: only their containing
-# root resolves locks or provisions the shared environment. Standalone checkouts
-# resolve their own declared branches. Native editable selection stays with
-# the declared UV sources; this lifecycle adds no second installer.
+# Upgrade installs the trusted frozen tool closure, then projects dependency
+# inputs before native resolution. It never requires the final environment to
+# be healthy before the producer can derive its dependency closure.
+# After generation, reconcile admitted independent locks and the runtime lock,
+# install the complete environment, then activate the produced surfaces.
+# Attached projects own their lock upgrade and align the containing root once;
+# the root never recursively upgrades a member. Gates stay with make check.
+# UV sources remain the only installer input for native editable selection.
 # The producer half of `gen` publishes this Makefile. A recipe never names a
 # target after that point from a file it did not parse: when publication
 # changed the Makefile, the upgrade hands off to a fresh `make upg` that

@@ -19,6 +19,15 @@ valid:
   - |
     if result.failure:
         return recover(layout, result, context="context")
+  - |
+    if owner.result.failure:
+        return recover(layout, owner.result.error or "context", exception=owner.result.exception, error_code=owner.result.error_code, error_data=owner.result.error_data)
+  - |
+    if produce().failure:
+        return recover(layout, produce().error or "context")
+  - |
+    if result.failure:
+        return recover(layout, result.error or f"{context()}")
 invalid:
   - |
     if result.failure:
