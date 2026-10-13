@@ -646,8 +646,133 @@ class TestsFlextInfraInfraRopeService:
             )
 
     @staticmethod
+    @pytest.mark.parametrize("move_existing", [False, True])
+    def test_workspace_refresh_exposes_created_and_moved_modules(
+        tmp_path: Path,
+        *,
+        move_existing: bool,
+    ) -> None:
+        """Refresh rebuilds module and package inventories on the same project."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        original_path = package_root / "service.py"
+        source = "class PublicService:\n    pass\n"
+        original_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        destination_dir = package_root / "services"
+        destination_path = destination_dir / "service.py"
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            project = rope.rope_project
+            tm.that(rope.module(original_path), none=False)
+            tm.that(rope.module(destination_path), none=True)
+            tm.that(rope.package(destination_dir), none=True)
+            tm.that(rope.name_index(), has="PublicService")
+            destination_dir.mkdir()
+            (destination_dir / c.Infra.INIT_PY).write_text(
+                "",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            if move_existing:
+                original_path.rename(destination_path)
+            else:
+                destination_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+            snapshot = rope.refresh()
+
+            tm.that(rope.rope_project is project, eq=True)
+            tm.that(snapshot.workspace_index.package_dirs, has=destination_dir)
+            module = tm.not_none(rope.module(destination_path))
+            tm.that(module.module_name, eq="flext_demo.services.service")
+            package = tm.not_none(rope.package(destination_dir))
+            tm.that(package.package_name, eq="flext_demo.services")
+            tm.that(rope.module(original_path), none=move_existing)
+            tm.that(
+                {entry.file_path for entry in rope.modules()},
+                has=destination_path,
+            )
+            tm.that(
+                {path for path, _surface, _lines in rope.name_index()["PublicService"]},
+                eq={destination_path}
+                if move_existing
+                else {original_path, destination_path},
+            )
+            tm.that(
+                {item.name for item in rope.objects(destination_path)},
+                eq={"PublicService"},
+            )
+
+    @staticmethod
+    def test_workspace_refresh_discovers_new_import_dependents(tmp_path: Path) -> None:
+        """New consumers participate in rebuilt semantic import queries."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        service_path = package_root / "service.py"
+        service_path.write_text(
+            "class PublicService:\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        consumer_path = package_root / "consumer.py"
+        import_target = "flext_demo.service.PublicService"
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            tm.that(rope.import_dependents(import_target), eq=())
+            consumer_path.write_text(
+                "from flext_demo.service import PublicService\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            rope.refresh()
+            tm.that(rope.import_dependents(import_target), eq=(consumer_path,))
+
+    @staticmethod
+    def test_workspace_refresh_updates_project_metadata_and_layout(
+        tmp_path: Path,
+    ) -> None:
+        """Changed metadata and facade declarations refresh discovery and layout."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        pyproject_path = repository_root / c.PYPROJECT_FILENAME
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            tm.that(rope.projects()[0].name, eq=repository_root.name)
+            original_layout = tm.not_none(rope.layout(repository_root))
+            tm.that(original_layout.runtime_aliases, eq=())
+            changed_name = "flext-renamed-demo"
+            pyproject_path.write_text(
+                pyproject_path.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                    f'name = "{repository_root.name}"',
+                    f'name = "{changed_name}"',
+                ),
+                encoding=c.DEFAULT_ENCODING,
+            )
+            u.Tests.write_lazy_init_namespace_module(
+                package_root / "models.py",
+                class_name="FlextDemoModels",
+                alias="m",
+                docstring="Models.",
+            )
+            rope.refresh()
+
+            tm.that(rope.projects()[0].name, eq=changed_name)
+            layout = tm.not_none(rope.layout(repository_root))
+            tm.that(layout.project_name, eq=changed_name)
+            tm.that(layout.package_dir, eq=package_root)
+            tm.that(layout.runtime_aliases, eq=("m",))
+
+    @staticmethod
+    @pytest.mark.parametrize("validate_project", [False, True])
     def test_workspace_refresh_can_preserve_reverted_name_indexes(
         tmp_path: Path,
+        *,
+        validate_project: bool,
     ) -> None:
         """Refresh can retain the text index after preview-style reverted writes."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -667,17 +792,38 @@ class TestsFlextInfraInfraRopeService:
             "    return first()\n"
         )
         module_path.write_text(original_source, encoding="utf-8")
+        consumer_path = package_root / "consumer.py"
+        consumer_path.write_text(
+            "from flext_demo.service import first\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        import_target = "flext_demo.service.first"
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
+            original_workspace_index = rope.workspace_index
+            original_projects = rope.projects()
+            original_layout = rope.layout(repository_root)
+            original_dependents = rope.import_dependents(import_target)
+            tm.that(original_dependents, eq=(consumer_path,))
             original_index = rope.name_index()
             tm.that(original_index, has="first")
             tm.that(original_index, lacks="second")
 
             module_path.write_text(changed_source, encoding="utf-8")
             module_path.write_text(original_source, encoding="utf-8")
-            rope.refresh(preserve_indexes=True)
+            snapshot = rope.refresh(
+                preserve_indexes=True,
+                validate_project=validate_project,
+            )
 
             preserved_index = rope.name_index()
+            tm.that(snapshot.workspace_index is original_workspace_index, eq=True)
+            tm.that(rope.projects() is original_projects, eq=True)
+            tm.that(rope.layout(repository_root) is original_layout, eq=True)
+            tm.that(
+                rope.import_dependents(import_target) is original_dependents,
+                eq=True,
+            )
             tm.that(preserved_index is original_index, eq=True)
             tm.that(preserved_index, lacks="second")
 

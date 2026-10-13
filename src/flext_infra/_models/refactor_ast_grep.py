@@ -11,12 +11,37 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsCodemod
 
 
 class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
+
+    class CodemodImportResources(m.ArbitraryTypesModel):
+        """One frozen-layout invocation's native module and folder elections."""
+
+        modules: Annotated[
+            t.MutableMappingKV[
+                t.Triple[str, str | None, int],
+                t.Infra.RopeResource | None,
+            ],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Elected native module resources keyed by invocation identity"
+                ),
+            ),
+        ]
+        folders: Annotated[
+            t.MutableMappingKV[str, p.Infra.RopeRoot | None],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Verified folder capabilities keyed by native resource path"
+                ),
+            ),
+        ]
 
     class CodemodContextCondition(m.ArbitraryTypesModel):
         """One project-context condition over a captured metavariable."""

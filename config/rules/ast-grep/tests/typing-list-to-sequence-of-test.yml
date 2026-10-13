@@ -187,14 +187,14 @@ invalid:
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t
-    from typing import List, get_origin
+    from typing import List, TypeAliasType, get_args, get_origin
     LEGACY = List[str]
     FACTORY = list[str]
     type Contract = List[str]
     class LegacyBase(List[str]): ...
-    class Payload(m.ArbitraryTypesModel):
-        values: List[str] = m.Field(default_factory=list[str])
-    def make(values: List[str] = list[str]()) -> List[str]:
+    class Payload(m.BaseModel):
+        values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
+    def make(values: t.SequenceOf[str] = u.empty(TypeForm(t.SequenceOf[str]))) -> t.SequenceOf[str]:
         return values
     assert get_origin(LEGACY) is list
     assert FACTORY() == []
@@ -211,5 +211,10 @@ invalid:
     assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
     assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == []
-    assert not callable(get_origin(Contract.__value__))
-    assert Contract.__value__ == make.__annotations__["return"]
+    for annotation in (Contract.__value__, make.__annotations__["values"], make.__annotations__["return"]):
+        origin = get_origin(annotation)
+        # PEP 695 aliases retain identity while their values own concrete origins.
+        while isinstance(origin, TypeAliasType):
+            origin = get_origin(origin.__value__)
+        assert origin is get_origin(LEGACY)
+        assert get_args(annotation) == get_args(LEGACY)

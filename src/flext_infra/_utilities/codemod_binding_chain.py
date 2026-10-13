@@ -58,8 +58,18 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             are not executable migration candidates. Missing coordinates are a rule
             defect, not permission to resolve at module scope.
 
+
+            Args:
+                frame: A triple containing the root path, source path, and Rope project.
+                condition: The codemod context condition to evaluate.
+                captures: A mapping of captured variables.
+                sources: A mapping of source file paths to their content.
+
             Returns:
                 The resulting ``bool``.
+
+            Raises:
+                ValueError: If the specified module is unknown.
             """
             root, source, project = frame
             capture = m.Infra.AstGrepCapture.model_validate(

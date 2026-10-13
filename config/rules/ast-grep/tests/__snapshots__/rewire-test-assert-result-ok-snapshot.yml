@@ -5,7 +5,7 @@ snapshots:
     assert result.success
   : fixed: |
       from tests import tm
-      tm.ok(result)
+      tm.that(result.success, truth=True)
     labels:
     - source: assert result.success
       style: primary

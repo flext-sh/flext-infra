@@ -5,6 +5,13 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeSourceBasesInventory,
+)
+from rope.base import exceptions as _rope_exceptions
 
 import ast
 import importlib.util
@@ -21,15 +28,7 @@ def _rope_attribute_error() -> type[BaseException]:
     dependency lazy (the bridge pattern); the base resolver needs only the
     error type to degrade unresolvable provider bindings.
     """
-    from rope.base import exceptions as _rope_exceptions
-
     return _rope_exceptions.AttributeNotFoundError
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeSourceBasesAliases,
-    FlextInfraUtilitiesRopeSourceBasesInventory,
-)
 
 
 class FlextInfraUtilitiesRopeSourceBasesRuntime:

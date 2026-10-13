@@ -21,6 +21,9 @@
 # A trailing message clause (the assert's second child, of any expression
 # kind) routes the equality shapes to the `-message` documents of this
 # family; other operators with a message clause stay raw for manual triage.
+# Message fixes branch on the original comparison once and evaluate the message
+# only on failure. Do not negate or invert the operator: Ruff rejects negated
+# equality, and custom __eq__/__ne__ implementations need not be complements.
 id: rewire-test-assert-eq
 language: Python
 severity: error
@@ -303,7 +306,9 @@ rule:
           matches: tm-imported-from-flext
           stopBy: end
 fix: |-
-  if not ($A == $B):
+  if $A == $B:
+      pass
+  else:
       tm.that(False, truth=True, assertion_message=$MSG)
 message: Assert equality with its message through the tm matcher facade.
 ---
@@ -341,7 +346,9 @@ rule:
           matches: tm-imported-from-flext
           stopBy: end
 fix: |-
-  if not ($A != $B):
+  if $A != $B:
+      pass
+  else:
       tm.that(False, truth=True, assertion_message=$MSG)
 message: Assert inequality with its message through the tm matcher facade.
 ---

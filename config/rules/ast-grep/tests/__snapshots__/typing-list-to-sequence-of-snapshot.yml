@@ -2,7 +2,7 @@ id: typing-list-to-sequence-of
 snapshots:
   ? |
     from flext_core import m, t
-    from typing import List, get_origin
+    from typing import List, TypeAliasType, get_args, get_origin
     LEGACY = List[str]
     FACTORY = list[str]
     type Contract = List[str]
@@ -26,11 +26,16 @@ snapshots:
     assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
     assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == []
-    assert not callable(get_origin(Contract.__value__))
-    assert Contract.__value__ == make.__annotations__["return"]
+    for annotation in (Contract.__value__, make.__annotations__["values"], make.__annotations__["return"]):
+        origin = get_origin(annotation)
+        # PEP 695 aliases retain identity while their values own concrete origins.
+        while isinstance(origin, TypeAliasType):
+            origin = get_origin(origin.__value__)
+        assert origin is get_origin(LEGACY)
+        assert get_args(annotation) == get_args(LEGACY)
   : fixed: |
       from flext_core import m, t
-      from typing import List, get_origin
+      from typing import List, TypeAliasType, get_args, get_origin
       LEGACY = List[str]
       FACTORY = list[str]
       type Contract = t.ListOf[str]
@@ -54,20 +59,25 @@ snapshots:
       assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
       assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
       assert make() == []
-      assert not callable(get_origin(Contract.__value__))
-      assert Contract.__value__ == make.__annotations__["return"]
+      for annotation in (Contract.__value__, make.__annotations__["values"], make.__annotations__["return"]):
+          origin = get_origin(annotation)
+          # PEP 695 aliases retain identity while their values own concrete origins.
+          while isinstance(origin, TypeAliasType):
+              origin = get_origin(origin.__value__)
+          assert origin is get_origin(LEGACY)
+          assert get_args(annotation) == get_args(LEGACY)
     labels:
     - source: List[str]
       style: primary
-      start: 119
-      end: 128
+      start: 144
+      end: 153
     - source: from flext_core import m, t
       style: secondary
       start: 0
       end: 27
     - source: |
         from flext_core import m, t
-        from typing import List, get_origin
+        from typing import List, TypeAliasType, get_args, get_origin
         LEGACY = List[str]
         FACTORY = list[str]
         type Contract = List[str]
@@ -91,11 +101,16 @@ snapshots:
         assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
         assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
         assert make() == []
-        assert not callable(get_origin(Contract.__value__))
-        assert Contract.__value__ == make.__annotations__["return"]
+        for annotation in (Contract.__value__, make.__annotations__["values"], make.__annotations__["return"]):
+            origin = get_origin(annotation)
+            # PEP 695 aliases retain identity while their values own concrete origins.
+            while isinstance(origin, TypeAliasType):
+                origin = get_origin(origin.__value__)
+            assert origin is get_origin(LEGACY)
+            assert get_args(annotation) == get_args(LEGACY)
       style: secondary
       start: 0
-      end: 1064
+      end: 1379
   ? |
     from flext_core import t
     from typing import Annotated as Metadata, List

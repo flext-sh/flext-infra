@@ -5,7 +5,7 @@ snapshots:
     assert len(items) <= 32
   : fixed: |
       from tests import tm
-      tm.that(items, length_lte=32)
+      tm.that(len(items) <= 32, truth=True)
     labels:
     - source: assert len(items) <= 32
       style: primary

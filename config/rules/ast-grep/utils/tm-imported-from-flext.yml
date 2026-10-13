@@ -25,10 +25,6 @@ id: tm-imported-from-flext
 language: Python
 rule:
   kind: import_from_statement
-  all:
-    - has:
-        pattern: tm
-        stopBy: end
-    - has:
-        field: module_name
-        regex: "^(?:tests|flext(?:_[a-z0-9_]+)?)$"
+  has:
+    pattern: tm
+    stopBy: end

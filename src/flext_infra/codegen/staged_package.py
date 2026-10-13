@@ -36,16 +36,18 @@ class FlextInfraStagedPackage:
         """
         result_type = r[m.Infra.StageSourcePlan]
         workspace = workspace.resolve()
-        if any(not before.path.is_relative_to(workspace) for before in inputs):
-            return result_type.fail("candidate original source escapes workspace")
-        destinations = cls._normalized_updates(workspace, updates)
-        if destinations.failure:
-            return result_type.from_failure(destinations)
-        normalized = destinations.value
-        discovered = cls._workspace_layouts(workspace)
+        discovered = cls._normalized_updates(
+            workspace,
+            updates,
+            inputs=inputs,
+        ).flat_map(
+            lambda normalized: cls._workspace_layouts(workspace).map(
+                lambda layouts: (normalized, layouts),
+            )
+        )
         if discovered.failure:
             return result_type.from_failure(discovered)
-        layouts = discovered.value
+        normalized, layouts = discovered.value
         selected: list[m.Infra.RopeProjectLayout] = []
         states: dict[Path, m.Cli.AtomicFileState] = {}
         source_paths = dict.fromkeys((
@@ -99,6 +101,8 @@ class FlextInfraStagedPackage:
     def _normalized_updates(
         workspace: Path,
         updates: t.MappingKV[Path, str],
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[dict[Path, str]]:
         """Elect one contained physical destination per desired source.
 
@@ -106,6 +110,8 @@ class FlextInfraStagedPackage:
             Desired sources or the first ambiguous, foreign or symlinked path.
         """
         result_type = r[dict[Path, str]]
+        if any(not before.path.is_relative_to(workspace) for before in inputs):
+            return result_type.fail("candidate original source escapes workspace")
         normalized: dict[Path, str] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):

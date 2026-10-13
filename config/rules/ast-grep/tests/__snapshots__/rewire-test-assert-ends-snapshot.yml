@@ -5,7 +5,7 @@ snapshots:
     assert name.endswith('.json')
   : fixed: |
       from tests import tm
-      tm.that(name, ends='.json')
+      tm.that(name.endswith('.json'), truth=True)
     labels:
     - source: assert name.endswith('.json')
       style: primary

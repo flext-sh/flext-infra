@@ -5,7 +5,7 @@ snapshots:
     assert 'k' not in mapping
   : fixed: |
       from tests import tm
-      tm.that(mapping, lacks='k')
+      tm.that('k' not in mapping, truth=True)
     labels:
     - source: assert 'k' not in mapping
       style: primary

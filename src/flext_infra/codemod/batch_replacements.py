@@ -15,6 +15,7 @@ import libcst as cst
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -275,10 +276,11 @@ class FlextInfraModReplacements:
                 return r[bytes].from_failure(normalized)
             module = cst.parse_module(normalized.value)
             stripped = module.visit(FlextInfraDeadScaffold())
+            orphaned = stripped.visit(FlextInfraOrphanImport())
             final = u.Infra.normalize_source(
                 root,
                 path,
-                stripped.code,
+                orphaned.code,
                 before_source=before.decode(c.DEFAULT_ENCODING),
             )
         if final.failure:

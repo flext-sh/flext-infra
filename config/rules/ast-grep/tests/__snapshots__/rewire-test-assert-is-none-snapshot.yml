@@ -5,7 +5,7 @@ snapshots:
     assert entry.key is None
   : fixed: |
       from tests import tm
-      tm.that(entry.key, none=True)
+      tm.that(entry.key is None, truth=True)
     labels:
     - source: assert entry.key is None
       style: primary

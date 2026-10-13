@@ -173,7 +173,7 @@ class FlextInfraAccessorMigrationReportMixin:
         if staged.failure:
             return result_type.from_failure(staged)
         gates = tuple(params.gates) or tuple(u.Infra.snapshot_lint_gates())
-        checked = self._validate_candidate(staged.value, source_preview, gates)
+        checked = self.validate_candidate(staged.value, source_preview, gates)
         if checked.failure:
             return result_type.from_failure(checked)
         if params.apply:
@@ -223,7 +223,7 @@ class FlextInfraAccessorMigrationReportMixin:
         )
 
     @staticmethod
-    def _validate_candidate(
+    def validate_candidate(
         plan: m.Infra.StageSourcePlan,
         source_preview: p.Infra.SourcePreview,
         gates: t.StrSequence,

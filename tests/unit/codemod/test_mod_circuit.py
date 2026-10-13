@@ -315,15 +315,15 @@ class TestsFlextInfraModCliRoute:
                     "language: Python\n"
                     "rule:\n"
                     "  pattern: value = dict()\n"
-                    "fix: value = list()\n"
+                    "fix: value = {}\n"
                     "severity: warning\n"
                 ),
                 "second": (
                     "id: second\n"
                     "language: Python\n"
                     "rule:\n"
-                    "  pattern: value = list()\n"
-                    "fix: value = tuple()\n"
+                    "  pattern: value = {}\n"
+                    "fix: value = dict[str, int]()\n"
                     "severity: warning\n"
                 ),
             },
@@ -357,9 +357,9 @@ class TestsFlextInfraModCliRoute:
         # Publication runs the canonical formatter, so the cascade's result is
         # already normalized: the rewrite landed and the module is formatted,
         # rather than leaving whitespace for a human to repair afterwards.
-        tm.that(updated, has="value = tuple()")
+        tm.that(updated, has="value = dict[str, int]()")
         tm.that(updated, lacks="value = dict()")
-        tm.that(updated, lacks="value = list()")
+        tm.that(updated, lacks="value = {}")
         tm.that(updated.startswith("from __future__ import annotations"), eq=True)
 
     @staticmethod

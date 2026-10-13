@@ -41,6 +41,40 @@ class FlextInfraRenameSymbols:
             raise ValueError(msg)
         return next(iter(decisions), None)
 
+    @classmethod
+    def inventoried_declaration(
+        cls, workspace: p.Infra.RopeWorkspaceDsl, qualified_name: str
+    ) -> m.Infra.Object:
+        """Resolve an explicit identity through native bindings and actual inventory.
+
+        Returns:
+            The unique introducing callable object observed in its source module.
+
+        Raises:
+            ValueError: If the identity is missing, inherited, or ambiguous.
+        """
+        owner, _, name = qualified_name.rpartition(".")
+        binding = cls.resolve_member(workspace.rope_project, owner, name)
+        module, _ = (
+            binding.get_definition_location() if binding is not None else (None, None)
+        )
+        resource = module.get_resource() if module is not None else None
+        if resource is None:
+            msg = f"semantic rename has no inventoried source: {qualified_name}"
+            raise ValueError(msg)
+        matches = tuple(
+            item
+            for item in workspace.objects(
+                Path(resource.real_path), include_references=False
+            )
+            if f"{item.module_name}.{item.scope_path}" == qualified_name
+            and item.kind in {"method", "function"}
+        )
+        if len(matches) != 1:
+            msg = f"semantic rename requires one introducing object: {qualified_name}"
+            raise ValueError(msg)
+        return matches[0]
+
     @staticmethod
     def _member_paths(source: str, path: Path) -> frozenset[tuple[str, ...]]:
         """Index AST attribute paths that can match a declared Rope pattern.

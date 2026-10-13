@@ -163,7 +163,10 @@ class FlextInfraCodegenTransaction(
         interpreter = u.Infra.runtime_python(runtime_root)
         if environment.is_symlink() or not environment.is_dir():
             return r[bool].fail(f"candidate runtime must be physical: {environment}")
-        identity = u.Cli.atomic_plan_directory_chain(environment).unwrap()
+        observed = u.Cli.atomic_plan_directory_chain(environment)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        identity = observed.value
         bindings = tuple(
             (
                 layout.package_name,
@@ -279,10 +282,13 @@ class FlextInfraCodegenTransaction(
         originals = FlextInfraStagedPackage.source_inputs_current(plan)
         if originals.failure:
             return r[bool].from_failure(originals)
-        return FlextInfraCodegenPreconditions.unchanged_journal(
+        journal = FlextInfraCodegenPreconditions.unchanged_journal(
             session,
             "source preview journal changed during validation",
         )
+        if journal.failure:
+            return r[bool].from_failure(journal)
+        return r[bool].ok(originals.value)
 
     @staticmethod
     def _source_preview_writes(

@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING
 from flext_cli import cli
 
 from flext_infra import c, m, r, u
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraNamespaceEnforcerProjectMixin
+from flext_infra.refactor.namespace_relocations import (
+    FlextInfraNamespaceRelocationCascade,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,18 +53,72 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
-        project_reports: list[m.Infra.ProjectEnforcementReport] = []
-        for project_root in project_roots:
-            report = self._enforce_project(
-                project_root=project_root,
-                project_name=project_root.name,
-                apply=apply,
-                gates=gates,
+        if not project_roots:
+            return m.Infra.WorkspaceEnforcementReport(
+                workspace=str(self._repository_root),
             )
-            project_reports.append(report)
+        cascade = FlextInfraNamespaceRelocationCascade()
+        files_by_project = {
+            root: cascade.scoped_py_files(root) for root in project_roots
+        }
+        before_plan = u.Infra.codemod_rule_plan(self._repository_root).unwrap()
+        before = FlextInfraModGateEngine.scan(self._repository_root, fix=False).unwrap()
+        if apply:
+            for project_root in files_by_project:
+                relocation_ids = tuple(cascade.relocation_by_rule(project_root))
+                if not relocation_ids:
+                    continue
+                py_files = cascade.scoped_py_files(project_root)
+                current = FlextInfraModGateEngine.scan(
+                    project_root, fix=False, rule_ids=relocation_ids
+                ).unwrap()
+                cascade.run(
+                    project_root=project_root,
+                    rope_project=self._rope_project,
+                    findings=cascade.findings_from_report(
+                        project_root, py_files, current.entries, scan_root=project_root
+                    ),
+                    py_files=py_files,
+                    gates=gates,
+                )
+        after = (
+            FlextInfraModGateEngine.scan(self._repository_root, fix=False).unwrap()
+            if apply
+            else before
+        )
+        after_plan = (
+            u.Infra.codemod_rule_plan(self._repository_root).unwrap()
+            if apply
+            else before_plan
+        )
+        rule_ids = tuple(
+            sorted({
+                rule.id for plan in (before_plan, after_plan) for rule in plan.rules
+            })
+        )
+        deltas = u.Infra.rule_deltas(
+            before,
+            after,
+            inventory=tuple(
+                (root.name, rule_id) for root in project_roots for rule_id in rule_ids
+            ),
+        )
         return m.Infra.WorkspaceEnforcementReport(
             workspace=str(self._repository_root),
-            projects=project_reports,
+            projects=tuple(
+                self._enforce_project(
+                    scan_root=self._repository_root,
+                    project_root=root,
+                    project_name=root.name,
+                    py_files=py_files,
+                    before=before,
+                    after=after,
+                    rule_deltas=tuple(
+                        row for row in deltas if row.repository == root.name
+                    ),
+                )
+                for root, py_files in files_by_project.items()
+            ),
         )
 
     def _resolve_project_roots(
@@ -104,11 +162,38 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
             f"Projects: {len(report.projects)}",
             f"Violations: {'YES' if report.has_violations else 'NO'}",
             (
+                f"Catalog findings: "
+                f"{sum(row.before for project in projects for row in project.rule_deltas)}"
+                " -> "
+                f"{sum(row.after for project in projects for row in project.rule_deltas)}"
+            ),
+            (
+                "Introduced occurrences: "
+                f"{sum(row.introduced for project in projects for row in project.rule_deltas)}"
+            ),
+            (
                 f"Relocation findings: "
                 f"{sum(project.relocation_findings for project in projects)}"
             ),
-            f"Files scanned: {sum(project.files_scanned for project in projects)}",
+            (
+                "Relocations resolved/persisted/introduced: "
+                f"{sum(project.relocation_resolved for project in projects)}/"
+                f"{sum(project.relocation_persisted for project in projects)}/"
+                f"{sum(project.relocation_introduced for project in projects)}"
+            ),
+            (
+                "Relocation files scanned: "
+                f"{sum(project.files_scanned for project in projects)}"
+            ),
         ]
+        for project in projects:
+            lines.extend(
+                f"{project.project} {row.rule_id}: {row.before} -> {row.after} "
+                f"resolved={row.resolved} persisted={row.persisted} "
+                f"introduced={row.introduced}"
+                for row in project.rule_deltas
+                if row.before or row.after
+            )
         return "\n".join(lines)
 
     @classmethod

@@ -5,7 +5,7 @@ snapshots:
     assert result.failure
   : fixed: |
       from tests import tm
-      tm.fail(result)
+      tm.that(result.failure, truth=True)
     labels:
     - source: assert result.failure
       style: primary

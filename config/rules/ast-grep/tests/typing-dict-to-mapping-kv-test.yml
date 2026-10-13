@@ -198,14 +198,14 @@ invalid:
   # Executed after native fixes: concrete APIs and runtime values remain intact.
   - |
     from flext_core import m, t
-    from typing import Dict, get_origin
+    from typing import Dict, TypeAliasType, get_args, get_origin
     LEGACY = Dict[str, int]
     FACTORY = dict[str, int]
     type Contract = Dict[str, int]
     class LegacyBase(Dict[str, int]): ...
-    class Payload(m.ArbitraryTypesModel):
-        values: Dict[str, int] = m.Field(default_factory=dict[str, int])
-    def make(values: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+    class Payload(m.BaseModel):
+        values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
+    def make(values: t.MappingKV[str, int] = u.empty(TypeForm(t.MappingKV[str, int]))) -> t.MappingKV[str, int]:
         return values
     assert get_origin(LEGACY) is dict
     assert FACTORY() == {}
@@ -222,5 +222,10 @@ invalid:
     assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
     assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
     assert make() == {}
-    assert not callable(get_origin(Contract.__value__))
-    assert Contract.__value__ == make.__annotations__["return"]
+    for annotation in (Contract.__value__, make.__annotations__["values"], make.__annotations__["return"]):
+        origin = get_origin(annotation)
+        # PEP 695 aliases retain identity while their values own concrete origins.
+        while isinstance(origin, TypeAliasType):
+            origin = get_origin(origin.__value__)
+        assert origin is get_origin(LEGACY)
+        assert get_args(annotation) == get_args(LEGACY)

@@ -5,7 +5,7 @@ snapshots:
     assert name.startswith('flext')
   : fixed: |
       from tests import tm
-      tm.that(name, starts='flext')
+      tm.that(name.startswith('flext'), truth=True)
     labels:
     - source: assert name.startswith('flext')
       style: primary

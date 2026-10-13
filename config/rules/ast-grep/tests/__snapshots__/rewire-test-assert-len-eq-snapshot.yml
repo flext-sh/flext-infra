@@ -5,7 +5,7 @@ snapshots:
     assert len(items) == 3
   : fixed: |
       from tests import tm
-      tm.that(items, len=3)
+      tm.that(len(items) == 3, truth=True)
     labels:
     - source: assert len(items) == 3
       style: primary

@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
 
 
@@ -166,6 +167,18 @@ class FlextInfraRefactorViolationsSweep(
                 if after_scan.failure
                 else published,
             )
+        return self._verdict(report, comparisons)
+
+    @staticmethod
+    def _verdict(
+        report: m.Infra.ViolationsSweepReport,
+        comparisons: t.SequenceOf[m.Infra.ViolationsSweepStage],
+    ) -> p.Result[m.Infra.ViolationsSweepReport]:
+        """Reject introduced occurrences and preserve incomplete observation failures.
+
+        Returns:
+            The published report only when its actual native comparisons permit it.
+        """
         if any(delta.introduced for delta in report.rule_deltas):
             return r[m.Infra.ViolationsSweepReport].fail(
                 "violations sweep introduced finding occurrences",
@@ -437,7 +450,8 @@ class FlextInfraRefactorViolationsSweep(
         } - elected
         if unexpected:
             return result.fail(
-                f"native finding outside effective project rule plan: {sorted(unexpected)}",
+                "native finding outside effective project rule plan: "
+                f"{sorted(unexpected)}",
             )
         for entry in snapshot.ast_report.entries:
             state = entry.source_state
@@ -487,57 +501,11 @@ class FlextInfraRefactorViolationsSweep(
         Returns:
             Authenticated source, scope, topology and elected catalog identities.
         """
-        planned = u.Infra.codemod_rule_plan(root)
-        if planned.failure:
-            return r[m.Infra.ViolationsSweepSources].from_failure(planned)
-        plan = planned.value
-        targets = u.Infra.ast_grep_scan_targets(root)
-        if not targets:
-            return r[m.Infra.ViolationsSweepSources].fail(
-                "no governed AST source targets; native rules NOT_EXECUTED",
-            )
-        declared = u.Infra.git_submodule_declarations(root)
-        if declared.failure:
-            return r[m.Infra.ViolationsSweepSources].from_failure(declared)
-        projects = (
-            root.resolve(),
-            *(
-                root.resolve() / item.path
-                for item in declared.value
-                if item.managed is not False
-            ),
-        )
-        if set(projects) != set(plan.project_rule_ids) or len({
-            project.name for project in projects
-        }) != len(projects):
-            return r[m.Infra.ViolationsSweepSources].fail(
-                "effective rule plan differs from declared project topology",
-            )
-        paths = {rule.resource.resolve() for rule in plan.rules}
-        paths.update(ruleset.config.resolve() for ruleset in plan.rulesets)
-        paths.update(project / c.PYPROJECT_FILENAME for project in projects)
-        paths.update(
-            path
-            for project in projects
-            for path in (project / c.Infra.CODEMOD_CONFIG_RELPATH,)
-            if path.is_file()
-        )
-        paths.update(
-            path
-            for project in projects
-            for path in (u.Infra.workspace_manifest_path(project),)
-            if path.is_file()
-        )
-        if (root / c.Infra.GITMODULES).exists():
-            paths.add((root / c.Infra.GITMODULES).resolve())
-        text_paths = FlextInfraModTextGateEngine.source_paths(root)
-        if text_paths.success:
-            paths.update(text_paths.value)
-        for target in targets:
-            path = root / target
-            paths.update(
-                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
-            )
+        inventory = cls._source_inventory(root)
+        if inventory.failure:
+            return r[m.Infra.ViolationsSweepSources].from_failure(inventory)
+        plan, targets, projects, declared = inventory.value
+        paths, inventory_errors = cls._scan_source_paths(root, targets, plan)
         captured = cls._read_sources(tuple(sorted(paths)))
         if captured.failure:
             return r[m.Infra.ViolationsSweepSources].from_failure(captured)
@@ -546,11 +514,13 @@ class FlextInfraRefactorViolationsSweep(
             if validated.failure:
                 return r[m.Infra.ViolationsSweepSources].from_failure(validated)
         observed = u.Infra.git_submodule_declarations(root)
-        if observed.failure:
-            return r[m.Infra.ViolationsSweepSources].from_failure(observed)
-        if declared.value != observed.value:
-            return r[m.Infra.ViolationsSweepSources].fail(
-                "violations sweep project topology changed during observation",
+        if observed.failure or declared != observed.value:
+            return (
+                r[m.Infra.ViolationsSweepSources].from_failure(observed)
+                if observed.failure
+                else r[m.Infra.ViolationsSweepSources].fail(
+                    "violations sweep project topology changed during observation",
+                )
             )
         snapshot = m.Infra.ViolationsSweepSources(
             source_verified=not observe,
@@ -558,7 +528,7 @@ class FlextInfraRefactorViolationsSweep(
             scope=targets,
             states=captured.value,
             repository_roots=projects,
-            observation_errors=(str(text_paths.error),) if text_paths.failure else (),
+            observation_errors=inventory_errors,
             sha256={
                 str(state.path): u.Cli.sha256_bytes(state.content)
                 for state in captured.value
@@ -568,6 +538,57 @@ class FlextInfraRefactorViolationsSweep(
         return r[m.Infra.ViolationsSweepSources].ok(
             cls._observed_snapshot(root, snapshot, previous) if observe else snapshot,
         )
+
+    @staticmethod
+    def _source_inventory(
+        root: Path,
+    ) -> p.Result[
+        t.Quad[
+            m.Infra.CodemodRulePlan,
+            t.StrSequence,
+            tuple[Path, ...],
+            tuple[m.Infra.GitSubmoduleDeclaration, ...],
+        ]
+    ]:
+        """Elect native scope and topology before capturing any file proof.
+
+        Returns:
+            Existing owner contracts, or their original preflight failure.
+        """
+        result = r[
+            t.Quad[
+                m.Infra.CodemodRulePlan,
+                t.StrSequence,
+                tuple[Path, ...],
+                tuple[m.Infra.GitSubmoduleDeclaration, ...],
+            ]
+        ]
+        planned = u.Infra.codemod_rule_plan(root)
+        if planned.failure:
+            return result.from_failure(planned)
+        targets = u.Infra.ast_grep_scan_targets(root)
+        if not targets:
+            return result.fail(
+                "no governed AST source targets; native rules NOT_EXECUTED"
+            )
+        declared = u.Infra.git_submodule_declarations(root)
+        if declared.failure:
+            return result.from_failure(declared)
+        projects = (
+            root.resolve(),
+            *(
+                root.resolve() / item.path
+                for item in declared.value
+                if item.managed is not False
+            ),
+        )
+        if set(projects) != set(planned.value.project_rule_ids) or len({
+            project.name for project in projects
+        }) != len(projects):
+            return result.fail(
+                "effective rule plan differs from declared project topology"
+            )
+        return result.ok((planned.value, targets, projects, tuple(declared.value)))
 
     @staticmethod
     def _read_sources(
@@ -688,6 +709,57 @@ class FlextInfraRefactorViolationsSweep(
         )
 
     @staticmethod
+    def _scan_source_paths(
+        root: Path,
+        targets: t.StrSequence,
+        plan: m.Infra.CodemodRulePlan,
+    ) -> t.Pair[set[Path], t.StrSequence]:
+        """Inventory sources and all declared executable catalog inputs.
+
+        Returns:
+            The input closure and independent text-inventory observation errors.
+        """
+        paths = {rule.resource.resolve() for rule in plan.rules}
+        configs = {ruleset.config.resolve() for ruleset in plan.rulesets}
+        configs.update(
+            path
+            for project in plan.project_rule_ids
+            for path in (project / c.Infra.CODEMOD_CONFIG_RELPATH,)
+            if path.is_file()
+        )
+        paths.update(configs)
+        for config_path in configs:
+            directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
+                config_path.parent,
+            )
+            paths.update(
+                path.resolve()
+                for directory in (*directories.rule_dirs, *directories.util_dirs)
+                for path in directory.rglob("*")
+                if path.is_file()
+            )
+        paths.update(
+            project / c.PYPROJECT_FILENAME for project in plan.project_rule_ids
+        )
+        paths.update(
+            path
+            for project in plan.project_rule_ids
+            for path in (u.Infra.workspace_manifest_path(project),)
+            if path.is_file()
+        )
+        if (root / c.Infra.GITMODULES).exists():
+            paths.add((root / c.Infra.GITMODULES).resolve())
+        text_paths = FlextInfraModTextGateEngine.source_paths(root)
+        if text_paths.success:
+            paths.update(text_paths.value)
+        for target in targets:
+            path = root / target
+            paths.update(
+                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+            )
+        return paths, (str(text_paths.error),) if text_paths.failure else ()
+
+    @staticmethod
     def _validate_scan_sources(
         root: Path,
         targets: t.StrSequence,
@@ -709,33 +781,9 @@ class FlextInfraRefactorViolationsSweep(
             root
         ):
             return r[bool].fail("violations sweep scan rule plan or inventory changed")
-        observed_paths = {rule.resource.resolve() for rule in plan.rules}
-        observed_paths.update(ruleset.config.resolve() for ruleset in plan.rulesets)
-        observed_paths.update(
-            project / c.PYPROJECT_FILENAME for project in plan.project_rule_ids
+        observed_paths, _errors = FlextInfraRefactorViolationsSweep._scan_source_paths(
+            root, targets, plan
         )
-        observed_paths.update(
-            path
-            for project in plan.project_rule_ids
-            for path in (project / c.Infra.CODEMOD_CONFIG_RELPATH,)
-            if path.is_file()
-        )
-        observed_paths.update(
-            path
-            for project in plan.project_rule_ids
-            for path in (u.Infra.workspace_manifest_path(project),)
-            if path.is_file()
-        )
-        if (root / c.Infra.GITMODULES).exists():
-            observed_paths.add((root / c.Infra.GITMODULES).resolve())
-        text_paths = FlextInfraModTextGateEngine.source_paths(root)
-        if text_paths.success:
-            observed_paths.update(text_paths.value)
-        for target in targets:
-            path = root / target
-            observed_paths.update(
-                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
-            )
         if {state.path for state in states} != observed_paths:
             return r[bool].fail("violations sweep scan source inventory changed")
         return r[bool].ok(value=True)

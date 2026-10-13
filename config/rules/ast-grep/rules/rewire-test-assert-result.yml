@@ -1,19 +1,22 @@
-# FlextResult raw asserts rewired to the result matchers.
+# Result-attribute raw asserts rewired to the tm native truth criterion.
 #
 # Family law, guard, and exclusions are documented in
-# rewire-test-assert-comparison.yml; this file adds the result shapes. A
-# `.success`/`.failure` attribute read in a test tier is a FlextResult read,
-# so the truthiness assert becomes the causal matcher:
-#   * `assert result.success` -> `tm.ok(result)`;
-#   * `assert result.failure` -> `tm.fail(result)`;
-#   * `assert not result.success` -> `tm.fail(result)`;
-#   * `assert not result.failure` -> `tm.ok(result)`.
+# rewire-test-assert-comparison.yml; this file adds the result shapes:
+#   * `assert result.success` -> `tm.that(result.success, truth=True)`;
+#   * `assert result.failure` -> `tm.that(result.failure, truth=True)`;
+#   * `assert not result.success` -> `tm.that(result.success, truth=False)`;
+#   * `assert not result.failure` -> `tm.that(result.failure, truth=False)`.
 #
-# The ok/fail matchers report the error text on the unexpected outcome, which
-# the raw truthiness assert discarded.
+# Retain the actual attribute read without inferring a result type or reading
+# another attribute; the native truth criterion evaluates its truth once.
 id: rewire-test-assert-result-ok
 language: Python
 severity: error
+metadata:
+  context:
+    R:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -33,12 +36,17 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.ok($R)
+fix: tm.that($R.success, truth=True)
 message: Assert result success through the tm result matcher.
 ---
 id: rewire-test-assert-result-fail
 language: Python
 severity: error
+metadata:
+  context:
+    R:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -58,12 +66,17 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.fail($R)
+fix: tm.that($R.failure, truth=True)
 message: Assert result failure through the tm result matcher.
 ---
 id: rewire-test-assert-result-not-ok
 language: Python
 severity: error
+metadata:
+  context:
+    R:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -83,12 +96,17 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.fail($R)
+fix: tm.that($R.success, truth=False)
 message: Assert result failure through the tm result matcher.
 ---
 id: rewire-test-assert-result-not-fail
 language: Python
 severity: error
+metadata:
+  context:
+    R:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -108,5 +126,5 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.ok($R)
+fix: tm.that($R.failure, truth=False)
 message: Assert result success through the tm result matcher.

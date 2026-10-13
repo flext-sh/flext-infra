@@ -74,7 +74,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Original project layouts in the desired import closure",
         )
         workspace_packages: t.StrSequence = m.Field(
-            description="Declared workspace namespaces whose candidate origins are sealed",
+            description="Declared workspace namespaces with sealed candidate origins",
         )
 
     class StagePackageView(m.ArbitraryTypesModel):

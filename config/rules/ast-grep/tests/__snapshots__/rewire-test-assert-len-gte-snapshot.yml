@@ -5,7 +5,7 @@ snapshots:
     assert len(items) >= 2
   : fixed: |
       from tests import tm
-      tm.that(items, length_gte=2)
+      tm.that(len(items) >= 2, truth=True)
     labels:
     - source: assert len(items) >= 2
       style: primary

@@ -114,7 +114,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             fix=False,
         ).unwrap()
 
-        self._apply_ast_phase(self.repository_root, self.rope, initial)
+        after_syntax = self._apply_ast_phase(self.repository_root, self.rope, initial)
         self.progress.emit("mod: apply declared consumer text cutovers")
         self._apply_text_phase(
             self.repository_root,
@@ -125,7 +125,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         )
         FlextInfraImportNormalizationPhase.apply(
             self.repository_root,
-            initial,
+            after_syntax,
             self.rope,
         ).unwrap()
         self.rope.refresh()

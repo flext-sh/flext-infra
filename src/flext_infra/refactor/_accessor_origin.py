@@ -10,7 +10,7 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, p, u
+from flext_infra import c, m, p, u
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -26,7 +26,16 @@ class FlextInfraAccessorOriginResolver:
         namespace: str | None = None,
         module: str | None = None,
     ) -> None:
-        """Initialize with the shared Rope project of the migration run."""
+        """Initialize with the shared Rope project of the migration run.
+
+        Args:
+            rope_project: The shared Rope project of the migration run.
+            namespace: Optional namespace to resolve.
+            module: Optional module to resolve.
+
+        Raises:
+            ValueError: If the specified module is unknown.
+        """
         self._rope_project = rope_project
         self._root = Path(rope_project.root.real_path)
         self._pymodules: dict[str, t.Infra.RopePyModule] = {}
@@ -37,6 +46,9 @@ class FlextInfraAccessorOriginResolver:
         self._lineages: dict[int, tuple[p.Infra.RopePyObject, ...]] = {}
         self._namespace_owners: tuple[p.Infra.RopePyObject, ...] | None = None
         self._target_module = module
+        self._policy = m.MethodShapeParams.model_validate(
+            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        )
         projects = u.Infra.resolve_projects(self._root, ()).unwrap()
         if namespace is not None:
             alias = namespace.split(".", 1)[0]
@@ -175,16 +187,29 @@ class FlextInfraAccessorOriginResolver:
         while pending:
             current, chain = pending.pop()
             owner = current.pyobject if current.get_kind() == "Class" else None
+            children = tuple(current.get_scopes())
+            candidates = {
+                child.pyobject.get_name()
+                for child in children
+                if child.get_kind() == "Function"
+                and not child.pyobject.get_name().startswith("_")
+                and (
+                    child.pyobject.get_name() in c.ENFORCEMENT_ACCESSOR_RENAMES
+                    or child.pyobject.get_name().startswith(
+                        tuple(self._policy.forbidden_prefixes)
+                    )
+                )
+            }
             inherited = (
                 {
                     name
                     for base in self.class_lineage(owner)[1:]
                     for name in base.get_attributes()
                 }
-                if owner is not None
+                if owner is not None and candidates
                 else set()
             )
-            for child in current.get_scopes():
+            for child in children:
                 name = child.pyobject.get_name()
                 if child.get_kind() == "Class":
                     pending.append((child, (*chain, name)))
@@ -206,7 +231,12 @@ class FlextInfraAccessorOriginResolver:
                     self._names[id(binding)] = name
                     if owner is not None:
                         self._owners[id(binding)] = owner
-                        if name not in inherited:
+                        if (
+                            name in candidates
+                            and name not in inherited
+                            and u.Infra.py_function(binding.get_object())
+                            and binding.get_object().get_kind() != "classmethod"
+                        ):
                             introduced.append(
                                 m.Infra.Object(
                                     file_path=str(py_file),

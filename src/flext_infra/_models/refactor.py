@@ -133,22 +133,38 @@ class FlextInfraModelsRefactor(
     class SemanticRenameSelection(m.ImmutableValueModel):
         """Explicit domain naming intent, resolved by the actual object inventory."""
 
-        qualified_name: t.NonEmptyStr = m.Field(description="Introducing callable identity")
+        qualified_name: t.NonEmptyStr = m.Field(
+            description="Introducing callable identity"
+        )
         replacement_name: t.NonEmptyStr = m.Field(description="Canonical domain name")
         reason: t.NonEmptyStr = m.Field(description="Semantic justification")
-        contracts: t.StrSequence = m.Field(default=(), description="Independent typing identities")
+        contracts: t.StrSequence = m.Field(
+            default=(), description="Independent typing identities"
+        )
 
     class SemanticRenameSelections(m.ImmutableValueModel):
         """JSON input carrying explicit decisions, not a lexical naming policy."""
 
-        decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameSelection] = m.Field(min_length=1)
+        decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameSelection] = (
+            m.Field(
+                min_length=1, description="Explicit domain names for inventoried owners"
+            )
+        )
 
     class SemanticRenamePlan(m.ImmutableValueModel):
         """Reversible native rename artifact with its complete authenticated closure."""
 
-        decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision]
-        edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit]
-        candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan
+        decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision] = (
+            m.Field(
+                description="Resolved declarations and their domain naming decisions"
+            )
+        )
+        edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (
+            m.Field(description="Exact source bytes before and after the native rename")
+        )
+        candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
+            description="Authenticated complete source and runtime candidate closure"
+        )
 
     class ViolationsTotals(m.ContractModel):
         """One mod scan's violation totals as the sweep compares them."""
@@ -201,6 +217,78 @@ class FlextInfraModelsRefactor(
             bool,
             m.Field(description="Text multiplicity does not prove semantic identity"),
         ] = False
+
+    class ProjectEnforcementReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        m.ArbitraryTypesModel,
+    ):
+        """Full rule-catalog comparison, separate from scoped relocation progress."""
+
+        project_root: Annotated[str, m.Field(description="Project root path")]
+        rule_deltas: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsRuleDelta],
+            m.Field(
+                description="Full catalog occurrence comparison, including zero rows"
+            ),
+        ]
+        relocation_resolved: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Removed scoped relocation occurrences"),
+        ]
+        relocation_persisted: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Unchanged scoped relocation occurrences"),
+        ]
+        relocation_introduced: Annotated[
+            t.NonNegativeInt, m.Field(description="New scoped relocation occurrences")
+        ]
+        relocation_findings: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Scoped relocation findings remaining after the pass"),
+        ]
+        files_scanned: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Files in the namespace relocation scope before apply"),
+        ]
+
+        @m.computed_field
+        @property
+        def before_rule_counts(self) -> t.MappingKV[str, t.NonNegativeInt]:
+            """Complete per-rule counts before relocation, including zero findings."""
+            return {row.rule_id: row.before for row in self.rule_deltas}
+
+        @m.computed_field
+        @property
+        def after_rule_counts(self) -> t.MappingKV[str, t.NonNegativeInt]:
+            """Complete per-rule counts after relocation, including zero findings."""
+            return {row.rule_id: row.after for row in self.rule_deltas}
+
+        @m.computed_field
+        @property
+        def cross_rule_delta(self) -> t.MappingKV[str, int]:
+            """Net changes; introduced occurrence counts remain in the shared rows."""
+            return {row.rule_id: row.after - row.before for row in self.rule_deltas}
+
+        @m.computed_field
+        @property
+        def has_violations(self) -> bool:
+            """Whether any catalog finding remains or a new occurrence was introduced."""
+            return any(row.after or row.introduced for row in self.rule_deltas)
+
+    class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
+        """Workspace enforcement report."""
+
+        workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
+        projects: Annotated[
+            t.SequenceOf[FlextInfraModelsRefactor.ProjectEnforcementReport],
+            m.Field(description="Per-project enforcement reports for the workspace"),
+        ] = m.Field(default_factory=tuple)
+
+        @m.computed_field
+        @property
+        def has_violations(self) -> bool:
+            """Whether any project carries a violation."""
+            return any(project.has_violations for project in self.projects)
 
     class ViolationsSweepRequest(m.ContractModel):
         """Public sweep controls; focus never narrows regression observation."""
@@ -723,7 +811,15 @@ class FlextInfraModelsRefactor(
 
         repository_root: Path = m.Field(description="Complete governed workspace")
         decisions: t.NonEmptyStr = m.Field(description="SemanticRenameSelections JSON")
-        output: Path = m.Field(description="Workspace-contained plan artifact destination")
+        output: Path = m.Field(
+            description="Workspace-contained plan artifact destination"
+        )
+
+    class SemanticRenamePreviewCommand(m.ContractModel):
+        """Read and validate a complete rename artifact without source effects."""
+
+        repository_root: Path = m.Field(description="Complete governed workspace")
+        plan: Path = m.Field(description="Authenticated semantic rename artifact")
 
     class ApplyRenamesInput(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Validated CLI request for CSV-driven symbol renames."""

@@ -5,7 +5,7 @@ snapshots:
     assert len(items) > 0
   : fixed: |
       from tests import tm
-      tm.that(items, length_gt=0)
+      tm.that(len(items) > 0, truth=True)
     labels:
     - source: assert len(items) > 0
       style: primary

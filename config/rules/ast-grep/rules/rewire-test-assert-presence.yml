@@ -2,17 +2,21 @@
 #
 # Family law, guard, and exclusions are documented in
 # rewire-test-assert-comparison.yml; this file adds the presence shapes:
-#   * `assert X is None` -> `tm.that(X, none=True)`;
+#   * `assert X is None` -> `tm.that(X is None, truth=True)`;
 #   * `assert X is not None` -> `tm.not_none(X)` (the type-narrowing form);
-#   * `assert item in container` -> `tm.that(container, has=item)`;
-#   * `assert item not in container` -> `tm.that(container, lacks=item)`.
+#   * `assert item in container` -> `tm.that(item in container, truth=True)`;
+#   * `assert item not in container` -> `tm.that(item not in container, truth=True)`.
 #
-# The membership fixes flip the operand order (the container becomes the tm
-# subject), so only the two-operand single-membership shape is rewritten;
-# membership chains stay for manual triage.
+# Membership fixes preserve operand order and native containment semantics.
+# Only single-membership shapes are rewritten; chains stay for manual triage.
 id: rewire-test-assert-is-none
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -32,12 +36,17 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.that($A, none=True)
+fix: tm.that($A is None, truth=True)
 message: Assert None-ness through the tm matcher facade.
 ---
 id: rewire-test-assert-not-none
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -63,6 +72,11 @@ message: Assert and narrow the non-None value through tm.not_none.
 id: rewire-test-assert-in
 language: Python
 severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -86,12 +100,17 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.that($C, has=$X)
+fix: tm.that($X in $C, truth=True)
 message: Assert containment through the tm matcher facade.
 ---
 id: rewire-test-assert-not-in
 language: Python
 severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -115,5 +134,5 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.that($C, lacks=$X)
+fix: tm.that($X not in $C, truth=True)
 message: Assert exclusion through the tm matcher facade.

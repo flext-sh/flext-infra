@@ -698,6 +698,15 @@ class TestsFlextInfraRefactorViolationsSweep:
         """Reuse the native selected engine, never a sweep-specific rewrite engine."""
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=True)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root
+                / c.Infra.CODEMOD_CONFIG_RELPATH.parent
+                / c.Cli.RULES_DIR_NAME
+                / "sweep.yml",
+                LOCAL_GROWTH_RULE.replace("fix: marker = tuple()", "fix: marker = ()"),
+            )
+        )
         tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
         tm.that(
             main([
@@ -822,6 +831,87 @@ class TestsFlextInfraRefactorViolationsSweep:
         )
         row = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that(row.introduced if mutation == "introduce" else row.resolved, eq=1)
+
+    @pytest.mark.parametrize("mutation", ["change", "add", "remove"])
+    def test_audit_authenticates_utility_bytes_and_inventory_without_source_changes(
+        self,
+        mod_workspace: Path,
+        mutation: str,
+    ) -> None:
+        """Utility-only effects invalidate native evidence and the read-only audit."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        catalog = root / c.Infra.CODEMOD_CONFIG_RELPATH
+        utilities = catalog.parent / "utils"
+        tm.ok(u.Cli.ensure_dir(utilities))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                catalog, LOCAL_RULE_CATALOG + "utilDirs:\n  - utils\n"
+            )
+        )
+        rule_path = catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule_path,
+                LOCAL_GROWTH_RULE.replace(
+                    "  pattern: marker = dict()", "  matches: sweep-match"
+                ),
+            )
+        )
+        utility = utilities / "match.yml"
+        utility_text = (
+            "id: sweep-match\nlanguage: Python\nrule:\n  pattern: marker = tuple()\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(utility, utility_text))
+        sample = root / "sample.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n"))
+        changed = utility if mutation == "change" else utilities / "extra.yml"
+        extra_text = utility_text.replace("sweep-match", "sweep-extra")
+        if mutation == "remove":
+            tm.ok(u.Cli.atomic_write_text_file(changed, extra_text))
+            recipe = f"\t@rm '{changed}'\n"
+        else:
+            replacement = (
+                utility_text.replace("tuple()", "dict()")
+                if mutation == "change"
+                else extra_text
+            ).replace("\n", "\\n")
+            recipe = f"\t@printf '{replacement}' > '{changed}'\n"
+        self._prepare(
+            root,
+            makefile=".PHONY: audit\naudit:\n" + recipe,
+            local_rule=False,
+        )
+        result = FlextInfraRefactorViolationsSweep(
+            repository_root=root, repair_verbs="audit"
+        ).execute()
+        tm.fail(result, has="audit changed")
+        report = self._receipt(root)
+        stage = report.stages[0]
+        tm.that(stage.source_inventory_unchanged, eq=False)
+        assert stage.audit_before is not None
+        assert stage.audit_after is not None
+        before = stage.audit_before.sha256
+        after = stage.audit_after.sha256
+        for unchanged in (catalog, rule_path, sample):
+            tm.that(
+                before[str(unchanged.resolve())], eq=after[str(unchanged.resolve())]
+            )
+        utility_key = str(utility.resolve())
+        tm.that(before[utility_key], eq=u.Cli.sha256_bytes(utility_text.encode()))
+        changed_key = str(changed.resolve())
+        if mutation == "change":
+            tm.that(before[changed_key], ne=after[changed_key])
+            row = next(
+                row for row in stage.rule_evaluations if row.rule_id == "sweep-growth"
+            )
+            assert row.delta is not None
+            tm.that(
+                (row.delta.before, row.delta.after, row.delta.introduced), eq=(0, 1, 1)
+            )
+        else:
+            tm.that(changed_key in before, eq=mutation == "remove")
+            tm.that(changed_key in after, eq=mutation == "add")
 
     def test_audit_verdicts_are_independent_for_discovered_members(
         self,

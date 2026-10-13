@@ -1,20 +1,20 @@
-# Collection-size raw asserts rewired to the tm length criteria.
+# Collection-size raw asserts rewired to the tm native truth criterion.
 #
 # Family law, guard, and exclusions are documented in
 # rewire-test-assert-comparison.yml; this file adds the length shapes:
-#   * `assert len(x) == n` -> `tm.that(x, len=n)`;
-#   * `assert len(x) > n`  -> `tm.that(x, length_gt=n)`;
-#   * `assert len(x) >= n` -> `tm.that(x, length_gte=n)`;
-#   * `assert len(x) < n`  -> `tm.that(x, length_lt=n)`;
-#   * `assert len(x) <= n` -> `tm.that(x, length_lte=n)`.
+# Each fix retains the original len call and comparison as the matcher subject,
+# preserving evaluation order and Python comparison semantics.
 #
-# The bound is constrained to an integer literal: the tm length criteria own
-# int and (min, max) bounds, and a computed bound would need the comparison
-# criteria instead. The comparison documents exclude `len(...)` subjects, so
-# the two families stay disjoint.
+# The current patterns constrain the bound to an integer literal. The comparison
+# documents exclude `len(...)` subjects, so the two families stay disjoint.
 id: rewire-test-assert-len-eq
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -37,12 +37,17 @@ rule:
 constraints:
   N:
     regex: "^\\d+$"
-fix: tm.that($A, len=$N)
+fix: tm.that(len($A) == $N, truth=True)
 message: Assert the collection size through the tm length criterion.
 ---
 id: rewire-test-assert-len-gt
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -65,12 +70,17 @@ rule:
 constraints:
   N:
     regex: "^\\d+$"
-fix: tm.that($A, length_gt=$N)
+fix: tm.that(len($A) > $N, truth=True)
 message: Assert the minimum collection size through the tm length criterion.
 ---
 id: rewire-test-assert-len-gte
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -93,12 +103,17 @@ rule:
 constraints:
   N:
     regex: "^\\d+$"
-fix: tm.that($A, length_gte=$N)
+fix: tm.that(len($A) >= $N, truth=True)
 message: Assert the inclusive minimum size through the tm length criterion.
 ---
 id: rewire-test-assert-len-lt
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -121,12 +136,17 @@ rule:
 constraints:
   N:
     regex: "^\\d+$"
-fix: tm.that($A, length_lt=$N)
+fix: tm.that(len($A) < $N, truth=True)
 message: Assert the exclusive maximum size through the tm length criterion.
 ---
 id: rewire-test-assert-len-lte
 language: Python
 severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -149,5 +169,5 @@ rule:
 constraints:
   N:
     regex: "^\\d+$"
-fix: tm.that($A, length_lte=$N)
+fix: tm.that(len($A) <= $N, truth=True)
 message: Assert the inclusive maximum size through the tm length criterion.

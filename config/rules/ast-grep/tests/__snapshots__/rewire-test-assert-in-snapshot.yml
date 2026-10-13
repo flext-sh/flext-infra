@@ -5,7 +5,7 @@ snapshots:
     assert 'k' in mapping
   : fixed: |
       from tests import tm
-      tm.that(mapping, has='k')
+      tm.that('k' in mapping, truth=True)
     labels:
     - source: assert 'k' in mapping
       style: primary

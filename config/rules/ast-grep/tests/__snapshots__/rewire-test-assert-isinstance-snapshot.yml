@@ -5,7 +5,7 @@ snapshots:
     assert isinstance(loaded, Service)
   : fixed: |
       from tests import tm
-      tm.that(loaded, is_=Service)
+      tm.that(isinstance(loaded, Service), truth=True)
     labels:
     - source: assert isinstance(loaded, Service)
       style: primary
