@@ -152,10 +152,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         fleet members.
         """
         overrides = list(resolution.override_dependencies)
-        overrides.extend(
-            f"{name}{FlextInfraUtilitiesDependencyRequirements.dependency_extras(requirements, name)} @ {source}"
-            for name, source in sorted(candidate_sources.items())
-        )
+        for name, source in sorted(candidate_sources.items()):
+            extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                requirements,
+                name,
+            )
+            overrides.append(f"{name}{extras} @ {source}")
         if overrides:
             u.Cli.toml_sync_string_list(
                 uv,

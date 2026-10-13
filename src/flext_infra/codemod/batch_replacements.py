@@ -15,7 +15,10 @@ import libcst as cst
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
-from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
+from flext_infra.codemod._batch_orphan_import import (
+    FlextInfraOrphanImport,
+    type_checking_guarded,
+)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -338,7 +341,9 @@ class FlextInfraModReplacements:
                 return r[bytes].from_failure(normalized)
             module = cst.parse_module(normalized.value)
             stripped = module.visit(FlextInfraDeadScaffold())
-            orphaned = stripped.visit(FlextInfraOrphanImport())
+            orphaned = stripped.visit(
+                FlextInfraOrphanImport(guarded=type_checking_guarded(stripped))
+            )
             final = (
                 normalized
                 if orphaned.code == normalized.value

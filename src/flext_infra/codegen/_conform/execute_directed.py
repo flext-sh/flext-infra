@@ -34,7 +34,13 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
         )
         root = request.root.expanduser().resolve()
-        topology = self._planning_workspace(request, root)
+        engine = FlextInfraCodegenPreconditions.rendering_engine(root)
+        if engine.failure:
+            return r[m.Infra.CodegenResult].from_failure(engine)
+        inputs = u.Infra.load_codegen_inputs(root)
+        if inputs.failure:
+            return r[m.Infra.CodegenResult].from_failure(inputs)
+        topology = self._planning_workspace(request, root, inputs=inputs.value)
         if topology.failure:
             return r[m.Infra.CodegenResult].from_failure(topology)
         workspace, _target, repository = topology.value

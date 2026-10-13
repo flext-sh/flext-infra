@@ -219,6 +219,19 @@ GITHUB_AUTH_PRESENT := $(if $(strip $(GITHUB_TOKEN)),yes,no)
 GITHUB_AUTH_PHYSICAL_COMMAND := $(if $(filter gh,$(GITHUB_AUTH_SOURCE)),$(realpath $(GITHUB_AUTH_COMMAND)),not-selected)
 # Diagnostics expose only producer metadata, never credentials or command stderr.
 GITHUB_AUTH_DIAGNOSTICS = printf 'github-auth source=%s extraction-exit=%s present=%s ci=%s command-exit=%s command=%s physical-command=%s host-source=%s gh-config-override=%s xdg-config-override=%s session-bus=%s\n' '$(GITHUB_AUTH_SOURCE)' '$(GITHUB_AUTH_STATUS)' '$(GITHUB_AUTH_PRESENT)' '$(GITHUB_AUTH_CI)' '$(GITHUB_AUTH_COMMAND_STATUS)' '$(GITHUB_AUTH_COMMAND)' '$(GITHUB_AUTH_PHYSICAL_COMMAND)' '$(GITHUB_AUTH_HOST_SOURCE)' '$(GITHUB_AUTH_CONFIG_OVERRIDE)' '$(GITHUB_AUTH_XDG_OVERRIDE)' '$(GITHUB_AUTH_SESSION_BUS)'
+# A global url.<https-url>.insteadOf rewrite that embeds credentials (a
+# userinfo with a separator colon) shadows the fleet SSH route and poisons
+# every resolver that shells out to git (uv, mise, cargo): their fetches
+# authenticate with the baked-in value and fail in confusing ways far from
+# the cause. The rewrite itself is operator territory; this gate only
+# refuses to run under it and names the offending config entry. The SSH
+# form (url.git@host:.insteadOf) is the fleet's own route and stays legal.
+GITHUB_AUTH_REWRITE := $(shell git config --global --get-regexp '^url\..*\.insteadof' 2>/dev/null | grep -E '^url\.https?://[^ /]+:[^ /]+@' | head -1)
+ifneq ($(strip $(GITHUB_AUTH_REWRITE)),)
+ifneq ($(MAKECMDGOALS),help)
+$(error git config --global embeds credentials in a GitHub URL rewrite and shadows the fleet SSH route; remove that url.*.insteadOf entry — it poisons uv/mise git resolution: $(GITHUB_AUTH_REWRITE))
+endif
+endif
 
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
@@ -897,6 +910,7 @@ _upg_lifecycle: _builtin_setup_submodules
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
 	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
+	@$(PROJECT_FLEXT_INFRA) workspace verify-lock --repository-root "$(PROJECT_ROOT)"
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
 	@mise -C "$(PROJECT_ROOT)" lock --bump
