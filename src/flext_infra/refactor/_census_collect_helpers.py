@@ -87,7 +87,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return "unused" in rule_names
 
     @staticmethod
-    def _project_name_for_module(
+    def project_name_for_module(
         module: m.Infra.RopeModuleIndexEntry,
         convention: m.Infra.RopeModuleConvention,
     ) -> str:
@@ -105,7 +105,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return ""
 
     @staticmethod
-    def _is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
+    def is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
         """Return whether a module belongs to one configured production root.
 
         Returns:
@@ -150,7 +150,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         findings = m.Infra.ScanFindings(project_objects={}, report_projects=set())
         current_project = None
         for module in rope.modules(project_names=self.project_names):
-            if self._is_production_module(module):
+            if self.is_production_module(module):
                 if current_project != module.project_root:
                     current_project = module.project_root
                     cli.display_text(f"census: scan {current_project}")
