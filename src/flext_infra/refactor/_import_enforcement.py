@@ -164,6 +164,7 @@ class FlextInfraImportNormalization(
 
         """
         lines = source.splitlines()
+        cls._validate_import_boundary(state)
         builders = (
             lambda: cls._relative_import_edits(state, lines),
             lambda: cls._guard_edits(state.tree, lines),
@@ -183,6 +184,54 @@ class FlextInfraImportNormalization(
             if applied != source:
                 return applied
         return None
+
+    @classmethod
+    def _validate_import_boundary(cls, state: m.Infra.ImportLawPass) -> None:
+        """Reject forbidden dependencies before hoisting, deferral or routing.
+
+        Raises:
+            ValueError: If a layer-zero module imports its own namespace or a
+                family binds its own facade, including TYPE_CHECKING imports.
+        """
+        scope = state.scope
+        role = u.Infra.import_module_role(scope.module)
+        for node in cls._iter_imports(state.tree):
+            if isinstance(node, ast.ImportFrom) and node.level:
+                continue  # The next pass validates the absolute rewrite.
+            for alias in node.names:
+                target = (
+                    node.module or ""
+                    if isinstance(node, ast.ImportFrom)
+                    else alias.name
+                )
+                if target.split(".")[0] != scope.namespace:
+                    continue
+                if role == "layer0":
+                    msg = (
+                        f"{scope.file_path}: layer-zero module imports its own "
+                        f"namespace: {target}"
+                    )
+                    raise ValueError(msg)
+                if role != "family" or scope.family_letter is None:
+                    continue
+                provider = (
+                    state.root_exports.get(alias.name, "")
+                    if isinstance(node, ast.ImportFrom) and target == scope.namespace
+                    else target
+                )
+                family = u.Infra.facade_families()[scope.family_letter]
+                if provider not in {
+                    f"{scope.namespace}.{family.module}",
+                    f"{scope.namespace}.{scope.family_letter}",
+                } and not (
+                    target == scope.namespace and alias.name == scope.family_letter
+                ):
+                    continue
+                msg = (
+                    f"{scope.file_path}: family imports its own facade: "
+                    f"{target}.{alias.name}"
+                )
+                raise ValueError(msg)
 
     @staticmethod
     def _declared_exports(tree: ast.Module) -> frozenset[str]:
@@ -222,13 +271,14 @@ class FlextInfraImportNormalization(
             The family letter, or ``None`` outside every family package.
 
         """
-        directories = {
-            family.directory: letter
-            for letter, family in u.Infra.facade_families().items()
-        }
         relative = file_path.resolve().relative_to(namespace_dir.resolve())
         return next(
-            (directories[part] for part in relative.parts[:-1] if part in directories),
+            (
+                letter
+                for letter, family in u.Infra.facade_families().items()
+                if family.directory in relative.parts[:-1]
+                or relative.stem == family.module
+            ),
             None,
         )
 

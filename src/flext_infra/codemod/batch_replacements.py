@@ -15,7 +15,7 @@ import libcst as cst
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
 from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -94,7 +94,7 @@ class FlextInfraModReplacements:
         )
         if published.failure:
             return r[bool].from_failure(published)
-        return cls._finish_publication(root, tuple(sorted(grouped)))
+        return r[bool].ok(value=True)
 
     @classmethod
     def _path_plan(
@@ -132,6 +132,9 @@ class FlextInfraModReplacements:
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
             return r[m.Infra.SemanticFilePlan].from_failure(updated)
+        candidate = cls._normalized_candidate(root, path, before.content, updated.value)
+        if candidate.failure:
+            return r[m.Infra.SemanticFilePlan].from_failure(candidate)
         bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for finding in findings:
             for state in finding.binding_states:
@@ -144,7 +147,7 @@ class FlextInfraModReplacements:
                 project=u.Infra.project_root(path) or root,
                 path=path,
                 before=before,
-                desired_content=updated.value,
+                desired_content=candidate.value,
                 desired_mode=before.mode,
                 changes=tuple(finding.rule_id for finding in findings),
                 source_states=tuple(bindings.values()),
@@ -212,65 +215,55 @@ class FlextInfraModReplacements:
         return r[bytes].ok(updated)
 
     @classmethod
-    def _finish_publication(
+    def _normalized_candidate(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
-    ) -> p.Result[bool]:
-        """Normalize imports, strip dead scaffolds, and format the changed paths.
+        path: Path,
+        before: bytes,
+        candidate: bytes,
+    ) -> p.Result[bytes]:
+        """Judge final normalized bytes before the atomic publisher has effects.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Accepted bytes, or the first normalization or Ruff delta failure.
 
         """
-        # AST rewrites can also leave imports whose last reference was removed.
-
-        with u.Infra.open_project(root) as rope_project:
-            normalized = u.Infra.normalize_imports(
-                rope_project,
-                file_paths=tuple(sorted(paths)),
-            )
+        baseline = u.Infra.lint_snapshot(
+            path,
+            root,
+            gates=(c.Infra.LINT,),
+            source=before.decode(c.DEFAULT_ENCODING),
+        )
+        normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            root,
+            path,
+            candidate.decode(c.DEFAULT_ENCODING),
+        )
         if normalized.failure:
-            return r[bool].from_failure(normalized)
-        stripped = cls._strip_dead_type_only_scaffolds(tuple(sorted(paths)))
-        if stripped.failure:
-            return r[bool].from_failure(stripped)
-        formatted = FlextInfraRuffFormatGate.format_files(root, tuple(sorted(paths)))
-        if formatted.failure:
-            return r[bool].from_failure(formatted)
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _strip_dead_type_only_scaffolds(paths: t.SequenceOf[Path]) -> p.Result[bool]:
-        """Remove ``if TYPE_CHECKING:`` scaffolds whose body an earlier pass emptied.
-
-        Import normalization drops the last real reference inside a type-only
-        block and a statement fix leaves ``pass`` behind; the scaffold then
-        carries no information. The block is removed and the ``TYPE_CHECKING``
-        subjects are left untouched; the following format gate stays the owner
-        of any syntax verdict.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        changed = False
-        for path in paths:
-            if not path.is_file():
-                continue
-            before = path.read_text(c.DEFAULT_ENCODING)
-            try:
-                module = cst.parse_module(before)
-            except cst.ParserSyntaxError:
-                continue
-            stripped = module.visit(FlextInfraDeadScaffold())
-            if stripped.code.count("TYPE_CHECKING") == 1:
-                stripped = stripped.visit(FlextInfraOrphanImport())
-            if stripped.code == before:
-                continue
-            path.write_text(stripped.code, c.DEFAULT_ENCODING)
-            changed = True
-        return r[bool].ok(value=changed)
+            return r[bytes].from_failure(normalized)
+        module = cst.parse_module(normalized.value)
+        stripped = module.visit(FlextInfraDeadScaffold())
+        if stripped.code.count("TYPE_CHECKING") == 1:
+            stripped = stripped.visit(FlextInfraOrphanImport())
+        final = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            root,
+            path,
+            stripped.code,
+        )
+        if final.failure:
+            return r[bytes].from_failure(final)
+        introduced = u.Infra.lint_new_errors(
+            baseline,
+            u.Infra.lint_snapshot(
+                path, root, gates=(c.Infra.LINT,), source=final.value
+            ),
+        )
+        if introduced:
+            return r[bytes].fail(
+                f"mod introduced Ruff findings in {path}: "
+                + "\n".join(line for lines in introduced.values() for line in lines),
+            )
+        return r[bytes].ok(final.value.encode(c.DEFAULT_ENCODING))
 
 
 __all__: list[str] = ["FlextInfraModReplacements"]

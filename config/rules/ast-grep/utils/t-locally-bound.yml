@@ -7,6 +7,9 @@
 id: t-locally-bound
 language: python
 rule:
-  any:
-    - pattern: from $$$MODULE import t
-    - pattern: from $$$MODULE import $$$SOURCE as t
+  all:
+    - any:
+        - pattern: from $$$MODULE import t
+        - pattern: from $$$MODULE import $$$SOURCE as t
+    - inside:
+        kind: module

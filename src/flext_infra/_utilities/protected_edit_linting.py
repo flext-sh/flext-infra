@@ -10,6 +10,7 @@ import concurrent.futures
 import difflib
 import os
 import sys
+from collections import Counter
 from collections.abc import MutableMapping
 from itertools import islice
 from pathlib import Path
@@ -291,6 +292,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
             *cls._workspace_tool_command(template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
+        if tool_name == c.Infra.RUFF:
+            command = (*command, "--output-format", "concise")
         if (
             tool_name == c.Infra.PYREFLY
             and (project_config := command_cwd / c.PYPROJECT_FILENAME).is_file()
@@ -441,6 +444,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_cwd: Path,
         tool_name: str,
         template: t.StrSequence,
+        source: str | None = None,
     ) -> m.Infra.LintGateResult:
         """Run one lint gate and return a validated result model.
 
@@ -455,6 +459,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             tool_name=tool_name,
             template=template,
         )
+        if source is not None:
+            cmd = (
+                *tuple(item for item in cmd if item != str(py_file)),
+                "--stdin-filename",
+                str(py_file),
+                "-",
+            )
         environment = dict(cls._command_env())
         if tool_name == c.Infra.RUFF:
             environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
@@ -466,6 +477,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             options=m.Cli.ProcessOptions(
                 env=environment,
                 remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                input_data=source,
             ),
             timeout=cls._gate_deadline(tool_name),
         )
@@ -524,14 +536,31 @@ class FlextInfraUtilitiesProtectedEditLinting:
         workspace: Path,
         *,
         gates: t.StrSequence | None = None,
+        source: str | None = None,
     ) -> t.Infra.LintSnapshot:
         """Run selected lint tools on *py_file*, concurrent and content-cached.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.
 
+        Raises:
+            ValueError: If the source is provided but the selected lint tools do not include Ruff.
         """
         selected_tools = cls._selected_lint_tools(gates)
+        if source is not None:
+            if tuple(entry[0] for entry in selected_tools) != (c.Infra.RUFF,):
+                msg = "source lint snapshots require the Ruff lint gate"
+                raise ValueError(msg)
+            return cls._lint_snapshot_from_results((
+                cls._run_lint_gate(
+                    py_file=py_file,
+                    workspace=workspace,
+                    command_cwd=cls._command_cwd(py_file, workspace),
+                    tool_name=selected_tools[0][0],
+                    template=selected_tools[0][1],
+                    source=source,
+                ),
+            ))
         if not selected_tools:
             return {}
 
@@ -599,32 +628,22 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Only lint errors introduced relative to *before*.
 
         """
-        return {
-            tool: added
-            for tool, lines in after.items()
-            if (
-                added := [
-                    line
-                    for line in lines
-                    if (
-                        normalized
-                        := FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            line,
-                        )
-                    )
-                    and normalized
-                    not in {
-                        FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            item,
-                        )
-                        for item in before.get(tool, [])
-                        if FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            item,
-                        )
-                    }
-                ]
-            )
-        }
+        introduced: t.Infra.LintSnapshot = {}
+        normalize = FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line
+        for tool, lines in after.items():
+            remaining = Counter(normalize(line) for line in before.get(tool, ()))
+            added: list[str] = []
+            for line in lines:
+                identity = normalize(line)
+                if not identity:
+                    continue
+                if remaining[identity]:
+                    remaining[identity] -= 1
+                else:
+                    added.append(line)
+            if added:
+                introduced[tool] = added
+        return introduced
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProtectedEditLinting"]

@@ -30,7 +30,12 @@ class FlextInfraUtilitiesCodemodRules:
     """Resolve universal, runtime-transitive, and local ast-grep rule layers."""
 
     @classmethod
-    def codemod_rule_plan(cls, root: Path) -> p.Result[m.Infra.CodemodRulePlan]:
+    def codemod_rule_plan(
+        cls,
+        root: Path,
+        *,
+        rule_ids: t.StrSequence | None = None,
+    ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
         Every call reads the current rule files; parsing is reused only for
@@ -76,7 +81,47 @@ class FlextInfraUtilitiesCodemodRules:
         local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
         if local_config.is_file():
             providers.append((f"{root_name}:local", local_config))
-        return cls._compose(tuple(providers), root_name, runtime_closure)
+        composed = cls._compose(tuple(providers), root_name, runtime_closure)
+        if composed.failure or rule_ids is None:
+            return composed
+        if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "codemod rule selection requires non-empty exact rule IDs",
+            )
+        selected = frozenset(rule_ids)
+        if len(selected) != len(rule_ids):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "duplicate codemod rule IDs in selection",
+            )
+        plan = composed.value
+        unknown = selected.difference(rule.id for rule in plan.rules)
+        if unknown:
+            return r[m.Infra.CodemodRulePlan].fail(
+                "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
+            )
+        rulesets = tuple(
+            m.Infra.CodemodRuleset(
+                provider=ruleset.provider,
+                config=ruleset.config,
+                rule_ids=tuple(
+                    rule_id for rule_id in ruleset.rule_ids if rule_id in selected
+                ),
+                fixable_rule_ids=tuple(
+                    rule_id
+                    for rule_id in ruleset.fixable_rule_ids
+                    if rule_id in selected
+                ),
+            )
+            for ruleset in plan.rulesets
+            if selected.intersection(ruleset.rule_ids)
+        )
+        return r[m.Infra.CodemodRulePlan].ok(
+            m.Infra.CodemodRulePlan(
+                provider_order=tuple(ruleset.provider for ruleset in rulesets),
+                rules=tuple(rule for rule in plan.rules if rule.id in selected),
+                rulesets=rulesets,
+            ),
+        )
 
     @staticmethod
     def codemod_rule_filter(rule_ids: t.StrSequence) -> str:

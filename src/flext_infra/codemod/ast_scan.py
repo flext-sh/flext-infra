@@ -5,6 +5,8 @@ cascade and the sed-by-list cascade from the rules tree (``config/rules/ast``
 patterns plus ``config/rules/mod/sed.yaml``). Scan-only by default; ``--apply``
 drives both cascades to a verified fixed point with exact receipts. Rope
 phases, the enforcement component, and the lint gates belong to ``mod``.
+``--rules`` selects exact CSV AST IDs only, retaining the full governed corpus;
+text and semantic callbacks are not executed in that mode.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -20,10 +22,16 @@ from flext_cli import cli
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
     """Run the ast-grep cascade and the sed-by-list cascade of the rules tree."""
+
+    rules: str | None = m.Field(
+        default=None,
+        description="Exact comma-separated AST rule IDs; excludes text and callbacks",
+    )
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
@@ -52,16 +60,43 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"ast: output format {self.output_format!r} is not supported; "
                 "no scan or rewrite executed",
             )
-        planned = u.Infra.codemod_rule_plan(self.repository_root)
+        rule_ids = (
+            tuple(rule_id.strip() for rule_id in self.rules.split(","))
+            if self.rules is not None
+            else None
+        )
+        planned = u.Infra.codemod_rule_plan(self.repository_root, rule_ids=rule_ids)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
         rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
         if not self.effective_dry_run:
-            return self._execute_apply(self.repository_root, rules)
+            return self._execute_apply(self.repository_root, rules, rule_ids=rule_ids)
         ast_report = FlextInfraModGateEngine.scan(
             self.repository_root,
             fix=False,
+            rule_ids=rule_ids,
         ).unwrap()
+        if rule_ids is not None:
+            for entry in ast_report.entries:
+                cli.display_text(
+                    f"ast: {entry.rule_id} {entry.file.as_posix()} "
+                    f"[{entry.text!r}] "
+                    f"{'actionable' if entry.actionable else 'detection-only'}",
+                )
+            cli.display_text(
+                f"ast: selected {len(planned.value.rules)} exact rule(s) from "
+                f"{len(planned.value.rulesets)} provider(s); "
+                f"{ast_report.findings} finding(s) "
+                f"({ast_report.actionable} actionable); "
+                "text phases=0 semantic callbacks=0; corpus=full",
+            )
+            if ast_report.findings:
+                return r[t.Cli.ResultValue].fail(
+                    f"{ast_report.findings} selected ast-grep finding(s) "
+                    f"({ast_report.actionable} actionable, "
+                    f"{ast_report.detection_only} detection-only)",
+                )
+            return r[t.Cli.ResultValue].ok(value=True)
         text_report = FlextInfraModTextGateEngine.scan(
             self.repository_root,
             fix=False,
@@ -102,6 +137,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cls,
         root: Path,
         rules: t.SequenceOf[Path],
+        *,
+        rule_ids: t.StrSequence | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades while retaining accepted progress.
 
@@ -111,13 +148,46 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         """
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
-        current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        return cls._converge(root, current)
+        before = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        current = (
+            FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids).unwrap()
+            if rule_ids is not None
+            else before
+        )
+        outcome = cls._converge(root, current, rule_ids=rule_ids)
+        if rule_ids is None:
+            return outcome
+        after = FlextInfraModGateEngine.scan(root, fix=False)
+        if after.failure:
+            return r[t.Cli.ResultValue].fail(
+                f"ast: whole-catalog after scan failed: {after.error}; "
+                f"selected apply: {outcome.error if outcome.failure else 'fixed point'}",
+            )
+        deltas = FlextInfraRefactorViolationsSweep.rule_deltas(before, after.value)
+        cli.display_text(
+            f"ast: whole-catalog before={before.findings} after={after.value.findings}; "
+            "text phases=0 semantic callbacks=0; corpus=full",
+        )
+        for delta in deltas:
+            cli.display_text(
+                f"ast: whole-catalog {delta.repository} {delta.rule_id} "
+                f"before={delta.before} after={delta.after} "
+                f"introduced={delta.introduced}",
+            )
+        if outcome.failure:
+            return outcome
+        if any(delta.introduced for delta in deltas):
+            return r[t.Cli.ResultValue].fail(
+                "ast: selected apply introduced whole-catalog finding occurrences",
+            )
+        return outcome
 
     @staticmethod
     def _converge(
         root: Path,
         current: m.Infra.ModScanReport,
+        *,
+        rule_ids: t.StrSequence | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 
@@ -147,8 +217,21 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
-            FlextInfraModGateEngine.scan(root, fix=True).unwrap()
-            current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            applied = FlextInfraModGateEngine.scan(root, fix=True, rule_ids=rule_ids)
+            if applied.failure:
+                return r[t.Cli.ResultValue].from_failure(applied)
+            scanned = FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids)
+            if scanned.failure:
+                return r[t.Cli.ResultValue].from_failure(scanned)
+            current = scanned.value
+        if rule_ids is not None:
+            if current.findings:
+                return r[t.Cli.ResultValue].fail(
+                    f"ast: selected fixed point retains {current.findings} finding(s) "
+                    f"({current.detection_only} detection-only)",
+                )
+            cli.display_text("ast: selected AST fixed point verified")
+            return r[t.Cli.ResultValue].ok(value=True)
         text = FlextInfraModTextGateEngine.scan(
             root,
             fix=False,

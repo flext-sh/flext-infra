@@ -32,30 +32,34 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
         """
         checked = u.Cli.run(
             [
-                "ruff",
+                u.Infra.lint_commands(path, repository_root, gates=(c.Infra.LINT,))[0][
+                    1
+                ][0],
                 "check",
                 *config.Infra.codegen.make.ruff.lint_fix,
                 "--select",
-                "I,W",
+                "I,F401,W",
                 "--stdin-filename",
                 str(path),
                 "-",
             ],
-            cwd=repository_root,
+            cwd=u.Infra.project_root(path) or repository_root,
             options=m.Cli.ProcessOptions(input_data=source),
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         return checked.flat_map(
             lambda output: u.Cli.run(
                 [
-                    "ruff",
+                    u.Infra.lint_commands(path, repository_root, gates=(c.Infra.LINT,))[
+                        0
+                    ][1][0],
                     "format",
                     *config.Infra.codegen.make.ruff.format_apply,
                     "--stdin-filename",
                     str(path),
                     "-",
                 ],
-                cwd=repository_root,
+                cwd=u.Infra.project_root(path) or repository_root,
                 options=m.Cli.ProcessOptions(input_data=output.stdout),
                 timeout=c.Infra.TIMEOUT_SHORT,
             ).map(lambda formatted: formatted.stdout),

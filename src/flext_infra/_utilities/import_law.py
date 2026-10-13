@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
+from typing import Literal
 
 from flext_infra import c, config, t
 from flext_infra._utilities import (
@@ -87,25 +88,41 @@ class FlextInfraUtilitiesImportLaw:
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
 
     @staticmethod
+    def import_module_role(module: str) -> Literal["layer0", "family", "consumer"]:
+        """Classify a module from the canonical singleton and family vocabulary.
+
+        Layer-zero declarations cannot depend on their own namespace, even
+        through a typing guard. Family assembly may retain canonical private
+        imports; it cannot consume the facade it produces.
+        """
+        stems = tuple(part.lstrip("_") for part in module.split(".")[1:])
+        if any(
+            stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)) for stem in stems
+        ):
+            return "layer0"
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+        if any(family.module in stems for family in families):
+            return "family"
+        return "consumer"
+
+    @staticmethod
     def import_direct_module(namespace_dir: Path, file_path: Path) -> bool:
         """Return whether one module keeps direct leaf imports.
 
         A settings/config module (any path segment starting with ``settings``
         or ``config``, with or without leading underscores) and a family
         ``base.py`` (a ``base.py`` inside a private ``_<family>/`` package)
-        import their own namespace only through direct leaf modules, so the
-        settings/config graph and the family bases never re-enter a lazy
-        package that is still initializing.
+        retain their upstream/direct providers instead of re-entering the
+        namespace's lazy root. This routing constraint does not exempt them
+        from import-boundary validation.
 
         Returns:
             Whether the module is exempt from root-alias and lazy routing.
 
         """
         relative = file_path.resolve().relative_to(namespace_dir.resolve())
-        stems = tuple(part.removesuffix(".py").lstrip("_") for part in relative.parts)
-        if any(
-            stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)) for stem in stems
-        ):
+        module = ".".join((namespace_dir.name, *relative.with_suffix("").parts))
+        if FlextInfraUtilitiesImportLaw.import_module_role(module) == "layer0":
             return True
         return (
             len(relative.parts) > 1

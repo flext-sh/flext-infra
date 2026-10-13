@@ -953,14 +953,20 @@ class FlextInfraModGateEngine:
         return r[m.Infra.ModScanReport].ok(cls._admitted(root, report, rules_by_id))
 
     @classmethod
-    def scan(cls, root: Path, *, fix: bool) -> p.Result[m.Infra.ModScanReport]:
+    def scan(
+        cls,
+        root: Path,
+        *,
+        fix: bool,
+        rule_ids: t.StrSequence | None = None,
+    ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
-        planned = u.Infra.codemod_rule_plan(root)
+        planned = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
         if planned.failure:
             return r[m.Infra.ModScanReport].from_failure(planned)
         plan = planned.value
@@ -974,6 +980,11 @@ class FlextInfraModGateEngine:
         )
         sys.stderr.flush()
         for ruleset in plan.rulesets:
+            sys.stderr.write(
+                f"mod: ast-grep provider={ruleset.provider} "
+                f"rules={','.join(ruleset.rule_ids)}\n",
+            )
+            sys.stderr.flush()
             ruleset_run = cls._ruleset_report(
                 root,
                 ruleset,

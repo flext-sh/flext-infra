@@ -10,8 +10,10 @@
 id: typing-list-generic
 language: python
 rule:
-  any:
-    - all:
+  all:
+    - matches: semantic-type-context
+    - any:
+      - all:
         - pattern:
             context: "def f(x: List[$T]) -> None: ..."
             selector: generic_type
@@ -21,7 +23,7 @@ rule:
             has:
               stopBy: end
               matches: list-imported-from-typing
-    - all:
+      - all:
         - pattern:
             context: "ALIAS = List[$T]"
             selector: subscript
@@ -31,6 +33,6 @@ rule:
             has:
               stopBy: end
               matches: list-imported-from-typing
-    - pattern:
-        context: "ALIAS = typing.List[$T]"
-        selector: subscript
+      - pattern:
+          context: "ALIAS = typing.List[$T]"
+          selector: subscript

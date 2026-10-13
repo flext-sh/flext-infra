@@ -1,0 +1,27 @@
+# Select an annotation or a PEP 695 alias RHS, not an enclosing statement's
+# executable value. The type field boundary preserves defaults, factories,
+# constructors and base expressions even when their statement has an annotation.
+id: semantic-type-context
+language: python
+rule:
+  inside:
+    kind: type
+    stopBy: end
+    inside:
+      any:
+        - kind: assignment
+          field: type
+        - kind: typed_parameter
+          field: type
+        - kind: typed_default_parameter
+          field: type
+        - kind: function_definition
+          field: return_type
+        - kind: type_alias_statement
+          field: right
+  # Calls embedded in an annotation evaluate values, not type arguments.
+  not:
+    inside:
+      kind: call
+      stopBy:
+        kind: type

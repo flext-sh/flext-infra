@@ -12,12 +12,119 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m
+from flext_infra import c, config, infra, m
 from tests import t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
     """Exercise consumer-driven owner projection only through ``u.Infra``."""
+
+    @pytest.mark.parametrize("width_delta", [0, 16])
+    @pytest.mark.parametrize("parenthesized", [False, True])
+    def test_published_import_width_preserves_mro_and_lazy_exports(
+        self,
+        tmp_path: Path,
+        width_delta: int,
+        *,
+        parenthesized: bool,
+    ) -> None:
+        """Publish unchanged-MRO facades under independently validated SSOT widths."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        width = config.Infra.tooling.tools.ruff.line_length
+        module = "owner_" + "x" * (width // 2)
+        owner = "Owner" + "X" * (width // 2)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        self._write(
+            package / family.directory / f"{module}.py",
+            f'class {owner}:\n    """Canonical behavior owner."""\n'
+            "    @classmethod\n    def read(cls) -> str:\n"
+            "        return cls.marker\n"
+            f'__all__ = ["{owner}"]\n',
+        )
+        binding = f"({owner})" if parenthesized else owner
+        facade = package / c.Infra.UTILITIES_PY
+        self._write(
+            facade,
+            '"""Public utility facade."""\n\n'
+            f"from {package.name}.{family.directory}.{module} import {binding}\n\n\n"
+            f'class Utilities({owner}):\n    """Compose the canonical owner."""\n\n'
+            '    marker = "facade"\n\n\n'
+            'u = Utilities\n\n__all__ = ["Utilities", "u"]\n',
+        )
+        policy = config.Infra.model_dump(by_alias=True)
+        policy["tooling"]["tools"]["ruff"]["line-length"] = width + width_delta
+        validated = config.Infra.model_validate(policy)
+        script = (
+            "from pathlib import Path\n"
+            "from flext_infra import u\n"
+            "from tests import tm, u as test_u\n"
+            f"root = Path({str(root)!r})\n"
+            f"package = Path({str(package)!r})\n"
+            f"facade = Path({str(facade)!r})\n"
+            "from importlib import import_module\n"
+            f"before = import_module({(package.name + '.utilities')!r}).u\n"
+            "expected = tuple(item.__name__ for item in before.__mro__)\n"
+            "assert before.read() == 'facade'\n"
+            "rendered = tm.not_none(u.Infra.render_utility_facade(package))\n"
+            "tm.ok(u.Cli.atomic_write_text_file(facade, rendered))\n"
+            "assert u.Infra.render_utility_facade(package) == rendered\n"
+            "tm.ok(test_u.Tests.materialize_lazy_init(\n"
+            "    test_u.Tests.create_lazy_init_service(root)))\n"
+            "assert u.Infra.render_utility_facade(package) == rendered\n"
+            "print(repr(expected))\n"
+        )
+        environment = {
+            "PYTHONPATH": str(Path(__file__).resolve().parents[3])
+            + ":"
+            + str(package.parent),
+            "FLEXT_CONFIG_INFRA": validated.model_dump_json(by_alias=True),
+        }
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env=environment),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        consumer = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u\n"
+                        "assert u.read() == 'facade'\n"
+                        "print(repr(tuple(item.__name__ for item in u.__mro__)))\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env=environment),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
+        tm.that(consumer.stdout, eq=result.stdout)
+        checked = tm.ok(
+            u.Cli.run_raw(
+                (
+                    c.Infra.RUFF,
+                    c.Infra.CHECK,
+                    "--no-fix",
+                    "--config",
+                    str(Path(__file__).resolve().parents[3] / c.PYPROJECT_FILENAME),
+                    "--line-length",
+                    str(validated.tooling.tools.ruff.line_length),
+                    str(facade),
+                    str(package / c.Infra.INIT_PY),
+                ),
+                cwd=root,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(checked.outcome),
+            eq=True,
+            msg=checked.stdout + checked.stderr,
+        )
 
     @staticmethod
     def _write(path: Path, source: str) -> None:

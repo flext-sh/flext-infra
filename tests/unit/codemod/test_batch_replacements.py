@@ -149,6 +149,43 @@ class TestsFlextInfraBatchReplacements:
         invalid = report.model_copy(update={"entries": (finding,)})
         tm.fail(FlextInfraModReplacements.publish(root, invalid))
 
+    @pytest.mark.parametrize(
+        ("original", "replacement", "accepted"),
+        [
+            (b"value = before\n", "1", True),
+            (b"before = 1\nvalue = before\n", "after", False),
+            (b"value = before\nvalue = missing\n", "1\n\n# shifted", True),
+            (b"value = before\nvalue = before\n", "another_missing", False),
+            (b"before = missing\n", "after = missing\npeer", False),
+        ],
+    )
+    def test_ruff_occurrences_judge_normalized_candidate_before_publication(
+        self,
+        tmp_path: Path,
+        original: bytes,
+        replacement: str,
+        *,
+        accepted: bool,
+    ) -> None:
+        """Rule reductions and line shifts pass; new occurrence identities fail."""
+        root = u.Tests.git_repository(tmp_path)
+        (root / "pyproject.toml").write_text(
+            "[tool.ruff.lint]\nselect = ['F821']\n",
+        )
+        path = root / "subject.py"
+        report = self._report(path, original)
+        finding = report.entries[0].model_copy(update={"replacement": replacement})
+        result = FlextInfraModReplacements.publish(
+            root,
+            report.model_copy(update={"entries": (finding,)}),
+        )
+        tm.that(result.success, eq=accepted)
+        if accepted:
+            tm.that(path.read_bytes(), ne=original)
+        else:
+            tm.that(result.error, has="F821")
+            tm.that(path.read_bytes(), eq=original)
+
     @staticmethod
     def test_emptied_statement_publishes_formatter_clean_file(
         tmp_path: Path,

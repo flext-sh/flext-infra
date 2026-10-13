@@ -10,8 +10,10 @@
 id: typing-dict-generic
 language: python
 rule:
-  any:
-    - all:
+  all:
+    - matches: semantic-type-context
+    - any:
+      - all:
         - pattern:
             context: "def f(x: Dict[$K, $V]) -> None: ..."
             selector: generic_type
@@ -21,7 +23,7 @@ rule:
             has:
               stopBy: end
               matches: dict-imported-from-typing
-    - all:
+      - all:
         - pattern:
             context: "ALIAS = Dict[$K, $V]"
             selector: subscript
@@ -31,6 +33,6 @@ rule:
             has:
               stopBy: end
               matches: dict-imported-from-typing
-    - pattern:
-        context: "ALIAS = typing.Dict[$K, $V]"
-        selector: subscript
+      - pattern:
+          context: "ALIAS = typing.Dict[$K, $V]"
+          selector: subscript

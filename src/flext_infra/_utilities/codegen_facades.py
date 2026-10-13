@@ -15,12 +15,16 @@ from typing import Literal, override
 from libcst import (
     Arg,
     ClassDef,
+    Comma,
     CSTTransformer,
     ImportFrom,
     ImportStar,
+    LeftParen,
     Module,
     Name,
-    SimpleStatementLine,
+    ParenthesizedWhitespace,
+    RightParen,
+    SimpleWhitespace,
     parse_expression,
     parse_module,
 )
@@ -590,29 +594,36 @@ class FlextInfraUtilitiesCodegenFacades:
 
                 Returns:
                     The original import or its parenthesized equivalent.
-
-                Raises:
-                    TypeError: If wrapping does not produce a from-import.
                 """
                 if (
                     isinstance(updated_node.names, ImportStar)
-                    or updated_node.lpar is not None
+                    or "\n" in module.code_for_node(original_node)
                     or len(module.code_for_node(original_node))
                     <= config.Infra.tooling.tools.ruff.line_length
                 ):
                     return updated_node
-                prefix = module.code_for_node(updated_node).split(" import ", 1)[0]
-                names = "".join(
-                    f"    {module.code_for_node(alias).rstrip(', ')},\n"
-                    for alias in updated_node.names
+                return updated_node.with_changes(
+                    lpar=LeftParen(
+                        whitespace_after=ParenthesizedWhitespace(
+                            last_line=SimpleWhitespace("    "),
+                        ),
+                    ),
+                    names=tuple(
+                        alias.with_changes(
+                            comma=Comma(
+                                whitespace_after=ParenthesizedWhitespace(
+                                    last_line=SimpleWhitespace(
+                                        "    "
+                                        if index < len(updated_node.names) - 1
+                                        else "",
+                                    ),
+                                ),
+                            ),
+                        )
+                        for index, alias in enumerate(updated_node.names)
+                    ),
+                    rpar=RightParen(),
                 )
-                statement = parse_module(f"{prefix} import (\n{names})\n").body[0]
-                if isinstance(statement, SimpleStatementLine) and isinstance(
-                    statement.body[0], ImportFrom
-                ):
-                    return statement.body[0]
-                message = "Facade import wrapping did not produce a from-import"
-                raise TypeError(message)
 
         return module.visit(WrapImports()).code
 

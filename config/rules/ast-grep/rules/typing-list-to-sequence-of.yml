@@ -20,9 +20,6 @@
 id: typing-list-missing-t-import
 language: python
 severity: error
-files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
 rule:
   all:
     - matches: typing-list-generic
@@ -49,9 +46,6 @@ message: >-
 id: typing-list-to-sequence-of
 language: python
 severity: error
-files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
 rule:
   all:
     - matches: typing-list-generic

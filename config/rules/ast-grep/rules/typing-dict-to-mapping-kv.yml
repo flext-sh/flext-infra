@@ -17,9 +17,6 @@
 id: typing-dict-missing-t-import
 language: python
 severity: error
-files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
 rule:
   all:
     - matches: typing-dict-generic
@@ -46,9 +43,6 @@ message: >-
 id: typing-dict-to-mapping-kv
 language: python
 severity: error
-files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
 rule:
   all:
     - matches: typing-dict-generic

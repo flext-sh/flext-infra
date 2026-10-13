@@ -38,7 +38,12 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         monkeypatch: pytest.MonkeyPatch,
         content: str,
     ) -> tuple[p.Result[m.Infra.CodegenPlan], Path, Path]:
-        """Plan a real declared template with isolated config and source inputs."""
+        """Plan a real declared template with isolated config and source inputs.
+
+        Returns:
+            The planning result, template source path, and destination path.
+
+        """
         entry = next(
             entry
             for entry in config.Infra.codegen.templates.entries

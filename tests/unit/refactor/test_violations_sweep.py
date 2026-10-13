@@ -14,6 +14,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import c, m, main, u
 from tests import tm
 
@@ -169,3 +171,59 @@ class TestsFlextInfraRefactorViolationsSweep:
             report.after.findings > report.before.findings,
             eq=True,
         )
+
+    @pytest.mark.parametrize("original_count", [1, 2])
+    def test_equal_or_lower_total_cannot_hide_introduced_occurrences(
+        self,
+        mod_workspace: Path,
+        original_count: int,
+    ) -> None:
+        """Replacing old findings with a new file is not monotonic reduction."""
+        root = mod_workspace
+        self._prepare(
+            root,
+            makefile=(
+                ".PHONY: fix fmt mod\n"
+                "fix:\n\t@rm original*.py\n"
+                "\t@printf 'marker = dict()\\n' > introduced.py\n"
+                "fmt mod:\n\t@true\n"
+            ),
+            local_rule=True,
+        )
+        for index in range(original_count):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / f"original{index}.py",
+                    "marker = dict()\n",
+                )
+            )
+        tm.that(self._sweep(root), ne=0)
+        report = self._receipt(root)
+        delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
+        tm.that(delta.before, eq=original_count)
+        tm.that(delta.after, eq=1)
+        tm.that(delta.resolved, eq=original_count)
+        tm.that(delta.introduced, eq=1)
+
+    def test_failed_repair_publishes_partial_after_evidence(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A failed verb stops repairs but does not erase its source effects."""
+        root = mod_workspace
+        self._prepare(
+            root,
+            makefile=(
+                ".PHONY: fix fmt mod\n"
+                "fix:\n\t@printf 'marker = dict()\\n' > introduced.py\n"
+                "\t@false\nfmt mod:\n\t@true\n"
+            ),
+            local_rule=True,
+        )
+        tm.that(self._sweep(root), ne=0)
+        report = self._receipt(root)
+        tm.that(report.failed_verb, eq=c.Infra.VIOLATIONS_SWEEP_REPAIR_VERBS[0])
+        tm.that(report.completed_verbs, eq=())
+        tm.that(bool(report.repair_error), eq=True)
+        delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
+        tm.that(delta.introduced, eq=1)

@@ -145,11 +145,25 @@ class FlextInfraModelsRefactor(
                 non_actionable_with_fix=report.non_actionable_with_fix,
             )
 
+    class ViolationsRuleDelta(m.ContractModel):
+        """Occurrence counts for one repository and exact rule identity."""
+
+        repository: Annotated[str, m.Field(description="Owning repository identity")]
+        rule_id: Annotated[str, m.Field(description="Exact detector rule identity")]
+        before: Annotated[t.NonNegativeInt, m.Field(description="Before occurrences")]
+        after: Annotated[t.NonNegativeInt, m.Field(description="After occurrences")]
+        resolved: Annotated[
+            t.NonNegativeInt, m.Field(description="Removed occurrences")
+        ]
+        persisted: Annotated[
+            t.NonNegativeInt, m.Field(description="Unchanged occurrences")
+        ]
+        introduced: Annotated[t.NonNegativeInt, m.Field(description="New occurrences")]
+
     class ViolationsSweepReport(m.ContractModel):
         """Before/after receipt of one violations sweep.
 
-        Published only when the always-reducing law held: no scan total
-        increased across the repair sequence.
+        Published for successful and partial failed repair sequences.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
@@ -171,9 +185,25 @@ class FlextInfraModelsRefactor(
             m.Field(description="Scan totals before the repair sequence"),
         ]
         after: Annotated[
-            FlextInfraModelsRefactor.ViolationsTotals,
+            FlextInfraModelsRefactor.ViolationsTotals | None,
             m.Field(description="Scan totals after the repair sequence"),
         ]
+        rule_deltas: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsRuleDelta],
+            m.Field(description="Occurrence-aware rule and repository comparisons"),
+        ] = ()
+        completed_verbs: Annotated[
+            t.StrSequence, m.Field(description="Successfully completed repair verbs")
+        ] = ()
+        failed_verb: Annotated[
+            str | None, m.Field(description="First failed repair verb")
+        ] = None
+        repair_error: Annotated[
+            str | None, m.Field(description="Original repair failure diagnostic")
+        ] = None
+        after_scan_error: Annotated[
+            str | None, m.Field(description="After scan failure diagnostic")
+        ] = None
 
         @property
         def increased_totals(self) -> t.StrSequence:
@@ -183,6 +213,8 @@ class FlextInfraModelsRefactor(
                 The resulting ``t.StrSequence``.
 
             """
+            if self.after is None:
+                return ()
             return tuple(
                 name
                 for name in (
