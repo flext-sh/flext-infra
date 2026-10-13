@@ -205,6 +205,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             "testmon-selection.json",
             "testmon-inventory.json",
             "run-accounting.json",
+            "diagnostics.json",
             "cache-before.json",
             "cache-after.json",
             "cache-policy.json",
@@ -215,6 +216,21 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             paths,
             has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
         )
+        tm.that(
+            paths,
+            has=[
+                f"{spec.make.gate_receipts_directory}/**/{spec.gate_original_receipt_filename}",
+                f"{spec.make.gate_receipts_directory}/**/check/**/*.sarif",
+                f"{spec.make.gate_receipts_directory}/**/check/**/*.md",
+                f".reports/tests/**/{spec.gate_original_receipt_filename}",
+            ],
+        )
+        for private_name in (
+            c.Infra.GATE_CAPTURE_START_FILENAME,
+            c.Infra.GATE_CAPTURE_RESULT_FILENAME,
+            "command.txt",
+        ):
+            tm.that(any(path.endswith(private_name) for path in paths), eq=False)
         publication = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         tm.that(
             paths,

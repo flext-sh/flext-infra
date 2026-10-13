@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
 
 from flext_infra.codemod import FlextInfraExtractDuplicatePhase
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 _SAFE_SOURCE = (
     "CONSTANT = 2\n"
@@ -139,7 +138,7 @@ class TestsFlextInfraExtractDuplicate:
         module.write_text(_SAFE_SOURCE, encoding=c.DEFAULT_ENCODING)
         report_dir = tmp_path / c.Infra.JSCPD_REPORT_DIRNAME
         report_dir.mkdir(parents=True)
-        report = {
+        report: t.JsonMapping = {
             "duplicates": [
                 {
                     "format": "python",
@@ -157,10 +156,10 @@ class TestsFlextInfraExtractDuplicate:
                     "tokens": 40,
                 },
             ],
-            "statistics": {},
+            "statistics": {"clones": 1},
         }
         (report_dir / c.Infra.JSCPD_REPORT_FILENAME).write_text(
-            json.dumps(report),
+            tm.ok(u.Cli.json_dumps(report)),
             encoding=c.DEFAULT_ENCODING,
         )
         edits = tm.ok(FlextInfraExtractDuplicatePhase.plan_project(tmp_path))

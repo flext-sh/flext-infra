@@ -16,6 +16,13 @@ from flext_cli import t
 class FlextInfraConfigVocabulary:
     """Canonical closed contracts required before project facades initialize."""
 
+    @unique
+    class GateAcceptancePolicy(StrEnum):
+        """Whether evidence claims clean quality or complete diagnostic execution."""
+
+        CLEAN = "clean"
+        COMPLETE_EXECUTION = "complete_execution"
+
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""
 

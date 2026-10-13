@@ -109,10 +109,14 @@ class FlextInfraUtilitiesGitignore:
         rendered = u.Cli.template_render(templates_root / entry.source, context)
         if rendered.failure or project_dir is None:
             return rendered
+        suffix = FlextInfraUtilitiesGitignore.gitignore_runtime_suffix(codegen)
+        if suffix.failure:
+            return r[str].from_failure(suffix)
         return FlextInfraUtilitiesGitignore.preserve_project_gitignore_blocks(
             rendered.value,
             project_dir,
             preserved_blocks,
+            runtime_suffix=suffix.value,
         )
 
     @staticmethod
@@ -120,6 +124,8 @@ class FlextInfraUtilitiesGitignore:
         rendered: str,
         project_dir: Path,
         blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        *,
+        runtime_suffix: str = "",
     ) -> p.Result[str]:
         """Compose declared external blocks without taking ownership of their lines.
 
@@ -144,12 +150,48 @@ class FlextInfraUtilitiesGitignore:
         content = snapshot.value.content
         if content is None:
             return r[str].ok(rendered)
-        return FlextInfraUtilitiesGitignore._compose_preserved_blocks(
-            rendered,
+        if runtime_suffix and not rendered.endswith(runtime_suffix):
+            error = ValueError(
+                f"generated gitignore lacks its declared runtime policy: {destination}",
+            )
+            return r[str].fail(str(error), exception=error)
+        prefix = rendered.removesuffix(runtime_suffix) if runtime_suffix else rendered
+        composed = FlextInfraUtilitiesGitignore._compose_preserved_blocks(
+            prefix,
             content,
             blocks,
             markers,
             destination,
+        )
+        if composed.failure or not runtime_suffix:
+            return composed
+        separator = "" if composed.value.endswith("\n\n") else "\n"
+        return r[str].ok(composed.value + separator + runtime_suffix)
+
+    @staticmethod
+    def gitignore_runtime_suffix(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+        """Render the final tracking policy from the same typed section owner.
+
+        Returns:
+            The exact final fragment, empty only when no local artifacts are declared.
+        """
+        sections = FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        if not sections:
+            return r[str].ok("")
+        entry = next(
+            (
+                item
+                for item in codegen.templates.entries
+                if item.destination == c.Infra.GITIGNORE
+            ),
+            None,
+        )
+        if entry is None or entry.source is None:
+            error = ValueError("gitignore rendering source is not declared")
+            return r[str].fail(str(error), exception=error)
+        return u.Cli.template_render(
+            FlextInfraUtilitiesGitignore.codegen_templates_root(codegen) / entry.source,
+            m.Infra.GitignoreRenderSpec(gitignore_sections=sections),
         )
 
     @staticmethod
@@ -324,19 +366,33 @@ class FlextInfraUtilitiesGitignore:
                     patterns=tuple(project_patterns),
                 ),
             )
+        sections.extend(
+            FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        )
+        return tuple(sections)
+
+    @staticmethod
+    def _runtime_gitignore_sections(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]:
+        """Declare final ignore precedence for precisely the runtime-local artifacts.
+
+        Returns:
+            The single derived policy section or an empty declaration.
+        """
         local_projections = tuple(
             f"/{item.path.as_posix()}"
             for item in sorted(codegen.managed_files, key=lambda item: item.path)
             if item.tracking == "runtime-local"
         )
         if local_projections:
-            sections.append(
+            return (
                 m.Infra.ScaffoldGitignoreSectionSpec(
                     name="RUNTIME: local projections (derived)",
                     patterns=local_projections,
                 ),
             )
-        return tuple(sections)
+        return ()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitignore"]

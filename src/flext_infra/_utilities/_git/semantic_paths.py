@@ -6,16 +6,122 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
+from flext_cli import u as cli_u
 from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
+from git.util import LockedFD
 
 from flext_infra import m, p, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPublishMixin
+from flext_infra._utilities._git.state_trees import (
+    FlextInfraUtilitiesGitStateTreesMixin,
+)
 
 
 class FlextInfraUtilitiesGitSemanticPathsMixin(
     FlextInfraUtilitiesGitSemanticPublishMixin,
 ):
     """Own semantic paths operations."""
+
+    @classmethod
+    def git_capture_index_file(
+        cls,
+        request: m.Infra.GitRelativePathRequest,
+    ) -> p.Result[m.Infra.GitIndexFileState]:
+        """Read one stage-zero entry and its immutable blob without staging.
+
+        Returns:
+            The exact preimage, or typed absence for an untracked file.
+        """
+        result_type = r[m.Infra.GitIndexFileState]
+        try:
+            repo = cls._repo(request.repo_root)
+            entries = FlextInfraUtilitiesGitStateTreesMixin._state_snapshot_index(
+                request.repo_root,
+                (Path(request.relative_path),),
+            )
+            if not entries:
+                return result_type.ok(
+                    m.Infra.GitIndexFileState(entry=None, content=None)
+                )
+            if len(entries) != 1:
+                msg = f"index artifact has unresolved stages: {request.relative_path}"
+                raise ValueError(
+                    msg,
+                )
+            entry = entries[0]
+            return result_type.ok(
+                m.Infra.GitIndexFileState(
+                    entry=entry,
+                    content=repo.odb.stream(bytes.fromhex(entry.oid)).read(),
+                ),
+            )
+        except (GitCommandError, OSError, ValueError, AssertionError) as exc:
+            return result_type.fail_op("capture managed artifact index entry", exc)
+
+    @classmethod
+    def git_retire_index_file(
+        cls,
+        request: m.Infra.GitIndexRetirementRequest,
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Retire an exact entry after reading it under Git's native write lock.
+
+        Only the index lock's unpublished replacement is discarded on failure.
+        No working file or previously published index generation is restored.
+
+        Returns:
+            A receipt after the captured path alone leaves the index.
+        """
+        result_type = r[m.Infra.GitBoolReport]
+        lock: LockedFD | None = None
+        committed = False
+        try:
+            relative = request.entry.path
+            if relative.is_absolute() or ".." in relative.parts:
+                msg = f"index artifact path must be relative: {relative}"
+                raise ValueError(msg)
+            repo = cls._repo(request.repo_root)
+            index = repo.index
+            lock = LockedFD(index.path)
+            descriptor = lock.open(write=True, stream=False)
+            entries = FlextInfraUtilitiesGitStateTreesMixin._state_snapshot_index(
+                request.repo_root,
+                (relative,),
+            )
+            if len(entries) != 1 or entries[0] != request.entry:
+                msg = f"index artifact changed after planning: {relative}"
+                raise ValueError(msg)
+            captured = cli_u.Cli.atomic_read_binary_file_state(
+                Path(index.path),
+                required=True,
+            )
+            if captured.failure:
+                return result_type.from_failure(captured)
+            if captured.value.content is None:
+                msg = "the locked index has no captured bytes"
+                raise ValueError(msg)
+            with os.fdopen(descriptor, "wb", closefd=False) as stream:
+                stream.write(captured.value.content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            FlextInfraUtilitiesGitStateTreesMixin._state_index_update(
+                request.repo_root,
+                (relative,),
+                (),
+                index_file=Path(f"{index.path}.lock"),
+            )
+            with Path(f"{index.path}.lock").open("rb") as produced:
+                os.fsync(produced.fileno())
+            lock.commit()
+            committed = True
+            return result_type.ok(m.Infra.GitBoolReport(value=True))
+        except (GitCommandError, OSError, ValueError, AssertionError) as exc:
+            return result_type.fail_op("retire managed artifact index entry", exc)
+        finally:
+            if lock is not None and not committed:
+                lock.rollback()
 
     @classmethod
     def git_init(

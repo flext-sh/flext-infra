@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from shlex import quote
 
@@ -174,11 +175,17 @@ class TestsFlextInfraGithubGateAttestation:
 
     @classmethod
     def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
-        """Consume the receipt automatically emitted by the original Make run."""
+        """Consume the receipt automatically emitted by the original Make run.
+
+        Returns:
+            The resulting ``m.Infra.GateAttestationCreateRequest``.
+        """
         receipts = root / config.Infra.codegen.make.gate_receipts_directory
-        previous = set(receipts.rglob("original-receipt.json"))
+        previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
         tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
-        published = set(receipts.rglob("original-receipt.json")) - previous
+        published = (
+            set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)) - previous
+        )
         assert len(published) == 1
         receipt = published.pop()
         evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
@@ -203,7 +210,7 @@ class TestsFlextInfraGithubGateAttestation:
         receipts = root / config.Infra.codegen.make.gate_receipts_directory
         evidence = tuple(
             record
-            for path in receipts.rglob("original-receipt.json")
+            for path in receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)
             if (
                 record := m.Infra.GateCommandEvidence.model_validate_json(
                     path.read_bytes(),
@@ -400,7 +407,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(interrupted.outcome.timed_out, eq=True)
         updated = source.model_copy(
             update={
-                "command": " ".join(command),
+                "command_digest": f"sha256:{cli_u.Cli.sha256_content(' '.join(command))}",
                 "process": m.Cli.ProcessOutcome.model_validate(
                     interrupted.outcome,
                     from_attributes=True,

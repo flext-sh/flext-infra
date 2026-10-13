@@ -39,7 +39,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
         cls,
         request: m.Infra.GateCaptureRequest,
     ) -> p.Result[m.Infra.GateCaptureReport]:
-        """Execute the original checker once and retain its native evidence."""
+        """Execute the original checker once and retain its native evidence.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.GateCaptureReport]``.
+        """
         root = request.repository_root.resolve()
         directory = config.Infra.codegen.make.gate_receipts_directory
         if directory.is_absolute() or ".." in directory.parts:
@@ -50,10 +54,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
         run_id = started.strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
         report_root = root / directory / run_id
         u.Cli.ensure_dir(report_root).unwrap()
-        before = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-        clean_before = before.success and not cls._repo(root).is_dirty(
-            untracked_files=False
-        )
         command = (
             sys.executable,
             "-m",
@@ -67,6 +67,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             "--reports-dir",
             str(report_root / c.Infra.VERB_CHECK),
         )
+        native_request = m.Infra.RunCommand.model_validate(
+            {"repository_root": root, "gates": request.gates},
+        )
+        started_capture = cls.git_begin_gate_capture(
+            root,
+            c.Infra.VERB_CHECK,
+            command,
+            m.Infra.GateExecutionIntent(requested_gates=tuple(native_request.gates)),
+        )
+        u.Cli.atomic_write_text_file(
+            report_root / c.Infra.GATE_CAPTURE_START_FILENAME,
+            started_capture.model_dump_json(round_trip=True) + "\n",
+        ).unwrap()
         native = u.Cli.run_to_file(
             command,
             report_root / "execution.log",
@@ -78,21 +91,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
         process = m.Cli.ProcessOutcome.model_validate(
             native.value, from_attributes=True
         )
-        after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-        issue: str | None = None
-        if before.failure:
-            issue = before.error
-        elif after.failure:
-            issue = after.error
-        elif (
-            not clean_before
-            or cls._repo(root).is_dirty(untracked_files=False)
-            or before.value.head_oid != after.value.head_oid
-            or before.value.origin_remote is None
-        ):
-            issue = (
-                "original gate candidate is dirty, changed or has no declared origin"
-            )
         report_paths = tuple(
             sorted(
                 (report_root / c.Infra.VERB_CHECK).rglob(
@@ -100,23 +98,92 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 )
             )
         )
-        reports = cls._captured_report_evidence(root, report_paths).unwrap()
+        reports = cls.git_capture_report_bindings(
+            root,
+            tuple(
+                (path, c.Infra.GateEvidenceReportKind.CHECK_SARIF)
+                for path in report_paths
+            ),
+        ).unwrap()
+        return cls.git_finish_gate_capture(
+            started_capture,
+            process,
+            reports,
+            report_root,
+        )
+
+    @classmethod
+    def git_begin_gate_capture(
+        cls,
+        root: Path,
+        gate: str,
+        command: t.StrTuple,
+        intent: m.Infra.GateExecutionIntent,
+    ) -> m.Infra.GateCaptureStart:
+        """Inspect the candidate before its original producer executes."""
+        identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        policy = c.Infra.GateAcceptancePolicy(
+            config.Infra.codegen.make.gate_acceptance_policy
+        )
+        return m.Infra.GateCaptureStart(
+            repository_root=root,
+            gate=gate,
+            command=command,
+            intent=intent,
+            repository=(identity.value.origin_remote if identity.success else None),
+            commit_sha=identity.value.head_oid if identity.success else None,
+            tree_sha=cls._repo(root).head.commit.tree.hexsha
+            if identity.success
+            else None,
+            dirty=(
+                cls._repo(root).is_dirty(untracked_files=False)
+                if identity.success
+                else None
+            ),
+            issue=identity.error if identity.failure else None,
+            context_digest=f"sha256:{
+                u.Cli.sha256_content(
+                    f'{sys.version}\n{platform.platform()}\n{gate}\n'
+                    + intent.model_dump_json(round_trip=True)
+                )
+            }",
+            policy=policy,
+            policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",
+            started_at=datetime.now(tz=UTC).isoformat(),
+        )
+
+    @classmethod
+    def git_finish_gate_capture(
+        cls,
+        started: m.Infra.GateCaptureStart,
+        process: m.Cli.ProcessOutcome,
+        reports: t.VariadicTuple[m.Infra.GateReportEvidence],
+        report_root: Path,
+    ) -> p.Result[m.Infra.GateCaptureReport]:
+        """Publish original native facts without rerunning or accepting the stage."""
+        root = started.repository_root
+        after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        issue = started.issue
+        if after.failure:
+            issue = after.error
+        elif (
+            started.dirty is not False
+            or cls._repo(root).is_dirty(untracked_files=False)
+            or started.commit_sha != after.value.head_oid
+            or started.tree_sha != cls._repo(root).head.commit.tree.hexsha
+            or started.repository != after.value.origin_remote
+            or started.repository is None
+        ):
+            issue = (
+                "original gate candidate is dirty, changed or has no declared origin"
+            )
         receipt: Path | None = None
         if issue is None:
-            captured = cls._captured_check_evidence(
-                root,
-                command,
-                before.value.head_oid,
-                before.value.origin_remote,
-                process,
-                reports,
-                started,
-                request.gates,
-            )
+            captured = cls._captured_gate_evidence(started, process, reports)
             if captured.failure:
                 issue = captured.error
             else:
-                receipt = report_root / "original-receipt.json"
+                receipt = report_root / c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
                 u.Cli.atomic_write_text_file(
                     receipt,
                     captured.value.model_dump_json(round_trip=True) + "\n",
@@ -140,19 +207,23 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
         )
         u.Cli.atomic_write_text_file(
-            report_root / "capture-result.json",
+            report_root / c.Infra.GATE_CAPTURE_RESULT_FILENAME,
             result.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
         return r[m.Infra.GateCaptureReport].ok(result)
 
     @staticmethod
-    def _captured_report_evidence(
+    def git_capture_report_bindings(
         root: Path,
-        paths: t.VariadicTuple[Path],
+        paths: t.VariadicTuple[t.Pair[Path, c.Infra.GateEvidenceReportKind]],
     ) -> p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]:
-        """Capture producer-owned report bytes through the atomic read owner."""
+        """Capture producer-owned report bytes through the atomic read owner.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]``.
+        """
         reports: list[m.Infra.GateReportEvidence] = []
-        for path in paths:
+        for path, kind in paths:
             content = (
                 u.Cli
                 .atomic_read_binary_file_state(path, required=True)
@@ -167,55 +238,57 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 m.Infra.GateReportEvidence(
                     path=path.relative_to(root),
                     digest=f"sha256:{u.Cli.sha256_bytes(content)}",
-                    kind=c.Infra.GateEvidenceReportKind.CHECK_SARIF,
+                    kind=kind,
                 )
             )
         return r[t.VariadicTuple[m.Infra.GateReportEvidence]].ok(tuple(reports))
 
     @classmethod
-    def _captured_check_evidence(
+    def _captured_gate_evidence(
         cls,
-        root: Path,
-        command: t.StrSequence,
-        commit_sha: str,
-        origin: str | None,
+        started: m.Infra.GateCaptureStart,
         process: m.Cli.ProcessOutcome,
         reports: t.VariadicTuple[m.Infra.GateReportEvidence],
-        started: datetime,
-        gates: str,
     ) -> p.Result[m.Infra.GateCommandEvidence]:
-        """Bind the original producer reports to the observed candidate."""
-        if len(reports) != 1:
+        """Bind the original producer reports to the observed candidate.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.GateCommandEvidence]``.
+        """
+        if not reports:
             return r[m.Infra.GateCommandEvidence].fail(
-                "original checker must publish exactly one invocation report",
+                "original producer has no complete report inventory",
             )
-        if origin is None:
-            return r[m.Infra.GateCommandEvidence].fail("candidate origin is absent")
-        policy = config.Infra.codegen.make.gate_acceptance_policy
+        if (
+            started.repository is None
+            or started.commit_sha is None
+            or started.tree_sha is None
+        ):
+            return r[m.Infra.GateCommandEvidence].fail(
+                "original candidate identity is absent"
+            )
         evidence = m.Infra.GateCommandEvidence(
-            gate=c.Infra.VERB_CHECK,
+            gate=started.gate,
             process=process,
             native_outcome=c.Infra.ToolOutcome.ERROR,
-            policy=policy,
-            policy_digest=f"sha256:{u.Cli.sha256_content(policy.value)}",
-            context_digest=f"sha256:{
-                u.Cli.sha256_content(
-                    f'{sys.version}\n{platform.platform()}\n{c.Infra.VERB_CHECK}\n{gates}'
-                )
-            }",
+            intent=started.intent,
+            policy=started.policy,
+            policy_digest=started.policy_digest,
+            context_digest=started.context_digest,
             reports=reports,
             result_digest=f"sha256:{
                 u.Cli.sha256_content(process.model_dump_json(round_trip=True))
             }",
-            started_at=started.isoformat(),
+            started_at=started.started_at,
             completed_at=datetime.now(tz=UTC).isoformat(),
-            cwd=str(root),
-            command=shlex.join(command),
-            repository=FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin),
-            commit_sha=commit_sha,
-            tree_sha=cls._repo(root).head.commit.tree.hexsha,
+            command_digest=f"sha256:{u.Cli.sha256_content(shlex.join(started.command))}",
+            repository=FlextInfraUtilitiesGitRemote.canonical_origin_remote(
+                started.repository
+            ),
+            commit_sha=started.commit_sha,
+            tree_sha=started.tree_sha,
         )
-        classified = cls._original_report_outcome(root, evidence)
+        classified = cls._original_report_outcome(started.repository_root, evidence)
         if classified.failure:
             return r[m.Infra.GateCommandEvidence].from_failure(classified)
         return r[m.Infra.GateCommandEvidence].ok(
@@ -295,8 +368,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 m.Infra.GateExecutionFacts.model_validate(
                     evidence.model_dump(
                         exclude={
-                            "command",
-                            "cwd",
                             "repository",
                             "commit_sha",
                             "tree_sha",
@@ -353,10 +424,13 @@ class FlextInfraUtilitiesGitAttestationMixin(
     ) -> p.Result[bool]:
         process = evidence.process
         if (
-            process.timed_out
+            evidence.result_digest
+            != f"sha256:{u.Cli.sha256_content(process.model_dump_json(round_trip=True))}"
+            or process.timed_out
             or process.forwarded_signal is not None
             or process.raw_return_code < 0
             or evidence.native_outcome == c.Infra.ToolOutcome.ERROR
+            or process.raw_return_code not in {0, 1}
             or (
                 evidence.native_outcome == c.Infra.ToolOutcome.CLEAN
                 and process.raw_return_code != 0
@@ -387,10 +461,21 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         evidence: m.Infra.GateExecutionFacts,
     ) -> p.Result[c.Infra.ToolOutcome]:
-        """Derive completeness from original typed producer reports."""
+        """Derive completeness from original typed producer reports.
+
+        Returns:
+            The resulting ``p.Result[c.Infra.ToolOutcome]``.
+        """
         result_type = r[c.Infra.ToolOutcome]
         try:
             if evidence.gate == c.Infra.VERB_CHECK:
+                if (
+                    not evidence.intent.requested_gates
+                    or evidence.intent.test_selection is not None
+                ):
+                    return result_type.fail(
+                        "checker proof has unrelated producer intent"
+                    )
                 source = cls._report_contract_bytes(
                     repo_root,
                     evidence.reports,
@@ -398,11 +483,37 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 )
                 if source.failure:
                     return result_type.from_failure(source)
-                return cls._check_report_outcome(
-                    m.Infra.SarifReport.model_validate_json(source.value),
-                )
+                report = m.Infra.SarifReport.model_validate_json(source.value)
+                if (
+                    report.properties is None
+                    or tuple(report.properties.requested_gates)
+                    != evidence.intent.requested_gates
+                ):
+                    return result_type.fail(
+                        "checker report differs from original requested gates"
+                    )
+                return cls._check_report_outcome(report)
             if evidence.gate == c.Infra.VERB_TEST:
-                return cls._pytest_report_outcome(repo_root, evidence.reports)
+                selection = evidence.intent.test_selection
+                if selection is None or evidence.intent.requested_gates:
+                    return result_type.fail("test proof has unrelated producer intent")
+                source = cls._report_contract_bytes(
+                    repo_root,
+                    evidence.reports,
+                    c.Infra.GateEvidenceReportKind.PYTEST_CONTEXT,
+                )
+                if source.failure:
+                    return result_type.from_failure(source)
+                context = m.Infra.PytestRunContext.model_validate_json(source.value)
+                if context.execution_mode != selection.execution_mode:
+                    return result_type.fail(
+                        "test report differs from original operation"
+                    )
+                return cls._pytest_report_outcome(
+                    repo_root,
+                    evidence.reports,
+                    evidence.process,
+                )
             return result_type.fail(
                 f"original report admission is not wired for stage: {evidence.gate}",
             )
@@ -460,6 +571,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         cls,
         repo_root: Path,
         reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        expected_process: m.Cli.ProcessOutcome,
     ) -> p.Result[c.Infra.ToolOutcome]:
         result_type = r[c.Infra.ToolOutcome]
         process_source = cls._report_contract_bytes(
@@ -488,7 +600,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             diagnostics_source.value
         )
         if (
-            process.timed_out
+            process != expected_process
+            or process.timed_out
             or process.forwarded_signal is not None
             or process.raw_return_code not in {0, 1}
             or accounting.inventory_count is None
@@ -639,7 +752,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     return r[m.Infra.GateAttestationReport].from_failure(existing)
                 if existing.value != predicate:
                     return r[m.Infra.GateAttestationReport].fail(
-                        f"existing immutable stage proof differs from original evidence: {tag}",
+                        f"existing immutable stage proof differs from original "
+                        f"evidence: {tag}",
                     )
                 return r[m.Infra.GateAttestationReport].ok(
                     cls._attestation_report(tag, predicate, reused=True),
@@ -809,7 +923,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             original = m.Infra.GateCommandEvidence.model_validate_json(source.value)
             public = m.Infra.GateExecutionFacts.model_validate(
                 original.model_dump(
-                    exclude={"command", "cwd", "repository", "commit_sha", "tree_sha"},
+                    exclude={"repository", "commit_sha", "tree_sha"},
                     round_trip=True,
                 ),
             )

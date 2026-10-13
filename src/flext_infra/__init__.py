@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from flext_infra._base_projects import FlextInfraProjectSelectionMixin
     from flext_infra._config import FlextInfraConfig, config
     from flext_infra._conform_wiring import FlextInfraConformWiring
+    from flext_infra._preview_wiring import FlextInfraPreviewWiring
     from flext_infra._pytest_collection import FlextInfraPytestCollection
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
@@ -79,6 +80,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraGitLanes",
     "FlextInfraGitService",
     "FlextInfraModels",
+    "FlextInfraPreviewWiring",
     "FlextInfraProjectSelectionMixin",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraPromoted",
@@ -149,6 +151,7 @@ install_lazy_exports(
         "FlextInfraGitLanes": ".git_lanes",
         "FlextInfraGitService": ".git",
         "FlextInfraModels": ".models",
+        "FlextInfraPreviewWiring": "._preview_wiring",
         "FlextInfraProjectSelectionMixin": "._base_projects",
         "FlextInfraProjectSelectionServiceBase": ".base_selection",
         "FlextInfraPromoted": ".promoted",

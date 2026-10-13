@@ -112,7 +112,8 @@ class FlextInfraModelsTransformers:
         declaration_imports: Annotated[
             frozenset[t.Pair[str, str]],
             m.Field(
-                description="External declaration receivers eligible for proven lower binding"
+                description="External declaration receivers eligible for proven lower "
+                "binding"
             ),
         ] = m.Field(default_factory=frozenset)
 

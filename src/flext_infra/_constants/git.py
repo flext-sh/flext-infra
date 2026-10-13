@@ -43,13 +43,14 @@ class FlextInfraConstantsGit:
         PYTEST_PROCESS = "pytest_process"
         PYTEST_ACCOUNTING = "pytest_accounting"
         PYTEST_DIAGNOSTICS = "pytest_diagnostics"
+        PYTEST_CONTEXT = "pytest_context"
 
-    @unique
-    class GateAcceptancePolicy(StrEnum):
-        """Whether the proof claims clean quality or complete diagnostic execution."""
-
-        CLEAN = "clean"
-        COMPLETE_EXECUTION = "complete_execution"
+    GATE_CAPTURE_START_FILENAME: ClassVar[str] = "capture-start.json"
+    "Private original invocation and candidate checkpoint."
+    GATE_ORIGINAL_RECEIPT_FILENAME: ClassVar[str] = "original-receipt.json"
+    "Public candidate and original native execution facts."
+    GATE_CAPTURE_RESULT_FILENAME: ClassVar[str] = "capture-result.json"
+    "Local original capture outcome, including causal issue details."
 
     # --- Index entry modes (git mode field, not POSIX st_mode) ---
 

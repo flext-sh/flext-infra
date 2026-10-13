@@ -20,6 +20,7 @@ from flext_infra._models._config.external_cache import (
 )
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
 def _shared_mypy_cache_spec() -> FlextInfraConfigModelsMake.MypyCacheSpec:
@@ -767,9 +768,9 @@ class FlextInfraConfigModelsMake(
             m.Field(description="Scratch root declared by every pytest verb"),
         ]
         gate_acceptance_policy: Annotated[
-            c.Infra.GateAcceptancePolicy,
+            FlextInfraConfigVocabulary.GateAcceptancePolicy,
             m.Field(description="Policy recorded by original gate execution receipts"),
-        ] = c.Infra.GateAcceptancePolicy.CLEAN
+        ] = FlextInfraConfigVocabulary.GateAcceptancePolicy.CLEAN
         gate_receipts_directory: Annotated[
             Path,
             m.Field(description="Repository-relative immutable execution receipts"),

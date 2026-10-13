@@ -186,36 +186,31 @@ class FlextInfraCodegenVscodeMixin:
         ):
             if values:
                 deltas[field] = values
-        validated = r[m.Infra.CodegenVscodeSpec].create_from_callable(
-            partial(
-                m.Infra.CodegenVscodeSpec.model_validate,
-                {
-                    **spec.model_dump(),
-                    "scalar_settings": {**spec.scalar_settings, **scalars},
-                    "list_settings": {
-                        **spec.list_settings,
-                        **{
-                            key: (*spec.list_settings[key], *value)
-                            for key, value in lists.items()
-                            if isinstance(value, list)
-                        },
-                    },
-                    "map_union_settings": {
-                        **spec.map_union_settings,
-                        **{
-                            key: {**spec.map_union_settings[key], **value}
-                            for key, value in maps.items()
-                            if isinstance(value, Mapping)
-                        },
-                    },
-                    "additional_settings": {**spec.additional_settings, **additional},
-                },
-            ),
-        )
+        delta = m.Infra.CodegenVscodeDeclarationDelta(values=deltas)
+        validated = cls.compose_vscode_delta(spec, delta)
         if validated.failure:
             return result_type.from_failure(validated)
-        return result_type.ok(
-            m.Infra.CodegenVscodeDeclarationDelta(values=deltas),
+        return result_type.ok(delta)
+
+    @staticmethod
+    def compose_vscode_delta(
+        spec: m.Infra.CodegenVscodeSpec,
+        delta: m.Infra.CodegenVscodeDeclarationDelta,
+    ) -> p.Result[m.Infra.CodegenVscodeSpec]:
+        """Compose a preview through the same merge primitive as strict YAML.
+
+        Returns:
+            The effective declaration after ordered mapping/list composition.
+        """
+        baseline = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            spec.model_dump(mode="json"),
+        )
+        merged = FlextStrictYamlConfigSource.merge_values(
+            dict(baseline),
+            dict(delta.values),
+        )
+        return r[m.Infra.CodegenVscodeSpec].create_from_callable(
+            partial(m.Infra.CodegenVscodeSpec.model_validate, merged),
         )
 
     @classmethod
@@ -280,7 +275,16 @@ class FlextInfraCodegenVscodeMixin:
         read_result = u.Cli.files_read_text(settings_path)
         if read_result.failure:
             return r[t.JsonMapping].from_failure(read_result)
-        parsed = u.Cli.json_parse(cls._normalize_jsonc(read_result.value))
+        return cls.parse_vscode_settings(read_result.value)
+
+    @classmethod
+    def parse_vscode_settings(cls, content: str) -> p.Result[t.JsonMapping]:
+        """Validate live or immutable index JSONC through the single editor parser.
+
+        Returns:
+            The validated editor document.
+        """
+        parsed = u.Cli.json_parse(cls._normalize_jsonc(content))
         if parsed.failure:
             return r[t.JsonMapping].from_failure(parsed)
         if not isinstance(parsed.value, Mapping):

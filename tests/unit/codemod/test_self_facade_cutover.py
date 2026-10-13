@@ -66,9 +66,11 @@ class TestsFlextInfraSelfFacadeCutover:
                 (
                     sys.executable,
                     "-c",
-                    f"from {package.name}._models.consumer import Consumer; "
-                    "assert Consumer().values == []; "
-                    "print('external declaration accepted')",
+                    (
+                        f"from {package.name}._models.consumer import Consumer; "
+                        "assert Consumer().values == []; "
+                        "print('external declaration accepted')"
+                    ),
                 ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(

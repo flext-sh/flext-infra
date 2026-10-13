@@ -10,7 +10,7 @@ import traceback
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenTransaction
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -409,6 +409,30 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             for repository in plan.repositories
             for path in destinations
         }
+        dependencies = {
+            path
+            for file in plan.files
+            if file.index_before is not None
+            for path in file.tracking_dependencies
+        }
+        if dependencies:
+            permitted = {
+                path
+                for repository in plan.repositories
+                for path in FlextInfraConfig.config_layer_paths_for_repository(
+                    (request.root.expanduser().resolve() / repository.path).resolve(),
+                    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                )[1:]
+            }
+            if (
+                surface is not c.Infra.CodegenConformSurface.RUNTIME_BINDINGS
+                or not dependencies.issubset(permitted)
+            ):
+                error = ValueError(
+                    "runtime tracking dependencies escape declared config layers"
+                )
+                return r[t.VariadicTuple[Path]].fail(str(error), exception=error)
+            expected_paths.update(dependencies)
         planned_paths = {file.path for file in plan.files}
         failed_paths = {Path(issue.file).resolve() for issue in plan.issues}
         unaccounted = expected_paths - planned_paths - failed_paths

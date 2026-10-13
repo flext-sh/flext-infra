@@ -27,7 +27,7 @@ import operator
 import textwrap
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from flext_infra import c, m, p, r, t, u
 
@@ -51,6 +51,7 @@ class FlextInfraExtractDuplicatePhase:
     )
     _MEMBER_INDENT: ClassVar[str] = "    "
     _BODY_INDENT: ClassVar[str] = "        "
+    _MIN_BLOCK_STATEMENTS: ClassVar[int] = 2
     _BUILTIN_NAMES: ClassVar[frozenset[str]] = frozenset(dir(builtins))
 
     @staticmethod
@@ -124,7 +125,7 @@ class FlextInfraExtractDuplicatePhase:
         cls,
         data: t.JsonMapping,
         project_root: Path,
-    ) -> MutableMapping[Path, t.SequenceOf[t.Quad[int, int, int, int]]]:
+    ) -> MutableMapping[Path, list[t.Quad[int, int, int, int]]]:
         """Group Python intra-file clone ranges by their owned module path.
 
         Returns:
@@ -216,10 +217,7 @@ class FlextInfraExtractDuplicatePhase:
             The rewritten source, or ``None`` when no reported span is safe.
 
         """
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            return None
+        tree = ast.parse(source)
         parents = cls._parent_map(tree)
         for span in spans:
             rewritten = cls._plan_span(source, tree, parents, span)
@@ -244,16 +242,16 @@ class FlextInfraExtractDuplicatePhase:
         first_start, first_end, second_start, second_end = span
         first_block = cls._statement_slice(tree, first_start, first_end)
         second_block = cls._statement_slice(tree, second_start, second_end)
-        if first_block is None or second_block is None or len(first_block) < 2:
+        if first_block is None or second_block is None:
             return None
-        if cls._dump(first_block) != cls._dump(second_block):
-            return None
-        if not cls._block_is_safe(first_block):
+        if not cls._pair_matches(first_block, second_block):
             return None
         owner = cls._enclosing_class(parents, first_block[0])
-        if owner is None or owner is not cls._enclosing_class(parents, second_block[0]):
-            return None
-        if not cls._class_is_module_level(parents, owner):
+        if (
+            owner is None
+            or owner is not cls._enclosing_class(parents, second_block[0])
+            or not cls._class_is_module_level(parents, owner)
+        ):
             return None
         bound = cls._block_bindings(first_block)
         if cls._bindings_escape(tree, first_block, bound):
@@ -261,14 +259,26 @@ class FlextInfraExtractDuplicatePhase:
         parameters = cls._free_parameters(tree, parents, first_block)
         if parameters is None:
             return None
-        return cls._render(
-            source,
-            span,
-            cls._helper_name(tree, first_block),
-            parameters,
-            owner,
-            first_block,
-        )
+        helper_name = cls._helper_name(tree, first_block)
+        return cls._render(source, span, (owner, helper_name, parameters), first_block)
+
+    @classmethod
+    def _pair_matches(
+        cls,
+        first_block: t.SequenceOf[ast.stmt],
+        second_block: t.SequenceOf[ast.stmt],
+    ) -> bool:
+        """Return whether two statement slices are one safe, repeatable block.
+
+        Returns:
+            Whether two statement slices are one safe, repeatable block.
+
+        """
+        if len(first_block) < cls._MIN_BLOCK_STATEMENTS:
+            return False
+        if cls._dump(first_block) != cls._dump(second_block):
+            return False
+        return cls._block_is_safe(first_block)
 
     # ------------------------------------------------------------------ scopes
 
@@ -300,19 +310,19 @@ class FlextInfraExtractDuplicatePhase:
         """
         best: tuple[ast.stmt, ...] | None = None
         for node in ast.walk(tree):
-            body = getattr(node, "body", None)
-            if (
-                not isinstance(body, list)
-                or not body
-                or not all(isinstance(child, ast.stmt) for child in body)
-            ):
+            raw = getattr(node, "body", None)
+            if not isinstance(raw, list) or not raw:
                 continue
-            for index, first in enumerate(body):
+            body = cast("list[ast.AST]", raw)
+            if not all(isinstance(child, ast.stmt) for child in body):
+                continue
+            statements = cast("list[ast.stmt]", body)
+            for index, first in enumerate(statements):
                 if first.lineno != start:
                     continue
-                for last_index in range(index, len(body)):
-                    if body[last_index].end_lineno == end:
-                        candidate = tuple(body[index : last_index + 1])
+                for last_index in range(index, len(statements)):
+                    if statements[last_index].end_lineno == end:
+                        candidate = tuple(statements[index : last_index + 1])
                         if best is None or len(candidate) <= len(best):
                             best = candidate
                         break
@@ -555,18 +565,21 @@ class FlextInfraExtractDuplicatePhase:
         cls,
         source: str,
         span: t.Quad[int, int, int, int],
-        helper_name: str,
-        parameters: tuple[tuple[str, str], ...],
-        owner: ast.ClassDef,
+        plan: t.Triple[
+            ast.ClassDef,
+            str,
+            t.VariadicTuple[t.Pair[str, str]],
+        ],
         block: t.SequenceOf[ast.stmt],
     ) -> str | None:
         """Render the helper and rewire both occurrences to a single call.
 
         Returns:
-            The rewritten source, or ``None`` when the rendered source does not
-            parse.
+            The rewritten source, or ``None`` when the block needs re-indenting
+            that would corrupt a multi-line literal.
 
         """
+        owner, helper_name, parameters = plan
         first_start, first_end, second_start, second_end = span
         lines = source.splitlines(keepends=True)
         first_raw = lines[first_start - 1]
@@ -604,10 +617,7 @@ class FlextInfraExtractDuplicatePhase:
         ):
             lines[start:end] = replacement
         rendered = "".join(lines)
-        try:
-            ast.parse(rendered)
-        except SyntaxError:
-            return None
+        ast.parse(rendered)
         return rendered
 
     @staticmethod
@@ -624,7 +634,7 @@ class FlextInfraExtractDuplicatePhase:
         """
         return any(
             isinstance(node, ast.Constant)
-            and isinstance(node.value, (str, bytes))
+            and isinstance(node.value, str)
             and "\n" in node.value
             for statement in block
             for node in ast.walk(statement)
@@ -725,9 +735,12 @@ class FlextInfraExtractDuplicatePhase:
         ):
             members = members[1:]
         if not members:
-            return int(owner.end_lineno or owner.lineno)
+            return owner.end_lineno or owner.lineno
         first = members[0]
-        decorators = getattr(first, "decorator_list", [])
+        decorators = cast(
+            "t.SequenceOf[ast.stmt]",
+            getattr(first, "decorator_list", ()),
+        )
         return min([first.lineno, *(item.lineno for item in decorators)]) - 1
 
     # ------------------------------------------------------------- scope facts
@@ -812,10 +825,7 @@ class FlextInfraExtractDuplicatePhase:
             Whether every name in an annotation resolves at module scope.
 
         """
-        try:
-            parsed = ast.parse(annotation, mode="eval")
-        except SyntaxError:
-            return False
+        parsed = ast.parse(annotation, mode="eval")
         return all(
             node.id in module_bound or node.id in cls._BUILTIN_NAMES
             for node in ast.walk(parsed)
@@ -840,12 +850,7 @@ class FlextInfraExtractDuplicatePhase:
         statements: t.SequenceOf[ast.stmt],
         bound: set[str],
     ) -> None:
-        """Accumulate top-level bindings without descending into definitions.
-
-        Returns:
-            None.
-
-        """
+        """Accumulate top-level bindings without descending into definitions."""
         for statement in statements:
             if isinstance(
                 statement,
@@ -860,16 +865,27 @@ class FlextInfraExtractDuplicatePhase:
                 )
                 continue
             bound.update(cls._statement_targets(statement))
-            nested = tuple(
-                child
-                for child in ast.iter_child_nodes(statement)
-                if isinstance(getattr(child, "body", None), list)
-            )
-            for child in nested:
-                cls._collect_module_bindings(
-                    tuple(item for item in child.body if isinstance(item, ast.stmt)),
-                    bound,
-                )
+            for body in cls._nested_bodies(statement):
+                cls._collect_module_bindings(body, bound)
+
+    @staticmethod
+    def _nested_bodies(statement: ast.stmt) -> t.SequenceOf[tuple[ast.stmt, ...]]:
+        """Return the nested statement bodies owned by one compound statement.
+
+        Returns:
+            The nested statement bodies owned by one compound statement.
+
+        """
+        bodies: list[tuple[ast.stmt, ...]] = []
+        for child in ast.iter_child_nodes(statement):
+            raw = getattr(child, "body", None)
+            if not isinstance(raw, list) or not raw:
+                continue
+            candidate = cast("list[ast.AST]", raw)
+            if not all(isinstance(item, ast.stmt) for item in candidate):
+                continue
+            bodies.append(tuple(cast("list[ast.stmt]", candidate)))
+        return tuple(bodies)
 
     @staticmethod
     def _statement_targets(statement: ast.stmt) -> t.SequenceOf[str]:

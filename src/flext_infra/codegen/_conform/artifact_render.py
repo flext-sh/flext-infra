@@ -181,10 +181,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             artifacts = resolved.value.artifacts
         else:
             artifacts = render_inputs.managed_artifacts.resolution.artifacts
+        suffix = u.Infra.gitignore_runtime_suffix(config.Infra.codegen)
+        if suffix.failure:
+            return r[str].from_failure(suffix)
         return u.Infra.preserve_project_gitignore_blocks(
             rendered,
             repository_root,
             artifacts.Gitignore.preserved_blocks,
+            runtime_suffix=suffix.value,
         )
 
     @classmethod
@@ -321,10 +325,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if artifact_context.failure:
             return r[str].from_failure(artifact_context)
-        rendered = u.Cli.template_render(
-            u.Infra.codegen_templates_root(render_inputs.codegen) / template_relpath,
-            artifact_context.value,
+        template_path = (
+            u.Infra.codegen_templates_root(render_inputs.codegen) / template_relpath
         )
+        rendered = u.Cli.template_render(template_path, artifact_context.value)
         if rendered.failure:
             return r[str].fail(
                 f"{failure_prefix}"
@@ -336,6 +340,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             template_relpath=template_relpath,
             destination=destination,
             failure_prefix=failure_prefix,
+            template_source=template_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
 
     @staticmethod
@@ -345,6 +350,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         template_relpath: Path,
         destination: str,
         failure_prefix: str = "",
+        template_source: str | None = None,
     ) -> p.Result[str]:
         """Refuse to publish a successful render that produced no content.
 
@@ -356,11 +362,19 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         consumer must declare the layer or retire the selection, and the
         generator must fail loud instead of writing the empty file.
 
+        A template that is empty at its source declares a static artifact with
+        no content of its own (the PEP 561 ``py.typed`` marker); there is no
+        condition to render away, so its empty render is the declared content.
+        Only a non-empty source that rendered empty is the declaration error
+        this guard exists to catch.
+
         Returns:
             The resulting ``p.Result[str]``.
 
         """
         if content.strip():
+            return r[str].ok(content)
+        if template_source is not None and not template_source.strip():
             return r[str].ok(content)
         return r[str].fail(
             f"{failure_prefix}"
@@ -635,6 +649,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return r[p.Model].ok(
             m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
+                gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
                 make_profile=target.make_profile,
                 gascity_enabled=target.gascity_enabled,
                 repository_branch=branch,

@@ -79,7 +79,7 @@ class FlextInfraConfigModelsTemplates:
         """Editor configuration and the exact atomic inputs consulted by its owner."""
 
         spec: Annotated[
-            CodegenVscodeSpec,
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec,
             m.Field(description="Validated effective editor declaration"),
         ]
         sources: Annotated[

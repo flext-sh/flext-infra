@@ -27,6 +27,10 @@ class FlextInfraModelsCodegenRender:
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        gate_original_receipt_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public original native gate receipt filename"),
+        ]
         docs_report_filenames: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Structured docs reports CI dumps and uploads"),

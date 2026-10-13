@@ -12,7 +12,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_core import FlextStrictYamlConfigSource
+from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services import FlextInfraCodegenVscodeMixin
@@ -1073,6 +1074,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             {item.path: item for item in codegen.managed_files if item.runtime_binding},
             completed,
             vscode_spec=vscode_spec,
+            migrate_tracking=True,
         )
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
@@ -1086,6 +1088,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         completed: list[m.Infra.CodegenFilePlan],
         *,
         vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
+        migrate_tracking: bool = False,
     ) -> p.Result[bool]:
         """Append a plan for every unrepresented governed artifact in the mapping.
 
@@ -1124,17 +1127,32 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     exception=current.exception,
                 )
                 continue
-            decided = self._decide_governed_plan(
-                m.Infra.CodegenGovernedPlanRequest(
-                    root=root,
-                    relative=relative,
-                    governed=governed,
-                    current=current.value,
-                    runtime_root=runtime_root,
-                    vscode_spec=vscode_spec,
-                    source_states=target.vscode_sources,
-                ),
+            request = m.Infra.CodegenGovernedPlanRequest(
+                root=root,
+                relative=relative,
+                governed=governed,
+                current=current.value,
+                runtime_root=runtime_root,
+                vscode_spec=vscode_spec,
+                source_states=target.vscode_sources,
             )
+            if (
+                migrate_tracking
+                and governed.tracking == "runtime-local"
+                and governed.owner == c.Infra.CODEGEN_OWNER_VSCODE
+                and runtime_root is None
+            ):
+                migrated = self._vscode_tracking_plans(request)
+                if migrated.failure:
+                    self._record_file_failure(
+                        path,
+                        migrated.error or "cannot plan runtime tracking migration",
+                        exception=migrated.exception,
+                    )
+                    continue
+                completed.extend(migrated.value)
+                continue
+            decided = self._decide_governed_plan(request)
             if decided.failure:
                 self._record_file_failure(
                     path,
@@ -1146,6 +1164,165 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if decided_present and decided_value is not None:
                 completed.append(decided_value)
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _vscode_tracking_plans(
+        cls,
+        request: m.Infra.CodegenGovernedPlanRequest,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan portable declarations before the captured editor index retirement.
+
+        Returns:
+            Source declaration plans followed by the runtime-local binding plan.
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        captured = u.Infra.git_capture_index_file(
+            m.Infra.GitRelativePathRequest(
+                repo_root=request.root,
+                relative_path=request.relative.as_posix(),
+            ),
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        state = captured.value
+        if state.entry is None:
+            binding = cls._vscode_merged_plan(request)
+            if binding.failure:
+                return result_type.from_failure(binding)
+            return result_type.ok(
+                () if binding.value[0] is None else (binding.value[0],),
+            )
+        if state.content is None:
+            error = ValueError(
+                f"captured editor index blob is absent: {request.relative}"
+            )
+            return result_type.fail(str(error), exception=error)
+        decoded = r[str].create_from_callable(
+            lambda: state.content.decode(c.DEFAULT_ENCODING),
+        )
+        if decoded.failure:
+            return result_type.from_failure(decoded)
+        indexed = FlextInfraCodegenVscodeMixin.parse_vscode_settings(decoded.value)
+        live = FlextInfraCodegenVscodeMixin.parse_vscode_settings(request.current)
+        if indexed.failure:
+            return result_type.from_failure(indexed)
+        if live.failure:
+            return result_type.from_failure(live)
+        loaded = FlextInfraCodegenVscodeMixin.load_vscode_inputs(request.root)
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        project = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
+            request.root,
+            indexed.value,
+            spec=loaded.value.spec,
+        )
+        if project.failure:
+            return result_type.from_failure(project)
+        composed = FlextInfraCodegenVscodeMixin.compose_vscode_delta(
+            loaded.value.spec,
+            project.value,
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        local = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
+            request.root,
+            live.value,
+            spec=composed.value,
+        )
+        if local.failure:
+            return result_type.from_failure(local)
+        effective = FlextInfraCodegenVscodeMixin.compose_vscode_delta(
+            composed.value,
+            local.value,
+        )
+        if effective.failure:
+            return result_type.from_failure(effective)
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            request.root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        declarations: list[m.Infra.CodegenFilePlan] = []
+        for path, delta in zip(layers[1:], (project.value, local.value), strict=True):
+            if not delta.values:
+                continue
+            if path.resolve() == layers[0].resolve():
+                error = ValueError(
+                    "project editor declarations share the distributed defaults: "
+                    f"{path}",
+                )
+                return result_type.fail(str(error), exception=error)
+            planned = cls._vscode_declaration_plan(request.root, path, delta)
+            if planned.failure:
+                return result_type.from_failure(planned)
+            declarations.append(planned.value)
+        binding = cls._vscode_merged_plan(
+            request.model_copy(
+                update={
+                    "vscode_spec": effective.value,
+                    "source_states": loaded.value.sources,
+                },
+            ),
+        )
+        if binding.failure:
+            return result_type.from_failure(binding)
+        if binding.value[0] is None:
+            error = ValueError(f"runtime binding plan is absent: {request.relative}")
+            return result_type.fail(str(error), exception=error)
+        return result_type.ok(
+            (
+                *declarations,
+                binding.value[0].model_copy(
+                    update={
+                        "tracking": request.governed.tracking,
+                        "index_before": state.entry,
+                        "tracking_dependencies": tuple(
+                            plan.path for plan in declarations
+                        ),
+                    },
+                ),
+            ),
+        )
+
+    @classmethod
+    def _vscode_declaration_plan(
+        cls,
+        root: Path,
+        path: Path,
+        delta: m.Infra.CodegenVscodeDeclarationDelta,
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Merge captured project YAML through its canonical config primitive.
+
+        Returns:
+            A guarded source plan preserving all unrelated configuration values.
+        """
+        result_type = r[m.Infra.CodegenFilePlan]
+        captured = cls.file_plan(root, path.relative_to(root).as_posix(), "")
+        if captured.failure:
+            return result_type.from_failure(captured)
+        before = captured.value.before
+        payload: t.JsonMapping = {}
+        if isinstance(before, m.Cli.AtomicFileState) and before.content is not None:
+            decoded = r[str].create_from_callable(
+                lambda: before.content.decode(c.DEFAULT_ENCODING),
+            )
+            if decoded.failure:
+                return result_type.from_failure(decoded)
+            parsed = u.Cli.yaml_parse(decoded.value)
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+            payload = parsed.value
+        merged = FlextStrictYamlConfigSource.merge_values(
+            dict(payload),
+            {"Infra": {"codegen": {"vscode": dict(delta.values)}}},
+        )
+        serialized = u.Cli.yaml_dump_str(merged)
+        if serialized.failure:
+            return result_type.from_failure(serialized)
+        return result_type.ok(
+            captured.value.model_copy(
+                update={"desired_content": serialized.value.encode(c.DEFAULT_ENCODING)},
+            ),
+        )
 
     @classmethod
     def _governed_entry_reachable(
@@ -1223,6 +1400,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     update={
                         "owner": request.governed.owner,
                         "policy": request.governed.policy,
+                        "tracking": request.governed.tracking,
                     },
                 ),
                 True,
@@ -1300,6 +1478,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     update={
                         "owner": request.governed.owner,
                         "policy": request.governed.policy,
+                        "tracking": request.governed.tracking,
                     },
                 ),
                 True,

@@ -343,6 +343,9 @@ class FlextInfraCodegenStaging:
                     project=file_plan.project,
                     before=before,
                     replacement=replacement,
+                    tracking=file_plan.tracking,
+                    index_before=file_plan.index_before,
+                    tracking_dependencies=file_plan.tracking_dependencies,
                 ),
             )
         return result_type.ok(tuple(publications))
