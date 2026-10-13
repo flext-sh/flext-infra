@@ -51,7 +51,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[int]``.
 
         """
-        runtime_root = u.Infra.git_repository_root(
+        runtime_root = u.Infra.git_runtime_root(
             m.Infra.GitRepoRequest(repo_root=repository_root),
         )
         if runtime_root.failure:
@@ -402,25 +402,21 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[int].from_failure(document)
         # TOML arrays are wire arrays; JSON mode preserves the strict tuple contract.
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
-        observed = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
+        observed = FlextInfraWorkspaceDetector.load_repository_ref(repository_root)
         if observed.failure:
             return r[int].from_failure(observed)
-        workspace = observed.value
+        repository = observed.value
         members = {
-            repository.distribution: repository
-            for repository in workspace.subprojects
-            if repository.package
+            repository.distribution: repository.model_copy(
+                update={"path": Path()},
+            ),
         }
-        if workspace.repository.package or any(
-            item.name == workspace.repository.distribution
+        if not repository.package and not any(
+            item.name == repository.distribution
             and (item.source.editable is not None or item.source.directory is not None)
             for item in locked.package
         ):
-            members[workspace.repository.distribution] = (
-                workspace.repository.model_copy(
-                    update={"path": Path()},
-                )
-            )
+            members.clear()
         # Local sources outside the declared member set must fail, not disappear.
         required = set(members)
         required.update(

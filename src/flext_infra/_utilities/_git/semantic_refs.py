@@ -8,14 +8,30 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_cli import u
 from git import BadName, GitCommandError
 
-from flext_infra import c, m, p, r
+from flext_infra import c, config, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesGitWorktreePatchMixin
 
 
 class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatchMixin):
     """Own semantic refs operations."""
+
+    @classmethod
+    def git_runtime_root(
+        cls,
+        request: m.Infra.GitRepoRequest,
+    ) -> p.Result[m.Infra.GitRootReport]:
+        """Select this checkout in CI and its containing workspace locally.
+
+        Returns:
+            The sole owner of this invocation's locks and physical environment.
+        """
+        policy = config.Infra.codegen.make.ci
+        if u.env_value(policy.variable).strip() == policy.value:
+            return cls.git_show_toplevel(request)
+        return cls.git_repository_root(request)
 
     @classmethod
     def git_verify_lane(

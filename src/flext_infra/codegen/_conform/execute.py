@@ -240,7 +240,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+        if (
+            c.Infra.CodegenConformMode(request.mode)
+            is c.Infra.CodegenConformMode.APPLY
+            and self.surface_contract(
+                c.Infra.CodegenConformSurface(request.what),
+            ).complete_governed
+        ):
             migrated = self._migrate_repository_declarations(request)
             if migrated.failure and (
                 migrated.error_code != c.Infra.ToolOutcome.ERROR.value

@@ -373,6 +373,45 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             visit(root)
         return tuple(ordered)
 
+    @classmethod
+    def workspace_dependency_order(
+        cls,
+        root: Path,
+        repositories: t.SequenceOf[m.Infra.RepositoryRef],
+    ) -> t.SequenceOf[m.Infra.RepositoryRef]:
+        """Order declared packages by their actual runtime dependency graph.
+
+        Returns:
+            Dependencies before consumers, with stable distribution-name ties.
+
+        Raises:
+            ValueError: If distributions collide or the runtime graph is cyclic.
+        """
+        by_name = {
+            canonicalize_name(repository.distribution): repository
+            for repository in repositories
+        }
+        if len(by_name) != len(repositories):
+            msg = "workspace declares duplicate distribution identities"
+            raise ValueError(msg)
+        graph = {
+            name: tuple(
+                dependency
+                for dependency in cls.project_dependency_names_from_payload(
+                    u.Cli.toml_read_json(
+                        root / repository.path / c.PYPROJECT_FILENAME,
+                    ).unwrap(),
+                )
+                if dependency in by_name
+            )
+            for name, repository in by_name.items()
+        }
+        order = cls.dependency_order(
+            tuple(sorted(by_name)),
+            dependencies=lambda name: graph[name],
+        )
+        return tuple(by_name[name] for name in order)
+
     @staticmethod
     def dependency_waves(
         edges: Mapping[str, t.StrSequence],
