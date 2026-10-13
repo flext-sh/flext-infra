@@ -56,11 +56,13 @@ class FlextInfraStagedPackage:
                 before.path
                 for before in inputs
                 if before.path.suffix in {".py", ".pyi"}
-                # Read-only evidence may live outside the workspace (an
-                # installed family package inside a standalone consumer's
-                # venv, the rule-fixture scratch): only rewrite targets
-                # need a pinned rope layout.
+                # Read-only evidence needs no pinned rope layout: the
+                # rule-fixture scratch lives outside the workspace, and a
+                # standalone consumer's venv lives INSIDE its checkout —
+                # installed packages are exactly the site-packages segment
+                # (platform convention, not a declared list).
                 and before.path.is_relative_to(workspace)
+                and "site-packages" not in before.path.parts
             ),
         ))
         for path in source_paths:
