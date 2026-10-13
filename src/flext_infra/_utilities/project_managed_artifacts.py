@@ -52,7 +52,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         selected = tuple(dict.fromkeys(layers if include_local else layers[:2]))
         if any(projection.path not in selected[1:] for projection in projections):
-            error = ValueError("projected codegen declaration is outside elected layers")
+            error = ValueError(
+                "projected codegen declaration is outside elected layers"
+            )
             return result_type.fail(str(error), exception=error)
         snapshots: list[m.Cli.AtomicFileState] = []
         for path in elected.value:
@@ -72,7 +74,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             if observed.failure:
                 return result_type.from_failure(observed)
             if observed.value != before:
-                error = ValueError(f"codegen configuration changed during read: {before.path}")
+                error = ValueError(
+                    f"codegen configuration changed during read: {before.path}"
+                )
                 return result_type.fail(str(error), exception=error)
         return result_type.ok(
             m.Infra.CodegenInputs(spec=loaded.value, sources=tuple(snapshots)),

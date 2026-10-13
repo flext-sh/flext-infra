@@ -85,10 +85,6 @@ class FlextInfraPytestClock:
         Args:
             profile: The real profiler whose current stats are recorded.
             output: The destination elected by the profiling invocation.
-
-        Raises:
-            OSError: If ``(current.st_dev, current.st_ino) != (identity.st_dev,
-                identity.st_ino)``; or if ``failure is None``.
         """
         descriptor, name = tempfile.mkstemp(
             dir=output.parent,

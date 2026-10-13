@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import FlextStrictYamlConfigSource
-from flext_infra import FlextInfraConfig, c, config, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -41,68 +41,61 @@ class FlextInfraCodegenVscodeMixin:
         Returns:
             Library defaults overlaid by this project's and local declarations.
         """
-        return cls.load_vscode_inputs(repository_root).map(lambda inputs: inputs.spec)
+        return u.Infra.load_codegen_inputs(repository_root).map(
+            lambda inputs: inputs.spec.vscode,
+        )
 
     @classmethod
-    def load_vscode_inputs(
+    def vscode_local_declaration_delta(
         cls,
         repository_root: Path,
-    ) -> p.Result[m.Infra.CodegenVscodeInputs]:
-        """Capture and validate exactly the configuration inputs of one binding.
+        indexed: t.JsonMapping,
+        live: t.JsonMapping,
+        *,
+        spec: m.Infra.CodegenVscodeSpec,
+    ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
+        """Preserve only actual local changes after removing topology bindings.
 
         Returns:
-            Typed configuration and verified atomic input snapshots.
+            Local declarations without promoting unchanged indexed defaults.
         """
-        result = r[m.Infra.CodegenVscodeInputs]
-        elected = r[tuple[Path, ...]].create_from_callable(
-            partial(
-                FlextInfraConfig.config_sources_for_repository,
-                repository_root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-            ),
+        result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
+        substitutions = cls._runtime_substitutions(repository_root, None)
+        if substitutions.failure:
+            return result_type.from_failure(substitutions)
+        unbind = tuple(
+            (effective, declared)
+            for declared, effective in substitutions.value
+            if effective != declared
         )
-        if elected.failure:
-            return result.from_failure(elected)
-        snapshots: list[m.Cli.AtomicFileState] = []
-        for path in elected.value:
-            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if observed.failure:
-                return result.from_failure(observed)
-            snapshots.append(observed.value)
-        loaded = r[m.Infra.CodegenVscodeSpec].create_from_callable(
-            partial(cls._repository_vscode_spec, elected.value),
-        )
-        if loaded.failure:
-            return result.from_failure(loaded)
-        for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
-            if observed.failure:
-                return result.from_failure(observed)
-            if observed.value != before:
-                error = ValueError(
-                    f"editor configuration changed during read: {before.path}"
-                )
-                return result.fail(str(error), exception=error)
-        return result.ok(
-            m.Infra.CodegenVscodeInputs(spec=loaded.value, sources=tuple(snapshots)),
-        )
-
-    @staticmethod
-    def _repository_vscode_spec(
-        sources: tuple[Path, ...],
-    ) -> m.Infra.CodegenVscodeSpec:
-        """Validate the selected namespace without mutating global configuration.
-
-        Returns:
-            The typed editor settings for the declared repository.
-        """
-        source = FlextStrictYamlConfigSource(
-            FlextInfraConfig,
-            yaml_file=sources,
-            deep_merge=True,
-        )
-        codegen = u.Cli.json_walk_path(source(), ("Infra", "codegen"))
-        return m.Infra.CodegenConfigSpec.model_validate(codegen).vscode
+        original = {
+            key: cls._bind_runtime_value(value, unbind)
+            for key, value in indexed.items()
+        }
+        current = {
+            key: cls._bind_runtime_value(value, unbind) for key, value in live.items()
+        }
+        retired = {
+            key
+            for key in original.keys() - current.keys()
+            if key not in spec.scalar_settings
+            and key not in spec.list_settings
+            and key not in spec.map_union_settings
+            and key not in spec.stripped_keys
+            and key not in cls._artifact_settings()
+        }
+        if retired:
+            error = ValueError(
+                "local editor deletions cannot be represented by configuration merge: "
+                + ", ".join(sorted(retired)),
+            )
+            return result_type.fail(str(error), exception=error)
+        changed = {
+            key: value
+            for key, value in current.items()
+            if key not in original or value != original[key]
+        }
+        return cls.vscode_declaration_delta(repository_root, changed, spec=spec)
 
     @classmethod
     def vscode_declaration_delta(
