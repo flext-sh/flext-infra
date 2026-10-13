@@ -298,8 +298,6 @@ export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_directory }}
 # a linked worktree) owns its runtime.
 ifneq ($(filter {{ make.ci.value }},$({{ make.ci.variable }})),)
 override REPOSITORY_ROOT := $(MAKEFILE_ROOT)
-else ifneq ($(GEN_INIT_ONLY),)
-override REPOSITORY_ROOT := $(MAKEFILE_ROOT)
 else
 override REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && if root=$$(git rev-parse --show-superproject-working-tree); then if [ -n "$$root" ]; then cd "$$root" && pwd -P; else pwd -P; fi; else status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; pwd -P; fi)
 ifneq ($(.SHELLSTATUS),0)
@@ -455,13 +453,7 @@ _builtin_require_upg_lock_owner:
 # behavior): the root dev group requests every declared package, member group
 # and extra; local setup binds declared members to their live editable sources,
 # while CI's --no-editable keeps the frozen builds. Attached projects inherit
-# this root's locks. Local source binding follows the complete frozen install.
-LOCAL_EDITABLE_FLAGS :=
-{% if make_profile == "workspace" %}
-ifneq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
-LOCAL_EDITABLE_FLAGS :={% if package %} --editable "$(PROJECT_ROOT)"{% endif %}{% for repository in workspace_repositories if repository.package and repository.editable %} --editable "$(PROJECT_ROOT)/{{ repository.path }}"{% endfor %}
-endif
-{% endif %}
+# this root's locks. Native UV source entries retain the declared editable policy.
 SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	trap 'if [ -n "$${FLEXT_SETUP_CREDENTIAL_STORE:-}" ]; then rm -f "$$FLEXT_SETUP_CREDENTIAL_STORE"; fi' EXIT; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
@@ -480,9 +472,6 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	fi; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"; \
-	if [ -n '$(LOCAL_EDITABLE_FLAGS)' ]; then \
-		$$credential_env $(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps $(LOCAL_EDITABLE_FLAGS); \
-	fi; \
 	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
 	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"; \
 	setup_scope="{{ 'all' if make_profile == 'workspace' else 'self' }}"; \
@@ -520,7 +509,7 @@ override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT P
 FLEXT_INFRA_SUBMODULE_SRC := $(RUNTIME_ROOT)/flext-infra/src
 ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 # Only this candidate's own sources are visible; dependencies stay installed.
-override PROJECT_INFRA_PYTHONPATH :=
+override PROJECT_INFRA_PYTHONPATH := $(MAKEFILE_ROOT)/src
 else
 override PROJECT_INFRA_PYTHONPATH := $(if $(wildcard $(FLEXT_INFRA_SUBMODULE_SRC)/flext_infra/.),$(FLEXT_INFRA_SUBMODULE_SRC),$(MAKEFILE_ROOT)/src)
 endif
@@ -533,7 +522,7 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # provisions its recorded versions; make audit owns the consistency verdict
 # and make upg owns repair. A missing lock remains a native error.
 # Native workspace selection installs every declared package.
-UV_SYNC_FLAGS := --all-extras --all-groups
+UV_SYNC_FLAGS := --all-extras --all-groups{% if make_profile == "workspace" %} --all-packages{% endif %}
 
 ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
@@ -813,7 +802,7 @@ endif
 # `upg` is the only recipe that resolves. Its bootstrap half ran
 # `mise lock --bump` (native resolution into the committed mise.lock) and
 # installed exactly that lock; this lifecycle upgrades every uv.lock (which
-# carries the generator itself), provisions the environment frozen from it,
+# carries the generator itself), provisions its environment frozen from it,
 # and conforms dependency floors. The floors land in the codegen SSOT, so
 # `gen` projects them into every pyproject and renders the managed tool
 # manifests (.mise.toml) of the upgraded generator. Only the producer half of
@@ -836,13 +825,10 @@ endif
 # metadata so a stale cached requires-dist can never block or skew the
 # resolution. Like `setup`, it runs the declared pre-/post-upg lifecycle
 # hooks, post-upg inside the activated environment.
-# Attached members retain independent locks but observe the physical root
-# environment. Resolve that root before frozen setup and floor observation,
-# then reconcile it again after member generation before activating hooks.
-# Final generation is followed by native reconciliation of every governed
-# independent lock from a fresh Make parse of the generated topology. The root
-# owns the shared install; attached-member hooks follow root convergence, never
-# precede another root generation that could invalidate their lock receipt.
+# Attached members delegate before this lifecycle starts: only their containing
+# root resolves locks or provisions the shared environment. Standalone checkouts
+# resolve their own declared branches. Native editable selection stays with
+# the declared UV sources; this lifecycle adds no second installer.
 # The producer half of `gen` publishes this Makefile. A recipe never names a
 # target after that point from a file it did not parse: when publication
 # changed the Makefile, the upgrade hands off to a fresh `make upg` that

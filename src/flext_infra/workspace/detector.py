@@ -579,31 +579,6 @@ class FlextInfraWorkspaceDetector(
         return result_type.ok(configured.value[0])
 
     @classmethod
-    def load_repository_ref(
-        cls,
-        repository_root: Path,
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Load this repository's identity without requiring member checkouts.
-
-        Returns:
-            The declared repository reconciled with native Git and PEP 621.
-        """
-        root = repository_root.expanduser().resolve()
-        observed = cls._local_repository_ref(root)
-        if observed.failure:
-            return r[m.Infra.RepositoryRef].from_failure(observed)
-        inputs = u.Infra.load_repository_declaration_inputs(root)
-        if inputs.failure:
-            return r[m.Infra.RepositoryRef].from_failure(inputs)
-        configured = cls._configured_repository_ref(
-            inputs.value.spec,
-            observed=observed.value,
-        )
-        if configured.failure:
-            return r[m.Infra.RepositoryRef].from_failure(configured)
-        return r[m.Infra.RepositoryRef].ok(configured.value[0])
-
-    @classmethod
     def load_workspace_spec(
         cls,
         repository_root: Path,

@@ -130,11 +130,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(repeated, eq=rendered)
 
-    def test_root_members_keep_portable_git_sources_of_any_family(
+    def test_root_members_use_local_path_sources_of_any_family(
         self,
         tmp_path: Path,
     ) -> None:
-        """The lock's declared Git graph does not require local member paths."""
+        """Local requirements use their declared native editable source policy."""
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
@@ -190,6 +190,13 @@ class TestsFlextInfraPyprojectConformTopologySources:
                     if workspace.repository.package
                     else {}
                 ),
+                **{
+                    ref.distribution: {
+                        "path": ref.path.as_posix(),
+                        "editable": ref.editable,
+                    }
+                    for ref in workspace.subprojects
+                },
             },
         )
         groups = u.Tests.toml_mapping(parsed.get("dependency-groups"))
@@ -340,11 +347,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             f"{provider.distribution}[feature]"
             in u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
-            eq=False,
+            eq=True,
         )
         tm.that(
-            provider.distribution in u.Tests.toml_mapping(uv.get("sources")),
-            eq=False,
+            u.Tests.toml_mapping(uv["sources"])[provider.distribution],
+            eq={"path": provider.path.as_posix(), "editable": provider.editable},
         )
         tm.that(
             tm.ok(
