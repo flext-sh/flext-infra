@@ -40,9 +40,10 @@ class FlextInfraUtilitiesRefactor:
         """
         return m.Infra.ViolationsTotals(
             findings=report.findings,
-            actionable=report.actionable,
-            detection_only=report.detection_only,
-            non_actionable_with_fix=report.non_actionable_with_fix,
+            **{
+                field: getattr(report, field)
+                for field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.values()
+            },
         )
 
     @staticmethod
@@ -53,7 +54,7 @@ class FlextInfraUtilitiesRefactor:
         inventory: tuple[tuple[str, str], ...] = (),
         repository_root: Path | None = None,
         projects: t.SequenceOf[Path] = (),
-        publication_chain: tuple[m.Infra.SemanticFilePlan, ...] | None = None,
+        publication_chain: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
     ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
         """Compare lexical occurrences, or prove module absence through publication.
 
@@ -72,54 +73,65 @@ class FlextInfraUtilitiesRefactor:
         ):
             msg = "rule comparison requires the same native engine"
             raise ValueError(msg)
-        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, bytes]] = {}
+        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]] = {}
+        sources: list[dict[Path, m.Cli.AtomicFileState]] = []
         if publication_chain is not None:
             if not isinstance(before, m.Infra.ModScanReport) or not isinstance(
                 after, m.Infra.ModScanReport
             ):
                 msg = "semantic correspondence requires native AST findings"
                 raise ValueError(msg)
-            for plan in publication_chain:
-                original, desired = plan.before.content, plan.desired_content
-                if (
-                    original is None
-                    or desired is None
-                    or plan.before.path != plan.path
-                    or plan.desired_mode != plan.before.mode
-                ):
-                    msg = f"invalid publication correspondence: {plan.path}"
+            catalog: dict[tuple[str, str], tuple[str | None, bool]] = {}
+            for report in (before, after):
+                if report.source_states is None:
+                    msg = "semantic correspondence lacks complete source inventory"
                     raise ValueError(msg)
-                previous = endpoints.get(plan.path)
-                if previous is not None and (
-                    previous[1] != original or previous[0].mode != plan.before.mode
-                ):
-                    msg = f"publication byte continuity broken: {plan.path}"
+                indexed: dict[Path, m.Cli.AtomicFileState] = {}
+                for state in report.source_states:
+                    if indexed.setdefault(state.path, state) != state:
+                        msg = f"scan inventory identity disagrees: {state.path}"
+                        raise ValueError(msg)
+                for entry in report.entries:
+                    key = (entry.repository, entry.rule_id)
+                    descriptor = (entry.catalog_digest, entry.module_absence)
+                    if (
+                        not entry.catalog_digest
+                        or catalog.setdefault(key, descriptor) != descriptor
+                    ):
+                        msg = f"native catalog correspondence changed: {key}"
+                        raise ValueError(msg)
+                    if (
+                        entry.source_state is None
+                        or indexed.get(entry.source_state.path) != entry.source_state
+                    ):
+                        msg = f"finding differs from complete scan inventory: {entry.file}"
+                        raise ValueError(msg)
+                sources.append(indexed)
+            for receipt in publication_chain:
+                path = receipt.before.path
+                previous = endpoints.get(path)
+                if previous is not None and previous[1] != receipt.before:
+                    msg = f"publication identity continuity broken: {path}"
                     raise ValueError(msg)
-                endpoints[plan.path] = (previous[0] if previous else plan.before, desired)
-            catalogs = [
-                {
-                    (entry.repository, entry.rule_id): (
-                        entry.catalog_digest, entry.module_absence
-                    )
-                    for entry in report.entries
-                }
-                for report in (before, after)
-            ]
-            for report, catalog in zip((before, after), catalogs, strict=True):
-                if any(
-                    catalog[entry.repository, entry.rule_id]
-                    != (entry.catalog_digest, entry.module_absence)
-                    for entry in report.entries
-                ):
-                    msg = "native rule occurrences disagree on catalog identity"
+                if receipt.replacement is None or receipt.replacement.path != path:
+                    msg = f"publication receipt is not an admitted destination: {path}"
                     raise ValueError(msg)
-            for key in catalogs[0].keys() & catalogs[1].keys():
-                if catalogs[0][key][0] is None or catalogs[0][key] != catalogs[1][key]:
-                    msg = f"native catalog correspondence changed: {key}"
+                endpoints[path] = (
+                    previous[0] if previous else receipt.before, receipt.replacement
+                )
+            for path in sources[0].keys() | sources[1].keys() | endpoints.keys():
+                original, final = endpoints.get(
+                    path, (sources[0].get(path), sources[0].get(path))
+                )
+                expected_before = (
+                    original if original is not None and original.content is not None else None
+                )
+                if sources[0].get(path) != expected_before or sources[1].get(path) != final:
+                    msg = f"publication source identity drift or unexplained removal: {path}"
                     raise ValueError(msg)
         proven: set[tuple[str, str]] = set()
         snapshots: list[list[tuple[str, str, str, str]]] = []
-        for side, report in enumerate((before, after)):
+        for report in (before, after):
             identities: list[tuple[str, str, str, str]] = []
             for entry in report.entries:
                 if isinstance(entry, m.Infra.ModScanFinding):
@@ -171,29 +183,6 @@ class FlextInfraUtilitiesRefactor:
                         or state.content[:end] != entry.text.encode(c.DEFAULT_ENCODING)
                     ):
                         msg = f"module occurrence is not the native root: {entry.file}"
-                        raise ValueError(msg)
-                    endpoint = endpoints.get(state.path)
-                    if endpoint is not None and (
-                        state != endpoint[0]
-                        if side == 0
-                        else state.content != endpoint[1]
-                        or state.mode != endpoint[0].mode
-                    ):
-                        msg = f"publication source drift: {entry.file}"
-                        raise ValueError(msg)
-                    peers = (
-                        candidate
-                        for candidate in (after if side == 0 else before).entries
-                        if isinstance(candidate, m.Infra.ModScanFinding)
-                        and candidate.repository == repository
-                        and candidate.rule_id == entry.rule_id
-                        and candidate.file == entry.file
-                    )
-                    if endpoint is None and any(
-                        candidate.source_state != state
-                        for candidate in peers
-                    ):
-                        msg = f"changed module lacks publication proof: {entry.file}"
                         raise ValueError(msg)
                     text = f"module-absence:{entry.catalog_digest}"
                     proven.add((repository, entry.rule_id))
@@ -669,9 +658,10 @@ class FlextInfraUtilitiesRefactor:
             root=root.resolve(),
             scope=tuple(publication.scope),
             findings=report.findings,
-            actionable=report.actionable,
-            detection_only=report.detection_only,
-            non_actionable_with_fix=report.non_actionable_with_fix,
+            **{
+                field: getattr(report, field)
+                for field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.values()
+            },
             totals_by_class=class_totals,
             totals_by_repository=dict(sorted(repository_totals.items())),
             totals_by_rule=dict(sorted(rule_totals.items())),

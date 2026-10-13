@@ -16,6 +16,7 @@ from flext_infra import c, config, m, p, r, settings, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -51,14 +52,7 @@ class FlextInfraCodemodSemanticApply:
         )
         original = cls._source_inventory(
             root,
-            m.Infra.ModScanReport(
-                findings=0,
-                actionable=0,
-                detection_only=0,
-                non_actionable_with_fix=0,
-                files=frozenset(),
-                entries=(),
-            ),
+            FlextInfraModGateEngine.recounted(()),
         )
         inputs = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
