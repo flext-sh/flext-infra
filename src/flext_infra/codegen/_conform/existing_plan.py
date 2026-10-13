@@ -1369,7 +1369,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             dict(payload),
             {"Infra": {"codegen": {"vscode": dict(delta.values)}}},
         )
-        serialized = u.Cli.yaml_dump_str(merged)
+        serialized = r[str].create_from_callable(
+            partial(u.Cli.yaml_dump_str, merged),
+        )
         if serialized.failure:
             return result_type.from_failure(serialized)
         return result_type.ok(

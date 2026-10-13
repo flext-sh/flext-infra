@@ -151,6 +151,66 @@ class TestsFlextInfraGithubGateAttestation:
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             assert report.digest == f"sha256:{digest}"
 
+    def test_signing_identity_reads_only_native_public_references(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Public identity queries preserve provenance without exporting key bytes."""
+        allowed = signed_repository_factory(tmp_path)
+        u.Tests.git_bootstrap(
+            tmp_path,
+            ("config", "gpg.ssh.allowedSignersFile", str(allowed)),
+        )
+        report = tm.ok(
+            u.Infra.git_signing_identity(
+                m.Infra.GitRepoRequest(repo_root=tmp_path),
+            )
+        )
+        tm.that(report.signing_format, eq="ssh")
+        tm.that(report.key_path, eq=tmp_path / "signing_key")
+        tm.that(report.allowed_signers_path, eq=allowed)
+        tm.that(report.public_fingerprint, eq=None)
+        tm.that(
+            tuple(item.key for item in report.observations),
+            eq=c.Infra.GIT_SIGNING_CONFIGURATION_KEYS,
+        )
+        for item in report.observations:
+            tm.that(item.scope, eq="local")
+            assert item.origin is not None
+            assert item.origin.startswith("file:")
+            tm.that(item.process.raw_return_code, eq=0)
+        encoded = report.model_dump_json(round_trip=True)
+        tm.that(encoded, lacks=["BEGIN OPENSSH PRIVATE KEY", '"value"'])
+        restored = m.Infra.GitSigningIdentityReport.model_validate_json(encoded)
+        tm.that(restored.key_path, eq=report.key_path)
+        tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
+
+    def test_signing_identity_does_not_open_missing_key_or_trust_files(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """A declared unavailable file remains a reference, never verified trust."""
+        signed_repository_factory(tmp_path)
+        missing_key = tmp_path / "unavailable-key"
+        missing_trust = tmp_path / "unavailable-trust"
+        for setting, path in (
+            ("user.signingkey", missing_key),
+            ("gpg.ssh.allowedSignersFile", missing_trust),
+        ):
+            u.Tests.git_bootstrap(tmp_path, ("config", setting, str(path)))
+        report = tm.ok(
+            u.Infra.git_signing_identity(
+                m.Infra.GitRepoRequest(repo_root=tmp_path),
+            )
+        )
+        tm.that(report.key_path, eq=missing_key)
+        tm.that(report.allowed_signers_path, eq=missing_trust)
+        tm.that(report.public_fingerprint, eq=None)
+        tm.that(missing_key.exists(), eq=False)
+        tm.that(missing_trust.exists(), eq=False)
+
     def test_dirty_candidate_still_executes_without_reusable_receipt(
         self,
         tmp_path: Path,

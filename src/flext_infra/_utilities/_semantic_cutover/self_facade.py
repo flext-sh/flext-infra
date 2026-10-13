@@ -31,6 +31,56 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
 ):
     """Reuse declared behavior discovery without delaying imports."""
 
+    @staticmethod
+    def _imported_utility_modules(source: str, path: Path) -> set[str]:
+        """Return the module names one source imports while electing ``u``.
+
+        Returns:
+            The absolute module names imported with a ``u`` facade alias.
+
+        """
+        return {
+            node.module
+            for node in ast.parse(source, filename=str(path)).body
+            if isinstance(node, ast.ImportFrom)
+            and node.module
+            and not node.level
+            and any(alias.name == c.Infra.FacadeFamily.U for alias in node.names)
+        }
+
+    @classmethod
+    def _classify_source(
+        cls,
+        root: Path,
+        path: Path,
+        source: str,
+        order: t.VariadicTuple[str],
+    ) -> tuple[Path, set[str], bool] | None:
+        """Classify one source into elected utility or declared external modules.
+
+        Returns:
+            The resolved path, its module names, and whether they are elected
+            self-utility modules; ``None`` when no module is recorded.
+
+        """
+        project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(root, path)
+        if project is None:
+            return None
+        namespace = FlextInfraUtilitiesImportLaw.import_namespace(project, path)
+        if namespace is None:
+            return None
+        layer = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
+        imported_modules = cls._imported_utility_modules(source, path)
+        if layer == order.index(c.Infra.FacadeFamily.U):
+            own_modules = imported_modules.intersection({namespace[0].name})
+            return (path.resolve(), own_modules, True) if own_modules else None
+        if layer <= order.index(c.Infra.FacadeFamily.M):
+            external_modules = imported_modules.difference({namespace[0].name})
+            return (
+                (path.resolve(), external_modules, False) if external_modules else None
+            )
+        return None
+
     @classmethod
     def _plan_self_facade_imports(
         cls,
@@ -41,31 +91,11 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         declarations: dict[Path, set[str]] = {}
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         for path, source in sources.items():
-            project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                root, path
-            )
-            if project is None:
+            classified = cls._classify_source(root, path, source, order)
+            if classified is None:
                 continue
-            namespace = FlextInfraUtilitiesImportLaw.import_namespace(project, path)
-            if namespace is None:
-                continue
-            layer = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
-            imported_modules = {
-                node.module
-                for node in ast.parse(source, filename=str(path)).body
-                if isinstance(node, ast.ImportFrom)
-                and node.module
-                and not node.level
-                and any(alias.name == c.Infra.FacadeFamily.U for alias in node.names)
-            }
-            if layer == order.index(c.Infra.FacadeFamily.U):
-                own_modules = imported_modules.intersection({namespace[0].name})
-                if own_modules:
-                    selected[path.resolve()] = own_modules
-            elif layer <= order.index(c.Infra.FacadeFamily.M):
-                external_modules = imported_modules.difference({namespace[0].name})
-                if external_modules:
-                    declarations[path.resolve()] = external_modules
+            resolved, modules, elected = classified
+            (selected if elected else declarations)[resolved] = modules
         behavior = FlextInfraUtilitiesSemanticCutoverFacadeBases
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(

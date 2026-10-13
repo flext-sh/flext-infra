@@ -776,9 +776,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 ),
                 None,
             )
-            if imported is None:
-                return None
-            if elected_imports and imported not in elected_imports:
+            if imported is None or (
+                elected_imports and imported not in elected_imports
+            ):
                 return None
             module, receiver = imported
             if imported not in lineages:
@@ -799,26 +799,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 effective = cls._behavior_effective_declaration(
                     modules, lineage, member
                 )
-                declaration = (
-                    next(
-                        node
-                        for node in ast.parse(modules[effective[0]][0]).body
-                        if isinstance(node, ast.ClassDef) and node.name == effective[1]
-                    )
-                    if effective is not None
-                    else None
-                )
-                binding = (
-                    cls._behavior_member_binding(declaration, member)
-                    if declaration is not None
-                    else None
-                )
-                context_free = isinstance(
-                    binding, ast.FunctionDef | ast.AsyncFunctionDef
-                ) and any(
-                    isinstance(decorator, ast.Name) and decorator.id == "staticmethod"
-                    for decorator in binding.decorator_list
-                )
+                declaration = cls._effective_declaration_node(modules, effective)
+                context_free = cls._context_free_static_member(declaration, member)
                 lower = tuple(
                     (candidate_module, candidate_receiver, member)
                     for candidate_module, candidate_receiver in identities
@@ -833,9 +815,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     )
                     == effective
                 )
-                if len(lower) > 1:
-                    msg = f"ambiguous lower declaration receiver: {qualified}"
-                    raise ValueError(msg)
+                cls._require_unambiguous_lower(lower, qualified)
                 if lower:
                     obsolete.add(imported)
                     return lower[0]
@@ -847,22 +827,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if target is None and imported in utility_imports:
                 msg = f"self-facade callable owner is unresolved: {qualified}"
                 raise ValueError(msg)
-            if target is not None:
-                obsolete.add(imported)
+            cls._record_obsolete_target(obsolete, imported, target)
             return target
 
         if not identities:
             return source, ()
-        indices = tuple(
-            index
-            for index, part in enumerate(path.parts)
-            if part == c.Infra.DEFAULT_SRC_DIR
-        )
-        module_name = (
-            ".".join((*path.parts[indices[-1] + 1 : -1], path.stem))
-            if indices
-            else None
-        )
+        module_name = cls._source_module_name(path)
         context = CodemodContext(full_module_name=module_name)
         updated = MetadataWrapper(cst.parse_module(source)).visit(
             cls._BehaviorReferences(
@@ -891,6 +861,101 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     RemoveImportsVisitor.remove_unused_import(
                         context, node.module, alias.name, alias.asname
                     )
+
+    @staticmethod
+    def _require_unambiguous_lower(
+        lower: t.SequenceOf[t.Triple[str, str, str]],
+        qualified: str,
+    ) -> None:
+        """Fail when more than one lower receiver declares the member.
+
+        Args:
+            lower: The lower receivers declaring the effective member.
+            qualified: The qualified reference being resolved.
+
+        Raises:
+            ValueError: If more than one lower receiver declares the member.
+
+        """
+        if len(lower) > 1:
+            msg = f"ambiguous lower declaration receiver: {qualified}"
+            raise ValueError(msg)
+
+    @staticmethod
+    def _record_obsolete_target(
+        obsolete: set[t.Pair[str, str]],
+        imported: t.Pair[str, str],
+        target: t.Triple[str, str, str] | None,
+    ) -> None:
+        """Mark an elected import obsolete once its reference target resolves.
+
+        Args:
+            obsolete: The elected imports proven obsolete.
+            imported: The imported module/name identity.
+            target: The resolved reference target, when present.
+
+        """
+        if target is not None:
+            obsolete.add(imported)
+
+    @staticmethod
+    def _effective_declaration_node(
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        effective: t.Pair[str, str] | None,
+    ) -> ast.ClassDef | None:
+        """Return the declared class node of an effective declaration.
+
+        Returns:
+            The declared class node, or ``None`` when there is no effective
+            declaration.
+
+        """
+        if effective is None:
+            return None
+        return next(
+            node
+            for node in ast.parse(modules[effective[0]][0]).body
+            if isinstance(node, ast.ClassDef) and node.name == effective[1]
+        )
+
+    @classmethod
+    def _context_free_static_member(
+        cls,
+        declaration: ast.ClassDef | None,
+        member: str,
+    ) -> bool:
+        """Return whether a class member is a context-free static method.
+
+        Returns:
+            Whether the bound member is declared as a ``@staticmethod``.
+
+        """
+        binding = (
+            cls._behavior_member_binding(declaration, member)
+            if declaration is not None
+            else None
+        )
+        return isinstance(binding, ast.FunctionDef | ast.AsyncFunctionDef) and any(
+            isinstance(decorator, ast.Name) and decorator.id == "staticmethod"
+            for decorator in binding.decorator_list
+        )
+
+    @staticmethod
+    def _source_module_name(path: Path) -> str | None:
+        """Return the importable module name for a source under ``src``.
+
+        Returns:
+            The dotted module name, or ``None`` when the path is outside ``src``.
+
+        """
+        indices = tuple(
+            index
+            for index, part in enumerate(path.parts)
+            if part == c.Infra.DEFAULT_SRC_DIR
+        )
+        if not indices:
+            return None
+        return ".".join((*path.parts[indices[-1] + 1 : -1], path.stem))
 
     @classmethod
     def _plan_facade_bases(

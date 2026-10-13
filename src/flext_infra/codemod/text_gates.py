@@ -38,13 +38,9 @@ class FlextInfraModTextGateEngine:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        pending = cls.scan(root, fix=False, validate_receipts=True)
+        pending = cls.scan(root, fix=apply, validate_receipts=True)
         if pending.failure:
             return r[t.Cli.ResultValue].from_failure(pending)
-        if apply and pending.value.actionable:
-            applied = cls.scan(root, fix=True, validate_receipts=True)
-            if applied.failure:
-                return r[t.Cli.ResultValue].from_failure(applied)
         remaining = cls.scan(root, fix=False)
         if remaining.failure:
             return r[t.Cli.ResultValue].from_failure(remaining)
@@ -654,10 +650,9 @@ class FlextInfraModTextGateEngine:
         *,
         fix: bool,
     ) -> p.Result[
-        t.Triple[
+        t.Pair[
             m.Infra.ModTextReport,
-            t.VariadicTuple[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Infra.CodegenPhaseAnalysis,
         ]
     ]:
         """Rewrite every elected source and collect the report and fix plans.
@@ -671,52 +666,39 @@ class FlextInfraModTextGateEngine:
         actionable = 0
         inputs = [*base_states]
         plans: list[m.Infra.CodegenFilePlan] = []
+        issues: list[m.Infra.Issue] = []
+        first_exception: BaseException | None = None
         for path in sources:
-            prepared = cls._authenticated_source(root, path)
-            if prepared.failure:
-                return r[
-                    t.Triple[
-                        m.Infra.ModTextReport,
-                        t.VariadicTuple[m.Infra.CodegenFilePlan],
-                        t.VariadicTuple[m.Cli.AtomicFileState],
-                    ]
-                ].from_failure(prepared)
-            before, source, relative = prepared.value
-            updated, target_entries, target_actionable = cls._rewrite_source(
-                source,
-                relative,
-                rules,
-            )
+            try:
+                prepared = cls._authenticated_source(root, path)
+                if prepared.failure:
+                    issues.append(cls._source_issue(path, str(prepared.error)))
+                    first_exception = first_exception or prepared.exception
+                    continue
+                before, source, relative = prepared.value
+                updated, target_entries, target_actionable = cls._rewrite_source(
+                    source, relative, rules
+                )
+                if updated != source:
+                    if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                        issues.append(
+                            cls._source_issue(
+                                path,
+                                "generated findings require canonical generator repair",
+                            )
+                        )
+                        continue
+                    if path.suffix == c.Infra.EXT_PYTHON:
+                        ast.parse(updated, filename=str(path))
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                first_exception = first_exception or exc
+                issues.append(cls._source_issue(path, str(exc), exception=exc))
+                continue
             entries.extend(target_entries)
             actionable += target_actionable
             if target_entries:
                 files.add(Path(relative))
             if fix and updated != source:
-                if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    return r[
-                        t.Triple[
-                            m.Infra.ModTextReport,
-                            t.VariadicTuple[m.Infra.CodegenFilePlan],
-                            t.VariadicTuple[m.Cli.AtomicFileState],
-                        ]
-                    ].fail(
-                        "generated findings require canonical generator repair: "
-                        f"{path}",
-                    )
-                if path.suffix == c.Infra.EXT_PYTHON:
-                    try:
-                        ast.parse(updated, filename=str(path))
-                    except SyntaxError as exc:
-                        return r[
-                            t.Triple[
-                                m.Infra.ModTextReport,
-                                t.VariadicTuple[m.Infra.CodegenFilePlan],
-                                t.VariadicTuple[m.Cli.AtomicFileState],
-                            ]
-                        ].fail(
-                            f"text rewrite produced invalid Python in {path}: {exc}",
-                            exception=exc,
-                        )
                 plans.append(
                     cls._rewrite_plan(root, path, before, updated, base_states),
                 )
@@ -728,12 +710,33 @@ class FlextInfraModTextGateEngine:
             entries=tuple(entries),
         )
         return r[
-            t.Triple[
+            t.Pair[
                 m.Infra.ModTextReport,
-                t.VariadicTuple[m.Infra.CodegenFilePlan],
-                t.VariadicTuple[m.Cli.AtomicFileState],
+                m.Infra.CodegenPhaseAnalysis,
             ]
-        ].ok((report, tuple(plans), tuple(inputs)))
+        ].ok((
+            report,
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+                files=tuple(plans),
+                inputs=tuple(inputs),
+                issues=tuple(issues),
+                exception=first_exception,
+            ),
+        ))
+
+    @staticmethod
+    def _source_issue(
+        path: Path, message: str, *, exception: BaseException | None = None
+    ) -> m.Infra.Issue:
+        """Use the canonical issue contract for one actual source failure."""
+        return m.Infra.Issue(
+            file=str(path),
+            line=exception.lineno or 0 if isinstance(exception, SyntaxError) else 0,
+            column=exception.offset or 0 if isinstance(exception, SyntaxError) else 0,
+            code=c.Infra.ToolOutcome.ERROR.value,
+            message=message,
+        )
 
     @classmethod
     def scan(

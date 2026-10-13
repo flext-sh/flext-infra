@@ -57,6 +57,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
             observations.append(observed.value)
         signing_format, signing_key, allowed_signers = observations
+        if signing_key.value == "" or allowed_signers.value == "":
+            return r[m.Infra.GitSigningIdentityReport].fail(
+                "native Git signing configuration declares an empty key or trust reference",
+            )
         inline = (
             signing_format.value == "ssh"
             and signing_key.value is not None
@@ -77,7 +81,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 public_fingerprint=None,
                 allowed_signers_path=(
                     Path(allowed_signers.value)
-                    if allowed_signers.value is not None else None
+                    if allowed_signers.value is not None
+                    else None
                 ),
                 observations=tuple(observations),
             ),
@@ -101,7 +106,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GitSigningConfigObservation].from_failure(query)
         output = query.value
         process = m.Cli.ProcessOutcome.model_validate(
-            output.outcome, from_attributes=True,
+            output.outcome,
+            from_attributes=True,
         )
         if (
             not process.timed_out
@@ -112,10 +118,21 @@ class FlextInfraUtilitiesGitAttestationMixin(
         ):
             return r[m.Infra.GitSigningConfigObservation].ok(
                 m.Infra.GitSigningConfigObservation(
-                    key=key, scope=None, origin=None, value=None, process=process,
+                    key=key,
+                    scope=None,
+                    origin=None,
+                    value=None,
+                    process=process,
                 ),
             )
         if not u.Cli.process_succeeded(process):
+            if not output.stderr:
+                return r[m.Infra.GitSigningConfigObservation].fail(
+                    f"native Git signing query failed: {key}; "
+                    f"raw_return_code={process.raw_return_code}; "
+                    f"timed_out={process.timed_out}; "
+                    f"forwarded_signal={process.forwarded_signal}",
+                )
             return r[m.Infra.GitSigningConfigObservation].fail(
                 output.stderr,
             )
@@ -127,7 +144,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
         scope, origin, value, _ = fields
         return r[m.Infra.GitSigningConfigObservation].ok(
             m.Infra.GitSigningConfigObservation(
-                key=key, scope=scope, origin=origin, value=value, process=process,
+                key=key,
+                scope=scope,
+                origin=origin,
+                value=value,
+                process=process,
             ),
         )
 

@@ -29,8 +29,12 @@ class TestsFlextInfraVscodeOwnerMerge:
         directory = root / c.CONFIG_DIR_NAME
         directory.mkdir(parents=True)
         path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
-        baseline = config.Infra.codegen.make.gate_acceptance_policy
-        chosen = next(policy for policy in type(baseline) if policy != baseline)
+        baseline = c.Infra.GateAcceptancePolicy(
+            config.Infra.codegen.make.gate_acceptance_policy,
+        )
+        chosen = next(
+            policy for policy in c.Infra.GateAcceptancePolicy if policy != baseline
+        )
         tm.ok(
             u.Cli.yaml_dump(
                 path,
