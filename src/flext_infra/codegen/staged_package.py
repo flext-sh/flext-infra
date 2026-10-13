@@ -89,7 +89,17 @@ class FlextInfraStagedPackage:
         if metadata.failure:
             return result_type.from_failure(metadata)
         for before in inputs:
-            if states.get(before.path) != before:
+            observed = states.get(before.path)
+            if observed is None:
+                # Evidence-only input: never pinned (installed packages and
+                # scratch views live outside every rope layout), so it owns
+                # no fresh observation. A rewrite target always has one.
+                if before.path in normalized:
+                    return result_type.fail(
+                        f"candidate original source identity changed: {before.path}",
+                    )
+                continue
+            if observed != before:
                 return result_type.fail(
                     f"candidate original source identity changed: {before.path}",
                 )
