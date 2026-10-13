@@ -188,6 +188,10 @@ class FlextInfraModelsRefactor(
             int,
             m.Field(description="Findings whose rewrite matches the current source"),
         ]
+        deferred: Annotated[
+            int,
+            m.Field(description="Findings deferred because their source drifted"),
+        ] = 0
 
     class ViolationsRuleDelta(m.ContractModel):
         """Occurrence counts for one repository and exact rule identity."""

@@ -79,6 +79,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             phase=phase,
             completed=completed and not pending_files,
             written_files=session.written_files,
+            published_files=session.published_files,
             retained_files=session.retained_files,
             effect_targets=effect_targets,
             attempted_files=attempted_files,

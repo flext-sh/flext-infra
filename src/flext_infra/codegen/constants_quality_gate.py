@@ -18,6 +18,7 @@ from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 
+
 class FlextInfraCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
@@ -25,8 +26,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
         exclude=True,
         description="Injected authenticated source preview capability",
     )
-    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = m.Field(
-        exclude=True, description="Injected candidate Rope workspace factory"
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
     )
 
     @override

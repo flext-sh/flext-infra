@@ -70,8 +70,10 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             execution_errors = tuple(
                 error
                 for snapshot in (before_lints[path], after_lints[path])
-                for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(
-                    snapshot
+                for error in (
+                    FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(
+                        snapshot
+                    )
                 )
             )
             test_fail = (
@@ -94,10 +96,11 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                     request.workspace,
                     before_sources[path] or "",
                     new_errors,
-                    test_fail,
                     execution_errors=execution_errors,
                 ),
             )
+            if test_fail:
+                reports.append(f"    pytest failure: {test_fail}")
         return (not failed, reports)
 
     @classmethod
@@ -244,9 +247,10 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             request.workspace,
             request.before_source,
             new_errors,
-            test_fail,
             execution_errors=execution_errors,
         )
+        if test_fail:
+            report.append(f"    pytest failure: {test_fail}")
         return (False, report)
 
     @staticmethod

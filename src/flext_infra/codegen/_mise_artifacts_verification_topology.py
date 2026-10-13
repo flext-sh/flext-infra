@@ -304,6 +304,8 @@ class FlextInfraMiseArtifactsVerificationTopology:
             staging_paths: list[t.Pair[str, str]] = []
             if entry.desired_staging is not None:
                 staging_paths.append(("desired", entry.desired_staging))
+            if entry.original_staging is not None:
+                staging_paths.append(("original", entry.original_staging))
             if staging_paths and project.transaction_root is None:
                 return r[bool].fail(
                     "generation recovery layout has no transaction root",

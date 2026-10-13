@@ -240,7 +240,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+        if (
+            c.Infra.CodegenConformMode(request.mode)
+            is c.Infra.CodegenConformMode.APPLY
+            and self.surface_contract(
+                c.Infra.CodegenConformSurface(request.what),
+            ).complete_governed
+        ):
             migrated = self._migrate_repository_declarations(request)
             if migrated.failure and (
                 migrated.error_code != c.Infra.ToolOutcome.ERROR.value
@@ -352,10 +358,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 issues.extend(planned.value.issues)
                 if first_exception is None:
                     first_exception = planned.value.exception
+            snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
+            if snapshots.failure:
+                return r[bool].from_failure(snapshots)
             analysis = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
                 files=tuple(files),
-                inputs=FlextInfraCodegenPreconditions.unique_states(tuple(inputs)),
+                inputs=snapshots.value,
                 issues=tuple(issues),
                 exception=first_exception,
             )
@@ -565,7 +574,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     if unchanged:
                         if not isinstance(file.before, m.Cli.AtomicFileState):
                             cause = ValueError(
-                                "unchanged bootstrap requires a physical file preimage: "
+                                "unchanged bootstrap requires a physical file "
+                                "preimage: "
                                 f"{file.path}",
                             )
                             return r[bool].fail(str(cause), exception=cause)

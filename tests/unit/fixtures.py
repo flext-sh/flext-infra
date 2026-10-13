@@ -180,8 +180,7 @@ def _provision_consumer_template(
     development = ", ".join(
         f'"{u.Tests.flext_source(name) if name.startswith("flext-") else requirement}"'
         for requirement in config.Infra.codegen.scaffold.project.dev
-        if (name := u.Infra.dep_name(requirement)) is not None
-        and name != distribution
+        if (name := u.Infra.dep_name(requirement)) is not None and name != distribution
     )
     root = u.Tests.mk_project(
         parent,
@@ -247,7 +246,14 @@ def _provision_consumer_template(
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
-    upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=root, capture=False))
+    upgrade = tm.ok(
+        u.Tests.run_isolated_make(
+            ["upg"],
+            cwd=root,
+            env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+            capture=False,
+        ),
+    )
     if u.Cli.process_succeeded(upgrade.outcome):
         u.Tests.git_bootstrap(root, ("add", "-A"))
         u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
@@ -551,7 +557,9 @@ def duplicate_project(
         A physical checkout with its declared dependencies and managed tools.
     """
     distribution = "flext-demo"
-    parent = _run_scoped(_run_root(tmp_path_factory), "consumer-templates", distribution)
+    parent = _run_scoped(
+        _run_root(tmp_path_factory), "consumer-templates", distribution
+    )
     parent.mkdir(parents=True, exist_ok=True)
     receipt = parent / _DETECTOR_UPGRADE_RECEIPT
     with u.Infra.codegen_transaction_lease(receipt):
@@ -744,7 +752,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def mod_workspace(tmp_path: Path) -> Path:
+def mod_workspace(installed_dependency_path: Path) -> Path:
     """Create the shared real workspace for the public refactor-mod CLI.
 
     Returns:
@@ -753,9 +761,21 @@ def mod_workspace(tmp_path: Path) -> Path:
     """
     project_document = u.read_project_document_cached(_PROJECT_ROOT)
     project = u.build_project_metadata(_PROJECT_ROOT, project_document)
-    workspace = tmp_path / "mod_workspace"
+    workspace = installed_dependency_path / "mod_workspace"
     author_name = tm.ok(u.Cli.json_dumps(project.project.authors[0].name))
     tm.ok(u.Cli.ensure_dir(workspace))
+    metadata = (
+        installed_dependency_path
+        / f"{workspace.name}-{project.project.version}.dist-info"
+    )
+    tm.ok(u.Cli.ensure_dir(metadata))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            metadata / "METADATA",
+            f"Metadata-Version: 2.1\nName: {workspace.name.replace('_', '-')}\n"
+            f"Version: {project.project.version}\n",
+        )
+    )
     tm.ok(
         u.Cli.atomic_write_text_file(
             workspace / c.PYPROJECT_FILENAME,

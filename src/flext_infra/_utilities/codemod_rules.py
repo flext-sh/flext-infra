@@ -133,13 +133,9 @@ class FlextInfraUtilitiesCodemodRules:
             selected=runtime_closure.difference({root_name}),
         )
         universal_order = cls._provider_order(universal, indexed)
-        if universal_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(universal_order)
         runtime_order = cls._provider_order(runtime, indexed)
-        if runtime_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(runtime_order)
         providers: list[t.Pair[str, Path]] = []
-        for name in (*universal_order.value, *runtime_order.value):
+        for name in (*universal_order, *runtime_order):
             provider_config = universal.get(name) or runtime.get(name)
             if provider_config is None:
                 return r[m.Infra.CodemodRulePlan].fail(
@@ -423,7 +419,7 @@ class FlextInfraUtilitiesCodemodRules:
         cls,
         providers: t.MappingKV[str, Path],
         indexed: t.MappingKV[str, Distribution],
-    ) -> p.Result[t.StrSequence]:
+    ) -> t.StrSequence:
 
         selected = frozenset(providers)
         edges = {
@@ -434,17 +430,10 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        try:
-            ordered = FlextInfraUtilitiesDependencies.dependency_order(
-                tuple(selected),
-                dependencies=lambda name: edges.get(name, ()),
-            )
-        except ValueError as exc:
-            return r[t.StrSequence].fail(
-                f"codemod provider cycle: {exc}",
-                exception=exc,
-            )
-        return r[t.StrSequence].ok(ordered)
+        return FlextInfraUtilitiesDependencies.dependency_order(
+            tuple(selected),
+            dependencies=lambda name: edges[name],
+        )
 
     @staticmethod
     def _provider_config(name: str) -> Path | None:
@@ -570,7 +559,7 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRuleset]]``.
 
         """
-        parsed = cls._rules(provider, provider_config)
+        parsed = cls.codemod_catalog_rules(provider, provider_config)
         if parsed.failure:
             return r[t.SequenceOf[m.Infra.CodemodRuleset]].from_failure(parsed)
         elected: list[str] = []
@@ -646,12 +635,16 @@ class FlextInfraUtilitiesCodemodRules:
         )
 
     @classmethod
-    def _rules(
+    def codemod_catalog_rules(
         cls,
         provider: str,
         config: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
+        """Read every validated catalog declaration before execution election.
 
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
+        """
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -844,6 +837,11 @@ class FlextInfraUtilitiesCodemodRules:
         )
         if context.failure:
             return r[m.Infra.CodemodRule].fail(f"{context.error}: {resource}")
+        ensure_imports = cls._declared_ensure_imports(
+            declared_metadata.get(c.Infra.CODEMOD_RULE_ENSURE_IMPORTS_KEY),
+        )
+        if ensure_imports.failure:
+            return r[m.Infra.CodemodRule].fail(f"{ensure_imports.error}: {resource}")
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")
@@ -852,20 +850,22 @@ class FlextInfraUtilitiesCodemodRules:
         alternatives = negative.get("any") if isinstance(negative, Mapping) else None
         module_absence = (
             isinstance(detector, Mapping)
+            and str(parsed_rule["language"]).casefold() == "python"
             and set(detector) == {"kind", "not"}
             and detector.get("kind") == "module"
             and isinstance(negative, Mapping)
             and (
-                set(negative) == {"has"}
-                and isinstance(negative.get("has"), Mapping)
-                or set(negative) == {"any"}
-                and isinstance(alternatives, list)
-                and bool(alternatives)
-                and all(
-                    isinstance(item, Mapping)
-                    and set(item) == {"has"}
-                    and isinstance(item.get("has"), Mapping)
-                    for item in alternatives
+                (set(negative) == {"has"} and isinstance(negative.get("has"), Mapping))
+                or (
+                    set(negative) == {"any"}
+                    and isinstance(alternatives, list)
+                    and bool(alternatives)
+                    and all(
+                        isinstance(item, Mapping)
+                        and set(item) == {"has"}
+                        and isinstance(item.get("has"), Mapping)
+                        for item in alternatives
+                    )
                 )
             )
             and not context.value
@@ -889,8 +889,56 @@ class FlextInfraUtilitiesCodemodRules:
                     c.Infra.CODEMOD_RULE_RELOCATION_KEY,
                 ),
                 "context": context.value,
+                "ensure_imports": ensure_imports.value,
             }),
         )
+
+    @classmethod
+    def _declared_ensure_imports(
+        cls,
+        declared: object,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]:
+        """Validate the rule's declared required module imports.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]``.
+
+        """
+        if declared is None:
+            return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].ok(value=())
+        if not isinstance(declared, Sequence) or isinstance(declared, str):
+            return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                f"ensure-imports must be a list of {{module, name}} mappings, "
+                f"got {type(declared).__name__}",
+            )
+        entries: list[m.Infra.CodemodEnsureImport] = []
+        for item in declared:
+            if not isinstance(item, Mapping):
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    f"ensure-imports entry must be a {{module, name}} mapping, "
+                    f"got {type(item).__name__}",
+                )
+            unknown = sorted(set(item) - {"module", "name"})
+            if unknown:
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    f"ensure-imports entry has unknown keys {unknown}",
+                )
+            module = item.get("module")
+            name = item.get("name")
+            if not isinstance(module, str) or not module.strip():
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    "ensure-imports entry requires a non-empty module",
+                )
+            if not isinstance(name, str) or not name.strip():
+                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+                    "ensure-imports entry requires a non-empty name",
+                )
+            model = m.Infra.CodemodEnsureImport.model_validate({
+                "module": module,
+                "name": name,
+            })
+            entries.append(model)
+        return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].ok(value=tuple(entries))
 
     @classmethod
     def _parse_rules(

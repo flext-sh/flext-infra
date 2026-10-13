@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDetectorOwnsNoProjectRegistry:
@@ -66,7 +66,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         )
         relative = Path("nested") / "unprovisioned"
         repository = u.Tests.repository_ref(relative.name)
-        branch = config.Infra.codegen.branch_policy.integration_branch_preference[0]
+        branch = config.Infra.codegen.branch_policy.integration_branch
         tm.ok(
             u.Cli.files_write_text(
                 root / c.Infra.GITMODULES,
@@ -184,7 +184,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         )
         relative = Path("external") / "library"
         repository = u.Tests.repository_ref(relative.name)
-        branch = config.Infra.codegen.branch_policy.integration_branch_preference[0]
+        branch = config.Infra.codegen.branch_policy.integration_branch
         declaration = (
             f'[submodule "{relative.as_posix()}"]\n'
             f"    path = {relative.as_posix()}\n"

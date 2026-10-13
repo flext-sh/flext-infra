@@ -21,6 +21,32 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     """Keep CI, local checks and the fast hook on their declared boundaries."""
 
     @staticmethod
+    def test_sonarcloud_render_contract_round_trips_typed_configuration() -> None:
+        """Resolve the full public render schema before filesystem scaffolding."""
+        codegen = config.Infra.codegen
+        policy = m.Infra.SonarcloudSpec.model_validate(
+            codegen.sonarcloud.model_dump(),
+        )
+        tm.that(policy, eq=codegen.sonarcloud)
+        for exclusion in policy.issue_exclusions:
+            restored_exclusion = (
+                m.Infra.SonarcloudIssueExclusionSpec.model_validate_json(
+                    exclusion.model_dump_json(),
+                )
+            )
+            tm.that(restored_exclusion, eq=exclusion)
+        rendered = m.Infra.SonarcloudRenderSpec(
+            sonarcloud=policy,
+            tests_dir=c.Infra.DIR_TESTS,
+            generated_source_globs=codegen.generated_source_globs,
+        )
+        restored = m.Infra.SonarcloudRenderSpec.model_validate_json(
+            rendered.model_dump_json(),
+        )
+        tm.that(restored, eq=rendered)
+        tm.that(restored.sonarcloud, eq=codegen.sonarcloud)
+
+    @staticmethod
     def test_registry_declares_one_kind_per_gate() -> None:
         """Every gate vocabulary is derived from the single kind declaration."""
         declared = [
@@ -43,6 +69,13 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         """Local checks cover every active gate; CI excludes its declared set."""
         make = config.Infra.codegen.make
         local = frozenset(make.ci.local_check_gates)
+        standalone = frozenset(make.standalone_check_gates.values())
+        tm.that(
+            make.check_gates_default,
+            eq=tuple(
+                gate for gate in make.check_gates_allowed if gate not in standalone
+            ),
+        )
         tm.that(
             make.check_gates_ci,
             eq=tuple(gate for gate in make.check_gates_default if gate not in local),
@@ -84,6 +117,14 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
         active = m.Infra.MakeSpec.model_validate(payload)
 
+        tm.that(
+            active.check_gates_default,
+            eq=tuple(
+                gate
+                for gate in active.check_gates_allowed
+                if gate not in active.standalone_check_gates.values()
+            ),
+        )
         tm.that(active.check_gates_default, has="fixture-project-gate")
         tm.that(active.check_gates_ci, has="fixture-project-gate")
         tm.that(active.check_gates_local, has="fixture-project-gate")
@@ -170,7 +211,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tmp_path: Path,
         context: str,
     ) -> None:
-        """A real missing runtime stays fatal in every check context."""
+        """A missing runtime fails at activation before any check gate executes."""
         root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -180,16 +221,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         environment: t.StrMapping
         if context == "ci":
             environment = {policy.ci.variable: policy.ci.value}
-            gates = policy.check_gates_ci
-            label = f"{policy.ci.variable}={policy.ci.value}"
         elif context == "local":
             environment = {policy.ci.variable: policy.ci.local_value}
-            gates = policy.check_gates_local
-            label = f"{policy.ci.variable}={policy.ci.local_value}"
         else:
             environment = {}
-            gates = policy.check_gates_default
-            label = "default context"
         process = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "check"],
@@ -205,15 +240,16 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
+        tm.that(process.stdout, eq="")
         tm.that(
-            process.stdout,
-            has=f"INFO: {label} runs check gates: {' '.join(gates)}\n",
+            process.stderr,
+            has="No module named flext_infra",
         )
         tm.that(
             process.stderr,
-            has=(
-                "No module named flext_infra"
-                if gates
-                else "no active check gates remain in the selected context"
-            ),
+            has="_builtin_require_environment",
+        )
+        tm.that(
+            process.stderr,
+            lacks="no active check gates remain in the selected context",
         )

@@ -335,6 +335,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The composed document; schema consumers validate their owned section.
+
+        Raises:
+            ValueError: If captured config input has no bytes.
         """
         merged: t.JsonDict = {}
         parse_document = (

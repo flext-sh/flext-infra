@@ -54,7 +54,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         project = u.Tests.project_spec(repository.distribution)
         integration = m.Infra.WorkspaceIntegrationSpec(
             provider=repository.provider,
-            branch=config.Infra.codegen.branch_policy.integration_branch_preference[0],
+            branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         legacy = m.Infra.WorkspaceManifestSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -70,9 +70,18 @@ class TestsFlextInfraRepositoryDeclarationDelta:
             declaration.model_dump_json(),
         )
 
-        tm.that(portable.project, eq=project)
+        # A portable declaration compares through the same public JSON boundary
+        # it traveled: ``t.StrSequence`` contracts read back as lists, so the
+        # expected values are canonicalized identically before equality.
+        tm.that(
+            portable.project,
+            eq=m.Infra.ProjectSpec.model_validate_json(project.model_dump_json()),
+        )
         tm.that(portable.integration, eq=integration)
-        tm.that(portable.namespace_scan_dirs, eq=legacy.namespace_scan_dirs)
+        tm.that(
+            tuple(portable.namespace_scan_dirs),
+            eq=tuple(legacy.namespace_scan_dirs),
+        )
         tm.that(portable.read_only, eq=read_only)
 
     def test_foreign_members_do_not_change_own_declaration(

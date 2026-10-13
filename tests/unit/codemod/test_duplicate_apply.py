@@ -11,12 +11,12 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, infra, m
+from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
 )
-from tests import tm
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -373,7 +373,9 @@ class TestsFlextInfraCodemodDuplicateApply:
             eq=before,
         )
 
-    def test_declaration_only_clone_is_filtered_out(self, duplicate_project: Path) -> None:
+    def test_declaration_only_clone_is_filtered_out(
+        self, duplicate_project: Path
+    ) -> None:
         """A clone without executable python behavior produces no plan."""
         root, package = self._workspace(duplicate_project)
         owner = package / "typing_owner.py"
@@ -506,11 +508,4 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
 
 
-_PREFLIGHT = m.Infra.ModScanReport(
-    findings=0,
-    actionable=0,
-    detection_only=0,
-    non_actionable_with_fix=0,
-    files=frozenset(),
-    entries=(),
-)
+_PREFLIGHT = m.Infra.ModScanReport(files=frozenset(), entries=())

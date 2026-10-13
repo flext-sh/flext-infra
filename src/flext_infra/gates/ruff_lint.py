@@ -29,6 +29,24 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     can_fix: ClassVar[bool] = True
 
     @override
+    def _check_env(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrMapping:
+        """Keep native cache writes outside authenticated source candidates.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+        """
+        return {
+            **(super()._check_env(project_dir, ctx) or {}),
+            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
+                u.Infra.ruff_cache_directory(project_dir)
+            ),
+        }
+
+    @override
     def _get_check_dirs(
         self,
         project_dir: Path,

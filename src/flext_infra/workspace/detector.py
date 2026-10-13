@@ -341,12 +341,12 @@ class FlextInfraWorkspaceDetector(
         subprojects: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         pending: list[m.Infra.GitSubmoduleDeclaration] = []
-        # The workspace-declared preference owns the baseline order: a fleet
-        # integrating on a versioned release line (0.12.0-dev) is not covered
-        # by the provider's conventional fallback names alone.
+        # The workspace-declared line owns the baseline: a fleet integrating on
+        # a versioned release line (0.12.0-dev) declares it, and resolution
+        # checks exactly that line — no conventional fallback names exist.
         baseline = u.Infra.resolve_integration_branch(
             repository_root,
-            preference=(inputs.spec.branch_policy.integration_branch_preference),
+            policy_branch=inputs.spec.branch_policy.integration_branch,
             inputs=inputs,
         )
         if baseline.failure:
@@ -579,6 +579,31 @@ class FlextInfraWorkspaceDetector(
         return result_type.ok(configured.value[0])
 
     @classmethod
+    def load_repository_ref(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Load this repository's identity without requiring member checkouts.
+
+        Returns:
+            The declared repository reconciled with native Git and PEP 621.
+        """
+        root = repository_root.expanduser().resolve()
+        observed = cls._local_repository_ref(root)
+        if observed.failure:
+            return r[m.Infra.RepositoryRef].from_failure(observed)
+        inputs = u.Infra.load_repository_declaration_inputs(root)
+        if inputs.failure:
+            return r[m.Infra.RepositoryRef].from_failure(inputs)
+        configured = cls._configured_repository_ref(
+            inputs.value.spec,
+            observed=observed.value,
+        )
+        if configured.failure:
+            return r[m.Infra.RepositoryRef].from_failure(configured)
+        return r[m.Infra.RepositoryRef].ok(configured.value[0])
+
+    @classmethod
     def load_workspace_spec(
         cls,
         repository_root: Path,
@@ -759,13 +784,11 @@ class FlextInfraWorkspaceDetector(
                 f"Git submodule escapes its superproject: {member_root}",
             )
         member_path = member_root.relative_to(superproject_root)
-        # Same owner as the parent load: the declared preference resolves a
-        # versioned integration line the provider fallback names miss.
+        # Same owner as the parent load: the declared versioned integration
+        # line resolves against published Git, never against a name list.
         baseline = u.Infra.resolve_integration_branch(
             superproject_root,
-            preference=(
-                config.Infra.codegen.branch_policy.integration_branch_preference
-            ),
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         loaded_member = cls._load_subproject(
             superproject_root,

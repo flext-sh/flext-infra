@@ -12,17 +12,18 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
-    FlextInfraMiseArtifactsFiles as files,
-    FlextInfraMiseArtifactsJournal as journal_io,
-    FlextInfraMiseArtifactsProcess as process,
-    FlextInfraMiseArtifactsState as state,
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsProcess,
+    FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
 from flext_infra.codegen._codegen_transaction_recovery import (
     FlextInfraCodegenTransactionRecovery,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -115,6 +116,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             journal=persisted.value[0],
             journal_state=persisted.value[1],
             written_files=prepared.value.written_files,
+            published_files=prepared.value.published_files,
             retained_files=prepared.value.retained_files,
             issues=prepared.value.issues,
             exception=prepared.value.exception,
@@ -133,24 +135,40 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             phase,
             staged.value,
         )
-        if published.failure:
-            return result_type.from_failure(published)
-        journal, journal_state = current.journal, current.journal_state
-        return self.record_publication(
-            m.Infra.CodegenTransactionSession(
-                plan=prepared.value.plan,
-                journal=journal,
-                journal_state=journal_state,
-                written_files=(*session.written_files, *published.value.written_files),
-                retained_files=(
-                    *session.retained_files,
-                    *published.value.retained_files,
+        if published.success:
+            journal, journal_state = current.journal, current.journal_state
+            if any(item.dependency_group is not None for item in staged.value):
+                recorded = FlextInfraMiseArtifactsJournal.read(
+                    prepared.value.plan.layout
+                )
+                if recorded.failure:
+                    return result_type.from_failure(recorded)
+                journal, journal_state = recorded.value
+            result = self.record_publication(
+                m.Infra.CodegenTransactionSession(
+                    plan=prepared.value.plan,
+                    journal=journal,
+                    journal_state=journal_state,
+                    written_files=(
+                        *session.written_files,
+                        *published.value.written_files,
+                    ),
+                    published_files=(
+                        *session.published_files,
+                        *published.value.published_files,
+                    ),
+                    retained_files=(
+                        *session.retained_files,
+                        *published.value.retained_files,
+                    ),
+                    issues=(*session.issues, *published.value.issues),
+                    exception=session.exception or published.value.exception,
                 ),
-                issues=(*session.issues, *published.value.issues),
-                exception=session.exception or published.value.exception,
-            ),
-            phase=phase,
-        )
+                phase=phase,
+            )
+        else:
+            result = result_type.from_failure(published)
+        return result
 
     def _validate_staged_consumer(
         self,
@@ -250,7 +268,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 return result_type.fail(
                     f"candidate source has no journal authority: {source.path}"
                 )
-            record = journal_io.source_record(previous.phase, source, previous)
+            record = FlextInfraMiseArtifactsJournal.source_record(
+                previous.phase, source, previous
+            )
             if record.failure:
                 return result_type.from_failure(record)
             if record.value != previous:
@@ -360,7 +380,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        directories = state.plan_directories(
+        directories = FlextInfraMiseArtifactsState.plan_directories(
             session.plan.layout,
             phase=c.Infra.CodegenStagedFilePhase.TRANSACTION,
             requested=tuple(sorted({path.parent for path, _content, _mode in writes})),
@@ -378,6 +398,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             journal=materialized.value[0],
             journal_state=materialized.value[1],
             written_files=session.written_files,
+            published_files=session.published_files,
             retained_files=session.retained_files,
             issues=session.issues,
             exception=session.exception,
@@ -388,7 +409,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         session = intended.value
         intents = {item.before.path: item for item in session.journal.staging_intents}
         for path, content, mode in writes:
-            written = process.write_new(path, content, mode, intent=intents[path])
+            written = FlextInfraMiseArtifactsProcess.write_new(
+                path, content, mode, intent=intents[path]
+            )
             if written.failure:
                 return result_type.from_failure(written)
         return self._persist_package_manifest(session)
@@ -404,7 +427,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        recorded = journal_io.record_transaction_manifests(
+        recorded = FlextInfraMiseArtifactsJournal.record_transaction_manifests(
             session.plan.layout, session.journal
         )
         if recorded.failure:
@@ -419,6 +442,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             journal=recorded.value,
             journal_state=durable.value,
             written_files=session.written_files,
+            published_files=session.published_files,
             retained_files=session.retained_files,
             issues=session.issues,
             exception=session.exception,
@@ -451,7 +475,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             (entry for entry in inventory.value.entries if entry.path == target_path),
             None,
         )
-        if target is None or target.sha256 != files.digest(desired):
+        if target is None or target.sha256 != FlextInfraMiseArtifactsFiles.digest(
+            desired
+        ):
             return result_type.fail(
                 "candidate target differs from desired staged replacement"
             )
@@ -488,7 +514,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         writes = self._phase_staging_writes(session, phase, changed)
         if writes.failure:
             return result_type.from_failure(writes)
-        planned = state.plan_directories(
+        planned = FlextInfraMiseArtifactsState.plan_directories(
             session.plan.layout,
             phase=c.Infra.CodegenStagedFilePhase.TRANSACTION,
             requested=writes.value[1],
@@ -505,6 +531,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=recorded.value[0],
                 journal_state=recorded.value[1],
                 written_files=session.written_files,
+                published_files=session.published_files,
                 retained_files=session.retained_files,
                 issues=session.issues,
                 exception=session.exception,
@@ -519,7 +546,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
     ) -> p.Result[
         t.Pair[t.VariadicTuple[tuple[Path, bytes, int]], t.VariadicTuple[Path]]
     ]:
-        """Plan ordered replacement writes without destination preimages.
+        """Plan ordered writes, including authenticated dependent-group preimages.
 
         Returns:
             The ordered writes and sorted transaction directories they require.
@@ -535,7 +562,17 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         prepared, phase_roots = checked.value
         writes: list[tuple[Path, bytes, int]] = []
         directories = set(phase_roots)
-        for index, (_plan, _before, replacement, present) in enumerate(prepared):
+        for index, (plan, before, replacement, present) in enumerate(prepared):
+            if plan.dependency_group is not None and before.content is not None:
+                if before.mode is None:
+                    return result_type.fail(
+                        f"group preimage has no authenticated mode: {before.path}"
+                    )
+                writes.append((
+                    replacement[0] / f"{index:06d}.original",
+                    before.content,
+                    before.mode,
+                ))
             if present:
                 root, content, mode = replacement
                 writes.append((root / f"{index:06d}.replacement", content, mode))
@@ -556,7 +593,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         result_type = r[m.Infra.CodegenTransactionSession]
         intents = list(session.journal.staging_intents)
         for path, content, mode in writes:
-            absent = files.read_state(path, required=False)
+            absent = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
             if absent.failure:
                 return result_type.from_failure(absent)
             if absent.value.content is not None:
@@ -566,7 +603,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             intents.append(
                 m.Infra.CodegenStagingIntent(
                     before=absent.value,
-                    sha256=files.digest(content),
+                    sha256=FlextInfraMiseArtifactsFiles.digest(content),
                     mode=mode,
                 ),
             )
@@ -590,6 +627,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=journal,
                 journal_state=persisted.value,
                 written_files=session.written_files,
+                published_files=session.published_files,
                 retained_files=session.retained_files,
                 issues=session.issues,
                 exception=session.exception,
@@ -635,7 +673,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         layout = session.plan.layout
         existing_paths = {entry.path for entry in session.journal.entries}
         for plan in changed:
-            relative = files.transaction_relative(layout, plan.path)
+            relative = FlextInfraMiseArtifactsFiles.transaction_relative(
+                layout, plan.path
+            )
             if relative.failure:
                 return result_type.from_failure(relative)
             if relative.value in existing_paths:
@@ -699,7 +739,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     error_data=staged.error_data,
                 ),
             )
-        bound = state.bind_created_parents(session.journal.directories, staged.value)
+        bound = FlextInfraMiseArtifactsState.bind_created_parents(
+            session.journal.directories, staged.value
+        )
         if bound.failure:
             return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(
                 self._recover_failure(
@@ -734,7 +776,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         ]
         session, tagged_sources, _source_states = authorized
         layout = session.plan.layout
-        extended = journal_io.append_prepared(
+        extended = FlextInfraMiseArtifactsJournal.append_prepared(
             session.plan,
             session.journal,
             staged,
@@ -750,7 +792,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     error_data=extended.error_data,
                 ),
             )
-        manifested = journal_io.record_transaction_manifests(layout, extended.value)
+        manifested = FlextInfraMiseArtifactsJournal.record_transaction_manifests(
+            layout, extended.value
+        )
         if manifested.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -799,6 +843,74 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     error_data=published.error_data,
                 ),
             )
+        grouped = tuple(item for item in staged if item.dependency_group is not None)
+        if grouped:
+            failed_paths = {Path(issue.file) for issue in published.value.issues}
+            failed_groups = {
+                item.dependency_group
+                for item in grouped
+                if item.before.path in failed_paths
+            }
+            admitted_paths = {
+                item.before.path for item in published.value.published_files
+            }
+            observed = FlextInfraMiseArtifactsJournal.read(layout)
+            if observed.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(observed)
+            journal, snapshot = observed.value
+            entries: t.MutableSequenceOf[m.Infra.CodegenJournalEntry] = []
+            for entry in journal.entries:
+                destination = FlextInfraMiseArtifactsFiles.resolve_transaction(
+                    layout, entry.path, purpose="group admission"
+                )
+                if destination.failure:
+                    return r[m.Infra.CodegenPhaseOutcome].from_failure(destination)
+                entries.append(
+                    entry.model_copy(
+                        update={
+                            "group_admitted": entry.group_admitted
+                            or (
+                                entry.dependency_group is not None
+                                and destination.value in admitted_paths
+                            ),
+                            "recover_group": entry.recover_group
+                            or entry.dependency_group in failed_groups,
+                        }
+                    )
+                )
+            recorded = self._write_journal(
+                layout,
+                journal.model_copy(update={"entries": tuple(entries)}),
+                expected=snapshot,
+            )
+            if recorded.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(recorded)
+            if failed_groups:
+                recovered = self._recovery.restore_groups(
+                    layout,
+                    journal.model_copy(update={"entries": tuple(entries)}),
+                )
+                if recovered.failure:
+                    return r[m.Infra.CodegenPhaseOutcome].fail(
+                        published.value.issues[0].formatted,
+                        exception=published.value.exception,
+                        error_data={"cleanup_error": recovered.error},
+                    )
+                live = tuple(
+                    item
+                    for item in published.value.published_files
+                    if FlextInfraMiseArtifactsVerification.publications_live((
+                        item,
+                    )).success
+                )
+                published = r[m.Infra.CodegenPhaseOutcome].ok(
+                    published.value.model_copy(
+                        update={
+                            "published_files": live,
+                            "written_files": tuple(item.before.path for item in live),
+                        }
+                    ),
+                )
         return published
 
     def append_directories_locked(
@@ -814,7 +926,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        planned = state.plan_directories(
+        planned = FlextInfraMiseArtifactsState.plan_directories(
             session.plan.layout,
             phase=phase,
             requested=directories,
@@ -842,6 +954,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 journal=recorded,
                 journal_state=recorded_state,
                 written_files=session.written_files,
+                published_files=session.published_files,
                 retained_files=session.retained_files,
                 issues=session.issues,
                 exception=session.exception,
@@ -872,7 +985,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if unchanged.failure:
             return result_type.from_failure(unchanged)
         session = unchanged.value
-        extended = journal_io.append_directories(session.journal, planned)
+        extended = FlextInfraMiseArtifactsJournal.append_directories(
+            session.journal, planned
+        )
         if extended.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -901,6 +1016,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         self,
         session: m.Infra.CodegenTransactionSession,
         validator: Callable[[], p.Result[bool]] | None = None,
+        *,
+        published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Report every target, preserve gains, and settle the publication cursor.
 
@@ -908,25 +1025,45 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        evidence = self.record_publication(session)
-        if evidence.failure:
-            return r[t.VariadicTuple[Path]].from_failure(evidence)
-        if validator is not None:
-            validated = validator()
-            if validated.failure or not validated.value:
-                cleaned = self._recover_prepared(session.plan.layout)
-                return r[t.VariadicTuple[Path]].fail(
-                    validated.error or "explicit publication validation failed",
-                    exception=session.exception or validated.exception,
-                    error_data={
-                        "written_files": tuple(
-                            str(path) for path in session.written_files
-                        ),
-                        "issues": tuple(issue.model_dump() for issue in session.issues),
-                        "cleanup_error": cleaned.error if cleaned.failure else None,
-                    },
+        try:
+            evidence = self.record_publication(session)
+            if evidence.failure:
+                return r[t.VariadicTuple[Path]].from_failure(evidence)
+            if validator is not None:
+                validated = validator()
+                if validated.failure or not validated.value:
+                    cleaned = self._recover_prepared(session.plan.layout)
+                    return r[t.VariadicTuple[Path]].fail(
+                        validated.error or "explicit publication validation failed",
+                        exception=session.exception or validated.exception,
+                        error_data={
+                            "written_files": tuple(
+                                str(path) for path in session.written_files
+                            ),
+                            "issues": tuple(
+                                issue.model_dump() for issue in session.issues
+                            ),
+                            "cleanup_error": cleaned.error if cleaned.failure else None,
+                        },
+                    )
+            return self._settle_publication(session)
+        finally:
+            if published_files is not None:
+                endpoints = {
+                    receipt.before.path: receipt for receipt in session.published_files
+                }
+                live_paths = {
+                    path
+                    for path, receipt in endpoints.items()
+                    if FlextInfraMiseArtifactsVerification.publications_live(
+                        (receipt,),
+                    ).success
+                }
+                published_files.extend(
+                    receipt
+                    for receipt in session.published_files
+                    if receipt.before.path in live_paths
                 )
-        return self._settle_publication(session)
 
     def _settle_publication(
         self,
@@ -945,7 +1082,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         authorized = self._authorize_journal(session.plan.layout, committed.value[0])
         if authorized.failure:
             return result_type.from_failure(authorized)
-        cleaned = journal_io.cleanup(
+        cleaned = FlextInfraMiseArtifactsJournal.cleanup(
             session.plan.layout,
             committed.value[0],
             committed.value[1],
@@ -990,7 +1127,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if unchanged.failure:
             return result_type.from_failure(unchanged)
         session = unchanged.value
-        committed = journal_io.commit(session.journal)
+        committed = FlextInfraMiseArtifactsJournal.commit(session.journal)
         if committed.failure:
             return result_type.from_failure(
                 self._recover_failure(

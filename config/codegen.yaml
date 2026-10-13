@@ -22,3 +22,5 @@ Infra:
         year: 2026
       namespace_scan_dirs:
       - src
+    branch_policy:
+      integration_branch: 0.12.0-dev

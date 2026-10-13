@@ -40,13 +40,20 @@ class TestsFlextInfraFailedInvocationProgress:
         sample = mod_workspace / "accounting.py"
         tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * copies))
         exit_code = main([
-            "refactor", "ast", "--repository-root", str(mod_workspace),
-            "--rules", "repair-marker", "--apply",
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            "repair-marker",
+            "--apply",
         ])
         capture = capsys.readouterr()
         console = capture.out + capture.err
         tm.that(exit_code, eq=0, msg=console)
-        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq="marker = {}\n" * copies)
+        tm.that(
+            sample.read_text(encoding=c.DEFAULT_ENCODING), eq="marker = {}\n" * copies
+        )
         tm.that(console, has="selected AST fixed point verified")
         tm.that(console, lacks="introduced whole-catalog finding occurrences")
 

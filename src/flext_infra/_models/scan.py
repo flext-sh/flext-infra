@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import (
+    FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
 )
@@ -120,7 +121,10 @@ class FlextInfraModelsScan:
             str | None, m.Field(description="Authenticated native rule document digest")
         ] = None
         module_absence: Annotated[
-            bool, m.Field(description="Occurrence anchored by native module absence predicate")
+            bool,
+            m.Field(
+                description="Occurrence anchored by native module absence predicate"
+            ),
         ] = False
         file: Annotated[Path, m.Field(description="Workspace-relative finding path")]
         source_owner: Annotated[
@@ -129,12 +133,16 @@ class FlextInfraModelsScan:
         ] = "authored"
         source_state: Annotated[
             m.Cli.AtomicFileState | None,
-            m.Field(description="Exact source snapshot authenticated before scanning"),
+            m.Field(
+                exclude=True,
+                description="Live source snapshot; evidence stores its input once",
+            ),
         ] = None
         binding_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(
-                description="Closed occurrence-binding source receipts",
+                exclude=True,
+                description="Live binding inputs; evidence stores their inventory once",
             ),
         ] = m.Field(default_factory=tuple)
         range: Annotated[
@@ -161,6 +169,22 @@ class FlextInfraModelsScan:
             ),
         ]
 
+    class ModScanFindingReference(ModScanFinding):
+        """Serialized occurrence referencing the report's authenticated inventory."""
+
+        source_path: Annotated[
+            Path | None,
+            m.Field(
+                description="Authenticated source input, or absent on source drift"
+            ),
+        ]
+        binding_paths: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description="Every input in this occurrence's closed binding graph"
+            ),
+        ]
+
     class ModReplacementOffsets(m.ContractModel):
         """UTF-8 byte coordinates supplied by the ast-grep JSON contract."""
 
@@ -173,44 +197,73 @@ class FlextInfraModelsScan:
             m.Field(ge=0, strict=True, description="Exclusive end byte"),
         ]
 
-    class ModScanReport(m.ArbitraryTypesModel):
-        """Verified structural findings and actionable rewrite targets."""
+    class ModScanCounts[FindingT: ModScanFinding](m.ArbitraryTypesModel):
+        """Authenticated findings are the sole source of serialized scan counts."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        findings: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Complete finding count"),
+        entries: Annotated[
+            t.VariadicTuple[FindingT],
+            m.Field(description="Every validated ast-grep finding in stable order"),
         ]
-        actionable: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Byte-changing rewrite count"),
-        ]
-        detection_only: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings produced by rules without a fix"),
-        ]
-        non_actionable_with_fix: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings whose declared fix is byte-identical"),
-        ]
-        deferred: Annotated[
-            t.NonNegativeInt,
+
+        @m.computed_field
+        @property
+        def findings(self) -> t.NonNegativeInt:
+            """Complete native occurrence count, including source drift."""
+            return len(self.entries)
+
+        @m.computed_field
+        @property
+        def actionable(self) -> t.NonNegativeInt:
+            """Native occurrences whose admitted fix changes source bytes."""
+            return sum(
+                entry.classification == c.Infra.ModScanFindingClass.ACTIONABLE
+                for entry in self.entries
+            )
+
+        @m.computed_field
+        @property
+        def detection_only(self) -> t.NonNegativeInt:
+            """Native occurrences produced by rules without a fix."""
+            return sum(
+                entry.classification == c.Infra.ModScanFindingClass.DETECTION_ONLY
+                for entry in self.entries
+            )
+
+        @m.computed_field
+        @property
+        def non_actionable_with_fix(self) -> t.NonNegativeInt:
+            """Native occurrences whose declared fix leaves identical bytes."""
+            return sum(
+                entry.classification
+                == c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
+                for entry in self.entries
+            )
+
+        @m.computed_field
+        @property
+        def deferred(self) -> t.NonNegativeInt:
+            """Drifted native occurrences retained as evidence, never admitted edits."""
+            return sum(
+                entry.classification
+                == c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
+                for entry in self.entries
+            )
+
+    class ModScanReport(ModScanCounts[ModScanFinding]):
+        """Verified structural findings and actionable rewrite targets."""
+
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...] | None,
             m.Field(
-                description=(
-                    "Findings deferred because their source bytes changed "
-                    "during scanning; publication never applies them and "
-                    "the next scan re-authenticates or stops reporting them"
-                ),
+                description="Complete authenticated scan inventory, including zero "
+                "findings"
             ),
-        ] = 0
+        ] = None
         files: Annotated[
             frozenset[Path],
             m.Field(description="Files containing findings"),
-        ]
-        entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
-            m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
     class ModTextRule(m.ArbitraryTypesModel):
@@ -306,14 +359,23 @@ class FlextInfraModelsScan:
             m.Field(description="Every validated text finding in stable order"),
         ]
 
-    class ModScanEvidence(m.ArbitraryTypesModel):
+    class ModScanEvidence(ModScanCounts[ModScanFindingReference]):
         """Complete replace-on-run evidence for one public mod scan."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         schema_version: Annotated[
-            Literal[1],
-            m.Field(description="Exact structured evidence schema"),
+            int,
+            m.Field(
+                strict=True,
+                ge=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+                le=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+                description="Exact structured evidence schema",
+            ),
+        ]
+        inputs: Annotated[
+            FlextInfraModelsCodemod.CodemodBindingSnapshot,
+            m.Field(description="Single authenticated inventory for all occurrences"),
         ]
         command: Annotated[
             c.Infra.ModScanCommand,
@@ -323,22 +385,6 @@ class FlextInfraModelsScan:
         scope: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Exact ast-grep target scope"),
-        ]
-        findings: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Complete finding count"),
-        ]
-        actionable: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Byte-changing rewrite count"),
-        ]
-        detection_only: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings produced by rules without a fix"),
-        ]
-        non_actionable_with_fix: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Findings whose declared fix is byte-identical"),
         ]
         totals_by_class: Annotated[
             t.MappingKV[c.Infra.ModScanFindingClass, t.NonNegativeInt],
@@ -352,10 +398,46 @@ class FlextInfraModelsScan:
             t.MappingKV[str, t.NonNegativeInt],
             m.Field(description="Complete finding totals by rule identifier"),
         ]
-        entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
-            m.Field(description="Every finding in deterministic scan order"),
-        ]
+
+        @m.model_validator(mode="after")
+        def hydrate_occurrence_inputs(self) -> Self:
+            """Resolve persisted references through the typed closed inventory.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If mod scan classification inventory is incomplete; or if
+                    mod scan.
+            """
+            if set(self.totals_by_class) != set(c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS):
+                msg = "mod scan classification inventory is incomplete"
+                raise ValueError(msg)
+            for classification, field in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS.items():
+                if self.totals_by_class[classification] != getattr(self, field):
+                    msg = f"mod scan {field} differs from authenticated entries"
+                    raise ValueError(msg)
+            indexed = {state.path: state for state in self.inputs.states}
+            entries = tuple(
+                entry.model_copy(
+                    update={
+                        "source_state": (
+                            indexed[entry.source_path]
+                            if entry.source_path is not None
+                            else None
+                        ),
+                        "binding_states": tuple(
+                            indexed[path] for path in entry.binding_paths
+                        ),
+                    }
+                )
+                for entry in self.entries
+            )
+            return (
+                self
+                if entries == self.entries
+                else self.model_copy(update={"entries": entries})
+            )
 
     class ModScanEvidenceReceipt(m.ArbitraryTypesModel):
         """Authenticated publication identity and its exact evidence payload."""

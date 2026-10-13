@@ -504,7 +504,7 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package __init__.py path"),
         ]
         runtime_aliases: Annotated[
-            t.StrSequence,
+            t.VariadicTuple[str],
             m.Field(
                 description="Canonical runtime aliases published by the package root",
             ),

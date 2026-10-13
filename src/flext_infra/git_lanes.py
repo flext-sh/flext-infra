@@ -141,7 +141,7 @@ class FlextInfraGitLanes:
         policy = config.Infra.codegen.branch_policy
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
-            preference=policy.integration_branch_preference,
+            policy_branch=policy.integration_branch,
             declared=request.declared,
         )
         if base.failure:
@@ -314,6 +314,9 @@ class FlextInfraGitLanes:
         Returns:
             The actual global coordination SSOT; read/validation failures escape.
 
+        Raises:
+            ValueError: If lane governance file must be declared by the selected host or
+                target.
         """
         source = (
             request.governance_file
@@ -650,7 +653,7 @@ class FlextInfraGitLanes:
         refs = cls._collect_lane_facts(request, inventory, findings, violations)
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=request.declared,
         )
         fresh = cls.fresh_integration(request)

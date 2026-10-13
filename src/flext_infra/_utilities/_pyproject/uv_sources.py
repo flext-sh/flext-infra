@@ -237,17 +237,20 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         uv = cls._resolved_uv_table(document)
+        # The committed lock must install without materialized submodules in CI.
+        # Development binds local code after this complete artifact resolution.
         members = (
             tuple(member for member in workspace.subprojects if member.package)
             if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
             else ()
         )
+        root_names = (
+            (workspace.repository.distribution,)
+            if workspace.repository.package
+            else ()
+        )
         local_names = (
-            *(
-                (workspace.repository.distribution,)
-                if workspace.repository.package
-                else ()
-            ),
+            *root_names,
             *(member.distribution for member in members),
         )
         conflicting = set(local_names) & candidate_sources.keys()
@@ -271,7 +274,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             }),
         )
         cls._sync_uv_candidates(
-            uv, candidate_sources, local_names, local_requirements, resolution
+            uv, candidate_sources, root_names, local_requirements, resolution
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         cls._sync_uv_constraints(
@@ -280,15 +283,23 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        cls._sync_member_sources(uv, members)
+        cls._sync_root_source(
+            uv,
+            root_distribution=(
+                workspace.repository.distribution
+                if workspace.repository.package
+                else None
+            ),
+        )
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _sync_member_sources(
+    def _sync_root_source(
         uv: t.Cli.TomlTable,
-        members: t.SequenceOf[m.Infra.RepositoryRef],
+        *,
+        root_distribution: str | None,
     ) -> None:
-        """Replace native workspace identity with the declared root path overlay.
+        """Keep only the packaged root's implicit native uv workspace identity.
 
         The native TOML mapping validator propagates malformed source-table input.
         """
@@ -296,7 +307,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:
             sources = u.Cli.toml_ensure_table(uv, "sources")
-        wanted = {member.distribution for member in members}
+        wanted = {root_distribution} if root_distribution is not None else set()
         source_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             u.Cli.toml_unwrap_item(sources),
         )
@@ -313,11 +324,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 )
             ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
-        for member in members:
+        if root_distribution is not None:
             u.Cli.toml_sync_value(
                 sources,
-                member.distribution,
-                {"path": member.path.as_posix(), "editable": member.editable},
+                root_distribution,
+                {"workspace": True},
             )
         if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")

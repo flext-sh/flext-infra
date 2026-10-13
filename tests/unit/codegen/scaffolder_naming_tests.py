@@ -17,25 +17,7 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
-
-
-def _project_info(
-    project: Path,
-    *,
-    package_name: str = "test_project",
-) -> m.Infra.ProjectInfo:
-    """Build the scaffolder project info for ``project``.
-
-    Returns:
-        The resulting ``m.Infra.ProjectInfo``.
-
-    """
-    return u.Tests.create_project_info(
-        project,
-        name=project.name,
-        package_name=package_name,
-    )
+    from tests import t
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
@@ -73,9 +55,11 @@ class TestsFlextInfraCodegenScaffolderNaming:
                 with_all_modules=False,
             )
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[_project_info(project)])
+            _ = scaffolder.run(
+                projects=[u.Tests.create_project_info(project, name=project.name)]
+            )
             pkg = project / "src" / "test_project"
-            _validate_modules_parse(pkg, u.Tests.src_module_files())
+            _validate_modules_parse(pkg, tuple(row[0] for row in c.Infra.SRC_MODULES))
 
         def test_generated_tests_modules_parse_successfully(
             self,
@@ -89,8 +73,12 @@ class TestsFlextInfraCodegenScaffolderNaming:
             tests_dir = project / "tests"
             tests_dir.mkdir()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[_project_info(project)])
-            _validate_modules_parse(tests_dir, u.Tests.src_module_files())
+            _ = scaffolder.run(
+                projects=[u.Tests.create_project_info(project, name=project.name)]
+            )
+            _validate_modules_parse(
+                tests_dir, tuple(row[0] for row in c.Infra.TESTS_MODULES)
+            )
 
     class TestsGeneratedClassNamingConvention:
         """Generated class names follow the canonical prefix and suffix contract."""
@@ -102,7 +90,9 @@ class TestsFlextInfraCodegenScaffolderNaming:
                 with_all_modules=False,
             )
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[_project_info(project)])
+            _ = scaffolder.run(
+                projects=[u.Tests.create_project_info(project, name=project.name)]
+            )
             pkg = project / "src" / "test_project"
             _validate_class_names(
                 pkg,
@@ -127,7 +117,9 @@ class TestsFlextInfraCodegenScaffolderNaming:
             tests_dir = project / "tests"
             tests_dir.mkdir()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(projects=[_project_info(project)])
+            _ = scaffolder.run(
+                projects=[u.Tests.create_project_info(project, name=project.name)]
+            )
             _validate_class_names(
                 tests_dir,
                 {
@@ -147,7 +139,11 @@ class TestsFlextInfraCodegenScaffolderNaming:
             (project / "Makefile").touch()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
             [result] = scaffolder.run(
-                projects=[_project_info(project, package_name="")],
+                projects=[
+                    u.Tests.create_project_info(
+                        project, name=project.name, package_name=""
+                    )
+                ],
             )
             tm.that(result.files_created, empty=True)
             tm.that(result.files_skipped, empty=True)

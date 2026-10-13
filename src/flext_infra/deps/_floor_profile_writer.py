@@ -83,6 +83,8 @@ class FlextInfraDepsFloorProfileWriter:
         Returns:
             The resulting ``t.StrSequence``.
 
+        Raises:
+            ValueError: If dependency floor source changed during read.
         """
         sources = cls._source_paths(root)
         if not sources:

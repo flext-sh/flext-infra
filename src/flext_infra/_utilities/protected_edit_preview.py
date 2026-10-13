@@ -85,7 +85,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         workspace: Path,
         before_source: str,
         new_errors: t.Infra.LintSnapshot[t.StrSequence],
-        pytest_failure: str | None = None,
+        *,
         execution_errors: t.StrSequence = (),
     ) -> list[str]:
         """Describe the actual source delta and its validation failures.
@@ -113,8 +113,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 f"    NEW {tool} errors:",
                 *(f"      {message}" for message in messages),
             ))
-        if pytest_failure:
-            report_lines.append(f"    pytest failure: {pytest_failure}")
         return report_lines
 
     @staticmethod
@@ -146,8 +144,10 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             execution_errors = tuple(
                 error
                 for snapshot in (before_lints[path], after_lints[candidate])
-                for error in FlextInfraUtilitiesProtectedEditPreview.lint_execution_errors(
-                    snapshot
+                for error in (
+                    FlextInfraUtilitiesProtectedEditPreview.lint_execution_errors(
+                        snapshot
+                    )
                 )
             )
             if not new_errors and not execution_errors:

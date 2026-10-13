@@ -11,11 +11,13 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsCheck:
+class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Check infrastructure constants."""
 
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
@@ -147,20 +149,6 @@ class FlextInfraConstantsCheck:
         ERROR = "error"
 
     @unique
-    class GateKind(StrEnum):
-        """Who owns a gate's rule catalog.
-
-        ``EXTERNAL`` is an external tool applying its own per-file rule
-        catalog, ``TYPE_CHECKER`` a whole-program type checker, and ``INFRA``
-        a validator whose rules this package owns. The CI partition is
-        declared by ``make.ci.local_check_gates``, not by the kind.
-        """
-
-        EXTERNAL = "external"
-        TYPE_CHECKER = "type-checker"
-        INFRA = "infra"
-
-    @unique
     class LintFixRecipe(StrEnum):
         """Repair the lint gate applies to a finding Ruff reports without a fix.
 
@@ -178,90 +166,6 @@ class FlextInfraConstantsCheck:
         NORMALIZE_IMPORTS = "normalize-imports"
         WRAP_LONG_LINE = "wrap-long-line"
 
-    AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
-    "Canonical ast-grep documentation URL for gate metadata."
-    # Quality gate identifiers shared with the tool-name vocabulary.
-    LINT: ClassVar[str] = "lint"
-    FORMAT: ClassVar[str] = "format"
-    MARKDOWN: ClassVar[str] = "markdown"
-    MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
-    MARKDOWN_CODE: ClassVar[str] = "markdown-code"
-    SMELLS: ClassVar[str] = "smells"
-    RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
-    "Gate id whose census rule families no other gate owns."
-    FRESH_IMPORT: ClassVar[str] = "fresh-import"
-    "Gate id of the fresh-process import proof over the provisioned runtime."
-    CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
-    "Gate id of unresolved Git merge-control lines in repository-owned files."
-    GATE_TOOLS_BY_KIND: ClassVar[t.MappingKV[GateKind, t.MappingKV[str, t.StrPair]]] = (
-        MappingProxyType({
-            GateKind.EXTERNAL: MappingProxyType({
-                "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
-                "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
-                "security": ("Bandit", "https://bandit.readthedocs.io/"),
-                "markdown": ("rumdl", "https://rumdl.dev/"),
-                "markdown-format": ("rumdl", "https://rumdl.dev/"),
-                "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/"),
-                "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
-            }),
-            GateKind.TYPE_CHECKER: MappingProxyType({
-                "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
-                "mypy": ("Mypy", "https://mypy.readthedocs.io/"),
-                "pyright": ("Pyright", "https://github.com/microsoft/pyright"),
-            }),
-            GateKind.INFRA: MappingProxyType({
-                CONFLICT_MARKERS: (
-                    "Git Conflict Markers",
-                    "internal://flext-infra/conflict-markers",
-                ),
-                "loc-cap": ("scc", "https://github.com/boyter/scc"),
-                "runtime-census": (
-                    "Flext Runtime Enforcement Census",
-                    "internal://flext-infra/runtime-census",
-                ),
-                FRESH_IMPORT: (
-                    "Flext Fresh-Process Import Gate",
-                    "internal://flext-infra/fresh-import",
-                ),
-                "index-declarations": (
-                    "Flext Index Declarations Gate",
-                    "internal://flext-infra/index-declarations",
-                ),
-                SMELLS: ("Flext Code Smell Detector", "internal://flext-infra/smells"),
-                "codemod": ("ast-grep", AST_GREP_DOCS_URL),
-                "layout": (
-                    "Flext Project Layout Gate",
-                    "internal://flext-infra/layout",
-                ),
-                "direnv": (
-                    "Flext Direnv Environment Contract Gate",
-                    "internal://flext-infra/direnv",
-                ),
-            }),
-        })
-    )
-    """The gate registry: each gate is declared once, under its kind.
-
-    ``loc-cap`` and ``codemod`` drive an external engine (scc, ast-grep) over a
-    rule catalog this package owns, so they are ``INFRA``. Every other gate
-    vocabulary below is derived from this declaration.
-    """
-    GATE_KINDS: ClassVar[t.MappingKV[str, GateKind]] = MappingProxyType({
-        gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
-    })
-    "Gate id -> kind, derived from the registry declaration."
-    TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
-        GATE_TOOLS_BY_KIND[GateKind.TYPE_CHECKER],
-    )
-    "Native type-checker gates, derived from the registry declaration."
-    SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
-        gate: tool
-        for tools in GATE_TOOLS_BY_KIND.values()
-        for gate, tool in tools.items()
-    })
-    "Gate id -> (tool name, tool url), derived from the registry declaration."
-    ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
-    "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
     CHECK_REPORT_MARKDOWN_FILENAME: ClassVar[str] = "check-report.md"
     "Human-readable check report written beside the SARIF report."
     CHECK_REPORT_SARIF_FILENAME: ClassVar[str] = "check-report.sarif"
@@ -408,12 +312,18 @@ class FlextInfraConstantsCheck:
         "**/rules/ast-grep/tests/**",
         "**/_cov.py",
         "**/_parts/**",
+        "**/package-lock.json",
     )
     "Generated Python surfaces and structured test-case parameterization files "
     "excluded semantically; Git owns artifact visibility. ast-grep rule "
     "fixtures mirror their rule pattern/fix text by design (the fix output IS "
     "the next stage's valid input), so jscpd would always report the fixture "
-    "pair; the corpus is validated by `ast-grep test`, never by clone count."
+    "pair; the corpus is validated by `ast-grep test`, never by clone count. "
+    "package-lock.json is npm's emission, not authored code: sibling packages "
+    "of one tool family share resolved dependency lines by construction, so "
+    "their overlap is a data coincidence the resolver owns, never a clone to "
+    "refactor (operator per-change authorization under the 2026-09-24 "
+    "suppression ruling, granted 2026-10-13)."
 
     # --- Extended duplication gate (R2 consumer+family scope) ---
     JSCPD_CONSUMER_FAMILY_SCOPE: ClassVar[bool] = True

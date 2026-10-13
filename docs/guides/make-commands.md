@@ -161,6 +161,12 @@ namespace-enforce` / `refactor accessor-migrate` without `--apply` reports
   without writing) and publish their structured receipts under
   `.reports/refactor/`; a second run over a converged tree writes nothing.
 
+`flext-infra refactor namespace-enforce --module <dotted-module> --apply` limits
+import normalization and declared relocations to one owned source module. An unknown
+or ambiguous module fails before effects. The shared import-normalization phase also
+removes own-package import aliases, preserves shadowed homonyms and rejects canonical
+name capture; `make mod` consumes that same owner.
+
 The public `flext-infra refactor move-module` command moves an existing module
 through the same Rope engine and rewrites its import references. Its required
 `--repository-root`, `--source-file`, and `--destination-directory` arguments
@@ -215,6 +221,18 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   The latest receipt is `.reports/refactor/violations-sweep.json`; full
   invocation-local before/after evidence remains preserved alongside it. Root
   audit success or unchanged totals alone never prove every project green.
+
+  The default is an independent ordered sweep policy, not a second public-verb
+  registry. `MakeVerbSpec` declares names, arguments, descriptions, activation
+  production and profile applicability, but no repair-effect classification.
+  Registry order and `make.workflow` therefore cannot derive the sweep sequence:
+  the workflow also includes provisioning and validation and omits structural
+  repair. `check_gates_fixable` describes gates consumed by one repair operation,
+  not the ordering or selection of Make operations. Even mutating operations may
+  generate projections, remove artifacts or publish releases, so mutation alone
+  is not sweep eligibility. Keep this policy explicit until a canonical semantic
+  operation contract can determine both its membership and execution order;
+  never infer either from verb names, help text or Make recipes.
 
 ## Mandatory unsafe repair channel (operator law 2026-10-05)
 

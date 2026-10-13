@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
@@ -19,7 +19,7 @@ class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
 
     class CodemodImportResources(m.ArbitraryTypesModel):
-        """One frozen-layout invocation's native module and folder elections."""
+        """One frozen-layout invocation's native module elections."""
 
         modules: Annotated[
             t.MutableMappingKV[
@@ -30,15 +30,6 @@ class FlextInfraModelsRefactorGrep:
                 default_factory=dict,
                 description=(
                     "Elected native module resources keyed by invocation identity"
-                ),
-            ),
-        ]
-        folders: Annotated[
-            t.MutableMappingKV[str, p.Infra.RopeRoot | None],
-            m.Field(
-                default_factory=dict,
-                description=(
-                    "Verified folder capabilities keyed by native resource path"
                 ),
             ),
         ]
@@ -89,6 +80,20 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
+    class CodemodEnsureImport(m.ArbitraryTypesModel):
+        """One module import a rule's applied rewrites require in the file."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Dotted module path the name must be bound from"),
+        ]
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Top-level name the applied rewrite references"),
+        ]
+
     class CodemodRule(m.ArbitraryTypesModel):
         """One validated ast-grep rule document from a composed provider."""
 
@@ -113,7 +118,9 @@ class FlextInfraModelsRefactorGrep:
         ]
         module_absence: Annotated[
             bool,
-            m.Field(description="Native predicate is exclusively absence at module root"),
+            m.Field(
+                description="Native predicate is exclusively absence at module root"
+            ),
         ] = False
         expected: Annotated[
             int | None,
@@ -158,6 +165,15 @@ class FlextInfraModelsRefactorGrep:
                 description=(
                     "Project-context conditions a finding must satisfy; empty "
                     "when the syntactic match alone is the finding"
+                ),
+            ),
+        ] = ()
+        ensure_imports: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodEnsureImport],
+            m.Field(
+                description=(
+                    "Module imports every applied rewrite of this rule requires "
+                    "in the rewritten file; empty when the fix is self-contained"
                 ),
             ),
         ] = ()
@@ -226,6 +242,14 @@ class FlextInfraModelsRefactorGrep:
         predicates: Annotated[
             frozenset[c.Infra.CodemodContextPredicate],
             m.Field(description="Context predicates these facts were built for"),
+        ]
+        binding_rule_ids: Annotated[
+            frozenset[str],
+            m.Field(description="Elected rules requiring occurrence source proof"),
+        ]
+        binding_modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Elected semantic owner modules"),
         ]
         import_graph: Annotated[
             t.MappingKV[str, frozenset[str]],

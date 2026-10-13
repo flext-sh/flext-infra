@@ -16,6 +16,7 @@ from flext_infra import c, config, m, p, r, settings, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -51,14 +52,7 @@ class FlextInfraCodemodSemanticApply:
         )
         original = cls._source_inventory(
             root,
-            m.Infra.ModScanReport(
-                findings=0,
-                actionable=0,
-                detection_only=0,
-                non_actionable_with_fix=0,
-                files=frozenset(),
-                entries=(),
-            ),
+            FlextInfraModGateEngine.recounted(()),
         )
         inputs = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -288,10 +282,6 @@ class FlextInfraCodemodSemanticApply:
 
         """
         inventory = m.Infra.ModScanReport(
-            findings=0,
-            actionable=0,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset(),
             entries=(),
         )
@@ -358,7 +348,9 @@ class FlextInfraCodemodSemanticApply:
                 m.Infra.RunCommand(
                     repository_root=candidate_root,
                     projects=projects,
-                    reports_dir=str(m.Infra.RunCommand(repository_root=root).reports_dir_path),
+                    reports_dir=str(
+                        m.Infra.RunCommand(repository_root=root).reports_dir_path
+                    ),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
@@ -612,7 +604,11 @@ class FlextInfraCodemodSemanticApply:
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
         reports_root: Path,
     ) -> p.Result[bool]:
-        """Check the same public contract in a staged or published workspace."""
+        """Check the same public contract in a staged or published workspace.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
         with workspace_factory(root, None) as workspace:
             return cls._validate_published(root, preflight, workspace, reports_root)
 
@@ -653,7 +649,9 @@ class FlextInfraCodemodSemanticApply:
                         m.Infra.RunCommand(
                             repository_root=root,
                             reports_dir=str(
-                                m.Infra.RunCommand(repository_root=reports_root).reports_dir_path
+                                m.Infra.RunCommand(
+                                    repository_root=reports_root
+                                ).reports_dir_path
                             ),
                             projects=tuple(
                                 str(project.relative_to(root))
@@ -1040,6 +1038,7 @@ class FlextInfraCodemodSemanticApply:
             repository_root=root,
             validator=(lambda: validator(root)) if validator is not None else None,
             projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
         ).map(lambda _: True)
 
     @staticmethod

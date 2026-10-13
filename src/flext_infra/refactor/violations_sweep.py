@@ -231,7 +231,11 @@ class FlextInfraRefactorViolationsSweep(
         admissible = {
             verb.name
             for verb in config.Infra.codegen.make.verbs
-            if not verb.arguments and set(verb.profiles) == set(c.Infra.MakeProfile)
+            if u.Infra.selector_free_make_verb(
+                verb.arguments,
+                verb.profiles,
+                tuple(c.Infra.MakeProfile),
+            )
         }
         if not verbs or any(verb not in admissible for verb in verbs):
             return result.fail(

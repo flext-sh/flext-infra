@@ -12,14 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, main
+from flext_infra import infra, main
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from tests import tm, u
+from tests import tm, u, c, m
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:
@@ -275,10 +275,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             payload={},
         )
         return m.Infra.ModScanReport(
-            findings=1,
-            actionable=1,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset({path}),
             entries=(finding,),
         )
@@ -344,8 +340,10 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 u.Cli.run((
                     sys.executable,
                     "-c",
-                    "import runpy, sys; "
-                    "assert runpy.run_path(sys.argv[1])['value'] == 2",
+                    (
+                        "import runpy, sys; "
+                        "assert runpy.run_path(sys.argv[1])['value'] == 2"
+                    ),
                     str(sample),
                 ))
             )

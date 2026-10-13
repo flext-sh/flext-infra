@@ -11,7 +11,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
-from rope.base import exceptions as _rope_exceptions
 
 import ast
 import importlib.util
@@ -19,16 +18,6 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-
-
-def _rope_attribute_error() -> type[BaseException]:
-    """Return rope's attribute-error class, importing rope lazily.
-
-    Why (fleet-automation 2026-10-13): this runtime module keeps its rope
-    dependency lazy (the bridge pattern); the base resolver needs only the
-    error type to degrade unresolvable provider bindings.
-    """
-    return _rope_exceptions.AttributeNotFoundError
 
 
 class FlextInfraUtilitiesRopeSourceBasesRuntime:
@@ -569,15 +558,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
-            try:
-                binding = module.get_attribute(name)
-            except _rope_attribute_error():
-                # Why (fleet-automation 2026-10-13): a base whose binding the
-                # provider module does not expose (a test helper importing its
-                # product facade through TYPE_CHECKING lazy maps) has no
-                # followable lineage here — an empty identity makes the
-                # lineage merge skip it instead of killing the walk.
-                return ""
+            binding = module.get_attribute(name)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
                     binding,

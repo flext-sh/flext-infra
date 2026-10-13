@@ -25,8 +25,8 @@ from flext_infra.transformers import FlextInfraSemanticPublication
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     """Apply guarded rewrites and retain accepted progress for fix-forward."""
 
-    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = m.Field(
-        exclude=True, description="Injected candidate Rope workspace factory"
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
     )
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(

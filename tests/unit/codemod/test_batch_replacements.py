@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, main, t
+from flext_infra import c, m, main, p, t
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
 from tests import tm, u
@@ -26,6 +26,9 @@ class TestsFlextInfraBatchReplacements:
         content: bytes,
         *,
         generated: bool = False,
+        replacement: bytes = b"after",
+        matched: bytes = b"before",
+        rule_id: str = "fixture-rewrite",
     ) -> m.Infra.ModScanReport:
         policy = path.parent / "pyproject.toml"
         if not policy.exists():
@@ -35,27 +38,23 @@ class TestsFlextInfraBatchReplacements:
             )
         path.write_bytes(content)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-        start = content.index(b"before")
-        offsets: t.JsonDict = {"start": start, "end": start + len(b"before")}
+        start = content.index(matched)
+        offsets: t.JsonDict = {"start": start, "end": start + len(matched)}
         finding = m.Infra.ModScanFinding(
             rule_file=str(path.parent / "rule.yaml"),
-            rule_id="fixture-rewrite",
+            rule_id=rule_id,
             repository=path.parent.name,
             file=path,
             source_owner="generator" if generated else "authored",
             source_state=state,
             range={"byteOffset": offsets},
-            text="before",
-            replacement="after",
+            text=matched.decode(),
+            replacement=replacement.decode(),
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
             payload={"replacementOffsets": offsets, "severity": "error"},
         )
         return m.Infra.ModScanReport(
-            findings=1,
-            actionable=1,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset({path}),
             entries=(finding,),
         )
@@ -66,7 +65,7 @@ class TestsFlextInfraBatchReplacements:
         path = root / "subject.py"
         original = '# ação\nvalue = "before"\n'.encode()
         report = self._report(path, original)
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(FlextInfraModReplacements.publish(root, report, {}))
         tm.that(path.read_bytes(), eq=original.replace(b"before", b"after"))
 
     def test_removed_references_leave_no_type_only_import_scaffold(
@@ -133,7 +132,7 @@ class TestsFlextInfraBatchReplacements:
         path = root / "generated.py"
         original = b'value = "before"\n'
         report = self._report(path, original, generated=True)
-        result = FlextInfraModReplacements.publish(root, report)
+        result = FlextInfraModReplacements.publish(root, report, {})
         tm.fail(result)
         tm.that(result.error, has=f"generator:{path}:fixture-rewrite")
         tm.that(report.findings, eq=1)
@@ -365,15 +364,151 @@ class TestsFlextInfraBatchReplacements:
             payload={"replacementOffsets": offsets, "severity": "error"},
         )
         report = m.Infra.ModScanReport(
-            findings=1,
-            actionable=1,
-            detection_only=0,
-            non_actionable_with_fix=0,
             files=frozenset({path}),
             entries=(finding,),
         )
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(FlextInfraModReplacements.publish(root, report, {}))
         tm.that(
             path.read_bytes(),
             eq=b'"""Demo."""\n\n\ndef t() -> None:\n    assert True\n',
         )
+
+
+class TestsFlextInfraModReplacementsEnsureImports:
+    """A rule's required module imports complete its applied rewrites."""
+
+    _RULE_ID = "namespace-static-path-probe"
+
+    @classmethod
+    def _publish(
+        cls,
+        tmp_path: Path,
+        content: bytes,
+        required: t.SequenceOf[m.Infra.CodemodEnsureImport],
+    ) -> tuple[Path, p.Result[bool]]:
+        """Publish one static-path rewrite carrying its required imports.
+
+        The rewrite mirrors the real cascade: the replacement references the
+        compose class the rule requires the file to bind.
+
+        Returns:
+            The resulting ``(repository root, publication result)`` pair.
+
+        """
+        root = u.Tests.git_repository(tmp_path)
+        path = root / "subject.py"
+        matched = b'container = "before"'
+        replacement = b"container = CosmosChartsTypes.CosmosCharts.YamlMap"
+        if matched not in content:
+            msg = "fixture content lacks the rewritten statement"
+            raise ValueError(msg)
+        report = TestsFlextInfraBatchReplacements._report(
+            path,
+            content,
+            replacement=replacement,
+            matched=matched,
+            rule_id=cls._RULE_ID,
+        )
+        return root, FlextInfraModReplacements.publish(
+            root,
+            report,
+            {cls._RULE_ID: tuple(required)},
+        )
+
+    @staticmethod
+    def _required() -> tuple[m.Infra.CodemodEnsureImport, ...]:
+        """Return the compose import one static-path rewrite requires."""
+        return (
+            m.Infra.CodemodEnsureImport(
+                module="cosmos_charts.typings",
+                name="CosmosChartsTypes",
+            ),
+        )
+
+    def test_missing_required_import_is_completed(self, tmp_path: Path) -> None:
+        """The rewrite that references a class gets its compose import."""
+        root, result = self._publish(
+            tmp_path,
+            (
+                b'"""Doc."""\n\n'
+                b"from __future__ import annotations\n\n"
+                b"from cosmos_charts import t\n\n"
+                b'container = "before"\n'
+            ),
+            self._required(),
+        )
+        tm.ok(result)
+        published = (root / "subject.py").read_text()
+        tm.that(published, has="from cosmos_charts.typings import CosmosChartsTypes")
+        tm.that(published, has="container = CosmosChartsTypes.CosmosCharts.YamlMap")
+
+    def test_existing_binding_from_the_declared_module_is_not_duplicated(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A file already binding the name keeps exactly one import."""
+        content = (
+            b'"""Doc."""\n\n'
+            b"from cosmos_charts.typings import CosmosChartsTypes\n\n"
+            b'container = "before"\n'
+        )
+        root, result = self._publish(tmp_path, content, self._required())
+        tm.ok(result)
+        published = (root / "subject.py").read_text()
+        tm.that(published.count("import CosmosChartsTypes"), eq=1)
+
+    def test_type_checking_binding_satisfies_the_requirement(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A guarded import of the declared module completes the rewrite."""
+        content = (
+            b'"""Doc."""\n\n'
+            b"from typing import TYPE_CHECKING\n\n"
+            b"if TYPE_CHECKING:\n"
+            b"    from cosmos_charts.typings import CosmosChartsTypes\n\n"
+            b'container = "before"\n'
+        )
+        root, result = self._publish(tmp_path, content, self._required())
+        tm.ok(result)
+        published = (root / "subject.py").read_text()
+        tm.that(published.count("import CosmosChartsTypes"), eq=1)
+
+    def test_conflicting_runtime_binding_fails_loud(self, tmp_path: Path) -> None:
+        """A name bound from another module is a rule-declaration conflict."""
+        content = (
+            b'"""Doc."""\n\n'
+            b"from elsewhere import CosmosChartsTypes\n\n"
+            b'container = "before"\n'
+        )
+        root, result = self._publish(tmp_path, content, self._required())
+        tm.fail(result)
+        tm.that(result.error, has="binds it from")
+        tm.that((root / "subject.py").read_bytes(), eq=content)
+
+    def test_completion_is_idempotent_over_the_completed_bytes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Re-completing the rewritten bytes inserts no second import."""
+        root = u.Tests.git_repository(tmp_path)
+        path = root / "subject.py"
+        content = b'"""Doc."""\n\nfrom cosmos_charts import t\n\ncontainer = "before"\n'
+        completed = tm.ok(
+            FlextInfraModReplacements._complete_imports(
+                content.replace(
+                    b'container = "before"',
+                    b"container = CosmosChartsTypes.CosmosCharts.YamlMap",
+                ),
+                self._required(),
+                path,
+            ),
+        )
+        again = tm.ok(
+            FlextInfraModReplacements._complete_imports(
+                completed,
+                self._required(),
+                path,
+            ),
+        )
+        tm.that(again, eq=completed)

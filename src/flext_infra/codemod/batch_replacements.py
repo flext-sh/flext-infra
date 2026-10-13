@@ -72,9 +72,15 @@ class FlextInfraModReplacements:
         report: m.Infra.ModScanReport,
         *,
         exact_replacements: bool = False,
-        published_plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] | None = None,
+        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
+
+        Args:
+            root: Repository root the finding paths are relative to.
+            report: The scanned findings whose actionable fixes publish.
+            ensure_imports: Per rule ID, the module imports every applied
+                rewrite of that rule requires in the rewritten file.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -107,11 +113,10 @@ class FlextInfraModReplacements:
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
+            published_files=published_plans,
         )
         if published.failure:
             return r[bool].from_failure(published)
-        if published_plans is not None:
-            published_plans.extend(plan for plan in plans if plan.path in published.value)
         return r[bool].ok(value=True)
 
     @classmethod
@@ -163,6 +168,9 @@ class FlextInfraModReplacements:
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
             return r[m.Infra.SemanticFilePlan].from_failure(updated)
+        completed = cls._complete_imports(updated.value, required_imports, path)
+        if completed.failure:
+            return r[m.Infra.SemanticFilePlan].from_failure(completed)
         bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for finding in findings:
             for state in finding.binding_states:

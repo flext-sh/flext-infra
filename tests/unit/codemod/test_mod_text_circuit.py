@@ -742,7 +742,11 @@ class TestsFlextInfraModTextGateEngine:
         )
 
         def validate_effects() -> p.Result[bool]:
-            """Consume the rejected dependency target and independent publication."""
+            """Consume the rejected dependency target and independent publication.
+
+            Returns:
+                The resulting ``p.Result[bool]``.
+            """
             tm.that(first.read_bytes(), eq=original_source)
             tm.that(second.read_bytes(), eq=b'value = "after"\n')
             tm.that(document.read_text(encoding="utf-8"), eq=changed_document)

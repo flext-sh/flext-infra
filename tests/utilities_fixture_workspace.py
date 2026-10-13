@@ -121,7 +121,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         *,
         project_name: str = "sample-proj",
         package_name: str = "sample_pkg",
-        pyproject: str = "[project]\nname='sample'\n",
+        pyproject: str = "[project]\nname='sample'\nversion='1.0.0'\n",
         declare: bool = True,
     ) -> t.Triple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.
@@ -137,7 +137,11 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             The resulting ``t.Triple[Path, Path, Path]``.
 
         """
-        workspace = tmp_path / "workspace"
+        workspace = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject=pyproject,
+        )
         project = workspace / project_name
         package = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.src_package(
             project,
@@ -388,22 +392,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return "".join(part.title() for part in snake.split("_"))
 
     @staticmethod
-    def src_module_files() -> t.StrSequence:
-        """Return canonical FLEXT source-facade filenames.
-
-        Returns:
-            Canonical FLEXT source-facade filenames.
-
-        """
-        return (
-            "constants.py",
-            "typings.py",
-            "protocols.py",
-            "models.py",
-            "utilities.py",
-        )
-
-    @staticmethod
     def create_codegen_project(
         *,
         tmp_path: Path,
@@ -485,7 +473,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").touch()
         if with_all_modules:
-            for mod in TestsFlextInfraUtilitiesWorkspaceFixtureMixin.src_module_files():
+            for mod, _suffix, _base, _description in c.Infra.SRC_MODULES:
                 (pkg / mod).write_text(
                     f"class TestProject{mod.split('.')[0].title()}:\n    pass\n",
                     encoding="utf-8",

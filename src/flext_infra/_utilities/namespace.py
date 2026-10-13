@@ -242,11 +242,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def _runtime_aliases(cls, package_dir: Path) -> t.StrSequence:
+    def _runtime_aliases(cls, package_dir: Path) -> t.VariadicTuple[str]:
         """Read root aliases from declarations, never from initializer outputs.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The canonical immutable alias tuple.
 
         """
         return tuple(

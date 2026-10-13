@@ -514,32 +514,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             for entry in cls._selected_lint_tools(gates)
         )
 
-    _snapshot_cache: ClassVar[
-        MutableMapping[
-            t.Triple[str, str, t.StrSequence],
-            t.Infra.LintSnapshot[m.Infra.LintGateResult],
-        ]
-    ] = {}
-
-    @classmethod
-    def clear_snapshot_cache(cls) -> None:
-        """Reset the content-hash keyed lint snapshot cache."""
-        cls._snapshot_cache.clear()
-
-    @staticmethod
-    def _lint_snapshot_cache_key(
-        py_file: Path,
-        gate_key: t.StrSequence,
-    ) -> t.Triple[str, str, t.StrSequence] | None:
-        """Lint snapshot cache key.
-
-        Returns:
-            The resulting ``t.Triple[str, str, t.StrSequence] | None``.
-
-        """
-        raw_bytes = py_file.read_bytes()
-        return (str(py_file.resolve()), u.Cli.sha256_bytes(raw_bytes), gate_key)
-
     @classmethod
     def _execute_selected_lint_tools(
         cls,
@@ -811,10 +785,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         result = r[t.StrSequence]
         loaded = u.Cli.json_parse(source)
-        if loaded.failure:
-            return result.from_failure(loaded)
-        if not isinstance(loaded.value, list):
-            return result.fail("Ruff JSON report is not a list of findings")
+        if loaded.failure or not isinstance(loaded.value, list):
+            return (
+                result.from_failure(loaded)
+                if loaded.failure
+                else result.fail("Ruff JSON report is not a list of findings")
+            )
         errors: list[str] = []
         for finding in loaded.value:
             if not isinstance(finding, dict):
@@ -828,7 +804,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     "file": finding.get("filename"),
                     "line": location.get("row"),
                     "column": location.get("column"),
-                    "code": finding.get("name"),
+                    "code": finding.get("code"),
                     "message": finding.get("message"),
                 },
                 strict=True,
@@ -888,6 +864,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Candidate stdin retains the destination's filename and configuration;
         it never materializes the proposed bytes on the live filesystem.
+        Every call observes the native tool again. A file hash cannot authenticate
+        configuration, runtime or imported dependency changes; only the native
+        checker owns reuse of its complete analysis inputs.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.
@@ -909,25 +888,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     source=source,
                 ),
             ))
-        if not selected_tools:
-            return {}
-
-        gate_key = tuple(entry[0] for entry in selected_tools)
-        cache_key = cls._lint_snapshot_cache_key(py_file, gate_key)
-        if (
-            cache_key is not None
-            and (cached := cls._snapshot_cache.get(cache_key)) is not None
-        ):
-            return cached
-
-        result = cls._execute_selected_lint_tools(
+        return cls._execute_selected_lint_tools(
             py_file=py_file,
             workspace=workspace,
             selected_tools=selected_tools,
         )
-        if cache_key is not None and not cls.lint_execution_errors(result):
-            cls._snapshot_cache[cache_key] = dict(result)
-        return result
 
     @classmethod
     def lint_snapshots(
