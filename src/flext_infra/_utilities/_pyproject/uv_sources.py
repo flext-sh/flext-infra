@@ -245,9 +245,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             else ()
         )
         root_names = (
-            (workspace.repository.distribution,)
-            if workspace.repository.package
-            else ()
+            (workspace.repository.distribution,) if workspace.repository.package else ()
         )
         local_names = (
             *root_names,
