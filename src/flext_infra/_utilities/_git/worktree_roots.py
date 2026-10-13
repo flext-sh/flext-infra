@@ -112,12 +112,33 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
             if any(item.path == relative for item in declarations):
                 return result.fail(f"duplicate Git submodule path: {raw_path}")
             flag = values.get(c.Infra.GITMODULE_MANAGED_KEY)
+            managed: bool | None = None
+            if flag is not None:
+                try:
+                    normalized = Git(repository_root).config(
+                        "--file",
+                        str(repository_root / c.Infra.GITMODULES),
+                        "--type=bool",
+                        "--get",
+                        f"{section}.{c.Infra.GITMODULE_MANAGED_KEY}",
+                    ).strip()
+                except (GitCommandError, OSError) as exc:
+                    return result.fail(
+                        f"invalid Git submodule management declaration: {exc}",
+                        exception=exc,
+                    )
+                if normalized not in {"true", "false"}:
+                    error = ValueError(
+                        "Git returned a noncanonical management boolean",
+                    )
+                    return result.fail(str(error), exception=error)
+                managed = normalized == "true"
             declarations.append(
                 m.Infra.GitSubmoduleDeclaration(
                     path=relative,
                     url=values.get(c.Infra.GITMODULE_URL_KEY, ""),
                     branch=values.get(c.Infra.GITMODULE_BRANCH_KEY, ""),
-                    managed=None if flag is None else flag.lower() == "true",
+                    managed=managed,
                 ),
             )
         return result.ok(tuple(declarations))

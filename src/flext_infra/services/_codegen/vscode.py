@@ -174,38 +174,38 @@ class FlextInfraCodegenVscodeMixin:
             )
             if classified.failure:
                 return r[t.MutableJsonMapping].from_failure(classified)
-            if classified.value is not None:
-                field, normalized = classified.value
+            selected, present = classified.value
+            if present and selected is not None:
+                field, normalized = selected
                 buckets[field][key] = normalized
         return r[t.MutableJsonMapping].ok({
             field: values for field, values in buckets.items() if values
         })
 
-    @staticmethod
+    @classmethod
     def _classify_vscode_setting(
+        cls,
         key: str,
         value: t.JsonValue,
         spec: m.Infra.CodegenVscodeSpec,
         expected: t.JsonMapping,
         artifact_settings: t.JsonMapping,
-    ) -> p.Result[tuple[str, t.JsonValue] | None]:
+    ) -> p.Result[t.Pair[tuple[str, t.JsonValue] | None, bool]]:
         """Classify one portable setting into its representable delta bucket.
 
         Returns:
-            ``(bucket, normalized_value)`` when the setting must be overridden,
-            or ``None`` when it is derived, retired, or already expected.
-
-        Raises:
-            ValueError: If a list or union setting cannot be represented by the
-                canonical configuration merge.
+            A bucket assignment and explicit presence flag; absence is carried
+            inside a nonempty tuple when the setting is already owned.
         """
-        result_type = r[tuple[str, t.JsonValue] | None]
-        if key in spec.stripped_keys or key in artifact_settings:
-            return result_type.ok(None)
-        if key in expected and value == expected[key]:
-            return result_type.ok(None)
+        result_type = r[t.Pair[tuple[str, t.JsonValue] | None, bool]]
+        if (
+            key in spec.stripped_keys
+            or key in artifact_settings
+            or (key in expected and value == expected[key])
+        ):
+            return result_type.ok((None, False))
         if key in spec.scalar_settings:
-            return result_type.ok(("scalar_settings", value))
+            return result_type.ok((("scalar_settings", value), True))
         if key in spec.list_settings:
             baseline = list(spec.list_settings[key])
             if not isinstance(value, list) or value[: len(baseline)] != baseline:
@@ -214,22 +214,38 @@ class FlextInfraCodegenVscodeMixin:
                     f"configuration concatenation: {key}",
                 )
                 return result_type.fail(str(error), exception=error)
-            return result_type.ok(("list_settings", value[len(baseline) :]))
+            return result_type.ok((("list_settings", value[len(baseline) :]), True))
         if key in spec.map_union_settings:
-            if not isinstance(value, Mapping):
-                error = ValueError(f"editor union setting must be a mapping: {key}")
-                return result_type.fail(str(error), exception=error)
-            baseline_map = spec.map_union_settings[key]
-            return result_type.ok((
-                "map_union_settings",
-                {
-                    item_key: item_value
-                    for item_key, item_value in value.items()
-                    if item_key not in baseline_map
-                    or item_value != baseline_map[item_key]
-                },
-            ))
-        return result_type.ok(("additional_settings", value))
+            return cls._union_setting_override(key, value, spec).map(
+                lambda assignment: (assignment, True),
+            )
+        return result_type.ok((("additional_settings", value), True))
+
+    @staticmethod
+    def _union_setting_override(
+        key: str,
+        value: t.JsonValue,
+        spec: m.Infra.CodegenVscodeSpec,
+    ) -> p.Result[tuple[str, t.JsonValue]]:
+        """Return the map-union override value for one union setting.
+
+        Returns:
+            The ``map_union_settings`` bucket assignment, or a representability
+            failure when the value is not a mapping.
+        """
+        result_type = r[tuple[str, t.JsonValue]]
+        if not isinstance(value, Mapping):
+            error = ValueError(f"editor union setting must be a mapping: {key}")
+            return result_type.fail(str(error), exception=error)
+        baseline_map = spec.map_union_settings[key]
+        return result_type.ok((
+            "map_union_settings",
+            {
+                item_key: item_value
+                for item_key, item_value in value.items()
+                if item_key not in baseline_map or item_value != baseline_map[item_key]
+            },
+        ))
 
     @staticmethod
     def compose_vscode_delta(

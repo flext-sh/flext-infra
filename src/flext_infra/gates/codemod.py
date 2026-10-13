@@ -56,7 +56,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             ctx,
             targets,
             time.monotonic(),
-            nonparticipants=u.Infra.manifest_nonparticipant_paths(project_dir),
+            nonparticipants=u.Infra.repository_nonparticipant_paths(project_dir),
         )
 
     @override
