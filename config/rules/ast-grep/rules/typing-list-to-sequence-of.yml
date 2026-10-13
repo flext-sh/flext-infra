@@ -1,28 +1,8 @@
-# Detection-only companion of typing-list-to-sequence-of.
-#
-# Flags a legacy `List[T]` / `typing.List[T]` generic whose module does NOT bind
-# the typings facade `t`. The canonical form is `t.SequenceOf[T]`, but a blind
-# rewrite here would emit an undefined name (`t`), causing Ruff F821 / Pyrefly
-# missing-name. This rule has NO `fix:` on purpose: the `t` import must be added
-# first (`from <ns> import ..., t`), after which typing-list-to-sequence-of
-# rewrites the annotation safely.
-#
-# Why the split: ast-grep cannot conditionally insert an import in a single
-# textual `fix`, and `ruff --fix` only removes unused imports (never adds a
-# missing one). So an import-unsafe rewrite is emitted as a detection, per the
-# library's "detection only when a generic textual fix would be unsafe"
-# contract. The retired regex transformer instead injected the import itself
-# (`required_alias: t`), which is why it could rewrite first and discover the
-# broken module afterwards.
-#
-# The three generic shapes are owned once by the `typing-list-generic` util; both
-# this rule and its auto-fixing peer select them through `matches`.
+# Sequence abstractions lose concrete list APIs and Pydantic field semantics.
+# The exact ListOf alias preserves both; a canonical binding is still required.
 id: typing-list-missing-t-import
 language: python
 severity: error
-files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
 rule:
   all:
     - matches: typing-list-generic
@@ -34,24 +14,13 @@ rule:
             stopBy: end
             matches: t-locally-bound
 message: >-
-  typing.List must become t.SequenceOf[T], but this module does not import `t`.
-  Add the typings import first, then typing-list-to-sequence-of rewrites it. No
-  auto-fix here to avoid emitting an undefined name (Ruff F821 / Pyrefly).
+  typing.List must become the exact t.ListOf[T] contract, but a canonical `t`
+  binding is not established. Resolve the facade binding before rewriting;
+  SequenceOf and MutableSequenceOf are not concrete list replacements.
 ---
-# Family file for the typing.List modernization pair: the auto-fixing rewrite
-# and its detection-only missing-import companion select the same three
-# generic shapes (owned by the `typing-list-generic` util) and differ only in the
-# `t` binding guard.
-#
-# ast-grep metavariables never cross a `matches` boundary, so the rule re-binds
-# the matched node with its own `pattern: $WHOLE` and derives the canonical text
-# with a `replace` transform rather than the retired `t.SequenceOf[$T]` fix.
 id: typing-list-to-sequence-of
 language: python
 severity: error
-files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
 rule:
   all:
     - matches: typing-list-generic
@@ -67,7 +36,8 @@ transform:
     replace:
       source: $WHOLE
       replace: "^(?:typing\\.)?List"
-      by: "t.SequenceOf"
+      by: "t.ListOf"
 fix: $NEW
 message: >-
-  typing.List is retired; the canonical sequence annotation is t.SequenceOf[T].
+  Replace typing.List with t.ListOf[T], preserving the exact concrete list API,
+  mutations and Pydantic field contract rather than a sequence abstraction.

@@ -56,14 +56,17 @@ class FlextInfraMisePublication:
                 f"ownership=authored disposition=retained target={plan.path}",
             )
             return r[bool].ok(value=False)
+        publication_before = (
+            u.Infra.codegen_file_before_state(plan)
+            if phase == c.Infra.CodegenStagedFilePhase.SEMANTIC
+            else before
+        )
+        if publication_before.failure:
+            return r[bool].from_failure(publication_before)
         staged_publication = cls._staged_publication(
             plan,
             phase=phase,
-            before=(
-                plan.before
-                if phase == c.Infra.CodegenStagedFilePhase.SEMANTIC
-                else before.value
-            ),
+            before=publication_before.value,
         )
         if staged_publication.failure:
             return r[bool].from_failure(staged_publication)

@@ -1069,11 +1069,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         completed: list[m.Infra.CodegenFilePlan] = []
         planned = self._represent_ungoverned_artifacts(
-            target,
+            target
+            if vscode_spec is None
+            else target.model_copy(
+                update={"vscode_spec": vscode_spec},
+            ),
             codegen,
             {item.path: item for item in codegen.managed_files if item.runtime_binding},
             completed,
-            vscode_spec=vscode_spec,
             migrate_tracking=True,
         )
         if planned.failure:
@@ -1087,7 +1090,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         governed_by_path: t.MappingKV[Path, m.Infra.ManagedFileSpec],
         completed: list[m.Infra.CodegenFilePlan],
         *,
-        vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
         migrate_tracking: bool = False,
     ) -> p.Result[bool]:
         """Append a plan for every unrepresented governed artifact in the mapping.
@@ -1098,7 +1100,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         root = target.root
         profile = target.make_profile
-        vscode_spec = target.vscode_spec if vscode_spec is None else vscode_spec
+        vscode_spec = target.vscode_spec
         runtime_root = (
             root
             if self.initial_workspace is not None
@@ -1192,13 +1194,34 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.ok(
                 () if binding.value[0] is None else (binding.value[0],),
             )
-        if state.content is None:
+        settings = cls._vscode_tracking_settings(request, state)
+        if settings.failure:
+            return result_type.from_failure(settings)
+        projected = cls._vscode_tracking_projection(request, *settings.value)
+        if projected.failure:
+            return result_type.from_failure(projected)
+        effective, declarations = projected.value
+        return cls._vscode_tracking_binding(request, state, effective, declarations)
+
+    @staticmethod
+    def _vscode_tracking_settings(
+        request: m.Infra.CodegenGovernedPlanRequest,
+        state: m.Infra.GitIndexFileState,
+    ) -> p.Result[t.Pair[t.JsonMapping, t.JsonMapping]]:
+        """Parse the captured index blob and live editor content independently.
+
+        Returns:
+            Indexed and live settings with their original parse failures.
+        """
+        result_type = r[t.Pair[t.JsonMapping, t.JsonMapping]]
+        content = state.content
+        if content is None:
             error = ValueError(
                 f"captured editor index blob is absent: {request.relative}"
             )
             return result_type.fail(str(error), exception=error)
         decoded = r[str].create_from_callable(
-            lambda: state.content.decode(c.DEFAULT_ENCODING),
+            lambda: content.decode(c.DEFAULT_ENCODING),
         )
         if decoded.failure:
             return result_type.from_failure(decoded)
@@ -1208,45 +1231,32 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(indexed)
         if live.failure:
             return result_type.from_failure(live)
+        return result_type.ok((indexed.value, live.value))
+
+    @classmethod
+    def _vscode_tracking_projection(
+        cls,
+        request: m.Infra.CodegenGovernedPlanRequest,
+        indexed: t.JsonMapping,
+        live: t.JsonMapping,
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
+    ]:
+        """Compose project and local overrides through captured config layers.
+
+        Returns:
+            Effective inputs and guarded source declaration plans.
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        ]
         loaded = u.Infra.load_codegen_inputs(request.root)
         if loaded.failure:
             return result_type.from_failure(loaded)
-        baseline = u.Infra.project_codegen_inputs(
-            request.root,
-            loaded.value,
-            include_local=False,
-        )
-        if baseline.failure:
-            return result_type.from_failure(baseline)
-        project = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
-            request.root,
-            indexed.value,
-            spec=baseline.value.spec.vscode,
-        )
+        project = cls._vscode_project_projection(request.root, loaded.value, indexed)
         if project.failure:
             return result_type.from_failure(project)
-        layers = FlextInfraConfig.config_layer_paths_for_repository(
-            request.root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        if project.value.values and layers[1].resolve() == layers[0].resolve():
-            error = ValueError(
-                "project editor declarations share the distributed defaults: "
-                f"{layers[1]}",
-            )
-            return result_type.fail(str(error), exception=error)
-        projections = (
-            (
-                m.Infra.CodegenLayerProjection(
-                    path=layers[1],
-                    values={
-                        "Infra": {"codegen": {"vscode": dict(project.value.values)}}
-                    },
-                ),
-            )
-            if project.value.values
-            else ()
-        )
+        projections = project.value
         composed = u.Infra.project_codegen_inputs(
             request.root,
             loaded.value,
@@ -1256,13 +1266,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(composed)
         local = FlextInfraCodegenVscodeMixin.vscode_local_declaration_delta(
             request.root,
-            indexed.value,
-            live.value,
+            indexed,
+            live,
             spec=composed.value.spec.vscode,
         )
         if local.failure:
             return result_type.from_failure(local)
         if local.value.values:
+            layers = FlextInfraConfig.config_layer_paths_for_repository(
+                request.root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            )
             projections = (
                 *projections,
                 m.Infra.CodegenLayerProjection(
@@ -1277,30 +1291,121 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if effective.failure:
             return result_type.from_failure(effective)
+        return cls._vscode_declaration_plans(
+            request.root,
+            loaded.value,
+            projections,
+        ).map(lambda declarations: (effective.value, declarations))
+
+    @staticmethod
+    def _vscode_project_projection(
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        indexed: t.JsonMapping,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenLayerProjection]]:
+        """Extract a portable project delta without promoting local configuration.
+
+        Returns:
+            A project-layer projection only when indexed settings differ.
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenLayerProjection]]
+        baseline = u.Infra.project_codegen_inputs(
+            root,
+            inputs,
+            include_local=False,
+        )
+        if baseline.failure:
+            return result_type.from_failure(baseline)
+        project = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
+            root,
+            indexed,
+            spec=baseline.value.spec.vscode,
+        )
+        if project.failure:
+            return result_type.from_failure(project)
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if project.value.values and layers[1].resolve() == layers[0].resolve():
+            error = ValueError(
+                "project editor declarations share the distributed defaults: "
+                f"{layers[1]}",
+            )
+            return result_type.fail(str(error), exception=error)
+        return result_type.ok(
+            (
+                m.Infra.CodegenLayerProjection(
+                    path=layers[1],
+                    values={
+                        "Infra": {"codegen": {"vscode": dict(project.value.values)}}
+                    },
+                ),
+            )
+            if project.value.values
+            else ()
+        )
+
+    @classmethod
+    def _vscode_declaration_plans(
+        cls,
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Bind each projected delta to its captured source without touching defaults.
+
+        Returns:
+            Guarded project and local configuration plans in dependency order.
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        library = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )[0]
         declarations: list[m.Infra.CodegenFilePlan] = []
-        for path, delta in zip(layers[1:], (project.value, local.value), strict=True):
-            if not delta.values:
-                continue
-            if path.resolve() == layers[0].resolve():
+        for projection in projections:
+            path = projection.path
+            if path.resolve() == library.resolve():
                 error = ValueError(
                     "project editor declarations share the distributed defaults: "
                     f"{path}",
                 )
                 return result_type.fail(str(error), exception=error)
+            values = u.Cli.json_walk_path(projection.values, ("Infra", "codegen"))
+            validated = u.validate_value(t.Cli.JSON_MAPPING_ADAPTER, values)
+            if validated.failure:
+                return result_type.from_failure(validated)
             planned = cls._codegen_declaration_plan(
-                request.root,
+                root,
                 path,
-                {"vscode": dict(delta.values)},
-                sources=loaded.value.sources,
+                validated.value,
+                sources=inputs.sources,
             )
             if planned.failure:
                 return result_type.from_failure(planned)
             declarations.append(planned.value)
+        return result_type.ok(tuple(declarations))
+
+    @classmethod
+    def _vscode_tracking_binding(
+        cls,
+        request: m.Infra.CodegenGovernedPlanRequest,
+        state: m.Infra.GitIndexFileState,
+        effective: m.Infra.CodegenInputs,
+        declarations: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Retire captured tracking only after its portable declarations are written.
+
+        Returns:
+            Source declarations followed by their guarded editor binding.
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         binding = cls._vscode_merged_plan(
             request.model_copy(
                 update={
-                    "vscode_spec": effective.value.spec.vscode,
-                    "source_states": loaded.value.sources,
+                    "vscode_spec": effective.spec.vscode,
+                    "source_states": effective.sources,
                 },
             ),
         )

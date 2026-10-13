@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -20,10 +20,8 @@ from flext_infra._models import (
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorGrep,
+    FlextInfraModelsScan,
 )
-
-if TYPE_CHECKING:
-    from flext_infra._models import FlextInfraModelsScan
 
 
 class FlextInfraModelsRefactor(
@@ -145,11 +143,185 @@ class FlextInfraModelsRefactor(
                 non_actionable_with_fix=report.non_actionable_with_fix,
             )
 
+    class ViolationsRuleDelta(m.ContractModel):
+        """Occurrence counts for one repository and exact rule identity."""
+
+        repository: Annotated[str, m.Field(description="Owning repository identity")]
+        rule_id: Annotated[str, m.Field(description="Exact detector rule identity")]
+        before: Annotated[t.NonNegativeInt, m.Field(description="Before occurrences")]
+        after: Annotated[t.NonNegativeInt, m.Field(description="After occurrences")]
+        resolved: Annotated[
+            t.NonNegativeInt, m.Field(description="Removed occurrences")
+        ]
+        persisted: Annotated[
+            t.NonNegativeInt, m.Field(description="Unchanged occurrences")
+        ]
+        introduced: Annotated[t.NonNegativeInt, m.Field(description="New occurrences")]
+        before_entries: Annotated[
+            t.VariadicTuple[t.NonNegativeInt],
+            m.Field(description="Finding indexes in the before evidence snapshot"),
+        ] = ()
+        after_entries: Annotated[
+            t.VariadicTuple[t.NonNegativeInt],
+            m.Field(description="Finding indexes in the after evidence snapshot"),
+        ] = ()
+        semantic_correspondence_proven: Annotated[
+            bool,
+            m.Field(description="Text multiplicity does not prove semantic identity"),
+        ] = False
+
+    class ViolationsSweepRequest(m.ContractModel):
+        """Public sweep controls; focus never narrows regression observation."""
+
+        rules: Annotated[
+            str | None,
+            m.Field(
+                description="Comma-separated rule focus; full catalog stays observed"
+            ),
+        ] = None
+        audit_rules: Annotated[
+            bool,
+            m.Field(
+                alias="audit-rules",
+                description="Read-only native rule audit for every governed repository",
+            ),
+        ] = False
+        repair_verbs: Annotated[
+            str | None,
+            m.Field(
+                alias="repair-verbs",
+                description="Ordered Make verbs; default from canonical Make policy",
+            ),
+        ] = None
+
+    class ViolationsSweepSources(m.ContractModel):
+        """Authenticated inventory shared by full scans and audit observations."""
+
+        plan: Annotated[
+            FlextInfraModelsRefactorGrep.CodemodRulePlan,
+            m.Field(description="Elected full rule catalog and provider digests"),
+        ]
+        scope: Annotated[
+            t.StrSequence, m.Field(description="Governed Python scan scope")
+        ]
+        states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Scan authentication states; receipts retain byte digests",
+            ),
+        ] = ()
+        sha256: Annotated[
+            t.StrMapping, m.Field(description="Source and catalog byte digests")
+        ]
+        repository_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Observed governed project topology"),
+        ]
+        ast_report: Annotated[
+            FlextInfraModelsScan.ModScanReport | None,
+            m.Field(
+                description="Actual complete elected rule scan, None if unobserved"
+            ),
+        ] = None
+        text_report: Annotated[
+            FlextInfraModelsScan.ModTextReport | None,
+            m.Field(description="Actual native text scan, None if unobserved"),
+        ] = None
+        lint: Annotated[
+            t.MappingKV[str, t.Infra.LintSnapshot] | None,
+            m.Field(description="Canonical Ruff snapshots by source path"),
+        ] = None
+        observation_errors: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Native observation failures, never empty success proof"
+            ),
+        ] = ()
+
+    class ViolationsRuleEvaluation(m.ContractModel):
+        """Actual elected rule disposition, without inventing counts on failure."""
+
+        repository: Annotated[str, m.Field(description="Observed repository identity")]
+        rule_id: Annotated[str, m.Field(description="Exact requested rule identity")]
+        status: Annotated[
+            Literal["observed", "not_applicable", "failed"],
+            m.Field(
+                description="Native observation or explicit unavailable disposition"
+            ),
+        ]
+        delta: Annotated[
+            FlextInfraModelsRefactor.ViolationsRuleDelta | None,
+            m.Field(description="Occurrence evidence only for successful native scans"),
+        ]
+        error: Annotated[
+            str | None, m.Field(description="Original observation failure")
+        ]
+
+    class ViolationsSweepStage(m.ContractModel):
+        """One invoked canonical operation, including independent audit evidence."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Operation's project root")
+        ]
+        cwd: Annotated[Path, m.Field(description="Actual Make working directory")]
+        command: Annotated[
+            t.StrSequence, m.Field(description="Exact invoked Make argv")
+        ]
+        verb: Annotated[str, m.Field(description="Canonical Make operation")]
+        duration: Annotated[
+            t.NonNegativeFloat,
+            m.Field(description="Elapsed monotonic seconds"),
+        ]
+        invoked: Annotated[
+            bool,
+            m.Field(description="Whether Make was invoked"),
+        ] = True
+        outcome: Annotated[
+            m.Cli.ProcessOutcome | None,
+            m.Field(description="Original process exit, timeout and signal state"),
+        ]
+        error: Annotated[
+            str | None,
+            m.Field(description="Original operation or inspection failure"),
+        ]
+        audit_before: Annotated[
+            FlextInfraModelsRefactor.ViolationsSweepSources | None,
+            m.Field(
+                description="Authenticated source snapshot immediately before audit"
+            ),
+        ] = None
+        audit_after: Annotated[
+            FlextInfraModelsRefactor.ViolationsSweepSources | None,
+            m.Field(description="After audit snapshot, retained for failed operations"),
+        ] = None
+        source_inventory_unchanged: Annotated[
+            bool | None,
+            m.Field(
+                description="Source, inventory and plan equality; None is unproven"
+            ),
+        ] = None
+        inspection_error: Annotated[
+            str | None,
+            m.Field(description="Inspection failure independent of process error"),
+        ] = None
+        rule_evaluations: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsRuleEvaluation],
+            m.Field(description="Every rule's actual disposition in this repository"),
+        ] = ()
+        introduced_lint: Annotated[
+            t.MappingKV[str, t.Infra.LintSnapshot] | None,
+            m.Field(description="Introduced Ruff occurrences, None if unobserved"),
+        ] = None
+        introduced_text: Annotated[
+            t.VariadicTuple[FlextInfraModelsScan.ModTextFinding] | None,
+            m.Field(description="Introduced text occurrences, None if unobserved"),
+        ] = None
+
     class ViolationsSweepReport(m.ContractModel):
         """Before/after receipt of one violations sweep.
 
-        Published only when the always-reducing law held: no scan total
-        increased across the repair sequence.
+        Published for successful and partial failed repair sequences.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
@@ -166,14 +338,70 @@ class FlextInfraModelsRefactor(
             t.StrSequence,
             m.Field(description="Canonical verbs the sweep ran, in order"),
         ]
+        focused_rule_ids: Annotated[
+            t.StrSequence,
+            m.Field(description="Requested focus; full catalog stays observed"),
+        ] = ()
+        repository_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Discovered governed project topology"),
+        ] = ()
+        stages: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsSweepStage],
+            m.Field(description="Independent operation receipts in invocation order"),
+        ] = ()
         before: Annotated[
             FlextInfraModelsRefactor.ViolationsTotals,
             m.Field(description="Scan totals before the repair sequence"),
         ]
         after: Annotated[
-            FlextInfraModelsRefactor.ViolationsTotals,
+            FlextInfraModelsRefactor.ViolationsTotals | None,
             m.Field(description="Scan totals after the repair sequence"),
         ]
+        rule_deltas: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactor.ViolationsRuleDelta],
+            m.Field(description="Occurrence-aware rule and repository comparisons"),
+        ] = ()
+        completed_verbs: Annotated[
+            t.StrSequence, m.Field(description="Successfully completed repair verbs")
+        ] = ()
+        failed_verb: Annotated[
+            str | None, m.Field(description="First failed repair verb")
+        ] = None
+        repair_error: Annotated[
+            str | None, m.Field(description="Original repair failure diagnostic")
+        ] = None
+        after_scan_error: Annotated[
+            str | None, m.Field(description="After scan failure diagnostic")
+        ] = None
+        before_evidence: Annotated[
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
+            m.Field(
+                description="Invocation-local full before evidence and byte digest"
+            ),
+        ] = None
+        after_evidence: Annotated[
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
+            m.Field(description="Invocation-local full after evidence and byte digest"),
+        ] = None
+        before_plan: Annotated[
+            FlextInfraModelsRefactorGrep.CodemodRulePlan | None,
+            m.Field(description="Before elected rules, providers, sources and digests"),
+        ] = None
+        after_plan: Annotated[
+            FlextInfraModelsRefactorGrep.CodemodRulePlan | None,
+            m.Field(description="After elected rules, providers, sources and digests"),
+        ] = None
+        before_source_sha256: Annotated[
+            t.StrMapping,
+            m.Field(description="Authenticated before source and catalog inventory"),
+        ] = m.Field()
+        after_source_sha256: Annotated[
+            t.StrMapping | None,
+            m.Field(
+                description="Authenticated after inventory, or None when unobserved"
+            ),
+        ] = m.Field()
 
         @property
         def increased_totals(self) -> t.StrSequence:
@@ -182,7 +410,13 @@ class FlextInfraModelsRefactor(
             Returns:
                 The resulting ``t.StrSequence``.
 
+            Raises:
+                ValueError: The after scan or its source inventory is unobserved.
+
             """
+            if self.after is None or self.after_source_sha256 is None:
+                msg = "violations sweep comparison requires an authenticated after scan"
+                raise ValueError(msg)
             return tuple(
                 name
                 for name in (

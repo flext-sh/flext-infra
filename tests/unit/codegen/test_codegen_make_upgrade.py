@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from tests import c, t, tm, u
+from flext_infra import config, r
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -598,7 +598,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 r"\$\(UV\) lock --check\b",
                 regex=True,
             ),
-            eq={"_upg_converge", "_builtin-audit"},
+            eq={"_upg_converge", "_upg_reconcile_locks", "_builtin-audit"},
         )
         tm.that(
             self._recipe_targets_containing(makefile, "codegen mise-proof"),
@@ -720,34 +720,114 @@ class TestsFlextInfraCodegenMakeUpgrade:
             eq=previous,
         )
 
-    def test_member_alignment_is_one_way_after_complete_convergence(
-        self,
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    @staticmethod
+    @pytest.mark.remote
+    @pytest.mark.slow
+    def test_member_upgrade_reconciles_runtime_before_failing_hook(
+        tmp_path: Path,
+        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
     ) -> None:
-        """The real recipe aligns the containing root once, after all member gates."""
-        _profile, root = generated_make_template
-        text = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        lifecycle = text.split("_upg_lifecycle:", 1)[1].split("_upg_converge:\n", 1)[0]
-        convergence = text.split("_upg_converge:\n", 1)[1].split("\n.PHONY:", 1)[0]
-        alignment = (
-            '-C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg UPG_HANDOFF='
+        """Native root satisfaction holds before the member observes shared runtime."""
+        root = u.Tests.resolved_make_checkout(
+            resolved_make_templates[c.Infra.MakeProfile.WORKSPACE],
+            tmp_path / "runtime-owner",
+            c.Infra.MakeProfile.WORKSPACE,
+        )
+        member = u.Tests.repository_ref("member", path=Path("member"))
+        repository = u.Tests.repository_ref(member.distribution)
+        source = tmp_path / "member-source"
+        beads = u.Tests.beads_project(repository.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            source,
+            repository.distribution,
+            beads=u.Tests.WorktreeFixture.BeadsIdentity(
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            ),
+        )
+        plan = u.Tests.conform_plan(
+            source,
+            u.Tests.workspace_spec(
+                repository,
+                project=u.Tests.project_spec(repository.name),
+            ),
+        )
+        tm.ok(
+            u.Tests.materialize_codegen_plans(
+                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plan.files),
+            ),
+        )
+        u.Tests.commit_git_changes(source, "render independent upgrade consumer")
+        branch = u.Tests.checkout_integration(source)
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-b",
+                branch,
+                str(source),
+                member.path.as_posix(),
+            ),
+        )
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "config",
+                "-f",
+                c.Infra.GITMODULES,
+                f"submodule.{member.path.as_posix()}.flext-managed",
+                "true",
+            ),
+        )
+        u.Tests.commit_git_changes(root, "attach upgrade consumer")
+        pyproject = root / c.PYPROJECT_FILENAME
+        document = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
+        project = tm.not_none(u.Cli.toml_table_child(document, "project"))
+        version = str(project["version"]).partition("+")[0]
+        project["version"] = f"{version}+upgradeprobe"
+        tm.ok(u.Cli.atomic_write_text_file(pyproject, u.Cli.toml_dumps(document)))
+        (root / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
+            "pre-upg:\n"
+            '\t@touch "$(PROJECT_ROOT)/root-upgrade-started"\n'
+            "post-setup:\n"
+            '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
+            "\t@$(UV_RUN) python -c 'import importlib.metadata; "
+            "from pathlib import Path; import tomllib; "
+            'project = tomllib.loads(Path("pyproject.toml").read_text())["project"]; '
+            'assert importlib.metadata.version(project["name"]) == project["version"]'
+            "'\n"
+            "\t@printf '%s\\n' 'root-runtime-reconciled'\n",
+            encoding="utf-8",
+        )
+        checkout = root / member.path
+        (checkout / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
+            "post-upg:\n"
+            '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
+            '\t@$(UV) lock --check --project "$(PROJECT_ROOT)"\n'
+            "\t@printf '%s\\n' 'member-runtime-reconciled'\n"
+            "\t@printf '%s\\n' 'member-hook-stop' >&2; exit 29\n",
+            encoding="utf-8",
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"],
+                cwd=checkout,
+                env={"GIT_ALLOW_PROTOCOL": "file:https:ssh"},
+            ),
         )
         tm.that(
-            lifecycle.index("_builtin_require_upg_lock_owner")
-            < lifecycle.index("$(UV) lock"),
-            eq=True,
-        )
-        tm.that(convergence.count(alignment), eq=1)
-        tm.that(
-            convergence.index("_upg_activated") < convergence.index(alignment),
-            eq=True,
+            u.Cli.process_succeeded(process.outcome),
+            eq=False,
+            msg=process.stdout + process.stderr,
         )
         tm.that(
-            convergence,
-            has='if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then',
+            process.stdout,
+            has=["root-runtime-reconciled", "member-runtime-reconciled"],
         )
-        tm.that(
-            self._recipe_targets_containing(text, alignment),
-            eq={"_upg_converge"},
-        )
-        tm.that(text, lacks="--no-workspace")
+        tm.that(process.stderr, has="member-hook-stop")
+        tm.that((root / "root-upgrade-started").exists(), eq=True)
+        tm.that((checkout / ".venv").exists(), eq=False)

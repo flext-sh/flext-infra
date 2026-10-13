@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
+from functools import cache
 from typing import ClassVar
 
 from flext_infra import t
@@ -443,11 +444,14 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return ((), FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(public_exports))
 
     @classmethod
+    @cache
     def lazy_import_mapping_source(
         cls,
         source: str,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Read elected installer targets, including immutable inline mappings.
+
+        Cache parsing by exact source content, not a path or filesystem timestamp.
 
         Returns:
             Target modules and their export names, plus referenced map symbols.

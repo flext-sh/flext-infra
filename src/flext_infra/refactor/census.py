@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 from flext_cli import cli
 
@@ -31,7 +31,6 @@ from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 class FlextInfraRefactorCensus(
     FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
-    m.Infra.CensusOptions,
     FlextInfraRefactorCensusCollectMixin,
     FlextInfraRefactorCensusCollectHelpersMixin,
     FlextInfraRefactorCensusFiltersMixin,
@@ -46,7 +45,17 @@ class FlextInfraRefactorCensus(
     codemod gate); the census reports what only a workspace object inventory
     can see — duplicate definitions, unreferenced objects and tier placement —
     and, when applying, removes the unreferenced objects it proved removable.
+    Immutable census options are composed as data, independently of the service
+    lifecycle and injected source-preview capability.
     """
+
+    # Keep the options policy that the former right-hand model base supplied.
+    model_config: ClassVar[m.ConfigDict] = m.Infra.CensusOptions.model_config
+
+    options: m.Infra.CensusOptions = m.Field(
+        default_factory=m.Infra.CensusOptions,
+        description="Validated census filters and report destinations",
+    )
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
         exclude=True,
@@ -56,32 +65,34 @@ class FlextInfraRefactorCensus(
     @property
     def json_output_path(self) -> Path | None:
         """Resolved JSON export path when provided."""
-        path: Path | None = u.Infra.normalize_optional_path(self.json_output)
+        path: Path | None = u.Infra.normalize_optional_path(self.options.json_output)
         return path
 
     @property
     def impact_map_output_path(self) -> Path | None:
         """Resolved impact-map export path when provided."""
-        path: Path | None = u.Infra.normalize_optional_path(self.impact_map_output)
+        path: Path | None = u.Infra.normalize_optional_path(
+            self.options.impact_map_output,
+        )
         return path
 
     @property
     @override
     def kind_names(self) -> t.StrSequence | None:
         """Normalized symbol-kind filters."""
-        return u.Infra.normalize_sequence_values(self.kinds)
+        return u.Infra.normalize_sequence_values(self.options.kinds)
 
     @property
     @override
     def rule_names(self) -> t.StrSequence | None:
         """Normalized violation-rule filters."""
-        return u.Infra.normalize_sequence_values(self.rules)
+        return u.Infra.normalize_sequence_values(self.options.rules)
 
     @property
     @override
     def family_names(self) -> t.StrSequence | None:
         """Normalized family filters."""
-        return u.Infra.normalize_sequence_values(self.families)
+        return u.Infra.normalize_sequence_values(self.options.families)
 
     @property
     @override

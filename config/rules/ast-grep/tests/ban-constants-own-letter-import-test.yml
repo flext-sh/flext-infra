@@ -5,9 +5,13 @@
 # stays legal.
 id: ban-constants-own-letter-import
 valid:
+  - |
+    from ai_hub import cextra as c
+  - |
+    from c import unrelated
   # A different letter from the own root is legal facade assembly.
   - |
-    from ai_hub import t
+    from ai_hub import settings
   # The canonical producer form: the sibling through its private submodule.
   - |
     from ai_hub._constants.base import AiHubConstantsBase
@@ -18,17 +22,25 @@ valid:
   # a different binding.
   - |
     from ai_hub import cextra
-  # An aliased member binds the alias, not the letter.
-  - |
-    from ai_hub import c as aliased
   # A root binding without a letter component reaches no family facade.
   - |
     import ai_hub
-  # Body-nested imports bind nothing at module scope.
+invalid:
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import c as aliased
+  - |
+    from ai_hub import c as aliased
   - |
     def load() -> None:
         from ai_hub import c
-invalid:
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import c
+  - |
+    import ai_hub.constants
   # The producer binds its own letter from the own root.
   - |
     from ai_hub import c

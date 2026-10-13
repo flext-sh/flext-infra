@@ -94,19 +94,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             return result_type.from_failure(captured)
         if captured.value.content is None:
             return result_type.ok(())
-        parsed = u.Infra.read_codegen_config_document(captured.value.content)
-        if parsed.failure:
-            return result_type.from_failure(parsed)
-        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
-        if legacy.failure:
-            return result_type.from_failure(legacy)
-        if legacy.value.external_consumers:
-            error = ValueError(
-                "manifest retirement requires verified public host inventory "
-                "coverage for its external consumers",
-            )
-            return result_type.fail(str(error), exception=error)
-        delta = u.Infra.repository_declaration_delta(legacy.value)
+        delta = cls._repository_migration_delta(captured.value.content)
         if delta.failure:
             return result_type.from_failure(delta)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
@@ -123,29 +111,97 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             None,
         )
         if own_source is not None and own_source.content is not None:
-            own_document = u.Infra.read_codegen_config_document(own_source.content)
-            if own_document.failure:
-                return result_type.from_failure(own_document)
-            own_values = u.Cli.json_walk_path(
-                own_document.value,
-                ("Infra", "codegen", "repository"),
+            compatible = cls._repository_declaration_compatible(
+                own_source.content,
+                delta.value,
             )
-            if own_values is not None:
-                own_delta = u.validate_value(m.Infra.RepositoryDeltaSpec, own_values)
-                if own_delta.failure:
-                    return result_type.from_failure(own_delta)
-                conflicting = tuple(
-                    field
-                    for field in own_delta.value.model_fields_set
-                    if getattr(own_delta.value, field) != getattr(delta.value, field)
-                )
-                if conflicting:
-                    error = ValueError(
-                        "repository declarations conflict with migration input: "
-                        + ", ".join(sorted(conflicting)),
-                    )
-                    return result_type.fail(str(error), exception=error)
-        values = delta.value.model_dump(
+            if compatible.failure:
+                return result_type.from_failure(compatible)
+        return cls._repository_declaration_retirement_plans(
+            root,
+            inputs,
+            captured.value,
+            delta.value,
+        )
+
+    @staticmethod
+    def _repository_migration_delta(
+        content: bytes,
+    ) -> p.Result[m.Infra.RepositoryDeltaSpec]:
+        """Parse the captured migration input and validate its retirement boundary.
+
+        Returns:
+            The self-owned declaration or the original input failure.
+        """
+        result_type = r[m.Infra.RepositoryDeltaSpec]
+        parsed = u.Infra.read_codegen_config_document(content)
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
+        if legacy.failure:
+            return result_type.from_failure(legacy)
+        if legacy.value.external_consumers:
+            error = ValueError(
+                "manifest retirement requires verified public host inventory "
+                "coverage for its external consumers",
+            )
+            return result_type.fail(str(error), exception=error)
+        return u.Infra.repository_declaration_delta(legacy.value)
+
+    @staticmethod
+    def _repository_declaration_compatible(
+        content: bytes,
+        delta: m.Infra.RepositoryDeltaSpec,
+    ) -> p.Result[bool]:
+        """Reject conflicts with explicitly captured repository declarations.
+
+        Returns:
+            Whether the captured declaration admits the migration input.
+        """
+        own_document = u.Infra.read_codegen_config_document(content)
+        if own_document.failure:
+            return r[bool].from_failure(own_document)
+        own_values = u.Cli.json_walk_path(
+            own_document.value,
+            ("Infra", "codegen", "repository"),
+        )
+        if own_values is None:
+            return r[bool].ok(value=True)
+        own_delta = u.validate_value(m.Infra.RepositoryDeltaSpec, own_values)
+        if own_delta.failure:
+            return r[bool].from_failure(own_delta)
+        conflicting = tuple(
+            field
+            for field in own_delta.value.model_fields_set
+            if getattr(own_delta.value, field) != getattr(delta, field)
+        )
+        if conflicting:
+            error = ValueError(
+                "repository declarations conflict with migration input: "
+                + ", ".join(sorted(conflicting)),
+            )
+            return r[bool].fail(str(error), exception=error)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _repository_declaration_retirement_plans(
+        cls,
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        captured: m.Cli.AtomicFileState,
+        delta: m.Infra.RepositoryDeltaSpec,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Validate the projected declaration before planning input retirement.
+
+        Returns:
+            The guarded source declaration and its dependent retirement.
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        values = delta.model_dump(
             mode="json",
             exclude_none=True,
             exclude_defaults=True,
@@ -167,14 +223,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             root,
             layers[1],
             {"repository": values},
-            sources=(*inputs.sources, captured.value),
+            sources=(*inputs.sources, captured),
         )
         if declaration.failure:
             return result_type.from_failure(declaration)
-        retirement = cls._absent_file_plan(root, legacy_path)
+        retirement = cls._absent_file_plan(root, captured.path)
         if retirement.failure:
             return result_type.from_failure(retirement)
-        if retirement.value.before != captured.value:
+        if retirement.value.before != captured:
             error = ValueError(
                 "repository declaration changed after migration input capture",
             )

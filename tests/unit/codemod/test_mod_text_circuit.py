@@ -88,7 +88,9 @@ class TestsFlextInfraModTextGateEngine:
         metadata = result.error_data
         assert metadata is not None
         tm.that(
-            u.type_adapter(TypeForm(t.StrTuple)).validate_python(metadata["written_files"]),
+            u.type_adapter(TypeForm(t.StrTuple)).validate_python(
+                metadata["written_files"]
+            ),
             eq=(str(valid),),
         )
 
@@ -744,10 +746,10 @@ class TestsFlextInfraModTextGateEngine:
         # This optional migration precondition deliberately does not promise
         # idempotence once the invocation has consumed its exact matches.
         rejected = FlextInfraModTextGateEngine.scan(
-                mod_workspace,
-                fix=True,
-                validate_receipts=True,
-            )
+            mod_workspace,
+            fix=True,
+            validate_receipts=True,
+        )
         tm.fail(rejected, has="expected 1 finding(s), scan produced 0")
         tm.that(isinstance(rejected.exception, RuntimeError), eq=True)
         # The rewrite is proven by what changed, not by freezing the fixture's
@@ -779,10 +781,10 @@ class TestsFlextInfraModTextGateEngine:
         )
         original = (mod_workspace / "sample.py").read_bytes()
         rejected = FlextInfraModTextGateEngine.scan(
-                mod_workspace,
-                fix=fix,
-                validate_receipts=True,
-            )
+            mod_workspace,
+            fix=fix,
+            validate_receipts=True,
+        )
         tm.fail(rejected, has="expected 2 finding(s), scan")
         tm.that(isinstance(rejected.exception, RuntimeError), eq=True)
         tm.that((mod_workspace / "sample.py").read_bytes(), eq=original)

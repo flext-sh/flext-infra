@@ -82,7 +82,9 @@ class TestsFlextInfraDepsDetectionDeptry:
 
         result = FlextInfraDependencyDetectionService().run_deptry(project, venv_bin)
 
-        tm.that(tm.ok(result), eq=([], 0))
+        issues, exit_code = tm.ok(result)
+        tm.that(issues, empty=True)
+        tm.that(exit_code, eq=0)
 
     def test_unlaunchable_deptry_is_a_failure(self, tmp_path: Path) -> None:
         """Test unlaunchable deptry is a failure."""
@@ -193,5 +195,7 @@ class TestsFlextInfraDepsDetectionDeptry:
             extend_exclude=["tests", "docs"],
         )
 
-        tm.that(tm.ok(result), eq=([], 0))
+        issues, exit_code = tm.ok(result)
+        tm.that(issues, empty=True)
+        tm.that(exit_code, eq=0)
         tm.that((project / ".deptry-report.json").exists(), eq=False)

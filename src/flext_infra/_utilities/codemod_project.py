@@ -36,6 +36,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeCore,
@@ -893,6 +894,7 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE
+                | c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
                 | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
                 | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
             ):
@@ -1036,6 +1038,12 @@ class FlextInfraUtilitiesCodemodProject(
                 return cls._family_package_has_base(file_path)
             case c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE:
                 return cls._family_base_file(root, file_path)
+            case c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE:
+                located = FlextInfraUtilitiesImportLaw.import_namespace(root, file_path)
+                return located is not None and (
+                    FlextInfraUtilitiesImportLaw.import_module_role(located[1])
+                    == "layer0"
+                )
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
             case c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:

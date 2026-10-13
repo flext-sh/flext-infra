@@ -19,7 +19,7 @@ from flext_infra.codemod import (
 from tests import tm, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 _CORE_CONSTANT = "SHARED_LIMIT = 42\n"
 _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
@@ -47,9 +47,9 @@ class TestsFlextInfraCodemodDuplicateApply:
         """One governed fixture workspace with a provisioned interpreter.
 
         The regenerated lazy initializer imports ``flext_core``, so the
-        fixture environment also receives the running interpreter's installed
-        package; otherwise the fresh-import gate fails on the fixture's bare
-        virtual environment, not on the published sources.
+        fixture environment installs the local core project and its declared
+        dependencies; otherwise the fresh-import gate fails on the fixture's
+        bare virtual environment, not on the published sources.
 
         Returns:
             The repository root and its source package.
@@ -60,32 +60,18 @@ class TestsFlextInfraCodemodDuplicateApply:
             project_name="flext-demo",
             package_name="flext_demo",
         )
-        tm.ok(u.Tests.create_python_environment(root))
-        site = Path(
-            tm.ok(
-                fleet_u.Cli.run(
-                    [
-                        str(fleet_u.Infra.runtime_python(root)),
-                        "-c",
-                        "import sysconfig; print(sysconfig.get_paths()['purelib'])",
-                    ],
-                ),
-            ).stdout.strip(),
-        )
-        # The regenerated lazy initializer imports flext_core and its real
-        # dependency set: a path file exposes the running interpreter's
-        # installed packages to the fixture environment, so the fresh-import
-        # probe judges the published sources, never the bare fixture virtual
-        # environment.
-        (site / "fixture_dependency_set.pth").write_text(
-            f"{Path(flext_core.__file__).parent.parent}\n",
-            encoding=c.DEFAULT_ENCODING,
+        core_root = tm.not_none(fleet_u.Infra.project_root(Path(flext_core.__file__)))
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=(core_root,),
+            ),
         )
         return root, package
 
     @staticmethod
     def _objects(
-        rope_workspace: object,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         paths: t.SequenceOf[Path],
         name: str,
     ) -> t.VariadicTuple[m.Infra.Object]:
@@ -423,7 +409,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         """
         owner_start, owner_end = owner_span
         clone_start, clone_end = clone_span
-        summary = {
+        summary: t.JsonDict = {
             "clones": 1,
             "duplicatedLines": 3,
             "duplicatedTokens": 40,

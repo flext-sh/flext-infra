@@ -78,10 +78,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.VariadicTuple[str],
             m.Field(description="Declared workspace subproject paths"),
         ] = ()
-        workspace_gitlinks: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
-            m.Field(description="Provider-resolved governed Git submodules"),
-        ] = ()
         uv_link_mode: Annotated[
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
@@ -224,10 +220,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         workspace_subprojects: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Ordered workspace subproject paths"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
-            m.Field(description="Provider-resolved governed Git submodules"),
         ] = ()
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],

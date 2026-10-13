@@ -218,7 +218,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
         )
 
-        tm.that(result, eq=(True, []))
+        tm.that(result[0], eq=True)
+        tm.that(result[1], empty=True)
         tm.that(
             py_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n"),
             eq=updated_source.rstrip("\n"),
@@ -266,7 +267,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             gates=("lint",),
         )
 
-        tm.that(result, eq=(True, []))
+        tm.that(result[0], eq=True)
+        tm.that(result[1], empty=True)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original_source)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 
@@ -401,7 +403,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         profile_directory = (
             Path(selected_profile) if selected_profile is not None else None
         )
-        previous_profiles = (
+        previous_profiles: set[Path] = (
             set(profile_directory.glob("*.pstats"))
             if profile_directory is not None
             else set()
@@ -446,7 +448,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
         )
 
-        tm.that(result, eq=(True, []))
+        tm.that(result[0], eq=True)
+        tm.that(result[1], empty=True)
         tm.that(
             (
                 left_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")

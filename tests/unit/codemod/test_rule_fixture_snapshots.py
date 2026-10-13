@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -19,6 +20,87 @@ from tests import t, tm, u
 
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
+
+    @pytest.mark.parametrize("collection", ["dict", "list"])
+    def test_typing_collection_fixes_preserve_runtime_values(
+        self,
+        tmp_path: Path,
+        collection: str,
+    ) -> None:
+        """Validate real fixes and execute concrete collection/Pydantic contracts."""
+        owner = Path(__file__).resolve().parents[3]
+        demo = self._owner(tmp_path)
+        catalog = self._catalog(tmp_path)
+        source_catalog = self._catalog(owner)
+        tm.ok(u.Cli.ensure_dir(catalog / "utils"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH,
+                "ruleDirs: [rules]\nutilDirs: [utils]\n"
+                "testConfigs:\n  - testDir: tests\n",
+            ),
+        )
+        for name in (
+            "semantic-type-context",
+            "typing-annotated-form",
+            "typing-literal-form",
+            "typing-module-binding",
+            "t-locally-bound",
+            f"typing-{collection}-generic",
+            f"{collection}-imported-from-typing",
+        ):
+            relative = Path("utils") / f"{name}.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    catalog / relative,
+                    (source_catalog / relative).read_text(encoding="utf-8"),
+                ),
+            )
+        rule_id = (
+            "typing-dict-to-mapping-kv"
+            if collection == "dict"
+            else "typing-list-to-sequence-of"
+        )
+        rule = catalog / "rules" / f"{rule_id}.yml"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule,
+                (source_catalog / "rules" / rule.name).read_text(encoding="utf-8"),
+            ),
+        )
+        for selected_id in (rule_id, f"typing-{collection}-missing-t-import"):
+            relative = Path("tests") / f"{selected_id}-test.yml"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    catalog / relative,
+                    (source_catalog / relative).read_text(encoding="utf-8"),
+                ),
+            )
+        rules = (demo, rule)
+        tm.ok(
+            FlextInfraModGateEngine.refresh_rule_snapshots(
+                tmp_path,
+                rules,
+                apply=True,
+            ),
+        )
+        tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, rules))
+        snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
+            "snapshots"
+        ]
+        assert isinstance(snapshots, Mapping)
+        runtime_consumers = 0
+        for snapshot in snapshots.values():
+            assert isinstance(snapshot, Mapping)
+            fixed = snapshot["fixed"]
+            assert isinstance(fixed, str)
+            _ = ast.parse(fixed)
+            if "class Payload(m.ArbitraryTypesModel):" in fixed:
+                outcome = tm.ok(u.Cli.run_raw((sys.executable, "-c", fixed)))
+                tm.that(outcome.exit_code, eq=0)
+                tm.that(outcome.stderr, eq="")
+                runtime_consumers += 1
+        tm.that(runtime_consumers, eq=1)
 
     @pytest.mark.parametrize("suffix", ["", "; value = 1", ";"])
     def test_managed_artifact_sequential_full_source_fixes_parse(

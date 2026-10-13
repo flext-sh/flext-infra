@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -43,8 +44,11 @@ class TestsFlextInfraDistributionIdentity:
         self.project(tmp_path)
         site = tmp_path / "site"
         self.distribution(site)
-        monkeypatch.syspath_prepend(str(site))
-        monkeypatch.syspath_prepend(str(site))
+        prepend = u.type_adapter(Callable[[str], None]).validate_python(
+            monkeypatch.syspath_prepend,
+        )
+        prepend(str(site))
+        prepend(str(site))
         planned = u.Infra.codemod_rule_plan(tmp_path)
         assert planned.success, planned.error
 
@@ -55,9 +59,12 @@ class TestsFlextInfraDistributionIdentity:
     ) -> None:
         """Test distinct duplicate installations are rejected."""
         self.project(tmp_path)
+        prepend = u.type_adapter(Callable[[str], None]).validate_python(
+            monkeypatch.syspath_prepend,
+        )
         for name in ("first", "second"):
             site = tmp_path / name
             self.distribution(site)
-            monkeypatch.syspath_prepend(str(site))
+            prepend(str(site))
         with pytest.raises(ValueError, match="duplicate installed distribution"):
             u.Infra.codemod_rule_plan(tmp_path)

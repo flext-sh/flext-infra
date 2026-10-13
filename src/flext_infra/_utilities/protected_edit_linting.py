@@ -6,14 +6,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import concurrent.futures
 import difflib
 import os
 import sys
-from collections.abc import MutableMapping
+from collections import Counter
+from collections.abc import Iterable, MutableMapping
 from itertools import islice
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
+
+import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_cli import u
 
@@ -21,9 +27,167 @@ from flext_infra import c, config, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
+if TYPE_CHECKING:
+    from flext_infra import p
+
 
 class FlextInfraUtilitiesProtectedEditLinting:
     """Shared linting and path helpers for protected edit workflows."""
+
+    @classmethod
+    def normalize_source(
+        cls,
+        repository_root: Path,
+        path: Path,
+        source: str,
+        *,
+        before_source: str | None = None,
+    ) -> p.Result[str]:
+        """Normalize candidate imports and format with the destination's policy.
+
+        Returns:
+            Normalized source, or the original Ruff subprocess failure.
+        """
+        executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
+        project_root = cls._command_cwd(path, repository_root)
+        if before_source is not None:
+            source = cls.remove_orphaned_imports(before_source, source)
+        checked = u.Cli.run(
+            [
+                executable,
+                "check",
+                *config.Infra.codegen.make.ruff.lint_fix,
+                "--select",
+                "I,W",
+                "--stdin-filename",
+                str(path),
+                "-",
+            ],
+            cwd=project_root,
+            options=m.Cli.ProcessOptions(
+                input_data=source,
+                env=cls._command_env(),
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+            ),
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        return checked.flat_map(
+            lambda output: u.Cli.run(
+                [
+                    executable,
+                    "format",
+                    *config.Infra.codegen.make.ruff.format_apply,
+                    "--stdin-filename",
+                    str(path),
+                    "-",
+                ],
+                cwd=project_root,
+                options=m.Cli.ProcessOptions(
+                    input_data=output.stdout,
+                    env=cls._command_env(),
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                ),
+                timeout=c.Infra.TIMEOUT_SHORT,
+            ).map(lambda formatted: formatted.stdout),
+        )
+
+    @staticmethod
+    def remove_orphaned_imports(original: str, proposed: str) -> str:
+        """Remove only imports whose last executable use the transformation removed.
+
+        Returns:
+            The candidate retaining existing unused, string, and exported bindings.
+        """
+        before = ast.parse(original)
+        after = ast.parse(proposed)
+        lost = {
+            item.id
+            for item in ast.walk(before)
+            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)
+        } - {
+            item.id
+            for item in ast.walk(after)
+            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)
+        }
+        strings = tuple(
+            item.value
+            for item in ast.walk(after)
+            if isinstance(item, ast.Constant) and isinstance(item.value, str)
+        )
+        lost = {name for name in lost if not any(name in value for value in strings)}
+        context = CodemodContext()
+        for imported in ast.walk(after):
+            if not isinstance(imported, ast.Import | ast.ImportFrom):
+                continue
+            for alias in imported.names:
+                if (alias.asname or alias.name.split(".")[0]) not in lost:
+                    continue
+                module = (
+                    "." * imported.level + (imported.module or "")
+                    if isinstance(imported, ast.ImportFrom)
+                    else alias.name
+                )
+                RemoveImportsVisitor.remove_unused_import(
+                    context,
+                    module,
+                    alias.name if isinstance(imported, ast.ImportFrom) else None,
+                    alias.asname,
+                )
+        return (
+            RemoveImportsVisitor(context)
+            .transform_module(
+                cst.parse_module(proposed),
+            )
+            .code
+        )
+
+    @classmethod
+    def normalize_touched_files(
+        cls,
+        paths: Iterable[Path],
+        repository_root: Path,
+    ) -> None:
+        """Normalize published imports and whitespace with each destination's policy.
+
+        Published files retain unused imports: the removal planner owns their
+        removal, not this formatting pass.
+
+        Raises:
+            RuntimeError: If a Ruff subprocess rejects the touched files.
+        """
+        grouped: MutableMapping[Path, list[str]] = {}
+        for path in sorted({path.resolve() for path in paths if path.is_file()}):
+            grouped.setdefault(cls._command_cwd(path, repository_root), []).append(
+                str(path)
+            )
+        if not grouped:
+            return
+        executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
+        for project_root, existing in grouped.items():
+            for arguments in (
+                (
+                    "check",
+                    *config.Infra.codegen.make.ruff.lint_fix,
+                    "--select",
+                    "I,W",
+                ),
+                ("format", *config.Infra.codegen.make.ruff.format_apply),
+            ):
+                result = u.Cli.run_checked(
+                    [executable, *arguments, *existing],
+                    cwd=project_root,
+                    options=m.Cli.ProcessOptions(
+                        env=cls._command_env(),
+                        remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                    ),
+                    timeout=c.Infra.TIMEOUT_SHORT,
+                )
+                if result.failure:
+                    msg = (
+                        f"ruff {arguments[0]} failed for touched files: "
+                        f"{result.error}; files={existing!r}"
+                    )
+                    raise RuntimeError(msg)
 
     @staticmethod
     def unified_diff_lines(
@@ -291,6 +455,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
             *cls._workspace_tool_command(template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
+        if tool_name == c.Infra.RUFF:
+            command = (*command, "--output-format", "concise")
         if (
             tool_name == c.Infra.PYREFLY
             and (project_config := command_cwd / c.PYPROJECT_FILENAME).is_file()
@@ -363,8 +529,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``t.Infra.LintSnapshot``.
 
         """
-        command_cwd = cls._command_cwd(py_file, workspace)
-
         # Every gate is an independent subprocess -- _run_lint_gate
         # builds its own command and returns a value, touching no shared state.
         # Running any one of them ahead of the pool made a snapshot cost that
@@ -390,7 +554,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 cls._run_lint_gate,
                 py_file=py_file,
                 workspace=workspace,
-                command_cwd=command_cwd,
                 tool_name=entry[0],
                 template=entry[1],
             ): entry[0]
@@ -438,9 +601,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         py_file: Path,
         workspace: Path,
-        command_cwd: Path,
         tool_name: str,
         template: t.StrSequence,
+        source: str | None = None,
     ) -> m.Infra.LintGateResult:
         """Run one lint gate and return a validated result model.
 
@@ -448,6 +611,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``m.Infra.LintGateResult``.
 
         """
+        command_cwd = cls._command_cwd(py_file, workspace)
         cmd = cls._lint_command(
             py_file,
             workspace,
@@ -455,6 +619,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             tool_name=tool_name,
             template=template,
         )
+        if source is not None:
+            cmd = (
+                *tuple(item for item in cmd if item != str(py_file)),
+                "--stdin-filename",
+                str(py_file),
+                "-",
+            )
         environment = dict(cls._command_env())
         if tool_name == c.Infra.RUFF:
             environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
@@ -466,6 +637,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             options=m.Cli.ProcessOptions(
                 env=environment,
                 remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                input_data=source,
             ),
             timeout=cls._gate_deadline(tool_name),
         )
@@ -524,14 +696,33 @@ class FlextInfraUtilitiesProtectedEditLinting:
         workspace: Path,
         *,
         gates: t.StrSequence | None = None,
+        source: str | None = None,
     ) -> t.Infra.LintSnapshot:
-        """Run selected lint tools on *py_file*, concurrent and content-cached.
+        """Run selected tools, or uncached Ruff on candidate source at *py_file*.
+
+        Candidate stdin retains the destination's filename and configuration;
+        it never materializes the proposed bytes on the live filesystem.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.
 
+        Raises:
+            ValueError: If source snapshots select a tool other than Ruff.
         """
         selected_tools = cls._selected_lint_tools(gates)
+        if source is not None:
+            if tuple(entry[0] for entry in selected_tools) != (c.Infra.RUFF,):
+                msg = "source lint snapshots require the Ruff lint gate"
+                raise ValueError(msg)
+            return cls._lint_snapshot_from_results((
+                cls._run_lint_gate(
+                    py_file=py_file,
+                    workspace=workspace,
+                    tool_name=selected_tools[0][0],
+                    template=selected_tools[0][1],
+                    source=source,
+                ),
+            ))
         if not selected_tools:
             return {}
 
@@ -593,38 +784,31 @@ class FlextInfraUtilitiesProtectedEditLinting:
         before: t.Infra.LintSnapshot,
         after: t.Infra.LintSnapshot,
     ) -> t.Infra.LintSnapshot:
-        """Return only lint errors introduced relative to *before*.
+        """Return introduced diagnostic occurrences, ignoring shifted coordinates.
+
+        Matching consumes each baseline occurrence once; resolving another rule
+        never compensates for a new message or an additional identical finding.
 
         Returns:
             Only lint errors introduced relative to *before*.
 
         """
-        return {
-            tool: added
-            for tool, lines in after.items()
-            if (
-                added := [
-                    line
-                    for line in lines
-                    if (
-                        normalized
-                        := FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            line,
-                        )
-                    )
-                    and normalized
-                    not in {
-                        FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            item,
-                        )
-                        for item in before.get(tool, [])
-                        if FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            item,
-                        )
-                    }
-                ]
-            )
-        }
+        introduced: t.Infra.LintSnapshot = {}
+        normalize = FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line
+        for tool, lines in after.items():
+            remaining = Counter(normalize(line) for line in before.get(tool, ()))
+            added: list[str] = []
+            for line in lines:
+                identity = normalize(line)
+                if not identity:
+                    continue
+                if remaining[identity]:
+                    remaining[identity] -= 1
+                else:
+                    added.append(line)
+            if added:
+                introduced[tool] = added
+        return introduced
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProtectedEditLinting"]

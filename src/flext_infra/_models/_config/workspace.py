@@ -22,6 +22,36 @@ from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 class FlextInfraConfigModelsWorkspace:
     """Workspace manifest, integration, and policy models."""
 
+    class GitSubmoduleDeclaration(m.ContractModel):
+        """One Git configuration section parsed by its canonical owner."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+        )
+
+        path: Annotated[
+            Path,
+            m.Field(description="Submodule path relative to the superproject root"),
+        ]
+        url: Annotated[
+            str,
+            m.Field(description="Declared URL; empty when undeclared"),
+        ]
+        branch: Annotated[
+            str,
+            m.Field(description="Declared branch; empty when undeclared"),
+        ]
+        managed: Annotated[
+            bool | None,
+            m.Field(
+                description=(
+                    "Native Git boolean: absent inherits participation; "
+                    "true participates and false does not"
+                ),
+            ),
+        ]
+
     class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Refactor file-selection configuration."""
 

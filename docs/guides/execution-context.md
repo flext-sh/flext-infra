@@ -48,6 +48,11 @@ without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
 
+When the checkout owns the distributed configuration file, its project declaration
+uses the derived `<stem>.project.yaml` file beside that default. The local layer
+remains `<stem>.local.yaml`. This keeps project editor declarations separate from
+the library defaults while preserving the same ordered configuration layers.
+
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
 own loader available before child projections are repaired. Recovery uses the
@@ -130,6 +135,15 @@ repository owns its lock independently. Publishable members retain the same inli
 Git provenance whether attached or standalone; only the containing root owns the
 local source overlay and the shared runtime environment. Regenerate that root with
 `make gen` and reconcile its lock with `make upg` when the local binding changes.
+Every package checkout also overrides transitive requirements for its own
+distribution with its local project identity. A dependency that refers back to
+the checkout through Git must resolve to that checkout rather than introduce a
+second source for the same distribution. Generation derives this identity from
+the repository declaration in both workspace and standalone contexts.
+Dependency-floor updates select explicit `dependency_profiles` declarations or
+the infrastructure repository declared by the topology. A consumer configuration
+file containing only project metadata or editor settings does not declare another
+floor owner.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 
@@ -310,6 +324,12 @@ and consumers in that order. The namespace laws are codemod catalog rules, so th
 codemod gate is their one verdict. Preserve mutability, inheritance, imports, and
 collection; validate the transformation through the public interface before widening
 the batch. Structural refactors go through `make mod`.
+
+`make mod-rules` inspects the full governed source inventory without rewriting it.
+The text catalog composes Infra's shared rules with each project's local
+`config/rules/mod/sed.yaml`. A domain-specific rule belongs to that project's
+catalog; copying it into the shared catalog creates an ambiguous owner and blocks
+the scan. Rule IDs remain unique across the composed catalogs.
 
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes

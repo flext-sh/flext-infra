@@ -86,7 +86,7 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
         document = u.Tests.toml_payload(rendered)
-        settings = u.Tests.toml_table_at(document, "settings")
+        settings = u.Tests.toml_mapping(document["settings"])
         tm.that(settings["lockfile"], eq=toolchain.mise_lockfile)
         tm.that(
             settings["provenance_api_failures_fatal"],

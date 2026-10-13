@@ -51,7 +51,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             c.Infra.MakeProfile(profile) for profile in handler_policies
         )
 
-        tm.that(declared - covered, eq=frozenset())
+        tm.that(declared - covered, empty=True)
 
     @staticmethod
     def test_repository_root_may_own_public_targets() -> None:

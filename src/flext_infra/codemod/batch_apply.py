@@ -134,11 +134,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             source_preview=self.source_preview,
             repository_root=self.repository_root,
             apply_changes=True,
-            families=("c",),
-            rules=(
-                c.Infra.CensusRule.CONSTANT_CONSUMERS,
-                c.Infra.CensusRule.DUPLICATE,
-                c.Infra.CensusRule.WRONG_TIER,
+            options=m.Infra.CensusOptions(
+                families=("c",),
+                rules=(
+                    c.Infra.CensusRule.CONSTANT_CONSUMERS,
+                    c.Infra.CensusRule.DUPLICATE,
+                    c.Infra.CensusRule.WRONG_TIER,
+                ),
             ),
         )
         census = census_runner.build_report()
@@ -469,7 +471,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].fail(message)
             self.progress.emit(
                 "mod: joint AST, semantic, and text fixed point verified "
-                "with zero findings",
+                "with zero AST/text findings",
             )
             return r[t.Cli.ResultValue].ok(value=True)
 

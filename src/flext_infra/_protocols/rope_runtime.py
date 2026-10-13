@@ -151,6 +151,16 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_line_end(self, lineno: int) -> int: ...
 
     @runtime_checkable
+    class RopeLogicalLineFinder(Protocol):
+        """Native logical-line regions produced by Rope's source analyzer."""
+
+        def generate_regions(
+            self,
+            start_line: int = 1,
+            end_line: int | None = None,
+        ) -> Iterator[tuple[int, int]]: ...
+
+    @runtime_checkable
     class RopeAssignment(Protocol):
         """Rope assignment shape."""
 

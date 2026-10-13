@@ -834,30 +834,185 @@ class TestsFlextInfraRefactorImportNormalization:
         tm.that(normalized, lacks="TestsDemoUtilities")
 
     @classmethod
-    def test_settings_config_modules_keep_direct_imports(
+    def test_settings_config_modules_keep_upstream_contracts(
         cls,
         tmp_path: Path,
     ) -> None:
-        """Settings/config modules import each other directly, never via a root."""
+        """Layer-zero modules retain native/upstream contracts, not own imports."""
         project, package = cls._project(tmp_path)
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import ClassVar\n"
+            "from pydantic import JsonValue\n"
+            "from flext_core import FlextConfig\n"
+            "class DemoConfig(FlextConfig):\n"
+            "    CONFIG_FILENAMES: ClassVar[tuple[str, ...]] = ()\n"
+            "    value: JsonValue = 'native'\n"
+        )
         result = FlextInfraImportNormalization.normalize_source(
             project_root=project,
             file_path=package / "_config.py",
-            source=(
-                "from __future__ import annotations\n"
-                "\n"
-                "from flext_core import r\n"
-                "from demo_pkg._settings import DemoSettings\n"
-                "from demo_pkg._models.base import DemoModelsBase\n"
-                "\n"
-                "\n"
-                "class DemoConfig(DemoModelsBase):\n"
-                "    settings: DemoSettings\n"
-                "    result: r[str]\n"
+            source=source,
+        )
+        tm.that(result, eq=None)
+        (package / "_config.py").write_text(source, encoding="utf-8")
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg._config import DemoConfig; "
+                        "value = DemoConfig(value={'native': [1, 'contract']}); "
+                        "assert value.model_dump()['value'] == "
+                        "{'native': [1, 'contract']}"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(outcome.exit_code, eq=0)
+        tm.that(outcome.stderr, eq="")
+
+    @classmethod
+    @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    @pytest.mark.parametrize(
+        "statement",
+        [
+            "from demo_pkg import t",
+            "from demo_pkg import settings",
+            "from demo_pkg import settings as own",
+            "from demo_pkg._models.base import DemoModelsBase",
+            "from demo_pkg._settings import DemoSettings",
+            "from ._settings import DemoSettings",
+            "import demo_pkg as own",
+        ],
+    )
+    @pytest.mark.parametrize("guarded", [False, True])
+    def test_layer_zero_rejects_all_own_namespace_dependencies(
+        cls, tmp_path: Path, role: str, statement: str, *, guarded: bool
+    ) -> None:
+        """Typing guards and private paths cannot authorize a layer-zero edge."""
+        project, package = cls._project(tmp_path)
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import TYPE_CHECKING\n"
+            + (f"if TYPE_CHECKING:\n    {statement}\n" if guarded else statement + "\n")
+        )
+        with pytest.raises(ValueError, match="layer-zero module imports its own"):
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=package / f"_{role}.py",
+                source=source,
+            )
+
+    @classmethod
+    @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    def test_layer_zero_role_uses_architecture_not_substring(cls, role: str) -> None:
+        """A domain configuration name cannot override its enclosing family."""
+        tm.that(u.Infra.import_module_role(f"demo_pkg._{role}"), eq="layer0")
+        tm.that(u.Infra.import_module_role(f"demo_pkg.{role}_sources"), eq="layer0")
+        tm.that(u.Infra.import_module_role(f"demo_pkg.{role}uration"), eq="consumer")
+        for family in u.Infra.facade_families().values():
+            tm.that(
+                u.Infra.import_module_role(f"demo_pkg.{family.directory}._{role}.base"),
+                eq="family",
+            )
+
+    @classmethod
+    @pytest.mark.parametrize("letter", sorted(u.Infra.facade_families()))
+    @pytest.mark.parametrize("guarded", [False, True])
+    def test_family_rejects_own_facade_but_preserves_private_assembly(
+        cls, tmp_path: Path, letter: str, *, guarded: bool
+    ) -> None:
+        """Every family retains private MRO sources and rejects its own facade."""
+        project, package = cls._project(tmp_path)
+        family = u.Infra.facade_families()[letter]
+        directory = package / family.directory
+        directory.mkdir(exist_ok=True)
+        module = directory / "declaration.py"
+        source = "from typing import TYPE_CHECKING\n" + (
+            f"if TYPE_CHECKING:\n    from demo_pkg import {letter} as own\n"
+            if guarded
+            else f"from demo_pkg import {letter} as own\n"
+        )
+        with pytest.raises(ValueError, match="family imports its own facade"):
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=source
+            )
+        native = f"from demo_pkg.{family.directory}.part import Declaration\n"
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=directory / "base.py", source=native
             ),
+            eq=None,
         )
 
-        tm.that(result, eq=None)
+    @classmethod
+    def test_nested_config_models_are_family_sources_not_layer_zero(
+        cls, tmp_path: Path
+    ) -> None:
+        """Domain config MRO assembly remains valid source for generated facets."""
+        project, package = cls._project(tmp_path)
+        family = u.Infra.facade_families()["m"]
+        module = package / family.directory / "_config" / "base.py"
+        source = (
+            f"from demo_pkg.{family.directory}._config.part import ConfigPart\n"
+            "class ConfigModels(ConfigPart):\n    pass\n"
+            "__all__ = ['ConfigModels']\n"
+        )
+        tm.that(
+            u.Infra.import_module_role("demo_pkg._models._config.base"), eq="family"
+        )
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=source
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    @pytest.mark.parametrize("letter", sorted(u.Infra.facade_families()))
+    def test_missing_reverse_runtime_letter_is_not_synthesized(
+        cls, tmp_path: Path, letter: str
+    ) -> None:
+        """A missing higher own alias is a defect, never a new runtime edge."""
+        project, package = cls._project(tmp_path)
+        families = u.Infra.facade_families()
+        higher = [
+            name
+            for name, family in families.items()
+            if u.Infra.module_import_layer(f"demo_pkg.{family.module}")
+            > u.Infra.module_import_layer(f"demo_pkg.{families[letter].module}")
+        ]
+        cls._lazy_init(
+            package, {name: f".{family.module}" for name, family in families.items()}
+        )
+        for name in higher:
+            with pytest.raises(ValueError, match="forbidden reverse namespace import"):
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project,
+                    file_path=package / families[letter].directory / "declaration.py",
+                    source=f"value = {name}.Value\n",
+                )
+            module = package / families[letter].directory / "annotations.py"
+            normalized = cls._normalize(
+                project,
+                module,
+                "from __future__ import annotations\n"
+                f"def describe(value: {name}.Value) -> str:\n    return 'value'\n",
+            )
+            tm.that(
+                normalized,
+                has=f"if TYPE_CHECKING:\n    from demo_pkg import {name}\n",
+            )
+            tm.that(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project, file_path=module, source=normalized
+                ),
+                eq=None,
+            )
 
     @classmethod
     def test_internal_tier_alias_binds_through_tier_root(cls, tmp_path: Path) -> None:

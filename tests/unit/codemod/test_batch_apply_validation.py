@@ -18,7 +18,6 @@ from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 from tests import tm, u
 
 
@@ -111,7 +110,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         }
         for path, source in tuple(sources.items()):
             sources[path] = tm.ok(
-                FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+                u.Infra.normalize_source(
                     root,
                     path,
                     source,

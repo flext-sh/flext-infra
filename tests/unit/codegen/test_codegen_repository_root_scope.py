@@ -35,11 +35,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).execute(
-                request
-            )
-        )
+        tm.ok(FlextInfraCodegenConform(repository_root=root, request=request).execute())
         for verb in ("upg", "setup"):
             provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
             tm.that(

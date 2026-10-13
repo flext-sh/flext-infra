@@ -115,13 +115,17 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
             managed: bool | None = None
             if flag is not None:
                 try:
-                    normalized = Git(repository_root).config(
-                        "--file",
-                        str(repository_root / c.Infra.GITMODULES),
-                        "--type=bool",
-                        "--get",
-                        f"{section}.{c.Infra.GITMODULE_MANAGED_KEY}",
-                    ).strip()
+                    normalized = (
+                        Git(repository_root)
+                        .config(
+                            "--file",
+                            str(repository_root / c.Infra.GITMODULES),
+                            "--type=bool",
+                            "--get",
+                            f"{section}.{c.Infra.GITMODULE_MANAGED_KEY}",
+                        )
+                        .strip()
+                    )
                 except (GitCommandError, OSError) as exc:
                     return result.fail(
                         f"invalid Git submodule management declaration: {exc}",

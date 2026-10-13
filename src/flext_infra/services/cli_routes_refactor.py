@@ -184,7 +184,8 @@ class FlextInfraRefactorRoutes:
             help_text=(
                 "Run the ast engine standalone: ast-grep cascade plus "
                 "sed-by-list cascade (scan report; --apply reaches the "
-                "mechanical fixed point)"
+                "mechanical fixed point); --rules selects exact CSV AST IDs "
+                "only, over the complete governed corpus"
             ),
             model_cls=FlextInfraCodemodAstScan,
             handler=FlextInfraCodemodAstScan.execute_command,
@@ -192,13 +193,14 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name=c.Infra.VIOLATIONS_SWEEP_ROUTE_NAME,
             help_text=(
-                "Run the canonical repair sequence (make fix, make fmt, "
-                "make mod) between two mod scans; the command fails the "
-                "moment any violation total increased"
+                "Run an ordered --repair-verbs canonical Make sequence with "
+                "audit-only --rules focus between full-catalog scans; audit runs "
+                "independently for every discovered project and must preserve "
+                "sources; introduced findings and partial failures remain red"
             ),
             model_cls=FlextInfraRefactorViolationsSweep,
             handler=FlextInfraRefactorViolationsSweep.execute_command,
-            success_message="violations sweep reduced or held every total",
+            success_message="violations sweep introduced no finding occurrences",
         ),
     )
 

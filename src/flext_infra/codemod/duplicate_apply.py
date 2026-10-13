@@ -26,9 +26,6 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
 from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -831,7 +828,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root
-            normalized = FlextInfraRefactorCensusApplyFormattingMixin.normalize_source(
+            normalized = u.Infra.normalize_source(
                 root,
                 path,
                 working[path],
@@ -863,18 +860,12 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             residue = cls._published_residue(edits, deletions)
             if residue is not None:
                 return r[bool].fail(residue)
-            projects: list[str] = []
-            for plan in semantic_plans:
-                project = u.Infra.project_root(plan.path)
-                if project is None or project in projects:
-                    continue
-                projects.append(str(project.relative_to(root)))
             return FlextInfraWorkspaceChecker(
                 repository_root=root,
             ).execute_payload(
                 m.Infra.RunCommand(
                     repository_root=root,
-                    projects=tuple(sorted(projects)),
+                    projects=cls._publication_projects(root, semantic_plans),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
@@ -885,6 +876,24 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             validator=verify,
             projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
         ).map(_published_true)
+
+    @staticmethod
+    def _publication_projects(
+        root: Path,
+        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+    ) -> tuple[str, ...]:
+        """Collect the governed projects affected by the publication batch.
+
+        Returns:
+            Sorted, unique project paths relative to the repository root.
+
+        """
+        projects: set[str] = set()
+        for plan in plans:
+            project = u.Infra.project_root(plan.path)
+            if project is not None:
+                projects.add(str(project.relative_to(root)))
+        return tuple(sorted(projects))
 
     @classmethod
     def _published_residue(

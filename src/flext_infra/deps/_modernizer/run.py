@@ -38,8 +38,8 @@ class FlextInfraPyprojectModernizerRun:
         @property
         def project_names(self) -> t.StrSequence | None: ...
 
+        @staticmethod
         def _read_document_state(
-            self,
             path: Path,
             *,
             source: str | None = None,

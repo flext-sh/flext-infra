@@ -56,12 +56,7 @@ class FlextInfraPreviewWiring:
             output_format=request.output_format,
             target_module=request.module,
             target_namespace=request.namespace,
-            json_output=request.json_output,
-            impact_map_output=request.impact_map_output,
-            kinds=request.kinds,
-            rules=request.rules,
-            families=request.families,
-            include_local_scopes=request.include_local_scopes,
+            options=request,
             source_preview=self.source_preview(request.repository_root),
         ).execute()
 

@@ -18,6 +18,7 @@ from tests import tm, u
 if TYPE_CHECKING:
     from tests import t
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 
@@ -175,6 +176,131 @@ class TestsFlextInfraSemanticPublication:
         if rejected:
             tm.that(consumer.stderr, has="consumer rejected")
         tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_publication_refreshes_warm_normalized_export_route(
+        mod_workspace: Path,
+    ) -> None:
+        """A moved declaration routes identically in warm and fresh consumers."""
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
+        previous = package / "previous.py"
+        current = package / "current.py"
+        consumer_path = package / "consumer.py"
+        for path, exported in ((previous, True), (current, False)):
+            path.write_text(
+                "class DeclaredService:\n"
+                "    @staticmethod\n"
+                "    def execute() -> str:\n"
+                f"        return {path.stem!r}\n\n"
+                f"__all__ = {['DeclaredService'] if exported else []!r}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=mod_workspace,
+                projection_roots=(mod_workspace,),
+            ),
+        )
+        original_source = (
+            f"from {package.name}.{previous.stem} import DeclaredService\n\n"
+            "def run() -> str:\n"
+            "    return DeclaredService.execute()\n"
+        )
+        warmed = tm.not_none(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=mod_workspace,
+                file_path=consumer_path,
+                source=original_source,
+            ),
+        )
+        tm.that(warmed, has=f"from {package.name} import DeclaredService\n")
+        candidate = original_source.replace(previous.stem, current.stem)
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for path in (previous, current):
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            plans.append(
+                m.Infra.SemanticFilePlan(
+                    project=mod_workspace,
+                    path=path,
+                    before=before,
+                    desired_content=tm
+                    .not_none(before.content)
+                    .decode(c.DEFAULT_ENCODING)
+                    .replace(
+                        f"__all__ = {['DeclaredService'] if path == previous else []!r}",
+                        f"__all__ = {[] if path == previous else ['DeclaredService']!r}",
+                    )
+                    .encode(c.DEFAULT_ENCODING),
+                    desired_mode=before.mode,
+                ),
+            )
+
+        def validate() -> p.Result[bool]:
+            normalized = tm.not_none(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=mod_workspace,
+                    file_path=consumer_path,
+                    source=candidate,
+                ),
+            )
+            tm.that(normalized, eq=warmed)
+            tm.that(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=mod_workspace,
+                    file_path=consumer_path,
+                    source=normalized,
+                ),
+                eq=None,
+            )
+            fresh = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            "from pathlib import Path\n"
+                            "from flext_infra.refactor import FlextInfraImportNormalization\n"
+                            "normalized = FlextInfraImportNormalization.normalize_source(\n"
+                            f"    project_root=Path({str(mod_workspace)!r}),\n"
+                            f"    file_path=Path({str(consumer_path)!r}),\n"
+                            f"    source={candidate!r},\n"
+                            ")\n"
+                            f"assert normalized == {normalized!r}\n"
+                            f"{normalized}\n"
+                            f"assert run() == {current.stem!r}\n"
+                        ),
+                    ),
+                    cwd=mod_workspace,
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                        },
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
+            return r[bool].ok(True)
+
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                plans,
+                repository_root=mod_workspace,
+                projection_roots=(mod_workspace,),
+                validator=validate,
+            ),
+        )
+        initializer = package / c.Infra.INIT_PY
+        published = initializer.read_bytes()
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=mod_workspace,
+                projection_roots=(mod_workspace,),
+                validator=validate,
+            ),
+        )
+        tm.that(initializer.read_bytes(), eq=published)
 
     @staticmethod
     @pytest.mark.parametrize("accepted", [False, True])

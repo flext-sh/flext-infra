@@ -120,7 +120,7 @@ class TestsFlextInfraDepsDetectorMain:
                 u.Tests.toml_mapping(before["dependency-groups"])["dev"],
             )
         }
-        tm.that(declared_dev & set(expected.values()), eq=set())
+        tm.that(declared_dev & set(expected.values()), empty=True)
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -142,7 +142,9 @@ class TestsFlextInfraDepsDetectorMain:
             for item in u.Infra.project_dependency_names_from_payload(before)
             if item in expected
         ]
-        added = set() if followed else {expected[item] for item in requirements}
+        added: set[str] = (
+            set() if followed else {expected[item] for item in requirements}
+        )
         typing_specs = u.Tests.toml_strings(
             u.Tests.toml_mapping(
                 u.Tests.toml_mapping(after["project"])["optional-dependencies"],

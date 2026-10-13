@@ -155,9 +155,11 @@ class TestsFlextInfraIntegrationInfraIntegration:
             repository_root=root,
             apply_changes=False,
             dry_run=False,
-            kinds=("function",),
-            rules=("unused",),
-            include_local_scopes=False,
+            options=m.Infra.CensusOptions(
+                kinds=("function",),
+                rules=("unused",),
+                include_local_scopes=False,
+            ),
         ).build_report()
         item = next(
             item

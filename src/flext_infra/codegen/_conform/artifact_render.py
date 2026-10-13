@@ -749,13 +749,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``p.Result[m.Infra.MakefileRenderSpec]``.
 
         """
-        gitlinks = self._managed_gitlinks(
-            workspace,
-            codegen,
-            repository_root=target.root,
-        )
-        if gitlinks.failure:
-            return r[m.Infra.MakefileRenderSpec].from_failure(gitlinks)
         pytest = config.Infra.tooling.tools.pytest
         run_timeout_seconds = pytest.run_timeout_overrides.get(
             target.canonical_project_name,
@@ -778,7 +771,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
-                workspace_gitlinks=gitlinks.value,
                 uv_link_mode=self.link_mode(target.repository, codegen.toolchain),
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,

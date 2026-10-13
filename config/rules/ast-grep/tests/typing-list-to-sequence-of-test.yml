@@ -20,6 +20,9 @@ valid:
     ALIAS = t.SequenceOf[str]
   - |
     from flext_core import t
+    value: t.ListOf[str]
+  - |
+    from flext_core import t
     from typing import List
 
     REWRITE_TABLE = (("Dict[", "t.MappingKV"), ("List[", "t.SequenceOf"))
@@ -39,8 +42,88 @@ valid:
 
     # A comment mentioning List[str] and typing.List[int] survives untouched.
     value = 1
-# `invalid` MUST match: a real generic in a module that binds both `List` and
-# `t`, plus the dotted form which needs no `List` binding.
+  - |
+    from flext_core import t
+    from typing import List
+    ALIAS = List[str]
+    VALUE = List[str]()
+    def f(factory=List[str]): ...
+    field = Field(default_factory=List[str])
+    class Derived(List[str]): ...
+  - |
+    from flext_core import t
+    import typing
+    ALIAS: type = typing.List[str]
+    def f(factory: type = typing.List[str]): ...
+    field = Field(default_factory=typing.List[str])
+    class Derived(typing.List[str]): ...
+  - |
+    from typing import List
+    def local():
+        from flext_core import t
+    value: List[str]
+  - |
+    from typing import List, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: List[str]
+  - |
+    from flext_core import t
+    from typing import Annotated, List
+    value: Annotated[int, List[str]]
+  - |
+    from flext_core import t
+    from typing import List, Literal
+    value: Literal[List[str]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[int, typing.List[str]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Literal[typing.List[str]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, List
+    value: Metadata[int, List[str]]
+  - |
+    from flext_core import t
+    from typing import List, Literal as Value
+    value: Value[List[str]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[int, tuple[typing.List[str], ...]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Literal[typing.List[str]]
+  - |
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import u as t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import t
+    from typing import List
+    def f(t, value: List[str]): ...
+  - |
+    from flext_core import t
+    from typing import List
+    t = None
+    value: List[str]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import List
+    value: List[str]
+# `invalid` MUST match and fix to the exact list alias, never an abstraction.
 invalid:
   - |
     from flext_core import t
@@ -51,9 +134,82 @@ invalid:
     from flext_core import t
     from typing import List
 
-    ALIAS = List[str]
+    type ALIAS = List[str]
   - |
     from flext_core import t
     import typing
 
-    ALIAS = typing.List[str]
+    type ALIAS = typing.List[str]
+  - |
+    from flext_core import t
+    from typing import List
+    def f() -> List[str]: ...
+  - |
+    from flext_core import t
+    from typing import List
+    value: tuple[List[str], ...] | None = None
+  - |
+    from flext_core import t
+    from typing import List
+    def f(value: List[str] = list[str]()) -> List[str]:
+        return value
+  - |
+    from flext_core import t
+    import typing
+    value: typing.List[str] = Field(default_factory=list[str])
+  - |
+    from flext_core import t
+    import typing
+    def f(value: typing.List[str] = typing.List[str]): ...
+  - |
+    from flext_core import t
+    from typing import Annotated, List
+    value: Annotated[List[str], Field(default_factory=List[str])]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[typing.List[str], typing.List[str]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, List
+    value: Metadata[List[str], List[str]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[typing.List[str], typing.List[str]]
+  # A same-named user generic is not typing's value-bearing special form.
+  - |
+    from flext_core import t
+    from typing import List
+    class Annotated: ...
+    value: Annotated[int, List[str]]
+  # Executed after native fixes: concrete APIs and runtime values remain intact.
+  - |
+    from flext_core import m, t
+    from typing import List, get_origin
+    LEGACY = List[str]
+    FACTORY = list[str]
+    type Contract = List[str]
+    class LegacyBase(List[str]): ...
+    class Payload(m.ArbitraryTypesModel):
+        values: List[str] = m.Field(default_factory=list[str])
+    def make(values: List[str] = list[str]()) -> List[str]:
+        return values
+    assert get_origin(LEGACY) is list
+    assert FACTORY() == []
+    assert isinstance(LegacyBase(), list)
+    assert Payload().values == []
+    assert Payload().values is not Payload().values
+    payload = Payload()
+    payload.values.append("example")
+    assert payload.values == ["example"]
+    payload.values[0] = "updated"
+    payload.values.extend(["another"])
+    payload.values.sort()
+    assert payload.values.copy() + ["last"] == ["another", "updated", "last"]
+    assert Payload.model_validate({"values": ("input",)}, strict=False).values == ["input"]
+    assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
+    assert make() == []
+    assert not callable(get_origin(Contract.__value__))
+    assert Contract.__value__ == make.__annotations__["return"]
