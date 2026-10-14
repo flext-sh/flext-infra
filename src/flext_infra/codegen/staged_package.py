@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraStagedPackage:
@@ -191,15 +192,10 @@ class FlextInfraStagedPackage:
                 return r[bool].from_failure(paths)
             actual.update(path for path in paths.value if path.is_file())
         actual.update(path for path in plan.updates if path.is_file())
-        actual.update(
-            path
-            for path in (
-                plan.workspace / c.PYPROJECT_FILENAME,
-                plan.workspace / ".gitmodules",
-                plan.workspace / "uv.lock",
-            )
-            if path.is_file()
-        )
+        metadata = cls._workspace_metadata_paths(plan.workspace)
+        if metadata.failure:
+            return r[bool].from_failure(metadata)
+        actual.update(path for path in metadata.value if path.is_file())
         expected = {item.path for item in plan.inputs if item.content is not None}
         if actual != expected:
             return r[bool].fail("candidate original source inventory changed")
@@ -442,15 +438,39 @@ class FlextInfraStagedPackage:
         return r[bool].ok(value=True)
 
     @staticmethod
+    def _workspace_metadata_paths(
+        workspace: Path,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Name the source and selected resolver metadata from physical ownership."""
+        context = FlextInfraWorkspaceDetector.resolution_context(workspace)
+        if context.failure:
+            return r[t.VariadicTuple[Path]].from_failure(context)
+        inputs = u.Infra.load_codegen_inputs(context.value.runtime_root)
+        if inputs.failure:
+            return r[t.VariadicTuple[Path]].from_failure(inputs)
+        return r[t.VariadicTuple[Path]].ok(
+            tuple(
+                dict.fromkeys(
+                    (
+                        context.value.runtime_root / c.PYPROJECT_FILENAME,
+                        context.value.runtime_root / c.Infra.GITMODULES,
+                        context.value.pyproject_path,
+                        context.value.lock_path,
+                        *(state.path for state in inputs.value.sources),
+                    ),
+                ),
+            ),
+        )
+
+    @staticmethod
     def _pin_workspace_metadata(
         workspace: Path,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
-        for path in (
-            workspace / c.PYPROJECT_FILENAME,
-            workspace / ".gitmodules",
-            workspace / "uv.lock",
-        ):
+        paths = FlextInfraStagedPackage._workspace_metadata_paths(workspace)
+        if paths.failure:
+            return r[bool].from_failure(paths)
+        for path in paths.value:
             if path in states:
                 continue
             observed = u.Cli.atomic_read_binary_file_state(path, required=False)

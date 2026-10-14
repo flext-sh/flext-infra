@@ -942,14 +942,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ) -> None:
             """Declare and commit ``member`` as a real gitlink of ``parent``."""
             _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
-            (parent / c.Infra.GITMODULES).write_text(
-                f'[submodule "{distribution}"]\n'
-                f"\tpath = {relative_path}\n"
-                f"\turl = {cls.governed_repository_url(distribution)}\n"
-                "\tbranch = "
-                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n",
-                encoding="utf-8",
-            )
+            for key, value in (
+                ("path", relative_path),
+                ("url", cls.governed_repository_url(distribution)),
+                (
+                    "branch",
+                    TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            ):
+                _ = TestsFlextInfraUtilitiesGitMixin.git_run(
+                    parent,
+                    "config",
+                    "--file",
+                    c.Infra.GITMODULES,
+                    f"submodule.{distribution}.{key}",
+                    value,
+                )
             # A workspace parent declares its own role as workspace: the
             # manifest must agree with the topology the detector observes.
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(

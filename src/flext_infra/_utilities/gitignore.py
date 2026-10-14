@@ -401,7 +401,7 @@ class FlextInfraUtilitiesGitignore:
         """
         local_projections = tuple(
             f"/{item.path.as_posix()}"
-            for item in sorted(codegen.managed_files, key=lambda item: item.path)
+            for item in sorted(codegen.managed_file_specs, key=lambda item: item.path)
             if item.tracking == "runtime-local"
         )
         if local_projections:

@@ -24,6 +24,7 @@ from flext_infra.codegen import (
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -380,7 +381,10 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[bool]
-        lock_path = repository_root / c.Infra.UV_LOCK_FILENAME
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result_type.from_failure(context)
+        lock_path = context.value.lock_path
         if not lock_path.is_file():
             return result_type.ok(True)
         matches = u.installed_distributions(name=_ENGINE_DISTRIBUTION)
@@ -417,7 +421,7 @@ class FlextInfraCodegenPreconditions:
             return result_type.fail(
                 f"rendering engine {_ENGINE_DISTRIBUTION}@{running_commit} "
                 f"is not the locked pin {_ENGINE_DISTRIBUTION}@{locked_commit}: "
-                "the environment is stale — cure: uv sync (stale environment) "
+                "the environment is stale — cure: make setup (stale environment) "
                 "or make upg (stale pin); never a hand-edited generated file",
             )
         locked_version = pinned.get("version")
@@ -425,7 +429,7 @@ class FlextInfraCodegenPreconditions:
             return result_type.fail(
                 f"rendering engine {_ENGINE_DISTRIBUTION}@{distribution.version} "
                 f"is not the locked pin {_ENGINE_DISTRIBUTION}@{locked_version}: "
-                "the environment is stale — cure: uv sync (stale environment) "
+                "the environment is stale — cure: make setup (stale environment) "
                 "or make upg (stale pin); never a hand-edited generated file",
             )
         return result_type.ok(True)

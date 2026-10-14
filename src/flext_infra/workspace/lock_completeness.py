@@ -15,6 +15,8 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraFlextBindingService
+from flext_infra import p, r, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceLockCompleteness:
@@ -46,17 +48,13 @@ class FlextInfraWorkspaceLockCompleteness:
             The resulting ``p.Result[int]``.
 
         """
-        project_root = repository_root.resolve()
-        resolved = u.Cli.run(
-            (c.Infra.UV, "workspace", "dir", "--project", str(project_root)),
-            cwd=project_root,
-        )
-        if resolved.failure:
-            return r[int].from_failure(resolved)
-        owner = resolved.value.stdout.strip()
-        if not owner or not Path(owner).is_absolute():
-            return r[int].fail("uv workspace dir returned no absolute lock owner")
-        return cls.validate_lock_file(Path(owner) / c.Infra.UV_LOCK_FILENAME)
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[int].from_failure(context)
+        lock_path = context.value.lock_path
+        if not lock_path.is_file():
+            return r[int].fail(f"{lock_path}: no committed lock; run make upg")
+        return cls.validate_lock_file(lock_path)
 
     @classmethod
     def validate_lock_file(cls, lock_path: Path) -> p.Result[int]:

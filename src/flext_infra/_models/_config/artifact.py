@@ -29,6 +29,7 @@ from flext_infra._models._config.release import FlextInfraConfigModelsRelease
 from flext_infra._models._config.render import FlextInfraConfigModelsRender
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
@@ -452,11 +453,17 @@ class FlextInfraConfigModelsArtifact:
             declared_patterns = {
                 pattern for section in scaffold_sections for pattern in section.patterns
             }
-            for managed in self.managed_files:
-                parts = managed.path.parts
+            versioned_paths = tuple(
+                managed.path for managed in self.managed_file_specs
+            ) + tuple(
+                path.with_name(c.Infra.UV_LOCK_FILENAME)
+                for path in self.uv_resolution_pyprojects
+            )
+            for path in versioned_paths:
+                parts = path.parts
                 candidates = [
                     *(f"!{'/'.join(parts[:depth])}/" for depth in range(1, len(parts))),
-                    f"!{managed.path.as_posix()}",
+                    f"!{path.as_posix()}",
                 ]
                 managed_allowed.extend(
                     candidate
@@ -516,6 +523,49 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec],
             m.Field(description="Files owned by conform"),
         ]
+
+        @m.computed_field
+        @property
+        def uv_resolution_pyprojects(self) -> t.VariadicTuple[Path]:
+            """Derive native resolver documents from the configured directories."""
+            return tuple(
+                directory / c.PYPROJECT_FILENAME
+                for directory in (
+                    self.make.uv_resolution.local_directory,
+                    self.make.uv_resolution.standalone_directory,
+                )
+            )
+
+        @m.computed_field
+        @property
+        def managed_file_specs(
+            self,
+        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
+            """Compose native resolver artifacts from the one path policy."""
+            roots = tuple(
+                item
+                for item in self.managed_files
+                if item.path == Path(c.PYPROJECT_FILENAME)
+            )
+            if len(roots) != 1:
+                msg = "managed files require exactly one root pyproject owner"
+                raise ValueError(msg)
+            owner = roots[0]
+            projected = tuple(
+                FlextInfraConfigModelsTemplates.ManagedFileSpec(
+                    path=path,
+                    owner=owner.owner,
+                    policy="full",
+                    mode=owner.mode,
+                )
+                for path in self.uv_resolution_pyprojects
+            )
+            declared = {item.path for item in self.managed_files}
+            if any(item.path in declared for item in projected):
+                msg = "native resolver artifacts derive from make.uv_resolution only"
+                raise ValueError(msg)
+            return (*self.managed_files, *projected)
+
         scaffold: Annotated[
             FlextInfraConfigModelsScaffold.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),
@@ -548,7 +598,7 @@ class FlextInfraConfigModelsArtifact:
             )
             github_managed = tuple(
                 managed
-                for managed in self.managed_files
+                for managed in self.managed_file_specs
                 if managed.path.parts[:1] == (".github",)
             )
             template_paths = set(github_templates)
@@ -925,9 +975,9 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsContexts.RepositoryRef,
             m.Field(description="Repository this task plans"),
         ]
-        contract: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConformSurfaceContract,
-            m.Field(description="Surface contract of the selected scope"),
+        surface: Annotated[
+            FlextInfraConfigVocabulary.CodegenConformSurface,
+            m.Field(description="Requested surface resolved against each target policy"),
         ]
 
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):

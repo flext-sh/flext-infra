@@ -201,7 +201,12 @@ class FlextInfraReleaseBuildMixin(FlextInfraReleaseProjectMixin):
             The resulting ``p.Result[t.MutableStrMapping]``.
 
         """
-        lock_path = repository_root / c.Infra.UV_LOCK_FILENAME
+        from flext_infra.workspace import FlextInfraWorkspaceDetector
+
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[t.MutableStrMapping].from_failure(context)
+        lock_path = context.value.lock_path
         document = u.Cli.toml_read_json(lock_path)
         if document.failure:
             return r[t.MutableStrMapping].from_failure(document)

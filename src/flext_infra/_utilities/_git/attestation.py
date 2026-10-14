@@ -936,14 +936,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
+        from flext_infra.workspace import FlextInfraWorkspaceDetector
 
+        context = FlextInfraWorkspaceDetector.resolution_context(repo_root).unwrap()
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit
         names = (
             ".mise.toml",
             ".python-version",
             "pyproject.toml",
-            "uv.lock",
             "mise.lock",
             "config",
         )
@@ -955,6 +956,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 continue
             blob = commit.tree / name
             tracked.append(f"{name}:{blob.hexsha}")
+        runtime_repo = cls._repo(context.runtime_root)
+        runtime_commit = (
+            commit
+            if Path(repo.git_dir).resolve() == Path(runtime_repo.git_dir).resolve()
+            else runtime_repo.head.commit
+        )
+        for path in (context.pyproject_path, context.lock_path):
+            relative = path.relative_to(context.runtime_root).as_posix()
+            if relative not in runtime_commit.tree:
+                raise FileNotFoundError(
+                    f"selected resolver input is absent from the runtime commit: {relative}",
+                )
+            tracked.append(f"runtime:{relative}:{(runtime_commit.tree / relative).hexsha}")
         content = "\n".join(tracked)
         return f"sha256:{u.Cli.sha256_content(content)}"
 

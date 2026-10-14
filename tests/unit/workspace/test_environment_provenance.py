@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from json import dumps
 from pathlib import Path
-from sys import executable, prefix
+from sys import executable, executable, prefix
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
@@ -54,6 +55,79 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert not pathlib.Path(loaded.__file__).is_file()\n"
         )
         tm.ok(u.Cli.capture([executable, "-c", consumer, str(tmp_path)], cwd=tmp_path))
+
+    @staticmethod
+    def _toolchain_identity(site_packages: Path) -> str:
+        """Read real installed metadata in a fresh process's public search path.
+
+        Returns:
+            The fingerprint emitted by the workspace provenance owner.
+        """
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                (
+                    executable,
+                    "-c",
+                    "from flext_infra.workspace import "
+                    "FlextInfraWorkspaceEnvironmentProvenance\n"
+                    "print(FlextInfraWorkspaceEnvironmentProvenance"
+                    ".installed_toolchain_identity())\n",
+                ),
+                cwd=site_packages.parent,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(site_packages)},
+                ),
+            ),
+        )
+        u.Tests.record_dependency_command_output(outcome)
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome),
+            eq=True,
+            msg=outcome.stdout + outcome.stderr,
+        )
+        return outcome.stdout.strip()
+
+    def test_toolchain_identity_excludes_editable_checkout_paths(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Two live checkouts of the same installed packages share one identity."""
+        identities: list[str] = []
+        for name in ("first-checkout", "second-checkout"):
+            site_packages = tmp_path / name
+            source = tmp_path / f"{name}-source"
+            self._installed_editable(
+                site_packages,
+                "sample-member",
+                direct_root=source,
+                source_root=source,
+            )
+            identities.append(self._toolchain_identity(site_packages))
+        tm.that(identities[0], eq=identities[1])
+
+    def test_toolchain_identity_distinguishes_git_revisions_at_equal_version(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Installed PEP 610 commits participate even when METADATA is unchanged."""
+        identities: list[str] = []
+        for ordinal, commit in enumerate(("a" * 40, "b" * 40)):
+            site_packages = tmp_path / str(ordinal)
+            self._installed_editable(
+                site_packages,
+                "sample-member",
+                direct_root=tmp_path,
+                source_root=tmp_path,
+            )
+            receipt = m.Infra.DirectUrlReceipt(
+                url=u.Tests.WorktreeFixture.governed_repository_url("sample-member"),
+                vcs_info=m.Infra.DirectUrlVcsInfo(vcs="git", commit_id=commit),
+            )
+            (
+                site_packages / "sample_member-1.0.dist-info" / "direct_url.json"
+            ).write_text(receipt.model_dump_json(), encoding="utf-8")
+            identities.append(self._toolchain_identity(site_packages))
+        tm.that(identities[0] != identities[1], eq=True)
 
     @staticmethod
     def test_actual_cli_preserves_toml_occurrence_comments() -> None:
@@ -129,14 +203,14 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
     @pytest.fixture
     def ci_mode(self) -> bool:
-        """Read the same typed CI-token contract used by the public consumer.
+        """Read the hosted-runner contract used by the public consumer.
 
         Returns:
             Whether this test invocation selects locked CI provenance.
 
         """
-        ci = config.Infra.codegen.make.ci
-        return u.Infra.env_value(ci.variable).strip() == ci.value
+        policy = config.Infra.codegen.make.uv_resolution
+        return u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
 
     @pytest.fixture
     def site_packages(self) -> Iterator[Path]:
@@ -148,6 +222,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """
         with TemporaryDirectory(dir=prefix) as temporary:
             yield Path(temporary) / "site-packages"
+
+    @staticmethod
+    def _lock_path(root: Path) -> Path:
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(root))
+        tm.ok(u.Cli.ensure_dir(context.lock_path.parent))
+        return context.lock_path
 
     @staticmethod
     def _workspace(root: Path, distribution: str = "sample-member") -> Path:
@@ -416,9 +496,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 declared.model_dump(mode="json"),
             ),
         )
-        (workspace / "uv.lock").write_text(
+        lock = self._lock_path(workspace)
+        relative = Path(os.path.relpath(member, lock.parent)).as_posix()
+        lock.write_text(
             '[[package]]\nname = "sample-member"\nversion = "1.0"\n'
-            'source = { editable = "sample-member" }\n',
+            f'source = {{ editable = "{relative}" }}\n',
             encoding="utf-8",
         )
         u.Tests.commit_git_changes(workspace, "declare locked workspace")
@@ -568,7 +650,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 declared.model_dump(mode="json"),
             ),
         )
-        lock = workspace / "uv.lock"
+        lock = self._lock_path(workspace)
         lock.write_text(
             lock.read_text(encoding="utf-8").replace("editable =", "directory ="),
             encoding="utf-8",
@@ -604,9 +686,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 ).model_dump(mode="json"),
             ),
         )
-        (root / "uv.lock").write_text(
+        lock = self._lock_path(root)
+        relative = Path(os.path.relpath(root, lock.parent)).as_posix()
+        lock.write_text(
             '[[package]]\nname = "sample-root"\nversion = "1.0"\n'
-            'source = { editable = "." }\n',
+            f'source = {{ editable = "{relative}" }}\n',
             encoding="utf-8",
         )
         u.Tests.commit_git_changes(root, "declare standalone root lock")
@@ -660,10 +744,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         workspace = self._locked_workspace(tmp_path)
         member = workspace / "sample-member"
         if defect == "lock_path":
-            lock = workspace / "uv.lock"
+            lock = self._lock_path(workspace)
+            relative = Path(os.path.relpath(member, lock.parent)).as_posix()
             lock.write_text(
                 lock.read_text(encoding="utf-8").replace(
-                    'editable = "sample-member"',
+                    f'editable = "{relative}"',
                     'editable = "elsewhere"',
                 ),
                 encoding="utf-8",
@@ -758,7 +843,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ),
         )
         url = u.Tests.WorktreeFixture.governed_repository_url("sample-member")
-        (workspace / "uv.lock").write_text(
+        self._lock_path(workspace).write_text(
             '[[package]]\nname = "sample-member"\nversion = "1.0"\n'
             f'source = {{ git = "{url}#{identity.head_oid}" }}\n',
             encoding="utf-8",

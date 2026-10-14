@@ -11,10 +11,136 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformFilePlans
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 
 class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans):
     """Pyproject, tooling-root, and custom Make policy projections."""
+
+    def native_resolution_plans(
+        self,
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        rendered_by: str,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Plan both native resolver inputs from this generation's desired sources.
+
+        The complete repository plan supplies desired member metadata before
+        publication. Reading an older member document here would make the
+        workspace view drift as soon as that same transaction published it.
+        Locks remain exclusively owned by the upgrade lifecycle.
+        """
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        desired = {file.path: file for file in planned}
+        projects: list[m.Infra.UvResolutionProject] = []
+        sources: list[m.Cli.AtomicFileState] = list(inputs.sources)
+        for repository in (workspace.repository, *workspace.subprojects):
+            if repository is not workspace.repository and not repository.package:
+                continue
+            directory = (
+                root
+                if repository is workspace.repository
+                else root / repository.path
+            ).resolve()
+            path = directory / c.PYPROJECT_FILENAME
+            projected = desired.get(path)
+            if projected is None:
+                captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                state = captured.value
+                content = state.content
+            else:
+                state = projected.before
+                content = projected.desired_content
+                sources.extend(projected.source_states)
+            if content is None:
+                return result_type.fail(
+                    f"native resolution input is absent: {path}",
+                )
+            document = u.Cli.toml_parse_text(content.decode(c.DEFAULT_ENCODING))
+            if document is None:
+                return result_type.fail(
+                    f"native resolution input is not valid TOML: {path}",
+                )
+            sources.append(state)
+            projects.append(
+                m.Infra.UvResolutionProject(
+                    repository=repository,
+                    directory=directory,
+                    document=document,
+                ),
+            )
+        authenticated = FlextInfraCodegenPreconditions.unique_states(tuple(sources))
+        if authenticated.failure:
+            return result_type.from_failure(authenticated)
+        owner, *members = projects
+        policy = inputs.spec.make.uv_resolution
+        layout = u.Infra.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=root),
+        )
+        if layout.failure:
+            return result_type.from_failure(layout)
+        catalogue = {
+            item.path: item for item in inputs.spec.managed_file_specs
+        }
+        files: list[m.Infra.CodegenFilePlan] = []
+        for relative, selected in (
+            (policy.local_directory, tuple(members)),
+            (policy.standalone_directory, ()),
+        ):
+            destination = relative / c.PYPROJECT_FILENAME
+            metadata = catalogue.get(destination)
+            if metadata is None:
+                return result_type.fail(
+                    f"native resolution view has no managed owner: {destination}",
+                )
+            path = (root / destination).resolve()
+            if not path.is_relative_to(root.resolve()):
+                return result_type.fail(
+                    f"native resolution view escapes its repository: {path}",
+                )
+            rendered = u.Infra.pyproject_native_resolution_view(
+                owner,
+                members=selected,
+                directory=path.parent,
+                policy=policy,
+            )
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            formatted = u.Infra.format_toml_source(
+                u.Cli.toml_dumps(rendered.value),
+                path=path,
+                toolchain_root=layout.value.repository_root,
+                taplo_version=inputs.spec.toolchain.tool_versions["taplo"],
+            )
+            if formatted.failure:
+                return result_type.from_failure(formatted)
+            file = self.file_plan(
+                root,
+                destination.as_posix(),
+                (
+                    f"{c.Infra.BANNER}{rendered_by}\n"
+                    f"{formatted.value.lstrip()}"
+                ),
+                mode=metadata.mode,
+                source_states=authenticated.value,
+            )
+            if file.failure:
+                return result_type.from_failure(file)
+            files.append(
+                file.value.model_copy(
+                    update={
+                        "owner": metadata.owner,
+                        "policy": metadata.policy,
+                        "tracking": metadata.tracking,
+                    },
+                ),
+            )
+        return result_type.ok(tuple(files))
 
     @staticmethod
     def _scaffold_python_dirs(

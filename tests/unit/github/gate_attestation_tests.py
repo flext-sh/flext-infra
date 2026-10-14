@@ -17,7 +17,7 @@ from flext_cli import u as cli_u
 
 from flext_infra import c, config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import t, tm, u
 
 
@@ -33,7 +33,9 @@ class TestsFlextInfraGithubGateAttestation:
         """
         return FlextInfraGateRegistry.default().runtime_identity(
             gate_ids,
-            installed_identity=FlextInfraPytestRunner.installed_toolchain_identity(),
+            installed_identity=(
+                FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
+            ),
         )
 
     @staticmethod

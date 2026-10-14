@@ -316,6 +316,19 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Offending token when the contract is token-based"),
         ] = ""
 
+    class WorkspaceRuntimeContext(m.ContractModel):
+        """Physical runtime ownership and its selected native resolution input."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        project_root: Annotated[Path, m.Field(description="Submitted Git worktree root")]
+        runtime_root: Annotated[Path, m.Field(description="Physical runtime owner")]
+        resolution_root: Annotated[Path, m.Field(description="Selected native UV project")]
+        pyproject_path: Annotated[Path, m.Field(description="Selected resolution document")]
+        lock_path: Annotated[Path, m.Field(description="Selected immutable UV lock")]
+        environment_path: Annotated[Path, m.Field(description="Physical shared environment")]
+        standalone: Annotated[bool, m.Field(description="Actual hosted runner view")]
+
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""
 
@@ -338,6 +351,10 @@ class FlextInfraModelsWorkspace:
             bool,
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
+        runtime: Annotated[
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            m.Field(description="Physical environment and native resolver ownership"),
+        ] = None
 
     class FlextBindingRequest(m.ContractModel):
         """Session request binding one consumer onto a flext worktree."""

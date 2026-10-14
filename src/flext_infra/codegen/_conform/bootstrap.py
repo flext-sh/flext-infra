@@ -215,6 +215,8 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     def surface_contract(
         cls,
         surface: c.Infra.CodegenConformSurface,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
         """Resolve a declared surface without defaulting an invalid input.
 
@@ -229,7 +231,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset(
                         item.path.as_posix()
-                        for item in config.Infra.codegen.managed_files
+                        for item in codegen.managed_file_specs
                         if item.runtime_binding
                     ),
                     runtime_bindings=True,
@@ -250,7 +252,13 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    destinations=frozenset(
+                        path.as_posix()
+                        for path in (
+                            Path(c.PYPROJECT_FILENAME),
+                            *codegen.uv_resolution_pyprojects,
+                        )
+                    ),
                     delegates=False,
                     templates=False,
                     custom=False,

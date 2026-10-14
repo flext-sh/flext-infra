@@ -260,6 +260,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY
             and self.surface_contract(
                 c.Infra.CodegenConformSurface(request.what),
+                codegen=inputs.value.spec,
             ).complete_governed
         ):
             migrated = self._migrate_repository_declarations(request)
@@ -539,18 +540,28 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         scope_root, roots = publication_scope
         surface = c.Infra.CodegenConformSurface(request.what)
-        destinations = self.surface_contract(surface).destinations
-        if not destinations:
-            return r[t.VariadicTuple[Path]].fail(
-                f"bootstrap requires declared destinations for {surface}",
-            )
-        expected_owners = {
-            (request.root.expanduser().resolve() / repository.path / path).resolve(): (
+        expected_owners: t.MutableMappingKV[Path, Path] = {}
+        for repository in plan.repositories:
+            repository_root = (
                 request.root.expanduser().resolve() / repository.path
             ).resolve()
-            for repository in plan.repositories
-            for path in destinations
-        }
+            inputs = u.Infra.load_codegen_inputs(repository_root)
+            if inputs.failure:
+                return r[t.VariadicTuple[Path]].from_failure(inputs)
+            destinations = self.surface_contract(
+                surface,
+                codegen=inputs.value.spec,
+            ).destinations
+            if not destinations:
+                return r[t.VariadicTuple[Path]].fail(
+                    f"bootstrap requires declared destinations for {surface}",
+                )
+            expected_owners.update(
+                {
+                    (repository_root / path).resolve(): repository_root
+                    for path in destinations
+                },
+            )
         expected_paths = set(expected_owners)
         dependencies = {
             path

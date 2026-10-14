@@ -239,6 +239,8 @@ class FlextInfraProtocolsBase(Protocol):
         def surface_contract(
             self,
             surface: c.Infra.CodegenConformSurface,
+            *,
+            codegen: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.CodegenConformSurfaceContract:
             """Resolve the declared output set for a recovery surface."""
             ...
@@ -596,6 +598,8 @@ class FlextInfraProtocolsBase(Protocol):
         def surface_contract(
             cls,
             surface: c.Infra.CodegenConformSurface,
+            *,
+            codegen: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.CodegenConformSurfaceContract: ...
 
         @classmethod

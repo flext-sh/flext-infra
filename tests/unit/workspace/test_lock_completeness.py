@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra.workspace import FlextInfraWorkspaceLockCompleteness
-from tests import c, m, tm, u
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceLockCompleteness,
+)
+from tests import c, m, tm, u, u
 
 
 class TestsFlextInfraWorkspaceLockCompleteness:
@@ -203,5 +204,15 @@ class TestsFlextInfraWorkspaceLockCompleteness:
 
     def test_the_infra_checkout_lock_is_complete(self) -> None:
         """The repository's own committed lock always passes its own gate."""
-        root = Path(__file__).parents[3]
-        tm.ok(FlextInfraWorkspaceLockCompleteness.validate(root))
+        tm.ok(FlextInfraWorkspaceLockCompleteness.validate(Path(__file__).parents[3]))
+
+    def test_public_validation_uses_the_elected_view(self, tmp_path: Path) -> None:
+        """The selected resolver lock is authoritative even beside a legacy lock."""
+        u.Tests.initialize_git_repo(tmp_path)
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(tmp_path))
+        (tmp_path / "uv.lock").write_text("[[package]]\nname='legacy'\n", encoding="utf-8")
+        tm.fail(FlextInfraWorkspaceLockCompleteness.validate(tmp_path), has="no committed lock")
+        tm.ok(u.Cli.ensure_dir(context.lock_path.parent))
+        context.lock_path.write_text("[[package]]\nname='selected'\n", encoding="utf-8")
+
+        tm.that(tm.ok(FlextInfraWorkspaceLockCompleteness.validate(tmp_path)), eq=1)
