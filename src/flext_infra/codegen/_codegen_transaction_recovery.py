@@ -979,7 +979,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         original = r[bool].from_failure(failure)
         try:
             recovered = self._recover_prepared(layout)
-        except Exception as cleanup_exception:
+        except (OSError, ValueError) as cleanup_exception:
             recovered = r[bool].fail_op(
                 "finalize failed generation publication",
                 cleanup_exception,
