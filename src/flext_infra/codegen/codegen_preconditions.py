@@ -169,12 +169,21 @@ class FlextInfraCodegenPreconditions:
         if rooted.failure:
             return result_type.from_failure(rooted)
         roots, owners = rooted.value
+        runtime = FlextInfraMiseArtifactsFiles.read_state(
+            Path(sys.executable).resolve(), required=True
+        )
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
+            runtime.value.path: runtime.value
+        }
         observed = cls._observed_source_roots(names, roots, owners)
         if observed.failure:
             return result_type.from_failure(observed)
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
-        captured = cls._captured_authority_states(roots, observed.value, trees, states)
+        captured = cls._captured_authority_states(
+            names, roots, observed.value, trees, states
+        )
         if captured.failure:
             return result_type.from_failure(captured)
         owned = cls._authenticated_distribution_ownership(
@@ -206,10 +215,19 @@ class FlextInfraCodegenPreconditions:
                 t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
             ]
         ]
-        elected = cls.elected_producer_modules(repository_root, nominated=names)
-        if elected.failure:
-            return result_type.from_failure(elected)
-        roots = dict(elected.value)
+        if all(item.attributes for item in names):
+            roots: dict[str, Path] = {}
+            for item in names:
+                namespace = item.target.partition(".")[0]
+                selected = cls._elect_namespace(namespace)
+                if selected.failure:
+                    return result_type.from_failure(selected)
+                roots[namespace] = selected.value
+        else:
+            elected = cls.elected_producer_modules(repository_root, nominated=names)
+            if elected.failure:
+                return result_type.from_failure(elected)
+            roots = dict(elected.value)
         owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]] = {
             name: set() for name in roots
         }
@@ -254,14 +272,16 @@ class FlextInfraCodegenPreconditions:
     @classmethod
     def _captured_authority_states(
         cls,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
         roots: t.MappingKV[str, Path],
         observed: m.Infra.NativeImportObservation,
         trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
-        """Capture every producer tree and loose source file state.
+        """Capture selected declarations and explicitly inventoried module trees.
 
         Args:
+            names: Native lexical or complete-module selections.
             roots: Elected namespace roots owning captured directories.
             observed: Native observation naming every declared source origin.
             trees: Physical tree manifests, extended with each captured tree.
@@ -273,10 +293,16 @@ class FlextInfraCodegenPreconditions:
         result_type = r[bool]
         source_files: list[Path] = []
         for path in dict.fromkeys((
-            *roots.values(),
             *(
-                Path(declaration or origin)
+                roots[item.target.partition(".")[0]]
+                for item in names
+                if not item.attributes
+            ),
+            *(
+                Path(source)
                 for _, origin, declaration in observed.sources
+                for source in (origin, declaration)
+                if source
             ),
         )):
             if path in trees or path in states:
@@ -295,6 +321,20 @@ class FlextInfraCodegenPreconditions:
         if captured_sources.failure:
             return result_type.from_failure(captured_sources)
         states.update((item.path, item) for item in captured_sources.value)
+        initializers = {
+            parent / c.Infra.INIT_PY
+            for root in roots.values()
+            if root.is_dir() and root not in trees
+            for source in (root / c.Infra.INIT_PY, *source_files)
+            if source.is_relative_to(root)
+            for parent in source.parents
+            if parent.is_relative_to(root)
+        }
+        for path in sorted(initializers - states.keys()):
+            initializer = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
+            if initializer.failure:
+                return result_type.from_failure(initializer)
+            states[path] = initializer.value
         return result_type.ok(value=True)
 
     @classmethod
@@ -579,8 +619,9 @@ class FlextInfraCodegenPreconditions:
         )
         return cls.producer_current(snapshot).map(lambda _current: snapshot)
 
-    @staticmethod
+    @classmethod
     def _distribution_providers(
+        cls,
         distribution: Distribution,
         roots: t.MappingKV[str, Path],
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
@@ -594,32 +635,37 @@ class FlextInfraCodegenPreconditions:
         result_type = r[
             t.MappingKV[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]
         ]
-        captured = FlextInfraMiseArtifactsFiles.capture_distribution_sources(
-            distribution
+        declared = distribution.files
+        if declared is None:
+            return result_type.fail("producer distribution has no native file manifest")
+        paths = tuple(
+            Path(str(distribution.locate_file(item))).absolute() for item in declared
         )
-        if captured.failure:
-            return result_type.from_failure(captured)
-        trees.update((tree.root.path, tree) for tree in captured.value[0])
-        states.update((item.path, item) for item in captured.value[1])
         root_depths = {len(root.parts) for root in roots.values()}
         # Native prefixes preserve anchor, case and lexical parent semantics.
         ownership_prefixes = {
             Path(*parts[:depth])
-            for parts in (path.parts for path in captured.value[2])
+            for parts in (path.parts for path in paths)
             for depth in root_depths
         }
         namespaces = {
             namespace for namespace, root in roots.items() if root in ownership_prefixes
         }
-        for tree in captured.value[0]:
-            state = states.get(tree.root.path / c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-            if state is None:
+        elected: dict[Path, m.Cli.AtomicFileState] = {}
+        for path in paths:
+            if (
+                path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
+                or not path.parent.name.endswith(".dist-info")
+            ):
                 continue
+            observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            state = observed.value
             parsed = FlextInfraMiseArtifactsFiles.editable_project_source(state)
             if parsed.failure:
                 return result_type.from_failure(parsed)
             for project_source, metadata in parsed.value:
-                states[project_source.path] = project_source
                 namespace = metadata.package_name
                 if namespace in roots:
                     if not roots[namespace].is_relative_to(project_source.path.parent):
@@ -628,6 +674,26 @@ class FlextInfraCodegenPreconditions:
                             f"{namespace}"
                         )
                     namespaces.add(namespace)
+                    elected[state.path] = state
+                    elected[project_source.path] = project_source
+        if not namespaces:
+            return result_type.ok(
+                dict[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]()
+            )
+        captured = FlextInfraMiseArtifactsFiles.capture_distribution_sources(
+            distribution
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        if captured.value[2] != paths:
+            return result_type.fail(
+                "producer distribution file manifest changed while capturing ownership"
+            )
+        sources = cls.unique_states((*elected.values(), *captured.value[1]))
+        if sources.failure:
+            return result_type.from_failure(sources)
+        trees.update((tree.root.path, tree) for tree in captured.value[0])
+        states.update((item.path, item) for item in sources.value)
         return result_type.ok(
             dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
         )
@@ -640,7 +706,7 @@ class FlextInfraCodegenPreconditions:
             Success only when every captured input, tree and native epoch is
             unchanged since capture.
         """
-        if not producer.inputs or not producer.generator_trees:
+        if not producer.inputs or producer.generator_reference is None:
             return r[bool].fail("producer context lacks authenticated source closure")
         states = cls.unique_states(producer.inputs)
         if states.failure:

@@ -113,7 +113,10 @@ or journal effects. Cold package election and loaded function/class provenance m
 agree. The retained native file states and physical tree manifests include provider
 code, package resources, distribution metadata, editable pointer files, and project
 metadata read during ownership election. Distribution names and namespace names are
-separate identities; ambiguous ownership is a failure.
+separate identities; ambiguous ownership is a failure. Lexical entrypoints retain
+the physical executable sources they consume and the metadata proving their elected
+providers. Explicit module inventories and declared resource trees retain their
+membership checks; unrelated files do not become lexical producer inputs.
 
 The captured cold module election is retained with the same native manifests in
 phase inputs, journal transitions, and publication receipts. Revalidation uses the
@@ -138,12 +141,13 @@ links, property accessors, and MRO suppliers. They do not require operational cl
 variables, initialized settings singletons, or config data to equal class-body literals;
 the actual consumer captures typed config and resource inputs separately.
 
-Producer authentication uses a shared native Rope declaration graph and compiles
-captured physical source without executing it. It does not import a second copy of
-an already loaded producer. Fresh-process imports remain publication-consumer
-checks; they cannot substitute for callback-free source authentication. Source
-receipts are checked again after observation, before an authenticated reference is
-returned.
+Producer authentication compiles pinned physical declarations without executing
+their callbacks, then compares loaded bindings with an isolated native import from
+the elected physical roots. This read-only proof creates no source preview or
+publication journal. Source and runtime receipts are checked before observation
+and again before returning the authenticated reference; the cold import's executed
+code must also match those captured source bytes. Candidate publication still owns
+its staged source view, journal, and fresh consumer checks.
 
 Native dataclass and named-tuple methods require a physical field-layout witness, native
 construction metadata and descriptor identity, and correspondence with code emitted
@@ -198,12 +202,13 @@ code, metadata and closure checks. Authored functions retain exact source positi
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
-Native tree authentication precedes source filtering; derived interpreter bytecode is
-not a source input. Added resources or directories, changed bytes, retired roots, and
-changed import election invalidate admission. Only exact journal output or staging
-receipts authorize membership changes. Publication observation authenticates the full
-producer closure before selecting the requested consumer scope. None of this proves
-an earlier process whose source context was not captured.
+Derived interpreter bytecode is not a source input. Changed consumed bytes, retired
+provider roots, changed import election, and membership changes in declared trees
+invalidate admission. Exact journal output or staging receipts authorize candidate
+membership changes. Independent file work outside a lexical producer's consumed
+inputs does not invalidate its proof. Publication still authenticates each
+participant's relevant inputs and effects. None of this proves an earlier process
+whose source context was not captured.
 
 Native callback identity follows the elected supplier's actual registrations.
 Conditional attribute references record native absence as binding evidence;

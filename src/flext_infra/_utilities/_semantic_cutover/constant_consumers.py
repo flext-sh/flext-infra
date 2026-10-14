@@ -195,20 +195,20 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         public = paths[package]
         if not public:
             return source, ()
-        contexts: t.VariadicTuple[t.Pair[str, t.MappingKV[t.Pair[int, int], str]]] = (
+        contexts = (
             (
                 "literal returns",
                 cls._literal_return_matches(
                     project, module, public, returns_by_type, path
                 )
                 if any(returns_by_type.values())
-                else {},
+                else None,
             ),
             (
                 "singleton Literal fields",
                 cls._enum_annotation_matches(project, module, public, source, path)
                 if enum_fields
-                else {},
+                else None,
             ),
             (
                 "singleton frozenset predicates",
@@ -216,12 +216,13 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     project, module, public, frozen_arguments, path
                 )
                 if frozen_predicates
-                else {},
+                else None,
             ),
         )
         rewrites = tuple(
             m.Infra.SourceRewrite(start=start, end=end, text=reference)
             for _description, matches in contexts
+            if matches is not None
             for (start, end), reference in matches.items()
         )
         if not rewrites:
@@ -577,6 +578,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
         found: list[t.Pair[str, str]] = []
+        arguments = dict[str, str]()
+        if frozen:
+            arguments["frozen"] = "name=__builtin__.frozenset"
         declarations = cls._constant_declaration_bindings(project, public)
         for path, (module, bindings) in declarations.items():
             source = module.source_code
@@ -613,9 +617,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             continue
                         expression = (
                             f"${{frozen}}({{{literal}}})" if frozen else literal
-                        )
-                        arguments: t.StrMapping = (
-                            {"frozen": "name=__builtin__.frozenset"} if frozen else {}
                         )
                         pattern = (
                             f"${{target}}: ${{annotation}} = {expression}"

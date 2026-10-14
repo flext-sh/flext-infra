@@ -15,6 +15,55 @@ class TestsNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""
 
     @staticmethod
+    def test_git_resolution_preserves_native_producer_identity(
+        real_python_package: t.DirectoryPath,
+    ) -> None:
+        """A real repository lookup retains the configured Git producer identity."""
+        root = u.Tests.git_repository(real_python_package)
+        u.Tests.run_lazy_init_probe(
+            """from pathlib import Path
+from git import Git
+from flext_infra import m, u
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+selection = (m.Infra.SourceClassReference(target="git.cmd", attributes=("Git",)),)
+before = native.capture(selection).unwrap()
+root = Path.cwd()
+resolved = u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=root)).unwrap()
+assert resolved.repository_root == root
+after = native.capture(selection).unwrap()
+compared = native.compare(before, after)
+assert compared.success, compared.error
+""",
+            python_paths=(),
+            cwd=root,
+        )
+
+    @staticmethod
+    def test_metadata_read_preserves_native_producer_identity(
+        real_python_package: t.DirectoryPath,
+    ) -> None:
+        """Reading a real manifest retains its metadata ingress model identity."""
+        u.Tests.run_lazy_init_probe(
+            """from pathlib import Path
+from flext_infra import m, u
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+selection = (m.Infra.SourceClassReference(
+    target="flext_infra._models.deps",
+    attributes=("FlextInfraModelsDeps", "ProjectMetadataState"),
+),)
+before = native.capture(selection).unwrap()
+root = Path.cwd()
+metadata = u.Infra.read_project_metadata_result(root).unwrap()
+assert metadata.root == root
+after = native.capture(selection).unwrap()
+compared = native.compare(before, after)
+assert compared.success, compared.error
+""",
+            python_paths=(),
+            cwd=real_python_package,
+        )
+
+    @staticmethod
     def test_model_use_preserves_native_producer_identity(
         real_python_package: t.DirectoryPath,
     ) -> None:
