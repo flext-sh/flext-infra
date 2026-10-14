@@ -218,7 +218,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         ],
     )
     def test_ci_workflow_rejects_reordered_milestones(first: str, second: str) -> None:
-        """Provisioning, approval order, and the closing clean boundary are mandatory."""
+        """Provisioning, approval order, and closing clean boundary are mandatory."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         rows = list(payload["workflow"])
         positions = [

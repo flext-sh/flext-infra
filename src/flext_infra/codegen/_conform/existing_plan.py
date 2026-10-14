@@ -1000,8 +1000,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         pending_artifacts = {
             path: item
             for path, item in governed_by_path.items()
-            if path not in represented
-            and path not in codegen.uv_resolution_pyprojects
+            if path not in represented and path not in codegen.uv_resolution_pyprojects
         }
         represented_set = self._represent_ungoverned_artifacts(
             target,

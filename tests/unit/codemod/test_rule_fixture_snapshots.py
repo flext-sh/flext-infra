@@ -23,6 +23,88 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
 
     @pytest.mark.slow
+    def test_protocol_candidates_require_native_semantic_admission(
+        self, tmp_path: Path
+    ) -> None:
+        """Raw superclass candidates retain only actual protocol declarations."""
+        u.Tests.WorktreeFixture.write_python_project(tmp_path, "protocol-fixture")
+        _ = self._owner(tmp_path)
+        source_catalog = self._source_catalog(Path(__file__).resolve().parents[3])
+        name = "ban-manual-protocol-outside-protocols"
+        rule = self._catalog(tmp_path) / "rules" / f"{name}.yml"
+        text = (source_catalog / "rules" / rule.name).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        tm.ok(u.Cli.atomic_write_text_file(rule, text))
+        plan = tm.ok(u.Infra.codemod_rule_plan(tmp_path))
+        elected = next(item for item in plan.rules if item.resource == rule)
+        u.Tests.provision_checkout(tmp_path)
+        namespace = u.Infra.project_package_name(tmp_path)
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / namespace
+        for path, text in (
+            (
+                package / "protocols.py",
+                (
+                    "from typing import Protocol\nclass Protocols:\n"
+                    "    class Input(Protocol):\n        @property\n"
+                    "        def value(self) -> str: ...\np = Protocols\n__all__ = ['p']\n"
+                ),
+            ),
+            (
+                package / c.Infra.INIT_PY,
+                "from .protocols import p\n__all__ = ['p']\n",
+            ),
+        ):
+            tm.ok(u.Cli.atomic_write_text_file(path, text))
+        sample = package / "consumer.py"
+        imports = (
+            f"from typing import Protocol as Contract\nfrom {namespace} import p\n"
+        )
+        negative = (
+            "class Base:\n    pass\nclass Service(Base):\n    pass\n"
+            "class Implementation(p.Input):\n    pass\n"
+            "class Protocol(Base):\n    pass\nclass Pretender(Protocol):\n    pass\n"
+            "class Metadata(Base):\n    class Field(Base):\n        label: str\n"
+            "    @property\n    def protocol(self) -> str:\n        return 'Protocol'\n"
+            "def build():\n    class Local(Contract):\n        pass\n"
+        )
+        for declarations, expected in (
+            (negative, []),
+            (
+                negative
+                + "class Reader(Contract):\n    def read(self) -> str: ...\n"
+                + "class Root:\n    class Input(Contract):\n        @property\n"
+                + "        def value(self) -> str: ...\n"
+                + "class PublicInput(p.Input, Contract):\n    pass\n",
+                ["Reader", "Input", "PublicInput"],
+            ),
+            (
+                negative
+                + "class First:\n    class Input(Contract):\n        value: str\n"
+                + "class Second:\n    class Input(Base):\n        value: str\n",
+                ["Input"],
+            ),
+        ):
+            source = imports + declarations
+            tm.ok(u.Cli.atomic_write_text_file(sample, source))
+            report = tm.ok(
+                FlextInfraModGateEngine.scan(
+                    tmp_path, fix=False, rule_ids=(elected.id,)
+                )
+            )
+            names: list[str] = []
+            for finding in report.entries:
+                tm.that(finding.rule_id, eq=elected.id)
+                tm.that(finding.file, eq=sample.relative_to(tmp_path))
+                mapping = u.type_adapter(t.JsonMapping)
+                captures = mapping.validate_python(finding.payload["metaVariables"])
+                single = mapping.validate_python(captures["single"])
+                capture = mapping.validate_python(single[elected.context[0].variable])
+                names.append(u.type_adapter(str).validate_python(capture["text"]))
+            tm.that(sorted(names), eq=sorted(expected))
+            tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @pytest.mark.slow
     def test_failure_transport_uses_resolved_inherited_owner(
         self, tmp_path: Path
     ) -> None:

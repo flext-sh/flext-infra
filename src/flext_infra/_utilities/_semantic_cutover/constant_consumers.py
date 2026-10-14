@@ -16,9 +16,13 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
+)
+from flext_infra._utilities._semantic_cutover.contracts import (
+    FlextInfraUtilitiesSemanticContracts,
 )
 
 
@@ -39,8 +43,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The complete edits against the original immutable source inventory.
         """
         declarations = cls._constant_declarations(rope_workspace, sources)
+        if declarations.failure:
+            return declarations
         working = dict(sources)
-        working.update({edit.file_path: edit.updated_source for edit in declarations})
+        working.update({
+            edit.file_path: edit.updated_source for edit in declarations.value
+        })
         consumers = cls._plan_constant_imports(rope_workspace, working)
         if consumers.failure:
             return consumers
@@ -48,7 +56,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             edit.file_path: edit.updated_source for edit in consumers.value
         })
         changes = {
-            edit.file_path: edit.changes for edit in (*declarations, *consumers.value)
+            edit.file_path: edit.changes
+            for edit in (*declarations.value, *consumers.value)
         }
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
             tuple(
@@ -68,112 +77,21 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-        """Repair typing.Final in constants class suites by Rope identity.
-
-        A module Final retains its contract. A class constant must be a
-        ClassVar so a composed Pydantic namespace never turns it into a field.
-        Aliased typing imports resolve through the lexical Rope scope; a
-        same-spelled user type is not a typing qualifier.
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Delegate constants declaration policy to the shared native contract loop.
 
         Returns:
-            Syntax-preserving declaration edits within the constants family.
+            Declaration edits produced by the existing Rope ChangeSet owner.
         """
-        candidates = tuple(
-            (path, source)
-            for path, source in cls._editable_sources(sources)
-            if any(
-                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-                    parent.name
-                )
-                == "c"
-                for parent in path.parents
-                if parent.is_relative_to(workspace.repository_root)
-            )
-        )
-        if not candidates:
-            return ()
-        cli.display_text(
-            "census: resolve constant declaration qualifiers "
-            f"in {len(candidates)} modules"
-        )
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        project = runtime.snapshot_project(workspace.rope_project, sources)
-        try:
-            return tuple(
-                edit
-                for path, source in candidates
-                if (edit := cls._constant_annotation_edit(project, path, source))
-                is not None
-            )
-        finally:
-            project.close()
-
-    @classmethod
-    def _constant_annotation_edit(
-        cls,
-        project: p.Infra.RopeProject,
-        path: Path,
-        source: str,
-    ) -> m.Infra.SemanticMigrationEdit | None:
-        """Plan one module's identity-proven Final-to-ClassVar repair.
-
-        Returns:
-            The source edit, or None when no class declaration needs repair.
-
-        Raises:
-            ValueError: If ClassVar would capture an existing annotation binding.
-        """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        resource = project.get_resource(
-            path.relative_to(Path(project.root.real_path)).as_posix(),
-        )
-        module = project.get_pymodule(resource)
-        classvar = project.get_module("typing").get_attribute("ClassVar")
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        qualifiers = {"qualifier": "name=typing.Final"}
-        statements = refactors.semantic_regions(
-            module,
-            "${target}: ${qualifier}[${payload}] = ${value}",
-            arguments=qualifiers,
-        )
-        cli.display_text(
-            f"census: {path.name}: identity-proven Final declarations={len(statements)}"
-        )
-        rewrites: list[m.Infra.SourceRewrite] = []
-        for start, end in statements:
-            scope = runtime.scope_at(module, start)
-            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
-                continue
-            existing = scope.lookup("ClassVar")
-            if existing is not None and not runtime.same_name(classvar, existing):
-                message = f"constant ClassVar binding is shadowed in {path}"
-                raise ValueError(message)
-            qualifiers_in_statement = refactors.semantic_regions(
-                module,
-                "${qualifier}",
-                arguments=qualifiers,
-                start=start,
-                end=end,
-            )
-            rewrites.extend(
-                m.Infra.SourceRewrite(start=left, end=right, text="ClassVar")
-                for left, right in qualifiers_in_statement[:1]
-            )
-        if not rewrites:
-            return None
-        changed = refactors.content_change(resource, source, rewrites)
-        proposed = runtime.build_string_module(
-            project, changed.new_contents, resource=resource
-        )
-        imports = runtime.module_imports_for_pymodule(project, proposed)
-        imports.add_import(runtime.from_import("typing", 0, [("ClassVar", None)]))
-        imports.remove_duplicates()
-        return m.Infra.SemanticMigrationEdit(
-            file_path=path,
-            original_source=source,
-            updated_source=imports.get_changed_source(),
-            changes=(f"typing.Final class constants -> ClassVar: {len(rewrites)}",),
+        contracts = FlextInfraUtilitiesSemanticContracts
+        return contracts.plan_contract_rules(
+            workspace,
+            sources,
+            tuple(
+                rule
+                for rule in contracts.declared_contract_rules()
+                if rule.phase == c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+            ),
         )
 
     @classmethod
@@ -247,8 +165,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         proposed = runtime.build_string_module(
             project, changed.new_contents, resource=resource
         )
+        cleaned = cls._remove_constant_imports(project, proposed, removals)
+        proposed = runtime.build_string_module(project, cleaned, resource=resource)
         organized = runtime.module_imports_for_pymodule(project, proposed)
-        cls._remove_constant_imports(organized, removals)
         organized.add_import(runtime.from_import(package, 0, [("c", None)]))
         organized.remove_duplicates()
         return organized.get_changed_source(), (
@@ -287,32 +206,53 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _constant_imports(
         project: p.Infra.RopeProject, module: p.Infra.RopePyModule
-    ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
+    ) -> t.VariadicTuple[m.Infra.RopeSourceImport]:
         """Read first-party absolute imports from Rope's module owner.
 
         Returns:
             From-imports participating in constants ownership resolution.
         """
-        return tuple(
-            statement
-            for statement in (
-                FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
-                    project, module
-                ).imports
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        found: list[m.Infra.RopeSourceImport] = []
+        for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+            module.source_code
+        ):
+            if (
+                statement.category != c.Infra.StatementCategory.FROM_IMPORT
+                or statement.enclosing_kind != c.Infra.RopeScopeKind.MODULE
+            ):
+                continue
+            parsed = runtime.build_string_module(
+                project, statement.text.lstrip(), resource=module.get_resource()
             )
-            if isinstance(statement.import_info, p.Infra.RopeFromImport)
-            and statement.import_info.module_name.startswith(
-                c.Infra.PKG_PREFIX_UNDERSCORE
-            )
-            and not statement.import_info.level
-        )
+            for imported in runtime.module_imports_for_pymodule(
+                project, parsed
+            ).imports:
+                info = imported.import_info
+                if not isinstance(info, p.Infra.RopeFromImport):
+                    continue
+                if info.level or not info.module_name.startswith(
+                    c.Infra.PKG_PREFIX_UNDERSCORE
+                ):
+                    continue
+                found.append(
+                    m.Infra.RopeSourceImport(
+                        import_info=info,
+                        start_line=statement.line,
+                        start_offset=statement.start_offset,
+                        end_offset=statement.end_offset,
+                        source=statement.text,
+                        type_checking_guarded=statement.type_checking_guarded,
+                    )
+                )
+        return tuple(found)
 
     @classmethod
     def _constant_import_plan(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        statements: t.SequenceOf[p.Infra.RopeImportStatement],
+        statements: t.SequenceOf[m.Infra.RopeSourceImport],
         paths: t.MappingKV[str, p.Infra.RopePyName],
         path: Path,
     ) -> t.Pair[t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]]:
@@ -321,17 +261,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Proven edits and obsolete bindings by their import declaration line.
 
-        Raises:
-            TypeError: If an import plan contains an unsupported declaration.
         """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         rewrites: list[m.Infra.SourceRewrite] = []
         removals: t.MutableMappingKV[int, set[str]] = {}
         for statement in statements:
             info = statement.import_info
-            if not isinstance(info, p.Infra.RopeFromImport):
-                message = "constant import plan requires a from-import declaration"
-                raise TypeError(message)
             for imported, alias in info.names_and_aliases:
                 name = alias or imported
                 binding = bindings.get(name)
@@ -352,8 +287,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 removals.setdefault(statement.start_line, set()).add(name)
         return tuple(rewrites), removals
 
-    @staticmethod
+    @classmethod
     def _constant_terminal(
+        cls,
         project: p.Infra.RopeProject,
         binding: p.Infra.RopePyName,
         qualified: str,
@@ -365,21 +301,18 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Raises:
             ValueError: If the chain is cyclic, ambiguous or lacks its target.
-            TypeError: If an imported Python module has no inspectable Rope source.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         visited: set[t.Pair[Path, str]] = set()
         while isinstance(binding, p.Infra.RopeImportedName):
-            path = runtime.imported_module_path(project, binding)
+            resource = runtime.imported_module_resource(project, binding)
+            path = Path(resource.real_path).resolve()
             key = path, binding.imported_name
             if key in visited:
                 message = f"cyclic constant import chain: {qualified}"
                 raise ValueError(message)
             visited.add(key)
-            module = binding.imported_module.get_object()
-            if not isinstance(module, p.Infra.RopePyModule):
-                message = f"constant import has no Python module source: {qualified}"
-                raise TypeError(message)
+            module = cls._constant_import_module(project, resource, qualified)
             imports = runtime.module_imports_for_pymodule(project, module)
             declarations = sum(
                 alias == binding.imported_name
@@ -390,12 +323,46 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             if declarations > 1:
                 message = f"ambiguous constant import chain: {qualified}"
                 raise ValueError(message)
+            if binding.imported_name == "c" and module.source_code.startswith(
+                c.Infra.AUTOGEN_HEADERS
+            ):
+                owner = module.get_resource()
+                if owner is None:
+                    message = f"generated constants package has no source: {qualified}"
+                    raise ValueError(message)
+                declaration = owner.parent.get_child(c.Infra.CONSTANTS_PY)
+                module = project.get_pymodule(declaration)
             terminal = module.get_attributes().get(binding.imported_name)
             if terminal is None:
                 message = f"unresolved constant import chain: {qualified}"
                 raise ValueError(message)
             binding = terminal
         return binding
+
+    @staticmethod
+    def _constant_import_module(
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        qualified: str,
+    ) -> p.Infra.RopePyModule:
+        """Inspect package initialization as a file without evaluating import targets.
+
+        Returns:
+            The Rope module containing the declared source bindings.
+
+        Raises:
+            TypeError: If a package does not expose Rope's folder contract.
+            ValueError: If the import is a namespace package without declarations.
+        """
+        if resource.is_folder():
+            if not isinstance(resource, p.Infra.RopeRoot):
+                message = f"constant import has no package resource: {qualified}"
+                raise TypeError(message)
+            if not resource.has_child(c.Infra.INIT_PY):
+                message = f"constant import has no package declarations: {qualified}"
+                raise ValueError(message)
+            resource = resource.get_child(c.Infra.INIT_PY)
+        return project.get_pymodule(resource)
 
     @classmethod
     def _constant_reference(
@@ -470,27 +437,141 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             rewrites.append(m.Infra.SourceRewrite(start=start, end=end, text=reference))
         return tuple(rewrites)
 
-    @staticmethod
+    @classmethod
     def _remove_constant_imports(
-        organized: p.Infra.RopeModuleImports,
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
         removals: t.MappingKV[int, set[str]],
-    ) -> None:
-        """Remove only bindings whose occurrence cutover was completely planned."""
+    ) -> str:
+        """Remove complete proven imports, including annotation-only suites.
+
+        Returns:
+            Source preserving unrelated imports and comments.
+
+        Raises:
+            ValueError: If the consumer has no source resource.
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        for statement in organized.imports:
-            info = statement.import_info
-            removed = removals.get(statement.start_line, set())
-            if not removed or not isinstance(info, p.Infra.RopeFromImport):
+        resource = module.get_resource()
+        if resource is None:
+            message = "constant imports have no source resource"
+            raise ValueError(message)
+        edits: list[m.Infra.SourceRewrite] = []
+        emptied: set[int] = set()
+        for statement in cls._constant_imports(project, module):
+            removed = removals.get(statement.start_line)
+            if not removed:
                 continue
-            statement.import_info = runtime.from_import(
-                info.module_name,
-                info.level,
-                [
-                    (name, alias)
-                    for name, alias in info.names_and_aliases
-                    if (alias or name) not in removed
-                ],
+            parsed = runtime.build_string_module(
+                project, statement.source.lstrip(), resource=resource
             )
+            imports = runtime.module_imports_for_pymodule(project, parsed)
+            for imported in imports.imports:
+                info = imported.import_info
+                if isinstance(info, p.Infra.RopeFromImport):
+                    imported.import_info = runtime.from_import(
+                        info.module_name,
+                        info.level,
+                        [
+                            (name, alias)
+                            for name, alias in info.names_and_aliases
+                            if (alias or name) not in removed
+                        ],
+                    )
+            changed = imports.get_changed_source().rstrip()
+            if not changed:
+                emptied.add(statement.start_line)
+            indentation = len(statement.source) - len(statement.source.lstrip())
+            indent = statement.source[:indentation]
+            edits.append(
+                m.Infra.SourceRewrite(
+                    start=statement.start_offset,
+                    end=statement.end_offset,
+                    text=indent + changed if changed else "",
+                )
+            )
+        edits = cls._empty_type_checking_suites(module.source_code, edits, emptied)
+        changed = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource, module.source_code, edits
+        ).new_contents
+        return cls._unused_type_checking_import(project, resource, changed)
+
+    @staticmethod
+    def _empty_type_checking_suites(
+        source: str,
+        edits: t.SequenceOf[m.Infra.SourceRewrite],
+        emptied: frozenset[int] | set[int],
+    ) -> list[m.Infra.SourceRewrite]:
+        """Remove an empty TYPE_CHECKING suite without emitting a stub.
+
+        Returns:
+            Disjoint edits retaining the suite's documentation comments.
+        """
+        statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
+        result = list(edits)
+        for index, guard in enumerate(statements):
+            if guard.category != c.Infra.StatementCategory.IF_GUARD:
+                continue
+            body: list[m.Infra.LogicalStatement] = []
+            for statement in statements[index + 1 :]:
+                if statement.indent <= guard.indent:
+                    break
+                body.append(statement)
+            if not body or not all(
+                item.type_checking_guarded and item.line in emptied for item in body
+            ):
+                continue
+            end = body[-1].end_offset
+            result = [
+                edit for edit in result if not guard.start_offset <= edit.start < end
+            ]
+            comment = guard.text.partition("#")[2]
+            result.append(
+                m.Infra.SourceRewrite(
+                    start=guard.start_offset,
+                    end=end,
+                    text="#" + comment if comment else "",
+                )
+            )
+        return result
+
+    @staticmethod
+    def _unused_type_checking_import(
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+    ) -> str:
+        """Let Rope remove annotation-guard imports after their last reference.
+
+        Returns:
+            The source with unused TYPE_CHECKING imports removed.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        module = runtime.build_string_module(project, source, resource=resource)
+        imports = runtime.module_imports_for_pymodule(project, module)
+        for statement in imports.imports:
+            info = statement.import_info
+            if (
+                not isinstance(info, p.Infra.RopeFromImport)
+                or info.module_name != "typing"
+            ):
+                continue
+            kept: list[t.Pair[str, str | None]] = []
+            for name, alias in info.names_and_aliases:
+                if name != "TYPE_CHECKING":
+                    kept.append((name, alias))
+                    continue
+                if FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+                    module,
+                    "${guard}",
+                    arguments={"guard": "name=typing.TYPE_CHECKING"},
+                ):
+                    kept.append((name, alias))
+            statement.import_info = runtime.from_import(
+                info.module_name, info.level, kept
+            )
+        return imports.get_changed_source()
 
     @classmethod
     def _constant_public_paths(
@@ -579,7 +660,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
     @staticmethod
     def _constant_facade_package(
-        statements: t.SequenceOf[p.Infra.RopeImportStatement],
+        statements: t.SequenceOf[m.Infra.RopeSourceImport],
         declared_package: str,
         path: Path,
     ) -> str:
@@ -593,11 +674,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         public_packages = {
-            info.module_name
+            statement.import_info.module_name
             for statement in statements
-            if isinstance((info := statement.import_info), p.Infra.RopeFromImport)
-            and any(
-                name == "c" and alias is None for name, alias in info.names_and_aliases
+            if any(
+                name == "c" and alias is None
+                for name, alias in statement.import_info.names_and_aliases
             )
         }
         if len(public_packages) > 1:

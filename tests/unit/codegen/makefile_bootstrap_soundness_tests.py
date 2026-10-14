@@ -338,10 +338,12 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                     sys.executable,
                     "-I",
                     "-c",
-                    "from pathlib import Path; import sys; "
-                    "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
-                    "context=FlextInfraWorkspaceDetector.resolution_context("
-                    "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())",
+                    (
+                        "from pathlib import Path; import sys; "
+                        "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
+                        "context=FlextInfraWorkspaceDetector.resolution_context("
+                        "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
+                    ),
                     str(project),
                 ),
                 cwd=project,
@@ -495,8 +497,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             origin_url=u.Tests.repository_ref(project.name).url,
         )
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
-            ".PHONY: post-help\npost-help:\n"
-            "\t@printf '%s\\n' 'nested-help-executed'\n",
+            ".PHONY: post-help\npost-help:\n\t@printf '%s\\n' 'nested-help-executed'\n",
             encoding=c.DEFAULT_ENCODING,
         )
         baseline = tm.ok(u.Tests.run_isolated_make(["help"], cwd=project))
@@ -631,8 +632,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         member_lock = member / c.Infra.MISE_LOCK_FILENAME
         locks_before = (parent_lock.read_bytes(), member_lock.read_bytes())
         metadata_before = tuple(
-            (project / c.PYPROJECT_FILENAME).read_bytes()
-            for project in (root, member)
+            (project / c.PYPROJECT_FILENAME).read_bytes() for project in (root, member)
         )
         process = tm.ok(u.Tests.run_isolated_make(["help"], cwd=member))
         tm.that(

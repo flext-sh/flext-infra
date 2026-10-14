@@ -10,12 +10,10 @@ metadata:
 rule:
   all:
     - kind: keyword_argument
+    - pattern: $KEYWORD
     - has:
         field: name
         regex: "^(rule_ids|plan)$"
-    - has:
-        field: value
-        pattern: $VALUE
     - inside:
         kind: argument_list
         not:
@@ -38,4 +36,10 @@ rule:
                       regex: "^plan$"
         inside:
           pattern: $CALL($$$ARGS)
-fix: selection=$VALUE
+transform:
+  SELECTED:
+    replace:
+      source: $KEYWORD
+      replace: "^[A-Za-z_][A-Za-z0-9_]*"
+      by: selection
+fix: $SELECTED

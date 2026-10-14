@@ -249,7 +249,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The resulting ``p.Result[bool]``.
 
         """
-        if not cls._same_directory_identity(authorized.root, observed.root):
+        if not cls.same_directory_identity(authorized.root, observed.root):
             return r[bool].fail(
                 f"temporary tree root identity changed: {authorized.root.path}",
             )
@@ -381,7 +381,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     f"journaled temporary-tree entry is missing: {path}",
                 )
             if entry.kind == "directory":
-                if not cls._same_directory_identity(entry, current_entry):
+                if not cls.same_directory_identity(entry, current_entry):
                     return r[bool].fail(
                         f"temporary-tree directory identity changed: {path}",
                     )
@@ -556,7 +556,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         return actual == expected
 
     @classmethod
-    def _same_directory_identity(
+    def same_directory_identity(
         cls,
         expected: m.Cli.AtomicPhysicalTreeEntry,
         observed: m.Cli.AtomicPhysicalTreeEntry,

@@ -244,6 +244,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
         if self.producer is None:
             producer = FlextInfraCodegenPreconditions.capture_producer()
             if producer.failure:
@@ -256,9 +258,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[m.Infra.CodegenResult].from_failure(verified_producer)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
-        inputs = u.Infra.load_codegen_inputs(request.root)
-        if inputs.failure:
-            return r[m.Infra.CodegenResult].from_failure(inputs)
         if (
             c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY
             and self.surface_contract(

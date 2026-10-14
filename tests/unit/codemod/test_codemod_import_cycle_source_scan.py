@@ -60,43 +60,34 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         rule = self._cycle_rule()
         facts = u.Infra.codemod_project_facts(project, (rule,))
 
-        with u.Infra.codemod_binding_project(
-            project, m.Infra.CodemodBindingSnapshot(states=())
-        ) as (rope_project, sources):
-            verdict = u.Infra.codemod_context_admits(
+        verdict = u.Infra.codemod_context_admits(
+            m.Infra.CodemodAdmission(
+                root=project,
+                rule=rule,
+                file_path=legado,
+                captures={
+                    "MODULE": {"text": "demo.live"},
+                    "NAME": {"text": "value"},
+                },
+                facts=facts,
+            ),
+        )
+        tm.that(verdict, eq=False)
+        late = live.with_name("late.py")
+        late.write_text("from demo.live import value\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="absent from the project import graph"):
+            u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(
                     root=project,
                     rule=rule,
-                    file_path=legado,
+                    file_path=late,
                     captures={
                         "MODULE": {"text": "demo.live"},
                         "NAME": {"text": "value"},
                     },
                     facts=facts,
                 ),
-                project=rope_project,
-                sources=sources,
             )
-            tm.that(verdict, eq=False)
-            late = live.with_name("late.py")
-            late.write_text("from demo.live import value\n", encoding="utf-8")
-            with pytest.raises(
-                ValueError, match="absent from the project import graph"
-            ):
-                u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=project,
-                        rule=rule,
-                        file_path=late,
-                        captures={
-                            "MODULE": {"text": "demo.live"},
-                            "NAME": {"text": "value"},
-                        },
-                        facts=facts,
-                    ),
-                    project=rope_project,
-                    sources=sources,
-                )
 
     @staticmethod
     @pytest.mark.parametrize("reuse_config", [False, True])

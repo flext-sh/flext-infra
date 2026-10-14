@@ -122,17 +122,18 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 return r[m.Infra.CodegenPhaseOutcome].from_failure(before)
             sources.append(before.value)
         if session.journal.phase == c.Infra.CodegenStagedFilePhase.DOCS:
-            for output in session.journal.outputs:
-                if output.path in session.written_files and u.Infra.docs_source_path_is_input(
+            sources.extend(
+                output.model_copy(
+                    update={"phase": c.Infra.CodegenStagedFilePhase.DOCS},
+                )
+                for output in session.journal.outputs
+                if output.path in session.written_files
+                and u.Infra.docs_source_path_is_input(
                     output.path,
                     session.journal.scope_roots,
                     source_scope=session.journal.source_scope,
-                ):
-                    sources.append(
-                        output.model_copy(
-                            update={"phase": c.Infra.CodegenStagedFilePhase.DOCS},
-                        ),
-                    )
+                )
+            )
         created = {
             item.created.path: item.created
             for item in session.journal.directories
@@ -175,6 +176,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             outputs=session.journal.outputs,
             generator_sources=session.journal.generator_sources,
             generator_trees=session.journal.generator_trees,
+            generator_modules=session.journal.generator_modules,
             source_topology=topology,
             scope_roots=session.journal.scope_roots,
             source_scope=session.journal.source_scope,
@@ -270,8 +272,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         with cls.mutation_lease(root):
             if completed:
-                current = FlextInfraMiseArtifactsVerification.publication_states_current(
-                    outcome,
+                current = (
+                    FlextInfraMiseArtifactsVerification.publication_states_current(
+                        outcome,
+                    )
                 )
                 if current.failure:
                     return r[m.Infra.CodegenPhaseOutcome].from_failure(current)
@@ -347,7 +351,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                         session.journal,
                     )
                     if rebound.failure:
-                        return r[m.Infra.CodegenTransactionSession].from_failure(rebound)
+                        return r[m.Infra.CodegenTransactionSession].from_failure(
+                            rebound
+                        )
                     expected = rebound.value
                 if observed.value != expected:
                     return r[m.Infra.CodegenTransactionSession].fail(

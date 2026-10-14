@@ -13,7 +13,7 @@ from flext_cli import m
 from typing_extensions import TypeForm
 
 from flext_core import u
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -28,6 +28,49 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
+
+    class SourceBinding(m.ArbitraryTypesModel):
+        """An elected source value, including a legitimate null literal."""
+
+        value: p.AttributeProbe | None = m.Field(
+            description="Source-bound value retained without changing null semantics"
+        )
+
+    class SourceConstruction(m.ArbitraryTypesModel):
+        """Captured class syntax and the loaded bindings of declared factories."""
+
+        source: Path = m.Field(description="Cold-elected physical declaration source")
+        syntax: t.Infra.RopeAstNode = m.Field(
+            description="Captured construction module AST"
+        )
+        declaration: t.Infra.RopeAstNode = m.Field(
+            description="Unique source class declaration"
+        )
+        owner: p.AttributeProbe | None = m.Field(
+            default=None,
+            description="Loaded class identity at the source-declared lexical path",
+        )
+        factories: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            description="Actual source-declared factory bindings"
+        )
+        bases: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            default=(), description="Authenticated declared base bindings"
+        )
+        decorators: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            default=(), description="Authenticated declared decorator bindings"
+        )
+        metaclass: p.AttributeProbe | None = m.Field(
+            default=None,
+            description="Authenticated explicitly declared metaclass binding",
+        )
+        code_sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
+            default=(),
+            description="Authenticated source and binary suppliers of native annotation operations",
+        )
+        dataclass_fields: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
+            default=None,
+            description="Native field contract reconstructed from source-proven class ancestry",
+        )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):
         """Read-only request for validating the active workspace environment."""
@@ -403,7 +446,9 @@ class FlextInfraModelsWorkspace:
         prefix: Annotated[Path, m.Field(description="Observed native sys.prefix")]
         metadata_paths: Annotated[
             t.VariadicTuple[Path],
-            m.Field(description="Native physical purelib and platlib install directories"),
+            m.Field(
+                description="Native physical purelib and platlib install directories"
+            ),
         ]
         import_paths: Annotated[
             t.VariadicTuple[Path],

@@ -42,7 +42,14 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         linked = tmp_path / "linked"
         tm.ok(
             u.Cli.run_checked(
-                (c.Infra.GIT, "worktree", "add", "--detach", str(linked), c.Infra.GIT_HEAD),
+                (
+                    c.Infra.GIT,
+                    "worktree",
+                    "add",
+                    "--detach",
+                    str(linked),
+                    c.Infra.GIT_HEAD,
+                ),
                 cwd=primary,
             ),
         )
@@ -124,12 +131,18 @@ class TestsFlextInfraWorktreeRegistryIdentity:
 
     @pytest.mark.parametrize(
         "defect",
-        ["missing-config", "empty-config", "foreign-storage", "missing-checkout", "gitfile"],
+        [
+            "missing-config",
+            "empty-config",
+            "foreign-storage",
+            "missing-checkout",
+            "gitfile",
+        ],
     )
     def test_unproven_storage_primary_remains_a_failure(
         self, tmp_path: Path, defect: str
     ) -> None:
-        """A missing declaration or broken checkout binding cannot authenticate storage."""
+        """A missing declaration or broken binding cannot authenticate storage."""
         primary, linked, common = self._attached(tmp_path)
         if defect == "missing-config":
             tm.ok(
@@ -167,7 +180,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
     def test_regular_and_bare_registries_preserve_native_identity(
         self, tmp_path: Path, bare: bool
     ) -> None:
-        """Ordinary primary rows and explicitly bare storage keep their native meaning."""
+        """Ordinary primary rows and bare storage keep their native meaning."""
         source = tmp_path / "source"
         source.mkdir()
         u.Tests.initialize_git_repo(source)
@@ -183,7 +196,14 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         linked = tmp_path / "linked"
         tm.ok(
             u.Cli.run_checked(
-                (c.Infra.GIT, "worktree", "add", "--detach", str(linked), c.Infra.GIT_HEAD),
+                (
+                    c.Infra.GIT,
+                    "worktree",
+                    "add",
+                    "--detach",
+                    str(linked),
+                    c.Infra.GIT_HEAD,
+                ),
                 cwd=owner,
             ),
         )

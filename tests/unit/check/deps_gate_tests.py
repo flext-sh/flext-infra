@@ -112,7 +112,8 @@ class TestsFlextInfraDepsGate:
                     "from flext_infra import c, m; "
                     "from flext_infra.check import FlextInfraGateRegistry; "
                     f"root = Path({str(root)!r}); "
-                    "gate = FlextInfraGateRegistry.default().create(c.Infra.DEPS, root); "
+                    "gate = FlextInfraGateRegistry.default()."
+                    "create(c.Infra.DEPS, root); "
                     "print(gate.check(root, m.Infra.GateContext("
                     "repository_root=root, reports_dir=root)).model_dump_json("
                     "round_trip=True))"
@@ -178,7 +179,7 @@ class TestsFlextInfraDepsGate:
         """The public owned JSON boundary rejects malformed or incomplete records."""
         report = tmp_path / "deptry.json"
         report.write_text(payload, encoding="utf-8")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="validation error"):
             m.Infra.DeptryNativeReport.model_validate_json(
                 report.read_bytes(),
                 strict=True,

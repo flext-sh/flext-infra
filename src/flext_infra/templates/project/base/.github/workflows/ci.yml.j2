@@ -135,13 +135,13 @@ jobs:
           # Structured reports only — a subset of Upload reports (no raw
           # pytest/tool logs: those may carry connection strings / env secrets).
           for report_root in .reports apps; do
-            if [ -d "$report_root" ]; then
-              find "$report_root" \
+            if [ -d "${report_root}" ]; then
+              find "${report_root}" \
                 \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
                 -type f -exec sh -eu -c '
                   for report_file do
-                    printf "::group::%s\n" "$report_file"
-                    tail -n 200 "$report_file"
+                    printf "::group::%s\n" "${report_file}"
+                    tail -n 200 "${report_file}"
                     printf "::endgroup::\n"
                   done
                 ' sh {} +

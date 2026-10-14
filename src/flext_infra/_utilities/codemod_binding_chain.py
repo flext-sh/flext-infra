@@ -19,9 +19,6 @@ import ast
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
@@ -34,6 +31,9 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
+from flext_infra._utilities._semantic_cutover.family_type_references import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 

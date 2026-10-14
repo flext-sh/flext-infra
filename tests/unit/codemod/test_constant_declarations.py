@@ -20,6 +20,10 @@ class TestsFlextInfraConstantDeclarations:
 
     @staticmethod
     @pytest.mark.parametrize(
+        "provider",
+        ["flext_tap_oracle_wms", "flext_target_oracle", "flext_dbt_oracle"],
+    )
+    @pytest.mark.parametrize(
         ("imports", "qualifier"),
         [
             ("from typing import Final", "Final"),
@@ -28,7 +32,7 @@ class TestsFlextInfraConstantDeclarations:
         ],
     )
     def test_class_constants_do_not_become_pydantic_fields(
-        tmp_path: Path, imports: str, qualifier: str
+        tmp_path: Path, imports: str, qualifier: str, provider: str
     ) -> None:
         """The migrated namespace publishes scalars and an immutable collection."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -37,10 +41,11 @@ class TestsFlextInfraConstantDeclarations:
         path = family / "values.py"
         source = (
             f"{imports}\nfrom pydantic import BaseModel\n"
+            f"from {provider} import c as provider\n"
             "class Values(BaseModel):\n"
-            f"    TOKEN: {qualifier}[str] = 'consumer-token'\n"
+            f"    TOKEN: {qualifier}[str] = provider.DEFAULT_ENCODING\n"
             f"    FIELDS: {qualifier}[frozenset[str]] = "
-            "frozenset({'base_url', 'username'})\n"
+            "frozenset({provider.DEFAULT_ENCODING})\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(root) as workspace:
@@ -71,8 +76,10 @@ class TestsFlextInfraConstantDeclarations:
                     "-c",
                     (
                         f"from {package.name}._constants.values import Values; "
-                        "assert Values.TOKEN == 'consumer-token'; "
-                        "assert Values.FIELDS == frozenset({'base_url', 'username'}); "
+                        f"from {provider} import c as provider; "
+                        "assert Values.TOKEN == provider.DEFAULT_ENCODING; "
+                        "assert Values.FIELDS == "
+                        "frozenset({provider.DEFAULT_ENCODING}); "
                         "assert Values.model_fields == {}; "
                         "assert Values().model_dump() == {}"
                     ),
@@ -133,7 +140,7 @@ class TestsFlextInfraConstantDeclarations:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="ClassVar binding is shadowed"),
+            pytest.raises(ValueError, match="destination ClassVar is shadowed"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,

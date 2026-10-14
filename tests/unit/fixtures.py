@@ -118,6 +118,7 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
 
 
 _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
+_CONSUMER_BUILD_RECEIPT = "build-receipt.json"
 
 
 def _provision_consumer_template(parent: Path) -> Path:
@@ -223,6 +224,7 @@ def _provision_consumer_template(parent: Path) -> Path:
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
+        ("build", _CONSUMER_BUILD_RECEIPT),
     ):
         output = tm.ok(
             u.Tests.run_isolated_make(
@@ -330,8 +332,7 @@ def _provision_make_template(
     (hostile_venv / "sentinel").write_text("untouched\n", encoding="utf-8")
     custom = root / c.Infra.CUSTOM_MAKE_FILENAME
     custom.write_text(
-        custom.read_text(encoding="utf-8")
-        + ".PHONY: post-upg post-status\n"
+        custom.read_text(encoding="utf-8") + ".PHONY: post-upg post-status\n"
         "post-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n"
         f"post-status:\n\t@$(PROJECT_INFRA_RUN) -I -c {quote(source_probe)}\n",
         encoding="utf-8",
@@ -442,6 +443,9 @@ def _ensure_provisioned(
     Testmon inventory and selection collect tests without network or writes.
     Provisioning belongs to the item that actually consumes the checkout, so
     its cost and failure remain visible to the test deadline and report.
+
+    Raises:
+        ValueError: If a Make profile is requested without its Git environment.
     """
     parent.mkdir(parents=True, exist_ok=True)
     with u.Infra.codegen_transaction_lease(parent / receipt):
@@ -613,6 +617,22 @@ def real_detector_project(
         (root / "limits.toml").write_text(
             "[typing_libraries]\nexclude = []\n", encoding="utf-8"
         )
+        yield root
+
+
+@pytest.fixture
+def installed_artifact_consumer(
+    session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease the native consumer with its installed artifacts restored afterward.
+
+    Yields:
+        The leased consumer repository root.
+    """
+    with session_runtime.lease(
+        _provision_consumer_template,
+        mutable_environment=True,
+    ) as root:
         yield root
 
 

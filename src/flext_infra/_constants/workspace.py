@@ -111,7 +111,9 @@ class FlextInfraConstantsWorkspace:
         ("--constraints", "constraints.txt"),
     )
     "UV resolution inputs written only inside the consumer environment."
-    BINDING_PACKAGE_SCRIPT: ClassVar[str] = """import importlib.util, json, sys, sysconfig
+    BINDING_PACKAGE_SCRIPT: ClassVar[
+        str
+    ] = """import importlib.util, json, sys, sysconfig
 from pathlib import Path
 packages = {}
 for name in sys.argv[1:]:

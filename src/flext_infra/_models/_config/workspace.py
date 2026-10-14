@@ -245,7 +245,9 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(alias="include-group", description="Referenced dependency group"),
         ]
 
-    class DependencyGroupEntries(m.RootModel[t.VariadicTuple[str | DependencyGroupInclude]]):
+    class DependencyGroupEntries(
+        m.RootModel[t.VariadicTuple[str | DependencyGroupInclude]]
+    ):
         """Native ordered PEP 735 entries, without resolving local references."""
 
         @m.model_validator(mode="before")
@@ -266,7 +268,9 @@ class FlextInfraConfigModelsWorkspace:
                     str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
                 ],
             ],
-            m.Field(alias="dependency-groups", description="Ordered native group entries"),
+            m.Field(
+                alias="dependency-groups", description="Ordered native group entries"
+            ),
         ]
 
         @m.field_validator("dependency_groups", mode="before")
@@ -292,7 +296,9 @@ class FlextInfraConfigModelsWorkspace:
             ],
         ) -> t.MappingKV[
             str,
-            t.VariadicTuple[str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude],
+            t.VariadicTuple[
+                str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+            ],
         ]:
             """Reject missing, ambiguous or cyclic local group inclusions."""
             names = {canonicalize_name(name, validate=True): name for name in groups}

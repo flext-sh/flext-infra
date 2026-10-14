@@ -120,36 +120,11 @@ message: >-
   boundary failure; convert through `e.fail_validation`/`r.fail` with the
   error preserved, or let it escape.
 ---
-# Graduation of the provable subset of `ban-json-loads-paired-validate` to an
-# automatic rewrite. The outer `.model_validate` is a Pydantic-v2-exclusive
-# method, so the receiver is provably a v2 model; with exactly one positional
-# argument, `json.loads($RAW)` and `model_validate_json($RAW)` are equivalent
-# for the accepted str/bytes inputs. Multi-argument `json.loads(...)` keeps its
-# detection-only finding (no mechanical equivalent).
-id: fix-json-loads-paired-validate
-language: python
-severity: error
-files:
-  - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
-rule:
-  pattern: $$$MODEL.model_validate(json.loads($RAW))
-fix: $$$MODEL.model_validate_json($RAW)
-message: >-
-  `json.loads` paired with `model_validate` double-parses; with a single
-  argument the mechanical equivalent is `model_validate_json($RAW)` (one
-  Rust-side pass).
----
-# Pairing `json.loads` with `model_validate` parses the payload twice and
-# loses Pydantic's single Rust-side pass. JSON enters through
-# `model_validate_json` / `TypeAdapter` factory with `validate_json` directly.
+# Python and JSON validation are distinct input contracts. Strict tuple/date
+# fields, validator modes/context, custom decoders and parse failures can differ.
+# This finding deliberately has no mechanical fix: migration requires native
+# symbol resolution and a proof of the receiving model's public contract.
+# External contract: https://docs.pydantic.dev/latest/concepts/json/
 id: ban-json-loads-paired-validate
 language: python
 severity: error
@@ -166,9 +141,10 @@ ignores:
 rule:
   pattern: $$$MODEL.model_validate(json.loads($$$RAW))
 message: >-
-  `json.loads` + `model_validate` double-parses the payload. Use
-  `Model.model_validate_json(raw)` (or the cached `TypeAdapter` factory
-  with `validate_json`) so parsing and validation run in one pass.
+  Review this Python-to-JSON validation boundary. Replacing `json.loads` +
+  `model_validate` with `model_validate_json` requires proof of identical
+  accepted/rejected inputs, validator modes/context and parse failures.
+  Strict date/tuple fields and custom decoders can change the contract.
 ---
 # Pydantic copies every field default it cannot prove immutable
 # (``smart_deepcopy``), and ``types.MappingProxyType`` cannot be deep-copied

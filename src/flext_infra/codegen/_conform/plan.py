@@ -52,6 +52,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 != expected_sources
                 or {tree.root.path: tree for tree in receipt.generator_trees}
                 != expected_trees
+                or receipt.generator_modules != self.producer.generator_modules
             ):
                 return r[bool].fail(
                     "publication receipt belongs to a different captured producer",
@@ -170,9 +171,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
         files, environments, issues = gathered.value
-        if not issues and contract.pyproject and (
-            contract.destinations is None
-            or c.PYPROJECT_FILENAME in contract.destinations
+        if (
+            not issues
+            and contract.pyproject
+            and (
+                contract.destinations is None
+                or c.PYPROJECT_FILENAME in contract.destinations
+            )
         ):
             for repository in selected:
                 if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:

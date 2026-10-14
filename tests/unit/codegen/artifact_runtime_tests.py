@@ -16,7 +16,6 @@ from packaging.utils import canonicalize_name
 from flext_infra import config
 from tests import c, m, t, tm, u
 
-
 _RUNTIME_PROBE = """
 import importlib
 import importlib.metadata
@@ -269,12 +268,17 @@ class TestsArtifactRuntime:
             eq=True,
             msg=synced.stdout + synced.stderr,
         )
-        print(json.dumps({
-            "consumer": str(consumer),
-            "environment": str(environment),
-            "python": str(python),
-            "uv_sync_succeeded": u.Cli.process_succeeded(synced.outcome),
-        }, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "consumer": str(consumer),
+                    "environment": str(environment),
+                    "python": str(python),
+                    "uv_sync_succeeded": u.Cli.process_succeeded(synced.outcome),
+                },
+                sort_keys=True,
+            )
+        )
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -304,8 +308,13 @@ class TestsArtifactRuntime:
             (repository / c.PYPROJECT_FILENAME).read_bytes(),
             eq=manifest_before,
         )
-        print(json.dumps({
-            "distribution": distribution,
-            "archive_kind": archive_kind,
-            "elapsed_seconds": monotonic() - started,
-        }, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "distribution": distribution,
+                    "archive_kind": archive_kind,
+                    "elapsed_seconds": monotonic() - started,
+                },
+                sort_keys=True,
+            )
+        )

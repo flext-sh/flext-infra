@@ -248,7 +248,11 @@ class TestsFlextInfraGithubGateAttestation:
         literal_prefix: str,
         corruption: str,
     ) -> None:
-        """Native literal prefixes never send malformed public text into a Path."""
+        """Native literal prefixes never send malformed public text into a Path.
+
+        Raises:
+            AssertionError: If a corruption variant is not parametrized.
+        """
         signed_repository_factory(tmp_path)
         public = (tmp_path / "signing_key.pub").read_text(encoding="utf-8").strip()
         kind, encoded, *_ = public.split(maxsplit=2)

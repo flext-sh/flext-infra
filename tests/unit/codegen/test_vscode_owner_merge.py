@@ -72,7 +72,7 @@ class TestsFlextInfraVscodeOwnerMerge:
     def test_repository_policy_does_not_admit_unrelated_editor_policy(
         tmp_path: Path,
     ) -> None:
-        """Topology validates its own policy while editor rejection retains its cause."""
+        """Topology validates its policy while editor rejection retains its cause."""
         directory = tmp_path / c.CONFIG_DIR_NAME
         directory.mkdir()
         path = directory / c.Infra.CODEGEN_CONFIG_FILENAME

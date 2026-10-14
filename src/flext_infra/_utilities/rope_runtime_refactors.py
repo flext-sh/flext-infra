@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import cast
 
 from flext_cli import u
@@ -229,6 +229,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         arguments: t.MappingKV[str, str],
         resources: t.SequenceOf[p.Infra.RopeResource],
         imports: t.StrSequence = (),
+        match_filter: Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool]
+        | None = None,
+        import_bindings: t.MappingKV[str, str] | None = None,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
 
@@ -240,14 +243,28 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
                 contract.
 
         """
-        factory = cls.runtime_callable("rope.refactor.restructure", "Restructure")
+        factory = cls.runtime_callable(
+            "flext_infra._utilities._rope.restructure", "FlextInfraRopeRestructure"
+        )
         restructuring = factory(
-            rope_project, pattern, goal, args=dict(arguments), imports=list(imports)
+            rope_project,
+            pattern,
+            goal,
+            args=dict(arguments),
+            imports=list(imports),
+            match_filter=match_filter,
+            import_bindings=import_bindings,
         )
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        return restructuring.get_changes(resources=list(resources))
+        changes = restructuring.get_changes(resources=list(resources))
+        u.Cli.info(
+            "Rope restructuring "
+            f"matched={restructuring.matched_count} "
+            f"admitted={restructuring.admitted_count} pattern={pattern}"
+        )
+        return changes
 
     @classmethod
     def contract_matches(
@@ -303,6 +320,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         module: p.Infra.RopePyModule,
     ) -> p.Infra.RopeSimilarFinder:
         """Reuse one native matcher across an immutable module's semantic queries.
+
+        Rope caches matches by pattern text. A reused pattern must retain its
+        identity arguments; distinct bindings require distinct wildcard names.
 
         Returns:
             Rope's identity-aware matcher for the supplied module.

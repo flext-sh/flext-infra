@@ -123,7 +123,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             }
             if captured is None
             else {
-                state.path.resolve(): state.content.decode("utf-8")
+                (path := state.path.resolve()): (
+                    sources[path] if path in sources else state.content.decode("utf-8")
+                )
                 for state in captured.states
                 if state.content is not None
             }
@@ -132,6 +134,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         for path, source in sources.items():
             resolved = path.resolve()
             if resolved not in inventory:
+                if captured is not None:
+                    msg = f"Rope proposed source is outside its input inventory: {path}"
+                    raise ValueError(msg)
                 try:
                     relative = resolved.relative_to(root)
                 except ValueError as error:
@@ -193,10 +198,42 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         Returns:
             The resolved identity, or None when Rope cannot establish one.
         """
+        lexical = cls.lexical_scope(scope, expression.partition(".")[0])
+        if lexical is None:
+            return None
         result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
-            scope, expression
+            lexical, expression
         )
         return result if isinstance(result, p.Infra.RopePyName) else None
+
+    @staticmethod
+    def lexical_scope(scope: p.Infra.RopeScope, name: str) -> p.Infra.RopeScope | None:
+        """Resolve lexical names without treating inherited members as locals.
+
+        Returns:
+            The native declaring scope, including global interpreter builtins.
+
+        Raises:
+            TypeError: When a native parent violates the scope contract.
+        """
+        first = True
+        current: p.Infra.RopeScope | None = scope
+        while current is not None:
+            if first or current.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                names = (
+                    current.get_defined_names()
+                    if current.get_kind() == c.Infra.RopeScopeKind.CLASS
+                    else current.get_names()
+                )
+                if name in names:
+                    return current
+            parent = getattr(current, "parent", None)
+            if parent is not None and not isinstance(parent, p.Infra.RopeScope):
+                message = "Rope lexical parent does not satisfy its scope contract"
+                raise TypeError(message)
+            current = parent
+            first = False
+        return None
 
     @staticmethod
     def qualified_name(
@@ -391,26 +428,46 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
                 module location.
 
         """
+        return Path(
+            FlextInfraUtilitiesRopeRuntimeModules.imported_module_resource(
+                project, binding
+            ).real_path
+        ).resolve()
+
+    @staticmethod
+    def imported_module_resource(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopeImportedName,
+    ) -> p.Infra.RopeResource:
+        """Resolve a declared import through its native Rope resource identity.
+
+        Returns:
+            The exact file or package resource declared by the import.
+
+        Raises:
+            ValueError: If the declared import has no resolvable source resource.
+        """
         imported = binding.imported_module
         resource = imported.resource
         if resource is None:
             name = imported.module_name
             module = imported.importing_module.get_module()
             source = module.get_resource() if module is not None else None
-            if name is None or source is None:
+            if source is None or (name is None and imported.level == 0):
                 message = (
                     f"import has no declared module location: {binding.imported_name}"
                 )
                 raise ValueError(message)
-            resource = (
-                project.find_module(name, source.parent)
-                if imported.level == 0
-                else project.find_relative_module(name, source.parent, imported.level)
-            )
+            if imported.level == 0 and name is not None:
+                resource = project.find_module(name, source.parent)
+            else:
+                resource = project.find_relative_module(
+                    name if name is not None else "", source.parent, imported.level
+                )
         if resource is None:
             message = f"unresolved imported module: {imported.module_name}"
             raise ValueError(message)
-        return Path(resource.real_path).resolve()
+        return resource
 
     @classmethod
     def new_project(
@@ -473,6 +530,38 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             msg = "rope get_module_imports returned invalid module imports"
             raise TypeError(msg)
         return result
+
+    @classmethod
+    def imported_binding_precedes(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        name: str,
+        offset: int,
+    ) -> bool:
+        """Prove a binding is imported unconditionally before an occurrence.
+
+        Returns:
+            Whether Rope's module import inventory proves runtime availability.
+        """
+        line = module.lines.get_line_number(offset)
+        imports = cls.module_imports_for_pymodule(project, module)
+        return any(
+            statement.start_line < line
+            and any(
+                (
+                    alias
+                    or (
+                        imported
+                        if isinstance(statement.import_info, p.Infra.RopeFromImport)
+                        else imported.partition(".")[0]
+                    )
+                )
+                == name
+                for imported, alias in statement.import_info.names_and_aliases
+            )
+            for statement in imports.imports
+        )
 
     @classmethod
     def import_binding(

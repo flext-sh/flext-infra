@@ -132,7 +132,10 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         has_direct_references = False
         for container, key in fields:
             pinned = cls._release_requirements(
-                container, key, versions, dependency_group=container is groups,
+                container,
+                key,
+                versions,
+                dependency_group=container is groups,
             )
             if pinned.failure:
                 return r[str].from_failure(pinned)

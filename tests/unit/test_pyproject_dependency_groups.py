@@ -84,8 +84,7 @@ class TestsPyprojectDependencyGroups:
         source = self._source(
             groups,
             project_fields=(
-                "[project.optional-dependencies]\n"
-                f"feature = [{json.dumps(optional)}]"
+                f"[project.optional-dependencies]\nfeature = [{json.dumps(optional)}]"
             ),
         )
         rendered = tm.ok(self._conform(source, role))
@@ -192,9 +191,7 @@ class TestsPyprojectDependencyGroups:
         extra = f"{name}[feature]>=1.0,<3.0"
         marked = f"{name}>=1.0; sys_platform == 'linux'"
         origin = u.Tests.repository_ref(name)
-        direct = (
-            f"{name} @ git+{origin.url}@{u.Tests.provider_branch()}"
-        )
+        direct = f"{name} @ git+{origin.url}@{u.Tests.provider_branch()}"
         dev = str(c.Infra.DEV)
         codegen = str(c.Infra.DependencyGroup.CODEGEN)
         authored_name = dev.capitalize()
@@ -359,10 +356,12 @@ class TestsPyprojectDependencyGroups:
         [
             'dev = [{include-group = "missing"}]',
             'dev = [{include-group = "dev"}]',
-            'dev = [{include-group = "codegen"}]\n'
-            'codegen = [{include-group = "examples"}]\n'
-            'examples = [{include-group = "dev"}]',
-            'dev = []\nexamples = []\nEXAMPLES = []',
+            (
+                'dev = [{include-group = "codegen"}]\n'
+                'codegen = [{include-group = "examples"}]\n'
+                'examples = [{include-group = "dev"}]'
+            ),
+            "dev = []\nexamples = []\nEXAMPLES = []",
         ],
     )
     def test_conform_rejects_invalid_local_group_graph(self, groups: str) -> None:

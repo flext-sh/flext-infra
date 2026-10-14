@@ -32,6 +32,1020 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
     @staticmethod
+    @pytest.mark.parametrize("supplier_kind", ["absent", "function", "class", "value"])
+    @pytest.mark.parametrize("installed_layout", [False, True])
+    def test_unknown_factory_diagnostics_preserve_private_values(
+        tmp_path: Path,
+        supplier_kind: str,
+        *,
+        installed_layout: bool,
+    ) -> None:
+        """An unproven binding fails with declaration context, never operand contents."""
+        import_root = tmp_path / "site-packages" if installed_layout else tmp_path
+        package = import_root / "diagnostic_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass\n"
+                "@dataclass\n"
+                "class Payload:\n"
+                "    value: str\n"
+                "class Holder:\n"
+                "    class unproven: pass\n",
+            )
+        )
+        consumer = (
+            "import importlib, json, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('diagnostic_provider')\n"
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "effects = []\n"
+            "class Private:\n"
+            "    def __repr__(self):\n"
+            "        effects.append('repr')\n"
+            "        return 'private-material-must-not-appear'\n"
+            "kind = sys.argv[2]\n"
+            "if kind == 'function': module.unproven = module.dataclass\n"
+            "elif kind == 'class': module.unproven = module.Holder.unproven\n"
+            "elif kind == 'value': module.unproven = Private()\n"
+            "source = pathlib.Path(module.__file__)\n"
+            "source.write_text(source.read_text().replace('@dataclass', '@unproven'))\n"
+            "result = provenance.loaded_import_sources(module.__name__)\n"
+            "assert result.failure, result\n"
+            "error = result.error\n"
+            "assert error.startswith('construction factory has no authenticated source binding:'), error\n"
+            "assert 'identifier=' + json.dumps('unproven') in error, error\n"
+            "assert 'module=' + json.dumps(module.__name__) in error, error\n"
+            "assert 'package=' + json.dumps(module.__package__) in error, error\n"
+            "assert 'registered=True' in error, error\n"
+            "assert 'receiver=' + json.dumps(module.Payload.__qualname__) in error, error\n"
+            "assert 'declaration=' + json.dumps(module.Payload.__name__) in error, error\n"
+            "assert 'source=' + json.dumps(str(source)) in error, error\n"
+            "assert 'supplier_kind=' + kind in error, error\n"
+            "assert 'private-material-must-not-appear' not in error\n"
+            "assert not effects\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(import_root), supplier_kind],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("package_name", ["external_provider", "flext_lookalike"])
+    @pytest.mark.parametrize("defect", ["none", "source", "code"])
+    def test_public_declaration_binding_authenticates_every_owned_namespace(
+        tmp_path: Path,
+        package_name: str,
+        defect: str,
+    ) -> None:
+        """Inherited guard calls keep non-fleet declarations and reject native changes."""
+        package = tmp_path / package_name
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "class Payload:\n"
+                "    instance = None\n"
+                "    def operation(self): return 'physical-before'\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "class Derived(provenance): pass\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module(sys.argv[2])\n"
+            "module.Payload.instance = module.Payload()\n"
+            "sources = Derived.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert any(item[0] == module.__name__ + '::Payload.operation' and item[1] == module.__file__ for item in sources)\n"
+            "defect = sys.argv[3]\n"
+            "if defect == 'source':\n"
+            "    source = pathlib.Path(module.__file__)\n"
+            "    source.write_text(source.read_text().replace('physical-before', 'physical-after'))\n"
+            "elif defect == 'code':\n"
+            "    module.Payload.operation.__code__ = module.Payload.operation.__code__.replace(co_name='replaced')\n"
+            "observed = Derived.loaded_import_sources(module.__name__)\n"
+            "assert observed.success == (defect == 'none'), observed\n"
+            "assert module.Payload.instance.operation() == 'physical-before'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), package_name, defect],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("local_accessor", [False, True])
+    def test_class_metadata_admission_uses_declaring_module(
+        tmp_path: Path,
+        *,
+        local_accessor: bool,
+    ) -> None:
+        """Imported GitPython metadata does not replace the local class proof."""
+        package = tmp_path / "metadata_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        source = "from git import Git\n"
+        if local_accessor:
+            source += (
+                "class Metadata(type):\n"
+                "    def __getattribute__(cls, name):\n"
+                "        return super().__getattribute__(name)\n"
+                "class Local(metaclass=Metadata):\n"
+                "    value = 'payload'\n"
+            )
+        else:
+            source += "class Local:\n    value = 'payload'\n"
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, source))
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('metadata_provider')\n"
+            "result = provenance.loaded_import_sources(module.__name__)\n"
+            "if sys.argv[2] == 'local':\n"
+            "    assert result.failure, result\n"
+            "    assert 'binding=Local' in result.error, result\n"
+            "else:\n"
+            "    result.unwrap()\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [
+                    executable,
+                    "-c",
+                    consumer,
+                    str(tmp_path),
+                    "local" if local_accessor else "imported",
+                ],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "defect",
+        [
+            "none",
+            "receiver",
+            "supplier",
+            "code",
+            "receiver-source",
+            "supplier-source",
+            "import",
+            "wrapped",
+        ],
+    )
+    @pytest.mark.parametrize("inherited", [False, True])
+    def test_physical_alias_authenticates_receiver_and_mro_supplier(
+        tmp_path: Path,
+        defect: str,
+        inherited: bool,
+    ) -> None:
+        """Relative imports retain raw alias identity and both physical declarations."""
+        package = tmp_path / "alias_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "supplier.py",
+                "class Ancestor:\n"
+                "    def operation(self): return 'supplier-before'\n"
+                "    def alternate(self): return 'alternate'\n"
+                "    @property\n"
+                "    def value(self): return 'property'\n"
+                "class Supplier(Ancestor): pass\n",
+            )
+        )
+        base = "supplier.Ancestor" if inherited else "object"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from . import supplier\n"
+                f"class Receiver({base}):\n"
+                "    operation = supplier.Supplier.operation\n"
+                "    value = supplier.Supplier.value\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from contextlib import contextmanager\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('alias_provider')\n"
+            "supplier = module.supplier\n"
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'receiver':\n"
+            "    module.Receiver.operation = supplier.Ancestor.alternate\n"
+            "elif defect == 'supplier':\n"
+            "    supplier.Ancestor.operation = supplier.Ancestor.alternate\n"
+            "elif defect == 'code':\n"
+            "    supplier.Ancestor.operation.__code__ = supplier.Ancestor.operation.__code__.replace(co_name='replaced')\n"
+            "elif defect == 'receiver-source':\n"
+            "    source = pathlib.Path(module.__file__)\n"
+            "    source.write_text(source.read_text().replace('Supplier.operation', 'Supplier.alternate'))\n"
+            "elif defect == 'supplier-source':\n"
+            "    source = pathlib.Path(supplier.__file__)\n"
+            "    source.write_text(source.read_text().replace('supplier-before', 'supplier-after'))\n"
+            "elif defect == 'import':\n"
+            "    module.supplier = pathlib\n"
+            "elif defect == 'wrapped':\n"
+            "    module.Receiver.operation = contextmanager(supplier.Ancestor.operation)\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "if defect == 'none':\n"
+            "    sources = observed.unwrap()\n"
+            "    assert module.Receiver().operation() == 'supplier-before'\n"
+            "    assert module.Receiver().value == 'property'\n"
+            "    assert any(item[0] == module.__name__ + '::Receiver.operation' and item[1] == module.__file__ for item in sources)\n"
+            "    assert any(item[0] == supplier.__name__ + '::Ancestor.operation' and item[1] == supplier.__file__ for item in sources)\n"
+            "else: assert observed.failure, observed\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect], cwd=tmp_path
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "receiver", "supplier", "code"])
+    def test_installed_pydantic_aliases_retain_representation_identity(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """The real BaseModel alias authenticates without replaying model construction."""
+        consumer = (
+            "import sys\n"
+            "from pydantic import BaseModel\n"
+            "from pydantic._internal import _repr\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "descriptor = vars(BaseModel)['__rich_repr__']\n"
+            "assert descriptor is vars(_repr.Representation)['__rich_repr__']\n"
+            "provenance.loaded_import_sources(BaseModel.__module__).unwrap()\n"
+            "defect = sys.argv[1]\n"
+            "if defect == 'receiver':\n"
+            "    BaseModel.__rich_repr__ = BaseModel.__repr__\n"
+            "elif defect == 'supplier':\n"
+            "    _repr.Representation.__rich_repr__ = _repr.Representation.__pretty__\n"
+            "elif defect == 'code':\n"
+            "    descriptor.__code__ = descriptor.__code__.replace(co_name='replaced')\n"
+            "observed = provenance.loaded_import_sources(BaseModel.__module__)\n"
+            "if defect == 'none':\n"
+            "    sources = observed.unwrap()\n"
+            "    assert any(item[0] == BaseModel.__module__ + '::BaseModel.__rich_repr__' for item in sources)\n"
+            "    assert any(item[0] == _repr.__name__ + '::Representation.__rich_repr__' and item[1] == _repr.__file__ for item in sources)\n"
+            "else: assert observed.failure, observed\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer, defect], cwd=tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "annotation"])
+    def test_installed_eager_callable_dataclass_preserves_native_schema(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Real eager Callable metadata authenticates; a changed signature does not."""
+        consumer = (
+            "import annotated_types\n"
+            "from collections.abc import Callable\n"
+            "from typing import Any, get_args, get_origin\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "import sys\n"
+            "predicate = annotated_types.Not(str.isalpha)\n"
+            "assert predicate('123') is True\n"
+            "assert predicate('alphabetic') is False\n"
+            "original = annotated_types.Not.__annotations__['func']\n"
+            "assert get_origin(original) is Callable\n"
+            "assert get_args(original) == ([Any], bool)\n"
+            "if sys.argv[1] == 'annotation':\n"
+            "    annotated_types.Not.__annotations__['func'] = Callable[[Any], int]\n"
+            "observed = provenance.loaded_import_sources(annotated_types.__name__)\n"
+            "if sys.argv[1] == 'none': observed.unwrap()\n"
+            "else: assert observed.failure\n"
+            "assert predicate('123') is True\n"
+            "assert predicate('alphabetic') is False\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer, defect], cwd=tmp_path))
+
+    @staticmethod
+    def test_fresh_native_source_authenticates_the_loaded_guard(tmp_path: Path) -> None:
+        """The public guard accepts its own freshly imported native declarations."""
+        consumer = (
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "observed = provenance.loaded_import_sources(provenance.__module__)\n"
+            "assert observed.success, observed\n"
+            "assert isinstance(observed.unwrap(), tuple)\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer], cwd=tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "foreign"])
+    def test_declaring_owner_authenticates_native_rebound_and_inherited_descriptors(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Metaclass rebinding retains source ownership; an unrelated class does not."""
+        package = tmp_path / "descriptor_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from enum import Enum\n"
+                "class Parent:\n"
+                "    @staticmethod\n"
+                "    def static(value): return value\n"
+                "    @classmethod\n"
+                "    def owner(cls): return cls\n"
+                "    def instance(self): return type(self)\n"
+                "class Child(Parent): pass\n"
+                "class Other:\n"
+                "    def instance(self): return type(self)\n"
+                "class Token(Enum):\n"
+                "    def __new__(cls, value):\n"
+                "        result = object.__new__(cls)\n"
+                "        result._value_ = value\n"
+                "        return result\n"
+                "    item = 'native'\n",
+            )
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('descriptor_provider')\n"
+            "if sys.argv[2] == 'foreign': module.Child.instance = module.Other.instance\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    observed.unwrap()\n"
+            "    assert module.Child.static('native') == 'native'\n"
+            "    assert module.Child.owner() is module.Child\n"
+            "    assert module.Child().instance() is module.Child\n"
+            "    assert module.Token('native') is module.Token.item\n"
+            "else: assert observed.failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect], cwd=tmp_path
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("changed", [False, True])
+    def test_inherited_property_authenticates_its_physical_provider(
+        tmp_path: Path,
+        changed: bool,
+    ) -> None:
+        """An inherited accessor retains its supplier, not its importing class's file."""
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / "ancestor_provider.py",
+                "class Ancestor:\n"
+                "    @property\n"
+                "    def value(self):\n        return 'ancestor-before'\n",
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / "child_provider.py",
+                "from ancestor_provider import Ancestor\nclass Child(Ancestor):\n    pass\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('child_provider')\n"
+            "ancestor = sys.modules['ancestor_provider']\n"
+            "source = pathlib.Path(ancestor.__file__)\n"
+            "if sys.argv[2] == 'True':\n"
+            "    source.write_text(source.read_text().replace('ancestor-before', 'ancestor-after'))\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert observed.success == (sys.argv[2] == 'False'), observed\n"
+            "if observed.success:\n"
+            "    assert any(item[0].startswith('ancestor_provider::') and item[1] == str(source) for item in observed.unwrap())\n"
+            "assert module.Child().value == 'ancestor-before'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), str(changed)], cwd=tmp_path
+            )
+        )
+
+    @staticmethod
+    def test_homonymous_declarations_keep_distinct_module_identities(
+        tmp_path: Path,
+    ) -> None:
+        """A source inventory retains legitimate same-named declarations in each module."""
+        package = tmp_path / "homonym_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY, "from . import first, second\n"
+            )
+        )
+        for member in ("first", "second"):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    package / f"{member}.py",
+                    f"class Declaration:\n    @classmethod\n    def value(cls):\n        return '{member}'\n",
+                )
+            )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('homonym_provider')\n"
+            "observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert isinstance(observed, tuple)\n"
+            "for member in (module.first, module.second):\n"
+            "    assert any(item[0] == member.__name__ + '::Declaration.value' and item[1] == member.__file__ for item in observed)\n"
+            "assert module.first.Declaration.value() != module.second.Declaration.value()\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer, str(tmp_path)], cwd=tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("namespace", ["collections.abc", "builtins", "_struct"])
+    def test_native_artifacts_retain_identity_without_becoming_python_text(
+        namespace: str,
+    ) -> None:
+        """Public provenance authenticates real frozen, builtin and extension inputs."""
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from inspect import getsourcefile\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "module = importlib.import_module(sys.argv[1])\n"
+            "sources = provenance.loaded_import_sources(sys.argv[1]).unwrap()\n"
+            "paths = {pathlib.Path(item[2] or item[1]) for item in sources}\n"
+            "origin = module.__spec__.origin\n"
+            "artifact = pathlib.Path(sys.executable).resolve() if origin in {'built-in', 'frozen'} else pathlib.Path(origin)\n"
+            "assert artifact in paths\n"
+            "if origin == 'frozen':\n"
+            "    source = getsourcefile(module)\n"
+            "    assert source is not None and pathlib.Path(source) in paths\n"
+            "else:\n"
+            "    assert module.__spec__.loader.get_source(module.__spec__.name) is None\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, namespace], cwd=Path(__file__).parent
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "mutation",
+        [
+            "none",
+            "function",
+            "property",
+            "classmethod",
+            "class",
+            "schema",
+            "deleted",
+            "binding",
+            "callable",
+            "syntax",
+        ],
+    )
+    def test_loaded_declarations_require_the_current_physical_source(
+        tmp_path: Path,
+        mutation: str,
+    ) -> None:
+        """Cached objects cannot authenticate changed source or foreign descriptors."""
+        package = tmp_path / "identity_provider"
+        package.mkdir()
+        source = package / c.Infra.INIT_PY
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "from __future__ import annotations\n"
+                "from dataclasses import dataclass\n"
+                "from functools import wraps\n"
+                "def operation():\n    return 'function-before'\n"
+                "@dataclass\n"
+                "class Payload:\n"
+                "    instance = None\n"
+                "    value: str\n"
+                "    def identify(self):\n        return 'class-before'\n"
+                "    @property\n"
+                "    def observed(self):\n        return 'property-before'\n"
+                "    @classmethod\n"
+                "    def create(cls):\n        return cls('classmethod-before')\n"
+                "class Other:\n"
+                "    @property\n"
+                "    def observed(self):\n        return 'foreign-binding'\n"
+                "class Callable:\n"
+                "    def __call__(self):\n        return 'callable'\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "from flext_core import FlextSettings\n"
+            "assert FlextSettings.fetch_global() is FlextSettings.fetch_global()\n"
+            "provenance.loaded_import_sources(FlextSettings.__module__).unwrap()\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('identity_provider')\n"
+            "source = pathlib.Path(module.__file__)\n"
+            "module.Payload.instance = module.Payload('live-instance')\n"
+            "before = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert isinstance(before, tuple)\n"
+            "mutation = sys.argv[2]\n"
+            "if mutation == 'deleted':\n    source.unlink()\n"
+            "elif mutation == 'binding':\n    module.Payload.observed = module.Other.observed\n"
+            "elif mutation == 'callable':\n    module.operation.__wrapped__ = module.Callable()\n"
+            "elif mutation == 'syntax':\n    source.write_text('def invalid(:\\n')\n"
+            "elif mutation != 'none':\n"
+            "    old = 'value: str' if mutation == 'schema' else mutation + '-before'\n"
+            "    new = 'replacement: str' if mutation == 'schema' else mutation + '-after'\n"
+            "    source.write_text(source.read_text().replace(old, new))\n"
+            "try:\n"
+            "    observed = provenance.loaded_import_sources(module.__name__)\n"
+            "except SyntaxError as error:\n"
+            "    assert mutation == 'syntax' and error.filename is not None\n"
+            "else:\n"
+            "    assert mutation != 'syntax'\n"
+            "    assert observed.success == (mutation == 'none'), observed\n"
+            "assert module.operation() == 'function-before'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), mutation], cwd=tmp_path
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "defect", ["none", "foreign", "cycle", "source", "advertised", "descriptor"]
+    )
+    def test_decorated_callable_authenticates_its_executable_chain(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Real contextmanager declarations retain source and reject tampered chains."""
+        package = tmp_path / "decorated_provider"
+        package.mkdir()
+        source = package / c.Infra.INIT_PY
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "from contextlib import contextmanager\n"
+                "from functools import wraps\n"
+                "native = dict.__repr__\n"
+                "@wraps(native)\n"
+                "def native_operation(value):\n"
+                "    return native(value)\n"
+                "@contextmanager\n"
+                "def operation():\n"
+                "    yield 'authenticated'\n",
+            ),
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from contextlib import contextmanager\n"
+            "from inspect import getfile\n"
+            "from functools import wraps\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('decorated_provider')\n"
+            "operation = module.operation\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'foreign':\n"
+            "    operation.__wrapped__ = pathlib.Path.is_file\n"
+            "elif defect == 'cycle':\n"
+            "    operation.__wrapped__ = operation\n"
+            "elif defect == 'source':\n"
+            "    original = operation.__wrapped__\n"
+            "    original.__code__ = original.__code__.replace(co_name='replaced')\n"
+            "elif defect == 'advertised':\n"
+            "    operation.__module__ = 'reprlib'\n"
+            "elif defect == 'descriptor':\n"
+            "    operation.__wrapped__ = dict.__repr__\n"
+            "if defect == 'none':\n"
+            "    with operation() as value:\n"
+            "        assert value == 'authenticated'\n"
+            "    assert module.native_operation({}) == '{}'\n"
+            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "    assert observed\n"
+            "    paths = {pathlib.Path(item[1]) for item in observed}\n"
+            "    assert {pathlib.Path(module.__file__), pathlib.Path(getfile(contextmanager)), pathlib.Path(getfile(wraps)), pathlib.Path(sys.executable).resolve()} <= paths\n"
+            "else:\n"
+            "    assert provenance.loaded_import_sources(module.__name__).failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("surface", ["decorator", "metaclass"])
+    def test_construction_binding_does_not_invoke_foreign_accessors(
+        tmp_path: Path,
+        surface: str,
+    ) -> None:
+        """Reject a replaced import before consulting its attribute callbacks."""
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / "static_supplier.py",
+                "class Meta(type):\n    pass\n",
+            )
+        )
+        package = tmp_path / "accessor_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        supplier = "dataclasses" if surface == "decorator" else "static_supplier"
+        construction = (
+            "@supplier.dataclass\nclass Payload:\n"
+            if surface == "decorator"
+            else "@dataclass\nclass Payload(metaclass=supplier.Meta):\n"
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                f"import {supplier} as supplier\n"
+                "from dataclasses import dataclass\n"
+                "effects = []\n"
+                "original = supplier\n"
+                "class Accessor:\n"
+                "    def __getattr__(self, name):\n"
+                "        effects.append('accessor')\n"
+                "        return getattr(original, name)\n"
+                + construction
+                + "    value: str = 'native'\n",
+            )
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('accessor_provider')\n"
+            "assert module.Payload().value == 'native'\n"
+            "assert provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "before = tuple(module.effects)\n"
+            "module.supplier = module.Accessor()\n"
+            "assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "assert tuple(module.effects) == before\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path)],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("keyword_only", [False, True])
+    def test_generated_defaults_do_not_invoke_foreign_equality(
+        tmp_path: Path,
+        keyword_only: bool,
+    ) -> None:
+        """Reject altered default values without executing their equality method."""
+        package = tmp_path / "equality_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass\n"
+                "effects = []\n"
+                "class Foreign:\n"
+                "    def __eq__(self, other):\n"
+                "        effects.append('equality')\n"
+                "        return True\n"
+                f"@dataclass(kw_only={keyword_only})\n"
+                "class Payload:\n"
+                "    value: str = 'native'\n",
+            )
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('equality_provider')\n"
+            "assert module.Payload().value == 'native'\n"
+            "assert provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "before = tuple(module.effects)\n"
+            "if sys.argv[2] == 'True':\n"
+            "    module.Payload.__init__.__kwdefaults__ = {'value': module.Foreign()}\n"
+            "else:\n"
+            "    module.Payload.__init__.__defaults__ = (module.Foreign(),)\n"
+            "assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "assert tuple(module.effects) == before\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), str(keyword_only)],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "code"])
+    def test_generated_provenance_does_not_repeat_construction_effects(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Authentication preserves effects of the actual imported construction."""
+        package = tmp_path / "effect_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass\n"
+                "from pathlib import Path\n"
+                "effects = []\n"
+                "marker = Path(__file__).with_suffix('.effects')\n"
+                "def track(cls):\n"
+                "    effects.append('decorator')\n"
+                "    return cls\n"
+                "class Meta(type):\n"
+                "    def __new__(cls, name, bases, namespace):\n"
+                "        effects.append('metaclass')\n"
+                "        return super().__new__(cls, name, bases, namespace)\n"
+                "class Parent:\n"
+                "    def __init_subclass__(cls):\n"
+                "        effects.append('subclass')\n"
+                "@track\n"
+                "@dataclass\n"
+                "class Payload(Parent, metaclass=Meta):\n"
+                "    effects.append('body')\n"
+                "    with marker.open('a', encoding='utf-8') as stream:\n"
+                "        stream.write('body\\n')\n"
+                "    value: str = 'native'\n",
+            )
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('effect_provider')\n"
+            "assert module.Payload().value == 'native'\n"
+            "before = tuple(module.effects)\n"
+            "marker = module.marker.read_bytes()\n"
+            "assert set(before) == {'body', 'decorator', 'metaclass', 'subclass'}\n"
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "if sys.argv[2] == 'code':\n"
+            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='replaced')\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert observed.success == (sys.argv[2] == 'none'), observed\n"
+            "assert tuple(module.effects) == before\n"
+            "assert module.marker.read_bytes() == marker\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "options", "supplier"])
+    def test_generated_descriptor_requires_authored_factory_binding(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """A genuine regenerated descriptor cannot bless an altered construction."""
+        package = tmp_path / "factory_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass as construct\n"
+                "FROZEN = False\n"
+                "@construct(frozen=FROZEN)\n"
+                "class Payload:\n"
+                "    value: str = 'native'\n",
+            )
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from dataclasses import fields, make_dataclass\n"
+            "from attr import attrs\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('factory_provider')\n"
+            "assert module.Payload().value == 'native'\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'options':\n"
+            "    module.FROZEN = True\n"
+            "    original = module.Payload\n"
+            "    module.Payload = make_dataclass(\n"
+            "        original.__name__,\n"
+            "        [(item.name, item.type, item.default) for item in fields(original)],\n"
+            "        bases=original.__bases__, module=module.__name__, frozen=True,\n"
+            "    )\n"
+            "elif defect == 'supplier':\n"
+            "    module.construct = attrs\n"
+            "    module.Payload = attrs(module.Payload)\n"
+            "assert module.Payload().value == 'native'\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "if defect == 'none':\n"
+            "    assert observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "defect", ["none", "descriptor", "wrapped", "code", "defaults"]
+    )
+    @pytest.mark.parametrize("options", ["", "frozen=True, slots=True"])
+    @pytest.mark.parametrize("base", ["object", "Parent"])
+    def test_dataclass_generated_callable_authenticates_its_descriptor(
+        tmp_path: Path,
+        defect: str,
+        options: str,
+        base: str,
+    ) -> None:
+        """Real compiler methods retain class ownership and reject moved bindings."""
+        package = tmp_path / "generated_provider"
+        package.mkdir()
+        source = package / c.Infra.INIT_PY
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "from dataclasses import dataclass\n"
+                "class Parent:\n"
+                "    def __init__(self):\n"
+                "        raise RuntimeError('inherited constructor is not explicit')\n"
+                "class Generic[T]:\n"
+                "    value: str\n"
+                "class Holder:\n"
+                "    class Generic[T]:\n"
+                "        value: str\n"
+                f"@dataclass({options})\n"
+                f"class Payload({base}):\n"
+                "    value: str\n"
+                f"@dataclass({options})\n"
+                f"class Other({base}):\n"
+                "    value: str\n",
+            ),
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('generated_provider')\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'descriptor':\n"
+            "    module.Payload.__repr__ = module.Other.__repr__\n"
+            "elif defect == 'wrapped':\n"
+            "    module.Payload.__repr__.__wrapped__ = module.Other.__repr__.__wrapped__\n"
+            "elif defect == 'code':\n"
+            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='foreign')\n"
+            "elif defect == 'defaults':\n"
+            "    module.Payload.__init__.__defaults__ = ('foreign',)\n"
+            "if defect == 'none':\n"
+            "    assert repr(module.Payload('authenticated')) == \"Payload(value='authenticated')\"\n"
+            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "    generated = [item for item in observed if item[2]]\n"
+            "    assert generated\n"
+            "    assert all(pathlib.Path(item[2]) == pathlib.Path(module.__file__) for item in generated)\n"
+            "else:\n"
+            "    assert provenance.loaded_import_sources(module.__name__).failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "defaults", "kwdefaults", "closure"])
+    def test_installed_annotation_dataclass_retains_native_constructor_proof(
+        defect: str,
+    ) -> None:
+        """Authenticate real Protocol dataclasses and reject altered constructor state."""
+        consumer = (
+            "import inspect\n"
+            "from annotated_types import Interval, Len, MaxLen, MinLen\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "import sys\n"
+            "defect = sys.argv[1]\n"
+            "if defect == 'defaults':\n"
+            "    Len.__init__.__defaults__ = (1, None)\n"
+            "elif defect == 'kwdefaults':\n"
+            "    Len.__init__.__kwdefaults__ = {'foreign': None}\n"
+            "elif defect == 'closure':\n"
+            "    cells = dict(zip(Len.__init__.__code__.co_freevars, Len.__init__.__closure__))\n"
+            "    cells['__dataclass_builtins_object__'].cell_contents = str\n"
+            "if defect == 'none':\n"
+            "    assert Len().min_length == 0\n"
+            "    assert Len().max_length is None\n"
+            "    assert list(Len(2, max_length=5)) == [MinLen(2), MaxLen(5)]\n"
+            "    assert Interval(gt=1).gt == 1\n"
+            "    observed = provenance.loaded_import_sources(Len.__module__).unwrap()\n"
+            "    assert any(item[2] == inspect.getfile(Len) for item in observed)\n"
+            "else:\n"
+            "    assert provenance.loaded_import_sources(Len.__module__).failure\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer, defect]))
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "code", "defaults", "kwdefaults"])
+    def test_attrs_generated_callable_authenticates_native_decorator(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Native attrs constructors preserve public behavior and reject tampering."""
+        package = tmp_path / "attrs_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from attr import attrs, attrib\n"
+                "@attrs(slots=True, unsafe_hash=True)\n"
+                "class Payload:\n"
+                "    value = attrib(default='captured')\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('attrs_provider')\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'code':\n"
+            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='foreign')\n"
+            "elif defect == 'defaults':\n"
+            "    module.Payload.__init__.__defaults__ = ('foreign',)\n"
+            "elif defect == 'kwdefaults':\n"
+            "    module.Payload.__init__.__kwdefaults__ = {'foreign': None}\n"
+            "if defect == 'none':\n"
+            "    assert module.Payload().value == 'captured'\n"
+            "    assert module.Payload(value='native').value == 'native'\n"
+            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "    assert any(item[2] == str(pathlib.Path(module.__file__)) for item in observed)\n"
+            "else:\n"
+            "    assert provenance.loaded_import_sources(module.__name__).failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect], cwd=tmp_path
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "defect", ["none", "code", "scope", "advertised", "defaults"]
+    )
+    def test_native_generated_class_authenticates_its_compiler_scope(
+        defect: str,
+    ) -> None:
+        """The installed Pillow consumer proves native factory scope, not a module label."""
+        consumer = (
+            "import pathlib, sys\n"
+            "from collections import namedtuple\n"
+            "from inspect import getfile\n"
+            "from PIL import ImageMode\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "operation = ImageMode.ModeDescriptor.__new__\n"
+            "defect = sys.argv[1]\n"
+            "if defect == 'code':\n"
+            "    operation.__code__ = operation.__code__.replace(co_name='forged')\n"
+            "elif defect == 'scope':\n"
+            "    operation.__globals__['_tuple_new'] = dict.__new__\n"
+            "elif defect == 'advertised':\n"
+            "    operation.__module__ = 'reprlib'\n"
+            "elif defect == 'defaults':\n"
+            "    operation.__defaults__ = ('foreign',)\n"
+            "observed = provenance.loaded_import_sources(ImageMode.__name__)\n"
+            "if defect == 'none':\n"
+            "    assert isinstance(ImageMode.getmode('RGB'), ImageMode.ModeDescriptor)\n"
+            "    sources = observed.unwrap()\n"
+            "    assert any(item[2] == ImageMode.__file__ for item in sources)\n"
+            "    paths = {pathlib.Path(item[2] or item[1]) for item in sources}\n"
+            "    assert pathlib.Path(getfile(namedtuple)) in paths\n"
+            "    assert pathlib.Path(sys.executable).resolve() in paths\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, defect], cwd=Path(__file__).parent
+            )
+        )
+
+    @staticmethod
     def test_package_election_does_not_reuse_a_retired_loaded_origin(
         tmp_path: Path,
     ) -> None:
@@ -55,6 +1069,61 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert not pathlib.Path(loaded.__file__).is_file()\n"
         )
         tm.ok(u.Cli.capture([executable, "-c", consumer, str(tmp_path)], cwd=tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("source_location", ["declared", "foreign"])
+    def test_loaded_source_requires_declared_checkout_containment(
+        tmp_path: Path,
+        source_location: str,
+    ) -> None:
+        """A cold-elected real supplier is not proof of declared checkout ownership."""
+        checkout = tmp_path / "declared"
+        u.Tests.WorktreeFixture.write_python_project(checkout, "owned-provider")
+        metadata = tm.ok(u.Infra.read_project_metadata_result(checkout))
+        source_root = (
+            checkout / "src" if source_location == "declared" else tmp_path / "foreign"
+        )
+        package = source_root / metadata.package_name
+        package.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                (
+                    "from contextlib import contextmanager\n"
+                    "@contextmanager\n"
+                    "def operation():\n"
+                    "    yield 'authenticated'\n"
+                ),
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module(sys.argv[2])\n"
+            "result = provenance.loaded_import_sources(module.__name__, expected_root=pathlib.Path(sys.argv[3]))\n"
+            "if sys.argv[4] == 'declared':\n"
+            "    assert result.success, result.error\n"
+            "    with module.operation() as value:\n"
+            "        assert value == 'authenticated'\n"
+            "else:\n"
+            "    assert result.failure\n"
+            "    assert 'loaded code differs from declaration' in result.error\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [
+                    executable,
+                    "-c",
+                    consumer,
+                    str(source_root),
+                    metadata.package_name,
+                    str(checkout),
+                    source_location,
+                ],
+                cwd=tmp_path,
+            )
+        )
 
     @staticmethod
     def _toolchain_identity(site_packages: Path) -> str:
@@ -373,6 +1442,132 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                     ),
                 )
             tm.that(tuple(item.path for item in selected), eq=(Path("sample-member"),))
+
+    @pytest.mark.parametrize("layout", ["package", "namespace", "multiple"])
+    def test_editable_path_must_expose_declared_package_sources(
+        self,
+        installed_artifact_consumer: Path,
+        layout: str,
+    ) -> None:
+        """Authenticate native backend paths and reject a case-local docs-only path."""
+        root = installed_artifact_consumer
+        if layout != "package":
+            roots = (root / "left", root / "right")
+            primary = u.Infra.project_package_name(root)
+            package_names = (
+                (primary, primary)
+                if layout == "namespace"
+                else (primary, f"{primary}_companion")
+            )
+            declarations = []
+            for source_root, name in zip(roots, package_names, strict=True):
+                package = source_root / name
+                tm.ok(u.Cli.ensure_dir(package))
+                if layout == "multiple":
+                    tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
+                else:
+                    tm.ok(u.Cli.atomic_write_text_file(package / "portion.py", ""))
+                declarations.append(package.relative_to(root).as_posix())
+            pyproject = root / c.PYPROJECT_FILENAME
+            payload = u.Tests.toml_payload(pyproject.read_text(encoding="utf-8"))
+            tool = u.Tests.toml_mapping(payload.get("tool", {}))
+            hatch = u.Tests.toml_mapping(tool.get("hatch", {}))
+            build = u.Tests.toml_mapping(hatch.get("build", {}))
+            targets = u.Tests.toml_mapping(build.get("targets", {}))
+            wheel = u.Tests.toml_mapping(targets.get("wheel", {}))
+            tm.ok(
+                u.Cli.toml_write_mapping(
+                    pyproject,
+                    {
+                        **payload,
+                        "tool": {
+                            **tool,
+                            "hatch": {
+                                **hatch,
+                                "build": {
+                                    **build,
+                                    "targets": {
+                                        **targets,
+                                        "wheel": {**wheel, "packages": declarations},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                )
+            )
+            ci = config.Infra.codegen.make.ci
+            setup = tm.ok(
+                u.Tests.run_isolated_make(
+                    ["setup"],
+                    cwd=root,
+                    env={ci.variable: ci.local_value},
+                )
+            )
+            tm.that(
+                u.Cli.process_succeeded(setup.outcome),
+                eq=True,
+                msg=setup.stdout + setup.stderr,
+            )
+        locations = tm.ok(
+            u.Cli.run_raw(
+                [
+                    str(u.Infra.runtime_python(root)),
+                    "-c",
+                    "import json, sysconfig; print(json.dumps([sysconfig.get_path('purelib')]))",
+                ],
+                cwd=root,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(locations.outcome),
+            eq=True,
+            msg=locations.stdout + locations.stderr,
+        )
+        metadata_paths = t.Infra.STR_SEQ_ADAPTER.validate_json(locations.stdout)
+        repository = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        ).repository
+        installed = u.installed_distributions(
+            name=repository.distribution,
+            path=metadata_paths,
+        )
+        tm.that(len(installed), eq=1)
+        direct_url = installed[0].read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+        tm.that(direct_url is not None, eq=True)
+        if direct_url is None:
+            pytest.fail("native editable installation has no PEP 610 receipt")
+        receipt = m.Infra.DirectUrlReceipt.model_validate_json(direct_url, strict=True)
+        tm.ok(
+            FlextInfraWorkspaceEnvironmentProvenance.validate_editable_installation(
+                repository,
+                root,
+                installed[0],
+                receipt,
+            ),
+        )
+        inventory = installed[0].files
+        tm.that(inventory is not None, eq=True)
+        if inventory is None:
+            pytest.fail("installed editable has no file inventory")
+        pth_files = tuple(
+            Path(str(installed[0].locate_file(item)))
+            for item in inventory
+            if str(item).endswith(".pth")
+        )
+        tm.that(len(pth_files), eq=1)
+        docs = root / "docs"
+        tm.ok(u.Cli.ensure_dir(docs))
+        tm.ok(u.Cli.atomic_write_text_file(pth_files[0], f"{docs}\n"))
+        tm.fail(
+            FlextInfraWorkspaceEnvironmentProvenance.validate_editable_installation(
+                repository,
+                root,
+                installed[0],
+                receipt,
+            ),
+            has="pth exposes no declared package",
+        )
 
     def test_frozen_member_remains_a_library_when_its_checkout_is_present(
         self,

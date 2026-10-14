@@ -1,4 +1,8 @@
-"""Observe bootstrap coverage through real Git members and installed editables."""
+"""Observe bootstrap coverage through real Git members and installed editables.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -62,7 +66,11 @@ class TestsMakeBootstrapPublication:
                     "--no-deps",
                     "--python",
                     str(u.Infra.runtime_python(root)),
-                    *(item for member in members for item in ("--editable", str(member))),
+                    *(
+                        item
+                        for member in members
+                        for item in ("--editable", str(member))
+                    ),
                 ),
                 cwd=root,
             ),
@@ -82,7 +90,11 @@ class TestsMakeBootstrapPublication:
         check_only: bool = False,
         hosted: bool = False,
     ) -> p.Cli.CommandOutput:
-        """Run the real CLI with an explicit native topology and gate partition."""
+        """Run the real CLI with an explicit native topology and gate partition.
+
+        Returns:
+            The completed CLI command outcome.
+        """
         policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci
         outcome = tm.ok(
@@ -183,7 +195,9 @@ class TestsMakeBootstrapPublication:
 
         tm.that(len(installed), eq=1)
         tm.that(
-            Path(str(installed[0].locate_file(""))).resolve().is_relative_to(facts.prefix),
+            Path(str(installed[0].locate_file("")))
+            .resolve()
+            .is_relative_to(facts.prefix),
             eq=True,
         )
         tm.that(len(facts.package_directories[package]), eq=1)

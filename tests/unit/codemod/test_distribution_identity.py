@@ -99,5 +99,5 @@ class TestsFlextInfraDistributionIdentity:
         )
         prepend(str(site))
 
-        with pytest.raises(ValueError, match="^cyclic dependency graph:"):
+        with pytest.raises(ValueError, match=r"^cyclic dependency graph:"):
             u.Infra.codemod_rule_plan(tmp_path)

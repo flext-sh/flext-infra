@@ -401,6 +401,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.StrSequence,
             m.Field(description="Validated individually declared data files"),
         ]
+        project_declaration_resource: Annotated[
+            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            m.Field(
+                description="Producer declaration source and wheel resource destination",
+            ),
+        ]
         packaged_data_excludes: Annotated[
             t.StrSequence,
             m.Field(description="Validated files excluded from packaged data roots"),

@@ -93,6 +93,8 @@ class FlextInfraUtilitiesGitRepo:
 
         Raises:
             ValueError: If shared storage cannot be bound to a real primary checkout.
+            GitCommandError: If the common-config probe fails outside the tolerated
+                negative exit status.
 
         """
         entries = cls._registered_worktree_entries(porcelain)
@@ -163,19 +165,66 @@ class FlextInfraUtilitiesGitRepo:
                 str(checkout / c.Infra.GIT_DIR),
             ).strip(),
         ).resolve()
-        if (
+        if cls._primary_storage_facts_disagree(
+            primary_repo=primary_repo,
+            common_dir=common_dir,
+            checkout=checkout,
+            primary_git_dir=primary_git_dir,
+            primary_common_dir=primary_common_dir,
+        ) or cls._primary_binding_disagrees(
+            primary_repo=primary_repo,
+            common_dir=common_dir,
+            primary_backpointer=primary_backpointer,
+            checkout=checkout,
+            configured_primary=configured_primary,
+        ):
+            msg = f"Git checkout identity disagrees with shared storage: {common_dir}"
+            raise ValueError(msg)
+        return (entries[0].model_copy(update={"path": checkout}), *entries[1:])
+
+    @staticmethod
+    def _primary_storage_facts_disagree(
+        primary_repo: Repo,
+        common_dir: Path,
+        checkout: Path,
+        primary_git_dir: Path,
+        primary_common_dir: Path,
+    ) -> bool:
+        """Whether the primary checkout's own facts contradict shared storage.
+
+        Returns:
+            Whether the working tree, its Git dir, or the common dir disagree
+            with the shared storage the registry row was read from.
+
+        """
+        return (
             primary_repo.working_tree_dir is None
             or checkout == common_dir
             or Path(primary_repo.working_tree_dir).resolve() != checkout
             or primary_git_dir != common_dir
             or primary_common_dir != common_dir
-            or primary_backpointer != common_dir
+        )
+
+    @staticmethod
+    def _primary_binding_disagrees(
+        primary_repo: Repo,
+        common_dir: Path,
+        primary_backpointer: Path,
+        checkout: Path,
+        configured_primary: Path | None,
+    ) -> bool:
+        """Whether the worktree backpointer or configured primary contradict it.
+
+        Returns:
+            Whether the ``gitdir`` backpointer, the configured ``core.worktree``
+            checkout, or the inside-work-tree probe disprove the primary.
+
+        """
+        return (
+            primary_backpointer != common_dir
             or (configured_primary is not None and checkout != configured_primary)
             or primary_repo.git.rev_parse("--is-inside-work-tree").strip() != "true"
-        ):
-            msg = f"Git checkout identity disagrees with shared storage: {common_dir}"
-            raise ValueError(msg)
-        return (entries[0].model_copy(update={"path": checkout}), *entries[1:])
+        )
 
     @classmethod
     def refresh_binary(cls) -> p.Result[bool]:

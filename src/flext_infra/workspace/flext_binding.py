@@ -127,7 +127,12 @@ class FlextInfraFlextBindingService:
         python: Path,
         packages: t.StrSequence,
     ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
-        """Observe real package resolution and metadata in the elected Python."""
+        """Observe real package resolution and metadata in the elected Python.
+
+        Returns:
+            The observed package environment, or the first observation failure.
+
+        """
         result_type = r[m.Infra.PythonEnvironmentObservation]
         environment = FlextInfraFlextBindingService._consumer_environment(
             consumer_root,
@@ -147,14 +152,52 @@ class FlextInfraFlextBindingService:
         facts = m.Infra.PythonEnvironmentObservation.model_validate_json(
             outcome.value.stdout,
         )
-        if facts.prefix.resolve() != environment.value.resolve():
+        identity = FlextInfraFlextBindingService._validated_package_facts(
+            environment.value,
+            facts,
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        stable = FlextInfraFlextBindingService._confirm_stable_environment(
+            environment.value,
+            physical.value,
+        )
+        if stable.failure:
+            return result_type.from_failure(stable)
+        u.Cli.info(
+            f"environment python={python} prefix={facts.prefix} "
+            f"metadata_paths={facts.metadata_paths}",
+        )
+        return result_type.ok(facts)
+
+    @staticmethod
+    def _validated_package_facts(
+        environment: Path,
+        facts: m.Infra.PythonEnvironmentObservation,
+    ) -> p.Result[bool]:
+        """Validate the reported facts against the elected environment.
+
+        Requires the interpreter prefix, installed metadata directories, and
+        every metadata path to agree with the elected environment.
+
+        Returns:
+            Success when every reported fact matches the elected environment.
+
+        """
+        result_type = r[bool]
+        if facts.prefix.resolve() != environment.resolve():
             return result_type.fail("package interpreter reports a foreign environment")
         if not facts.metadata_paths:
-            return result_type.fail("package interpreter has no installed metadata directories")
+            return result_type.fail(
+                "package interpreter has no installed metadata directories",
+            )
         for path in facts.metadata_paths:
-            if not path.is_absolute() or not path.is_relative_to(facts.prefix.resolve()):
+            if not path.is_absolute() or not path.is_relative_to(
+                facts.prefix.resolve()
+            ):
                 return result_type.fail(
-                    f"installed metadata directory is outside the elected environment: {path}",
+                    f"installed metadata directory is outside the elected "
+                    f"environment: {path}",
                 )
             directory = u.Cli.atomic_plan_directory_chain(path)
             if directory.failure:
@@ -163,16 +206,29 @@ class FlextInfraFlextBindingService:
                 return result_type.fail(
                     f"installed metadata directory is absent: {path}",
                 )
-        current = u.Cli.atomic_plan_directory_chain(environment.value)
+        return result_type.ok(value=True)
+
+    @staticmethod
+    def _confirm_stable_environment(
+        environment: Path,
+        physical: m.Cli.AtomicDirectoryChainPlan,
+    ) -> p.Result[bool]:
+        """Require the elected environment identity to survive the observation.
+
+        Returns:
+            Success when the physical directory chain still matches the plan
+            recorded before the interpreter probe.
+
+        """
+        result_type = r[bool]
+        current = u.Cli.atomic_plan_directory_chain(environment)
         if current.failure:
             return result_type.from_failure(current)
-        if current.value != physical.value:
-            return result_type.fail("package environment identity changed during observation")
-        u.Cli.info(
-            f"environment python={python} prefix={facts.prefix} "
-            f"metadata_paths={facts.metadata_paths}",
-        )
-        return result_type.ok(facts)
+        if current.value != physical:
+            return result_type.fail(
+                "package environment identity changed during observation",
+            )
+        return result_type.ok(value=True)
 
     @staticmethod
     def _document(consumer_root: Path) -> t.Cli.TomlDocument:

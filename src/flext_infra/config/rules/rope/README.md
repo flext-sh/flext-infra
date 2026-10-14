@@ -29,8 +29,10 @@ nesting step keeps `get_type_hints` bound to the moved class. Consumers used onl
 type positions participate in the same plan. Ordinary literals, `Literal` values,
 `Annotated` metadata, and unrelated homonyms retain their values.
 
-The contract-normalization phase consumes `contracts.yaml` through a typed
-configuration model. Python matches and replacements use native Rope
+The contract-normalization phase consumes its `phase` rows in `contracts.yaml`
+through the canonical semantic-phase enum; constant-consumers consumes its own
+rows through the same typed catalog and native planner. Unknown phases fail
+configuration validation. Python matches and replacements use native Rope
 `SimilarFinder`, identity-constrained `Restructure` patterns and ChangeSets.
 The phase shares the existing semantic fixed point and publication transaction;
 it has no independent repair loop or CST, AST or regular-expression parser.
@@ -42,6 +44,29 @@ concrete collection and the existing factory share their native identity.
 Destination imports use Rope's import manager and reject competing lexical
 bindings before publication. Configured defaults and factories remain policy
 data; projects do not carry copied detectors or symbol mapping tables.
+
+Moving a sole `Field` metadata item out of `Annotated` retains the callable,
+field position and arguments. A factory that receives previously validated field
+data must keep that signature and its evaluation order; it is not an empty
+collection factory. Additional constraints, aliases, validators and serializers
+are not discarded to make a pattern match.
+
+Python and JSON validation are separate Pydantic contracts. The former automatic
+`fix-json-loads-paired-validate` rewrite is retired. The remaining boundary finding
+requires proof of accepted and rejected inputs, validator modes and context, custom
+decoder behavior, and parse failures before changing the call. Strict date and
+tuple fields alone can distinguish `model_validate` from `model_validate_json`;
+the presence of a same-spelled method cannot establish equivalence.
+
+Declaration context uses the captured occurrence and the admission pass's shared
+Rope snapshot. Equal short names in different class namespaces are resolved
+independently. Model recognition follows BaseModel ancestry, including inherited
+fields; settings and behavioral classes remain outside payload relocation.
+Native validators, serializers and computed fields preserve their identities.
+Generic ancestry contributes its declaration owner only when its subscription
+binding is the native Pydantic or Protocol contract; custom subscription behavior
+does not establish equivalent ancestry. Protocol admission requires an explicit
+direct Protocol base, preserving concrete implementations of existing protocols.
 
 Typing unification resolves names in concrete-syntax type positions through lexical
 bindings. `Any`, `typing.Any`, and `object` do not establish JSON or attribute-probe
