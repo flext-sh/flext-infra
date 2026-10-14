@@ -81,7 +81,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     @staticmethod
     def _native_subscription_bindings(
         project: p.Infra.RopeProject,
-    ) -> t.SequenceOf[p.Infra.RopePyObject]:
+    ) -> t.SequenceOf[p.Infra.RopePyName]:
         """Collect the native subscription contracts of declared generic owners.
 
         Args:
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     ) -> t.Triple[
         t.SequenceOf[t.Pair[int, int]],
         p.Infra.RopeScope,
-        t.SequenceOf[p.Infra.RopePyObject],
+        t.SequenceOf[p.Infra.RopePyName],
     ]:
         """Resolve header subscription matches, scope, and native bindings.
 
@@ -131,14 +131,20 @@ class FlextInfraUtilitiesDeclarationPayload:
             and the native subscription bindings of declared generic owners.
         """
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
-        subscriptions_in_header = tuple(
-            finder.get_match_regions(
-                "${generic_owner}[${generic_arguments}]",
-                {},
-                start=header.start_offset,
-                end=header.end_offset,
+        try:
+            subscriptions_in_header = tuple(
+                finder.get_match_regions(
+                    "${generic_owner}[${generic_arguments}]",
+                    {},
+                    start=header.start_offset,
+                    end=header.end_offset,
+                )
             )
-        )
+        except AttributeError:
+            # Rope's similarfinder cannot region every header shape (a
+            # Subscript node inside the matched span carries no region): a
+            # header it cannot region simply has no matchable subscription.
+            return (), parent, ()
         parent = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
             module,
             header.start_offset,
@@ -184,7 +190,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     def _specialization_owner(
         cls,
         parent: p.Infra.RopeScope,
-        subscriptions: t.SequenceOf[p.Infra.RopePyObject],
+        subscriptions: t.SequenceOf[p.Infra.RopePyName],
         bases: t.SequenceOf[p.Infra.RopePyObject],
         specialization: str,
     ) -> p.Infra.RopePyObject | None:
@@ -233,7 +239,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         context: t.Triple[
             t.SequenceOf[t.Pair[int, int]],
             p.Infra.RopeScope,
-            t.SequenceOf[p.Infra.RopePyObject],
+            t.SequenceOf[p.Infra.RopePyName],
         ],
         bases: t.SequenceOf[p.Infra.RopePyObject],
     ) -> p.Infra.RopePyObject | None:
@@ -283,7 +289,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         context: t.Triple[
             t.SequenceOf[t.Pair[int, int]],
             p.Infra.RopeScope,
-            t.SequenceOf[p.Infra.RopePyObject],
+            t.SequenceOf[p.Infra.RopePyName],
         ],
     ) -> None:
         """Extend direct bases with proven generic declaration owners.
