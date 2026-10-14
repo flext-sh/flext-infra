@@ -31,7 +31,15 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         request: m.Infra.DocsGenerateRequest,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Capture the next owning scope only after the preceding batch settles."""
+        """Capture the next owning scope only after the preceding batch settles.
+
+        Args:
+            request: The documentation generation request containing repository root and
+              output directory.
+
+        Yields:
+            Results of the documentation generation bundle preparation for each batch.
+        """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             yield r[m.Infra.DocsGenerationBundle].from_failure(roots)
@@ -214,12 +222,15 @@ class FlextInfraDocGeneratorBundleMixin:
         scopes = cls._validated_scopes(repository_root, request, output_dir)
         if scopes.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(scopes)
+        governance = cls._captured_governance_source(repository_root, source_states)
+        if governance.failure:
+            return r[m.Infra.DocsGenerationBundle].from_failure(governance)
         rendered = cls._rendered_scopes(
             repository_root,
             scopes.value,
             source_states,
             directories.value,
-            cls._captured_governance_source(repository_root, source_states).unwrap(),
+            governance.value,
         )
         if rendered.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(rendered)
@@ -457,6 +468,14 @@ class FlextInfraDocGeneratorBundleMixin:
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
 
+        Args:
+            repository_root: The root path of the repository.
+            rendered: The list of rendered documentation scope artifacts.
+            source_states: The captured source states of the documentation files.
+            source_roots: The source roots of the documentation files.
+            source_scope: The source scope of the documentation files.
+            source_directories: The source directories of the documentation files.
+
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
@@ -487,7 +506,15 @@ class FlextInfraDocGeneratorBundleMixin:
         repository_root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenBootstrapSource]:
-        """Capture the referenced governance owner before rendering its links."""
+        """Capture the referenced governance owner before rendering its links.
+
+        Args:
+            repository_root: The root path of the repository.
+            source_states: The captured source states of the documentation files.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenBootstrapSource]``.
+        """
         result_type = r[m.Infra.CodegenBootstrapSource]
         inputs = u.Infra.load_codegen_inputs(repository_root)
         if inputs.failure:
@@ -497,26 +524,45 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.fail(
                 "governance configuration differs from captured docs sources",
             )
-        source = inputs.value.spec.workspace.flext_source
-        if source is not None:
-            return result_type.ok(source)
-        repository = inputs.value.spec.workspace.repository
-        page = u.Infra.repository_page_url(repository)
-        if page.failure:
-            return result_type.from_failure(page)
-        if page.value.rstrip("/") != c.Infra.GITHUB_REPO_URL.rstrip("/"):
-            return result_type.fail(
-                "governance links require the referenced source and explicit ref",
-            )
-        branch = u.Infra.resolve_integration_branch(
-            repository_root,
-            policy_branch=inputs.value.spec.branch_policy.integration_branch,
-            inputs=inputs.value,
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=repository_root)
         )
-        if branch.failure:
-            return result_type.from_failure(branch)
+        if identity.failure:
+            return result_type.from_failure(identity)
+        origin = identity.value.origin_remote
+        own_governance = False
+        if origin is not None:
+            page = u.Infra.validate_git_remote_url(origin)
+            if page.failure:
+                return result_type.from_failure(page)
+            own_governance = (
+                page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL
+            )
+        if own_governance:
+            branch = u.Infra.resolve_integration_branch(
+                repository_root,
+                policy_branch=inputs.value.spec.branch_policy.integration_branch,
+                inputs=inputs.value,
+            )
+            if branch.failure:
+                return result_type.from_failure(branch)
+            ref = branch.value
+        else:
+            line = u.Infra.flext_integration_line(
+                codegen=inputs.value.spec,
+                repository_root=repository_root,
+            )
+            if line.failure:
+                return result_type.from_failure(line)
+            if c.Infra.GITHUB_REPO_URL.rsplit("/", maxsplit=1)[0] != (
+                line.value.base_url.rstrip("/")
+            ):
+                return result_type.fail(
+                    "governance owner differs from the captured dependency family",
+                )
+            ref = line.value.branch
         return result_type.ok(
-            m.Infra.CodegenBootstrapSource(url=page.value, ref=branch.value)
+            m.Infra.CodegenBootstrapSource(url=c.Infra.GITHUB_REPO_URL, ref=ref)
         )
 
 

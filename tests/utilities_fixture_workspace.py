@@ -851,7 +851,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # governed fixture must declare both.
             python_required = config.Infra.codegen.toolchain.python_required_version
             pyproject.write_text(
-                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+                f'[project]\nname = "{distribution}"\n'
+                f'version = "{config.Infra.initial_project_version}"\n'
                 f'description = "{distribution} governed fixture"\n'
                 f'requires-python = "{python_required}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'

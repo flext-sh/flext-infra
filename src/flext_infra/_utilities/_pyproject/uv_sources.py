@@ -147,10 +147,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
         root is never a member override: replacing its requirement also
         replaces uv's dependency-group selection.
         """
-        overrides = list(resolution.override_dependencies) or [
-            f"{name}{FlextInfraUtilitiesDependencyRequirements.dependency_extras(requirements, name)}"
-            for name in sorted(local_members)
-        ]
+        overrides = list(resolution.override_dependencies)
+        for name in sorted(local_members):
+            extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                requirements, name
+            )
+            override = f"{name}{extras}"
+            if override not in overrides:
+                overrides.append(override)
         for name, source in sorted(candidate_sources.items()):
             extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
                 requirements,
@@ -277,24 +281,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         # Never override the root itself: that drops its native development group.
         cls._sync_uv_candidates(
             uv,
-            candidate_sources,
-            local_requirements,
-            resolution.model_copy(
-                update={
-                    "override_dependencies": tuple(
-                        dict.fromkeys((
-                            *resolution.override_dependencies,
-                            *(
-                                member.distribution
-                                + FlextInfraUtilitiesDependencyRequirements.dependency_extras(
-                                    local_requirements, member.distribution
-                                )
-                                for member in members
-                            ),
-                        ))
-                    ),
-                },
-            ),
+            candidate_sources=candidate_sources,
+            local_members=tuple(member.distribution for member in members),
+            requirements=local_requirements,
+            resolution=resolution,
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         cls._sync_uv_constraints(

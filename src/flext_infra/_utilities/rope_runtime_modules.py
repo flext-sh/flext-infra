@@ -185,6 +185,42 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         return result if isinstance(result, p.Infra.RopeImportedName) else None
 
     @classmethod
+    def expression_name(
+        cls, scope: p.Infra.RopeScope, expression: str
+    ) -> p.Infra.RopePyName | None:
+        """Resolve a source expression through Rope's lexical evaluator.
+
+        Returns:
+            The resolved identity, or None when Rope cannot establish one.
+        """
+        result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
+            scope, expression
+        )
+        return result if isinstance(result, p.Infra.RopePyName) else None
+
+    @staticmethod
+    def qualified_name(
+        project: p.Infra.RopeProject, expression: str
+    ) -> p.Infra.RopePyName:
+        """Resolve the same qualified identity grammar as Rope wildcards.
+
+        Returns:
+            The declaration reached through the native module object graph.
+
+        Raises:
+            ValueError: When the identity does not name an attribute.
+        """
+        module, *attributes = expression.split(".")
+        if not attributes:
+            message = f"Rope identity requires an attribute: {expression}"
+            raise ValueError(message)
+        value = project.get_module(module)
+        identity = value.get_attribute(attributes[0])
+        for attribute in attributes[1:]:
+            identity = identity.get_object().get_attribute(attribute)
+        return identity
+
+    @classmethod
     def name_definition_resource_path(
         cls,
         pymodule: t.Infra.RopePyModule,

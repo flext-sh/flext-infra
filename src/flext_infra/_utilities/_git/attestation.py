@@ -11,6 +11,7 @@ import platform
 import re
 import shlex
 import sys
+from base64 import b64decode
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,7 +70,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
         key = signing_key.value
         trust = allowed_signers.value
         ssh = signing_format.value == "ssh"
-        inline = ssh and key is not None and key.startswith("key::")
+        inline = ssh and key is not None and key.startswith(("key::", "ssh-"))
+        if inline and key is not None:
+            try:
+                kind, encoded, *_ = key.removeprefix("key::").split(maxsplit=2)
+                blob = b64decode(encoded, validate=True)
+                size = int.from_bytes(blob[:4], "big")
+                if len(blob) <= 4 + size or blob[4 : 4 + size] != kind.encode("ascii"):
+                    msg = "malformed SSH public key envelope"
+                    raise ValueError(msg)
+            except ValueError:
+                return r[m.Infra.GitSigningIdentityReport].fail(
+                    "native Git signing configuration declares a malformed public key",
+                )
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
                 repo_root=root,

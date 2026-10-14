@@ -421,7 +421,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     or (path, outer.name, node.name) in unresolved
                 ):
                     continue
-                binding = cls.payload_declaration(project, path, node)
+                binding = cls.payload_declaration(
+                    project,
+                    path,
+                    f"{outer.name}.{node.name}",
+                )
                 if binding is not None:
                     return outer, node, binding
         return None

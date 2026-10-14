@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournalRelocation,
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
@@ -79,8 +80,6 @@ class FlextInfraMiseArtifactsVerification(
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
         """Verify native file and ancestry witnesses of every completed batch."""
-        from flext_infra.codegen import FlextInfraMiseArtifactsJournal
-
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
         if outcome.phase == c.Infra.CodegenStagedFilePhase.DOCS:
@@ -126,7 +125,7 @@ class FlextInfraMiseArtifactsVerification(
             )
             if observed.failure:
                 return r[bool].from_failure(observed)
-            recorded = FlextInfraMiseArtifactsJournal.source_record(
+            recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
                 expected.phase,
                 observed.value,
                 previous=expected,

@@ -31,6 +31,14 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
+        if self.producer is None:
+            producer = FlextInfraCodegenPreconditions.capture_producer()
+            if producer.failure:
+                return r[m.Infra.CodegenPlan].from_failure(producer)
+            self.producer = producer.value
+        verified = FlextInfraCodegenPreconditions.producer_current(self.producer)
+        if verified.failure:
+            return r[m.Infra.CodegenPlan].from_failure(verified)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)

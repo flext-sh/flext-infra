@@ -6,29 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
-import libcst as cst
 from flext_cli import cli
-from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import AddImportsVisitor
-from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesPrivateImportAncestry,
-    FlextInfraUtilitiesPrivateImportFacades,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
-    FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
 )
 
 
 class FlextInfraUtilitiesSemanticConstantConsumers(
-    FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
     FlextInfraUtilitiesSemanticCutoverEdits,
 ):
     """Derive constant paths from declarations and rewrite proven bindings."""
@@ -56,16 +50,18 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         changes = {
             edit.file_path: edit.changes for edit in (*declarations, *consumers.value)
         }
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(
-            m.Infra.SemanticMigrationEdit(
-                file_path=path,
-                original_source=source,
-                updated_source=working[path],
-                changes=changes[path],
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=path,
+                    original_source=source,
+                    updated_source=working[path],
+                    changes=changes[path],
+                )
+                for path, source in sources.items()
+                if source != working[path]
             )
-            for path, source in sources.items()
-            if source != working[path]
-        ))
+        )
 
     @classmethod
     def _constant_declarations(
@@ -86,20 +82,28 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         candidates = tuple(
             (path, source)
             for path, source in cls._editable_sources(sources)
-            if "Final" in source
-            and workspace.convention(path).module_policy.expected_alias == "c"
+            if any(
+                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                    parent.name
+                )
+                == "c"
+                for parent in path.parents
+                if parent.is_relative_to(workspace.repository_root)
+            )
         )
         if not candidates:
             return ()
+        cli.display_text(
+            f"census: resolve constant declaration qualifiers in {len(candidates)} modules"
+        )
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         project = runtime.snapshot_project(workspace.rope_project, sources)
         try:
             return tuple(
                 edit
                 for path, source in candidates
-                if (
-                    edit := cls._constant_annotation_edit(project, path, source)
-                ) is not None
+                if (edit := cls._constant_annotation_edit(project, path, source))
+                is not None
             )
         finally:
             project.close()
@@ -121,84 +125,50 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             path.relative_to(Path(project.root.real_path)).as_posix(),
         )
         module = project.get_pymodule(resource)
-        final = project.get_module("typing").get_attribute("Final")
         classvar = project.get_module("typing").get_attribute("ClassVar")
-        evaluate = runtime.runtime_callable("rope.base.evaluate", "eval_str")
-        wrapper = MetadataWrapper(cst.parse_module(source))
-        positions = wrapper.resolve(PositionProvider)
-        offsets = [0]
-        for line in source.splitlines(keepends=True):
-            offsets.append(offsets[-1] + len(line))
-
-        class Rewrite(cst.CSTTransformer):
-            """Rewrite only proven typing qualifiers in constants class suites."""
-
-            depth: int = 0
-            functions: int = 0
-            changes: int = 0
-
-            def visit_ClassDef(self, node: cst.ClassDef) -> None:
-                self.depth += 1
-
-            def leave_ClassDef(
-                self, original_node: cst.ClassDef, updated_node: cst.ClassDef
-            ) -> cst.ClassDef:
-                self.depth -= 1
-                return updated_node
-
-            def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
-                self.functions += 1
-
-            def leave_FunctionDef(
-                self,
-                original_node: cst.FunctionDef,
-                updated_node: cst.FunctionDef,
-            ) -> cst.FunctionDef:
-                self.functions -= 1
-                return updated_node
-
-            def leave_AnnAssign(
-                self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
-            ) -> cst.AnnAssign:
-                annotation = original_node.annotation.annotation
-                if (
-                    not self.depth
-                    or self.functions
-                    or not isinstance(annotation, cst.Subscript)
-                ):
-                    return updated_node
-                position = positions[annotation.value].start
-                scope = runtime.scope_at(
-                    module, offsets[position.line - 1] + position.column
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        qualifiers = {"qualifier": "name=typing.Final"}
+        statements = refactors.semantic_regions(
+            module,
+            "${target}: ${qualifier}[${payload}] = ${value}",
+            arguments=qualifiers,
+        )
+        cli.display_text(
+            f"census: {path.name}: identity-proven Final declarations={len(statements)}"
+        )
+        rewrites: list[m.Infra.SourceRewrite] = []
+        for start, end in statements:
+            scope = runtime.scope_at(module, start)
+            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                continue
+            existing = scope.lookup("ClassVar")
+            if existing is not None and not runtime.same_name(classvar, existing):
+                message = f"constant ClassVar binding is shadowed in {path}"
+                raise ValueError(message)
+            rewrites.extend(
+                m.Infra.SourceRewrite(start=left, end=right, text="ClassVar")
+                for left, right in refactors.semantic_regions(
+                    module,
+                    "${qualifier}",
+                    arguments=qualifiers,
+                    start=start,
+                    end=end,
                 )
-                binding = evaluate(
-                    scope, wrapper.module.code_for_node(annotation.value)
-                )
-                if not runtime.same_name(final, binding):
-                    return updated_node
-                existing = scope.lookup("ClassVar")
-                if existing is not None and not runtime.same_name(classvar, existing):
-                    message = f"constant ClassVar binding is shadowed in {path}"
-                    raise ValueError(message)
-                self.changes += 1
-                return updated_node.with_changes(
-                    annotation=updated_node.annotation.with_changes(
-                        annotation=annotation.with_changes(value=cst.Name("ClassVar"))
-                    )
-                )
-
-        rewrite = Rewrite()
-        updated = wrapper.module.visit(rewrite)
-        if not rewrite.changes:
+            )
+        if not rewrites:
             return None
-        context = CodemodContext()
-        AddImportsVisitor.add_needed_import(context, "typing", "ClassVar")
-        updated = AddImportsVisitor(context).transform_module(updated)
+        changed = refactors.content_change(resource, source, rewrites)
+        proposed = runtime.build_string_module(
+            project, changed.new_contents, resource=resource
+        )
+        imports = runtime.module_imports_for_pymodule(project, proposed)
+        imports.add_import(runtime.from_import("typing", 0, [("ClassVar", None)]))
+        imports.remove_duplicates()
         return m.Infra.SemanticMigrationEdit(
             file_path=path,
             original_source=source,
-            updated_source=updated.code,
-            changes=(f"typing.Final class constants -> ClassVar: {rewrite.changes}",),
+            updated_source=imports.get_changed_source(),
+            changes=(f"typing.Final class constants -> ClassVar: {len(rewrites)}",),
         )
 
     @classmethod
@@ -207,99 +177,25 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Resolve every imported constants owner once for the complete census.
+        """Resolve imported constants in one closed Rope graph.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
-
+            The complete identity-bound consumer edits.
         """
-        facade_owner = FlextInfraUtilitiesPrivateImportFacades
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
-        imports = tuple(
-            node
-            for path, source in cls._editable_sources(sources)
-            for node in ast.walk(ast.parse(source, filename=str(path)))
-            if isinstance(node, ast.ImportFrom)
-            and node.module
-            and node.module.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
-            and not node.level
-        )
-        if not any(
-            imported.name not in c.Infra.ALIAS_NAMES
-            or (imported.name == "c" and imported.asname is not None)
-            for node in imports
-            for imported in node.names
-        ):
-            # Canonical non-constant facade letters and unrenamed c require no
-            # constant-owner cutover; their identities are already explicit.
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
-        statements = tuple(ast.unparse(node) for node in imports)
-        modules = facade_owner.source_modules(sources, statements)
-        cli.display_text(f"census: indexed {len(modules)} source identities")
-        discovered = facade_owner.discover(modules)
-        owners = {
-            package: tuple(owner for owner in declarations if owner[1] == "c")
-            for package, declarations in discovered.items()
-        }
-        bindings, _exports = facade_owner.declared_exports(modules)
-        cli.display_text(f"census: indexed {len(bindings)} declared bindings")
-        ancestry = FlextInfraUtilitiesPrivateImportAncestry
-        bases = ancestry.FlextInfraUtilitiesPrivateImportAncestry.class_bases(
-            modules,
-        )
-        references: t.MutableMappingKV[t.Pair[str, str], str | None] = {}
-        cli.display_text(f"census: indexed {len(bases)} class declarations")
-        family_modules = frozenset(
-            name
-            for declarations in owners.values()
-            for _tree, _alias, _root, file_name in declarations
-            for name in (Path(file_name).stem, f"_{Path(file_name).stem}")
-        )
-        constant_names = frozenset((
-            "c",
-            *(
-                root_name
-                for declarations in owners.values()
-                for _tree, _alias, root_name, _file_name in declarations
-            ),
-            *(
-                identity.rsplit(".", 1)[-1]
-                for identity in bases
-                if family_modules.intersection(identity.split("."))
-            ),
-        ))
+        project = runtime.snapshot_project(rope_workspace.rope_project, sources)
+        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]] = {}
+        try:
 
-        def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-            if (
-                path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
-                and (path.parent / c.Infra.CONSTANTS_PY).is_file()
-            ):
-                return source, ()
-            # Declaration parts compose c; importing that still-assembling
-            # facade inside its own parts is a dependency cycle.
-            if family_modules.intersection(
-                path.relative_to(rope_workspace.repository_root).parts
-            ):
-                return source, ()
-            if not any(
-                imported.name in constant_names
-                and not (imported.name == "c" and imported.asname is None)
-                for node in ast.walk(ast.parse(source, filename=str(path)))
-                if isinstance(node, ast.ImportFrom)
-                and node.module
-                and node.module.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
-                for imported in node.names
-            ):
-                return source, ()
-            return cls._rewrite_constant_consumer(
-                path,
-                source,
-                rope_workspace,
-                (owners, bindings, bases),
-                references,
-            )
+            def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+                return cls._rewrite_constant_consumer(
+                    path, source, rope_workspace, project, paths
+                )
 
-        return cls._semantic_edits(cls._editable_sources(sources), rewrite)
+            return cls._semantic_edits(cls._editable_sources(sources), rewrite)
+        finally:
+            project.close()
 
     @classmethod
     def _rewrite_constant_consumer(
@@ -307,102 +203,211 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         path: Path,
         source: str,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        index: t.Infra.ConstantFacadeIndex,
-        references: t.MutableMappingKV[t.Pair[str, str], str | None],
+        project: p.Infra.RopeProject,
+        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
-        facade_owner = FlextInfraUtilitiesPrivateImportFacades
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         convention = rope_workspace.convention(path)
         policy = convention.module_policy
         if policy.expected_alias == "c" or policy.expected_family == "Constants":
             return source, ()
+        if (
+            path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
+            and (path.parent / c.Infra.CONSTANTS_PY).is_file()
+        ):
+            return source, ()
+        if any(
+            FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(parent.name)
+            == "c"
+            for parent in path.parents
+            if parent.is_relative_to(rope_workspace.repository_root)
+        ):
+            return source, ()
         layout = convention.project_layout
         if layout is None:
             return source, ()
-        tree = ast.parse(source, filename=str(path))
-        package = cls._constant_facade_package(tree, layout.package_name, path)
-        context = (tree, package, index, references)
-        removals, replacements = cls._constant_replacement_state(context)
-        if not replacements:
+        resource = project.get_resource(
+            path.relative_to(Path(project.root.real_path)).as_posix()
+        )
+        module = project.get_pymodule(resource)
+        imports = runtime.module_imports_for_pymodule(project, module)
+        statements = tuple(
+            statement
+            for statement in imports.imports
+            if isinstance(statement.import_info, p.Infra.RopeFromImport)
+            and statement.import_info.module_name.startswith(
+                c.Infra.PKG_PREFIX_UNDERSCORE
+            )
+            and not statement.import_info.level
+        )
+        if not any(
+            name not in c.Infra.ALIAS_NAMES or (name == "c" and alias is not None)
+            for statement in statements
+            for name, alias in statement.import_info.names_and_aliases
+        ):
             return source, ()
-        facade_owner.require_unshadowed_alias(
-            tree,
-            package,
-            "c",
-            path,
-            removals,
+        package = cls._constant_facade_package(statements, layout.package_name, path)
+        if package not in paths:
+            paths[package] = cls._constant_public_paths(project, package)
+        scope = runtime.scope_at(module, 0)
+        bindings = scope.get_names()
+        rewrites: list[m.Infra.SourceRewrite] = []
+        removals: t.MutableMappingKV[int, set[str]] = {}
+        descriptions: list[str] = []
+        for statement in statements:
+            info = statement.import_info
+            for imported, alias in info.names_and_aliases:
+                name = alias or imported
+                binding = bindings.get(name)
+                if binding is None or (imported == "c" and alias is None):
+                    continue
+                references = tuple(
+                    reference
+                    for reference, candidate in paths[package].items()
+                    if cls._constant_owner_binding(candidate, binding)
+                )
+                if not references:
+                    continue
+                depth = min(reference.count(".") for reference in references)
+                references = tuple(
+                    reference
+                    for reference in references
+                    if reference.count(".") == depth
+                )
+                if len(references) != 1:
+                    message = (
+                        f"constant {name} has ambiguous public owners in {path}: "
+                        f"{references}"
+                    )
+                    raise ValueError(message)
+                finder = refactors.create_occurrence_finder(
+                    project, name, binding, imports=False, in_hierarchy=False
+                )
+                occurrences = tuple(finder.find_occurrences(resource=resource))
+                if any(item.is_defined() for item in occurrences):
+                    continue
+                if cls._constant_composition_base(module, binding):
+                    continue
+                if not occurrences:
+                    continue
+                for occurrence in occurrences:
+                    local_scope = runtime.scope_at(module, occurrence.offset)
+                    existing = local_scope.lookup("c")
+                    if existing is not None and not runtime.same_name(
+                        paths[package]["c"], existing
+                    ):
+                        message = f"constant facade c is shadowed in {path}"
+                        raise ValueError(message)
+                    start, end = occurrence.get_word_range()
+                    rewrites.append(
+                        m.Infra.SourceRewrite(start=start, end=end, text=references[0])
+                    )
+                removals.setdefault(statement.start_line, set()).add(name)
+                descriptions.append(f"constant consumer {name} -> {references[0]}")
+        if not rewrites:
+            return source, ()
+        changed = refactors.content_change(resource, source, rewrites)
+        proposed = runtime.build_string_module(
+            project, changed.new_contents, resource=resource
         )
-        plan = m.Infra.PrivateImportRewritePlan(
-            removals={module: frozenset(names) for module, names in removals.items()},
-            obsolete_imports={},
-            replacements=replacements,
-            public_imports={"c": package},
-        )
-        updated = cls._rewrite_private_import_source(
-            source,
-            plan,
-            runtime_public_imports=frozenset({"c"}),
-        )
-        return updated, tuple(
-            f"constant consumer {identity} -> {reference}"
-            for identity, reference in sorted(replacements.items())
-        )
+        organized = runtime.module_imports_for_pymodule(project, proposed)
+        for statement in organized.imports:
+            info = statement.import_info
+            removed = removals.get(statement.start_line, set())
+            if not removed or not isinstance(info, p.Infra.RopeFromImport):
+                continue
+            statement.import_info = runtime.from_import(
+                info.module_name,
+                info.level,
+                [
+                    (name, alias)
+                    for name, alias in info.names_and_aliases
+                    if (alias or name) not in removed
+                ],
+            )
+        organized.add_import(runtime.from_import(package, 0, [("c", None)]))
+        organized.remove_duplicates()
+        return organized.get_changed_source(), tuple(descriptions)
 
     @classmethod
-    def _constant_replacement_state(
+    def _constant_public_paths(
         cls,
-        context: t.Infra.ConstantConsumerContext,
-    ) -> t.Pair[
-        t.MutableMappingKV[str, set[str]],
-        t.MutableStrMapping,
-    ]:
-        tree, package, index, references = context
-        facade_owner = FlextInfraUtilitiesPrivateImportFacades
-        owners, bindings, bases = index
-        removals: t.MutableMappingKV[str, set[str]] = {}
-        replacements: t.MutableStrMapping = {}
-        for node in ast.walk(tree):
-            if (
-                not isinstance(node, ast.ImportFrom)
-                or not node.module
-                or node.level
-                or not node.module.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
-            ):
+        project: p.Infra.RopeProject,
+        package: str,
+    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+        """Discover actual facade members and inherited identities once per package.
+
+        Returns:
+            Public reference paths bound by the constants facade's Rope graph.
+        """
+        facade = (
+            project
+            .get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
+            .get_attributes()
+            .get("c")
+        )
+        if facade is None:
+            return {}
+        found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}
+        pending = [("c", facade.get_object(), ())]
+        while pending:
+            prefix, owner, ancestors = pending.pop()
+            if owner in ancestors:
                 continue
-            for imported in node.names:
-                if imported.name == "c" and imported.asname is None:
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
+                continue
+            for name, binding in owner.get_attributes().items():
+                if name.startswith("_"):
                     continue
-                local_name = imported.asname or imported.name
-                if cls._is_composition_base(tree, local_name):
-                    continue
-                qualified = f"{node.module}.{imported.name}"
-                key = package, qualified
-                if key not in references:
-                    references[key] = facade_owner.public_reference(
-                        owners=owners.get(package, ()),
-                        package=package,
-                        qualified=qualified,
-                        bindings=bindings,
-                        class_bases=bases,
-                    )
-                reference = references[key]
-                if reference is None:
-                    continue
-                removals.setdefault(node.module, set()).add(imported.name)
-                replacements[qualified] = reference
-        return removals, replacements
+                reference = f"{prefix}.{name}"
+                found[reference] = binding
+                value = binding.get_object()
+                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
+                    pending.append((reference, value, (*ancestors, owner)))
+        return found
 
     @staticmethod
-    def _is_composition_base(tree: ast.AST, local_name: str) -> bool:
-        return any(
-            isinstance(base, ast.Name) and base.id == local_name
-            for declaration in ast.walk(tree)
-            if isinstance(declaration, ast.ClassDef)
-            for base in declaration.bases
-        )
+    def _constant_owner_binding(
+        candidate: p.Infra.RopePyName, binding: p.Infra.RopePyName
+    ) -> bool:
+        """Prove a published value or a constants composition provider identity."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if runtime.same_name(candidate, binding):
+            return True
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        wanted = binding.get_object()
+        if not types.abstract_class(wanted):
+            return False
+        pending = [candidate.get_object()]
+        visited: list[p.Infra.RopePyObject] = []
+        while pending:
+            owner = pending.pop()
+            if owner in visited or not types.abstract_class(owner):
+                continue
+            if owner is wanted:
+                return True
+            visited.append(owner)
+            pending.extend(owner.get_superclasses())
+        return False
+
+    @staticmethod
+    def _constant_composition_base(
+        module: p.Infra.RopePyModule,
+        binding: p.Infra.RopePyName,
+    ) -> bool:
+        """Keep provider imports used in a class's composition header."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        for scope in runtime.scope_at(module, 0).get_scopes():
+            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                continue
+            if binding.get_object() in scope.pyobject.get_superclasses():
+                return True
+        return False
 
     @staticmethod
     def _constant_facade_package(
-        tree: ast.Module,
+        statements: t.SequenceOf[p.Infra.RopeImportStatement],
         declared_package: str,
         path: Path,
     ) -> str:
@@ -416,12 +421,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         public_packages = {
-            node.module
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
-            and node.module
-            and not node.level
-            and any(item.name == "c" and item.asname is None for item in node.names)
+            info.module_name
+            for statement in statements
+            if isinstance((info := statement.import_info), p.Infra.RopeFromImport)
+            and any(
+                name == "c" and alias is None for name, alias in info.names_and_aliases
+            )
         }
         if len(public_packages) > 1:
             msg = f"multiple constants facades bound as c in {path}"

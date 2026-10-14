@@ -225,6 +225,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             transaction_id=transaction_id,
             sources=all_sources,
             directories=transaction_directories,
+            producer=self._producer.value,
         )
         if staging_journal.failure:
             return result_type.from_failure(staging_journal)
@@ -614,7 +615,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(incomplete)
         finalized = self._publish_prepared_generation(
             layout,
-            publications.value,
+            staged,
             admission,
             bound.value.journal,
         )

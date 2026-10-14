@@ -24,6 +24,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
+from flext_infra._utilities._semantic_cutover.contracts import (
+    FlextInfraUtilitiesSemanticContracts,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesSemanticCutoverBase(
+    FlextInfraUtilitiesSemanticContracts,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticCutoverNesting,
@@ -103,6 +107,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
                 | c.Infra.SemanticCutoverPhase.CLASS_NESTING
                 | c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+                | c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
                 | c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT
                 | c.Infra.SemanticCutoverPhase.FACADE_BASE
@@ -201,6 +206,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             ),
             c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS: lambda: (
                 cls._plan_constant_consumers(rope_workspace, sources)
+            ),
+            c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION: lambda: (
+                cls._plan_rope_contracts(rope_workspace, sources)
             ),
             c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_api_aliases(
                 root, sources, selected

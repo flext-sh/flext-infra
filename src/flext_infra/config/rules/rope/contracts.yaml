@@ -1,0 +1,37 @@
+rules:
+  - id: pydantic-annotated-factory
+    pattern: '${name}: ${annotated}[${contract}, ${field}(default_factory=${factory})]'
+    goal: '${name}: ${contract} = ${field}(default_factory=${factory})'
+    arguments:
+      annotated: name=typing.Annotated
+      field: name=pydantic.Field
+  - id: pydantic-annotated-default
+    pattern: '${name}: ${annotated}[${contract}, ${field}(default=${default})]'
+    goal: '${name}: ${contract} = ${default}'
+    arguments:
+      annotated: name=typing.Annotated
+      field: name=pydantic.Field
+  - id: pydantic-empty-list-factory
+    pattern: '${name}: ${collection}[${element}] = ${field}(default_factory=${collection})'
+    goal: '${name}: ${collection}[${element}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${element}])))'
+    arguments:
+      collection: name=__builtin__.list
+      field: name=pydantic.Field
+    imports:
+      - from flext_core import u
+      - from typing_extensions import TypeForm
+    bindings:
+      u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
+      TypeForm: typing_extensions.TypeForm
+  - id: pydantic-empty-dict-factory
+    pattern: '${name}: ${collection}[${key}, ${value}] = ${field}(default_factory=${collection})'
+    goal: '${name}: ${collection}[${key}, ${value}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${key}, ${value}])))'
+    arguments:
+      collection: name=__builtin__.dict
+      field: name=pydantic.Field
+    imports:
+      - from flext_core import u
+      - from typing_extensions import TypeForm
+    bindings:
+      u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
+      TypeForm: typing_extensions.TypeForm

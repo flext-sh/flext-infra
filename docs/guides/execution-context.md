@@ -709,6 +709,11 @@ keyring. Undeclared settings preserve Git's absent-key outcome (`1`, with no std
 or stderr) and nullable references, not an empty path. Empty declarations, unsupported
 signing formats and native query failures remain errors. File references can point to
 unavailable files; discovery does not claim verified trust or an observed fingerprint.
+For SSH, Git's `key::` form and its accepted deprecated raw `ssh-` form are literal
+public declarations, never paths. Their base64 envelope and encoded key-type agreement
+are checked without reading files or contacting an agent; malformed declarations fail
+without exporting their payload. Algorithm usability and trust still require the
+selected native signing or verification action, not this observation.
 The CLI emits the typed report as JSON, excluding native values. Neither `status` nor
 original check/test capture selects signing: capture binds the typed target policy and
 producer evidence. Direct `u.Infra.git_create_gate_attestation` and

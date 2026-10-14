@@ -393,6 +393,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The scope identity report of the transaction scope.
 
         """
+        if self._producer.failure:
+            return r[T].from_failure(self._producer)
+        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        if producer.failure:
+            return r[T].from_failure(producer)
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)
@@ -456,6 +461,13 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        producer_current = FlextInfraCodegenPreconditions.producer_current(
+            self._producer.value
+        )
+        if producer_current.failure:
+            return result_type.from_failure(producer_current)
         if set(roots.values()) - self._file_leases.keys():
             return result_type.fail("file session requires every destination lease")
         transaction_id = secrets.token_hex(16)
@@ -565,6 +577,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             transaction_id=transaction_id,
             sources=tuple(("docs", source) for source in inputs),
             directories=directories,
+            producer=self._producer.value,
         )
         if journal.failure:
             return result_type.from_failure(journal)
@@ -622,6 +635,40 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[t.VariadicTuple[Path]]
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        producer_current = FlextInfraCodegenPreconditions.producer_current(
+            self._producer.value
+        )
+        if producer_current.failure:
+            return result_type.from_failure(producer_current)
+        producer = self._producer.value
+        combined = FlextInfraCodegenPreconditions.unique_states((
+            *analysis.inputs,
+            *producer.inputs,
+        ))
+        if combined.failure:
+            return result_type.from_failure(combined)
+        files: list[m.Infra.CodegenFilePlan] = []
+        for plan in analysis.files:
+            sources = FlextInfraCodegenPreconditions.unique_states((
+                *plan.source_states,
+                *producer.inputs,
+            ))
+            if sources.failure:
+                return result_type.from_failure(sources)
+            files.append(plan.model_copy(update={"source_states": sources.value}))
+        analysis = analysis.model_copy(
+            update={
+                "inputs": combined.value,
+                "files": tuple(files),
+                "generator_trees": producer.generator_trees,
+            }
+        )
+        if batch_admission is not None and batch_admission.analysis != analysis:
+            return result_type.fail(
+                "external batch admission differs from captured producer context"
+            )
         if batch_admission is None:
             admitted = FlextInfraMisePublication.admit_batch(analysis)
             if admitted.failure:

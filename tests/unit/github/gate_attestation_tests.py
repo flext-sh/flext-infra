@@ -15,7 +15,7 @@ from shlex import quote
 import pytest
 from flext_cli import u as cli_u
 
-from flext_infra import c, m, p
+from flext_infra import c, config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 from tests import t, tm, u
@@ -75,12 +75,8 @@ class TestsFlextInfraGithubGateAttestation:
             "ATTEST_PROBE_DELAY ?= 0\n",
             encoding="utf-8",
         )
-        (root / "pyproject.toml").write_text(
-            "[project]\nname='fixture'\n",
-            encoding="utf-8",
-        )
+        u.Tests.WorktreeFixture.write_python_project(root, "fixture")
         source = root / c.Infra.DEFAULT_SRC_DIR
-        source.mkdir()
         (source / "consumer.py").write_text("import os\n", encoding="utf-8")
         tm.ok(
             u.Infra.git_add_paths(
@@ -90,7 +86,7 @@ class TestsFlextInfraGithubGateAttestation:
                         "Makefile",
                         "pyproject.toml",
                         "tracked.txt",
-                        f"{c.Infra.DEFAULT_SRC_DIR}/consumer.py",
+                        c.Infra.DEFAULT_SRC_DIR,
                     ),
                 ),
             ),
@@ -186,13 +182,28 @@ class TestsFlextInfraGithubGateAttestation:
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             assert report.digest == f"sha256:{digest}"
 
+    @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
     def test_signing_identity_reads_only_native_public_references(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        literal_prefix: str | None,
     ) -> None:
         """Public identity queries preserve provenance without exporting key bytes."""
         allowed = signed_repository_factory(tmp_path)
+        metadata = tm.ok(u.Infra.read_project_metadata_result(tmp_path))
+        tm.that(metadata.project.version, eq=config.Infra.initial_project_version)
+        tm.that(
+            metadata.project.requires_python,
+            eq=config.Infra.codegen.toolchain.python_required_version,
+        )
+        key_path = tmp_path / "signing_key"
+        public = key_path.with_suffix(".pub").read_text(encoding="utf-8").strip()
+        if literal_prefix is not None:
+            u.Tests.git_bootstrap(
+                tmp_path,
+                ("config", "user.signingkey", literal_prefix + public),
+            )
         u.Tests.git_bootstrap(
             tmp_path,
             ("config", "gpg.ssh.allowedSignersFile", str(allowed)),
@@ -203,7 +214,8 @@ class TestsFlextInfraGithubGateAttestation:
             )
         )
         tm.that(report.signing_format, eq="ssh")
-        tm.that(report.key_path, eq=tmp_path / "signing_key")
+        tm.that(report.key_path, eq=key_path if literal_prefix is None else None)
+        tm.that(report.inline_public_key, eq=literal_prefix is not None)
         tm.that(report.allowed_signers_path, eq=allowed)
         tm.that(report.public_fingerprint, eq=None)
         tm.that(
@@ -217,9 +229,51 @@ class TestsFlextInfraGithubGateAttestation:
             tm.that(item.process.raw_return_code, eq=0)
         encoded = report.model_dump_json(round_trip=True)
         tm.that(encoded, lacks=["BEGIN OPENSSH PRIVATE KEY", '"value"'])
+        assert public not in encoded
         restored = m.Infra.GitSigningIdentityReport.model_validate_json(encoded)
         tm.that(restored.key_path, eq=report.key_path)
         tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
+
+    @pytest.mark.parametrize("literal_prefix", ["", "key::"])
+    @pytest.mark.parametrize(
+        "corruption",
+        ["empty", "missing-payload", "encoding", "type", "truncated"],
+    )
+    def test_signing_identity_rejects_malformed_inline_public_declarations(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+        literal_prefix: str,
+        corruption: str,
+    ) -> None:
+        """Native literal prefixes never send malformed public text into a Path."""
+        signed_repository_factory(tmp_path)
+        public = (tmp_path / "signing_key.pub").read_text(encoding="utf-8").strip()
+        kind, encoded, *_ = public.split(maxsplit=2)
+        match corruption:
+            case "empty":
+                payload = ""
+            case "missing-payload":
+                payload = kind
+            case "encoding":
+                payload = f"{kind} !{encoded}"
+            case "type":
+                payload = f"{kind}-invalid {encoded}"
+            case "truncated":
+                payload = f"{kind} {encoded[:4]}"
+            case _:
+                raise AssertionError(corruption)
+        u.Tests.git_bootstrap(
+            tmp_path,
+            ("config", "user.signingkey", literal_prefix + payload),
+        )
+        failed = u.Infra.git_signing_identity(
+            m.Infra.GitRepoRequest(repo_root=tmp_path)
+        )
+        tm.fail(failed)
+        assert failed.error is not None
+        if payload:
+            assert payload not in failed.error
 
     @pytest.mark.parametrize(
         "declarations",

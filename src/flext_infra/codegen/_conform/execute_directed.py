@@ -110,6 +110,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            producer=self.producer,
         )
         root = request.root.expanduser().resolve()
         engine = FlextInfraCodegenPreconditions.rendering_engine(root)

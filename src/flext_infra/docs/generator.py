@@ -77,7 +77,14 @@ class FlextInfraDocGenerator(
         self,
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Admit and settle one captured batch before another batch is prepared."""
+        """Admit and settle one captured batch before another batch is prepared.
+
+        Args:
+            bundle: The batch of docs generation artifacts to publish.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+        """
         roots = {
             f"@docs-{index}": path
             for index, path in enumerate(
@@ -279,7 +286,12 @@ class FlextInfraDocGenerator(
     def prepare_batches(
         self,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Yield the next captured scope only after the caller settles its batch."""
+        """Yield the next captured scope only after the caller settles its batch.
+
+        Returns:
+            An iterator over ``p.Result[m.Infra.DocsGenerationBundle]`` for each prepared batch.
+
+        """
         return self._prepare_batches(self._configured_request())
 
     @override

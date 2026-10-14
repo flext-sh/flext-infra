@@ -266,6 +266,12 @@ class FlextInfraStagedPackage:
             workspace,
             *(workspace / declaration.path for declaration in declarations.value),
         ):
+            if not (repository / c.PYPROJECT_FILENAME).is_file():
+                # A submodule without a pyproject.toml is not a governed Python
+                # package (e.g. an infrastructure inventory repository tracked
+                # beside the flext members); the layout contract is undefined
+                # for it and the candidate discovery must skip it silently.
+                continue
             layout = u.Infra.layout(repository)
             if layout is not None:
                 if layout.package_name in layouts:

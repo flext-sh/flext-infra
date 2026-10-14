@@ -50,6 +50,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return cls._observe_publication(request)
         root = request.root.expanduser().resolve()
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        if producer.failure:
+            return r[m.Infra.CodegenResult].from_failure(producer)
         prelude = cls._validated_request_prelude(root, initial_workspace)
         if prelude.failure:
             return r[m.Infra.CodegenResult].from_failure(prelude)
@@ -66,6 +69,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             request=request,
             initial_workspace=initial_workspace,
             ports=ports,
+            producer=producer.value,
         )
         return service.execute()
 
@@ -240,6 +244,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
+        if self.producer is None:
+            producer = FlextInfraCodegenPreconditions.capture_producer()
+            if producer.failure:
+                return r[m.Infra.CodegenResult].from_failure(producer)
+            self.producer = producer.value
+        verified_producer = FlextInfraCodegenPreconditions.producer_current(
+            self.producer
+        )
+        if verified_producer.failure:
+            return r[m.Infra.CodegenResult].from_failure(verified_producer)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         if (
@@ -273,7 +287,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             }:
                 return self._execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
-            transaction = FlextInfraCodegenTransaction(mise_owner)
+            transaction = FlextInfraCodegenTransaction(
+                mise_owner, producer=self.producer
+            )
             return transaction.run_locked(
                 prepare=False,
                 operation=lambda _scope_root: self._execute_plan(request),
@@ -309,6 +325,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         }
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            producer=self.producer,
         )
 
         def publish(scope_root: Path) -> p.Result[bool]:
@@ -462,7 +479,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "partial codegen apply is prohibited; use the complete all surface",
             )
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
-        transaction = FlextInfraCodegenTransaction(mise_owner)
+        transaction = FlextInfraCodegenTransaction(mise_owner, producer=self.producer)
         root = request.root.expanduser().resolve()
         roots = {
             f"@bootstrap-{index}": (root / repository.path).resolve()
@@ -742,6 +759,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction = FlextInfraCodegenTransaction(
             mise_owner,
             participant_policy=policy.value,
+            producer=self.producer,
         )
         published = transaction.run_locked(
             prepare=True,

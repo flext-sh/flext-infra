@@ -7,15 +7,22 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+import sys
 import tomllib
 from collections.abc import MutableMapping
+from functools import partial
+from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import unquote, urlsplit
 
 from flext_infra import c, m, r, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
+)
+from flext_infra.workspace.environment_provenance import (
+    FlextInfraWorkspaceEnvironmentProvenance,
 )
 
 if TYPE_CHECKING:
@@ -26,6 +33,336 @@ _ENGINE_DISTRIBUTION = "flext-infra"
 
 class FlextInfraCodegenPreconditions:
     """Validate source consistency and receipt ownership before publishing."""
+
+    @classmethod
+    def capture_producer(cls) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Elect physical providers and pin their code, resources and metadata.
+
+        Loaded names nominate providers; cold import resolution and native
+        descriptor inventory authenticate them before any planning evaluation.
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        namespaces = {
+            base.__module__.partition(".")[0]
+            for facade in (c, m, u)
+            for base in facade.__mro__
+            if base.__module__.partition(".")[0] not in sys.stdlib_module_names
+        }
+        roots: MutableMapping[str, Path] = {}
+        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        trees: MutableMapping[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
+        owners: MutableMapping[str, set[str]] = {name: set() for name in namespaces}
+        for namespace in sorted(namespaces):
+            spec = PathFinder.find_spec(namespace)
+            if spec is None:
+                return result_type.fail(
+                    f"producer import is no longer elected: {namespace}"
+                )
+            if spec.submodule_search_locations:
+                selected = r[Path | None].create_from_callable(
+                    partial(u.Infra.declared_package_dir, namespace)
+                )
+                if selected.failure:
+                    return result_type.from_failure(selected)
+                if selected.value is None:
+                    return result_type.fail(
+                        f"producer package root is absent: {namespace}"
+                    )
+                root = selected.value.absolute()
+                inventory = u.Cli.atomic_inventory_physical_tree(root)
+                if inventory.failure:
+                    return result_type.from_failure(inventory)
+                trees[root] = inventory.value
+                paths = tuple(
+                    item.path
+                    for item in inventory.value.entries
+                    if item.kind == "file"
+                    and c.Infra.DUNDER_PYCACHE not in item.path.parts
+                )
+            elif spec.origin is not None:
+                root = Path(spec.origin).absolute()
+                paths = (root,)
+            else:
+                return result_type.fail(
+                    f"producer import has no physical origin: {namespace}"
+                )
+            roots[namespace] = root
+            loaded = FlextInfraWorkspaceEnvironmentProvenance.loaded_import_sources(
+                namespace
+            )
+            if loaded.failure:
+                return result_type.from_failure(loaded)
+            for symbol, origin, class_source in loaded.value:
+                physical = Path(class_source or origin).absolute()
+                if physical != root and not physical.is_relative_to(root):
+                    return result_type.fail(
+                        f"producer loaded source differs from elected provider: "
+                        f"{symbol}={physical}; elected={root}"
+                    )
+            for path in paths:
+                captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                states[path] = captured.value
+        for distribution in u.installed_distributions():
+            declared = distribution.files
+            if declared is None:
+                return result_type.fail(
+                    "producer distribution has no native file manifest"
+                )
+            metadata_roots = {
+                Path(distribution.locate_file(item)).absolute().parent
+                for item in declared
+                if item.parent.name.endswith(".dist-info")
+            }
+            for root in sorted(metadata_roots):
+                inventory = u.Cli.atomic_inventory_physical_tree(root)
+                if inventory.failure:
+                    return result_type.from_failure(inventory)
+                trees[root] = inventory.value
+                for entry in inventory.value.entries:
+                    if entry.kind != "file":
+                        continue
+                    captured = u.Cli.atomic_read_binary_file_state(
+                        entry.path, required=True
+                    )
+                    if captured.failure:
+                        return result_type.from_failure(captured)
+                    states[entry.path] = captured.value
+            for item in declared:
+                if item.suffix == ".pth":
+                    path = Path(distribution.locate_file(item)).absolute()
+                    captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+                    if captured.failure:
+                        return result_type.from_failure(captured)
+                    states[path] = captured.value
+            name = distribution.metadata.get("Name")
+            if not isinstance(name, str) or not name.strip():
+                return result_type.fail("producer distribution has no declared name")
+            paths = tuple(
+                Path(distribution.locate_file(item)).absolute() for item in declared
+            )
+            for namespace, root in roots.items():
+                if any(path == root or path.is_relative_to(root) for path in paths):
+                    owners[namespace].add(name)
+            receipts = tuple(
+                state
+                for path, state in states.items()
+                if path.parent in metadata_roots
+                and path.name == c.Infra.DISTRIBUTION_DIRECT_URL_FILE
+            )
+            for state in receipts:
+                content = state.content
+                if content is None:
+                    return result_type.fail(
+                        f"producer metadata bytes are absent: {state.path}"
+                    )
+                parsed = r[m.Infra.DirectUrlReceipt].create_from_callable(
+                    partial(m.Infra.DirectUrlReceipt.model_validate_json, content)
+                )
+                if parsed.failure:
+                    return result_type.from_failure(parsed)
+                if parsed.value.dir_info is None or not parsed.value.dir_info.editable:
+                    continue
+                location = urlsplit(parsed.value.url)
+                if location.scheme != "file" or location.netloc not in {
+                    "",
+                    "localhost",
+                }:
+                    return result_type.fail(
+                        f"editable producer has no local physical root: {parsed.value.url}"
+                    )
+                project = Path(unquote(location.path)).absolute()
+                captured = u.Cli.atomic_read_binary_file_state(
+                    project / c.PYPROJECT_FILENAME, required=True
+                )
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                states[captured.value.path] = captured.value
+                metadata = u.Infra.read_project_metadata_result(project)
+                if metadata.failure:
+                    return result_type.from_failure(metadata)
+                namespace = metadata.value.package_name
+                if namespace in roots:
+                    if not roots[namespace].is_relative_to(project):
+                        return result_type.fail(
+                            f"producer source is outside declared editable root: {namespace}"
+                        )
+                    owners[namespace].add(name)
+        for namespace, providers in owners.items():
+            if len(providers) != 1:
+                return result_type.fail(
+                    f"producer namespace has ambiguous distribution ownership: {namespace}: {sorted(providers)}"
+                )
+        snapshot = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            files=(),
+            inputs=tuple(states.values()),
+            generator_trees=tuple(trees.values()),
+        )
+        verified = cls.producer_current(snapshot)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(snapshot)
+
+    @classmethod
+    def producer_current(cls, producer: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
+        """Authenticate every captured input before selecting a consumer scope."""
+        if not producer.inputs or not producer.generator_trees:
+            return r[bool].fail("producer context lacks authenticated source closure")
+        current = FlextInfraMiseArtifactsVerification.states_current(producer.inputs)
+        if current.failure:
+            return current
+        return cls.producer_trees_current(producer.generator_trees)
+
+    @staticmethod
+    def producer_trees_current(
+        trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
+    ) -> p.Result[bool]:
+        """Reauthenticate whole trees, then compare source membership and identity.
+
+        Interpreter bytecode is derived, not a source input. It is excluded only
+        after native inventory has authenticated all physical entries. Native
+        output receipts, never path guesses, authorize publication membership.
+        """
+        for tree in trees:
+            inventory = u.Cli.atomic_inventory_physical_tree(tree.root.path)
+            if inventory.failure:
+                return r[bool].from_failure(inventory)
+            if (
+                inventory.value.root.device,
+                inventory.value.root.inode,
+                inventory.value.root.mount_id,
+                inventory.value.root.mode,
+                inventory.value.root.parent_device,
+                inventory.value.root.parent_inode,
+            ) != (
+                tree.root.device,
+                tree.root.inode,
+                tree.root.mount_id,
+                tree.root.mode,
+                tree.root.parent_device,
+                tree.root.parent_inode,
+            ):
+                return r[bool].fail(f"producer root identity changed: {tree.root.path}")
+            if any(item.kind == "symlink" for item in inventory.value.entries):
+                return r[bool].fail(
+                    f"producer resource has a physical alias: {tree.root.path}"
+                )
+            expected = {
+                item.path: item
+                for item in tree.entries
+                if item.kind == "file" and c.Infra.DUNDER_PYCACHE not in item.path.parts
+            }
+            observed = {
+                item.path: item
+                for item in inventory.value.entries
+                if item.kind == "file" and c.Infra.DUNDER_PYCACHE not in item.path.parts
+            }
+            own = {
+                item.path: item
+                for item in outputs
+                if item.path.is_relative_to(tree.root.path)
+            }
+            directories = {
+                item.path: item
+                for item in tree.entries
+                if item.kind == "directory"
+                and c.Infra.DUNDER_PYCACHE not in item.path.parts
+            }
+            live_directories = {
+                item.path: item
+                for item in inventory.value.entries
+                if item.kind == "directory"
+                and c.Infra.DUNDER_PYCACHE not in item.path.parts
+            }
+            admitted_directories = {
+                parent
+                for path, item in own.items()
+                if item.sha256 is not None
+                for parent in path.parents
+                if parent.is_relative_to(tree.root.path) and parent != tree.root.path
+            }
+            if set(live_directories) != set(directories) | admitted_directories:
+                return r[bool].fail(
+                    f"producer directory membership changed: {tree.root.path}"
+                )
+            for path, before in directories.items():
+                after = live_directories[path]
+                if (
+                    after.device,
+                    after.inode,
+                    after.mode,
+                    after.parent_device,
+                    after.parent_inode,
+                ) != (
+                    before.device,
+                    before.inode,
+                    before.mode,
+                    before.parent_device,
+                    before.parent_inode,
+                ):
+                    return r[bool].fail(f"producer directory identity changed: {path}")
+            paths = (set(expected) - set(own)) | {
+                path for path, item in own.items() if item.sha256 is not None
+            }
+            if set(observed) != paths:
+                return r[bool].fail(
+                    f"producer resource membership changed: {tree.root.path}"
+                )
+            for path, before in expected.items():
+                if path in own:
+                    continue
+                after = observed[path]
+                if (
+                    after.mode,
+                    after.device,
+                    after.inode,
+                    after.parent_device,
+                    after.parent_inode,
+                    after.sha256,
+                ) != (
+                    before.mode,
+                    before.device,
+                    before.inode,
+                    before.parent_device,
+                    before.parent_inode,
+                    before.sha256,
+                ):
+                    return r[bool].fail(f"producer resource identity changed: {path}")
+        physical_roots = {tree.root.path for tree in trees}
+        namespaces = {
+            base.__module__.partition(".")[0]
+            for facade in (c, m, u)
+            for base in facade.__mro__
+            if base.__module__.partition(".")[0] not in sys.stdlib_module_names
+        }
+        for namespace in namespaces:
+            selected = r[Path | None].create_from_callable(
+                partial(u.Infra.declared_package_dir, namespace)
+            )
+            if selected.failure:
+                return r[bool].from_failure(selected)
+            if (
+                selected.value is None
+                or selected.value.absolute() not in physical_roots
+            ):
+                return r[bool].fail(
+                    f"producer election changed after capture: {namespace}"
+                )
+            loaded = FlextInfraWorkspaceEnvironmentProvenance.loaded_import_sources(
+                namespace
+            )
+            if loaded.failure:
+                return r[bool].from_failure(loaded)
+            for symbol, origin, class_source in loaded.value:
+                path = Path(class_source or origin).absolute()
+                if not path.is_relative_to(selected.value.absolute()):
+                    return r[bool].fail(
+                        f"loaded producer origin changed: {symbol}={path}"
+                    )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def rendering_engine(repository_root: Path) -> p.Result[bool]:
