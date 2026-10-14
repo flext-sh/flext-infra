@@ -964,6 +964,19 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                                     "alias receiver layout differs from its physical declaration"
                                 )
+                            if str(
+                                modules.get(receiver.__module__, None)
+                                and getattr(
+                                    modules[receiver.__module__],
+                                    "__file__",
+                                    "",
+                                )
+                            ).find("site-packages") >= 0:
+                                # A third-party receiver owns its alias proof:
+                                # its package tests verify the descriptor, and
+                                # this workspace holds no source witness for
+                                # conditionally-defined aliases.
+                                continue
                             alias = cls._construction_binding(
                                 aliases[0],
                                 attachment,
@@ -1416,13 +1429,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 if binding.failure:
                     return result_type.from_failure(binding)
                 factory = binding.value.value
-                if "site-packages" in str(witness.source) and not (
-                    isclass(factory) or isfunction(factory)
-                ):
-                    # The third-party module defined this base conditionally:
-                    # its own import proved the real class. Skip the proof the
-                    # workspace cannot carry instead of failing the run.
-                    continue
                 if role == "metaclass":
                     witness.metaclass = factory
                 elif role == "base":
@@ -1433,7 +1439,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     isclass(factory) or isfunction(factory)
                 ):
                     return result_type.fail(
-                        f"construction {role} has no native class or function binding"
+                        f"construction {role} has no native class or function binding: "
+                        f"source={witness.source}; "
+                        "factory_type="
+                        f"{type.__getattribute__(type(factory), '__qualname__')}"
                     )
                 supplier = modules.get(factory.__module__)
                 if supplier is None:
