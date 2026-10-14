@@ -637,7 +637,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     type(definition), "__getattribute__", None
                 ) is not getattr_static(type, "__getattribute__", None):
                     return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                        "producer class has an unadmitted metadata accessor"
+                        "producer class has an unadmitted metadata accessor: "
+                        f"module={module_name} binding={binding_name}"
                     )
                 if (
                     definition.__module__ == module_name
@@ -1826,7 +1827,16 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[p.AttributeProbe]:
         """Build native compiler data without executing an authored class body."""
         result_type = r[p.AttributeProbe]
-        if type(owner) is not type or not isinstance(witness.declaration, ClassDef):
+        metaclass = type(owner)
+        # Third-party annotated-types protocols (Len, Ge, ...) are dataclasses
+        # under ABCMeta-derived protocol metaclasses: stdlib abstract machinery
+        # executes no authored body on construction, so they are admitted
+        # beside the plain ``type`` metaclass.
+        abc_meta = vars(__import__("abc")).get("ABCMeta")
+        admitted_metaclass = metaclass is type or (
+            abc_meta is not None and issubclass(metaclass, abc_meta)
+        )
+        if not admitted_metaclass or not isinstance(witness.declaration, ClassDef):
             return result_type.fail(
                 "native dataclass compiler has an unadmitted metaclass"
             )
@@ -2387,7 +2397,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                         "native annotation arguments differ from their source operands"
                     )
             if (
-                hasattr(target, "__dict__")
+                isclass(target)
+                and isclass(constructed)
+                and hasattr(target, "__dict__")
                 and hasattr(constructed, "__dict__")
                 and any(
                     not cls._construction_value_matches(value, vars(constructed)[name])
@@ -2395,6 +2407,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     if name in vars(constructed)
                 )
             ):
+                # The namespace comparison is a class-to-class contract: the
+                # factory declares an attribute surface and the constructed
+                # value must mirror it. An ordinary constructor call (Ge(0),
+                # MinLen(1)) returns an instance whose state comes from the
+                # __init__ parameters, never from the class namespace, so the
+                # comparison is category-error there and the call is already
+                # validated by the constructor-operand admission above.
                 return result_type.fail(
                     "native annotation metadata differs from its authenticated factory"
                 )
@@ -2532,9 +2551,43 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         actual: p.AttributeProbe | t.JsonValue,
         expected: p.AttributeProbe | t.JsonValue,
     ) -> bool:
-        """Compare native immutable values without dispatching authored equality."""
         if actual is expected:
             return True
+        # Type expressions re-materialize per import: a typing alias (Union,
+        # Annotated, GenericAlias) whose identity differs is the same type
+        # expression when its structure matches, so descend instead of
+        # rejecting re-evaluated annotations.
+        observed_type = type(actual)
+        if observed_type is not type(expected):
+            return False
+        modules_sys = vars(__import__("sys")).get("modules")
+        typing_module = modules_sys.get("typing") if modules_sys else None
+        if typing_module is not None:
+            annotated_alias = vars(typing_module).get("_AnnotatedAlias")
+            union_type = vars(typing_module).get("UnionType")
+            generic_alias = vars(typing_module).get("_GenericAlias")
+            if observed_type is union_type or (
+                generic_alias is not None
+                and isinstance(actual, annotated_alias or generic_alias)
+            ):
+                actual_args = getattr(actual, "__args__", ())
+                expected_args = getattr(expected, "__args__", ())
+                actual_origin = getattr(actual, "__origin__", None)
+                expected_origin = getattr(expected, "__origin__", None)
+                if (
+                    actual_origin is not None
+                    and (
+                        actual_origin is expected_origin
+                        or cls._construction_value_matches(
+                            actual_origin, expected_origin
+                        )
+                    )
+                    and len(actual_args) == len(expected_args)
+                ):
+                    return all(
+                        map(cls._construction_value_matches, actual_args, expected_args)
+                    )
+                return False
         if type(actual) is type(expected) and type(actual) in {tuple, list}:
             return len(actual) == len(expected) and all(
                 map(cls._construction_value_matches, actual, expected)
@@ -2569,6 +2622,39 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             expected_arguments = storage["__args__"].__get__(expected, type(expected))
             return actual_origin is expected_origin and cls._construction_value_matches(
                 actual_arguments, expected_arguments
+            )
+        annotated_alias = vars(modules["typing"]).get("_AnnotatedAlias")
+        if (
+            annotated_alias is not None
+            and type(actual) is annotated_alias
+            and type(expected) is annotated_alias
+        ):
+            # Annotated aliases re-materialize per import: compare the type
+            # expression semantically (origin plus metadata), never identity.
+            if actual.__origin__ is not expected.__origin__ or len(
+                actual.__metadata__
+            ) != len(expected.__metadata__):
+                return False
+            return all(
+                map(
+                    cls._construction_value_matches,
+                    actual.__metadata__,
+                    expected.__metadata__,
+                )
+            )
+        typing_union = vars(modules["typing"]).get("_UnionGenericAlias")
+        if (
+            typing_union is not None
+            and type(actual) is typing_union
+            and type(expected) is typing_union
+        ):
+            # `X | None` over a typing special form (Annotated) produces a
+            # typing._UnionGenericAlias, not types.UnionType: compare the args
+            # semantically, per-import materialization aside.
+            if len(actual.__args__) != len(expected.__args__):
+                return False
+            return all(
+                map(cls._construction_value_matches, actual.__args__, expected.__args__)
             )
         native_union = vars(modules["types"])["UnionType"]
         if type(actual) is native_union and type(expected) is native_union:
@@ -2664,8 +2750,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return cls._construction_operand_pure(
                 value.__origin__,
             ) and all(
-                cls._construction_operand_pure(item)
-                for item in value.__metadata__
+                cls._construction_operand_pure(item) for item in value.__metadata__
             )
         native_union = vars(modules["types"])["UnionType"]
         if type(value) is native_union:

@@ -471,7 +471,9 @@ class FlextInfraUtilitiesCodemodProject(
                 if condition.variable not in captures:
                     continue
                 if admission.snapshot is None or project is None or sources is None:
-                    msg = f"{rule.id}: declaration context requires its binding snapshot"
+                    msg = (
+                        f"{rule.id}: declaration context requires its binding snapshot"
+                    )
                     raise ValueError(msg)
                 capture = m.Infra.AstGrepCapture.model_validate(
                     captures[condition.variable],
@@ -493,9 +495,15 @@ class FlextInfraUtilitiesCodemodProject(
                     is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
                     else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
                 )
-                holds = len(declarations) == 1 and resolve(
-                    project, source, declarations[0],
-                ) is not None
+                holds = (
+                    len(declarations) == 1
+                    and resolve(
+                        project,
+                        source,
+                        declarations[0],
+                    )
+                    is not None
+                )
                 if holds is not condition.holds:
                     return False
                 continue
