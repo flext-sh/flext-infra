@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
@@ -103,6 +104,7 @@ class FlextInfraDocGenerator(
         }
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=bundle.repository_root),
+            producer=bundle.producer,
         )
         return transaction.run_files_locked(
             roots,
@@ -144,6 +146,17 @@ class FlextInfraDocGenerator(
             files=plans.value,
             inputs=bundle.source_states,
         )
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        if producer.failure:
+            return result_type.from_failure(producer)
+        bound_analysis = FlextInfraCodegenPreconditions.bind_producer_analysis(
+                analysis, bundle.producer
+        )
+        if bound_analysis.failure:
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
+                bound_analysis
+            )
+        analysis = bound_analysis.value
         admitted = FlextInfraMisePublication.admit_batch(analysis)
         if admitted.failure:
             return result_type.from_failure(admitted)
@@ -172,7 +185,7 @@ class FlextInfraDocGenerator(
         started = transaction.begin_files_locked(
             scope_root,
             roots,
-            bundle.source_states,
+                analysis.inputs,
         )
         if started.failure:
             return report_type.from_failure(started)
