@@ -672,32 +672,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        if self._producer.failure:
-            return result_type.from_failure(self._producer)
-        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
-            analysis, self._producer.value
-        )
+        bound = self._bound_file_analysis(analysis)
         if bound.failure:
             return result_type.from_failure(bound)
         analysis = bound.value
-        if batch_admission is not None and batch_admission.analysis != analysis:
-            return result_type.fail(
-                "external batch admission differs from captured producer context"
-            )
-        if batch_admission is None:
-            admitted = FlextInfraMisePublication.admit_batch(analysis)
-            if admitted.failure:
-                return result_type.from_failure(admitted)
-            batch_admission = admitted.value
-        started = self.begin_files_locked(scope_root, roots, analysis.inputs)
-        if started.failure:
-            return result_type.from_failure(started)
-        bound = self.bind_publication_proof(started.value, analysis.files)
-        if bound.failure:
-            return result_type.from_failure(bound)
+        admitted = self._admitted_batch(analysis, batch_admission)
+        if admitted.failure:
+            return result_type.from_failure(admitted)
+        session = self._started_file_session(scope_root, roots, analysis)
+        if session.failure:
+            return result_type.from_failure(session)
         prepared = self.append_directories_locked(
-            bound.value.model_copy(
-                update={"exception": bound.value.exception or analysis.exception},
+            session.value.model_copy(
+                update={"exception": session.value.exception or analysis.exception},
             ),
             analysis.phase,
             policy.directories,
@@ -710,7 +697,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             analysis.files,
             issues=analysis.issues,
             staged_validator=staged_validator,
-            batch_admission=batch_admission,
+            batch_admission=admitted.value,
         )
         if published.failure:
             return result_type.from_failure(published)
@@ -718,6 +705,70 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             published.value,
             publication_receipts=publication_receipts,
         )
+
+    def _bound_file_analysis(
+        self,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Bind the producer authority onto the published analysis.
+
+        Args:
+            analysis: The producer analysis being published.
+
+        Returns:
+            The analysis bound to the current producer, or the authority
+            failure.
+        """
+        if self._producer.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(self._producer)
+        return FlextInfraCodegenPreconditions.bind_producer_analysis(
+            analysis,
+            self._producer.value,
+        )
+
+    @staticmethod
+    def _admitted_batch(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Admit the producer analysis unless an external admission is given.
+
+        Args:
+            analysis: The bound producer analysis being published.
+            batch_admission: The external batch admission, when supplied.
+
+        Returns:
+            The effective batch admission, or the first admission failure.
+        """
+        if batch_admission is not None:
+            if batch_admission.analysis != analysis:
+                return r[m.Infra.CodegenPhaseOutcome].fail(
+                    "external batch admission differs from captured producer context"
+                )
+            return r[m.Infra.CodegenPhaseOutcome].ok(batch_admission)
+        return FlextInfraMisePublication.admit_batch(analysis)
+
+    def _started_file_session(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Open the file session and bind its publication proof.
+
+        Args:
+            scope_root: The transaction scope root.
+            roots: The elected destination roots under their leases.
+            analysis: The bound producer analysis being published.
+
+        Returns:
+            The proof-bound file session, or the first failure.
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        started = self.begin_files_locked(scope_root, roots, analysis.inputs)
+        if started.failure:
+            return result_type.from_failure(started)
+        return self.bind_publication_proof(started.value, analysis.files)
 
     def validate(
         self,

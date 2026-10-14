@@ -34,11 +34,46 @@ class FlextInfraUtilitiesRefactor:
     """
 
     @staticmethod
+    def publish_mod_native_artifact(
+        root: Path, staged_path: Path
+    ) -> m.Cli.AtomicFileReceipt:
+        """Retain exact scanner bytes before disposing its operation staging."""
+        staged = u.Cli.atomic_read_binary_file_receipt(
+            staged_path, required=True
+        ).unwrap()
+        if staged.sha256 is None:
+            msg = "native artifact lacks its authenticated digest"
+            raise ValueError(msg)
+        directory = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent / "native"
+        u.Cli.ensure_dir(directory).unwrap()
+        before = u.Cli.atomic_read_binary_file_receipt(
+            directory / f"{staged.sha256}.jsonl"
+        ).unwrap()
+        if before.device is None:
+            return u.Cli.atomic_publish_staged_binary_file_receipt_guarded(
+                before, staged
+            ).unwrap()
+        if before.sha256 != staged.sha256 or before.size != staged.size:
+            msg = "native artifact digest path contains different bytes"
+            raise ValueError(msg)
+        return before
+
+    @staticmethod
     @contextmanager
     def mod_native_readers(
         artifacts: tuple[m.Cli.AtomicFileReceipt, ...],
     ) -> Generator[t.MappingKV[Path, p.Cli.AtomicFileReader]]:
-        """Retain one authenticated descriptor per artifact for a complete consumer pass."""
+        """Retain one authenticated descriptor per artifact for one consumer pass.
+
+        Args:
+            artifacts: The authenticated artifact receipts being read.
+
+        Yields:
+            One authenticated binary reader per artifact path.
+
+        Raises:
+            ValueError: When the artifact inventory has duplicate paths.
+        """
         with ExitStack() as stack:
             readers = {
                 artifact.path: stack.enter_context(
@@ -49,6 +84,7 @@ class FlextInfraUtilitiesRefactor:
             if len(readers) != len(artifacts):
                 msg = "mod native artifact inventory has duplicate paths"
                 raise ValueError(msg)
+
             yield readers
 
     @staticmethod
@@ -56,7 +92,19 @@ class FlextInfraUtilitiesRefactor:
         finding: m.Infra.ModScanFinding,
         readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
     ) -> t.JsonMapping:
-        """Hydrate one complete native record explicitly through its retained reader."""
+        """Hydrate one complete native record explicitly through its retained reader.
+
+        Args:
+            finding: The native scan finding owning the record.
+            readers: The retained authenticated readers by artifact path.
+
+        Returns:
+            The hydrated native record payload.
+
+        Raises:
+            ValueError: When the finding lacks its artifact or the hydrated
+                record differs from its captured evidence.
+        """
         receipt = finding.native_receipt
         if receipt is None:
             msg = "mod finding lacks its authenticated native artifact"

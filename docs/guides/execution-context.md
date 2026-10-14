@@ -136,8 +136,16 @@ retains its own code and resource proof before generation.
 Loaded-code checks bind physical declarations, function code, executable wrapper
 links, property accessors, and MRO suppliers. They do not require operational class
 variables, initialized settings singletons, or config data to equal class-body literals;
-the actual consumer captures typed config and resource inputs separately. Native
-dataclass and named-tuple methods require a physical field-layout witness, native
+the actual consumer captures typed config and resource inputs separately.
+
+Producer authentication uses a shared native Rope declaration graph and compiles
+captured physical source without executing it. It does not import a second copy of
+an already loaded producer. Fresh-process imports remain publication-consumer
+checks; they cannot substitute for callback-free source authentication. Source
+receipts are checked again after observation, before an authenticated reference is
+returned.
+
+Native dataclass and named-tuple methods require a physical field-layout witness, native
 construction metadata and descriptor identity, and correspondence with code emitted
 by the authenticated generator. A compiler filename or cached field table alone is
 not evidence. A missing physical/native construction witness fails explicitly rather

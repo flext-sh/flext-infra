@@ -11,7 +11,7 @@ import sys
 from base64 import b64decode, b64encode
 from dis import get_instructions
 from gc import get_referents
-from importlib.machinery import FrozenImporter
+from importlib.machinery import ExtensionFileLoader, FrozenImporter
 from json import dumps
 from pathlib import Path
 from types import (
@@ -111,6 +111,7 @@ class FlextInfraWorkspaceNativeReference:
                     else child.pyobject.get_name(),
                 )
                 for child in scope.get_scopes()
+                if child.get_kind() in {"Class", "Function"}
             )
         compiled = (
             FrozenImporter.get_code(specification.name)
@@ -293,7 +294,8 @@ class FlextInfraWorkspaceNativeReference:
             )
         if not expression.isidentifier() or expression in seen:
             return r[p.AttributeProbe | None].fail(
-                f"producer input has no compiler-closed source literal: {witness.source}",
+                f"producer input has no compiler-closed source literal: "
+                f"{witness.source}",
             )
         binding = u.Infra.expression_name(scope, expression)
         assignments = []
@@ -531,7 +533,8 @@ class FlextInfraWorkspaceNativeReference:
             )
         else:
             return r[p.AttributeProbe].fail(
-                f"generated descriptor has no native compiler contract: {qualified}.{attribute}",
+                f"generated descriptor has no native compiler contract: "
+                f"{qualified}.{attribute}",
             )
         descriptor = cls._class_namespace(emitted).get(attribute)
         if descriptor is None:
@@ -592,9 +595,16 @@ class FlextInfraWorkspaceNativeReference:
             visited.add(identity)
             if cls._is_class(value):
                 namespace = cls._class_namespace(value)
-                module_name = namespace.get("__module__")
+                module_name = vars(type)["__module__"].__get__(
+                    value,
+                    type(value),
+                )
                 if type(module_name) is not str:
-                    return result.fail("producer class has no native supplier")
+                    return result.fail(
+                        "producer class has no native supplier: "
+                        f"binding={supplier}::{attribute}; "
+                        f"qualified={vars(type)['__qualname__'].__get__(value, type(value))}",
+                    )
                 elected = FlextInfraWorkspaceEnvironmentProvenance._module_source(
                     module_name
                 )
@@ -700,7 +710,8 @@ class FlextInfraWorkspaceNativeReference:
                     )
                 ):
                     return result.fail(
-                        f"generated executable differs from native compiler: {code.co_qualname}"
+                        f"generated executable differs from native compiler: "
+                        f"{code.co_qualname}"
                     )
             else:
                 proof = cls._compiled_function(captured.value, code)
@@ -738,7 +749,8 @@ class FlextInfraWorkspaceNativeReference:
                         != actual_supplier
                     ):
                         return result.fail(
-                            f"producer descriptor differs from source owner: {qualified}.{attribute}"
+                            f"producer descriptor differs from source owner: "
+                            f"{qualified}.{attribute}"
                         )
             wrapped = vars(value).get("__wrapped__")
             cells = tuple(cell.cell_contents for cell in value.__closure__ or ())
@@ -766,6 +778,59 @@ class FlextInfraWorkspaceNativeReference:
     @staticmethod
     def _class_namespace(value: p.AttributeProbe) -> t.MappingKV[str, p.AttributeProbe]:
         return vars(type)["__dict__"].__get__(value, type(value))
+
+    @classmethod
+    def _extension_callback(
+        cls,
+        value: p.AttributeProbe,
+    ) -> p.Result[t.Triple[str, str, str]]:
+        """Read registered native extension slots without authored accessors."""
+        native = type(value)
+        slots = cls._class_namespace(native)
+        metadata: dict[str, str] = {}
+        for attribute in ("__module__", "__name__", "__qualname__"):
+            descriptor = slots.get(attribute)
+            if type(descriptor) not in {GetSetDescriptorType, MemberDescriptorType}:
+                return r[t.Triple[str, str, str]].fail(
+                    f"extension callback lacks a native metadata slot: {attribute}",
+                )
+            if descriptor.__objclass__ is not native:
+                return r[t.Triple[str, str, str]].fail(
+                    "extension callback metadata belongs to another native type",
+                )
+            observed = descriptor.__get__(value, native)
+            if type(observed) is not str:
+                return r[t.Triple[str, str, str]].fail(
+                    f"extension callback metadata is not text: {attribute}",
+                )
+            metadata[attribute] = observed
+        supplier = sys.modules.get(metadata["__module__"])
+        if type(supplier) is not ModuleType or supplier.__spec__ is None:
+            return r[t.Triple[str, str, str]].fail(
+                "extension callback lacks its registered native supplier",
+            )
+        if not isinstance(supplier.__spec__.loader, ExtensionFileLoader):
+            return r[t.Triple[str, str, str]].fail(
+                "extension callback supplier is not a native extension",
+            )
+        namespace = vars(supplier)
+        components = metadata["__qualname__"].split(".")
+        for component in components[:-1]:
+            owner = namespace.get(component)
+            if not cls._is_class(owner):
+                return r[t.Triple[str, str, str]].fail(
+                    "extension callback has no registered lexical owner",
+                )
+            namespace = cls._class_namespace(owner)
+        if namespace.get(components[-1]) is not value:
+            return r[t.Triple[str, str, str]].fail(
+                "extension callback differs from its registered descriptor",
+            )
+        return r[t.Triple[str, str, str]].ok((
+            metadata["__module__"],
+            metadata["__name__"],
+            metadata["__qualname__"],
+        ))
 
     @classmethod
     def _native_wrapper_kind(cls, value: p.AttributeProbe) -> str | None:
@@ -867,7 +932,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @classmethod
     def _callable_storage(cls, value: p.AttributeProbe) -> bool:
-        """Find callback storage without asking the object for __class__ or attributes."""
+        """Find callback storage without asking the object for its attributes."""
         return any(
             "__call__" in cls._class_namespace(owner)
             for owner in vars(type)["__mro__"].__get__(
@@ -923,7 +988,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _symbol(cls, value: p.AttributeProbe) -> str:
         if cls._is_class(value):
-            module = cls._class_namespace(value).get("__module__")
+            module = vars(type)["__module__"].__get__(value, type(value))
             name = vars(type)["__qualname__"].__get__(value, type(value))
         elif type(value) in {FunctionType, BuiltinFunctionType}:
             module = value.__module__
@@ -931,7 +996,10 @@ class FlextInfraWorkspaceNativeReference:
         elif type(value) is ModuleType:
             module, name = value.__name__, ""
         else:
-            module = cls._class_namespace(type(value)).get("__module__")
+            module = vars(type)["__module__"].__get__(
+                type(value),
+                type(type(value)),
+            )
             name = vars(type)["__qualname__"].__get__(type(value), type(type(value)))
         return f"{module}::{name}"
 
@@ -1209,7 +1277,10 @@ class FlextInfraWorkspaceNativeReference:
             visited[id(value)] = binding
             if cls._is_class(value):
                 namespace = cls._class_namespace(value)
-                actual_supplier = namespace.get("__module__")
+                actual_supplier = vars(type)["__module__"].__get__(
+                    value,
+                    type(value),
+                )
                 if type(actual_supplier) is not str:
                     return r[m.Infra.NativeImportObservation].fail(
                         f"producer class has no native source supplier: {binding}",
@@ -1220,7 +1291,21 @@ class FlextInfraWorkspaceNativeReference:
                         actual_supplier,
                     )
                     if observed.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(observed)
+                        # The supplier module sits outside this epoch's
+                        # election (pyyaml C loaders, typing origins, ...):
+                        # the binding is third-party alias evidence, and the
+                        # supplier's own package owns its proof.
+                        evidence.append(
+                            m.Infra.NativeBindingEvidence(
+                                binding=binding,
+                                kind="alias",
+                                supplier=supplier,
+                                name="",
+                                qualname="",
+                                operands=(("target", actual_supplier),),
+                            ),
+                        )
+                        continue
                     origin = origins[actual_supplier] = cls._source_path(
                         observed.value,
                         paths,
@@ -1353,7 +1438,10 @@ class FlextInfraWorkspaceNativeReference:
                 WrapperDescriptorType,
             }:
                 owner = value.__objclass__
-                actual_supplier = cls._class_namespace(owner).get("__module__")
+                actual_supplier = vars(type)["__module__"].__get__(
+                    owner,
+                    type(owner),
+                )
                 if type(actual_supplier) is not str:
                     return r[m.Infra.NativeImportObservation].fail(
                         f"native descriptor owner has no source supplier: {binding}",
@@ -1401,7 +1489,8 @@ class FlextInfraWorkspaceNativeReference:
                     value
                 ):
                     return r[m.Infra.NativeImportObservation].fail(
-                        f"native wrapper has no interpreter-owned attributes: {binding}",
+                        f"native wrapper has no interpreter-owned attributes: "
+                        f"{binding}",
                     )
                 attributes = storage.__get__(value, type(value))
                 operands = [
@@ -1461,9 +1550,33 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             if type(value) is not FunctionType:
                 if type(value) is not BuiltinFunctionType:
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"producer callback has no native wrapper contract: {binding}",
+                    extension = cls._extension_callback(value)
+                    if extension.failure:
+                        return r[m.Infra.NativeImportObservation].from_failure(
+                            extension
+                        )
+                    actual_supplier, native_name, qualified = extension.value
+                    origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(
+                        actual_supplier,
                     )
+                    if origin.failure:
+                        return r[m.Infra.NativeImportObservation].from_failure(origin)
+                    sources.add((
+                        f"{actual_supplier}::{qualified}",
+                        str(cls._source_path(origin.value, paths)),
+                        "",
+                    ))
+                    evidence.append(
+                        m.Infra.NativeBindingEvidence(
+                            binding=binding,
+                            kind=kind,
+                            supplier=actual_supplier,
+                            name=native_name,
+                            qualname=qualified,
+                            operands=(("native_type", cls._symbol(type(value))),),
+                        ),
+                    )
+                    continue
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
                         binding=binding,
@@ -1712,7 +1825,8 @@ class FlextInfraWorkspaceNativeReference:
                     receipt = states.get(Path(executed.co_filename))
                     if receipt is None:
                         return r[bool].fail(
-                            f"authored producer source is not pinned: {binding.binding}",
+                            f"authored producer source is not pinned: "
+                            f"{binding.binding}",
                         )
                     read = u.Cli.atomic_read_binary_file_state(
                         receipt.path, required=True
@@ -1750,7 +1864,8 @@ class FlextInfraWorkspaceNativeReference:
                 for code in compiled[key]
             ):
                 return r[bool].fail(
-                    f"authored producer code differs from pinned native source: {binding.binding}",
+                    f"authored producer code differs from pinned native source: "
+                    f"{binding.binding}",
                 )
             admitted += 1
         if not admitted:

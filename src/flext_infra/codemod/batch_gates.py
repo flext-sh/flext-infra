@@ -930,50 +930,23 @@ class FlextInfraModGateEngine:
                 file_path, context.repository_roots, root
             )
         if authenticated.failure:
-            if authenticated.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
-                return r[m.Infra.ModScanFinding].ok(
-                    m.Infra.ModScanFinding(
-                        rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
-                        rule_id=str(rule_id),
-                        repository=context.repositories[file_path],
-                        file=file_path,
-                        range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                            finding.get("range"),
-                        ),
-                        text=str(finding.get("text")),
-                        replacement=replacement,
-                        actionable=False,
-                        classification=c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT,
-                        severity=str(finding["severity"]),
-                        replacement_offsets=(
-                            m.Infra.ModReplacementOffsets.model_validate(
-                                finding["replacementOffsets"]
-                            )
-                            if "replacementOffsets" in finding
-                            else None
-                        ),
-                        native_record=native_record,
-                        native_receipt=native_receipt,
-                    ),
+            if authenticated.error_code != c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                return r[m.Infra.ModScanFinding].from_failure(authenticated)
+            snapshot = None
+            actionable = False
+            classification = c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
+        else:
+            file_path, snapshot = authenticated.value
+            if snapshot.content is None:
+                return r[m.Infra.ModScanFinding].fail(
+                    f"authenticated snapshot has no content: {file_path}",
                 )
-            return r[m.Infra.ModScanFinding].from_failure(authenticated)
-        file_path, snapshot = authenticated.value
-        if snapshot.content is None:
-            return r[m.Infra.ModScanFinding].fail(
-                f"authenticated snapshot has no content: {file_path}",
+            classified = cls._classified_finding(
+                str(rule_id), fixable_ids, str(finding.get("text")), replacement, line
             )
-        raw_replacement = finding.get("replacement")
-        replacement = raw_replacement if isinstance(raw_replacement, str) else None
-        classified = cls._classified_finding(
-            str(rule_id),
-            fixable_ids,
-            str(finding.get("text")),
-            replacement,
-            line,
-        )
-        if classified.failure:
-            return r[m.Infra.ModScanFinding].from_failure(classified)
-        actionable, classification = classified.value
+            if classified.failure:
+                return r[m.Infra.ModScanFinding].from_failure(classified)
+            actionable, classification = classified.value
         return r[m.Infra.ModScanFinding].ok(
             m.Infra.ModScanFinding(
                 rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
@@ -981,7 +954,9 @@ class FlextInfraModGateEngine:
                 repository=context.repositories[file_path],
                 file=file_path,
                 source_owner="generator"
-                if any(
+                if snapshot is not None
+                and snapshot.content is not None
+                and any(
                     snapshot.content.startswith(header.encode(c.DEFAULT_ENCODING))
                     for header in c.Infra.AUTOGEN_HEADERS
                 )
@@ -1113,30 +1088,6 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
 
     @classmethod
-    def _retain_native_artifact(
-        cls, root: Path, staged_path: Path
-    ) -> m.Cli.AtomicFileReceipt:
-        """Publish exact native bytes once before retiring scanner staging."""
-        staged = u.Cli.atomic_read_binary_file_receipt(
-            staged_path, required=True
-        ).unwrap()
-        if staged.sha256 is None:
-            msg = "native artifact lacks its authenticated digest"
-            raise ValueError(msg)
-        directory = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent / "native"
-        u.Cli.ensure_dir(directory).unwrap()
-        destination = directory / f"{staged.sha256}.jsonl"
-        before = u.Cli.atomic_read_binary_file_receipt(destination).unwrap()
-        if before.device is None:
-            return u.Cli.atomic_publish_staged_binary_file_receipt_guarded(
-                before, staged
-            ).unwrap()
-        if before.sha256 != staged.sha256 or before.size != staged.size:
-            msg = "native artifact digest path contains different bytes"
-            raise ValueError(msg)
-        return before
-
-    @classmethod
     def _ruleset_report(
         cls,
         root: Path,
@@ -1181,7 +1132,7 @@ class FlextInfraModGateEngine:
                 return r[m.Infra.ModScanReport].from_failure(run)
             sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
             sys.stderr.flush()
-            artifact = cls._retain_native_artifact(artifact_root, stdout_file)
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
             report = cls._parse_findings(
                 artifact.path,
                 root,

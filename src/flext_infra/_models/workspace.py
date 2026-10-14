@@ -124,6 +124,9 @@ class FlextInfraModelsWorkspace:
             description="Pinned payloads used exclusively by the source-view writer",
             exclude=True,
         )
+        import_roots: t.VariadicTuple[Path] = m.Field(
+            description="Physical import roots of all nominated and elected modules"
+        )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):
         """Read-only request for validating the active workspace environment."""

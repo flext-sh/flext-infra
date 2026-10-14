@@ -20,16 +20,18 @@ class TestsFlextInfraLiteralConstants:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "literal_source",
+        ("literal_source", "return_source"),
         [
-            "'wire-value'",
-            "'wire\\u002dvalue'",
-            '"""wire-value"""',
-            "'''wire-value'''",
+            ("'wire-value'", '"wire-value"'),
+            ("'wire\\u002dvalue'", '"wire-value"'),
+            ('"""wire-value"""', '"wire-value"'),
+            ("'''wire-value'''", '"wire-value"'),
+            ("r'wire-value'", 'r"wire-value"'),
+            ("u'wire-value'", 'u"wire-value"'),
         ],
     )
     def test_literal_return_reuses_owner_and_reaches_fixed_point(
-        tmp_path: Path, literal_source: str
+        tmp_path: Path, literal_source: str, return_source: str
     ) -> None:
         """Equivalent quote forms reuse c while computed strings keep behavior."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -51,7 +53,7 @@ class TestsFlextInfraLiteralConstants:
                 '"""wire-value"""\n'
                 "def value() -> str:\n"
                 '    """wire-value"""\n'
-                '    return "wire-value"  # Preserve the wire contract.\n'
+                f"    return {return_source}  # Preserve the wire contract.\n"
                 "def computed(suffix: str = 'value') -> str:\n"
                 "    return 'wire-' + suffix\n"
                 "def computed_owner() -> str:\n"

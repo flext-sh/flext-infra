@@ -81,94 +81,112 @@ class TestsArtifactRuntime:
     """Build the actual producer, then import its archives outside every checkout."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("subject", ["infra", "core"])
-    @pytest.mark.parametrize("archive_kind", ["wheel", "sdist"])
-    def test_artifact_runs_with_runtime_dependencies_only(
-        tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+    def _identified_provider_repository(
         subject: str,
+        producer: Path,
+        tmp_path: Path,
+        options: m.Cli.ProcessOptions,
+    ) -> tuple[Path, str, t.StrSequence, t.StrSequence]:
+        """Resolve the built repository and its governed runtime identity.
+
+        Args:
+            subject: The parametrized producer subject under proof.
+            producer: The checked-out producer repository.
+            tmp_path: Test scratch root owning a cloned provider checkout.
+            options: Process options carrying the hermetic Git environment.
+
+        Returns:
+            The repository, its distribution, the excluded dev distributions
+            and the facades the runtime probe must observe.
+        """
+        if subject == "infra":
+            return (
+                producer,
+                config.Infra.codegen.infra_repository.distribution,
+                (u.Tests.repository_ref("flext-tests").distribution,),
+                ("c", "t", "p", "m", "u", "infra", "main"),
+            )
+        provider = u.Tests.repository_ref("flext-core")
+        sources = tuple(
+            source
+            for source in u.Tests.locked_git_sources(producer)
+            if source[0] == provider.url
+        )
+        tm.that(len(sources), eq=1)
+        url, _branch, sha = sources[0]
+        repository = tmp_path / "provider"
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "clone",
+                    "--no-checkout",
+                    url,
+                    str(repository),
+                ],
+                cwd=tmp_path,
+                options=options,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "checkout", "--detach", sha],
+                cwd=repository,
+                options=options,
+            ),
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
+                    cwd=repository,
+                ),
+            ).strip(),
+            eq=sha,
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+                    cwd=repository,
+                ),
+            ).strip(),
+            eq=url,
+        )
+        return (
+            repository,
+            provider.distribution,
+            (
+                config.Infra.codegen.infra_repository.distribution,
+                u.Tests.repository_ref("flext-tests").distribution,
+            ),
+            ("c", "t", "p", "m", "u", "r", "FlextResult"),
+        )
+
+    @staticmethod
+    def _built_wheel_artifact(
+        uv: str,
+        repository: Path,
+        options: m.Cli.ProcessOptions,
+        artifacts: Path,
         archive_kind: str,
-    ) -> None:
-        """No synthetic profile or development environment can satisfy this proof."""
-        started = monotonic()
-        producer = Path(__file__).resolve().parents[3]
-        uv = str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, producer)))
-        artifacts = tmp_path / "artifacts"
+    ) -> tuple[Path, bytes]:
+        """Build the producer archive and isolate one installable wheel.
+
+        Args:
+            uv: The managed uv binary path.
+            repository: The repository whose distribution is built.
+            options: Process options carrying the build environment.
+            artifacts: Scratch root owning the direct, source and rebuilt
+                output directories.
+            archive_kind: The parametrized archive kind under proof.
+
+        Returns:
+            The isolated wheel artifact with the untouched build manifest.
+        """
         direct = artifacts / "direct"
         source = artifacts / "source"
         rebuilt = artifacts / "rebuilt"
-        # Git remains file-only at authenticated mirrors; native registry wheels
-        # and isolated build requirements retain their real provisioning contract.
-        git_environment = {**hermetic_git_environment, "UV_OFFLINE": "0"}
-        options = m.Cli.ProcessOptions(
-            env=git_environment,
-            remove_env_keys=tuple(
-                key
-                for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
-                if key not in git_environment
-            ),
-        )
-        if subject == "infra":
-            repository = producer
-            distribution = config.Infra.codegen.infra_repository.distribution
-            excluded = (u.Tests.repository_ref("flext-tests").distribution,)
-            facades = ("c", "t", "p", "m", "u", "infra", "main")
-        else:
-            provider = u.Tests.repository_ref("flext-core")
-            sources = tuple(
-                source
-                for source in u.Tests.locked_git_sources(producer)
-                if source[0] == provider.url
-            )
-            tm.that(len(sources), eq=1)
-            url, _branch, sha = sources[0]
-            repository = tmp_path / "provider"
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "clone",
-                        "--no-checkout",
-                        url,
-                        str(repository),
-                    ],
-                    cwd=tmp_path,
-                    options=options,
-                ),
-            )
-            tm.ok(
-                u.Cli.run_checked(
-                    [c.Infra.GIT, "checkout", "--detach", sha],
-                    cwd=repository,
-                    options=options,
-                ),
-            )
-            tm.that(
-                tm.ok(
-                    u.Cli.capture(
-                        [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
-                        cwd=repository,
-                    ),
-                ).strip(),
-                eq=sha,
-            )
-            tm.that(
-                tm.ok(
-                    u.Cli.capture(
-                        [c.Infra.GIT, "config", "--get", "remote.origin.url"],
-                        cwd=repository,
-                    ),
-                ).strip(),
-                eq=url,
-            )
-            distribution = provider.distribution
-            excluded = (
-                config.Infra.codegen.infra_repository.distribution,
-                u.Tests.repository_ref("flext-tests").distribution,
-            )
-            facades = ("c", "t", "p", "m", "u", "r", "FlextResult")
-        package_name = distribution.replace("-", "_")
         manifest_before = (repository / c.PYPROJECT_FILENAME).read_bytes()
         destination = direct if archive_kind == "wheel" else source
         tm.ok(
@@ -182,7 +200,7 @@ class TestsArtifactRuntime:
                     "--out-dir",
                     str(destination),
                 ],
-                cwd=tmp_path,
+                cwd=repository.parent,
                 options=options,
             ),
         )
@@ -200,14 +218,23 @@ class TestsArtifactRuntime:
                         "--out-dir",
                         str(rebuilt),
                     ],
-                    cwd=tmp_path,
+                    cwd=repository.parent,
                     options=options,
                 ),
             )
             directory = rebuilt
         wheels = tuple(directory.glob("*.whl"))
         tm.that(len(wheels), eq=1)
-        wheel = wheels[0]
+        return wheels[0], manifest_before
+
+    @staticmethod
+    def _verified_wheel_requires_dist(wheel: Path, excluded: t.StrSequence) -> None:
+        """Assert the wheel metadata excludes every governed dev closure.
+
+        Args:
+            wheel: The built wheel artifact to inspect.
+            excluded: Distributions that must never become runtime requirements.
+        """
         with zipfile.ZipFile(wheel) as archive:
             metadata_files = tuple(
                 name
@@ -226,6 +253,28 @@ class TestsArtifactRuntime:
             }),
             eq=set(),
         )
+
+    @staticmethod
+    def _synced_consumer_runtime(
+        tmp_path: Path,
+        git_environment: t.StrMapping,
+        uv: str,
+        wheel: Path,
+        distribution: str,
+    ) -> tuple[Path, Path, m.Cli.ProcessOptions]:
+        """Sync one isolated consumer runtime from the built wheel.
+
+        Args:
+            tmp_path: Test scratch root owning the consumer project.
+            git_environment: The hermetic environment with registry access.
+            uv: The managed uv binary path.
+            wheel: The built wheel artifact the consumer depends on.
+            distribution: The consumed distribution requirement name.
+
+        Returns:
+            The consumer project, its synced runtime interpreter and the
+            consumer process options.
+        """
         consumer = tmp_path / "consumer"
         consumer.mkdir()
         environment = tmp_path / "runtime"
@@ -283,6 +332,56 @@ class TestsArtifactRuntime:
                 sort_keys=True,
             )
             + "\n",
+        )
+        return consumer, python, consumer_options
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("subject", ["infra", "core"])
+    @pytest.mark.parametrize("archive_kind", ["wheel", "sdist"])
+    def test_artifact_runs_with_runtime_dependencies_only(
+        tmp_path: Path,
+        hermetic_git_environment: t.StrMapping,
+        subject: str,
+        archive_kind: str,
+    ) -> None:
+        """No synthetic profile or development environment can satisfy this proof."""
+        started = monotonic()
+        producer = Path(__file__).resolve().parents[3]
+        uv = str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, producer)))
+        # Git remains file-only at authenticated mirrors; native registry wheels
+        # and isolated build requirements retain their real provisioning contract.
+        git_environment = {**hermetic_git_environment, "UV_OFFLINE": "0"}
+        options = m.Cli.ProcessOptions(
+            env=git_environment,
+            remove_env_keys=tuple(
+                key
+                for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
+                if key not in git_environment
+            ),
+        )
+        repository, distribution, excluded, facades = (
+            TestsArtifactRuntime._identified_provider_repository(
+                subject, producer, tmp_path, options
+            )
+        )
+        package_name = distribution.replace("-", "_")
+        wheel, manifest_before = TestsArtifactRuntime._built_wheel_artifact(
+            uv,
+            repository,
+            options,
+            tmp_path / "artifacts",
+            archive_kind,
+        )
+        TestsArtifactRuntime._verified_wheel_requires_dist(wheel, excluded)
+        consumer, python, consumer_options = (
+            TestsArtifactRuntime._synced_consumer_runtime(
+                tmp_path,
+                git_environment,
+                uv,
+                wheel,
+                distribution,
+            )
         )
         tm.ok(
             u.Cli.run_checked(

@@ -237,6 +237,65 @@ class TestsFlextInfraMisePinBootstrap:
         )
         tm.that("tool_config" in document, eq=False)
 
+    @staticmethod
+    def test_native_http_source_options_survive_the_public_toml_consumer() -> None:
+        """Typed backend inputs round-trip without table scope swallowing later tools."""
+        toolchain = config.Infra.codegen.toolchain
+        dependency = toolchain.tools[0]
+        source = m.Infra.MiseToolEntry(
+            name="source-contract-fixture",
+            selector="http:source-contract-fixture",
+            version="latest",
+            http=m.Infra.MiseHttpToolOptions(
+                url="https://example.invalid/source-{{version}}.tar.xz",
+                version_list_url="https://example.invalid/releases",
+                version_json_path=".[].tag_name",
+                version_order="semver",
+                checksum_url="https://example.invalid/checksums/{{version}}",
+                checksum_expr="body",
+                strip_components=1,
+                bin_path="bin",
+            ),
+            depends=(dependency.selector or dependency.name,),
+            install_env={"BUILD_INPUT_IDENTITY": "fixture-owned-input"},
+            postinstall=m.Infra.MisePostinstallOptions(
+                run='printf "%s\\n" "$MISE_TOOL_INSTALL_PATH"',
+                when="always",
+            ),
+            version_probe=dependency.version_probe,
+        )
+        selected = m.Infra.ToolchainSpec.model_validate(
+            toolchain.model_copy(
+                update={"tools": (source, *toolchain.tools)},
+            ).model_dump(round_trip=True),
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                u.Infra.codegen_templates_root(config.Infra.codegen)
+                / "base"
+                / ".mise.toml.j2",
+                selected,
+            ),
+        )
+        document = u.Tests.toml_payload(rendered)
+        tools = u.Tests.toml_mapping(document["tools"])
+        observed = u.Tests.toml_mapping(tools[source.selector or source.name])
+        tm.that(observed["version"], eq=selected.tool_versions[source.name])
+        for key, value in (
+            tm.not_none(source.http).model_dump(exclude_none=True).items()
+        ):
+            tm.that(observed[key], eq=value)
+        tm.that(observed["depends"], eq=list(source.depends))
+        tm.that(observed["install_env"], eq=dict(source.install_env))
+        tm.that(
+            observed["postinstall"],
+            eq=tm.not_none(source.postinstall).model_dump(exclude_none=True),
+        )
+        tm.that(
+            set(tools),
+            eq={"python", selected.mise_selector, *selected.tool_keys.values()},
+        )
+
     @pytest.mark.slow
     @pytest.mark.parametrize("pin_present", [False, True])
     def test_upgrade_qualifies_the_final_self_pin(

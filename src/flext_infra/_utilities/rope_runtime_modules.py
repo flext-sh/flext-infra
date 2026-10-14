@@ -16,8 +16,8 @@ from flext_infra._utilities import (
 )
 
 
-class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
-    """Load Rope project/module/import objects behind protocols."""
+class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
+    """Resolve Rope native, lexical and module facts behind protocols."""
 
     @classmethod
     def native_class(
@@ -357,6 +357,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
                 raise TypeError(msg)
             return parent
         return result
+
+
+class FlextInfraUtilitiesRopeRuntimeModules(
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+):
+    """Load Rope project/module/import objects behind protocols."""
 
     @classmethod
     def resolve_symbol(

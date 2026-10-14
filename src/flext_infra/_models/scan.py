@@ -339,8 +339,28 @@ class FlextInfraModelsScan:
         """Native scan inventory with complete durable output receipts."""
 
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
-            default=(), description="Complete authenticated native output inventory"
+            min_length=1, description="Complete authenticated native output inventory"
         )
+
+        @m.model_validator(mode="after")
+        def _validate_native_records(self) -> Self:
+            artifacts = {artifact.path: artifact for artifact in self.native_artifacts}
+            if len(artifacts) != len(self.native_artifacts):
+                msg = "native scan artifacts must have unique paths"
+                raise ValueError(msg)
+            for entry in self.entries:
+                artifact = entry.native_receipt
+                if artifact is None or artifacts.get(artifact.path) != artifact:
+                    msg = "native scan finding lacks its declared artifact"
+                    raise ValueError(msg)
+                if (
+                    artifact.size is None
+                    or entry.native_record.offset + entry.native_record.length
+                    > artifact.size
+                ):
+                    msg = "native scan finding escapes its declared artifact"
+                    raise ValueError(msg)
+            return self
 
     class ModTextRule(m.ArbitraryTypesModel):
         """One declarative sed-by-list entry with its exact rewrite receipt."""
@@ -461,7 +481,8 @@ class FlextInfraModelsScan:
             ),
         ]
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
-            description="Durable native artifacts stored once for all occurrence references"
+            min_length=1,
+            description="Durable native artifacts stored once for all occurrence references",
         )
         command: Annotated[
             c.Infra.ModScanCommand,

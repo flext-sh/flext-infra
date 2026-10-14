@@ -182,14 +182,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             )
             for literal_type in ("builtins.str", "builtins.int")
         }
-        if not any(
-            (
-                source[start:end].removeprefix("return").lstrip().startswith(("'", '"'))
-                or source[start:end].removeprefix("return").lstrip().isdecimal()
-            )
-            for returns in returns_by_type.values()
-            for start, end in returns
-        ):
+        if not any(returns_by_type.values()):
             return source, ()
         package = cls._constant_facade_package(
             cls._constant_imports(project, module),
@@ -585,7 +578,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             source = module.source_code
             literal_regions = {
                 (start, end)
-                for start, end, _metadata in refactors.ignored_regions(source)
+                for start, end, metadata in refactors.ignored_regions(source)
+                for prefix in (metadata.get("prefix"),)
+                if prefix is None or "f" not in prefix.casefold()
             }
             statements = structure.logical_statements(source)
             for binding, line in bindings:
@@ -616,10 +611,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                         end=statement.end_offset,
                     ):
                         literal = source[start:end]
-                        if literal_type == "builtins.str" and (
-                            not literal.startswith(("'", '"'))
-                            or literal[-1] != literal[0]
-                            or (start, end) not in literal_regions
+                        if (
+                            literal_type == "builtins.str"
+                            and (start, end) not in literal_regions
                         ):
                             continue
                         if literal_type == "builtins.int" and not literal.isdecimal():

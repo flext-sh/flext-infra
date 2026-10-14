@@ -85,14 +85,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         member = self._member_ref(config.Infra.name, "member")
         workspace = self._workspace(member)
         source_line = u.Tests.provider_branch()
-        receiver_line = f"{source_line}-receiver"
         integration = m.Infra.WorkspaceIntegrationSpec(
             provider=workspace.repository.provider,
-            branch=receiver_line,
+            branch=f"{source_line}-receiver",
         )
         workspace = workspace.model_copy(update={"integration": integration})
-        extra = f"{member.distribution}-feature"
-        marker = 'implementation_name == "cpython"'
         member_root = tmp_path / member.path
         member_root.mkdir()
         declaration = member_root / c.PYPROJECT_FILENAME
@@ -104,13 +101,14 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 'version = "1.0"\n'
                 "dependencies = []\n"
                 "[project.optional-dependencies]\n"
-                f'"{extra}" = []\n'
+                f'"{member.distribution}-feature" = []\n'
                 "[dependency-groups]\ndev = []\n",
             ),
         )
         captured = tm.ok(
             u.Cli.atomic_read_binary_file_state(declaration, required=True),
         )
+        marker = 'implementation_name == "cpython"'
         request = f"{member.distribution} @ git+{member.url}@{source_line}; {marker}"
         source = (
             "[project]\n"
@@ -148,7 +146,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             )
             tm.that(line, has=marker)
         tm.that(
-            any(f"[{extra}]" in line for line in selected),
+            any(f"[{member.distribution}-feature]" in line for line in selected),
             eq=True,
         )
 

@@ -541,4 +541,6 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
 
 
-_PREFLIGHT = m.Infra.ModScanReport(files=frozenset(), entries=())
+_PREFLIGHT = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+    files=frozenset(), entries=()
+)

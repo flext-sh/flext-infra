@@ -199,7 +199,12 @@ class TestsFlextInfraRopeSignaturePatch:
 
     @staticmethod
     def test_rename_keeps_nested_generator_bindings(tmp_path: Path) -> None:
-        """Native rename follows the iterable without changing the generator local."""
+        """Native rename follows the iterable without changing the generator local.
+
+        Raises:
+            AssertionError: If Rope did not resolve the nested generator resource.
+
+        """
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "nested_generator.py"
         source = 'widths = (1, 2)\nrendered = f"{next(width for width in widths)}"\n'

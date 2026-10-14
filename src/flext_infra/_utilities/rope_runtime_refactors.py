@@ -409,6 +409,26 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return finder
 
     @classmethod
+    def lexical_occurrence_finder(
+        cls, project: p.Infra.RopeProject, name: str
+    ) -> p.Infra.RopeOccurrenceFinder:
+        """Find native lexical occurrences independently of last-binding inference.
+
+        Returns:
+            Rope's unfiltered finder, with strings and comments excluded.
+
+        Raises:
+            TypeError: If the finder does not satisfy its native contract.
+        """
+        finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(
+            project, name
+        )
+        if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
+            message = "Rope lexical finder does not satisfy its native contract"
+            raise TypeError(message)
+        return finder
+
+    @classmethod
     def word_primary_range(cls, source: str, offset: int) -> t.Pair[int, int]:
         word_finder = cls._word_finder(source)
         primary_range = getattr(word_finder, "get_primary_range", None)

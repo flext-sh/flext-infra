@@ -80,7 +80,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
         if composed.failure:
             return result_type.from_failure(composed)
-        if composed.value.spec.repository is None or composed.value.spec.repository.kind != kind:
+        if (
+            composed.value.spec.repository is None
+            or composed.value.spec.repository.kind != kind
+        ):
             return result_type.fail(
                 f"bootstrap kind is overridden by the target's elected layers: {root}",
             )

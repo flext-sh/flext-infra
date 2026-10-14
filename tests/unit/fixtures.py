@@ -124,20 +124,15 @@ _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
 _CONSUMER_BUILD_RECEIPT = "build-receipt.json"
 
 
-def _provision_consumer_template(
-    parent: Path,
-    *,
-    member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
-) -> Path:
-    """Upgrade and set up the shared worker consumer once through real Make.
+def _consumer_pyproject_source(distribution: str) -> str:
+    """Render the governed consumer fixture's pyproject source.
 
-    The installed session owner keeps this physical checkout at a stable path,
-    preserving its editable source binding while restoring each case's data.
+    Args:
+        distribution: The consumer distribution name being provisioned.
 
     Returns:
-        The provisioned consumer with committed locks and a physical environment.
+        The pyproject source declaring the governed consumer contract.
     """
-    distribution = "flext-demo"
     modules = c.Tests.CONSUMER_MODULES
     # A governed FLEXT consumer declares exactly one runtime upstream profile;
     # conform derives its project spec from it (context_render.py).
@@ -164,30 +159,50 @@ def _provision_consumer_template(
         for requirement in config.Infra.codegen.scaffold.project.dev
         if (name := u.Infra.dep_name(requirement)) is not None and name != distribution
     )
+    return (
+        '[build-system]\nrequires = ["hatchling"]\n'
+        'build-backend = "hatchling.build"\n'
+        f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
+        f'description = "{distribution} governed fixture"\n'
+        'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+        f'requires-python = "{python_required}"\n'
+        f"dependencies = [{dependencies}]\n"
+        '[project.optional-dependencies]\nfeature = ["requests"]\n'
+        # A governed checkout declares every internal requirement with its
+        # own direct Git source; the scaffold dev SSOT includes flext-tests.
+        f'[dependency-groups]\ndev = [{development}, "pip", '
+        f'"{infrastructure_source}"]\n'
+        "[tool.hatch.metadata]\nallow-direct-references = true\n"
+        "[tool.mypy]\n"
+        '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
+    )
+
+
+def _provision_consumer_template(
+    parent: Path,
+    *,
+    member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
+) -> Path:
+    """Upgrade and set up the shared worker consumer once through real Make.
+
+    The installed session owner keeps this physical checkout at a stable path,
+    preserving its editable source binding while restoring each case's data.
+
+    Returns:
+        The provisioned consumer with committed locks and a physical environment.
+    """
+    distribution = "flext-demo"
     root = u.Tests.mk_project(
         parent,
         distribution,
         with_src=True,
-        pyproject=(
-            '[build-system]\nrequires = ["hatchling"]\n'
-            'build-backend = "hatchling.build"\n'
-            f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
-            f'description = "{distribution} governed fixture"\n'
-            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-            f'requires-python = "{python_required}"\n'
-            f"dependencies = [{dependencies}]\n"
-            '[project.optional-dependencies]\nfeature = ["requests"]\n'
-            # A governed checkout declares every internal requirement with its
-            # own direct Git source; the scaffold dev SSOT includes flext-tests.
-            f'[dependency-groups]\ndev = [{development}, "pip", '
-            f'"{infrastructure_source}"]\n'
-            "[tool.hatch.metadata]\nallow-direct-references = true\n"
-            "[tool.mypy]\n"
-            '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
-        ),
+        pyproject=_consumer_pyproject_source(distribution),
     )
     (root / "src" / distribution.replace("-", "_") / "__init__.py").write_text(
-        "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+        "\n".join(
+            f"import {name}" for name in ("flext_core", *c.Tests.CONSUMER_MODULES)
+        )
+        + "\n",
         encoding="utf-8",
     )
     u.Tests.copy_tracked_mise_seeds(root)
@@ -774,7 +789,10 @@ def real_detector_project(
             )
         )
         (root / "src" / root.name.replace("-", "_") / "__init__.py").write_text(
-            "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+            "\n".join(
+                f"import {name}" for name in ("flext_core", *c.Tests.CONSUMER_MODULES)
+            )
+            + "\n",
             encoding="utf-8",
         )
         runtime = u.Infra.runtime_environment_dir(root)
