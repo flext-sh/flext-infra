@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournalRelocation,
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
@@ -53,6 +54,7 @@ class FlextInfraMiseArtifactsVerification(
         if (
             not covers_surface
             or not covers_scope
+            or outcome.module != request.module
             or not outcome.scope_roots
             or (
                 scope
@@ -142,7 +144,7 @@ class FlextInfraMiseArtifactsVerification(
             )
             if observed.failure:
                 return r[bool].from_failure(observed)
-            recorded = FlextInfraMiseArtifactsJournal.source_record(
+            recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
                 expected.phase,
                 observed.value,
                 previous=expected,
@@ -173,6 +175,65 @@ class FlextInfraMiseArtifactsVerification(
             or not (outcome.outputs or outcome.batches)
         ):
             return r[bool].fail("generation batch is incomplete; run make gen")
+        if not outcome.batches:
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
+            if (
+                not outcome.generator_sources
+                or not outcome.generator_trees
+                or any(source.role is None for source in outcome.generator_sources)
+            ):
+                return r[bool].fail(
+                    "generation batch lacks pre-planning producer closure; run make gen",
+                )
+            producer = FlextInfraCodegenPreconditions.producer_trees_current(
+                outcome.generator_trees,
+                outcome.outputs,
+            )
+            if producer.failure:
+                return producer
+        if outcome.phase == c.Infra.CodegenStagedFilePhase.DOCS:
+            membership = u.Infra.docs_source_paths_for_roots(
+                outcome.scope_roots,
+                source_scope=outcome.source_scope,
+            )
+            if membership.failure:
+                return r[bool].from_failure(membership)
+            sources = {source.path: source for source in outcome.sources}
+            destinations = {output.path for output in outcome.outputs}
+            sources.update(
+                {
+                    output.path: output
+                    for output in outcome.outputs
+                    if u.Infra.docs_source_path_is_input(
+                        output.path,
+                        outcome.scope_roots,
+                        source_scope=outcome.source_scope,
+                    )
+                },
+            )
+            expected_paths = {
+                source.path
+                for source in sources.values()
+                if source.sha256 is not None
+                and (
+                    source.path not in destinations
+                    or u.Infra.docs_source_path_is_input(
+                        source.path,
+                        outcome.scope_roots,
+                        source_scope=outcome.source_scope,
+                    )
+                )
+            }
+            if set(membership.value) != expected_paths:
+                return r[bool].fail(
+                    "generation source membership changed; "
+                    f"added={sorted(set(membership.value) - expected_paths)}; "
+                    f"removed={sorted(expected_paths - set(membership.value))}; "
+                    "run make gen",
+                )
         for witness in outcome.source_topology:
             observed = u.Cli.atomic_plan_directory_chain(witness.target)
             if observed.failure:
@@ -202,16 +263,16 @@ class FlextInfraMiseArtifactsVerification(
         for path, records in inputs.items():
             previous = frontier.get(path)
             if previous is not None and not any(
-                record.model_dump(exclude={"phase"})
-                == previous.model_dump(exclude={"phase"})
+                record.model_dump(exclude={"phase", "role"})
+                == previous.model_dump(exclude={"phase", "role"})
                 for record in records
             ):
                 return r[bool].fail(
                     f"generation batch input differs from preceding output: {path}",
                 )
             if path not in written and any(
-                record.model_dump(exclude={"phase"})
-                != records[0].model_dump(exclude={"phase"})
+                record.model_dump(exclude={"phase", "role"})
+                != records[0].model_dump(exclude={"phase", "role"})
                 for record in records[1:]
             ):
                 return r[bool].fail(
@@ -225,8 +286,8 @@ class FlextInfraMiseArtifactsVerification(
                         f"generation output has no authenticated preimage: {path}",
                     )
             elif path in frontier and (
-                frontier[path].model_dump(exclude={"phase"})
-                != output.model_dump(exclude={"phase"})
+                frontier[path].model_dump(exclude={"phase", "role"})
+                != output.model_dump(exclude={"phase", "role"})
             ):
                 return r[bool].fail(
                     f"generation output changed without an owned write: {path}",
@@ -239,6 +300,50 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
+    def plans_current(
+        cls,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
+    ) -> p.Result[bool]:
+        """Authenticate original destinations and only journal-owned parent gains."""
+        for plan in plans:
+            if not isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+                current = cls.states_current((plan.before,), journal=journal)
+                if current.failure:
+                    return current
+                continue
+            witness = plan.before
+            observed = u.Cli.atomic_plan_directory_chain(witness.target)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value == witness:
+                continue
+            if journal is None:
+                return r[bool].fail(
+                    f"generation destination parent changed: {plan.path}",
+                )
+            ancestry = cls._verified_parent_ancestry(journal, witness)
+            if ancestry.failure:
+                return r[bool].from_failure(ancestry)
+            if (
+                observed.value.directories
+                or observed.value.anchor_path != witness.target
+                or observed.value.anchor_ancestry != ancestry.value
+            ):
+                return r[bool].fail(
+                    f"generation destination parent identity changed: {plan.path}",
+                )
+            absent = FlextInfraMiseArtifactsFiles.read_state(plan.path, required=False)
+            if absent.failure:
+                return r[bool].from_failure(absent)
+            if absent.value.content is not None:
+                return r[bool].fail(
+                    f"generation destination appeared after planning: {plan.path}",
+                )
+        return r[bool].ok(value=True)
+
+    @classmethod
     def states_current(
         cls,
         states: t.VariadicTuple[m.Cli.AtomicFileState],
@@ -247,21 +352,10 @@ class FlextInfraMiseArtifactsVerification(
     ) -> p.Result[bool]:
         """Prove every full file state still equals its authenticated snapshot.
 
-        This barrier is what makes the transaction atomic: it proves nothing
-        moved between planning and publication. It compares the FULL state --
-        content, mode and physical identity -- because a snapshot whose inode or
-        device changed underneath the transaction is exactly the race the
-        barrier exists to catch.
-
-        It must never be softened to make a run pass. It briefly was: content
-        was compared whitespace-normalised, mode drift was downgraded to a
-        warning "logged but does not block the pipeline", and a literal
-        `_models/config.py` was skipped as "expected to drift". That file
-        carries no generation marker -- it is authored source and is not
-        expected to drift at all; the drift being masked was the truncation
-        churn of that same afternoon. A verifier that cannot fail is not a
-        verifier, and a hardcoded path exemption in a fleet-wide generator hides
-        the next real corruption just as effectively as it hid that one.
+        Compare content, mode, and physical identity within the caller's scope.
+        Parent identities may change only through the supplied native journal's
+        exact directory-creation receipts. Each destination still has its own
+        guarded write; this check does not claim multi-file OS atomicity.
 
         Returns:
             The resulting ``p.Result[bool]``.

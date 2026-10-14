@@ -11,7 +11,9 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
+from typing_extensions import TypeForm
 
+from flext_core import u
 from flext_infra import t
 
 
@@ -62,7 +64,7 @@ class FlextInfraModelsCodemod:
             Raises:
                 ValueError: If binding source snapshots disagree.
             """
-            indexed: dict[Path, m.Cli.AtomicFileState] = {}
+            indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             for state in states:
                 previous = indexed.setdefault(state.path, state)
                 if previous is not state and previous != state:
@@ -186,6 +188,36 @@ class FlextInfraModelsCodemod:
         collision: Annotated[
             Literal["prefix-wrapper"],
             m.Field(description="Member-name collision resolution policy"),
+        ]
+
+    class RopeContractRule(m.ContractModel):
+        """Identity-constrained native Rope restructuring of a Python contract."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
+        pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
+        goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
+        arguments: Annotated[
+            t.MappingKV[str, str],
+            m.Field(description="Native Rope wildcard identity constraints"),
+        ]
+        imports: t.StrSequence = m.Field(
+            default=(), description="Imports added by native Rope import management"
+        )
+        bindings: t.MappingKV[str, str] = u.Field(
+            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+            description="Destination expressions and their required Rope identities",
+        )
+        model_bases: t.StrSequence = m.Field(
+            default=(),
+            description="Required model ancestry for every matched declaration",
+        )
+
+    class RopeContractRules(m.ContractModel):
+        """The packaged semantic contract policy, validated once on input."""
+
+        rules: Annotated[
+            t.SequenceOf[FlextInfraModelsCodemod.RopeContractRule],
+            m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
 
     class ModFixtureDirectories(m.ArbitraryTypesModel):

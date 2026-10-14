@@ -17,13 +17,13 @@ from packaging.utils import canonicalize_name
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesDependencyRequirements,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
+)
+from flext_infra._utilities.dependency_requirements import (
+    FlextInfraUtilitiesDependencyRequirements,
 )
 
 
@@ -731,16 +731,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv = cls._resolved_uv_table(document)
         members = (
             tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         root_names = (
             (workspace.repository.distribution,) if workspace.repository.package else ()
         )
-        local_names = (
-            *root_names,
-            *(member.distribution for member in members),
-        )
+        local_names = (*root_names, *(member.distribution for member in members))
         conflicting = set(local_names) & candidate_sources.keys()
         if conflicting:
             return r[bool].fail(

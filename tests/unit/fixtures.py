@@ -259,17 +259,6 @@ _INFRA_CHECKOUT_SCENARIOS = (
 )
 
 
-def _run_root(factory: pytest.TempPathFactory) -> Path:
-    """Use pytest's invocation directory, shared across xdist workers.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    base = factory.getbasetemp()
-    return base.parent if os.environ.get("PYTEST_XDIST_WORKER") else base
-
-
 def _run_scoped(run_root: Path, kind: str, key: str) -> Path:
     """Return the run-scoped home of one provisioned consumer.
 
@@ -468,8 +457,8 @@ def _ensure_provisioned(
                 _provision_infra_checkout(run_root, key)
 
 
-@pytest.fixture
-def hermetic_git_environment(tmp_path_factory: pytest.TempPathFactory) -> t.StrMapping:
+@pytest.fixture(scope="session")
+def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMapping:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
     The mirrors are built once per locked-source set under the canonical
@@ -486,7 +475,7 @@ def hermetic_git_environment(tmp_path_factory: pytest.TempPathFactory) -> t.StrM
         "@".join(source) for source in u.Tests.locked_git_sources(_PROJECT_ROOT)
     )
     parent = _run_scoped(
-        _run_root(tmp_path_factory),
+        session_runtime.directory,
         "git-mirrors",
         hashlib.sha256(sources.encode()).hexdigest()[:16],
     )
@@ -519,12 +508,12 @@ def generated_make_template(
     return profile, root
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def resolved_make_templates(
-    tmp_path_factory: pytest.TempPathFactory,
+    session_runtime: p.Tests.SessionRuntime,
     hermetic_git_environment: t.StrMapping,
 ) -> t.MappingKV[c.Infra.MakeProfile, Path]:
-    """Return every profile's committed ``make upg`` template for this run.
+    """Return committed templates owned by this isolated worker-session.
 
     Consumers clone a template rather than resolving inside their budget; the
     template directory also holds the upgrade and cold CI setup receipts.
@@ -535,7 +524,7 @@ def resolved_make_templates(
     """
     templates: t.MutableMappingKV[c.Infra.MakeProfile, Path] = {}
     for profile in c.Infra.MakeProfile:
-        run_root = _run_root(tmp_path_factory)
+        run_root = session_runtime.directory
         parent = _run_scoped(run_root, "make-templates", profile.value)
         _ensure_provisioned(
             run_root,
@@ -557,7 +546,7 @@ def resolved_make_templates(
 @pytest.fixture(params=_INFRA_CHECKOUT_SCENARIOS)
 def provisioned_infra_checkout(
     request: pytest.FixtureRequest,
-    tmp_path_factory: pytest.TempPathFactory,
+    session_runtime: p.Tests.SessionRuntime,
 ) -> t.Pair[str, Path]:
     """Return one scenario's candidate checkout, set up from committed locks.
 
@@ -566,7 +555,7 @@ def provisioned_infra_checkout(
 
     """
     scenario = str(request.param)
-    run_root = _run_root(tmp_path_factory)
+    run_root = session_runtime.directory
     parent = _run_scoped(run_root, "infra-checkouts", scenario)
     _ensure_provisioned(run_root, parent, _INFRA_SETUP_RECEIPT, scenario)
     setup = u.Tests.command_receipt(parent / _INFRA_SETUP_RECEIPT)

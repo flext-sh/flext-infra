@@ -147,7 +147,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             and c.PYPROJECT_FILENAME in contract.destinations
             and not contract.templates
         ):
-            return self._plan_existing_pyproject_bootstrap(target, codegen)
+            return self._plan_existing_pyproject_bootstrap(target, workspace, codegen)
         else:
             return None
         planned = self._bootstrap_destination_plan(
@@ -186,6 +186,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _plan_existing_pyproject_bootstrap(
         cls,
         target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Publish owned TOML policy before native semantic consumers open it.
@@ -212,8 +213,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             skip_check=True,
             managed_artifacts=artifacts.value.resolution,
         )
+        conformed = cls.conformed_pyproject_source(
+            source, target=target, workspace=workspace, codegen=codegen
+        )
+        if conformed.failure:
+            return result_type.from_failure(conformed)
         rendered = modernizer.conform_source(
-            source,
+            conformed.value,
             path=path,
             format_source=False,
             topology=m.Infra.PyprojectDeclaredTopology(
@@ -449,7 +455,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 f"{destination} requires exactly one render template for its profile",
             )
         managed = tuple(
-            item for item in codegen.managed_file_specs if item.path == Path(destination)
+            item
+            for item in codegen.managed_file_specs
+            if item.path == Path(destination)
         )
         if len(managed) != 1:
             return result_type.fail(
@@ -510,7 +518,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             and target.make_profile in entry.profiles
         )
         managed = tuple(
-            item for item in codegen.managed_file_specs if item.path == Path(destination)
+            item
+            for item in codegen.managed_file_specs
+            if item.path == Path(destination)
         )
         if len(entries) != 1 or entries[0].source is None or len(managed) != 1:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -992,10 +1002,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         completed, represented = bound.value
         if not contract.complete_governed:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
+        # Native views render after collection from every project's desired metadata.
         pending_artifacts = {
             path: item
             for path, item in governed_by_path.items()
             if path not in represented
+            and path not in codegen.uv_resolution_pyprojects
         }
         represented_set = self._represent_ungoverned_artifacts(
             target,
@@ -1071,7 +1083,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 update={"vscode_spec": vscode_spec},
             ),
             codegen,
-            {item.path: item for item in codegen.managed_file_specs if item.runtime_binding},
+            {
+                item.path: item
+                for item in codegen.managed_file_specs
+                if item.runtime_binding
+            },
             completed,
             codegen_inputs=codegen_inputs,
             migrate_tracking=True,

@@ -114,7 +114,9 @@ class TestsFlextInfraRuntimeRoot:
             observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(child))
 
             owner = child if excluded else root
-            directory = policy.standalone_directory if hosted else policy.local_directory
+            directory = (
+                policy.standalone_directory if hosted else policy.local_directory
+            )
             tm.that(observed.project_root, eq=child.resolve())
             tm.that(observed.runtime_root, eq=owner.resolve())
             tm.that(observed.resolution_root, eq=owner / directory)
@@ -223,12 +225,16 @@ class TestsFlextInfraRuntimeRoot:
             )
             os.environ[gates.variable] = gates.value if ci else gates.local_value
             observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
-            directory = policy.standalone_directory if hosted else policy.local_directory
+            directory = (
+                policy.standalone_directory if hosted else policy.local_directory
+            )
             expected = workspace.resolve() / directory
 
             tm.that(observed.project_root, eq=project.resolve())
             tm.that(observed.runtime_root, eq=workspace.resolve())
-            tm.that(observed.environment_path, eq=workspace / c.Infra.ENVIRONMENT_DIRECTORY)
+            tm.that(
+                observed.environment_path, eq=workspace / c.Infra.ENVIRONMENT_DIRECTORY
+            )
             tm.that(observed.resolution_root, eq=expected)
             tm.that(observed.pyproject_path, eq=expected / c.PYPROJECT_FILENAME)
             tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)

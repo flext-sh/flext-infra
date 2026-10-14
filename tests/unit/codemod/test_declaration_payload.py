@@ -1,0 +1,118 @@
+"""Native Rope declaration recognition through the public utilities facade.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from flext_infra import infra
+from tests import tm, u
+
+
+class TestsFlextInfraDeclarationPayload:
+    """Exercise semantic identity and inherited declarations without source parsing."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("definition", "accepted"),
+        [
+            (
+                (
+                    "class Parent(ForeignBase):\n"
+                    "    value: str = 'payload'\n"
+                    "class Holder:\n"
+                    "    class Payload(Parent):\n"
+                    "        pass\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        @field_serializer('value')\n"
+                    "        def serialize(self, value: str) -> str:\n"
+                    "            return value.upper()\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        @computed_field\n"
+                    "        @property\n"
+                    "        def size(self) -> int:\n"
+                    "            return len(self.value)\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "class ForeignBase:\n"
+                    "    pass\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(BaseSettings):\n"
+                    "        value: str = 'payload'\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        def execute(self) -> str:\n"
+                    "            return self.value.upper()\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        print('class body effect')\n"
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_native_model_identity(
+        tmp_path: Path,
+        definition: str,
+        *,
+        accepted: bool,
+    ) -> None:
+        """Model admission preserves ancestry, declaration behavior and settings."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = (
+            "from pydantic import BaseModel as ForeignBase, "
+            "field_serializer, computed_field\n"
+            "from pydantic_settings import BaseSettings\n" + definition
+        )
+        path = package / "payload.py"
+        path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as workspace:
+            binding = u.Infra.payload_declaration(
+                workspace.rope_project,
+                path,
+                "Holder.Payload",
+            )
+            tm.that(binding is not None, eq=accepted)
+        tm.that(path.read_text(encoding="utf-8"), eq=source)

@@ -46,8 +46,7 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             "\n_upg_install_runtime:", 1
         )[0]
         tm.that(
-            lifecycle.index("_upg_install_runtime")
-            < lifecycle.index("--what pyproject"),
+            lifecycle.index("--what pyproject") < lifecycle.index("lock --project"),
             eq=True,
         )
         tm.that("PROJECT_INFRA_PYTHONPATH" in rendered, eq=False)
@@ -109,7 +108,10 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
                 },
                 eq=True,
             )
-        tm.that("workspace" in u.Tests.toml_table_at(rendered, "tool", "uv"), eq=False)
+        tm.that(
+            "workspace" in u.Tests.toml_table_at(rendered, "tool", "uv"),
+            eq=any(member.editable for member in members),
+        )
         tm.that(
             "workspace" in u.Tests.toml_table_at(rendered, c.Infra.DEPENDENCY_GROUPS),
             eq=False,

@@ -47,11 +47,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             p.Result[m.Infra.CodegenTransactionSession],
         ]
         | None = None,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
-        admission: Callable[
-            [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
-        ]
-        | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Append, durably authorize, then publish one dependent generated phase.
 
@@ -60,11 +56,16 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if batch_analysis is not None and (
-            batch_analysis.phase != phase or batch_analysis.files != plans
+        if batch_admission is not None and (
+            batch_admission.analysis is None
+            or batch_admission.analysis.phase != phase
+            or batch_admission.analysis.files != plans
+            or batch_admission.admitted_states != batch_admission.analysis.inputs
         ):
             return result_type.fail("batch analysis differs from requested phase")
-        bound = self.bind_publication_proof(session, plans)
+        bound = self.bind_publication_proof(
+            session, plans, batch_admission=batch_admission
+        )
         if bound.failure:
             return result_type.from_failure(bound)
         session = bound.value
@@ -79,20 +80,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
         )
         if not changed:
-            if admission is not None:
-                admitted = admission(
-                    tuple(
-                        item.created
-                        for item in session.journal.directories
-                        if item.created is not None
-                    )
+            if batch_admission is not None:
+                admitted = FlextInfraMiseArtifactsVerification.plans_current(
+                    plans, journal=session.journal
                 )
-                if admitted.failure:
-                    return result_type.from_failure(admitted)
-                if not admitted.value:
-                    return result_type.fail("batch topology admission rejected")
-            if batch_analysis is not None:
-                admitted = FlextInfraMisePublication.admit_batch(batch_analysis)
                 if admitted.failure:
                     return result_type.from_failure(admitted)
             return result_type.ok(session)
@@ -105,8 +96,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             phase,
             changed,
             staged_validator,
-            batch_analysis,
-            admission,
+            batch_admission,
             plans,
         )
 
@@ -128,11 +118,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             p.Result[m.Infra.CodegenTransactionSession],
         ]
         | None = None,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
-        admission: Callable[
-            [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
-        ]
-        | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         all_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Stage and publish a phase only after its source authority is proven.
@@ -175,23 +161,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             if checked.failure:
                 return result_type.from_failure(checked)
             current = checked.value
-        if admission is not None:
-            admitted = admission(
-                tuple(
-                    item.created
-                    for item in current.journal.directories
-                    if item.created is not None
-                )
-            )
-            if admitted.failure:
-                return result_type.from_failure(admitted)
-            if not admitted.value:
-                return result_type.fail("batch topology admission rejected")
         published = self._publish_verified_phase(
             prepared.value.plan.layout,
             phase,
             staged.value,
-            batch_analysis=batch_analysis,
+            batch_admission=batch_admission,
+            journal=current.journal,
         )
         if published.success:
             journal, journal_state = current.journal, current.journal_state
@@ -636,7 +611,11 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 return result_type.from_failure(recorded)
             journal, journal_state = recorded.value
         return self._persist_staging_journal(
-            layout, journal, journal_state, phase, writes.value[0],
+            layout,
+            journal,
+            journal_state,
+            phase,
+            writes.value[0],
         )
 
     @staticmethod
@@ -946,7 +925,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         phase: str,
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish the verified staged set and prove it live.
 
@@ -957,7 +937,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         """
         published = FlextInfraMisePublication.publish(
             staged,
-            batch_analysis=batch_analysis,
+            batch_admission=batch_admission,
+            journal=journal,
         )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
@@ -1163,7 +1144,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
     def commit_locked(
         self,
         session: m.Infra.CodegenTransactionSession,
-        validator: Callable[[], p.Result[bool]] | None = None,
         *,
         published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
@@ -1179,31 +1159,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             evidence = self.record_publication(session)
             if evidence.failure:
                 return r[t.VariadicTuple[Path]].from_failure(evidence)
-            if validator is not None:
-                validated = validator()
-                if validated.success and not validated.value:
-                    validated = r[bool].fail(
-                        "explicit publication validation failed",
-                        exception=session.exception,
-                    )
-                if validated.failure:
-                    failure = r[bool].fail(
-                        validated.error,
-                        exception=validated.exception,
-                        error_code=validated.error_code,
-                        error_data={
-                            "written_files": tuple(
-                                str(path) for path in session.written_files
-                            ),
-                            "issues": tuple(
-                                issue.model_dump() for issue in session.issues
-                            ),
-                            **(validated.error_data or {}),
-                        },
-                    )
-                    return r[t.VariadicTuple[Path]].from_failure(
-                        self._recover_failure(session.plan.layout, failure)
-                    )
             settled = self._settle_publication(session)
             if settled.failure or publication_receipts is None:
                 return settled

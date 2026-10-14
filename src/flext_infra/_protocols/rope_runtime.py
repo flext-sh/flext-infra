@@ -218,7 +218,15 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_start(self) -> int: ...
 
+        def get_body_start(self) -> int: ...
+
         def get_end(self) -> int: ...
+
+        def get_region(self) -> tuple[int, int]: ...
+
+        def lookup(
+            self, name: str
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
 
         @property
         def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
@@ -378,6 +386,29 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         resource: FlextInfraProtocolsRopeRuntime.RopeResource
         new_contents: str
+
+    @runtime_checkable
+    class RopeContractMatch(Protocol):
+        """Native Rope match coordinates without exposing syntax trees."""
+
+        def get_region(self) -> t.Pair[int, int]: ...
+
+    @runtime_checkable
+    class RopeSimilarFinder(Protocol):
+        """One native Rope matcher for identity-bound matches and source regions."""
+
+        def get_matches(
+            self, code: str, args: t.MappingKV[str, str] | None = None
+        ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
+
+        def get_match_regions(
+            self,
+            code: str,
+            args: t.MappingKV[str, str],
+            *,
+            start: int = 0,
+            end: int | None = None,
+        ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
     class RopeRestructure(Protocol):

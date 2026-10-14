@@ -202,17 +202,35 @@ class TestsFlextInfraCodegenConformPublicSurface:
         """Complete ALL publication proves SELF without re-planning or effects."""
         root = infra_git_repo
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        declared = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.ALL,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        request = m.Infra.CodegenConformRequest.model_validate_json(
+            declared.model_dump_json(),
+        )
         tm.ok(
             infra.codegen_conform(
-                u.Tests.conform_request(
-                    root,
-                    what=c.Infra.CodegenConformSurface.ALL,
-                    scope=c.Infra.CodegenConformScope.ALL,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                ),
+                request,
                 initial_workspace=workspace,
             ),
         )
+        repeated = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                request=request,
+                initial_workspace=workspace,
+            ).plan(request),
+        )
+        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        for relative in policy.uv_resolution_pyprojects:
+            matches = tuple(
+                file for file in repeated.files if file.path == root / relative
+            )
+            tm.that(len(matches), eq=1)
+            tm.that(matches[0].desired_content is not None, eq=True)
         receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),

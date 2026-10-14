@@ -183,14 +183,12 @@ class FlextInfraModelsScan:
         ]
         authenticated: Annotated[
             t.MutableMappingKV[str, p.Result[t.Pair[Path, m.Cli.AtomicFileState]]],
-            m.Field(default_factory=dict, description="One authentication per file"),
-        ]
+            m.Field(description="One authentication per file"),
+        ] = m.Field(default_factory=dict)
         repositories: Annotated[
             t.MutableMappingKV[Path, str],
-            m.Field(
-                default_factory=dict, description="One ownership election per file"
-            ),
-        ]
+            m.Field(description="One ownership election per file"),
+        ] = m.Field(default_factory=dict)
 
     class ModScanFindingReference(ModScanFinding):
         """Serialized occurrence referencing the report's authenticated inventory."""

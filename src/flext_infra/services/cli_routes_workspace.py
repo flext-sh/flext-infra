@@ -129,6 +129,9 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 help_text="Inspect native public signing references without key access",
                 model_cls=m.Infra.GitRepoRequest,
                 handler=u.Infra.git_signing_identity,
+                success_formatter=lambda report: report.model_dump_json(
+                    round_trip=True
+                ),
             ),
             m.Cli.ResultCommandRoute(
                 name="capture-gate",

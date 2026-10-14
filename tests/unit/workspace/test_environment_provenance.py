@@ -32,6 +32,31 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
     @staticmethod
+    def test_package_election_does_not_reuse_a_retired_loaded_origin(
+        tmp_path: Path,
+    ) -> None:
+        """A real imported package cannot authenticate its retired physical tree."""
+        package = tmp_path / "retired_provider"
+        package.mkdir()
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra import u\n"
+            "root = pathlib.Path(sys.argv[1])\n"
+            "sys.path.insert(0, str(root))\n"
+            "loaded = importlib.import_module('retired_provider')\n"
+            "expected = root / loaded.__name__\n"
+            "assert u.Infra.declared_package_dir(loaded.__name__) == expected\n"
+            "assert u.Infra.declared_package_dir('flext_infra.codegen') is not None\n"
+            "expected.rename(root / 'retired_tree')\n"
+            "importlib.invalidate_caches()\n"
+            "assert u.Infra.declared_package_dir(loaded.__name__) is None\n"
+            "assert loaded.__file__ is not None\n"
+            "assert not pathlib.Path(loaded.__file__).is_file()\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer, str(tmp_path)], cwd=tmp_path))
+
+    @staticmethod
     def _toolchain_identity(site_packages: Path) -> str:
         """Read real installed metadata in a fresh process's public search path.
 
@@ -43,10 +68,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 (
                     executable,
                     "-c",
-                    "from flext_infra.workspace import "
-                    "FlextInfraWorkspaceEnvironmentProvenance\n"
-                    "print(FlextInfraWorkspaceEnvironmentProvenance"
-                    ".installed_toolchain_identity())\n",
+                    (
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceEnvironmentProvenance\n"
+                        "print(FlextInfraWorkspaceEnvironmentProvenance"
+                        ".installed_toolchain_identity())\n"
+                    ),
                 ),
                 cwd=site_packages.parent,
                 options=m.Cli.ProcessOptions(

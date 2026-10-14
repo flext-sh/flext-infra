@@ -252,16 +252,33 @@ class FlextInfraStagedPackage:
     def _workspace_layouts(
         workspace: Path,
     ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
-
+        """Retain Python providers independently of their generation participation."""
         result_type = r[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]
-        declarations = u.Infra.git_submodule_declarations(workspace)
-        if declarations.failure:
-            return result_type.from_failure(declarations)
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
-        for repository in (
+        targets = u.Infra.repository_operation_targets(
             workspace,
-            *(workspace / declaration.path for declaration in declarations.value),
-        ):
+            c.Infra.CodegenConformScope.ALL,
+        )
+        if targets.failure:
+            return result_type.from_failure(targets)
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
+        for target in targets.value:
+            repository = target.root
+            manifest = repository / c.PYPROJECT_FILENAME
+            if not manifest.is_file():
+                applicability = u.Infra.repository_operation_applicability(
+                    target,
+                    mutating=False,
+                )
+                if applicability.failure:
+                    return result_type.from_failure(applicability)
+                if not applicability.value.applicable:
+                    continue
+                required = u.Cli.atomic_read_binary_file_state(
+                    manifest,
+                    required=True,
+                )
+                if required.failure:
+                    return result_type.from_failure(required)
             layout = u.Infra.layout(repository)
             if layout is not None:
                 if layout.package_name in layouts:

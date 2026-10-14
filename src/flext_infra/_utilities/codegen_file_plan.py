@@ -33,6 +33,26 @@ class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
     @staticmethod
+    def codegen_target_snapshot(
+        path: Path,
+    ) -> p.Result[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]:
+        """Capture the original leaf or the exact still-missing parent chain."""
+        result_type = r[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]
+        observed = u.Cli.atomic_read_binary_file_state(path, required=False)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if observed.value.parent_device is not None:
+            return result_type.ok(observed.value)
+        witness = u.Cli.atomic_plan_directory_chain(path.parent)
+        if witness.failure:
+            return result_type.from_failure(witness)
+        if not witness.value.directories:
+            return result_type.fail(
+                f"codegen destination parent changed during snapshot: {path}",
+            )
+        return result_type.ok(witness.value)
+
+    @staticmethod
     def codegen_initializer_is_authored(content: bytes | None) -> bool:
         """Elect initializer ownership from content and declared generator markers.
 

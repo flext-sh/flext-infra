@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
     from flext_infra import t
 
+_RECEIVED_TEST_PROPERTY_COUNT = 4
+
 
 class FlextInfraPytestDiagXmlMixin:
     """JUnit-XML parsing helpers for pytest diagnostics."""

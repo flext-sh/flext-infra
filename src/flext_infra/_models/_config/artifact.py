@@ -977,7 +977,9 @@ class FlextInfraConfigModelsArtifact:
         ]
         surface: Annotated[
             FlextInfraConfigVocabulary.CodegenConformSurface,
-            m.Field(description="Requested surface resolved against each target policy"),
+            m.Field(
+                description="Requested surface resolved against each target policy"
+            ),
         ]
 
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):

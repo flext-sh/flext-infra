@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 
 
@@ -27,8 +27,11 @@ class FlextInfraUtilitiesGitignore:
             The resolved template root of the installed flext-infra package.
 
         """
-        package_root = Path(__file__).resolve().parent.parent
-        return (package_root / "templates" / codegen.templates.root).resolve()
+        return (
+            FlextInfraConfig.ssot_config_dir().parent
+            / "templates"
+            / codegen.templates.root
+        ).resolve()
 
     @staticmethod
     def codegen_template_sources(codegen: m.Infra.CodegenConfigSpec) -> frozenset[Path]:

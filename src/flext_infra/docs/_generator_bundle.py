@@ -31,7 +31,15 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         request: m.Infra.DocsGenerateRequest,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Capture the next owning scope only after the preceding batch settles."""
+        """Capture the next owning scope only after the preceding batch settles.
+
+        Args:
+            request: The documentation generation request containing repository root and
+              output directory.
+
+        Yields:
+            Results of the documentation generation bundle preparation for each batch.
+        """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             yield r[m.Infra.DocsGenerationBundle].from_failure(roots)
@@ -97,6 +105,10 @@ class FlextInfraDocGeneratorBundleMixin:
                     key=lambda item: item.path,
                 )
             )
+            governance = cls._captured_governance_source(root, states)
+            if governance.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(governance)
+                return
             directories = u.Infra.docs_source_directories(
                 source_roots,
                 source_scope=source_scope,
@@ -120,6 +132,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 (batch_scopes, aggregate),
                 states,
                 directories.value,
+                governance.value,
             )
             if rendered.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(rendered)
@@ -129,6 +142,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 rendered.value,
                 states,
                 source_roots=source_roots,
+                source_scope=source_scope,
                 source_directories=directories.value,
             )
 
@@ -208,11 +222,15 @@ class FlextInfraDocGeneratorBundleMixin:
         scopes = cls._validated_scopes(repository_root, request, output_dir)
         if scopes.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(scopes)
+        governance = cls._captured_governance_source(repository_root, source_states)
+        if governance.failure:
+            return r[m.Infra.DocsGenerationBundle].from_failure(governance)
         rendered = cls._rendered_scopes(
             repository_root,
             scopes.value,
             source_states,
             directories.value,
+            governance.value,
         )
         if rendered.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(rendered)
@@ -331,6 +349,7 @@ class FlextInfraDocGeneratorBundleMixin:
         ],
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
+        governance_source: m.Infra.CodegenBootstrapSource | None = None,
     ) -> p.Result[list[_DocsScopeArtifacts]]:
         """Render one docs artifact set per selected scope.
 
@@ -340,11 +359,16 @@ class FlextInfraDocGeneratorBundleMixin:
         """
         selected, aggregate = scopes
         selected = tuple(
-            u.Infra.docs_scope_from_sources(scope, source_states) for scope in selected
+            u.Infra.docs_scope_from_sources(scope, source_states).model_copy(
+                update={"governance_source": governance_source}
+            )
+            for scope in selected
         )
         if any(scope.name == c.Infra.RK_ROOT for scope in selected):
             aggregate = tuple(
-                u.Infra.docs_scope_from_sources(scope, source_states)
+                u.Infra.docs_scope_from_sources(scope, source_states).model_copy(
+                    update={"governance_source": governance_source}
+                )
                 for scope in aggregate
             )
         root_scope: m.Infra.DocScope | None = (
@@ -439,9 +463,18 @@ class FlextInfraDocGeneratorBundleMixin:
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
         source_roots: t.VariadicTuple[Path] = (),
+        source_scope: Path | None = None,
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
+
+        Args:
+            repository_root: The root path of the repository.
+            rendered: The list of rendered documentation scope artifacts.
+            source_states: The captured source states of the documentation files.
+            source_roots: The source roots of the documentation files.
+            source_scope: The source scope of the documentation files.
+            source_directories: The source directories of the documentation files.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
@@ -456,6 +489,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 "scopes": tuple(normalized.value),
                 "source_states": source_states,
                 "source_roots": source_roots,
+                "source_scope": source_scope,
                 "source_directories": source_directories,
                 "repository_root": repository_root,
             },
@@ -466,6 +500,70 @@ class FlextInfraDocGeneratorBundleMixin:
                 validated_bundle.error,
             )
         return r[m.Infra.DocsGenerationBundle].ok(validated_bundle.value)
+
+    @staticmethod
+    def _captured_governance_source(
+        repository_root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenBootstrapSource]:
+        """Capture the referenced governance owner before rendering its links.
+
+        Args:
+            repository_root: The root path of the repository.
+            source_states: The captured source states of the documentation files.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenBootstrapSource]``.
+        """
+        result_type = r[m.Infra.CodegenBootstrapSource]
+        inputs = u.Infra.load_codegen_inputs(repository_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        captured = {item.path: item for item in source_states}
+        if any(captured.get(item.path) != item for item in inputs.value.sources):
+            return result_type.fail(
+                "governance configuration differs from captured docs sources",
+            )
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=repository_root)
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        origin = identity.value.origin_remote
+        own_governance = False
+        if origin is not None:
+            page = u.Infra.validate_git_remote_url(origin)
+            if page.failure:
+                return result_type.from_failure(page)
+            own_governance = (
+                page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL
+            )
+        if own_governance:
+            branch = u.Infra.resolve_integration_branch(
+                repository_root,
+                policy_branch=inputs.value.spec.branch_policy.integration_branch,
+                inputs=inputs.value,
+            )
+            if branch.failure:
+                return result_type.from_failure(branch)
+            ref = branch.value
+        else:
+            line = u.Infra.flext_integration_line(
+                codegen=inputs.value.spec,
+                repository_root=repository_root,
+            )
+            if line.failure:
+                return result_type.from_failure(line)
+            if c.Infra.GITHUB_REPO_URL.rsplit("/", maxsplit=1)[0] != (
+                line.value.base_url.rstrip("/")
+            ):
+                return result_type.fail(
+                    "governance owner differs from the captured dependency family",
+                )
+            ref = line.value.branch
+        return result_type.ok(
+            m.Infra.CodegenBootstrapSource(url=c.Infra.GITHUB_REPO_URL, ref=ref)
+        )
 
 
 __all__: list[str] = ["FlextInfraDocGeneratorBundleMixin"]

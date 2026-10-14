@@ -76,7 +76,11 @@ class FlextInfraConfigModelsMake(
         def _validate_directories(self) -> Self:
             """Keep both resolver views distinct and inside their physical owner."""
             for directory in (self.local_directory, self.standalone_directory):
-                if directory.is_absolute() or ".." in directory.parts or not directory.parts:
+                if (
+                    directory.is_absolute()
+                    or ".." in directory.parts
+                    or not directory.parts
+                ):
                     msg = "UV resolution directories must be nonempty relative paths"
                     raise ValueError(msg)
             if self.local_directory == self.standalone_directory:

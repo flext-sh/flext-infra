@@ -137,9 +137,13 @@ class FlextInfraUtilitiesPyprojectOverlay:
         """Remove only entries carrying this generator's explicit provenance.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            Native ordered CUSTOM entries, or their original parse failure.
         """
         groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+            tuple(groups),
+            group,
+        )
         result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
         values = u.validate_value(
             m.Infra.DependencyGroupEntries,
@@ -181,6 +185,10 @@ class FlextInfraUtilitiesPyprojectOverlay:
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+        group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+            tuple(groups),
+            group,
+        )
         values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
             groups, group,
         )
@@ -215,8 +223,30 @@ class FlextInfraUtilitiesPyprojectOverlay:
         Returns:
             The resulting ``p.Result[bool]``.
         """
-        groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
+        rendered_groups = dict(
+            u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {},
+        )
+        live_groups = (
+            u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        )
+        groups = dict(rendered_groups)
+        for name, entries in live_groups.items():
+            authored_name = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                tuple(live_groups),
+                name,
+            )
+            previous = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                tuple(groups),
+                authored_name,
+            )
+            if previous != authored_name:
+                groups.pop(previous, None)
+            groups[authored_name] = entries
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+            selected = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                tuple(groups),
+                str(group),
+            )
             custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
                 live_payload,
                 live,
@@ -227,18 +257,24 @@ class FlextInfraUtilitiesPyprojectOverlay:
             if group == c.Infra.DependencyGroup.CODEGEN:
                 required = u.validate_value(
                     m.Infra.DependencyGroupEntries,
-                    groups.get(group, ()),
+                    rendered_groups.get(
+                        FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                            tuple(rendered_groups),
+                            str(group),
+                        ),
+                        (),
+                    ),
                     strict=True,
                 )
                 if required.failure:
                     return r[bool].from_failure(required)
-                groups[group] = FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                groups[selected] = FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
                     FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
                         required.value.root, custom.value,
                     ),
                 )
             else:
-                groups[group] = FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                groups[selected] = FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
                     custom.value,
                 )
         validated = u.validate_value(

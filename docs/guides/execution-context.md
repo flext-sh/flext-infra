@@ -88,6 +88,42 @@ without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
 
+Library defaults resolve through the concrete config class's import-package resource,
+not its declaration file's depth or the checkout's `config/` directory. Editable and
+wheel consumers use the same namespace owner; a missing declared packaged file fails
+without borrowing repository or sibling defaults. Target and local overlays remain
+explicit repository inputs, separate from the frozen library singleton.
+
+The single-layer schema loader follows that same concrete-package resource contract
+through stdlib resource discovery. Parent-depth guesses, worktree paths and fallback
+searches are not default owners. Missing required defaults retain their native failure.
+Installed-wheel acceptance must identify and exercise the actual distributed artifact;
+an editable source read or a prior editable pass cannot retroactively prove wheel
+resources, template identity or consumer behavior.
+
+Upgrade installs the newly resolved lock through its existing frozen provisioning
+owner and verifies its runtime provenance before the next producer. Package election
+resolves the current physical import path independently of loaded-module caches;
+a retired wheel origin does not
+prove the source tree that a new producer will execute. Native provisioning failure
+stops that producer without rewriting the resolved lock or undoing published files.
+
+Conformance captures producer identity before request prelude, planning, staging,
+or journal effects. Cold package election and loaded function/class provenance must
+agree. The retained native file states and physical tree manifests include provider
+code, package resources, distribution metadata, editable pointer files, and project
+metadata read during ownership election. Distribution names and namespace names are
+separate identities; ambiguous ownership is a failure.
+
+Every phase binds that same captured context to its staged consumer inputs. Journal
+transitions preserve it instead of rediscovering loaded origins after publication.
+Native tree authentication precedes source filtering; derived interpreter bytecode is
+not a source input. Added resources or directories, changed bytes, retired roots, and
+changed import election invalidate admission. Only exact journal output or staging
+receipts authorize membership changes. Publication observation authenticates the full
+producer closure before selecting the requested consumer scope. None of this proves
+an earlier process whose source context was not captured.
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
@@ -104,8 +140,9 @@ installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
 release instead of the project release. Activation does not install tools or
 write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
-`make upg`. A missing pin requires `make upg`; a runtime that is not yet installed
-requires `make setup`, whose provisioning happens before activation.
+`make upg`. Audit reports a missing pin; only `make upg` may resolve and write it.
+A runtime that is not yet installed requires `make setup`, whose provisioning
+happens before activation.
 Both setup and upgrade resolve the executable through `mise which python` at the
 shared environment-sync boundary and pass that exact path to uv. Recursive Make
 calls do not require a caller-provided `SETUP_PYTHON` environment variable.
@@ -137,8 +174,9 @@ reading a gate identity does not load the pytest execution or collection owners.
 The producer declares the Markdown collection plugin as a runtime dependency
 because its shipped pytest collection implementation imports that plugin.
 
-An attached project inherits both locks and the physical environment of its
-Git superproject. Its `make setup` and `make upg` delegate to that root before
+An associated project inherits the locks and physical environment of its
+authenticated Git or native UV workspace. Its `make setup` and `make upg`
+delegate to that root before
 installing tools or resolving dependencies. A standalone checkout owns those
 operations itself. Only `upg` resolves moving Git branches; `setup` installs the
 exact committed lock without changing it.
@@ -302,10 +340,14 @@ generate it with the current generator (`make gen`) before its first `make upg`.
 Separate `mise.version`, bootstrap launchers and staged lock-convergence scripts
 are not lifecycle owners.
 
-`toolchain.tools` in `config/codegen.yaml` declares every fleet tool. Each comes from a
-native, checksum-locked owner (aqua, GitHub releases, conda, or a Mise core backend);
-the toolchain model rejects an `npm:` selector at load (ADR-025). A tool whose upstream
+`toolchain.tools` in the packaged `config/codegen.yaml` owns native tool declarations;
+the toolchain model rejects a Mise `npm:` selector (ADR-025). A tool whose upstream
 release metadata publishes no checksum declares `lock_checksum: false`.
+ADR-025's October 9 amendment requires distributed JavaScript tools, including
+FLEXT's, to use one owned Bun project, `package.json` and a frozen lock. It does not
+restore Mise npm backends or retire native Node wrappers where used. Source-owner
+implementation and real installed-consumer proof are required before claiming this
+cutover complete; the amendment itself is not a runtime receipt.
 
 `make setup` and `make upg` pass the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
@@ -331,12 +373,13 @@ the shared shims to the first `mise` on PATH. Caches and installations stay out 
 
 Mise reaches GitHub to install a tool missing from its cache and to resolve
 releases during `make upg`. Only `make upg` writes `mise.lock` and `uv.lock`;
-`make setup` never writes either. A missing or incompatible Mise lock entry fails
-with its original diagnostic and exit status, without disabling lockfiles or
-retrying. Setup installs `uv.lock` with `--frozen`, without a lock verdict or rewrite.
-Audit judges manifest satisfaction and lock integrity. Drift and resulting dependency
-incompatibility remain red until `make upg` produces matching locks. A missing
-lock fails with an actionable diagnostic. A failed native resolver or installer
+`make setup` never writes either. Setup provisions current committed locks without
+resolving them; audit owns missing, stale or incomplete lock verdicts, and CI runs
+audit after setup. Functional installation failures remain red with their original
+diagnostic and exit status, without disabling lockfiles or retrying. Setup installs
+`uv.lock` with `--frozen`, without an audit verdict or rewrite. Audit judges manifest
+satisfaction and lock integrity; drift remains red until canonical upgrade repairs
+it. A failed native resolver or installer
 retains its original failure; no downgrade, retry or disabled lock policy masks it.
 Only successful resolution, installation and generation establish alignment.
 The platforms declared by `toolchain.mise_lockfile_platforms` compose the lock
@@ -753,10 +796,22 @@ payloads and machine paths are not exported with these fingerprints.
 through the existing workspace CLI. The report names the declared signing format,
 file references and each setting's effective origin/scope and native process outcome.
 It does not read key/trust files, invoke signing/default-key commands or consult a
-keyring. A missing setting preserves Git's absent-key outcome. File references can
-point to unavailable files; discovery does not claim verified trust or an observed
-public fingerprint. The native signature verifier remains the authority for those
-claims.
+keyring. Undeclared settings preserve Git's absent-key outcome (`1`, with no stdout
+or stderr) and nullable references, not an empty path. Empty declarations, unsupported
+signing formats and native query failures remain errors. File references can point to
+unavailable files; discovery does not claim verified trust or an observed fingerprint.
+For SSH, Git's `key::` form and its accepted deprecated raw `ssh-` form are literal
+public declarations, never paths. Their base64 envelope and encoded key-type agreement
+are checked without reading files or contacting an agent; malformed declarations fail
+without exporting their payload. Algorithm usability and trust still require the
+selected native signing or verification action, not this observation.
+The CLI emits the typed report as JSON, excluding native values. Neither `status` nor
+original check/test capture selects signing: capture binds the typed target policy and
+producer evidence. Direct `u.Infra.git_create_gate_attestation` and
+`u.Infra.git_verify_gate_attestation` select signing/publication or signature verification;
+their required trust input and native key/signature failures remain fail-loud. A valid
+observation is never signed proof, and absent signing material does not gate unrelated
+offline producers.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The

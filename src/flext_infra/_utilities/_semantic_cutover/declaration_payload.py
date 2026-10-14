@@ -1,4 +1,4 @@
-"""Resolve declaration roles through the immutable Rope identity graph.
+"""Resolve declaration roles through Rope scopes, ancestry and native matching.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,18 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
-from flext_infra import p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
 
 
 class FlextInfraUtilitiesDeclarationPayload:
-    """Identify data-only payloads by ancestry, never a base-name heuristic."""
+    """Identify inherited declarations without parsing or spelling heuristics."""
 
     @staticmethod
     def _class_ancestry(
@@ -39,21 +39,22 @@ class FlextInfraUtilitiesDeclarationPayload:
         cls,
         project: p.Infra.RopeProject,
         path: Path,
-        declaration: ast.ClassDef,
+        qualified_name: str,
     ) -> p.Infra.RopePyName | None:
-        """Prove payload shape and real Pydantic ancestry, not base spelling.
+        """Resolve a data declaration, including fields inherited from a preset.
+
+        Recognition follows the actual BaseModel identity. Relocation admission
+        additionally rejects settings, class decorators and behavioral methods.
+        Validators, serializers and computed fields retain their native identity.
+
+        Args:
+            project: The Rope project context for the resolution.
+            path: The file path containing the declaration.
+            qualified_name: The fully qualified name of the declaration.
 
         Returns:
-            The resulting ``p.Infra.RopePyName | None``.
+            The bound model declaration, or ``None`` for a different contract.
         """
-        if declaration.decorator_list or not any(
-            isinstance(node, ast.AnnAssign)
-            and isinstance(node.target, ast.Name)
-            and not node.target.id.startswith("_")
-            for node in declaration.body
-        ):
-            return None
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
@@ -61,23 +62,19 @@ class FlextInfraUtilitiesDeclarationPayload:
             path,
         )
         module = project.get_pymodule(resource)
-        scope = runtime.scope_at(
-            module,
-            runtime.source_offset(resource.read(), declaration),
-            declaration_line=declaration.lineno,
-        )
-        if not all(
-            cls._payload_statement(project, scope, node) for node in declaration.body
-        ):
+        owner = module.get_attributes()
+        binding: p.Infra.RopePyName | None = None
+        for name in qualified_name.split("."):
+            binding = owner.get(name)
+            if binding is None:
+                return None
+            owner = binding.get_object().get_attributes()
+        if binding is None:
             return None
-        binding = scope.get_names().get(declaration.name)
-        if binding is None or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
-            binding.get_object(),
-        ):
+        value = binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
             return None
-        if len(binding.get_object().get_superclasses()) != len(declaration.bases):
-            return None
-        ancestry = cls._class_ancestry(binding.get_object())
+        ancestry = cls._class_ancestry(value)
         base = project.get_module("pydantic").get_attribute("BaseModel").get_object()
         settings = (
             project
@@ -87,83 +84,101 @@ class FlextInfraUtilitiesDeclarationPayload:
         )
         if base not in ancestry or settings in ancestry:
             return None
-        payload = any(
-            cls._payload_field(project, scope, node) for node in declaration.body
+        scope = value.get_scope()
+        if scope is None:
+            return None
+        statements = FlextInfraUtilitiesRopeStructure.logical_statements(
+            module.source_code,
         )
-        return binding if payload else None
+        begin, _end = scope.get_region()
+        if any(
+            begin < statement.end_offset and statement.line < scope.get_start()
+            for statement in statements
+        ):
+            return None
+        if not cls._payload_body(value, scope, statements):
+            return None
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+        for member in scope.get_defined_names().values():
+            method = member.get_object()
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_function(
+                method
+            ) and not cls._payload_method(finder, method, statements):
+                return None
+        return binding
 
     @staticmethod
-    def _payload_field(
-        project: p.Infra.RopeProject,
+    def _payload_body(
+        value: p.Infra.RopePyObject,
         scope: p.Infra.RopeScope,
-        node: ast.stmt,
+        statements: t.SequenceOf[m.Infra.LogicalStatement],
     ) -> bool:
-        if not isinstance(node, ast.AnnAssign) or not isinstance(node.target, ast.Name):
-            return False
-        annotation = (
-            node.annotation.value
-            if isinstance(node.annotation, ast.Subscript)
-            else node.annotation
-        )
-        qualifier = FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
-            scope,
-            annotation,
-        )
-        return node.target.id != "model_config" and not any(
-            FlextInfraUtilitiesRopeRuntimeModules.same_name(
-                project.get_module("typing").get_attribute(name),
-                qualifier,
+        """Reject class-body behavior using the existing Rope statement boundary.
+
+        Returns:
+            Whether the class body contains only declaration statements.
+        """
+        return all(
+            statement.category
+            in {
+                c.Infra.StatementCategory.ANN_ASSIGN,
+                c.Infra.StatementCategory.ASSIGN,
+                c.Infra.StatementCategory.FUNC_DEF,
+            }
+            or statement.text.strip() == "pass"
+            or statement.text.lstrip().startswith("@")
+            or (
+                statement.line == scope.get_body_start() and value.get_doc() is not None
             )
-            for name in ("ClassVar", "Final")
+            for statement in statements
+            if scope.get_start() < statement.line <= scope.get_end()
+            and statement.enclosing_kind == c.Infra.RopeScopeKind.CLASS
+            and statement.enclosing_name == value.get_name()
         )
 
-    @classmethod
-    def _payload_statement(
-        cls,
-        project: p.Infra.RopeProject,
-        scope: p.Infra.RopeScope,
-        node: ast.stmt,
+    @staticmethod
+    def _payload_method(
+        finder: p.Infra.RopeSimilarFinder,
+        method: p.Infra.RopePyObject,
+        statements: t.SequenceOf[m.Infra.LogicalStatement],
     ) -> bool:
-        if isinstance(node, ast.AnnAssign | ast.Assign | ast.Pass):
-            return True
-        if isinstance(node, ast.Expr):
-            return isinstance(node.value, ast.Constant) and isinstance(
-                node.value.value,
-                str,
-            )
-        if not isinstance(node, ast.FunctionDef):
+        """Admit only native declaration decorators in Rope's header region.
+
+        Returns:
+            Whether every decorator is allowed and one belongs to Pydantic.
+        """
+        scope = method.get_scope()
+        if scope is None:
             return False
+        begin, _end = scope.get_region()
         known = False
-        for decorator in node.decorator_list:
-            expression = (
-                decorator.func if isinstance(decorator, ast.Call) else decorator
-            )
-            identity = FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
-                scope,
-                expression,
-            )
-            if any(
-                FlextInfraUtilitiesRopeRuntimeModules.same_name(
-                    project.get_module("pydantic").get_attribute(name),
-                    identity,
-                )
-                for name in ("field_validator", "model_validator", "computed_field")
+        for statement in statements:
+            if not (
+                begin < statement.end_offset and statement.line < scope.get_start()
             ):
-                known = True
-            elif not cls._builtin_declaration_decorator(identity):
+                continue
+            identities = tuple(
+                identity
+                for identity in (
+                    *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
+                    *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
+                )
+                if tuple(
+                    finder.get_match_regions(
+                        "${decorator}",
+                        {"decorator": f"object={identity}"},
+                        start=statement.start_offset,
+                        end=statement.end_offset,
+                    )
+                )
+            )
+            if not identities:
                 return False
+            known |= any(
+                identity in c.Infra.PYDANTIC_PAYLOAD_DECORATORS
+                for identity in identities
+            )
         return known
-
-    @staticmethod
-    def _builtin_declaration_decorator(identity: p.Infra.RopePyName | None) -> bool:
-        if identity is None:
-            return False
-        value = identity.get_object()
-        return isinstance(value, p.Infra.RopeBuiltinClass) and (
-            value.builtin.__module__ == "builtins"
-            and value.builtin.__qualname__
-            in {"classmethod", "staticmethod", "property"}
-        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDeclarationPayload"]

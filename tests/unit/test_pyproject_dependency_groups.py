@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import config
@@ -174,6 +175,133 @@ class TestsPyprojectDependencyGroups:
                 self._conform(rendered, role, required_dev_dependencies=floors),
             ),
             eq=rendered,
+        )
+
+    @pytest.mark.parametrize(
+        "role",
+        [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
+    )
+    def test_floor_merge_preserves_authored_requirement_variants(
+        self,
+        role: c.Infra.MakeProfile,
+    ) -> None:
+        """A floor owns its dimension while extra, marker and Git variants survive."""
+        name = "variant-floor"
+        floor = f"{name}>=2.0"
+        replaced = f"{name}>=1.0"
+        extra = f"{name}[feature]>=1.0,<3.0"
+        marked = f"{name}>=1.0; sys_platform == 'linux'"
+        origin = u.Tests.repository_ref(name)
+        direct = (
+            f"{name} @ git+{origin.url}@{u.Tests.provider_branch()}"
+        )
+        dev = str(c.Infra.DEV)
+        codegen = str(c.Infra.DependencyGroup.CODEGEN)
+        authored_name = dev.capitalize()
+        source = self._source(
+            f"{authored_name} = [{json.dumps(replaced)}, {json.dumps(marked)}, "
+            '{include-group = "base"}, '
+            f"{json.dumps(extra)}, {json.dumps(direct)}, {json.dumps(marked)}]\n"
+            f"{codegen} = []\n"
+            "base = []\n"
+            f'examples = [{{include-group = "{authored_name}"}}]',
+        )
+        seed = self._source(f"{dev} = []\n{codegen} = []")
+        overlaid = tm.ok(u.Infra.overlay_preserved(seed, source))
+        expected = u.Tests.toml_mapping(u.Tests.toml_doc(source))
+        overlaid_payload = u.Tests.toml_mapping(u.Tests.toml_doc(overlaid))
+        tm.that(
+            overlaid_payload["dependency-groups"],
+            eq=expected["dependency-groups"],
+        )
+        conformed = tm.ok(
+            self._conform(
+                overlaid,
+                role,
+                required_dev_dependencies=(floor,),
+            ),
+        )
+        groups = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc(conformed))["dependency-groups"],
+        )
+        tm.that(
+            u.Tests.toml_list(groups[authored_name]),
+            eq=[floor, marked, {"include-group": "base"}, extra, direct, marked],
+        )
+        tm.that(
+            groups["examples"],
+            eq=u.Tests.toml_mapping(expected["dependency-groups"])["examples"],
+        )
+        repeated = tm.ok(u.Infra.overlay_preserved(seed, conformed))
+        tm.that(
+            tm.ok(
+                self._conform(
+                    repeated,
+                    role,
+                    required_dev_dependencies=(floor,),
+                ),
+            ),
+            eq=conformed,
+        )
+
+    @pytest.mark.parametrize(
+        "role",
+        [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
+    )
+    @pytest.mark.parametrize("variant", ["extra", "marker", "bounded", "origin"])
+    def test_internal_floor_yields_only_its_unbounded_matching_dimension(
+        self,
+        role: c.Infra.MakeProfile,
+        variant: str,
+    ) -> None:
+        """Conditional requests and Git origins cannot erase an enforced bound."""
+        name = config.Infra.codegen.infra_repository.distribution
+        canonical = u.Tests.flext_source(name)
+        source_url = Requirement(canonical).url
+        tm.that(source_url, is_=str)
+        floor = f"{name}>=0" if variant == "bounded" else name
+        if variant == "extra":
+            authored = f"{name}[feature] @ {source_url}"
+        elif variant == "marker":
+            authored = f"{canonical} ; sys_platform == 'linux'"
+        elif variant == "origin":
+            authored = f"{canonical}-authored-fixture"
+        else:
+            authored = canonical
+        authored_requirement = Requirement(authored)
+        dev = str(c.Infra.DEV)
+        codegen = str(c.Infra.DependencyGroup.CODEGEN)
+        source = self._source(
+            f"{dev} = [{json.dumps(authored)}, "
+            '{include-group = "base"}]\n'
+            f"{codegen} = []\nbase = []",
+        )
+
+        conformed = tm.ok(
+            self._conform(source, role, required_dev_dependencies=(floor,)),
+        )
+
+        groups = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc(conformed))["dependency-groups"],
+        )
+        generated = floor if variant == "bounded" else canonical
+        expected = (
+            [authored, {"include-group": "base"}]
+            if variant == "origin"
+            else [generated, authored, {"include-group": "base"}]
+        )
+        tm.that(u.Tests.toml_list(groups[dev]), eq=expected)
+        observed_requirements = tuple(
+            Requirement(entry)
+            for entry in u.Tests.toml_list(groups[dev])
+            if isinstance(entry, str)
+        )
+        tm.that(authored_requirement in observed_requirements, eq=True)
+        tm.that(
+            tm.ok(
+                self._conform(conformed, role, required_dev_dependencies=(floor,)),
+            ),
+            eq=conformed,
         )
 
     @pytest.mark.parametrize(

@@ -19,6 +19,9 @@ import ast
 from pathlib import Path
 from typing import ClassVar
 
+from flext_infra._utilities._semantic_cutover.family_type_references import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
@@ -41,7 +44,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
     class FlextInfraUtilitiesCodemodBindingChain(FlextInfraUtilitiesCodemodRules):
         """Prove an occurrence's binding: one stable reaching declaration per link."""
 
-        _RESOLVED_SYMBOL_OPERAND_COUNT: ClassVar[int] = 2
+        RESOLVED_SYMBOL_OPERAND_COUNT: ClassVar[int] = 2
 
         @classmethod
         def _occurrence_binding_holds(
@@ -142,7 +145,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                     and target.
 
             """
-            if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
+            if len(condition.arg) != cls.RESOLVED_SYMBOL_OPERAND_COUNT + 1:
                 message = (
                     "emitted-symbol requires a lexical expression, module and target"
                 )
@@ -308,7 +311,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 return False
             actual = runtime.resolve_symbol(scope, expression)
             if condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL:
-                return cls._resolved_symbol_matches(project, condition, actual)
+                return cls._resolved_symbol_matches(
+                    project, condition, actual
+                ) and cls._stable_binding_chain(frame, expression, start, sources)
             if len(condition.arg) != 1:
                 msg = "same-binding requires one lexical expression"
                 raise ValueError(msg)
@@ -350,7 +355,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 ValueError: If resolved-symbol requires a module and an expression.
 
             """
-            if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT:
+            if len(condition.arg) != cls.RESOLVED_SYMBOL_OPERAND_COUNT:
                 msg = "resolved-symbol requires a module and an expression"
                 raise ValueError(msg)
             target_module, target = condition.arg

@@ -183,7 +183,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """Follow the imported facade's declared classes and base bindings.
 
         Returns:
-            Pairs of module and class names representing the behavior lineage.
+            A tuple of pairs representing the lineage of the behavior, where each
+            pair contains the module and class name.
+
+        Raises:
+            TypeError: If an unsupported facade inheritance identity is encountered.
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:

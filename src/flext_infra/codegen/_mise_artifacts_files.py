@@ -104,16 +104,6 @@ class FlextInfraMiseArtifactsFiles:
         return u.Cli.sha256_bytes(content)
 
     @classmethod
-    def package_directory(cls) -> Path:
-        """Return the physical directory of the running ``flext_infra`` package.
-
-        Returns:
-            The physical directory of the running ``flext_infra`` package.
-
-        """
-        return Path(__file__).resolve().parents[1]
-
-    @classmethod
     def read_state(
         cls,
         path: Path,

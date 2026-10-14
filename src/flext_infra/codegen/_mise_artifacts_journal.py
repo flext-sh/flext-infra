@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
@@ -28,6 +29,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         transaction_id: str,
         sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]] = (),
         directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory] = (),
+        producer: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionJournal]:
         """Build staging authority before any disposable transaction root exists.
 
@@ -55,6 +57,34 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources((), sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
+        generator_sources: list[m.Infra.CodegenJournalSource] = []
+        if producer is not None:
+            for source in producer.inputs:
+                role: Literal[
+                    "layer0", "family", "consumer", "resource", "distribution"
+                ] = "distribution"
+                for tree in producer.generator_trees:
+                    if tree.root.path.name.endswith(
+                        ".dist-info"
+                    ) or not source.path.is_relative_to(tree.root.path):
+                        continue
+                    role = "resource"
+                    if source.path.suffix == c.Infra.EXT_PYTHON:
+                        module = ".".join((
+                            tree.root.path.name,
+                            *source.path
+                            .relative_to(tree.root.path)
+                            .with_suffix("")
+                            .parts,
+                        ))
+                        role = u.Infra.import_module_role(module)
+                    break
+                encoded = cls.source_record("generator", source)
+                if encoded.failure:
+                    return r[m.Infra.CodegenTransactionJournal].from_failure(encoded)
+                generator_sources.append(
+                    encoded.value.model_copy(update={"role": role})
+                )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
             {
@@ -66,6 +96,10 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 "projects": tuple(projects),
                 "file_participants": plan.layout.file_participants,
                 "sources": encoded_sources.value,
+                "generator_sources": tuple(generator_sources),
+                "generator_trees": producer.generator_trees
+                if producer is not None
+                else (),
                 "directories": directories,
                 "entries": (),
             },
@@ -107,14 +141,17 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources(journal.sources, sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            journal.model_dump()
-            | {
+        candidate = journal.model_copy(
+            update={
                 "state": "prepared",
                 "sources": encoded_sources.value,
                 "entries": tuple(entries),
-            },
+            }
+        )
+        validated = r[m.Infra.CodegenTransactionJournal].create_from_callable(
+            lambda: m.Infra.CodegenTransactionJournal.model_validate_json(
+                candidate.model_dump_json()
+            )
         )
         if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
@@ -461,73 +498,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         if removed.failure:
             return r[bool].from_failure(removed)
         return r[bool].ok(value=True)
-
-    @classmethod
-    def source_record(
-        cls,
-        phase: str,
-        source: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
-        previous: m.Infra.CodegenJournalSource | None = None,
-        *,
-        path: Path | None = None,
-    ) -> p.Result[m.Infra.CodegenJournalSource]:
-        if isinstance(source, m.Cli.AtomicDirectoryChainPlan):
-            if path is None or path.parent != source.target:
-                return r[m.Infra.CodegenJournalSource].fail(
-                    "absent output requires its exact captured parent witness",
-                )
-            return r[m.Infra.CodegenJournalSource].ok(
-                m.Infra.CodegenJournalSource(
-                    phase=phase,
-                    path=path,
-                    parent_device=None,
-                    parent_inode=None,
-                    sha256=None,
-                    mode=None,
-                    device=None,
-                    inode=None,
-                    link_count=None,
-                    absent_parent=source,
-                )
-            )
-        absent_parent = None
-        if source.parent_device is None or source.parent_inode is None:
-            if previous is not None:
-                absent_parent = previous.absent_parent
-            else:
-                witness = u.Cli.atomic_plan_directory_chain(source.path.parent)
-                if witness.failure:
-                    return r[m.Infra.CodegenJournalSource].from_failure(witness)
-                absent_parent = witness.value
-        incomplete_source = source.content is not None and any((
-            source.mode is None,
-            source.device is None,
-            source.inode is None,
-            source.link_count is None,
-            source.link_count is not None and source.link_count < 1,
-        ))
-        if incomplete_source:
-            return r[m.Infra.CodegenJournalSource].fail(
-                f"generation source identity is incomplete: {source.path}",
-            )
-        return r[m.Infra.CodegenJournalSource].ok(
-            m.Infra.CodegenJournalSource(
-                phase=phase,
-                path=source.path,
-                parent_device=source.parent_device,
-                parent_inode=source.parent_inode,
-                sha256=files.digest(source.content)
-                if source.content is not None
-                else None,
-                mode=source.mode,
-                device=source.device,
-                inode=source.inode,
-                link_count=source.link_count,
-                file_attributes=source.file_attributes,
-                reparse_tag=source.reparse_tag,
-                absent_parent=absent_parent,
-            ),
-        )
 
     @classmethod
     def _merge_sources(

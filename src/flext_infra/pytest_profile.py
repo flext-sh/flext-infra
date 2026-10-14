@@ -24,40 +24,22 @@ class FlextInfraPytestProfile:
         self.output = output
         self.context: m.Infra.PytestRunContext | None = None
 
-    def run_parent(
-        self, *, started_at_monotonic: float, profile: cProfile.Profile
-    ) -> int:
-        """Retain the entry's profiler, including the adapter's own imports.
-
-        Returns:
-            The resulting ``int``.
-
-        Raises:
-            ValueError: If parent profile must stay under the repository reports
-                directory.
-
-        """
-        if not self.output.resolve().is_relative_to(
-            (
-                Path.cwd()
-                / config.Infra.codegen.make.testmon_cache.reports_directory.parent
-            ).resolve(),
-        ):
-            msg = "parent profile must stay under the repository reports directory"
-            raise ValueError(msg)
-        self.output.parent.mkdir(parents=True, exist_ok=True)
-        self.context = None
-        self.output.with_suffix(".pstats.json").unlink(missing_ok=True)
-        try:
-            return self._run_parent(started_at_monotonic)
-        finally:
-            self._finish(profile)
-
     def _record_context(self, context: m.Infra.PytestRunContext) -> None:
         """Receive the runner's actual context, never a latest-run pointer."""
         self.context = context
 
-    def _run_parent(self, started_at_monotonic: float) -> int:
+    def run_parent(
+        self, *, started_at_monotonic: float, profile: cProfile.Profile
+    ) -> int:
+        """Bind the profile to the typed runner's repository, never the caller cwd.
+
+        Returns:
+            The native runner exit status.
+
+        Raises:
+            ValueError: If the profile destination escapes the runner's reports tree.
+            RuntimeError: If the invocation publishes ambiguous run receipts.
+        """
         # The entry has already started profiling before importing this adapter.
         runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=started_at_monotonic,
@@ -68,6 +50,14 @@ class FlextInfraPytestProfile:
             ),
             profile_enabled=True,
         )
+        if not self.output.resolve().is_relative_to(
+            (runner.root / runner.reports.parent).resolve(),
+        ):
+            msg = "parent profile must stay under the repository reports directory"
+            raise ValueError(msg)
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        self.context = None
+        self.output.with_suffix(".pstats.json").unlink(missing_ok=True)
         # The runner publishes its run context before any child can fail; the
         # parent binds the profile to the receipt THIS invocation wrote, also
         # when the run fails (a blocked collection is a profiled run too). The
@@ -93,22 +83,23 @@ class FlextInfraPytestProfile:
                 )
 
         try:
-            outcome = runner.execute().unwrap()
-        except BaseException as failure:
+            try:
+                outcome = runner.execute().unwrap()
+            except BaseException as failure:
+                owned = owned_receipts()
+                if len(owned) > 1:
+                    failure.add_note(f"profile left unbound: run contexts {owned}")
+                else:
+                    bind(owned)
+                raise
             owned = owned_receipts()
             if len(owned) > 1:
-                # The original failure stays the one raised; the ambiguity
-                # travels with it instead of replacing it.
-                failure.add_note(f"profile left unbound: run contexts {owned}")
-            else:
-                bind(owned)
-            raise
-        owned = owned_receipts()
-        if len(owned) > 1:
-            msg = f"profiled run published more than one run context: {owned}"
-            raise RuntimeError(msg)
-        bind(owned)
-        return outcome
+                msg = f"profiled run published more than one run context: {owned}"
+                raise RuntimeError(msg)
+            bind(owned)
+            return outcome
+        finally:
+            self._finish(profile)
 
     def _finish(self, profile: cProfile.Profile) -> None:
         """Keep raw profiles on early failure, but publish only this run's receipt."""

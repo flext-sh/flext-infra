@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
@@ -79,6 +80,9 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Authenticated producer resource membership"
+        )
         publications: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
@@ -105,9 +109,15 @@ class FlextInfraModelsCodegenPipelineModels:
                     or if codegen phase receipt input paths must be unique.
 
             """
-            file_paths = tuple(file.path for file in self.files)
-            if len(set(file_paths)) != len(file_paths):
-                msg = "codegen phase receipt destination paths must be unique"
+            file_paths = Counter(file.path for file in self.files)
+            duplicates = tuple(path for path, count in file_paths.items() if count > 1)
+            if duplicates:
+                msg = (
+                    "codegen phase receipt destination paths must be unique: "
+                    + ", ".join(
+                        f"{path} ({file_paths[path]} plans)" for path in duplicates
+                    )
+                )
                 raise ValueError(msg)
             input_paths = tuple(state.path for state in self.inputs)
             if len(set(input_paths)) != len(input_paths):
@@ -124,6 +134,11 @@ class FlextInfraModelsCodegenPipelineModels:
             FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None,
             m.Field(description="Phase analysis on success"),
         ] = None
+        admitted_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(),
+            exclude=True,
+            description="Exact immutable inputs authenticated by native batch admission",
+        )
         error: Annotated[
             str,
             m.Field(description="Phase failure, empty on success"),
@@ -196,6 +211,9 @@ class FlextInfraModelsCodegenPipelineModels:
         generator_sources: t.VariadicTuple[
             FlextInfraModelsCodegenJournalModels.CodegenJournalSource
         ] = m.Field(default=(), description="Loaded generator implementation identity")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Captured producer resource membership"
+        )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Captured source directory ancestry and presence",
@@ -204,6 +222,9 @@ class FlextInfraModelsCodegenPipelineModels:
             default=(),
             description="Roots elected by this receipt's native source owner",
         )
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected by the native docs source owner"
+        )
         surface: c.Infra.CodegenConformSurface | None = m.Field(
             default=None,
             description="Actual operation surface when composed by conform",
@@ -211,6 +232,9 @@ class FlextInfraModelsCodegenPipelineModels:
         scope: c.Infra.CodegenConformScope | None = m.Field(
             default=None,
             description="Actual operation scope when composed by conform",
+        )
+        module: str | None = m.Field(
+            default=None, description="Exact module selector of the publication"
         )
         batches: t.VariadicTuple[Self] = m.Field(
             default=(),
