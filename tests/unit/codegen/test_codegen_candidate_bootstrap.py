@@ -28,7 +28,15 @@ def _write_candidate_targets(
     root: Path,
     targets: t.SequenceOf[m.Infra.CandidateBootstrapTargetSpec],
 ) -> Path:
-    """Declare recovery targets through the repository's current config owner."""
+    """Declare recovery targets through the repository's current config owner.
+
+    Args:
+        root: Workspace root whose conformed config file is rewritten.
+        targets: Candidate bootstrap target specs to declare.
+
+    Returns:
+        Path of the rewritten codegen config file declaring the targets.
+    """
     inputs = tm.ok(u.Infra.load_codegen_inputs(root))
     declaration = (inputs.spec.repository or m.Infra.RepositoryDeltaSpec()).model_copy(
         update={"candidate_bootstrap_targets": tuple(targets)},
@@ -88,7 +96,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
     @staticmethod
     @pytest.mark.slow
-    def test_public_bootstrap_rewrites_own_pyproject_and_repeats(tmp_path: Path) -> None:
+    def test_public_bootstrap_rewrites_own_pyproject_and_repeats(
+        tmp_path: Path,
+    ) -> None:
         """A self target retains declarations while its own projection advances."""
         root, _ = u.Tests.render_make_environment(
             tmp_path / "self",
@@ -98,7 +108,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             root,
             (
                 m.Infra.CandidateBootstrapTargetSpec(
-                    path=Path("."),
+                    path=Path(),
                     what=c.Infra.CodegenConformSurface.PYPROJECT,
                 ),
             ),
@@ -453,8 +463,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             encoding="utf-8",
         )
         initializer = package / c.Infra.INIT_PY
-        stale = f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n"
-        initializer.write_text(stale, encoding="utf-8")
+        initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
+            encoding="utf-8",
+        )
         foreign = package / "authored"
         foreign.mkdir()
         authored = foreign / c.Infra.INIT_PY
@@ -478,7 +490,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         generated = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        tm.that(generated.content, ne=stale.encode(c.DEFAULT_ENCODING))
+        tm.that(
+            generated.content,
+            ne=f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n".encode(
+                c.DEFAULT_ENCODING
+            ),
+        )
         observed = tm.ok(
             u.Cli.capture(
                 [
@@ -713,17 +730,15 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             candidate,
         )
         original = tm.ok(u.Infra.pyproject_regeneration_source(original))
-        conflict = "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         corrupt = (
             original
             + "\n[tool."
             + tm.ok(u.Infra.pyproject_managed_file()).managed_tool_tables[0]
-            + "]\n"
-            + conflict
+            + "]\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
             if conflict_section == "tool"
             else original.replace(
                 "[dependency-groups]\n",
-                f"[dependency-groups]\n{conflict}",
+                "[dependency-groups]\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n",
                 1,
             )
         )
@@ -736,11 +751,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = TestsFlextInfraConformSupport.project_tree(candidate)
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        contract = FlextInfraCodegenConform.surface_contract(
+        destinations = FlextInfraCodegenConform.surface_contract(
             c.Infra.CodegenConformSurface.PYPROJECT,
             codegen=inputs.spec,
-        )
-        destinations = contract.destinations
+        ).destinations
         assert destinations is not None
 
         tm.ok(infra.bootstrap_candidate(command))

@@ -314,7 +314,9 @@ class FlextInfraModelsRefactorGrep:
         snapshot: Annotated[
             FlextInfraModelsCodemod.CodemodBindingSnapshot | None,
             m.Field(
-                description="Captured binding snapshot, required for binding predicates",
+                description=(
+                    "Captured binding snapshot, required for binding predicates"
+                ),
             ),
         ] = None
 

@@ -30,6 +30,8 @@ class FlextInfraConfig(FlextCliConfig):
         Returns:
             The resulting ``Path``.
 
+        Raises:
+            TypeError: If the config namespace is not a filesystem package.
         """
         package = files(cls.__module__.partition(".")[0])
         if not isinstance(package, Path):

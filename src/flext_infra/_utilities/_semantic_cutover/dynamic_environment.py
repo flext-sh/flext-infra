@@ -159,7 +159,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         selected = {(root / finding.file).resolve() for finding in findings}
 

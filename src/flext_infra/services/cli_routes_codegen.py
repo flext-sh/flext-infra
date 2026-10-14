@@ -93,7 +93,7 @@ class FlextInfraCodegenRoutes:
                     ),
                     (
                         "init",
-                        "Bootstrap only the canonical generated Makefile",
+                        "Bootstrap the target's own declaration and canonical Makefile",
                         FlextInfraCodegenMakeBootstrap,
                         FlextInfraCodegenMakeBootstrap.execute,
                         "Makefile bootstrap complete",

@@ -138,66 +138,136 @@ class FlextInfraWorkspaceLifecycle:
         for index, receipt in enumerate(receipts):
             if receipt.applicable is False:
                 continue
-            original: p.Result[p.Cli.ProcessOutcome] | None = None
-            if receipt.repository_root != report.workspace_root:
-                if eligible is None:
-                    selected = (
-                        FlextInfraWorkspaceEnvironmentProvenance.editable_members(
-                            report.workspace_root,
-                        )
-                    )
-                    if selected.failure:
-                        receipts[index] = receipt.model_copy(
-                            update={
-                                "error": selected.error,
-                            },
-                        )
-                        report = report.model_copy(update={"receipts": tuple(receipts)})
-                        published = cls._publish(report)
-                        if published.failure:
-                            return r[m.Infra.LifecycleReport].fail(
-                                f"{selected.error}; receipt publication failed: "
-                                f"{published.error}",
-                                exception=selected.exception,
-                            )
-                        return r[m.Infra.LifecycleReport].from_failure(selected)
-                    eligible = frozenset(
-                        report.workspace_root / member.path for member in selected.value
-                    )
-                if receipt.repository_root not in eligible:
+            if receipt.repository_root != report.workspace_root and eligible is None:
+                selected = cls._member_eligibility(report)
+                if selected.failure:
                     receipts[index] = receipt.model_copy(
-                        update={
-                            "applicable": False,
-                            "applicability_reason": (
-                                "dependency has no authenticated editable source"
-                            ),
-                        },
+                        update={"error": selected.error},
                     )
-                else:
-                    receipts[index], original = cls._run(receipt, report.observed_files)
-            else:
-                receipts[index], original = cls._run(receipt, report.observed_files)
+                    report = report.model_copy(update={"receipts": tuple(receipts)})
+                    cls._published_progress(report, selected)
+                    return r[m.Infra.LifecycleReport].from_failure(selected)
+                eligible = selected.value
+            executed = cls._executed_receipt(report, receipt, eligible)
+            if executed.failure:
+                return r[m.Infra.LifecycleReport].from_failure(executed)
+            receipts[index], original = executed.value
             report = report.model_copy(update={"receipts": tuple(receipts)})
-            published = cls._publish(report)
-            if published.failure:
-                failed = receipts[index]
-                return r[m.Infra.LifecycleReport].fail(
-                    f"{failed.error + '; ' if failed.error else ''}"
-                    f"receipt publication failed: {published.error}",
-                    exception=(
-                        original.exception
-                        if original is not None and original.failure
-                        else published.exception
-                    ),
-                )
+            failure = cls._published_progress(report, original)
+            if failure is not None:
+                return failure
             failed = receipts[index]
             if failed.error is not None:
-                return (
-                    r[m.Infra.LifecycleReport].from_failure(original)
-                    if original is not None and original.failure
-                    else r[m.Infra.LifecycleReport].fail(failed.error)
-                )
+                return cls._failed_progress(failed.error, original)
         return r[m.Infra.LifecycleReport].ok(report)
+
+    @classmethod
+    def _member_eligibility(
+        cls,
+        report: m.Infra.LifecycleReport,
+    ) -> p.Result[frozenset[Path]]:
+        """Resolve the workspace's authenticated editable member roots.
+
+        Args:
+            report: The lifecycle report being executed.
+
+        Returns:
+            The eligible member roots under the workspace root, or the
+            editable election failure.
+        """
+        selected = FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+            report.workspace_root,
+        )
+        if selected.failure:
+            return r[frozenset[Path]].from_failure(selected)
+        return r[frozenset[Path]].ok(
+            frozenset(report.workspace_root / member.path for member in selected.value)
+        )
+
+    @classmethod
+    def _executed_receipt(
+        cls,
+        report: m.Infra.LifecycleReport,
+        receipt: m.Infra.LifecycleReceipt,
+        eligible: frozenset[Path] | None,
+    ) -> p.Result[
+        t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome] | None]
+    ]:
+        """Run one applicable receipt or mark its unauthenticated destination.
+
+        Args:
+            report: The lifecycle report being executed.
+            receipt: The applicable receipt being executed.
+            eligible: The authenticated editable member roots, or ``None``
+                before the first workspace-relative election.
+
+        Returns:
+            The executed or reclassified receipt with its process outcome.
+        """
+        result_type = r[
+            t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome] | None]
+        ]
+        if receipt.repository_root == report.workspace_root:
+            return result_type.ok(cls.run_receipt(receipt, report.observed_files))
+        if eligible is not None and receipt.repository_root not in eligible:
+            return result_type.ok((
+                receipt.model_copy(
+                    update={
+                        "applicable": False,
+                        "applicability_reason": (
+                            "dependency has no authenticated editable source"
+                        ),
+                    },
+                ),
+                None,
+            ))
+        return result_type.ok(cls.run_receipt(receipt, report.observed_files))
+
+    @classmethod
+    def _published_progress(
+        cls,
+        report: m.Infra.LifecycleReport,
+        cause: p.Result[p.Cli.ProcessOutcome] | p.Result[frozenset[Path]],
+    ) -> p.Result[m.Infra.LifecycleReport] | None:
+        """Publish incremental progress and classify its failure, if any.
+
+        Args:
+            report: The report advanced with the executed receipt.
+            cause: The causal process outcome of the advanced receipt.
+
+        Returns:
+            ``None`` when progress published cleanly, else the classified
+            causal failure to propagate.
+        """
+        published = cls._publish(report)
+        if not published.failure:
+            return None
+        if cause is not None and cause.failure:
+            u.Cli.error(f"receipt publication failed: {published.error}")
+            if cause.exception is not None:
+                cause.exception.add_note(
+                    f"receipt publication failed: {published.error}",
+                )
+            return r[m.Infra.LifecycleReport].from_failure(cause)
+        return r[m.Infra.LifecycleReport].from_failure(published)
+
+    @staticmethod
+    def _failed_progress(
+        failed_error: str,
+        original: p.Result[p.Cli.ProcessOutcome] | None,
+    ) -> p.Result[m.Infra.LifecycleReport]:
+        """Preserve the first causal receipt failure of one executed row.
+
+        Args:
+            failed_error: The executed receipt's recorded error.
+            original: The executed process outcome, when the receipt ran.
+
+        Returns:
+            The causal process failure, or the receipt error failure.
+        """
+        if original is not None and original.failure:
+            return r[m.Infra.LifecycleReport].from_failure(original)
+        return r[m.Infra.LifecycleReport].fail(failed_error)
 
     @staticmethod
     def _observed(
@@ -233,7 +303,7 @@ class FlextInfraWorkspaceLifecycle:
         return r[t.VariadicTuple[m.Infra.LifecycleFileObservation]].ok(tuple(states))
 
     @classmethod
-    def _run(
+    def run_receipt(
         cls,
         receipt: m.Infra.LifecycleReceipt,
         relative_paths: t.VariadicTuple[Path],
@@ -276,6 +346,7 @@ class FlextInfraWorkspaceLifecycle:
                 f"forwarded_signal={run.value.forwarded_signal}; "
                 f"output={receipt.output_file}"
             )
+            run = r[p.Cli.ProcessOutcome].fail(error)
         if error is None and after.failure:
             error = after.error
             run = r[p.Cli.ProcessOutcome].from_failure(after)

@@ -359,7 +359,7 @@ class TestsFlextInfraSemanticPublication:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
-        report = m.Infra.ModScanReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset(),
             entries=(),
         )

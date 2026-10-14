@@ -14,6 +14,7 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._models._config.base import FlextInfraConfigModels
+    from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
     from flext_infra._models._config.external_cache import (
         FlextInfraExternalCacheDirectorySpec,
     )
@@ -33,6 +34,7 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraConfigModels": ".base",
+        "FlextInfraConfigModelsContexts": ".contexts",
         "FlextInfraConfigModelsMakeDocs": ".make_docs",
         "FlextInfraConfigModelsRoot": ".root",
         "FlextInfraExternalCacheDirectorySpec": ".external_cache",

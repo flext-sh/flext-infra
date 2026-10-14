@@ -102,7 +102,12 @@ class FlextInfraUtilitiesDocsApi:
         path: Path,
         sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None,
     ) -> str | None:
-        """Read a module from the elected immutable inventory when supplied."""
+        """Read a module from the elected immutable inventory when supplied.
+
+        Returns:
+            The module source text, or no content when unavailable.
+
+        """
         if sources is None:
             return (
                 path.read_text(encoding=c.DEFAULT_ENCODING) if path.exists() else None
@@ -215,15 +220,52 @@ class FlextInfraUtilitiesDocsApi:
         root_package: str,
         module_name: str,
         symbol_name: str,
-        visited: frozenset[str] = frozenset(),
         sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.StrMapping:
         """Resolve one lazy-import map symbol into export target modules.
+
+        Args:
+            project_root: The project root resolving module files.
+            root_package: The absolute package prefix of local modules.
+            module_name: The module declaring the lazy-import map.
+            symbol_name: The map symbol being resolved.
+            sources: Captured source states, or ``None`` for on-disk reads.
 
         Returns:
             The resulting ``t.StrMapping``.
 
         """
+        return cls._resolve_symbol_targets(
+            module_name,
+            symbol_name,
+            frozenset(),
+            (project_root, root_package, sources),
+        )
+
+    @classmethod
+    def _resolve_symbol_targets(
+        cls,
+        module_name: str,
+        symbol_name: str,
+        visited: frozenset[str],
+        context: t.Triple[
+            Path,
+            str,
+            t.MappingKV[Path, m.Cli.AtomicFileState] | None,
+        ],
+    ) -> t.StrMapping:
+        """Resolve one symbol recursively against the shared project context.
+
+        Args:
+            module_name: The module currently being resolved.
+            symbol_name: The symbol being resolved in the module.
+            visited: Already resolving module and symbol identities.
+            context: Project root, root package, and captured sources.
+
+        Returns:
+            The export target mapping contributed by the module.
+        """
+        project_root, root_package, sources = context
         key = f"{module_name}:{symbol_name}"
         if key in visited:
             return {}
@@ -249,13 +291,11 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not imported_module:
                 return {}
-            return cls._resolve_lazy_import_targets(
-                project_root,
-                root_package=root_package,
-                module_name=imported_module,
-                symbol_name=imported_symbol or symbol_name,
-                visited=next_visited,
-                sources=sources,
+            return cls._resolve_symbol_targets(
+                imported_module,
+                imported_symbol or symbol_name,
+                next_visited,
+                context,
             )
         targets: MutableMapping[str, str] = {}
         for target_module, export_names in entries:
@@ -263,13 +303,11 @@ class FlextInfraUtilitiesDocsApi:
             for export_name in export_names:
                 targets[export_name] = resolved_module
         for ref_name in refs:
-            local_targets = cls._resolve_lazy_import_targets(
-                project_root,
-                root_package=root_package,
-                module_name=module_name,
-                symbol_name=ref_name,
-                visited=next_visited,
-                sources=sources,
+            local_targets = cls._resolve_symbol_targets(
+                module_name,
+                ref_name,
+                next_visited,
+                context,
             )
             if local_targets:
                 targets.update(local_targets)
@@ -282,13 +320,11 @@ class FlextInfraUtilitiesDocsApi:
             )
             if imported_module:
                 targets.update(
-                    cls._resolve_lazy_import_targets(
-                        project_root,
-                        root_package=root_package,
-                        module_name=imported_module,
-                        symbol_name=imported_symbol or ref_name,
-                        visited=next_visited,
-                        sources=sources,
+                    cls._resolve_symbol_targets(
+                        imported_module,
+                        imported_symbol or ref_name,
+                        next_visited,
+                        context,
                     ),
                 )
         return targets

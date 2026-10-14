@@ -136,8 +136,16 @@ retains its own code and resource proof before generation.
 Loaded-code checks bind physical declarations, function code, executable wrapper
 links, property accessors, and MRO suppliers. They do not require operational class
 variables, initialized settings singletons, or config data to equal class-body literals;
-the actual consumer captures typed config and resource inputs separately. Native
-dataclass and named-tuple methods require a physical field-layout witness, native
+the actual consumer captures typed config and resource inputs separately.
+
+Producer authentication uses a shared native Rope declaration graph and compiles
+captured physical source without executing it. It does not import a second copy of
+an already loaded producer. Fresh-process imports remain publication-consumer
+checks; they cannot substitute for callback-free source authentication. Source
+receipts are checked again after observation, before an authenticated reference is
+returned.
+
+Native dataclass and named-tuple methods require a physical field-layout witness, native
 construction metadata and descriptor identity, and correspondence with code emitted
 by the authenticated generator. A compiler filename or cached field table alone is
 not evidence. A missing physical/native construction witness fails explicitly rather
@@ -155,6 +163,13 @@ before that declaration retains its source-bound module reference. A later
 class-local name never changes an earlier binding. An absent binding remains a
 failure; authentication never manufactures an operand from a path or a missing
 name.
+Native class attribute access preserves method/property identity, exposes a
+staticmethod's exact function, and binds a classmethod to the exact accessed class.
+Alias checks verify those source-declared forms against raw receiver storage without
+calling descriptor hooks. Bound methods enter the same supplier/source/code checks;
+matching functions with a different bound class are not equivalent. An alias mismatch
+retains its failure and reports bounded receiver/module/attribute, source identifier,
+supplier owner, and raw binding-kind metadata, never operand representations.
 An unresolved factory binding reports bounded, escaped identifier, module/package
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
@@ -360,10 +375,22 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
-Dependency-floor updates select explicit `dependency_profiles` declarations or
-the infrastructure repository declared by the topology. A consumer configuration
-file containing only project metadata or editor settings does not declare another
-floor owner.
+Runtime requirements are calculated from the target's import use through the native
+dependency analysis. Generation consumes the target's authenticated PEP 621
+projection; neither a project-name catalog nor an upstream dependency profile may
+inject runtime requirements. The typed `required_flext_dev` policy adds the shared
+development suppliers only to `internal_flext` targets and excludes their own
+distribution. Dependency-floor updates rewrite only the selected target's PEP 621
+requirements and dependency groups, retaining markers, extras, direct sources and
+comments. They never write the installed generator's configuration or another
+checkout's declarations.
+`make initialize KIND=internal_flext` supplies a declaration value to the native
+`codegen init` owner for that Makefile's target only. The owner plans the target's
+`config/codegen.yaml` through the existing guarded declaration transaction before
+rendering its Makefile. It rejects a conflicting existing kind and never broadcasts
+the root's value to members. Each member receives a separate explicit request from
+the invoking root. Omitting `KIND` consumes the target's own declaration; it never
+authorizes classification by project name or installed dependencies.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 

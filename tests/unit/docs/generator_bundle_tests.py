@@ -13,8 +13,8 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import tm, u
@@ -95,6 +95,17 @@ class TestsFlextInfraDocsGeneratorBundle:
 
         tm.ok(generator.publish_batch(prepared, publication_receipts=receipts))
         tm.that(len(receipts), eq=1)
+        published_sources = {source.path: source for source in receipts[0].sources}
+        tm.that(
+            all(
+                source.path in published_sources
+                and published_sources[source.path].sha256 == source.sha256
+                for source in prepared.producer.inputs
+            ),
+            eq=True,
+        )
+        tm.that(receipts[0].generator_trees, eq=prepared.producer.generator_trees)
+        tm.that(receipts[0].generator_modules, eq=prepared.producer.generator_modules)
         tm.ok(
             FlextInfraMiseArtifactsVerification.publication_states_current(
                 receipts[0],

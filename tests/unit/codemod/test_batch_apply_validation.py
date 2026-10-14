@@ -249,14 +249,16 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             tm.that(sample.read_bytes(), eq=first)
 
     @staticmethod
-    def _report(path: Path, rule_id: str) -> m.Infra.ModScanReport:
+    def _report(
+        path: Path, rule_id: str
+    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
         """Build one actionable ast-grep finding report.
 
         Returns:
-            The resulting ``m.Infra.ModScanReport``.
+            The operational occurrence inventory.
 
         """
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="fixture.yml",
             rule_id=rule_id,
             repository="fixture",
@@ -268,9 +270,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             replacement="after",
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            payload={},
         )
-        return m.Infra.ModScanReport(
+        return m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )

@@ -15,6 +15,7 @@ from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenTransactionModels:
@@ -144,6 +145,12 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             default=(), description="Immutable producer module election"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Immutable native producer epoch before effects",
+            )
         )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),

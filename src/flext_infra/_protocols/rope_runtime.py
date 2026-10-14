@@ -200,6 +200,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
 
+        @property
+        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeScope | None: ...
+
         def get_scopes(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeScope]: ...
@@ -355,6 +358,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         names_and_aliases: t.SequenceOf[tuple[str, str | None]]
 
+        def get_import_statement(self) -> str: ...
+
     @runtime_checkable
     class RopeFromImport(RopeImportInfo, Protocol):
         """Rope from-import marker shape."""
@@ -425,6 +430,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Native Rope match coordinates without exposing syntax trees."""
 
         def get_region(self) -> t.Pair[int, int]: ...
+
+        def get_ast(self, name: str) -> p.AttributeProbe | None: ...
 
     @runtime_checkable
     class RopeSimilarFinder(Protocol):
@@ -508,6 +515,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         lineno: int
 
         def get_word_range(self) -> tuple[int, int]: ...
+
+        def get_primary_range(self) -> tuple[int, int]: ...
+
+        def get_pyname(self) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
+
+        def is_written(self) -> bool: ...
 
         def is_defined(self) -> bool: ...
 

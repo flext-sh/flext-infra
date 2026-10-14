@@ -22,6 +22,7 @@ class TestsFlextInfraDeclarationPayload:
         """Resolve each nested declaration in its own native class scope."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = (
+            '"""Unicode source prefix: caf\u00e9."""\n'
             "from pydantic import BaseModel\n"
             "class First:\n"
             "    class Payload(BaseModel):\n"
@@ -79,6 +80,43 @@ class TestsFlextInfraDeclarationPayload:
             ),
             (
                 (
+                    "from pydantic import field_validator as validate_value\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @validate_value('value')\n"
+                    "        @classmethod\n"
+                    "        def normalize(cls, value: str) -> str:\n"
+                    "            return value.strip()\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "from pydantic import model_validator as validate_payload\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @validate_payload(mode='after')\n"
+                    "        def normalize(self):\n"
+                    "            return self\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "from pydantic import model_serializer as serialize_payload\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @serialize_payload(mode='plain')\n"
+                    "        def serialize(self):\n"
+                    "            return self.value\n"
+                ),
+                True,
+            ),
+            (
+                (
                     "class Parent[T](ForeignBase):\n"
                     "    value: T\n"
                     "class Holder:\n"
@@ -86,6 +124,28 @@ class TestsFlextInfraDeclarationPayload:
                     "        pass\n"
                 ),
                 True,
+            ),
+            (
+                (
+                    "class Parent[T](ForeignBase):\n"
+                    "    value: T\n"
+                    "class Holder:\n"
+                    "    class Payload((Parent[list[str]])):\n"
+                    "        pass\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "class Ordinary:\n"
+                    "    pass\n"
+                    "def choose_base(label: str):\n"
+                    "    return Ordinary\n"
+                    "class Holder:\n"
+                    "    class Payload(choose_base('[')):\n"
+                    "        value: str\n"
+                ),
+                False,
             ),
             (
                 (
@@ -132,6 +192,30 @@ class TestsFlextInfraDeclarationPayload:
                     "        @field_serializer('value')\n"
                     "        def serialize(self, value: str) -> str:\n"
                     "            return value.upper()\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "def opaque(declaration):\n"
+                    "    return declaration\n"
+                    "class Holder:\n"
+                    "    @opaque\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "def field_serializer(function):\n"
+                    "    return function\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @field_serializer\n"
+                    "        def serialize(self, value: str) -> str:\n"
+                    "            return value\n"
                 ),
                 False,
             ),
@@ -217,6 +301,31 @@ class TestsFlextInfraDeclarationPayload:
         ("definition", "accepted"),
         [
             ("class Payload(Contract):\n    value: str\n", True),
+            (
+                (
+                    "from typing_extensions import Protocol as ExtendedContract\n"
+                    "class Payload(ExtendedContract):\n"
+                    "    value: str\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "from typing_extensions import Protocol as ExtendedContract\n"
+                    "class Payload[T](ExtendedContract[T]):\n"
+                    "    value: T\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "from typing import runtime_checkable\n"
+                    "@runtime_checkable\n"
+                    "class Payload(Contract):\n"
+                    "    value: str\n"
+                ),
+                True,
+            ),
             (
                 "class Payload[T](Contract[T]):\n    value: T\n",
                 True,

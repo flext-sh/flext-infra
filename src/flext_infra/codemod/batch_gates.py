@@ -600,22 +600,27 @@ class FlextInfraModGateEngine:
         )
         sys.stderr.flush()
         admitted: list[m.Infra.ModScanFinding] = []
-        for project, entries in grouped.items():
-            selected = FlextInfraModGateEngine._admitted_project(
-                project,
-                FlextInfraModGateEngine.recounted(tuple(entries)),
-                rules_by_id,
-                facts[project],
-                snapshot,
-            )
-            admitted.extend(
-                entry.model_copy(
-                    update={"file": entry.file.relative_to(root.resolve())}
+        epoch = u.Infra.codemod_source_epoch(snapshot)
+        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
+            for project, entries in grouped.items():
+                selected = FlextInfraModGateEngine._admitted_project(
+                    project,
+                    FlextInfraModGateEngine.recounted(tuple(entries)),
+                    rules_by_id,
+                    facts[project],
+                    epoch,
+                    readers,
                 )
-                for entry in selected.entries
-            )
+                admitted.extend(
+                    entry.model_copy(
+                        update={"file": entry.file.relative_to(root.resolve())}
+                    )
+                    for entry in selected.entries
+                )
         return FlextInfraModGateEngine.recounted(
-            tuple(admitted), source_states=report.source_states
+            tuple(admitted),
+            source_states=report.source_states,
+            native_artifacts=report.native_artifacts,
         )
 
     @staticmethod
@@ -624,7 +629,8 @@ class FlextInfraModGateEngine:
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         facts: m.Infra.CodemodProjectFacts,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        epoch: m.Infra.CodemodSourceEpoch,
+        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -641,7 +647,8 @@ class FlextInfraModGateEngine:
             f"mod: admit repository={root.name} findings={report.findings}\n"
         )
         sys.stderr.flush()
-        with u.Infra.codemod_binding_project(root, snapshot) as (project, sources):
+        snapshot = epoch.snapshot
+        with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
             entries = tuple(
                 entry.model_copy(update={"binding_states": snapshot.states})
                 if entry.rule_id in facts.binding_rule_ids
@@ -652,7 +659,9 @@ class FlextInfraModGateEngine:
                         root=root,
                         rule=rules_by_id[entry.rule_id],
                         file_path=entry.file,
-                        captures=FlextInfraModGateEngine._captures(entry.payload),
+                        captures=FlextInfraModGateEngine._captures(
+                            u.Infra.mod_native_payload(entry, readers)
+                        ),
                         facts=facts,
                         snapshot=snapshot,
                     ),
@@ -671,6 +680,7 @@ class FlextInfraModGateEngine:
         entries: t.VariadicTuple[m.Infra.ModScanFinding],
         *,
         source_states: tuple[m.Cli.AtomicFileState, ...] | None = None,
+        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] | None = None,
     ) -> m.Infra.ModScanReport:
         """Return the scan report of exactly these findings, classes recounted.
 
@@ -682,10 +692,23 @@ class FlextInfraModGateEngine:
             files=frozenset(entry.file for entry in entries),
             entries=entries,
             source_states=source_states,
+            native_artifacts=(
+                tuple(
+                    {
+                        entry.native_receipt.path: entry.native_receipt
+                        for entry in entries
+                        if entry.native_receipt is not None
+                    }.values()
+                )
+                if native_artifacts is None
+                else native_artifacts
+            ),
         )
 
     @classmethod
-    def authored(cls, report: m.Infra.ModScanReport) -> m.Infra.ModScanReport:
+    def authored(
+        cls, report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
         """Return the findings mod may rewrite: a generated source is never one.
 
         A generator finding stays blocking evidence for its generator; it never
@@ -695,10 +718,14 @@ class FlextInfraModGateEngine:
             The findings mod may rewrite: a generated source is never one.
 
         """
-        return cls.recounted(
-            tuple(
-                entry for entry in report.entries if entry.source_owner != "generator"
-            ),
+        entries = tuple(
+            entry for entry in report.entries if entry.source_owner != "generator"
+        )
+        return report.model_copy(
+            update={
+                "entries": entries,
+                "files": frozenset(entry.file for entry in entries),
+            }
         )
 
     @staticmethod
@@ -875,6 +902,8 @@ class FlextInfraModGateEngine:
         root: Path,
         plan: t.Pair[Mapping[str, Path], frozenset[str]],
         context: m.Infra.ModScanSourceContext,
+        native_record: m.Infra.ModNativeRecord,
+        native_receipt: m.Cli.AtomicFileReceipt,
     ) -> p.Result[m.Infra.ModScanFinding]:
         """Validate one JSONL finding into a typed, authenticated entry.
 
@@ -901,41 +930,23 @@ class FlextInfraModGateEngine:
                 file_path, context.repository_roots, root
             )
         if authenticated.failure:
-            if authenticated.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
-                return r[m.Infra.ModScanFinding].ok(
-                    m.Infra.ModScanFinding(
-                        rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
-                        rule_id=str(rule_id),
-                        repository=context.repositories[file_path],
-                        file=file_path,
-                        range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                            finding.get("range"),
-                        ),
-                        text=str(finding.get("text")),
-                        replacement=replacement,
-                        actionable=False,
-                        classification=c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT,
-                        payload=t.Cli.JSON_MAPPING_ADAPTER.validate_python(finding),
-                    ),
+            if authenticated.error_code != c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                return r[m.Infra.ModScanFinding].from_failure(authenticated)
+            snapshot = None
+            actionable = False
+            classification = c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
+        else:
+            file_path, snapshot = authenticated.value
+            if snapshot.content is None:
+                return r[m.Infra.ModScanFinding].fail(
+                    f"authenticated snapshot has no content: {file_path}",
                 )
-            return r[m.Infra.ModScanFinding].from_failure(authenticated)
-        file_path, snapshot = authenticated.value
-        if snapshot.content is None:
-            return r[m.Infra.ModScanFinding].fail(
-                f"authenticated snapshot has no content: {file_path}",
+            classified = cls._classified_finding(
+                str(rule_id), fixable_ids, str(finding.get("text")), replacement, line
             )
-        raw_replacement = finding.get("replacement")
-        replacement = raw_replacement if isinstance(raw_replacement, str) else None
-        classified = cls._classified_finding(
-            str(rule_id),
-            fixable_ids,
-            str(finding.get("text")),
-            replacement,
-            line,
-        )
-        if classified.failure:
-            return r[m.Infra.ModScanFinding].from_failure(classified)
-        actionable, classification = classified.value
+            if classified.failure:
+                return r[m.Infra.ModScanFinding].from_failure(classified)
+            actionable, classification = classified.value
         return r[m.Infra.ModScanFinding].ok(
             m.Infra.ModScanFinding(
                 rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
@@ -943,7 +954,9 @@ class FlextInfraModGateEngine:
                 repository=context.repositories[file_path],
                 file=file_path,
                 source_owner="generator"
-                if any(
+                if snapshot is not None
+                and snapshot.content is not None
+                and any(
                     snapshot.content.startswith(header.encode(c.DEFAULT_ENCODING))
                     for header in c.Infra.AUTOGEN_HEADERS
                 )
@@ -956,12 +969,21 @@ class FlextInfraModGateEngine:
                 replacement=replacement,
                 actionable=actionable,
                 classification=classification,
-                payload=t.Cli.JSON_MAPPING_ADAPTER.validate_python(finding),
+                severity=str(finding["severity"]),
+                replacement_offsets=(
+                    m.Infra.ModReplacementOffsets.model_validate(
+                        finding["replacementOffsets"]
+                    )
+                    if "replacementOffsets" in finding
+                    else None
+                ),
+                native_record=native_record,
+                native_receipt=native_receipt,
             ),
         )
 
     @staticmethod
-    def _native_records(stdout: Path) -> Generator[bytes]:
+    def _native_records(stdout: Path) -> Generator[t.Pair[int, bytes]]:
         """Frame native JSONL records across authenticated byte-block boundaries.
 
         Args:
@@ -971,12 +993,15 @@ class FlextInfraModGateEngine:
             Complete JSONL records as bytes.
         """
         pending = b""
+        offset = 0
         with closing(u.Cli.atomic_iter_binary_file(stdout)) as chunks:
             for chunk in chunks:
                 *complete, pending = (pending + chunk).split(b"\n")
-                yield from complete
+                for line in complete:
+                    yield offset, line
+                    offset += len(line) + 1
         if pending:
-            yield pending
+            yield offset, pending
 
     @classmethod
     def _parse_findings(
@@ -986,6 +1011,7 @@ class FlextInfraModGateEngine:
         rule_files_by_id: Mapping[str, Path],
         fixable_ids: frozenset[str],
         context: m.Infra.ModScanSourceContext,
+        native_receipt: m.Cli.AtomicFileReceipt,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Validate every JSONL finding without dropping malformed output.
 
@@ -994,7 +1020,7 @@ class FlextInfraModGateEngine:
         """
         entries: list[m.Infra.ModScanFinding] = []
         with closing(cls._native_records(stdout)) as lines:
-            for raw_line in lines:
+            for offset, raw_line in lines:
                 line = raw_line.strip()
                 if not line:
                     continue
@@ -1011,6 +1037,12 @@ class FlextInfraModGateEngine:
                     root,
                     (rule_files_by_id, fixable_ids),
                     context,
+                    m.Infra.ModNativeRecord(
+                        offset=offset,
+                        length=len(raw_line),
+                        sha256=u.Cli.sha256_bytes(raw_line),
+                    ),
+                    native_receipt,
                 )
                 if entry.failure:
                     return r[m.Infra.ModScanReport].from_failure(entry)
@@ -1033,6 +1065,7 @@ class FlextInfraModGateEngine:
             cls.recounted(
                 tuple(entries),
                 source_states=tuple(authenticated_states.values()),
+                native_artifacts=(native_receipt,),
             ),
         )
 
@@ -1062,6 +1095,8 @@ class FlextInfraModGateEngine:
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         targets: t.StrSequence,
         context: m.Infra.ModScanSourceContext,
+        *,
+        artifact_root: Path,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Collect one provider's complete native findings before shared admission.
 
@@ -1097,18 +1132,20 @@ class FlextInfraModGateEngine:
                 return r[m.Infra.ModScanReport].from_failure(run)
             sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
             sys.stderr.flush()
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
             report = cls._parse_findings(
-                stdout_file,
+                artifact.path,
                 root,
                 ruleset_files,
                 frozenset(ruleset.fixable_rule_ids),
                 context,
+                artifact,
             ).unwrap()
             sys.stderr.write(f"mod: native findings={report.findings}\n")
             sys.stderr.flush()
             if run.value.raw_return_code != 0:
                 error_findings = sum(
-                    entry.payload.get("severity") == "error" for entry in report.entries
+                    entry.severity == "error" for entry in report.entries
                 )
                 if not error_findings:
                     return r[m.Infra.ModScanReport].fail(
@@ -1177,7 +1214,9 @@ class FlextInfraModGateEngine:
                 f"rules={len(ruleset.rule_ids)}\n",
             )
             sys.stderr.flush()
-            scanned = cls._ruleset_report(root, ruleset, rules_by_id, targets, context)
+            scanned = cls._ruleset_report(
+                root, ruleset, rules_by_id, targets, context, artifact_root=root
+            )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
             reports.append(scanned.value)
@@ -1185,6 +1224,13 @@ class FlextInfraModGateEngine:
             cls.recounted(
                 tuple(entry for report in reports for entry in report.entries),
                 source_states=tuple(context.source_states.values()),
+                native_artifacts=tuple(
+                    {
+                        artifact.path: artifact
+                        for report in reports
+                        for artifact in report.native_artifacts
+                    }.values()
+                ),
             )
         )
 
@@ -1366,12 +1412,16 @@ class FlextInfraModGateEngine:
         )
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
+        artifacts: dict[Path, m.Cli.AtomicFileReceipt] = {}
         for ruleset in plan.rulesets:
             scanned = cls._ruleset_report(
-                view_root, ruleset, rules_by_id, targets, context
+                view_root, ruleset, rules_by_id, targets, context, artifact_root=root
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
+            artifacts.update(
+                (artifact.path, artifact) for artifact in scanned.value.native_artifacts
+            )
             for entry in scanned.value.entries:
                 relative = (
                     entry.file.relative_to(view_root)
@@ -1388,7 +1438,11 @@ class FlextInfraModGateEngine:
                 )
         report = cls._admitted(
             root,
-            cls.recounted(tuple(entries), source_states=source_states),
+            cls.recounted(
+                tuple(entries),
+                source_states=source_states,
+                native_artifacts=tuple(artifacts.values()),
+            ),
             rules_by_id,
             plan.project_rule_ids,
             source_states,

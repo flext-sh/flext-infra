@@ -13,9 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, u
+from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
-from tests import tm
+from flext_infra.deps import FlextInfraToolTablesPhase
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDepsGate:
@@ -80,6 +81,51 @@ class TestsFlextInfraDepsGate:
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(result.issues, eq=())
         tm.that((root / ".reports").exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("attached_peer", [False, True])
+    def test_peer_import_remains_a_dependency_after_projection(
+        tmp_path: Path,
+        *,
+        attached_peer: bool,
+    ) -> None:
+        """Composition never makes an installed peer a local production package."""
+        root = TestsFlextInfraDepsGate._project(
+            tmp_path,
+            "",
+            "import requests\n",
+        )
+        if attached_peer:
+            peer = root / "peer" / "src" / "requests"
+            peer.mkdir(parents=True)
+            (peer / "__init__.py").write_text('"""Peer package."""\n', encoding="utf-8")
+            (root / ".gitmodules").write_text(
+                '[submodule "peer"]\npath = peer\n'
+                "url = https://example.org/peer.git\nflext-managed = false\n",
+                encoding="utf-8",
+            )
+        pyproject = root / c.PYPROJECT_FILENAME
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_read_json(pyproject).unwrap(),
+        )
+        FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
+            payload,
+            path=pyproject,
+        )
+        u.Cli.atomic_write_text_file(
+            pyproject,
+            u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
+        ).unwrap()
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+
+        result = gate.check(
+            root,
+            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "reports"),
+        )
+
+        tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(result.result.passed, eq=False)
+        assert any("requests" in issue.message for issue in result.issues)
 
     @staticmethod
     def test_invalid_config_is_native_execution_error(tmp_path: Path) -> None:

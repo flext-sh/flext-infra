@@ -186,8 +186,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             A tuple of pairs representing the lineage of the behavior, where each
             pair contains the module and class name.
 
-        Raises:
-            TypeError: If an unsupported facade inheritance identity is encountered.
+        A ``ValueError`` fails on a cyclic or inconsistent facade inheritance
+        identity, and a ``TypeError`` propagates from unsupported facade
+        inheritance identities through ``_behavior_base_identity``.
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:
@@ -958,7 +959,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan the class-name base for every facade the detector selected.
 

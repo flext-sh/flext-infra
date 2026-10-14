@@ -251,7 +251,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # ``<pkg>.<alias>`` targets to their provider modules.
         extra_module_aliases: t.StrDict = {}
         for init_path in sorted(root.rglob("__init__.py")):
-            resolved = init_path.resolve()
             if not init_path.is_file():
                 continue
             # Owned (planned) inits are intentionally INCLUDED here: the

@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from flext_cli import m
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
@@ -300,31 +302,30 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
         @property
         def _config_base(self) -> FlextInfraConfigModelsScaffold.ScaffoldConfigBaseSpec:
-            """ENFORCE-042 config base selected from the declared profile.
+            """ENFORCE-042 config base selected from declared requirements.
 
             The fleet-converged ``_config.py`` inherits only the project's frozen
             config capability base, independently of runtime settings. The base
-            is a property of the declared dependency profile, never a per-project
+            is a property of the target's own dependencies, never a per-project
             hand choice: the
             first entry of ``scaffold.project.config_bases`` whose distribution
-            the profile depends on (its runtime requirements or its upstream).
+            target depends on (its runtime requirements or its upstream).
 
             Raises:
                 ValueError: If scaffold.project.config_bases declares no base for the
-                    dependency profile of.
+                    declared requirements of.
 
             """
-            profile = self.dependency_profile
             depended = {
-                requirement.split(">")[0].split("=")[0].split("[")[0].strip()
-                for requirement in profile.runtime
-            } | {profile.upstream.replace("_", "-")}
+                canonicalize_name(Requirement(requirement).name)
+                for requirement in self.project_dependencies
+            } | {canonicalize_name(self.upstream)}
             for base in self.scaffold.project.config_bases:
                 if base.distribution in depended:
                     return base
             msg = (
                 "scaffold.project.config_bases declares no base for the "
-                f"dependency profile of {self.dist}: {sorted(depended)}"
+                f"declared requirements of {self.dist}: {sorted(depended)}"
             )
             raise ValueError(msg)
 
@@ -363,9 +364,13 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
                 ),
             ),
         ]
-        dependency_profile: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec,
-            m.Field(description="Resolved upstream dependency profile"),
+        project_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Target-owned runtime requirements"),
+        ]
+        development_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
             FlextInfraModelsDepsToolConfig.ToolConfigDocument,
@@ -404,7 +409,9 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         project_declaration_resource: Annotated[
             t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(
-                description="Producer declaration source and wheel resource destination",
+                description=(
+                    "Producer declaration source and wheel resource destination"
+                ),
             ),
         ]
         packaged_data_excludes: Annotated[

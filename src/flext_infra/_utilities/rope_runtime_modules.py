@@ -16,8 +16,8 @@ from flext_infra._utilities import (
 )
 
 
-class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
-    """Load Rope project/module/import objects behind protocols."""
+class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
+    """Resolve Rope native, lexical and module facts behind protocols."""
 
     @classmethod
     def native_class(
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
         *,
-        captured: m.Infra.CodemodBindingSnapshot | None = None,
+        captured: m.Infra.CodemodSourceEpoch | None = None,
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.
 
@@ -122,13 +122,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
                 for resource in project.get_python_files()
             }
             if captured is None
-            else {
-                (path := state.path.resolve()): (
-                    sources[path] if path in sources else state.content.decode("utf-8")
-                )
-                for state in captured.states
-                if state.content is not None
-            }
+            else dict(captured.sources)
+        )
+        contents = (
+            {path: source.encode("utf-8") for path, source in inventory.items()}
+            if captured is None
+            else dict(captured.contents)
         )
         root = Path(project.root.real_path).resolve()
         for path, source in sources.items():
@@ -153,6 +152,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
                     msg = f"Rope proposed source is outside its input inventory: {path}"
                     raise ValueError(msg)
                 inventory[resolved] = resource.read()
+            if resolved not in contents or inventory[resolved] != source:
+                contents[resolved] = source.encode("utf-8")
             inventory[resolved] = source
         owner = cls.runtime_type(
             "flext_infra._utilities._rope.project",
@@ -164,7 +165,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             raise TypeError(msg)
         snapshot = factory(
             project.root.real_path,
-            inventory,
+            contents,
             [folder.path for folder in project.get_source_folders()],
             ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
         )
@@ -357,6 +358,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             return parent
         return result
 
+
+class FlextInfraUtilitiesRopeRuntimeModules(
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+):
+    """Load Rope project/module/import objects behind protocols."""
+
     @classmethod
     def resolve_symbol(
         cls,
@@ -423,9 +430,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         Returns:
             The resulting ``Path``.
 
-        Raises:
-            ValueError: If unresolved imported module; or if import has no declared
-                module location.
+        A ``ValueError`` propagates from ``imported_module_resource`` when the
+        imported module is unresolved or the import has no declared module
+        location.
 
         """
         return Path(

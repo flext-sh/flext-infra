@@ -244,11 +244,17 @@ class FlextInfraMisePublication:
                 for path in sorted(input_states.keys() & declared_states.keys())
                 if input_states[path] != declared_states[path]
             )
+            analysis_only = sorted(
+                map(str, input_states.keys() - declared_states.keys()),
+            )
+            publication_only = sorted(
+                map(str, declared_states.keys() - input_states.keys()),
+            )
             return result_type.fail(
                 "batch inputs differ from publication dependencies: "
                 f"phase={analysis.phase}; "
-                f"analysis_only={sorted(map(str, input_states.keys() - declared_states.keys()))}; "
-                f"publication_only={sorted(map(str, declared_states.keys() - input_states.keys()))}; "
+                f"analysis_only={analysis_only}; "
+                f"publication_only={publication_only}; "
                 f"differing_fields={differing}"
             )
         return result_type.ok(inputs.value)
@@ -334,41 +340,19 @@ class FlextInfraMisePublication:
             u.Cli.emit_raw(
                 f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
             )
-            ready = FlextInfraMisePublication._tracking_prerequisites(
+            blocking, blocked_by = FlextInfraMisePublication._prerequisite_issue(
                 publication,
                 publications,
                 written,
+                published_states,
+                journal,
             )
-            if ready.success:
-                ready = FlextInfraMisePublication._generator_authority(
-                    ordered,
-                    published_states,
-                    journal,
-                )
-            if ready.success:
-                ready = FlextInfraMisePublication._source_prerequisites(
-                    publication.source_states,
-                    published_states,
-                )
-            if ready.failure:
-                issues.append(
-                    m.Infra.Issue(
-                        file=str(publication.before.path),
-                        line=0,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=ready.error or "tracking prerequisite failed",
-                    ),
-                )
-                exception = exception or ready.exception
+            if blocking is not None:
+                issues.append(blocking)
+                exception = exception or blocked_by
                 continue
             observed = files.read_state(publication.before.path, required=False)
-            if (
-                observed.success
-                and publication.phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
-                and publication.before.path.name == c.Infra.INIT_PY
-                and u.Infra.codegen_initializer_is_authored(observed.value.content)
-            ):
+            if FlextInfraMisePublication._authored_retention(publication, observed):
                 retained.append(publication.before.path)
                 u.Cli.info(
                     "ownership=authored disposition=retained "
@@ -425,18 +409,10 @@ class FlextInfraMisePublication:
                     }
                 )
             )
-            retired = FlextInfraMisePublication._retire_index_file(publication)
-            if retired.failure:
-                issues.append(
-                    m.Infra.Issue(
-                        file=str(publication.before.path),
-                        line=0,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=retired.error or "index retirement failed",
-                    ),
-                )
-                exception = exception or retired.exception
+            blocking = FlextInfraMisePublication._retired_index_issue(publication)
+            if blocking[0] is not None:
+                issues.append(blocking[0])
+                exception = exception or blocking[1]
         return result_type.ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
@@ -445,6 +421,114 @@ class FlextInfraMisePublication:
                 issues=tuple(issues),
                 exception=exception,
             ),
+        )
+
+    @staticmethod
+    def _retired_index_issue(
+        publication: m.Infra.CodegenStagedFile,
+    ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
+        """Retire the publication's captured index entry after publication.
+
+        Args:
+            publication: The staged publication whose index entry is retired.
+
+        Returns:
+            The retirement failure issue with its causal exception, or
+            ``(None, None)`` when no entry is captured or retirement holds.
+        """
+        if publication.index_before is None:
+            return None, None
+        retired = u.Infra.git_retire_index_file(
+            m.Infra.GitIndexRetirementRequest(
+                repo_root=publication.project,
+                entry=publication.index_before,
+            ),
+        )
+        if retired.success:
+            return None, None
+        return (
+            m.Infra.Issue(
+                file=str(publication.before.path),
+                line=0,
+                column=0,
+                code=c.Infra.ToolOutcome.ERROR.value,
+                message=retired.error or "index retirement failed",
+            ),
+            retired.exception,
+        )
+
+    @staticmethod
+    def _prerequisite_issue(
+        publication: m.Infra.CodegenStagedFile,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        written: list[Path],
+        published_states: t.MutableMappingKV[
+            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
+        ],
+        journal: m.Infra.CodegenTransactionJournal | None,
+    ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
+        """Name the first failed publication prerequisite of one target.
+
+        Args:
+            publication: The staged publication being attempted.
+            publications: Every staged publication of the batch.
+            written: Destination paths already written by earlier targets.
+            published_states: Before and after states of published targets.
+            journal: The transaction journal admitting the batch, if any.
+
+        Returns:
+            The blocking prerequisite issue with its causal exception, or
+            ``(None, None)`` when the target is ready to publish.
+        """
+        ready = FlextInfraMisePublication._tracking_prerequisites(
+            publication,
+            publications,
+            written,
+        )
+        if ready.success:
+            ordered = tuple(
+                sorted(publications, key=lambda item: item.index_before is not None)
+            )
+            ready = FlextInfraMisePublication._generator_authority(
+                ordered,
+                published_states,
+                journal,
+            )
+        if ready.success:
+            ready = FlextInfraMisePublication._source_prerequisites(
+                publication.source_states,
+                published_states,
+            )
+        if ready.success:
+            return None, None
+        return (
+            m.Infra.Issue(
+                file=str(publication.before.path),
+                line=0,
+                column=0,
+                code=c.Infra.ToolOutcome.ERROR.value,
+                message=ready.error or "tracking prerequisite failed",
+            ),
+            ready.exception,
+        )
+
+    @staticmethod
+    def _authored_retention(
+        publication: m.Infra.CodegenStagedFile,
+        observed: p.Result[m.Cli.AtomicFileState],
+    ) -> bool:
+        """Report whether an authored initializer destination stays untouched.
+
+        Returns:
+            True when the observed destination is an authored initializer
+            outside the semantic phase.
+
+        """
+        return (
+            observed.success
+            and publication.phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
+            and publication.before.path.name == c.Infra.INIT_PY
+            and u.Infra.codegen_initializer_is_authored(observed.value.content)
         )
 
     @staticmethod
@@ -597,25 +681,6 @@ class FlextInfraMisePublication:
             )
             return r[m.Cli.AtomicFileState].fail(str(cause), exception=cause)
         return r[m.Cli.AtomicFileState].ok(receipt.value)
-
-    @staticmethod
-    def _retire_index_file(
-        publication: m.Infra.CodegenStagedFile,
-    ) -> p.Result[m.Infra.GitBoolReport]:
-        """Retire one portable index binding after its publication.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
-
-        """
-        if publication.index_before is None:
-            return r[m.Infra.GitBoolReport].ok(value=m.Infra.GitBoolReport())
-        return u.Infra.git_retire_index_file(
-            m.Infra.GitIndexRetirementRequest(
-                repo_root=publication.project,
-                entry=publication.index_before,
-            ),
-        )
 
     @staticmethod
     def _source_prerequisites(

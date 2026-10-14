@@ -1,4 +1,4 @@
-"""``run_deptry`` executes the environment's real ``deptry`` executable.
+"""Dependency reports preserve native deptry and the production-source scope.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,193 +9,190 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import config
+import pytest
+
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraDepsDetectionDeptry:
-    """Behaviour of ``run_deptry`` against a deptry executable on disk."""
+    """Exercise native deptry against real project declarations and sources."""
 
     @staticmethod
-    def _environment(
-        tmp_path: Path,
-        report: str | None,
-        *,
-        exit_code: int = 0,
-    ) -> t.Pair[Path, Path]:
-        """Create a project and a ``deptry`` that writes ``report`` as its JSON.
-
-        Returns:
-            The resulting ``t.Pair[Path, Path]``.
-
-        """
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        project = tmp_path / "project"
-        project.mkdir()
-        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.DEFAULT_ENCODING)
-        write = ""
-        if report is not None:
-            payload = tmp_path / "deptry-payload.json"
-            payload.write_text(report, encoding=c.DEFAULT_ENCODING)
-            write = (
-                'while [ "$#" -gt 0 ]; do\n'
-                '  if [ "$1" = "--json-output" ]; then cp '
-                f'"{payload}" "$2"; fi\n'
-                "  shift\n"
-                "done\n"
-            )
-        deptry = venv_bin / c.Infra.DEPTRY
-        deptry.write_text(
-            f"#!/bin/sh\n{write}exit {exit_code}\n",
+    def test_unused_requirement_remains_a_finding(tmp_path: Path) -> None:
+        """No policy profile may discard an unused runtime requirement."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "unused-consumer",
+            with_src=True,
+            pyproject=(
+                '[project]\nname = "unused-consumer"\nversion = "0.1.0"\n'
+                'dependencies = ["pydantic"]\n'
+            ),
+        )
+        (project / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "from pathlib import Path\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        deptry.chmod(0o755)
-        return venv_bin, project
-
-    def test_issues_and_exit_code_are_reported(
-        self,
-        tmp_path: Path,
-        deptry_report_payload: t.JsonPayload,
-    ) -> None:
-        """Test issues and exit code are reported."""
-        source = tmp_path / "source-report.json"
-        tm.ok(u.Cli.json_write(source, deptry_report_payload))
-        report = source.read_text(encoding=c.DEFAULT_ENCODING)
-        venv_bin, project = self._environment(tmp_path, report, exit_code=1)
-
+        service = FlextInfraDependencyDetectionService()
         issues, exit_code = tm.ok(
-            FlextInfraDependencyDetectionService().run_deptry(project, venv_bin),
+            service.run_deptry(project, Path(sys.executable).parent),
         )
-
+        report = service.build_project_report(project.name, issues)
         tm.that(exit_code, eq=1)
-        tm.that(len(issues), eq=1)
+        tm.that(report.deptry.unused, has="pydantic")
+        tm.that(report.deptry.raw_count, eq=len(issues))
 
     @staticmethod
-    def test_project_without_config_is_skipped(tmp_path: Path) -> None:
-        """Test project without config is skipped."""
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        project = tmp_path / "project"
+    def test_source_usage_changes_the_native_verdict(tmp_path: Path) -> None:
+        """Adding and removing actual imports changes dependency evidence."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "source-consumer",
+            with_src=True,
+            pyproject=(
+                '[project]\nname = "source-consumer"\nversion = "0.1.0"\n'
+                'dependencies = ["pydantic"]\n'
+            ),
+        )
+        source = project / c.Infra.DEFAULT_SRC_DIR / "consumer.py"
+        source.write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        service = FlextInfraDependencyDetectionService()
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+        tm.that(exit_code, eq=0)
+        tm.that(issues, empty=True)
+        source.write_text("from pathlib import Path\n", encoding=c.DEFAULT_ENCODING)
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+        tm.that(exit_code, eq=1)
+        tm.that(
+            service.build_project_report(project.name, issues).deptry.unused,
+            has="pydantic",
+        )
+
+    @staticmethod
+    def test_test_only_import_does_not_justify_runtime_dependency(
+        tmp_path: Path,
+    ) -> None:
+        """Production evidence excludes imports used only by tests."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "test-consumer",
+            with_src=True,
+            pyproject=(
+                '[project]\nname = "test-consumer"\nversion = "0.1.0"\n'
+                'dependencies = ["pydantic"]\n'
+            ),
+        )
+        (project / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "from pathlib import Path\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tests = project / "tests"
+        tests.mkdir()
+        (tests / "test_consumer.py").write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        service = FlextInfraDependencyDetectionService()
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+        tm.that(exit_code, eq=1)
+        tm.that(
+            service.build_project_report(project.name, issues).deptry.unused,
+            has="pydantic",
+        )
+
+    @staticmethod
+    def test_dev_import_in_source_remains_a_finding(tmp_path: Path) -> None:
+        """A dev declaration does not authorize its use in production."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "dev-consumer",
+            with_src=True,
+            pyproject=(
+                '[project]\nname = "dev-consumer"\nversion = "0.1.0"\n'
+                'dependencies = []\n[dependency-groups]\ndev = ["pydantic"]\n'
+            ),
+        )
+        (project / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        service = FlextInfraDependencyDetectionService()
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+        tm.that(exit_code, eq=1)
+        tm.that(
+            service.build_project_report(project.name, issues).deptry.dev_in_runtime,
+            has="pydantic",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("with_src", [False, True])
+    def test_missing_configuration_is_a_failure(tmp_path: Path, with_src: bool) -> None:
+        """An absent declaration never becomes an empty successful report."""
+        project = tmp_path / "missing-config"
         project.mkdir()
-
-        result = FlextInfraDependencyDetectionService().run_deptry(project, venv_bin)
-
-        issues, exit_code = tm.ok(result)
-        tm.that(issues, empty=True)
-        tm.that(exit_code, eq=0)
-
-    def test_unlaunchable_deptry_is_a_failure(self, tmp_path: Path) -> None:
-        """Test unlaunchable deptry is a failure."""
-        venv_bin, project = self._environment(tmp_path, None)
-        (venv_bin / c.Infra.DEPTRY).chmod(0o644)
-
-        tm.fail(FlextInfraDependencyDetectionService().run_deptry(project, venv_bin))
-
-    def test_invalid_or_empty_report_is_a_failure(self, tmp_path: Path) -> None:
-        """Test invalid or empty report is a failure."""
-        for index, report in enumerate(("{ invalid json }", "")):
-            venv_bin, project = self._environment(tmp_path / str(index), report)
-
-            result = FlextInfraDependencyDetectionService().run_deptry(
+        if with_src:
+            (project / c.Infra.DEFAULT_SRC_DIR).mkdir()
+        tm.fail(
+            FlextInfraDependencyDetectionService().run_deptry(
                 project,
-                venv_bin,
-            )
-
-            tm.that(result.failure, eq=True)
-
-    def test_non_mapping_issue_is_a_failure(self, tmp_path: Path) -> None:
-        """Test non mapping issue is a failure."""
-        venv_bin, project = self._environment(
-            tmp_path,
-            '["not_a_dict", {"error": {"code": "DEP001"}}]',
-        )
-
-        result = FlextInfraDependencyDetectionService().run_deptry(project, venv_bin)
-
-        tm.fail(result, has="must be a mapping")
-
-    @staticmethod
-    def _profile_runtime(upstream: str) -> t.StrSequence:
-        """Read one shared dependency profile's runtime from the codegen SSOT.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        return next(
-            item.runtime
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None and item.upstream == upstream
-        )
-
-    def test_profile_injected_dependencies_are_governed(self, tmp_path: Path) -> None:
-        """Real deptry DEP002 findings for profile requirements are policy."""
-        upstream = next(
-            item.upstream
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None
-        )
-        runtime = self._profile_runtime(upstream)
-        declared = ", ".join(f'"{item}"' for item in (*runtime, "six"))
-        project = u.Tests.mk_project(
-            tmp_path,
-            "governed-consumer",
-            with_src=True,
-            pyproject=(
-                '[project]\nname = "governed-consumer"\nversion = "0.1.0"\n'
-                f"dependencies = [{declared}]\n"
+                Path(sys.executable).parent,
             ),
         )
-        service = FlextInfraDependencyDetectionService()
-        issues, _ = tm.ok(service.run_deptry(project, Path(sys.executable).parent))
-        unused = {
-            u.Infra.dep_name(str(issue.get(c.Infra.MODULE)))
-            for issue in issues
-            if u.Cli.json_as_mapping(issue.get(c.Infra.ERROR)).get(c.Infra.CODE)
-            == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
-        }
-        tm.that(unused, has="six")
-        governed = set(tm.ok(service.governed_profile_dependencies(project)))
-        tm.that(governed, eq={u.Infra.dep_name(item) for item in runtime})
-        tm.that(governed - unused, empty=True)
-        report = service.build_project_report(
-            project.name,
-            tm.ok(service.govern_deptry_issues(project, issues)),
-        )
-        tm.that(list(report.deptry.unused), eq=["six"])
 
     @staticmethod
-    def test_project_without_profile_keeps_every_finding(tmp_path: Path) -> None:
-        """A project no shared profile governs keeps deptry's findings intact."""
+    def test_missing_native_tool_is_a_failure(tmp_path: Path) -> None:
+        """An unavailable tool cannot prove dependency correctness."""
         project = u.Tests.mk_project(
             tmp_path,
-            "independent",
+            "missing-tool",
             with_src=True,
             pyproject=(
-                '[project]\nname = "independent"\nversion = "0.1.0"\n'
-                'dependencies = ["six"]\n'
+                '[project]\nname = "missing-tool"\nversion = "0.1.0"\n'
+                "dependencies = []\n"
             ),
         )
-        service = FlextInfraDependencyDetectionService()
-        tm.that(tm.ok(service.governed_profile_dependencies(project)), empty=True)
-        issues: t.SequenceOf[t.JsonMapping] = [
-            {"error": {"code": c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE}, "module": "six"},
-        ]
-        tm.that(tm.ok(service.govern_deptry_issues(project, issues)), eq=tuple(issues))
-
-    def test_default_report_is_removed_after_parsing(self, tmp_path: Path) -> None:
-        """Test default report is removed after parsing."""
-        venv_bin, project = self._environment(tmp_path, "[]")
-
-        result = FlextInfraDependencyDetectionService().run_deptry(
-            project,
-            venv_bin,
-            extend_exclude=["tests", "docs"],
+        (project / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "from pathlib import Path\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        unavailable_bin = tmp_path / "unavailable-bin"
+        unavailable_bin.mkdir()
+        tm.fail(
+            FlextInfraDependencyDetectionService().run_deptry(project, unavailable_bin),
         )
 
-        issues, exit_code = tm.ok(result)
-        tm.that(issues, empty=True)
-        tm.that(exit_code, eq=0)
-        tm.that((project / ".deptry-report.json").exists(), eq=False)
+    @staticmethod
+    def test_existing_report_cannot_be_reused(tmp_path: Path) -> None:
+        """A stale artifact cannot become evidence for a new invocation."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "stale-report",
+            with_src=True,
+            pyproject=(
+                '[project]\nname = "stale-report"\nversion = "0.1.0"\n'
+                "dependencies = []\n"
+            ),
+        )
+        report = tmp_path / "deptry.json"
+        report.write_text("[]", encoding=c.DEFAULT_ENCODING)
+        tm.fail(
+            FlextInfraDependencyDetectionService().run_deptry(
+                project,
+                Path(sys.executable).parent,
+                json_output_path=report,
+            ),
+            has="already exists",
+        )
+        tm.that(report.read_text(encoding=c.DEFAULT_ENCODING), eq="[]")

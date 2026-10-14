@@ -418,7 +418,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             name = FlextInfraUtilitiesDependencies.dep_name(member.distribution)
             if name is None:
                 return result.fail(
-                    f"member distribution is not a requirement name: {member.distribution}",
+                    "member distribution is not a requirement name: "
+                    f"{member.distribution}",
                 )
             explicit = tuple(
                 line
@@ -436,11 +437,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 ),
                 name,
             )
+            canonical_provenance = (
+                FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance
+            )
             if explicit:
                 for line in explicit:
-                    origin = FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance(
-                        line,
-                    )
+                    origin = canonical_provenance(line)
                     if origin.failure:
                         return result.from_failure(origin)
                     _head, marker, source_origin = origin.value
@@ -471,7 +473,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         *,
         lock_state: m.Cli.AtomicFileState | None = None,
     ) -> p.Result[m.Cli.AtomicFileState]:
-        """Elect the authenticated live or installed producer declaration."""
+        """Elect the authenticated live or installed producer declaration.
+
+        Returns:
+            The authenticated declaration state, captured from the live
+            editable checkout or from the installed artifact whose RECORD
+            provenance matches the declaration.
+
+        """
         from flext_infra.workspace import (
             FlextInfraWorkspaceDetector,
             FlextInfraWorkspaceEnvironmentProvenance,
@@ -640,7 +649,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         state: m.Cli.AtomicFileState,
         distribution: str,
     ) -> p.Result[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]:
-        """Parse complete member requirements from the exact captured declaration."""
+        """Parse complete member requirements from the exact captured declaration.
+
+        Returns:
+            The validated member requirements and its declared uv-source
+            requirement lines.
+
+        """
         result = r[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]
         path = state.path
         if state.content is None:

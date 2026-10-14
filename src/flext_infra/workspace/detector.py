@@ -137,9 +137,7 @@ class FlextInfraWorkspaceDetector(
             (
                 parent
                 for parent in project_root.parents
-                if (
-                    project_root == git_root or parent.is_relative_to(git_root)
-                )
+                if (project_root == git_root or parent.is_relative_to(git_root))
                 and (parent / c.PYPROJECT_FILENAME).is_file()
             ),
             None,
@@ -185,7 +183,9 @@ class FlextInfraWorkspaceDetector(
         )
 
     @staticmethod
-    def _native_resolution_owner(project_root: Path, reader_root: Path) -> p.Result[Path]:
+    def _native_resolution_owner(
+        project_root: Path, reader_root: Path
+    ) -> p.Result[Path]:
         """Let managed UV resolve monorepo membership, including native exclusions.
 
         Returns:

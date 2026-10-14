@@ -40,7 +40,6 @@ class FlextInfraStagedPackage:
         discovered = cls._normalized_updates(
             workspace,
             updates,
-            inputs=inputs,
         ).flat_map(
             lambda normalized: cls._workspace_layouts(workspace).map(
                 lambda layouts: (normalized, layouts),
@@ -89,21 +88,9 @@ class FlextInfraStagedPackage:
         metadata = cls._pin_workspace_metadata(workspace, states)
         if metadata.failure:
             return result_type.from_failure(metadata)
-        for before in inputs:
-            observed = states.get(before.path)
-            if observed is None:
-                # Evidence-only input: never pinned (installed packages and
-                # scratch views live outside every rope layout), so it owns
-                # no fresh observation. A rewrite target always has one.
-                if before.path in normalized:
-                    return result_type.fail(
-                        f"candidate original source identity changed: {before.path}",
-                    )
-                continue
-            if observed != before:
-                return result_type.fail(
-                    f"candidate original source identity changed: {before.path}",
-                )
+        verified = cls._verified_input_originals(states, inputs, normalized)
+        if verified.failure:
+            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.StageSourcePlan(
                 workspace=workspace,
@@ -121,20 +108,48 @@ class FlextInfraStagedPackage:
         )
 
     @staticmethod
+    def _verified_input_originals(
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        normalized: t.MappingKV[Path, str],
+    ) -> p.Result[bool]:
+        """Verify every caller input kept its pinned original identity.
+
+        Args:
+            states: Freshly pinned states keyed by path.
+            inputs: Original caller snapshots to verify.
+            normalized: Rewrite targets of the candidate.
+
+        Returns:
+            Whether every original input kept its identity, or the first
+            identity failure.
+        """
+        for before in inputs:
+            observed = states.get(before.path)
+            if observed is None:
+                # Evidence-only input: never pinned (installed packages and
+                # scratch views live outside every rope layout), so it owns
+                # no fresh observation. A rewrite target always has one.
+                if before.path in normalized:
+                    return r[bool].fail(
+                        f"candidate original source identity changed: {before.path}",
+                    )
+                continue
+            if observed != before:
+                return r[bool].fail(
+                    f"candidate original source identity changed: {before.path}",
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
     def _normalized_updates(
         workspace: Path,
         updates: t.MappingKV[Path, str],
-        *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[dict[Path, str]]:
         """Elect one contained physical destination per desired source.
 
         Every desired destination must be a contained, physical, unambiguous
-        workspace path. Captured input evidence may legitimately originate
-        outside the workspace: the codemod rule fixtures and preview views
-        stage under the declared scratch (outside every source root by
-        law), and their AtomicFileStates travel with the candidate as
-        journal evidence — they are never write destinations.
+        workspace path.
 
         Returns:
             Desired sources or the first ambiguous, foreign or symlinked path.
@@ -252,7 +267,13 @@ class FlextInfraStagedPackage:
     def _workspace_layouts(
         workspace: Path,
     ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
-        """Retain Python providers independently of their generation participation."""
+        """Retain Python providers independently of their generation participation.
+
+        Returns:
+            The mutable package-name to source-layout mapping of every
+            retained provider, or the first applicability failure.
+
+        """
         result_type = r[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]
         targets = u.Infra.repository_operation_targets(
             workspace,
@@ -452,7 +473,13 @@ class FlextInfraStagedPackage:
     def _workspace_metadata_paths(
         workspace: Path,
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Name the source and selected resolver metadata from physical ownership."""
+        """Name the source and selected resolver metadata from physical ownership.
+
+        Returns:
+            The deduplicated resolver, manifest, lock and codegen source
+            paths, or the first resolution failure.
+
+        """
         context = FlextInfraWorkspaceDetector.resolution_context(workspace)
         if context.failure:
             return r[t.VariadicTuple[Path]].from_failure(context)

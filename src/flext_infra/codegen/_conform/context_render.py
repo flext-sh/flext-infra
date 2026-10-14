@@ -192,17 +192,17 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         runtime_names = {
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
         }
-        direct = u.Infra.dependency_profile_upstreams(
-            codegen.scaffold.project.dependency_profiles,
-            distribution=repository.distribution,
-            runtime_names=runtime_names,
+        candidates = tuple(
+            base
+            for base in codegen.scaffold.project.config_bases
+            if base.distribution == repository.distribution
+            or base.distribution in runtime_names
         )
-        if len(direct) != 1:
+        if not candidates:
             return r[m.Infra.ProjectSpec].fail(
-                "scaffold.project.dependency_profiles.upstream must match live "
-                f"dependencies exactly once at {repository_root}: {tuple(direct)}",
+                f"declared dependencies expose no config base at {repository_root}",
             )
-        upstream = direct[0]
+        upstream = candidates[0].module
         licenses = codegen.scaffold.project.supported_licenses
         return r[m.Infra.ProjectSpec].ok(
             m.Infra.ProjectSpec(
@@ -291,35 +291,22 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _validated_scaffold_project(
         project: m.Infra.ProjectSpec,
         render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[t.Pair[m.Infra.ProjectSpec, m.Infra.ScaffoldDependencyProfileSpec]]:
-        """Validate the project's upstream and license against the scaffold.
+    ) -> p.Result[m.Infra.ProjectSpec]:
+        """Validate the target's own license against supported artifact templates.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.ProjectSpec,
-            m.Infra.ScaffoldDependencyProfileSpec]]`` with the composed
-            dependency profile.
+            The original target declaration, with no runtime requirement injection.
 
         """
         codegen = render_inputs.codegen
-        result_type = r[
-            t.Pair[m.Infra.ProjectSpec, m.Infra.ScaffoldDependencyProfileSpec]
-        ]
-        dependency_profile = u.Infra.composed_dependency_profile(
-            codegen.scaffold.project.dependency_profiles,
-            upstream=project.upstream,
-            distribution=render_inputs.target.repository.distribution,
-        )
-        if dependency_profile is None:
-            return result_type.fail(
-                f"unsupported scaffold upstream: {project.upstream}",
-            )
+        result_type = r[m.Infra.ProjectSpec]
         if project.license not in codegen.scaffold.project.supported_licenses:
             supported = ", ".join(codegen.scaffold.project.supported_licenses)
             return result_type.fail(
                 f"unsupported scaffold license: {project.license}; "
                 f"supported licenses: {supported}",
             )
-        return result_type.ok((project, dependency_profile))
+        return result_type.ok(project)
 
     @classmethod
     def _integration_facts(
@@ -393,13 +380,20 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         codegen = render_inputs.codegen
         repository = target.repository
         repository_root = target.root
-        project = self._resolved_render_project(render_inputs)
+        project = self._validated_render_project(render_inputs)
         if project.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(project)
-        validated = self._validated_scaffold_project(project.value, render_inputs)
-        if validated.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(validated)
-        project, dependency_profile = validated.value
+        project = project.value
+        declared = self._declared_dependency_facts(repository_root, project)
+        if declared.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(declared)
+        project_dependencies, declared_dev = declared.value
+        development_dependencies = u.Infra.project_development_requirements(
+            codegen.scaffold.project,
+            distribution=repository.distribution,
+            kind=repository.kind,
+            declared=declared_dev,
+        )
         profile = target.make_profile
         make_context = self.make_render_context(render_inputs)
         if make_context.failure:
@@ -407,18 +401,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         integration = self._integration_facts(render_inputs)
         if integration.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(integration)
-        packaged_data_paths = (
-            FlextInfraEnsurePackagingPhase.resolve_data_paths(
-                repository_root,
-                project.package_name,
-                project.packaged_data_paths,
-                planned_data_files,
-            )
-            if profile is not c.Infra.MakeProfile.WORKSPACE
-            else m.Infra.PackagedDataSelection()
-        )
-        project_patterns: t.StrSequence = (
-            render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
+        packaged_data_paths = self._resolved_packaged_data(
+            repository_root,
+            project,
+            profile,
+            planned_data_files,
         )
         # The repository's own pyproject.toml is the version SSOT; the release
         # protocol is its only writer, so conform reads it and never syncs it.
@@ -447,9 +434,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     # render never reads it back from disk.
                     project_name=repository.distribution,
                     workspace=workspace,
-                    project_patterns=project_patterns,
+                    project_patterns=(
+                        render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
+                    ),
                 ),
-                dependency_profile=dependency_profile,
+                project_dependencies=project_dependencies,
+                development_dependencies=development_dependencies,
                 tooling=config.Infra.tooling,
                 # The in-place pyproject edit and this render read the same
                 # fleet exemption map, unchanged for every project.
@@ -530,6 +520,95 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository_branch=integration.value[1],
                 year=project.year,
             ),
+        )
+
+    @staticmethod
+    def _declared_dependency_facts(
+        repository_root: Path,
+        project: m.Infra.ProjectSpec,
+    ) -> p.Result[t.Pair[t.SequenceOf[str], t.VariadicTuple[str]]]:
+        """Read the declared dependency facts of one render project.
+
+        An existing ``pyproject.toml`` owns the declared runtime dependencies
+        and development extras; a scaffold render falls back to the project
+        declaration's runtime overlay without declared extras.
+
+        Args:
+            repository_root: Project root whose pyproject declares the facts.
+            project: Resolved render project used before the pyproject exists.
+
+        Returns:
+            The project dependencies with their declared development extras,
+            or the first metadata failure.
+        """
+        result_type = r[t.Pair[t.SequenceOf[str], t.VariadicTuple[str]]]
+        if (repository_root / c.PYPROJECT_FILENAME).is_file():
+            metadata = u.Infra.read_project_metadata_result(repository_root)
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
+            groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
+            declared_dev = (
+                *t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, [])),
+                *u.Infra.canonical_dev_dependencies_from_payload(payload),
+            )
+            return result_type.ok(
+                (metadata.value.project.dependencies, declared_dev),
+            )
+        return result_type.ok((project.runtime_dependency_overlay, ()))
+
+    def _validated_render_project(
+        self,
+        render_inputs: m.Infra.CodegenRenderInputs,
+    ) -> p.Result[m.Infra.ProjectSpec]:
+        """Resolve and validate the render project of one conform request.
+
+        Args:
+            render_inputs: Typed render inputs of the conform request.
+
+        Returns:
+            The validated scaffold project, or the first resolution or
+            validation failure.
+        """
+        resolved = self._resolved_render_project(render_inputs)
+        if resolved.failure:
+            return r[m.Infra.ProjectSpec].from_failure(resolved)
+        validated = self._validated_scaffold_project(
+            resolved.value,
+            render_inputs,
+        )
+        if validated.failure:
+            return r[m.Infra.ProjectSpec].from_failure(validated)
+        return r[m.Infra.ProjectSpec].ok(validated.value)
+
+    @staticmethod
+    def _resolved_packaged_data(
+        repository_root: Path,
+        project: m.Infra.ProjectSpec,
+        profile: c.Infra.MakeProfile,
+        planned_data_files: t.StrSequence,
+    ) -> m.Infra.PackagedDataSelection:
+        """Resolve the packaged data selection of the target make profile.
+
+        A workspace-profile render owns no packaged data selection: workspace
+        aggregation renders no installable project payload of its own.
+
+        Args:
+            repository_root: Project root holding the declared data paths.
+            project: Resolved render project declaring packaged data.
+            profile: Make profile of the conformance target.
+            planned_data_files: Planned shared data files of the render.
+
+        Returns:
+            The resolved packaged data selection of the render.
+        """
+        if profile is c.Infra.MakeProfile.WORKSPACE:
+            return m.Infra.PackagedDataSelection()
+        return FlextInfraEnsurePackagingPhase.resolve_data_paths(
+            repository_root,
+            project.package_name,
+            project.packaged_data_paths,
+            planned_data_files,
         )
 
     @staticmethod

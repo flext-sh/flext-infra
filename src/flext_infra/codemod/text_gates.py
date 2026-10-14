@@ -994,10 +994,12 @@ class FlextInfraModTextGateEngine:
                     "exception": ValueError(include_issues[0].message),
                 }
             )
-            scanned = r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
-                report,
-                analysis,
-            ))
+            scanned = r[
+                t.Pair[
+                    m.Infra.ModTextReport,
+                    m.Infra.CodegenPhaseAnalysis,
+                ]
+            ].ok((report, analysis))
         if validate_receipts:
             failed_rules: set[str] = set()
             receipt_issues: list[m.Infra.Issue] = []

@@ -21,6 +21,7 @@ from tests.unit.codegen.test_mise_pin_bootstrap import (
     TestsFlextInfraMisePinBootstrap as MisePinBootstrapFixture,
 )
 
+
 class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""
 
@@ -146,8 +147,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         tm.that(
             tuple(
-                tm.ok(u.Cli.atomic_read_binary_file_state(path))
-                for path in lock_paths
+                tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in lock_paths
             ),
             eq=locks,
         )
@@ -210,10 +210,13 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                     sys.executable,
                     "-I",
                     "-c",
-                    "from pathlib import Path; import sys; "
-                    "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
-                    "context=FlextInfraWorkspaceDetector.resolution_context("
-                    "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())",
+                    (
+                        "from pathlib import Path; import sys; "
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceDetector; "
+                        "context=FlextInfraWorkspaceDetector.resolution_context("
+                        "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
+                    ),
                     str(invoked),
                 ),
                 cwd=caller,
@@ -340,7 +343,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                     "-c",
                     (
                         "from pathlib import Path; import sys; "
-                        "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceDetector; "
                         "context=FlextInfraWorkspaceDetector.resolution_context("
                         "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
                     ),
@@ -724,7 +728,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         native_paths: set[Path] = set()
         for row in u.Cli.json_as_sequence(
-            tm.ok(u.Cli.json_loads(config_report.read_text(encoding=c.DEFAULT_ENCODING))),
+            tm.ok(
+                u.Cli.json_loads(config_report.read_text(encoding=c.DEFAULT_ENCODING))
+            ),
         ):
             path = u.Cli.json_as_mapping(row)["path"]
             tm.that(path, is_=str)

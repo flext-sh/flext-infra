@@ -256,14 +256,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if verified_producer.failure:
             return r[m.Infra.CodegenResult].from_failure(verified_producer)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
-        if (
-            c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY
-            and self.surface_contract(
+        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        if inputs.failure:
+            return r[m.Infra.CodegenResult].from_failure(inputs)
+        if c.Infra.CodegenConformMode(
+            request.mode
+        ) is c.Infra.CodegenConformMode.APPLY and (
+            self.surface_contract(
                 c.Infra.CodegenConformSurface(request.what),
                 codegen=inputs.value.spec,
             ).complete_governed
+            or request.declaration_kind is not None
         ):
             migrated = self._migrate_repository_declarations(request)
             if migrated.failure and (
@@ -318,7 +321,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             target
             for target in targets.value
             if target.managed is not False
-            and u.Infra.workspace_manifest_path(target.root).is_file()
+            and (
+                u.Infra.workspace_manifest_path(target.root).is_file()
+                or (
+                    request.declaration_kind is not None
+                    and target.root.resolve() == request.root.resolve()
+                )
+            )
         )
         if not selected:
             return r[bool].ok(value=True)
@@ -342,6 +351,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     planned: p.Result[m.Infra.CodegenPhaseAnalysis] = r[
                         m.Infra.CodegenPhaseAnalysis
                     ].from_failure(captured)
+                elif request.declaration_kind is not None:
+                    planned = self.repository_kind_declaration_plans(
+                        target.root,
+                        captured.value,
+                        request.declaration_kind,
+                    )
                 else:
                     planned = self.repository_declaration_migration_plans(
                         target.root,

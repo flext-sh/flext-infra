@@ -186,13 +186,15 @@ Infra:
         # findings never fail the run. Re-measure each entry as the fleet
         # converges and retire the rule from this list when its census
         # reaches zero.
-        #
-        # 2026-10-12: the complexity families (too-many-arguments,
-        # too-many-positional-arguments, too-many-locals,
-        # too-many-return-statements, too-many-branches, too-many-public-methods,
-        # too-many-statements, complex-structure) were retired — the fleet-wide
-        # census reached zero, so they block again through the normal gate.
         informative-rules:
+        - too-many-arguments
+        - too-many-positional-arguments
+        - too-many-locals
+        - too-many-return-statements
+        - too-many-branches
+        - too-many-public-methods
+        - too-many-statements
+        - complex-structure
         - suspicious-subprocess-import
         - subprocess-without-shell-equals-true
         line-length: 88
@@ -242,6 +244,13 @@ Infra:
           - relative-imports
           - typing-only-first-party-import
           - camelcase-imported-as-lowercase
+          # Operator ruling 2026-10-14 (docstring campaign flext-ez35p):
+          # D413 missing-blank-line-after-last-section is re-enabled on top of
+          # the Google convention: every docstring closes with one blank line
+          # between its last section block and the closing quotes. Explicit
+          # selectors take precedence over the convention baseline in Ruff.
+          extend-select:
+          - missing-blank-line-after-last-section
           # Every import is absolute: make mod rewrites relative imports and
           # the lazy-init generator renders absolute import statements.
           ban-relative-imports: all

@@ -112,6 +112,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         Returns:
             The resulting ``Self``.
 
+        Raises:
+            ValueError: If the Make-owned pytest repository root is not absolute.
+
         """
         ci = config.Infra.codegen.make.ci
         repository_root = Path(

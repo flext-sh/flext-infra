@@ -870,6 +870,10 @@ class FlextInfraModelsDepsToolConfig(
             t.StrTuple,
             m.Field(description="Resolved first-party namespaces"),
         ]
+        deptry_first_party: Annotated[
+            t.StrTuple,
+            m.Field(description="Target-owned live and planned production packages"),
+        ]
         mypy_path: Annotated[
             t.StrTuple,
             m.Field(description="Resolved Mypy search paths"),

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.release import FlextInfraReleaseProjectMixin
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraReleaseBuildMixin(FlextInfraReleaseProjectMixin):
@@ -201,8 +202,6 @@ class FlextInfraReleaseBuildMixin(FlextInfraReleaseProjectMixin):
             The resulting ``p.Result[t.MutableStrMapping]``.
 
         """
-        from flext_infra.workspace import FlextInfraWorkspaceDetector
-
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
             return r[t.MutableStrMapping].from_failure(context)

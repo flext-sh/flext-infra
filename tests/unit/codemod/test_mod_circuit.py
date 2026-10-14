@@ -51,7 +51,11 @@ class TestsFlextInfraModCliRoute:
         tm.that(exit_code, ne=0, msg=console.out + console.err)
         tm.that(evidence.totals_by_rule[rule_id], eq=1)
         tm.that(evidence.entries[0].text, eq=source)
-        tm.that(evidence.entries[0].payload["text"], eq=source)
+        with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
+            tm.that(
+                u.Infra.mod_native_payload(evidence.entries[0], readers)["text"],
+                eq=source,
+            )
 
     @staticmethod
     def test_assert_rewrite_proves_matcher_binding_at_each_occurrence(
@@ -546,7 +550,7 @@ class TestsFlextInfraModCliRoute:
             eq=expected_rule_files,
         )
         tm.that(
-            {str(entry.payload["severity"]) for entry in provider_entries.values()},
+            {entry.severity for entry in provider_entries.values()},
             eq={"warning", "hint"},
         )
 

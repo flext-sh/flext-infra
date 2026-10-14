@@ -22,6 +22,17 @@ type _DocsScopeArtifacts = t.Pair[
     m.Infra.DocScope,
     t.VariadicTuple[t.Triple[Path, Path, str | None]],
 ]
+type _DocsBundleSources = tuple[
+    t.VariadicTuple[m.Cli.AtomicFileState],
+    t.VariadicTuple[Path],
+    Path | None,
+    t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
+]
+type _DocsScopeCaptures = t.Triple[
+    t.VariadicTuple[Path],
+    t.VariadicTuple[m.Cli.AtomicFileState],
+    t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
+]
 
 
 class FlextInfraDocGeneratorBundleMixin:
@@ -62,6 +73,27 @@ class FlextInfraDocGeneratorBundleMixin:
             yield r[m.Infra.DocsGenerationBundle].from_failure(scopes)
             return
         selected, aggregate = scopes.value
+        yield from cls._scope_batches(root, declaration.value, selected, aggregate)
+
+    @classmethod
+    def _scope_batches(
+        cls,
+        root: Path,
+        declaration: m.Cli.AtomicFileState,
+        selected: t.VariadicTuple[m.Infra.DocScope],
+        aggregate: t.VariadicTuple[m.Infra.DocScope],
+    ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+        """Yield one settled bundle per non-collocated selected scope.
+
+        Args:
+            root: The authenticated repository root.
+            declaration: The frozen ``.gitmodules`` file state.
+            selected: The selected documentation output scopes.
+            aggregate: The aggregate scopes over the complete project catalog.
+
+        Yields:
+            Results of the documentation generation bundle preparation for each batch.
+        """
         root_scope = next(
             (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
             None,
@@ -69,53 +101,18 @@ class FlextInfraDocGeneratorBundleMixin:
         for scope in selected:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
-            source_roots = u.Infra.docs_scope_source_roots(root, scope, aggregate)
-            source_scope = scope.path if scope.name != c.Infra.RK_ROOT else None
-            paths = u.Infra.docs_source_paths_for_roots(
-                source_roots,
-                source_scope=source_scope,
-            )
-            if paths.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(paths)
+            producer = FlextInfraCodegenPreconditions.capture_producer()
+            if producer.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
                 return
-            sources = cls._captured_source_states(paths.value, source_roots)
-            if sources.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(sources)
+            captured = cls._scope_batch_captures(root, declaration, scope, aggregate)
+            if captured.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(captured)
                 return
-            manifest = u.Cli.atomic_read_binary_file_state(
-                declaration.value.path,
-                required=False,
-            )
-            if manifest.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(manifest)
-                return
-            if manifest.value != declaration.value:
-                yield r[m.Infra.DocsGenerationBundle].fail(
-                    "docs scope inventory changed before batch admission",
-                )
-                return
-            states = tuple(
-                sorted(
-                    {
-                        item.path: item
-                        for item in (
-                            *sources.value,
-                            declaration.value,
-                        )
-                    }.values(),
-                    key=lambda item: item.path,
-                )
-            )
+            source_roots, states, directories = captured.value
             governance = cls._captured_governance_source(root, states)
             if governance.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(governance)
-                return
-            directories = u.Infra.docs_source_directories(
-                source_roots,
-                source_scope=source_scope,
-            )
-            if directories.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(directories)
                 return
             batch_scopes = (
                 scope,
@@ -132,7 +129,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 root,
                 (batch_scopes, aggregate),
                 states,
-                directories.value,
+                directories,
                 governance.value,
             )
             if rendered.failure:
@@ -141,11 +138,77 @@ class FlextInfraDocGeneratorBundleMixin:
             yield cls._validated_bundle(
                 root,
                 rendered.value,
-                states,
-                source_roots=source_roots,
-                source_scope=source_scope,
-                source_directories=directories.value,
+                (
+                    states,
+                    source_roots,
+                    scope.path if scope.name != c.Infra.RK_ROOT else None,
+                    directories,
+                ),
+                producer=producer.value,
             )
+
+    @classmethod
+    def _scope_batch_captures(
+        cls,
+        root: Path,
+        declaration: m.Cli.AtomicFileState,
+        scope: m.Infra.DocScope,
+        aggregate: t.VariadicTuple[m.Infra.DocScope],
+    ) -> p.Result[_DocsScopeCaptures]:
+        """Authenticate one scope's sources against the frozen declaration.
+
+        Args:
+            root: The authenticated repository root.
+            declaration: The frozen ``.gitmodules`` file state.
+            scope: The documentation output scope being captured.
+            aggregate: The aggregate scopes over the complete project catalog.
+
+        Returns:
+            The resulting ``(source_roots, source_states, source_directories)``
+            triple.
+
+        """
+        result_type = r[_DocsScopeCaptures]
+        source_roots = u.Infra.docs_scope_source_roots(root, scope, aggregate)
+        source_scope = scope.path if scope.name != c.Infra.RK_ROOT else None
+        paths = u.Infra.docs_source_paths_for_roots(
+            source_roots,
+            source_scope=source_scope,
+        )
+        if paths.failure:
+            return result_type.from_failure(paths)
+        sources = u.Infra.required_file_states(paths.value)
+        if sources.failure:
+            return result_type.from_failure(sources)
+        manifest = u.Cli.atomic_read_binary_file_state(
+            declaration.path,
+            required=False,
+        )
+        if manifest.failure:
+            return result_type.from_failure(manifest)
+        if manifest.value != declaration:
+            return result_type.fail(
+                "docs scope inventory changed before batch admission",
+            )
+        states = tuple(
+            sorted(
+                {
+                    item.path: item
+                    for item in (
+                        *sources.value,
+                        declaration,
+                    )
+                }.values(),
+                key=lambda item: item.path,
+            )
+        )
+        directories = u.Infra.docs_source_directories(
+            source_roots,
+            source_scope=source_scope,
+        )
+        if directories.failure:
+            return result_type.from_failure(directories)
+        return result_type.ok((source_roots, states, directories.value))
 
     @staticmethod
     def _is_collocated_workspace_project(
@@ -202,6 +265,9 @@ class FlextInfraDocGeneratorBundleMixin:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        if producer.failure:
+            return r[m.Infra.DocsGenerationBundle].from_failure(producer)
         started_at = perf_counter()
         sources = cls._discovered_sources(request, started_at)
         if sources.failure:
@@ -216,31 +282,56 @@ class FlextInfraDocGeneratorBundleMixin:
         directories = u.Infra.docs_source_directories(roots.value)
         if directories.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(directories)
-        output_dir = u.Cli.resolve_optional_path(
-            request.output_dir,
-            default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
-        )
-        scopes = cls._validated_scopes(repository_root, request, output_dir)
-        if scopes.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(scopes)
-        governance = cls._captured_governance_source(repository_root, source_states)
-        if governance.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(governance)
-        rendered = cls._rendered_scopes(
+        rendered = cls._rendered_scope_inventory(
             repository_root,
-            scopes.value,
+            request,
             source_states,
             directories.value,
-            governance.value,
         )
         if rendered.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(rendered)
         return cls._validated_bundle(
             repository_root,
             rendered.value,
+            (source_states, roots.value, None, directories.value),
+            producer=producer.value,
+        )
+
+    @classmethod
+    def _rendered_scope_inventory(
+        cls,
+        repository_root: Path,
+        request: m.Infra.DocsGenerateRequest,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
+    ) -> p.Result[list[_DocsScopeArtifacts]]:
+        """Resolve the docs scopes, their governance source and artifacts.
+
+        Args:
+            repository_root: Repository root owning the docs inventory.
+            request: Canonical docs generation request.
+            source_states: Authenticated docs source states.
+            source_directories: Authenticated source directory chains.
+
+        Returns:
+            The rendered scope artifacts, or the first resolution failure.
+        """
+        output_dir = u.Cli.resolve_optional_path(
+            request.output_dir,
+            default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        )
+        scopes = cls._validated_scopes(repository_root, request, output_dir)
+        if scopes.failure:
+            return r[list[_DocsScopeArtifacts]].from_failure(scopes)
+        governance = cls._captured_governance_source(repository_root, source_states)
+        if governance.failure:
+            return r[list[_DocsScopeArtifacts]].from_failure(governance)
+        return cls._rendered_scopes(
+            repository_root,
+            scopes.value,
             source_states,
-            source_roots=roots.value,
-            source_directories=directories.value,
+            source_directories,
+            governance.value,
         )
 
     @classmethod
@@ -298,7 +389,16 @@ class FlextInfraDocGeneratorBundleMixin:
         paths: t.VariadicTuple[Path],
         roots: t.SequenceOf[Path],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Retain the configuration reader's declared absence witnesses."""
+        """Retain the configuration reader's declared absence witnesses.
+
+        Args:
+            paths: Declared docs source paths to authenticate.
+            roots: Repository roots whose configuration inputs are consulted.
+
+        Returns:
+            The authenticated source states with every declared absence
+            witness retained.
+        """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         captured = u.Infra.required_file_states(paths)
         if captured.failure:
@@ -487,26 +587,24 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         repository_root: Path,
         rendered: list[_DocsScopeArtifacts],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        sources: _DocsBundleSources,
         *,
-        source_roots: t.VariadicTuple[Path] = (),
-        source_scope: Path | None = None,
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
+        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
 
         Args:
             repository_root: The root path of the repository.
             rendered: The list of rendered documentation scope artifacts.
-            source_states: The captured source states of the documentation files.
-            source_roots: The source roots of the documentation files.
-            source_scope: The source scope of the documentation files.
-            source_directories: The source directories of the documentation files.
+            sources: The captured source states, roots, scope and directories
+                of the documentation inventory.
+            producer: The captured producer analysis of the generation.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
+        source_states, source_roots, source_scope, source_directories = sources
         normalized = cls._normalized_scope_artifacts(rendered)
         if normalized.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(normalized)
@@ -514,6 +612,7 @@ class FlextInfraDocGeneratorBundleMixin:
             m.Infra.DocsGenerationBundle,
             {
                 "scopes": tuple(normalized.value),
+                "producer": producer,
                 "source_states": source_states,
                 "source_roots": source_roots,
                 "source_scope": source_scope,
@@ -528,8 +627,9 @@ class FlextInfraDocGeneratorBundleMixin:
             )
         return r[m.Infra.DocsGenerationBundle].ok(validated_bundle.value)
 
-    @staticmethod
+    @classmethod
     def _captured_governance_source(
+        cls,
         repository_root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenBootstrapSource]:
@@ -551,46 +651,96 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.fail(
                 "governance configuration differs from captured docs sources",
             )
+        ref = cls._governance_source_ref(repository_root, inputs.value)
+        if ref.failure:
+            return result_type.from_failure(ref)
+        return result_type.ok(
+            m.Infra.CodegenBootstrapSource(url=c.Infra.GITHUB_REPO_URL, ref=ref.value)
+        )
+
+    @classmethod
+    def _governance_source_ref(
+        cls,
+        repository_root: Path,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[str]:
+        """Resolve the governance owner's published Git reference.
+
+        An origin that owns the canonical governance repository resolves its
+        own integration line; every other checkout follows the declared
+        dependency family line.
+
+        Args:
+            repository_root: Repository root whose governance is resolved.
+            inputs: Loaded codegen inputs of the repository.
+
+        Returns:
+            The governance owner's Git reference, or the first resolution
+            failure.
+        """
+        result_type = r[str]
         identity = u.Infra.git_identity(
             m.Infra.GitRepoRequest(repo_root=repository_root)
         )
         if identity.failure:
             return result_type.from_failure(identity)
-        origin = identity.value.origin_remote
-        own_governance = False
-        if origin is not None:
-            page = u.Infra.validate_git_remote_url(origin)
-            if page.failure:
-                return result_type.from_failure(page)
-            own_governance = (
-                page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL
-            )
-        if own_governance:
-            branch = u.Infra.resolve_integration_branch(
-                repository_root,
-                policy_branch=inputs.value.spec.branch_policy.integration_branch,
-                inputs=inputs.value,
-            )
-            if branch.failure:
-                return result_type.from_failure(branch)
-            ref = branch.value
-        else:
-            line = u.Infra.flext_integration_line(
-                codegen=inputs.value.spec,
-                repository_root=repository_root,
-            )
-            if line.failure:
-                return result_type.from_failure(line)
-            if c.Infra.GITHUB_REPO_URL.rsplit("/", maxsplit=1)[0] != (
-                line.value.base_url.rstrip("/")
-            ):
-                return result_type.fail(
-                    "governance owner differs from the captured dependency family",
-                )
-            ref = line.value.branch
-        return result_type.ok(
-            m.Infra.CodegenBootstrapSource(url=c.Infra.GITHUB_REPO_URL, ref=ref)
+        owned = cls._own_governance_branch(
+            repository_root,
+            identity.value.origin_remote,
+            inputs,
         )
+        if owned.failure:
+            return result_type.from_failure(owned)
+        if owned.value is not None:
+            return result_type.ok(owned.value)
+        line = u.Infra.flext_integration_line(
+            codegen=inputs.spec,
+            repository_root=repository_root,
+        )
+        if line.failure:
+            return result_type.from_failure(line)
+        if c.Infra.GITHUB_REPO_URL.rsplit("/", maxsplit=1)[0] != (
+            line.value.base_url.rstrip("/")
+        ):
+            return result_type.fail(
+                "governance owner differs from the captured dependency family",
+            )
+        return result_type.ok(line.value.branch)
+
+    @classmethod
+    def _own_governance_branch(
+        cls,
+        repository_root: Path,
+        origin: str | None,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[str | None]:
+        """Resolve the integration line when the origin owns the governance.
+
+        Args:
+            repository_root: Repository root whose governance is resolved.
+            origin: Origin remote URL, or ``None`` without one.
+            inputs: Loaded codegen inputs of the repository.
+
+        Returns:
+            The owned governance branch, or ``None`` when another owner's
+            family line governs, or the first resolution failure.
+        """
+        result_type = r[str | None]
+        if origin is None:
+            return result_type.ok(value=None)
+        page = u.Infra.validate_git_remote_url(origin)
+        if page.failure:
+            return result_type.from_failure(page)
+        if page.value.rstrip("/").removesuffix(".git") != c.Infra.GITHUB_REPO_URL:
+            return result_type.ok(value=None)
+        branch = u.Infra.resolve_integration_branch(
+            repository_root,
+            policy_branch=inputs.spec.branch_policy.integration_branch,
+            inputs=inputs,
+        )
+        if branch.failure:
+            return result_type.from_failure(branch)
+        return result_type.ok(value=branch.value)
 
 
 __all__: list[str] = ["FlextInfraDocGeneratorBundleMixin"]

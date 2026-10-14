@@ -31,9 +31,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )
-        secret = "fixture-credential-sentinel"
+        credential = "fixture-credential-sentinel"
         source = (
-            f'[url "https://fixture-user:{secret}@github.com/"]\n'
+            f'[url "https://fixture-user:{credential}@github.com/"]\n'
             "\tinsteadOf = git@github.com:\n"
         )
         global_config = tmp_path / "isolated.gitconfig"
@@ -49,7 +49,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             ),
         )
         tm.that(checked.outcome.raw_return_code, eq=2)
-        tm.that(checked.stdout + checked.stderr, lacks=secret)
+        tm.that(checked.stdout + checked.stderr, lacks=credential)
         tm.that(bool(checked.stderr.strip()), eq=True)
         tm.that(global_config.read_text(encoding="utf-8"), eq=source)
 

@@ -21,6 +21,7 @@ from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffol
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -86,6 +87,12 @@ class FlextInfraModelsCodegenPipelineModels:
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             default=(), description="Exact cold module election before planning"
         )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Shared authenticated pre-planning native epoch",
+            )
+        )
         publications: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
@@ -140,7 +147,9 @@ class FlextInfraModelsCodegenPipelineModels:
         admitted_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             default=(),
             exclude=True,
-            description="Exact immutable inputs authenticated by native batch admission",
+            description=(
+                "Exact immutable inputs authenticated by native batch admission"
+            ),
         )
         error: Annotated[
             str,
@@ -220,6 +229,11 @@ class FlextInfraModelsCodegenPipelineModels:
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             default=(), description="Captured producer module election"
         )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None, description="Same native epoch as producer and journal"
+            )
+        )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Captured source directory ancestry and presence",
@@ -283,15 +297,20 @@ class FlextInfraModelsCodegenPipelineModels:
                 msg = "producer publication requires its actual generation plan"
                 raise ValueError(msg)
             for receipt in (self.verified_publication, self.publication_receipt):
-                if receipt is not None and (
+                if receipt is None:
+                    continue
+                incomplete = (
                     not receipt.completed
                     or receipt.error
                     or receipt.issues
                     or receipt.pending_files
-                    or receipt.root is None
+                )
+                unsettled = (
+                    receipt.root is None
                     or receipt.transaction_id is None
                     or not (receipt.outputs or receipt.batches)
-                ):
+                )
+                if incomplete or unsettled:
                     msg = "publication requires complete output evidence"
                     raise ValueError(msg)
             return self

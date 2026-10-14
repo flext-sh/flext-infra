@@ -395,7 +395,15 @@ class FlextInfraModelsGit(
 
         @m.model_validator(mode="after")
         def _validate_ownership_selection(self) -> Self:
-            """Reject competing receipt and live ownership evidence sources."""
+            """Reject competing receipt and live ownership evidence sources.
+
+            Returns:
+                The validated instance.
+
+            Raises:
+                ValueError: If an ownership receipt competes with authorized
+                    live sources.
+            """
             if self.evidence_file is not None and (
                 self.read_pull_requests or self.read_beads
             ):

@@ -56,6 +56,9 @@ from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
+# A sanctioned compose module name is exactly ``<package>.<leaf>``.
+_COMPOSE_MODULE_SEGMENT_COUNT = 2
+
 
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
@@ -552,26 +555,40 @@ class FlextInfraUtilitiesCodemodProject(
         return True
 
     @staticmethod
+    def codemod_source_epoch(
+        snapshot: m.Infra.CodemodBindingSnapshot,
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Decode each captured source once for the complete selected-project pass."""
+        contents = {
+            state.path: state.content
+            for state in snapshot.states
+            if state.content is not None
+        }
+        return m.Infra.CodemodSourceEpoch(
+            snapshot=snapshot,
+            sources=MappingProxyType({
+                path: content.decode("utf-8") for path, content in contents.items()
+            }),
+            contents=MappingProxyType(contents),
+        )
+
+    @staticmethod
     @contextmanager
     def codemod_binding_project(
         root: Path,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        epoch: m.Infra.CodemodSourceEpoch,
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
         """Own one immutable binding graph for the complete admission pass.
 
         Yields:
             The frozen Rope graph and its complete authenticated source closure.
         """
-        sources = MappingProxyType({
-            state.path.resolve(): state.content.decode("utf-8")
-            for state in snapshot.states
-            if state.content is not None
-        })
+        sources = epoch.sources
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    live, sources, captured=snapshot
+                    live, sources, captured=epoch
                 )
             ) as project,
             project.frozen_layout(),
@@ -1040,7 +1057,10 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         parts = value.split(".")
-        if len(parts) != 2 or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES:
+        if (
+            len(parts) != _COMPOSE_MODULE_SEGMENT_COUNT
+            or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES
+        ):
             return False
         top, leaf = parts
         if top == own:

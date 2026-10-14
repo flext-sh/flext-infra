@@ -6,17 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import pytest
 
 from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
 )
-from tests import c, m, tm
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -32,10 +33,10 @@ class TestsFlextInfraCodemodDuplicateApply:
         self,
         tmp_path: Path,
     ) -> None:
-        """Census cure contracts retain native syntax during validated transport."""
+        """Census cure contracts retain Rope source regions during transport."""
         path = tmp_path / "definition.py"
         path.write_text(_CORE_CONSTANT, encoding=c.DEFAULT_ENCODING)
-        statement = ast.parse(_CORE_CONSTANT, filename=str(path)).body[0]
+        statement = u.Infra.logical_statements(_CORE_CONSTANT)[0]
         item = m.Infra.Object(
             file_path=str(path),
             line=1,
@@ -65,7 +66,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         transported = m.Infra.DuplicateGroupCure.model_validate(
             planned.model_dump(),
         )
-        assert transported.owner.definition.statement is statement
+        assert transported.owner.definition.statement == statement
         assert transported.owner.definition.source == path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )
@@ -323,6 +324,38 @@ class TestsFlextInfraCodemodDuplicateApply:
             eq=before,
         )
 
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "def str(value):\n    return value + 'custom'\n\nLIMIT = str('value')\n",
+            "LIMIT = str.upper('value')\n",
+        ],
+    )
+    def test_constructor_shadow_or_attribute_call_never_cures(
+        self,
+        duplicate_project: Path,
+        source: str,
+    ) -> None:
+        """Equal text cannot authorize custom or attribute-based constructors."""
+        root, package = self._workspace(duplicate_project)
+        first, second = package / "left.py", package / "right.py"
+        for path in (first, second):
+            path.write_text(self._module("Binding trap") + source, encoding="utf-8")
+        before = first.read_bytes(), second.read_bytes()
+        with infra.rope_workspace(root) as workspace:
+            group = self._group(
+                self._objects(workspace, (first, second), "LIMIT"),
+                value_identical=True,
+            )
+            outcome = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root, workspace, (group,), apply=True
+                )
+            )
+        tm.that(outcome.edits, empty=True)
+        tm.that(outcome.plans, length=1)
+        tm.that((first.read_bytes(), second.read_bytes()), eq=before)
+
     def test_structural_clone_is_planned_without_writes(
         self,
         duplicate_project: Path,
@@ -508,4 +541,6 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
 
 
-_PREFLIGHT = m.Infra.ModScanReport(files=frozenset(), entries=())
+_PREFLIGHT = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+    files=frozenset(), entries=()
+)

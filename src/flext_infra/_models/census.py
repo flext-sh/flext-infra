@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
@@ -14,6 +13,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra._models.transformers import FlextInfraModelsTransformers
 
 
@@ -248,7 +248,7 @@ class FlextInfraModelsCensus:
         ]
 
     class DuplicateDefinition(m.ArbitraryTypesModel):
-        """One verified duplicate definition and its native syntax node."""
+        """One verified duplicate definition and its Rope-owned source region."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
@@ -259,8 +259,8 @@ class FlextInfraModelsCensus:
         path: Annotated[Path, m.Field(description="Definition source path")]
         source: Annotated[str, m.Field(description="Captured module source")]
         statement: Annotated[
-            ast.stmt | None,
-            m.Field(description="Original parsed definition node"),
+            FlextInfraModelsRope.LogicalStatement | None,
+            m.Field(description="Original Rope definition region"),
         ]
         body: Annotated[str, m.Field(description="Definition source span")]
         consumers: Annotated[int, m.Field(description="Proven consumer count")]
