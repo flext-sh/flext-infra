@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
+    from flext_infra.deps._modernizer.document import _RenderPolicy
 
 
 class FlextInfraPyprojectModernizerTooling:
@@ -56,9 +57,7 @@ class FlextInfraPyprojectModernizerTooling:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            dry_run: bool,
-            skip_comments: bool,
-            format_source: bool = True,
+            policy: _RenderPolicy,
         ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(
@@ -97,9 +96,11 @@ class FlextInfraPyprojectModernizerTooling:
                 canonical_dev=canonical_dev.value,
                 topology=topology,
             ),
-            dry_run=True,
-            skip_comments=False,
-            format_source=format_source,
+            policy=_RenderPolicy(
+                dry_run=True,
+                skip_comments=False,
+                format_source=format_source,
+            ),
         )
         if rendered.failure:
             return r[str].from_failure(rendered)

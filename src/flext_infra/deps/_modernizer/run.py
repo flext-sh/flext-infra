@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
     from flext_infra import p
+    from flext_infra.deps._modernizer.document import _RenderPolicy
 
 
 class FlextInfraPyprojectModernizerRun:
@@ -530,10 +531,12 @@ class FlextInfraPyprojectModernizerRun:
         rendered = self._render_document_state(
             root_state,
             tuple(changes),
-            dry_run=True,
-            skip_comments=True,
-            format_source=False,
-            preserve_layout=True,
+            policy=_RenderPolicy(
+                dry_run=True,
+                skip_comments=True,
+                format_source=False,
+                preserve_layout=True,
+            ),
         )
         if rendered.failure:
             rendered.unwrap()
