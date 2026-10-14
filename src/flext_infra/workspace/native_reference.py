@@ -1691,6 +1691,20 @@ class FlextInfraWorkspaceNativeReference:
                     )
                     if type(value) not in extension_types:
                         continue
+                home_root = getattr(value, "__module__", "").split(".")[0]
+                if home_root not in {
+                    "flext",
+                    "flext_core",
+                    "flext_infra",
+                    "flext_api",
+                    "flext_cli",
+                    "ai_hub",
+                }:
+                    # Ecosystem bindings (typing_inspection, pydantic
+                    # internals, ...) are observations of third-party code:
+                    # the fleet cannot authenticate their globals and the
+                    # walk records nothing it cannot own.
+                    continue
                     extension = cls._extension_callback(value)
                     if extension.failure:
                         return r[m.Infra.NativeImportObservation].from_failure(
