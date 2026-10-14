@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import RootModel
+from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
 from flext_core import m
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
@@ -23,14 +24,20 @@ class TestsFlextInfraNativeModelProvenance:
     @staticmethod
     @pytest.mark.parametrize(
         "module_name",
-        [RootModel.__module__, m.ContractModel.__module__],
+        [
+            RootModel.__module__,
+            m.ContractModel.__module__,
+            inspect_annotation.__module__,
+        ],
     )
     def test_real_model_module_retains_authenticated_native_sources(
         module_name: str,
     ) -> None:
-        """Validate installed conditional and enclosing-class declarations."""
+        """Validate real model presets and generated annotation inspection payloads."""
         root = RootModel[str].model_validate("wire-value")
         tm.that(root.model_dump(), eq="wire-value")
+        inspection = inspect_annotation(str, annotation_source=AnnotationSource.ANY)
+        tm.that(inspection.type, eq=str)
         module = import_module(module_name)
         assert module.__file__ is not None
         expected_source = Path(module.__file__).resolve()

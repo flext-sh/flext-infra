@@ -222,7 +222,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 return result_type.from_failure(checked)
             current = checked.value
         return self._publish_bound_phase(
-            session, prepared, staged.value, current, pending
+            session, prepared.value, staged.value, current, pending
         )
 
     def _publish_bound_phase(
@@ -308,10 +308,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     current.plan.layout,
-                    checked.error or "staged consumer failed",
-                    exception=checked.exception,
-                    error_code=checked.error_code,
-                    error_data=checked.error_data,
+                    r[bool].fail(
+                        checked.error or "staged consumer failed",
+                        exception=checked.exception,
+                        error_code=checked.error_code,
+                        error_data=checked.error_data,
+                    ),
                 )
             )
         current = checked.value
@@ -323,10 +325,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     current.plan.layout,
-                    journal_barrier.error or "staged consumer authority changed",
-                    exception=journal_barrier.exception,
-                    error_code=journal_barrier.error_code,
-                    error_data=journal_barrier.error_data,
+                    r[bool].fail(
+                        journal_barrier.error or "staged consumer authority changed",
+                        exception=journal_barrier.exception,
+                        error_code=journal_barrier.error_code,
+                        error_data=journal_barrier.error_data,
+                    ),
                 )
             )
         return result_type.ok(current)
@@ -858,8 +862,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 return result_type.from_failure(
                     self._recover_failure(
                         layout,
-                        "multiple generation phases own one destination: "
-                        f"{relative.value}",
+                        r[bool].fail(
+                            "multiple generation phases own one destination: "
+                            f"{relative.value}",
+                        ),
                     ),
                 )
         sources = FlextInfraCodegenPreconditions.phase_sources(phase, plans)
@@ -867,10 +873,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    sources.error or "invalid phase sources",
-                    exception=sources.exception,
-                    error_code=sources.error_code,
-                    error_data=sources.error_data,
+                    r[bool].fail(
+                        sources.error or "invalid phase sources",
+                        exception=sources.exception,
+                        error_code=sources.error_code,
+                        error_data=sources.error_data,
+                    ),
                 ),
             )
         source_states = tuple(source for _phase, source in sources.value)
@@ -909,10 +917,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(
                 self._recover_failure(
                     layout,
-                    staged.error or f"cannot stage {phase} phase",
-                    exception=staged.exception,
-                    error_code=staged.error_code,
-                    error_data=staged.error_data,
+                    r[bool].fail(
+                        staged.error or f"cannot stage {phase} phase",
+                        exception=staged.exception,
+                        error_code=staged.error_code,
+                        error_data=staged.error_data,
+                    ),
                 ),
             )
         bound = FlextInfraMiseArtifactsState.bind_created_parents(
@@ -922,10 +932,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(
                 self._recover_failure(
                     layout,
-                    bound.error or f"cannot bind {phase} destination parents",
-                    exception=bound.exception,
-                    error_code=bound.error_code,
-                    error_data=bound.error_data,
+                    r[bool].fail(
+                        bound.error or f"cannot bind {phase} destination parents",
+                        exception=bound.exception,
+                        error_code=bound.error_code,
+                        error_data=bound.error_data,
+                    ),
                 ),
             )
         return bound
@@ -962,10 +974,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    extended.error or f"cannot append {phase} journal phase",
-                    exception=extended.exception,
-                    error_code=extended.error_code,
-                    error_data=extended.error_data,
+                    r[bool].fail(
+                        extended.error or f"cannot append {phase} journal phase",
+                        exception=extended.exception,
+                        error_code=extended.error_code,
+                        error_data=extended.error_data,
+                    ),
                 ),
             )
         manifested = FlextInfraMiseArtifactsJournal.record_transaction_manifests(
@@ -975,10 +989,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    manifested.error or f"cannot register {phase} staging tree",
-                    exception=manifested.exception,
-                    error_code=manifested.error_code,
-                    error_data=manifested.error_data,
+                    r[bool].fail(
+                        manifested.error or f"cannot register {phase} staging tree",
+                        exception=manifested.exception,
+                        error_code=manifested.error_code,
+                        error_data=manifested.error_data,
+                    ),
                 ),
             )
         persisted = self._write_journal(
@@ -990,7 +1006,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    persisted.error or f"cannot persist {phase} journal phase",
+                    r[bool].fail(
+                        persisted.error or f"cannot persist {phase} journal phase",
+                    ),
                 ),
             )
         return result_type.ok((manifested.value, persisted.value))
@@ -1020,10 +1038,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
                 self._recover_failure(
                     layout,
-                    published.error or f"cannot publish {phase} phase",
-                    exception=published.exception,
-                    error_code=published.error_code,
-                    error_data=published.error_data,
+                    r[bool].fail(
+                        published.error or f"cannot publish {phase} phase",
+                        exception=published.exception,
+                        error_code=published.error_code,
+                        error_data=published.error_data,
+                    ),
                 ),
             )
         grouped = tuple(item for item in staged if item.dependency_group is not None)
@@ -1119,10 +1139,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     session.plan.layout,
-                    planned.error or f"cannot plan {phase} directories",
-                    exception=planned.exception,
-                    error_code=planned.error_code,
-                    error_data=planned.error_data,
+                    r[bool].fail(
+                        planned.error or f"cannot plan {phase} directories",
+                        exception=planned.exception,
+                        error_code=planned.error_code,
+                        error_data=planned.error_data,
+                    ),
                 ),
             )
         if not planned.value:
@@ -1197,10 +1219,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    extended.error or f"cannot append {phase} directories",
-                    exception=extended.exception,
-                    error_code=extended.error_code,
-                    error_data=extended.error_data,
+                    r[bool].fail(
+                        extended.error or f"cannot append {phase} directories",
+                        exception=extended.exception,
+                        error_code=extended.error_code,
+                        error_data=extended.error_data,
+                    ),
                 ),
             )
         persisted = self._write_journal(
@@ -1212,7 +1236,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    persisted.error or f"cannot persist {phase} directories",
+                    r[bool].fail(
+                        persisted.error or f"cannot persist {phase} directories",
+                    ),
                 ),
             )
         return self._materialize_directories(layout, extended.value, persisted.value)
@@ -1330,10 +1356,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    committed.error or "cannot validate generation commit",
-                    exception=committed.exception,
-                    error_code=committed.error_code,
-                    error_data=committed.error_data,
+                    r[bool].fail(
+                        committed.error or "cannot validate generation commit",
+                        exception=committed.exception,
+                        error_code=committed.error_code,
+                        error_data=committed.error_data,
+                    ),
                 ),
             )
         committed_state = self._write_journal(
@@ -1345,10 +1373,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    committed_state.error or "cannot persist generation commit",
-                    exception=committed_state.exception,
-                    error_code=committed_state.error_code,
-                    error_data=committed_state.error_data,
+                    r[bool].fail(
+                        committed_state.error or "cannot persist generation commit",
+                        exception=committed_state.exception,
+                        error_code=committed_state.error_code,
+                        error_data=committed_state.error_data,
+                    ),
                 ),
             )
         return result_type.ok((committed.value, committed_state.value))

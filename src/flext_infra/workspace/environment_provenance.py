@@ -575,7 +575,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 u.Cli.info(
                     f"environment distribution={repository.distribution} "
                     f"import_source={directories[0].resolve()} "
-                    "loaded_code=unobserved resolver_only=True",
+                    "loaded_import_binding=unobserved resolver_only=True",
                 )
                 source_result = r[bool].ok(value=False)
         if source_result.failure:
@@ -593,16 +593,16 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         repository: m.Infra.RepositoryRef,
         distribution: Distribution,
         expected_root: Path,
-    ) -> p.Result[int]:
+    ) -> p.Result[bool]:
         """Prove the installed file inventory yields exactly one editable .pth.
 
         Returns:
-            The resulting ``p.Result[int]``.
+            The resulting ``p.Result[bool]``.
 
         """
         files = distribution.files
         if files is None:
-            return r[int].fail(
+            return r[bool].fail(
                 "editable provenance has no installed file inventory: "
                 f"distribution={repository.distribution}",
             )
@@ -618,7 +618,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if str(file).endswith(".pth")
         )
         if len(pth_files) != 1:
-            return r[int].fail(
+            return r[bool].fail(
                 "editable provenance pth count mismatch: "
                 f"distribution={repository.distribution} expected=1 "
                 f"actual={len(pth_files)}",
@@ -662,10 +662,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         repository: m.Infra.RepositoryRef,
         expected_root: Path,
     ) -> p.Result[bool]:
-        """Authenticate loaded modules and owned code against the declared source.
+        """Authenticate physical import bindings against the installed declaration.
 
         Returns:
             The resulting ``p.Result[bool]``.
+
+        Executable declarations have a separate producer/check admission owner.
+        Environment verification never traverses functions, classes or libraries
+        exported by these module namespaces.
         """
         package_name = u.Infra.project_package_name(expected_root)
         package = u.Infra.declared_package_dir(package_name)
@@ -683,13 +687,25 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             f"environment distribution={repository.distribution} "
             f"import_source={package.resolve()}",
         )
-        sources = cls.loaded_import_sources(package_name, expected_root=expected_root)
-        if sources.failure:
-            return r[bool].from_failure(sources)
-        if not sources.value:
+        names = tuple(
+            name
+            for name in tuple(modules)
+            if name == package_name or name.startswith(f"{package_name}.")
+        )
+        for name in names:
+            elected = cls._module_source(name)
+            if elected.failure:
+                return r[bool].from_failure(elected)
+            if not elected.value.resolve().is_relative_to(expected_root):
+                return r[bool].fail(
+                    "editable provenance loaded import escapes declaration: "
+                    f"distribution={repository.distribution} "
+                    f"module={name} expected={expected_root} actual={elected.value}",
+                )
+        if not names:
             u.Cli.info(
                 f"environment distribution={repository.distribution} "
-                "loaded_code=unobserved resolver_only=True",
+                "loaded_import_binding=unobserved resolver_only=True",
             )
             return r[bool].ok(value=False)
         return r[bool].ok(value=True)
@@ -702,7 +718,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         expected_root: Path | None = None,
         reference: m.Infra.NativeImportReference | None = None,
     ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Consume one pinned cold-native epoch, never a source-only admission."""
+        """Check executable producer declarations or consume their isolated receipt.
+
+        Static source preflight does not authorize generated executable bindings.
+        Physical environment verification uses native module election directly.
+        """
         from flext_infra.workspace.native_reference import (
             FlextInfraWorkspaceNativeReference,
         )
@@ -717,41 +737,18 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         if not names:
             return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
         if reference is None:
-            from flext_infra.codegen.codegen_preconditions import (
-                FlextInfraCodegenPreconditions,
+            from flext_infra._utilities.rope_runtime_modules import (
+                FlextInfraUtilitiesRopeRuntimeModules,
             )
-            from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
-            cold = FlextInfraCodegenPreconditions.capture_source_authority(
-                nominated=names
-            )
-            if cold.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(cold)
-            inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
-            if inputs.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(inputs)
-            roots = [root.parent for _name, root in cold.value.generator_modules]
-            for namespace in dict.fromkeys(name.partition(".")[0] for name in names):
-                origin = cls._module_source(namespace)
-                if origin.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
-                spec = modules[namespace].__spec__
-                roots.append(
-                    origin.value.parent.parent
-                    if spec and spec.submodule_search_locations
-                    else origin.value.parent
-                )
-            captured = FlextInfraValidateFreshImport.capture_native_reference(
-                m.Infra.NativeImportRequest(
-                    modules=names,
-                    source_authority=cold.value,
-                    inputs=inputs.value,
-                    import_roots=tuple(dict.fromkeys(roots)),
-                )
+            captured = FlextInfraUtilitiesRopeRuntimeModules.source_proof(
+                names,
+                module_source=cls._module_source,
+                observer=FlextInfraWorkspaceNativeReference,
             )
             if captured.failure:
                 return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(captured)
-            source_files = captured.value.sources
+            source_files = captured.value
         else:
             if not set(names).issubset(reference.modules):
                 return r[t.SequenceOf[t.Triple[str, str, str]]].fail(

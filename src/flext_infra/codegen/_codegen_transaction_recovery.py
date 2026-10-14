@@ -346,7 +346,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 return r[m.Infra.CodegenTransactionSession].from_failure(state)
             record = FlextInfraMiseArtifactsJournal.source_record(
                 "output",
-                state,
+                state.value,
                 path=plan.path,
             )
             if record.failure:
@@ -820,7 +820,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    created.error or f"cannot create directory {intent.path}",
+                    r[bool].fail(
+                        created.error or f"cannot create directory {intent.path}"
+                    ),
                 ),
             )
         directories = tuple(
@@ -835,7 +837,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                recorded.error or f"cannot record directory {intent.path}",
+                r[bool].fail(
+                    recorded.error or f"cannot record directory {intent.path}"
+                ),
                 journal_write=False,
             )
             return result_type.from_failure(failed)
@@ -848,7 +852,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                persisted.error or f"cannot persist directory {intent.path}",
+                r[bool].fail(
+                    persisted.error or f"cannot persist directory {intent.path}"
+                ),
                 journal_write=True,
             )
             return result_type.from_failure(failed)

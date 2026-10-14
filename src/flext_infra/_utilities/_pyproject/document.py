@@ -53,7 +53,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         ] = None
 
     @classmethod
-    def _parsed_pyproject(
+    def parsed_pyproject(
         cls,
         pyproject_content: str,
     ) -> p.Result[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]:
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             Canonical TOML with autonomous dependencies and uv policy.
 
         """
-        parsed = cls._parsed_pyproject(pyproject_content)
+        parsed = cls.parsed_pyproject(pyproject_content)
         if parsed.failure:
             return r[str].from_failure(parsed)
         source, project_name = parsed.value[0], parsed.value[1]
@@ -468,7 +468,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         path = state.path
         if state.content is None:
             return result.fail(f"member declaration has no captured bytes: {path}")
-        parsed_document = FlextInfraUtilitiesPyprojectDocument._parsed_pyproject(
+        parsed_document = FlextInfraUtilitiesPyprojectDocument.parsed_pyproject(
             state.content.decode(c.DEFAULT_ENCODING),
         )
         if parsed_document.failure:

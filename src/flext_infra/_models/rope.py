@@ -29,14 +29,18 @@ class FlextInfraModelsRope:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
         source: Path = m.Field(description="Elected physical Python source")
         state: m.Cli.AtomicFileState = m.Field(description="Pinned physical bytes")
-        module: p.Infra.RopeSourceModule = m.Field(description="Shared native Rope graph")
-        code: p.Infra.NativeCodeIdentity = m.Field(description="Unexecuted compiler proof")
+        module: p.Infra.RopeSourceModule = m.Field(
+            description="Shared native Rope graph"
+        )
+        code: p.Infra.NativeCodeIdentity = m.Field(
+            description="Unexecuted compiler proof"
+        )
         scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
             description="Native class and function declarations",
         )
-        statements: t.SequenceOf[
-            FlextInfraModelsRope.LogicalStatement
-        ] = m.Field(description="One native logical-region pass")
+        statements: t.SequenceOf[p.Infra.RopeSourceStatement] = m.Field(
+            description="One native logical-region pass",
+        )
         finder: p.Infra.RopeSimilarFinder = m.Field(description="Shared native matcher")
 
     class RopeSourceImport(m.ArbitraryTypesModel):

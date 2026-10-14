@@ -1958,6 +1958,60 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             has="pth exposes no declared package",
         )
 
+    def test_installed_bindings_do_not_admit_executable_declarations(
+        self,
+        installed_artifact_consumer: Path,
+    ) -> None:
+        """Real installation bindings survive unrelated defects; producer proof rejects code."""
+        root = installed_artifact_consumer
+        package_name = u.Infra.project_package_name(root)
+        source = root / "src" / package_name / c.Infra.INIT_PY
+        original = source.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                original
+                + "\ndef producer():\n"
+                + "    return 'installed native producer'\n",
+            ),
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "import yaml\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as environment\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as producer\n"
+            "root = pathlib.Path(sys.argv[1])\n"
+            "module = importlib.import_module(sys.argv[2])\n"
+            "reference = producer.capture((module.__name__,)).unwrap()\n"
+            "yaml.safe_load.__module__ = None\n"
+            "module.producer.__code__ = module.producer.__code__.replace("
+            "co_filename='<unbound producer>')\n"
+            "environment.validate(root).unwrap()\n"
+            "observed = producer.capture((module.__name__,)).unwrap()\n"
+            "rejected = producer.compare(observed, reference)\n"
+            "assert rejected.failure, rejected\n"
+            "assert module.producer.__qualname__ in rejected.error, rejected.error\n"
+        )
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    str(u.Infra.runtime_python(root)),
+                    "-c",
+                    consumer,
+                    str(root),
+                    package_name,
+                ],
+                cwd=root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+
     def test_frozen_member_remains_a_library_when_its_checkout_is_present(
         self,
         tmp_path: Path,

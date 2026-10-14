@@ -9,7 +9,6 @@ from __future__ import annotations
 import sys
 from functools import partial
 from importlib.machinery import PathFinder
-from importlib.metadata import packages_distributions
 from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -37,51 +36,84 @@ _ENGINE_DISTRIBUTION = config.Infra.codegen.infra_repository.distribution
 class FlextInfraCodegenPreconditions:
     """Validate source consistency and receipt ownership before publishing."""
 
-    @staticmethod
-    def elected_producer_modules() -> p.Result[t.VariadicTuple[t.Pair[str, Path]]]:
-        """Nominate one cold physical import per registered executed namespace.
+    @classmethod
+    def elected_producer_modules(
+        cls, *, nominated: t.StrTuple = ()
+    ) -> p.Result[t.VariadicTuple[t.Pair[str, Path]]]:
+        """Elect the physical closure of declared producer source dependencies.
 
         Returns:
             The complete elected namespace and physical-path pairs.
         """
-        declared = packages_distributions()
-        namespaces = {
-            base.__module__.partition(".")[0]
-            for facade in (c, m, u)
-            for base in facade.__mro__
-            if base.__module__.partition(".")[0] not in sys.stdlib_module_names
-        } | {
-            module.__spec__.name.partition(".")[0]
-            for module in tuple(sys.modules.values())
-            if module.__spec__ is not None
-            and module.__spec__.name.partition(".")[0] in declared
-            and module.__spec__.name.partition(".")[0] not in sys.stdlib_module_names
-        }
+        nominations = nominated or (
+            f"{cls.__module__}::{cls.__qualname__}.capture_producer",
+        )
+        namespaces = {name.partition("::")[0].partition(".")[0] for name in nominations}
         elected: list[t.Pair[str, Path]] = []
-        for namespace in sorted(namespaces):
-            spec = PathFinder.find_spec(namespace)
-            if spec is None:
-                return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
-                    f"producer import has no physical election: {namespace}"
+        pending = sorted(namespaces)
+        with u.Infra.open_import_project(Path.cwd()) as project:
+            while pending:
+                namespace = pending.pop(0)
+                selected = cls._elect_namespace(namespace)
+                if selected.failure:
+                    return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(selected)
+                root = selected.value
+                elected.append((namespace, root))
+                paths = (
+                    tuple(root.rglob(f"*{c.Infra.EXT_PYTHON}"))
+                    if root.is_dir()
+                    else (root,)
                 )
-            if spec.submodule_search_locations:
-                selected = r[Path | None].create_from_callable(
-                    partial(u.Infra.declared_package_dir, namespace)
-                )
-            elif spec.origin is not None:
-                selected = r[Path | None].ok(Path(spec.origin))
-            else:
-                return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
-                    f"producer module has no native origin: {namespace}"
-                )
-            if selected.failure:
-                return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(selected)
-            if selected.value is None:
-                return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
-                    f"producer package root is absent: {namespace}"
-                )
-            elected.append((namespace, selected.value.absolute()))
-        return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(elected))
+                for path in paths:
+                    if c.Infra.DUNDER_PYCACHE in path.parts or path.suffix != ".py":
+                        continue
+                    resource = u.Infra.runtime_callable("rope.base.resources", "File")(
+                        u.Infra.runtime_callable(
+                            "rope.base.project", "get_no_project"
+                        )(),
+                        str(path),
+                    )
+                    declared = u.Infra.resolve_declared_module_imports(
+                        project, resource
+                    )
+                    semantic = u.Infra.resolve_semantic_module_imports(
+                        project, resource
+                    )
+                    for dependency in (*declared.values(), *semantic.values()):
+                        provider = dependency.partition(".")[0]
+                        if (
+                            provider in sys.stdlib_module_names
+                            or provider in namespaces
+                        ):
+                            continue
+                        namespaces.add(provider)
+                        pending.append(provider)
+        return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(sorted(elected)))
+
+    @staticmethod
+    def _elect_namespace(namespace: str) -> p.Result[Path]:
+        """Resolve one required source provider without importing it."""
+        result_type = r[Path]
+        spec = PathFinder.find_spec(namespace)
+        if spec is None:
+            return result_type.fail(
+                f"producer import has no physical election: {namespace}"
+            )
+        if spec.submodule_search_locations:
+            selected = r[Path | None].create_from_callable(
+                partial(u.Infra.declared_package_dir, namespace)
+            )
+        elif spec.origin is not None:
+            selected = r[Path | None].ok(Path(spec.origin))
+        else:
+            return result_type.fail(
+                f"producer module has no native origin: {namespace}"
+            )
+        if selected.failure:
+            return result_type.from_failure(selected)
+        if selected.value is None:
+            return result_type.fail(f"producer package root is absent: {namespace}")
+        return result_type.ok(selected.value.absolute())
 
     @classmethod
     def capture_source_authority(
@@ -89,14 +121,15 @@ class FlextInfraCodegenPreconditions:
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Elect physical providers and pin their code, resources and metadata.
 
-        Loaded names nominate providers; cold import resolution and native
-        descriptor inventory authenticate them before any planning evaluation.
+        Source declarations nominate providers; loaded bindings authenticate
+        selected executable edges before any planning evaluation.
 
         Returns:
             The authenticated immutable producer closure.
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
-        elected = cls.elected_producer_modules()
+        names = nominated or (f"{cls.__module__}::{cls.__qualname__}.capture_producer",)
+        elected = cls.elected_producer_modules(nominated=names)
         if elected.failure:
             return result_type.from_failure(elected)
         roots = dict(elected.value)
@@ -109,17 +142,6 @@ class FlextInfraCodegenPreconditions:
             FlextInfraWorkspaceNativeReference,
         )
 
-        names = tuple(
-            sorted(
-                name
-                for name in tuple(sys.modules)
-                if name in nominated
-                or any(
-                    name == namespace or name.startswith(f"{namespace}.")
-                    for namespace in roots
-                )
-            )
-        )
         observed = FlextInfraWorkspaceNativeReference.capture(names)
         if observed.failure:
             return result_type.from_failure(observed)
@@ -134,7 +156,9 @@ class FlextInfraCodegenPreconditions:
             FlextInfraWorkspaceEnvironmentProvenance,
         )
 
-        for namespace in dict.fromkeys(name.partition(".")[0] for name in nominated):
+        for namespace in dict.fromkeys(
+            name.partition("::")[0].partition(".")[0] for name in nominated
+        ):
             source = FlextInfraWorkspaceEnvironmentProvenance._module_source(namespace)
             if source.failure:
                 return result_type.from_failure(source)
@@ -216,11 +240,12 @@ class FlextInfraCodegenPreconditions:
             return r[bool].fail("cold producer runtime changed")
         if authority.optimize != sys.flags.optimize:
             return r[bool].fail("cold producer compiler optimization changed")
-        elected = cls.elected_producer_modules()
-        if elected.failure:
-            return r[bool].from_failure(elected)
-        if elected.value != authority.generator_modules:
-            return r[bool].fail("cold producer module election changed")
+        for namespace, root in authority.generator_modules:
+            elected = cls._elect_namespace(namespace)
+            if elected.failure:
+                return r[bool].from_failure(elected)
+            if elected.value != root:
+                return r[bool].fail("cold producer module election changed")
         for expected in authority.inputs:
             observed = u.Cli.atomic_read_binary_file_receipt(
                 expected.path,
@@ -272,27 +297,19 @@ class FlextInfraCodegenPreconditions:
         return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(states))
 
     @classmethod
-    def capture_producer(cls) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def capture_producer(
+        cls, *, nominated: t.StrTuple = ()
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Authenticate the loaded producer against its cold physical authority."""
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
-        cold = cls.capture_source_authority()
+        names = nominated or (f"{cls.__module__}::{cls.__qualname__}.capture_producer",)
+        cold = cls.capture_source_authority(nominated=names)
         if cold.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(cold)
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(inputs)
-        namespaces = tuple(name for name, _ in cold.value.generator_modules)
-        names = tuple(
-            sorted(
-                name
-                for name in tuple(sys.modules)
-                if any(
-                    name == namespace or name.startswith(f"{namespace}.")
-                    for namespace in namespaces
-                )
-            )
-        )
         reference = FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
                 modules=names,
@@ -526,11 +543,14 @@ class FlextInfraCodegenPreconditions:
             )
             if current.failure:
                 return current
-        elected = FlextInfraCodegenPreconditions.elected_producer_modules()
-        if elected.failure:
-            return r[bool].from_failure(elected)
-        if not modules or elected.value != modules:
+        if not modules:
             return r[bool].fail("producer module election changed after capture")
+        for namespace, root in modules:
+            elected = FlextInfraCodegenPreconditions._elect_namespace(namespace)
+            if elected.failure:
+                return r[bool].from_failure(elected)
+            if elected.value != root:
+                return r[bool].fail("producer module election changed after capture")
         return r[bool].ok(value=True)
 
     @classmethod

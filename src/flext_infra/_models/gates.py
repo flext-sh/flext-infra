@@ -117,6 +117,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class DeptryScan(m.Value):
         """Native findings bound to the exact settings and report bytes."""
 
+        source: Annotated[
+            m.Cli.AtomicPhysicalTreeManifest,
+            m.Field(description="Production tree consumed by the native scanner"),
+        ]
+        native: Annotated[
+            m.Cli.CommandOutput,
+            m.Field(description="Native deptry process completion and raw output"),
+        ]
         settings: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Consumed pyproject state"),
@@ -124,6 +132,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         report_state: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Fresh native report state"),
+        ]
+        report_sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$", description="Exact native report digest"
+            ),
         ]
         report: Annotated[
             DeptryNativeReport,

@@ -91,6 +91,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
 
         target_root: Annotated[Path, m.Field(description="Selected repository root")]
         python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
+        lock: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Captured native UV lock of the selected runtime"),
+        ]
         providers: Annotated[
             t.VariadicTuple[RuntimeDependencyProvider],
             m.Field(description="All matching suppliers; ambiguity is preserved"),
@@ -106,6 +110,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class RuntimeDependencyPlan(m.Value):
         """Calculated target requirements and unchanged diagnostic identities."""
 
+        source: Annotated[
+            m.Cli.AtomicPhysicalTreeManifest,
+            m.Field(description="Exact production tree establishing applicability"),
+        ]
         before: Annotated[
             m.Cli.AtomicFileState,
             m.Field(

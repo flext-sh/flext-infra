@@ -173,11 +173,15 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr | None,
             m.Field(description="Native jq-like version extraction path"),
         ] = None
+        version_regex: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native release-list extraction regular expression"),
+        ] = None
         version_expr: Annotated[
             t.NonEmptyStr | None, m.Field(description="Native release-list expression")
         ] = None
         version_order: Annotated[
-            Literal["semver"] | None,
+            Literal["source", "semver"] | None,
             m.Field(description="Native ordering of discovered releases"),
         ] = None
         checksum: Annotated[

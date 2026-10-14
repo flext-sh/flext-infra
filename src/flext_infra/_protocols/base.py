@@ -563,6 +563,15 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class WorkspaceLockRequest(Protocol):
+        """Read-only committed-lock completeness validation request."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository whose committed lock must be validated."""
+            ...
+
+    @runtime_checkable
     class WorkspaceEnvironmentContracts(Protocol):
         """Structural contract the direnv gate consumes for static lint.
 

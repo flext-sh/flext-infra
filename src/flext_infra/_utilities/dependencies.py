@@ -7,8 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping
+from functools import partial
 from importlib.metadata import requires
 from importlib.resources import files
+from json import dumps
 from pathlib import Path
 from types import MappingProxyType
 
@@ -26,6 +28,284 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements):
     """Workspace dependency policy composed over independent requirement parsing."""
+
+    @staticmethod
+    def capture_deptry_scan(
+        project_path: Path,
+        venv_bin: Path,
+        *,
+        config_path: Path,
+        json_output_path: Path,
+    ) -> p.Result[m.Infra.DeptryScan]:
+        """Capture one native deptry report against an unchanged production tree.
+
+        Callers elect the interpreter, configuration and fresh report destination.
+
+        Returns:
+            Complete native findings and the states authenticating their inputs.
+        """
+        result_type = r[m.Infra.DeptryScan]
+        settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
+        if settings.failure:
+            return result_type.from_failure(settings)
+        source = u.Cli.atomic_inventory_physical_tree(
+            project_path / c.Infra.DEFAULT_SRC_DIR,
+        )
+        if source.failure:
+            return result_type.from_failure(source)
+        if any(entry.kind == "symlink" for entry in source.value.entries):
+            return result_type.fail(
+                "deptry production source contains unauthenticated symbolic links"
+            )
+        before = u.Cli.atomic_read_binary_file_state(json_output_path, required=False)
+        if before.failure:
+            return result_type.from_failure(before)
+        if before.value.content is not None:
+            return result_type.fail(
+                f"deptry report destination already exists: {json_output_path}"
+            )
+        completed = u.Cli.run_raw(
+            (
+                str(venv_bin / c.Infra.DEPTRY),
+                str(c.Infra.DEFAULT_SRC_DIR),
+                "--config",
+                str(config_path),
+                "--json-output",
+                str(json_output_path),
+                "--no-ansi",
+            ),
+            cwd=project_path,
+            timeout=c.Infra.TIMEOUT_MEDIUM,
+        )
+        if completed.failure:
+            return result_type.from_failure(completed)
+        native = m.Cli.CommandOutput.model_validate(
+            completed.value, from_attributes=True
+        )
+        if (
+            native.outcome.timed_out
+            or native.outcome.forwarded_signal is not None
+            or native.outcome.raw_return_code not in {0, 1}
+        ):
+            return result_type.fail(
+                f"deptry process failed: {native.outcome.model_dump_json()}\n"
+                f"stdout:\n{native.stdout}\nstderr:\n{native.stderr}",
+            )
+        report_state = u.Cli.atomic_read_binary_file_state(
+            json_output_path, required=True
+        )
+        if report_state.failure:
+            return result_type.from_failure(report_state)
+        if report_state.value.content is None:
+            return result_type.fail(
+                f"deptry did not produce its native report: {json_output_path}"
+            )
+        parsed = r[m.Infra.DeptryNativeReport].create_from_callable(
+            partial(
+                m.Infra.DeptryNativeReport.model_validate_json,
+                report_state.value.content,
+                strict=True,
+            ),
+        )
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        verified = u.Cli.atomic_verify_binary_file_states((
+            settings.value,
+            report_state.value,
+        ))
+        if verified.failure:
+            return result_type.from_failure(verified)
+        current_source = u.Cli.atomic_inventory_physical_tree(source.value.root.path)
+        if current_source.failure:
+            return result_type.from_failure(current_source)
+        if current_source.value != source.value:
+            return result_type.fail(
+                f"deptry production source changed during scanning: {source.value.root.path}"
+            )
+        if native.outcome.raw_return_code != int(bool(parsed.value.root)):
+            return result_type.fail("deptry exit status contradicts its native report")
+        return result_type.ok(
+            m.Infra.DeptryScan(
+                source=source.value,
+                native=native,
+                settings=settings.value,
+                report_state=report_state.value,
+                report_sha256=u.Cli.sha256_bytes(report_state.value.content),
+                report=parsed.value,
+            )
+        )
+
+    @staticmethod
+    def runtime_dependency_plan(
+        scan: m.Infra.DeptryScan,
+        inputs: m.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[m.Infra.RuntimeDependencyPlan]:
+        """Calculate native-evidenced changes from explicit supplier provenance.
+
+        Preserve target-owned requirement strings, including their sources, extras
+        and markers. Installation never establishes that an import is applicable.
+
+        Returns:
+            The target requirement changes and unresolved native import identities.
+        """
+        result_type = r[m.Infra.RuntimeDependencyPlan]
+        target = inputs.target_root
+        if (
+            not target.is_absolute()
+            or scan.settings.path != target / c.PYPROJECT_FILENAME
+        ):
+            return result_type.fail("dependency provenance belongs to another target")
+        if not inputs.python.is_absolute() or scan.settings.content is None:
+            return result_type.fail(
+                "dependency provenance lacks its interpreter or settings"
+            )
+        if (
+            inputs.lock.path.name != c.Infra.UV_LOCK_FILENAME
+            or inputs.lock.content is None
+        ):
+            return result_type.fail("dependency provenance lacks its native UV lock")
+        lock_payload = u.Cli.toml_mapping_from_text(
+            inputs.lock.content.decode(c.DEFAULT_ENCODING),
+        )
+        if lock_payload is None:
+            return result_type.fail(f"invalid dependency lock: {inputs.lock.path}")
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(lock_payload))
+        document = u.Cli.toml_mapping_from_text(
+            scan.settings.content.decode(c.DEFAULT_ENCODING),
+        )
+        if document is None:
+            return result_type.fail(
+                f"invalid dependency declaration: {scan.settings.path}"
+            )
+        project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
+        if project is None:
+            return result_type.fail(
+                f"project declaration is absent: {scan.settings.path}"
+            )
+        declarations = m.Infra.DepsToml.MemberRequirements.model_validate({
+            "name": project[c.Infra.NAME],
+            "dependencies": project.get(c.Infra.DEPENDENCIES, []),
+            "optional_dependencies": project.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
+            "dependency-groups": document.get(c.Infra.DEPENDENCY_GROUPS, {}),
+        })
+        runtime = declarations.dependencies
+        development = tuple(
+            item
+            for group in declarations.dependency_groups.values()
+            for item in group
+            if isinstance(item, str)
+        )
+        parsed_runtime = tuple(Requirement(item) for item in runtime)
+        parsed_development = tuple(Requirement(item) for item in development)
+        suppliers = tuple(
+            (provider, Requirement(provider.requirement))
+            for provider in inputs.providers
+        )
+        for provider, requirement in suppliers:
+            if provider.package not in locked.package:
+                return result_type.fail(
+                    f"import supplier differs from the selected lock: {provider.package.name}",
+                )
+            if canonicalize_name(requirement.name) != canonicalize_name(
+                provider.package.name
+            ):
+                return result_type.fail(
+                    f"import supplier requirement differs from its locked identity: {provider.package.name}",
+                )
+        unused = {
+            canonicalize_name(item.module)
+            for item in scan.report.root
+            if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
+        }
+        selected = [
+            raw
+            for raw, requirement in zip(runtime, parsed_runtime, strict=True)
+            if canonicalize_name(requirement.name) not in unused
+        ]
+        promoted: list[str] = []
+        unresolved: list[str] = []
+        for diagnostic in scan.report.root:
+            if diagnostic.error.code not in {"DEP001", "DEP003", "DEP004"}:
+                continue
+            providers = tuple(
+                (provider, requirement)
+                for provider, requirement in suppliers
+                if diagnostic.module in provider.modules
+            )
+            if len(providers) != 1:
+                unresolved.append(diagnostic.module)
+                continue
+            provider, requirement = providers[0]
+            name = canonicalize_name(provider.package.name)
+            if name == canonicalize_name(declarations.name):
+                unresolved.append(diagnostic.module)
+                continue
+            authored = tuple(
+                raw
+                for raw, parsed in zip(development, parsed_development, strict=True)
+                if canonicalize_name(parsed.name) == name
+            )
+            additions = authored or (provider.requirement,)
+            if authored:
+                promoted.extend(authored)
+            selected.extend(item for item in additions if item not in selected)
+        return result_type.ok(
+            m.Infra.RuntimeDependencyPlan(
+                source=scan.source,
+                before=scan.settings,
+                dependencies=tuple(selected),
+                promoted=tuple(dict.fromkeys(promoted)),
+                unresolved_modules=tuple(dict.fromkeys(unresolved)),
+                inputs=(
+                    inputs.lock,
+                    *inputs.inputs,
+                    *(
+                        state
+                        for provider in inputs.providers
+                        for state in provider.inputs
+                    ),
+                    scan.settings,
+                    scan.report_state,
+                ),
+            )
+        )
+
+    @staticmethod
+    def publish_runtime_dependency_plan(
+        plan: m.Infra.RuntimeDependencyPlan,
+    ) -> p.Result[bool]:
+        """Publish only the calculated runtime list against unchanged source states.
+
+        The caller owns the repository mutation lease. Locks remain owned by upg.
+
+        Returns:
+            Whether the original target declaration changed.
+        """
+        u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
+        current_source = u.Cli.atomic_inventory_physical_tree(plan.source.root.path)
+        if current_source.failure:
+            return r[bool].from_failure(current_source)
+        if current_source.value != plan.source:
+            return r[bool].fail(
+                f"deptry production source changed before publication: {plan.source.root.path}"
+            )
+        if plan.before.content is None:
+            return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
+        document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))
+        if document is None:
+            return r[bool].fail(f"invalid dependency declaration: {plan.before.path}")
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        if project is None:
+            return r[bool].fail(f"project declaration is absent: {plan.before.path}")
+        changed = u.Cli.toml_sync_string_list(
+            project, c.Infra.DEPENDENCIES, plan.dependencies
+        )
+        if changed:
+            u.Cli.atomic_write_binary_file_guarded(
+                plan.before,
+                document.as_string().encode(c.DEFAULT_ENCODING),
+            ).unwrap()
+        return r[bool].ok(changed)
 
     @staticmethod
     def project_dev_groups_from_payload(
