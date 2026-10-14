@@ -12,12 +12,34 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from flext_cli import p
+
     from flext_infra import m
 
 
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
+
+    @runtime_checkable
+    class NativeCodeIdentity(Protocol):
+        """Immutable native code metadata consumed by source provenance."""
+
+        co_filename: str
+        co_qualname: str
+        co_firstlineno: int
+        co_consts: tuple[p.AttributeProbe | None, ...]
+        co_names: tuple[str, ...]
+        co_varnames: tuple[str, ...]
+        co_freevars: tuple[str, ...]
+        co_cellvars: tuple[str, ...]
+        co_code: bytes
+        co_flags: int
+
+        def replace(
+            self,
+            **changes: p.AttributeProbe | None,
+        ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

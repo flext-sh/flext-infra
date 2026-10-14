@@ -21,6 +21,7 @@ from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffol
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -85,6 +86,12 @@ class FlextInfraModelsCodegenPipelineModels:
         )
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             default=(), description="Exact cold module election before planning"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Shared authenticated pre-planning native epoch",
+            )
         )
         publications: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
@@ -221,6 +228,11 @@ class FlextInfraModelsCodegenPipelineModels:
         )
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             default=(), description="Captured producer module election"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None, description="Same native epoch as producer and journal"
+            )
         )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),

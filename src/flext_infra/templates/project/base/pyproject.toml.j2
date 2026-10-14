@@ -26,7 +26,7 @@ requires = [
 
 # [CUSTOM] name, description, authors, maintainers, scripts, entry-points, classifiers, keywords, license, urls, readme, version, dependencies, optional-dependencies
 # [MANAGED] requires-python
-# Runtime profile requirements take precedence over same-name CUSTOM dependencies.
+# Runtime requirements retain the target's own declaration.
 [project]
 classifiers = [
 {% for item in scaffold.project.classifiers %}
@@ -34,10 +34,7 @@ classifiers = [
 {% endfor %}
 ]
 dependencies = [
-{% for item in runtime_dependency_overlay %}
-  {{ flext_requirement(item) }},
-{% endfor %}
-{% for item in dependency_profile.runtime if item != dist %}
+{% for item in project_dependencies %}
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
@@ -62,13 +59,8 @@ email = "{{ author_email }}"
 name = "{{ author_name }}"
 
 [dependency-groups]
-codegen = [
-{% for item in dependency_profile.codegen if item != dist %}
-  {{ flext_requirement(item) }},
-{% endfor %}
-]
 dev = [
-{% for item in scaffold.project.dev if item != dist %}
+{% for item in development_dependencies %}
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
@@ -112,7 +104,7 @@ omit = [
 
 [tool.deptry]
 known_first_party = [
-{% for item in tooling_runtime.first_party %}
+{% for item in tooling_runtime.deptry_first_party %}
   {{ item | tojson }},
 {% endfor %}
 ]
@@ -438,6 +430,13 @@ extend-safe-fixes = [
   {{ item | tojson }},
 {% endfor %}
 ]
+{% if tooling.tools.ruff.lint.extend_select %}
+extend-select = [
+{% for item in tooling.tools.ruff.lint.extend_select | sort %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% endif %}
 {# ignore holds only the unscoped operator-authorized exceptions declared at
    the tooling owner; repositories declare no exception. #}
 ignore = [

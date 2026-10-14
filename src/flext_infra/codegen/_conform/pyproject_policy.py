@@ -32,6 +32,10 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         publication. Reading an older member document here would make the
         workspace view drift as soon as that same transaction published it.
         Locks remain exclusively owned by the upgrade lifecycle.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         desired = {file.path: file for file in planned}

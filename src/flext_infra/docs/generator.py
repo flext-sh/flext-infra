@@ -146,16 +146,11 @@ class FlextInfraDocGenerator(
             files=plans.value,
             inputs=bundle.source_states,
         )
-        producer = FlextInfraCodegenPreconditions.capture_producer()
-        if producer.failure:
-            return result_type.from_failure(producer)
         bound_analysis = FlextInfraCodegenPreconditions.bind_producer_analysis(
-                analysis, bundle.producer
+            analysis, bundle.producer
         )
         if bound_analysis.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
-                bound_analysis
-            )
+            return result_type.from_failure(bound_analysis)
         analysis = bound_analysis.value
         admitted = FlextInfraMisePublication.admit_batch(analysis)
         if admitted.failure:
@@ -185,7 +180,7 @@ class FlextInfraDocGenerator(
         started = transaction.begin_files_locked(
             scope_root,
             roots,
-                analysis.inputs,
+            prepared.value[0].inputs,
         )
         if started.failure:
             return report_type.from_failure(started)

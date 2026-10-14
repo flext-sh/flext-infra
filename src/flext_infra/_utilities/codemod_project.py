@@ -56,6 +56,9 @@ from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
+# A sanctioned compose module name is exactly ``<package>.<leaf>``.
+_COMPOSE_MODULE_SEGMENT_COUNT = 2
+
 
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
@@ -1040,7 +1043,10 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         parts = value.split(".")
-        if len(parts) != 2 or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES:
+        if (
+            len(parts) != _COMPOSE_MODULE_SEGMENT_COUNT
+            or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES
+        ):
             return False
         top, leaf = parts
         if top == own:

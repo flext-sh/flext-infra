@@ -307,9 +307,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Returns:
             Matched character ranges from the module's immutable source snapshot.
-
-        Raises:
-            TypeError: If Rope does not expose its semantic region contract.
         """
         finder = cls.semantic_finder(module)
         return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))
@@ -337,6 +334,40 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             message = "Rope SimilarFinder does not expose semantic match regions"
             raise TypeError(message)
         return finder
+
+    @classmethod
+    def semantic_capture_region(
+        cls,
+        match: p.Infra.RopeContractMatch,
+        variable: str,
+    ) -> t.Pair[int, int]:
+        """Read a captured region through Rope's opaque native match boundary.
+
+        No syntax tree is parsed, inspected or traversed by this adapter.
+
+        Returns:
+            Native character coordinates of the named capture.
+
+        Raises:
+            ValueError: If the requested variable was not captured.
+            TypeError: If Rope returned an invalid region.
+        """
+        captured = match.get_ast(variable)
+        if captured is None:
+            message = f"Rope match has no captured variable: {variable}"
+            raise ValueError(message)
+        region = cls.runtime_callable(
+            "rope.refactor.patchedast",
+            "node_region",
+        )(captured)
+        if not isinstance(region, tuple) or len(region) != 2:
+            message = "Rope capture does not expose its native character region"
+            raise TypeError(message)
+        begin, end = region
+        if not isinstance(begin, int) or not isinstance(end, int):
+            message = "Rope capture region contains non-integer coordinates"
+            raise TypeError(message)
+        return begin, end
 
     @classmethod
     def create_move(

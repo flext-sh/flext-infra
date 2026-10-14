@@ -179,9 +179,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
-
-        Raises:
-            ValueError: If ast.
         """
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
@@ -250,12 +247,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         )
         try:
             catalog_after = u.Infra.codemod_rule_plan(root)
-            if catalog_after.failure:
-                msg = f"ast: whole-catalog observation failed: {catalog_after.error}"
-                raise ValueError(msg)
-            if catalog_before != catalog_after.value:
-                msg = "ast: whole-catalog identity changed during selected apply"
-                raise ValueError(msg)
+            cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
             deltas = u.Infra.rule_deltas(
                 before, after.value, publication_chain=tuple(published_plans)
             )
@@ -285,6 +277,24 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "accepted writes retained; no rollback performed",
             )
         return outcome
+
+    @staticmethod
+    def _require_whole_catalog_correspondence(
+        catalog_before: m.Infra.CodemodRulePlan,
+        catalog_after: p.Result[m.Infra.CodemodRulePlan],
+    ) -> None:
+        """Fail loud when the whole catalog breaks the applied selected identity.
+
+        Raises:
+            ValueError: If the whole-catalog observation failed or the rule
+                plan changed during the selected apply.
+        """
+        if catalog_after.failure:
+            msg = f"ast: whole-catalog observation failed: {catalog_after.error}"
+            raise ValueError(msg)
+        if catalog_before != catalog_after.value:
+            msg = "ast: whole-catalog identity changed during selected apply"
+            raise ValueError(msg)
 
     @staticmethod
     def _selected_fixed_point(

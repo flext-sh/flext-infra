@@ -29,52 +29,80 @@ class FlextInfraModelsWorkspace:
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
-    class SourceBinding(m.ArbitraryTypesModel):
-        """An elected source value, including a legitimate null literal."""
+    class NativeSourceWitness(m.ArbitraryTypesModel):
+        """One captured native scope graph and independent compiler evidence."""
 
-        value: p.AttributeProbe | None = m.Field(
-            description="Source-bound value retained without changing null semantics"
+        source: Path = m.Field(description="Cold-elected physical Python source")
+        state: m.Cli.AtomicFileState = m.Field(
+            description="Bytes authenticated before and after observation",
+        )
+        module: p.Infra.RopeSourceModule = m.Field(
+            description="Native Rope module sharing the invocation's source graph",
+        )
+        code: p.Infra.NativeCodeIdentity = m.Field(
+            description="CPython compiler result, never executed",
+        )
+        scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
+            description="Native declaration scopes indexed by qualified identity",
+        )
+        statements: t.SequenceOf[m.Infra.LogicalStatement] = m.Field(
+            description="One native Rope logical-region pass over captured bytes",
+        )
+        finder: p.Infra.RopeSimilarFinder = m.Field(
+            description="Native semantic matcher shared across declarations",
         )
 
-    class SourceConstruction(m.ArbitraryTypesModel):
-        """Captured class syntax and the loaded bindings of declared factories."""
+    class CodegenSourceAuthority(m.Value):
+        """Cold reference authority has no project publication capability."""
 
-        source: Path = m.Field(description="Cold-elected physical declaration source")
-        syntax: t.Infra.RopeAstNode = m.Field(
-            description="Captured construction module AST"
+        runtime: Path = m.Field(description="Authenticated native interpreter")
+        inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
+            description="Pinned source/resource/distribution/runtime byte identities"
         )
-        declaration: t.Infra.RopeAstNode = m.Field(
-            description="Unique source class declaration"
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            description="Authenticated physical producer membership"
         )
-        owner: p.AttributeProbe | None = m.Field(
-            default=None,
-            description="Loaded class identity at the source-declared lexical path",
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            description="Cold-elected physical producer namespaces"
         )
-        factories: t.VariadicTuple[p.AttributeProbe] = m.Field(
-            description="Actual source-declared factory bindings"
+
+    class NativeBindingEvidence(m.Value):
+        """Static binding and strict native executable transport."""
+
+        binding: str = m.Field()
+        kind: str = m.Field()
+        supplier: str = m.Field()
+        name: str = m.Field()
+        qualname: str = m.Field()
+        code: str | None = m.Field(default=None)
+        operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(default=())
+
+    class NativeImportReference(m.Value):
+        """One immutable physical and native epoch shared by all elected modules."""
+
+        runtime: Path = m.Field()
+        runtime_prefix: Path = m.Field()
+        modules: t.StrTuple = m.Field()
+        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field()
+        sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field()
+        bindings: t.VariadicTuple[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
+            m.Field()
         )
-        bases: t.VariadicTuple[p.AttributeProbe] = m.Field(
-            default=(), description="Authenticated declared base bindings"
+
+    class NativeImportRequest(m.ArbitraryTypesModel):
+        """Explicit target, runtime and pinned inputs for isolated reference import."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        repository_root: Path = m.Field(description="Declared source workspace")
+        runtime_root: Path = m.Field(description="Declared physical runtime root")
+        modules: t.StrTuple = m.Field(
+            description="Loaded modules elected for this epoch"
         )
-        decorators: t.VariadicTuple[p.AttributeProbe] = m.Field(
-            default=(), description="Authenticated declared decorator bindings"
+        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
+            description="Cold authority for reference consumption, not publication",
         )
-        metaclass: p.AttributeProbe | None = m.Field(
-            default=None,
-            description="Authenticated explicitly declared metaclass binding",
-        )
-        code_sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
-            default=(),
-            description=(
-                "Authenticated source and binary suppliers of native annotation"
-                " operations"
-            ),
-        )
-        dataclass_fields: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
-            default=None,
-            description=(
-                "Native field contract reconstructed from source-proven class ancestry"
-            ),
+        import_roots: t.VariadicTuple[Path] = m.Field(
+            description="Physical import roots derived from elected module origins",
         )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):
@@ -202,9 +230,42 @@ class FlextInfraModelsWorkspace:
                 for receipt in self.receipts
             )
 
+    class WorkspaceRuntimeContext(m.ContractModel):
+        """Physical runtime ownership and its selected native resolution input."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        project_root: Annotated[
+            Path, m.Field(description="Submitted Git worktree root")
+        ]
+        runtime_root: Annotated[Path, m.Field(description="Physical runtime owner")]
+        resolution_root: Annotated[
+            Path, m.Field(description="Selected native UV project")
+        ]
+        pyproject_path: Annotated[
+            Path, m.Field(description="Selected resolution document")
+        ]
+        lock_path: Annotated[Path, m.Field(description="Selected immutable UV lock")]
+        environment_path: Annotated[
+            Path, m.Field(description="Physical shared environment")
+        ]
+        standalone: Annotated[bool, m.Field(description="Installed native resolution view; independent of later CI flags")]
+        installation_inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(description="Native lock and physical environment states captured after installation"),
+        ] = ()
+        native_install_exit_code: Annotated[
+            int | None,
+            m.Field(description="Original frozen sync status; absent before installation", ge=0, le=255),
+        ] = None
+
     class WorkspaceOperationReceipt(m.ContractModel):
         """Original in-process repository operation, with its observed effects."""
 
+        runtime_context: Annotated[
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            m.Field(description="Authenticated installed association retained across later bootstrap failure"),
+        ] = None
         root: Annotated[Path, m.Field(description="Repository actually attempted")]
         executed: Annotated[bool, m.Field(description="Original operation was invoked")]
         outcome: Annotated[
@@ -363,27 +424,6 @@ class FlextInfraModelsWorkspace:
             str,
             m.Field(description="Offending token when the contract is token-based"),
         ] = ""
-
-    class WorkspaceRuntimeContext(m.ContractModel):
-        """Physical runtime ownership and its selected native resolution input."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        project_root: Annotated[
-            Path, m.Field(description="Submitted Git worktree root")
-        ]
-        runtime_root: Annotated[Path, m.Field(description="Physical runtime owner")]
-        resolution_root: Annotated[
-            Path, m.Field(description="Selected native UV project")
-        ]
-        pyproject_path: Annotated[
-            Path, m.Field(description="Selected resolution document")
-        ]
-        lock_path: Annotated[Path, m.Field(description="Selected immutable UV lock")]
-        environment_path: Annotated[
-            Path, m.Field(description="Physical shared environment")
-        ]
-        standalone: Annotated[bool, m.Field(description="Actual hosted runner view")]
 
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""

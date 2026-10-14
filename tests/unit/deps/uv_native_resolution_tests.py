@@ -21,7 +21,7 @@ class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
 
     @staticmethod
-    def _profile_requirement(requirement: str) -> str:
+    def _source_requirement(requirement: str) -> str:
         """Declare authored internal sources through the fixture's public provider.
 
         Args:
@@ -40,7 +40,7 @@ class TestsFlextInfraUvNativeResolution:
         return f"{parsed.name}{extras} @ {source.url}{marker}"
 
     @classmethod
-    def _conformed_first_party_profiles(
+    def _conformed_first_party_documents(
         cls,
         root: Path,
     ) -> t.MappingKV[str, t.Cli.TomlDocument]:
@@ -53,7 +53,7 @@ class TestsFlextInfraUvNativeResolution:
             Mapping of member distribution name to its conformed TOML document.
         """
         documents: dict[str, t.Cli.TomlDocument] = {}
-        profiles = config.Infra.codegen.scaffold.project.dependency_profiles
+        installed = u.Infra.codemod_distributions()
         toolchain = config.Infra.codegen.toolchain
         line = u.Tests.integration().model_copy(
             update={"base_url": u.Tests.provider().base_url},
@@ -69,36 +69,29 @@ class TestsFlextInfraUvNativeResolution:
             ("flext-infra", "flext_cli"),
             ("flext-tests", "flext_cli"),
         ):
-            profile = tm.not_none(
-                u.Infra.composed_dependency_profile(
-                    profiles,
-                    upstream=upstream,
-                    distribution=name,
-                ),
-            )
             runtime = tuple(
                 requirement
-                for requirement in profile.runtime
-                if u.Infra.dep_name(requirement) != name
+                for requirement in installed[name].requires or ()
+                if (parsed := Requirement(requirement)).marker is None
+                or parsed.marker.evaluate({"extra": ""})
             )
-            codegen = tuple(
-                requirement
-                for requirement in profile.codegen
-                if u.Infra.dep_name(requirement) != name
-            )
+            codegen: t.StrSequence = ()
             development = [
-                cls._profile_requirement(requirement)
-                for requirement in config.Infra.codegen.scaffold.project.dev
-                if u.Infra.dep_name(requirement) != name
+                cls._source_requirement(requirement)
+                for requirement in u.Infra.project_development_requirements(
+                    config.Infra.codegen.scaffold.project,
+                    distribution=name,
+                    kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                )
             ]
             path = root / name
             codegen_group = json.dumps(
-                [cls._profile_requirement(item) for item in codegen],
+                [cls._source_requirement(item) for item in codegen],
             )
             u.Tests.write_native_resolution_project(
                 path,
                 name,
-                dependencies=tuple(cls._profile_requirement(item) for item in runtime),
+                dependencies=tuple(cls._source_requirement(item) for item in runtime),
                 groups=(
                     "[dependency-groups]\n"
                     f"dev = {json.dumps(development)}\n"
@@ -117,20 +110,24 @@ class TestsFlextInfraUvNativeResolution:
                 u.Infra.pyproject_conform(
                     (path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
                     workspace=workspace,
-                    required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                    required_dev_dependencies=u.Infra.project_development_requirements(
+                        config.Infra.codegen.scaffold.project,
+                        distribution=name,
+                        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                    ),
                     uv_resolution=resolution,
                     options=u.Infra.PyprojectConformOptions(
                         flext_line=line,
                     ),
                 ),
             )
-            cls._assert_profile_tiers(conformed, name, runtime, codegen)
+            cls._assert_requirement_tiers(conformed, name, runtime, codegen)
             tm.ok(u.Cli.atomic_write_text_file(path / c.PYPROJECT_FILENAME, conformed))
             documents[name] = u.Tests.toml_doc(conformed)
         return documents
 
     @staticmethod
-    def _assert_profile_tiers(
+    def _assert_requirement_tiers(
         conformed: str,
         name: str,
         runtime: t.StrSequence,
@@ -174,7 +171,11 @@ class TestsFlextInfraUvNativeResolution:
         expected_dev = {
             Requirement(requirement).name
             for requirement in u.Infra.active_development_requirements(
-                config.Infra.codegen.scaffold.project.dev,
+                u.Infra.project_development_requirements(
+                    config.Infra.codegen.scaffold.project,
+                    distribution=name,
+                    kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                ),
             )
             if Requirement(requirement).name != name
         }
@@ -191,7 +192,7 @@ class TestsFlextInfraUvNativeResolution:
         )
 
     @staticmethod
-    def _internal_profile_document(
+    def _internal_requirement_document(
         document: t.Cli.TomlDocument,
         packages: t.MappingKV[str, Path],
     ) -> t.Cli.TomlDocument:
@@ -250,7 +251,7 @@ class TestsFlextInfraUvNativeResolution:
         resolution qualifies its first-party graph only; it does not prove
         third-party resolution or wheel runtime installation.
         """
-        complete = self._conformed_first_party_profiles(tmp_path / "complete")
+        complete = self._conformed_first_party_documents(tmp_path / "complete")
         packages = {name: tmp_path / "native" / name for name in complete}
         original = {
             name: u.Cli.toml_dumps(document) for name, document in complete.items()
@@ -258,7 +259,7 @@ class TestsFlextInfraUvNativeResolution:
         inputs: dict[str, m.Infra.UvResolutionProject] = {}
         for name, document in complete.items():
             directory = packages[name]
-            limited = self._internal_profile_document(document, packages)
+            limited = self._internal_requirement_document(document, packages)
             directory.mkdir(parents=True)
             tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, limited))
             package = directory / "src" / name.replace("-", "_")

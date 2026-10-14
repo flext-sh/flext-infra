@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from sys import modules
+import sys
+from tempfile import TemporaryDirectory
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
@@ -22,10 +25,89 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Verify consumers and publication contracts without inherited import state."""
+
+    @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Consume one cold source epoch through the real native interpreter."""
+        result_type = r[m.Infra.NativeImportReference]
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
+
+        runtime = u.Infra.runtime_python(
+            request.repository_root, runtime_root=request.runtime_root
+        )
+        environment = u.Infra.runtime_environment_dir(
+            request.repository_root, runtime_root=request.runtime_root
+        )
+        if environment.is_symlink() or not runtime.is_file():
+            return result_type.fail("native reference has no owned physical runtime")
+        if (
+            runtime.resolve() != request.source_authority.runtime
+            or environment.absolute() != Path(sys.prefix).absolute()
+        ):
+            return result_type.fail("native reference runtime authority differs")
+        current = FlextInfraWorkspaceNativeReference.authority_current(
+            request.source_authority
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        code = (
+            "import importlib, json, sys\n"
+            "payload = json.loads(sys.stdin.read())\n"
+            "sys.path[:0] = payload['import_roots']\n"
+            "from flext_infra import m\n"
+            "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
+            "request = m.Infra.NativeImportRequest.model_validate(payload)\n"
+            "native.authority_current(request.source_authority).unwrap()\n"
+            "for name in request.modules:\n"
+            "    importlib.import_module(name)\n"
+            "reference = native.capture(request.modules, authority=request.source_authority).unwrap()\n"
+            "native.authority_current(request.source_authority).unwrap()\n"
+            "sys.stdout.write(reference.model_dump_json())\n"
+        )
+        # -B forbids writes; a fresh native cache prefix also forbids stale reads.
+        with TemporaryDirectory() as cache:
+            observed = u.Cli.run_raw(
+                [str(runtime), "-B", "-X", f"pycache_prefix={cache}", "-c", code],
+                cwd=request.repository_root,
+                options=m.Cli.ProcessOptions(input_data=request.model_dump_json()),
+            )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if not u.Cli.process_succeeded(observed.value.outcome):
+            return result_type.fail(
+                "native reference import failed: "
+                + observed.value.stderr
+                + observed.value.stdout,
+            )
+        reference = m.Infra.NativeImportReference.model_validate_json(
+            observed.value.stdout,
+        )
+        current = FlextInfraWorkspaceNativeReference.capture(
+            request.modules, authority=request.source_authority
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        compared = FlextInfraWorkspaceNativeReference.compare(current.value, reference)
+        if compared.failure:
+            return result_type.from_failure(compared)
+        unchanged = FlextInfraWorkspaceNativeReference.authority_current(
+            request.source_authority
+        )
+        if unchanged.failure:
+            return result_type.from_failure(unchanged)
+        return result_type.ok(reference)
 
     packages: Annotated[
         t.StrSequence,
@@ -79,6 +161,118 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         "                    f'is outside {directory}'\n"
         "                )\n"
     )
+
+    @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Import one elected epoch in the existing immutable source view.
+
+        Cold authority permits only this unchanged staging transaction. The
+        source writer retains its journal, manifest and cleanup barriers.
+        Factories execute exclusively as part of the child's actual import.
+        """
+        current = FlextInfraCodegenPreconditions.source_authority_current(
+            request.source_authority,
+        )
+        if current.failure:
+            return r[m.Infra.NativeImportReference].from_failure(current)
+        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        if inputs.failure:
+            return r[m.Infra.NativeImportReference].from_failure(inputs)
+        roots: dict[str, Path] = {}
+        for name in request.modules:
+            namespace = name.partition(".")[0]
+            if namespace in roots:
+                continue
+            module = modules[namespace]
+            spec = module.__spec__
+            if spec is None or spec.origin in {"built-in", "frozen"}:
+                continue
+            locations = spec.submodule_search_locations
+            root = (
+                Path(next(iter(locations))).parent
+                if locations is not None
+                else Path(spec.origin).parent
+            )
+            if root.is_relative_to(request.repository_root):
+                roots[namespace] = root
+        consumer = cls(
+            repository_root=request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+
+        def observe(
+            view_root: Path,
+            _candidates: t.MappingKV[Path, Path],
+        ) -> m.Infra.NativeImportReference:
+            source_roots = tuple(
+                view_root / root.relative_to(request.repository_root)
+                for root in dict.fromkeys(roots.values())
+            )
+            origins = tuple(
+                (
+                    name,
+                    str(view_root / (root / name).relative_to(request.repository_root)),
+                )
+                for name, root in roots.items()
+            )
+            code = (
+                cls._PRELUDE
+                + f"sys.path[:0] = {tuple(map(str, source_roots))!r}\n"
+                + f"for name in {tuple(request.modules)!r}:\n"
+                + "    importlib.import_module(name)\n"
+                + cls._ORIGIN_CODE.format(origins=origins)
+                + "from flext_infra.workspace.native_reference import "
+                + "FlextInfraWorkspaceNativeReference\n"
+                + "reference = FlextInfraWorkspaceNativeReference.capture("
+                + f"{tuple(request.modules)!r}, "
+                + f"paths=((Path({str(view_root)!r}), "
+                + f"Path({str(request.repository_root)!r})),)).unwrap()\n"
+                + "print(reference.model_dump_json())\n"
+            )
+            output = consumer._execute_probe(
+                m.Infra.FreshImportProbe(
+                    subject="native producer reference",
+                    code=code,
+                ),
+                cwd=view_root,
+                source_roots=source_roots,
+                isolated=True,
+            ).unwrap()
+            if not u.Cli.process_succeeded(output.outcome) or output.stderr:
+                raise RuntimeError(
+                    f"native producer import failed: {output.outcome}:\n"
+                    f"{output.stdout}{output.stderr}",
+                )
+            return m.Infra.NativeImportReference.model_validate_json(output.stdout)
+
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=request.repository_root),
+            source_authority=request.source_authority,
+        )
+        # runtime_root is deliberately supplied to the one selected consumer,
+        # not the generic all-module smoke followed by a second native import.
+        reference = transaction.preview_sources(
+            request.repository_root, {}, observe, inputs=request.inputs,
+        )
+        if reference.failure:
+            return r[m.Infra.NativeImportReference].from_failure(reference)
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
+        if observed.failure:
+            return r[m.Infra.NativeImportReference].from_failure(observed)
+        authenticated = FlextInfraWorkspaceNativeReference.compare(
+            observed.value, reference.value,
+        )
+        if authenticated.failure:
+            return r[m.Infra.NativeImportReference].from_failure(authenticated)
+        current = FlextInfraCodegenPreconditions.source_authority_current(
+            request.source_authority,
+        )
+        if current.failure:
+            return r[m.Infra.NativeImportReference].from_failure(current)
+        return observed
 
     def build_report(
         self,

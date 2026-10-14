@@ -22,6 +22,51 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     """Durable transaction journal for Mise artifact generation."""
 
     @classmethod
+    def _generator_source_records(
+        cls,
+        producer: m.Infra.CodegenPhaseAnalysis | None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
+        """Encode one producer's generator inputs with their module roles.
+
+        A source inside one generator tree is a ``resource``; a Python source
+        inside it is graded further by its importable module role. Anything
+        outside every tree ships as a ``distribution`` input.
+
+        Args:
+            producer: Producer analysis whose inputs are encoded, or ``None``.
+
+        Returns:
+            The encoded generator sources, or the first encoding failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenJournalSource]]
+        if producer is None:
+            return result_type.ok(value=())
+        generator_sources: list[m.Infra.CodegenJournalSource] = []
+        for source in producer.inputs:
+            role: Literal[
+                "layer0", "family", "consumer", "resource", "distribution"
+            ] = "distribution"
+            for tree in producer.generator_trees:
+                if tree.root.path.name.endswith(
+                    ".dist-info"
+                ) or not source.path.is_relative_to(tree.root.path):
+                    continue
+                role = "resource"
+                if source.path.suffix == c.Infra.EXT_PYTHON:
+                    module = ".".join((
+                        tree.root.path.name,
+                        *source.path.relative_to(tree.root.path).with_suffix("").parts,
+                    ))
+                    role = u.Infra.import_module_role(module)
+                break
+            encoded = cls.source_record("generator", source)
+            if encoded.failure:
+                return result_type.from_failure(encoded)
+            generator_sources.append(encoded.value.model_copy(update={"role": role}))
+        return result_type.ok(value=tuple(generator_sources))
+
+    @classmethod
     def begin(
         cls,
         plan: m.Infra.MiseToolchainWorkspacePlan | m.Infra.CodegenFileSessionPlan,
@@ -29,7 +74,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         transaction_id: str,
         sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]] = (),
         directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory] = (),
-        producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        producer: m.Infra.CodegenPhaseAnalysis
+        | m.Infra.CodegenSourceAuthority
+        | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionJournal]:
         """Build staging authority before any disposable transaction root exists.
 
@@ -57,34 +104,11 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources((), sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        generator_sources: list[m.Infra.CodegenJournalSource] = []
-        if producer is not None:
-            for source in producer.inputs:
-                role: Literal[
-                    "layer0", "family", "consumer", "resource", "distribution"
-                ] = "distribution"
-                for tree in producer.generator_trees:
-                    if tree.root.path.name.endswith(
-                        ".dist-info"
-                    ) or not source.path.is_relative_to(tree.root.path):
-                        continue
-                    role = "resource"
-                    if source.path.suffix == c.Infra.EXT_PYTHON:
-                        module = ".".join((
-                            tree.root.path.name,
-                            *source.path
-                            .relative_to(tree.root.path)
-                            .with_suffix("")
-                            .parts,
-                        ))
-                        role = u.Infra.import_module_role(module)
-                    break
-                encoded = cls.source_record("generator", source)
-                if encoded.failure:
-                    return r[m.Infra.CodegenTransactionJournal].from_failure(encoded)
-                generator_sources.append(
-                    encoded.value.model_copy(update={"role": role})
-                )
+        generator_sources = cls._generator_source_records(producer)
+        if generator_sources.failure:
+            return r[m.Infra.CodegenTransactionJournal].from_failure(
+                generator_sources,
+            )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
             {

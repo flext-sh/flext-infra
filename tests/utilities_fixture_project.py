@@ -248,9 +248,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             license=config.Infra.codegen.scaffold.project.supported_licenses[0],
             author_name="FLEXT Team",
             author_email="team@flext.dev",
-            upstream=(
-                config.Infra.codegen.scaffold.project.dependency_profiles[0].upstream
-            ),
+            upstream=(config.Infra.codegen.scaffold.project.config_bases[-1].module),
             homepage=homepage,
             documentation=homepage,
             repository_root_rel=".",

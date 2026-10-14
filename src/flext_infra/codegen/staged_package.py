@@ -40,7 +40,6 @@ class FlextInfraStagedPackage:
         discovered = cls._normalized_updates(
             workspace,
             updates,
-            inputs=inputs,
         ).flat_map(
             lambda normalized: cls._workspace_layouts(workspace).map(
                 lambda layouts: (normalized, layouts),
@@ -124,17 +123,11 @@ class FlextInfraStagedPackage:
     def _normalized_updates(
         workspace: Path,
         updates: t.MappingKV[Path, str],
-        *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[dict[Path, str]]:
         """Elect one contained physical destination per desired source.
 
         Every desired destination must be a contained, physical, unambiguous
-        workspace path. Captured input evidence may legitimately originate
-        outside the workspace: the codemod rule fixtures and preview views
-        stage under the declared scratch (outside every source root by
-        law), and their AtomicFileStates travel with the candidate as
-        journal evidence — they are never write destinations.
+        workspace path.
 
         Returns:
             Desired sources or the first ambiguous, foreign or symlinked path.
@@ -252,7 +245,13 @@ class FlextInfraStagedPackage:
     def _workspace_layouts(
         workspace: Path,
     ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
-        """Retain Python providers independently of their generation participation."""
+        """Retain Python providers independently of their generation participation.
+
+        Returns:
+            The mutable package-name to source-layout mapping of every
+            retained provider, or the first applicability failure.
+
+        """
         result_type = r[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]
         targets = u.Infra.repository_operation_targets(
             workspace,
@@ -452,7 +451,13 @@ class FlextInfraStagedPackage:
     def _workspace_metadata_paths(
         workspace: Path,
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Name the source and selected resolver metadata from physical ownership."""
+        """Name the source and selected resolver metadata from physical ownership.
+
+        Returns:
+            The deduplicated resolver, manifest, lock and codegen source
+            paths, or the first resolution failure.
+
+        """
         context = FlextInfraWorkspaceDetector.resolution_context(workspace)
         if context.failure:
             return r[t.VariadicTuple[Path]].from_failure(context)

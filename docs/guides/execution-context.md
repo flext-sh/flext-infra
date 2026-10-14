@@ -343,10 +343,15 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
-Dependency-floor updates select explicit `dependency_profiles` declarations or
-the infrastructure repository declared by the topology. A consumer configuration
-file containing only project metadata or editor settings does not declare another
-floor owner.
+Runtime requirements are calculated from the target's import use through the native
+dependency analysis. Generation consumes the target's authenticated PEP 621
+projection; neither a project-name catalog nor an upstream dependency profile may
+inject runtime requirements. The typed `required_flext_dev` policy adds the shared
+development suppliers only to `internal_flext` targets and excludes their own
+distribution. Dependency-floor updates rewrite only the selected target's PEP 621
+requirements and dependency groups, retaining markers, extras, direct sources and
+comments. They never write the installed generator's configuration or another
+checkout's declarations.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 

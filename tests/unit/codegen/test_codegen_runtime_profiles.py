@@ -1,4 +1,4 @@
-"""Declared profiles and complete CUSTOM requirements survive public generation.
+"""Target-owned complete CUSTOM requirements survive public generation.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
 
 from flext_infra import c, config, m
 from flext_infra.codegen import FlextInfraCodegenConform
@@ -28,7 +30,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     ) -> tuple[Path, Path, Path]:
         """Initialize the governed member (and parent when composed).
 
-        The member manifest carries the one profile under test; a member
+        The member manifest carries its own facade contract; a member
         cannot introduce another parent target through its manifest.
 
         Returns:
@@ -89,48 +91,27 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     def _declare_custom_dependencies(
         pyproject: Path,
         upstream: str,
-    ) -> tuple[m.Infra.ScaffoldDependencyProfileSpec, t.VariadicTuple[str]]:
-        """Replace the governed dependencies with the custom requirements.
-
-        The governed fixture already declares `dependencies`; that
-        declaration is replaced instead of adding a second (invalid) key.
-
-        Returns:
-            The declared profile under test and the custom requirements.
-
-        """
-        profile = next(
-            item
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None and item.upstream == upstream
-        )
-        owned_name = tm.not_none(u.Infra.dep_name(profile.runtime[0]))
-        custom = (
+    ) -> t.VariadicTuple[str]:
+        """Author marker variants and a direct source in the target declaration."""
+        declared = (
+            u.Tests.flext_source(upstream.replace("_", "-")),
             "custom-runtime[feature]>=2; python_version < '3.14'",
             "custom-runtime[feature]>=3; python_version >= '3.14'",
-            (
-                "custom-artifact[extra] @ https://example.invalid/pkg.whl "
-                "; sys_platform == 'linux'"
-            ),
+            "custom-artifact[extra] @ https://example.invalid/pkg.whl ; sys_platform == 'linux'",
         )
-        declared = tm.ok(
-            u.Cli.json_dumps([
-                f"{owned_name.upper().replace('-', '_')}[old]==0",
-                *custom,
-            ]),
-        )
+        payload = tm.ok(u.Cli.json_dumps(list(declared)))
         pyproject.write_text(
             "".join(
-                f"dependencies = {declared}\n"
+                f"dependencies = {payload}\n"
                 if line.startswith("dependencies = ")
                 else line
                 for line in pyproject.read_text(encoding="utf-8").splitlines(
-                    keepends=True,
+                    keepends=True
                 )
             ),
             encoding="utf-8",
         )
-        return profile, custom
+        return declared
 
     @staticmethod
     def _protected_state(
@@ -156,31 +137,19 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         }
         return before, protected
 
-    def _assert_render_restores_profile(
+    def _assert_render_retains_requirements(
         self,
         rendered: str,
         member: Path,
-        profile: m.Infra.ScaffoldDependencyProfileSpec,
-        custom: t.VariadicTuple[str],
+        declared: t.VariadicTuple[str],
     ) -> str:
-        """The CHECK plan renders one profile-owned conform fixed point.
-
-        Returns:
-            The rendered pyproject text the second plan must reproduce.
-
-        """
-        rendered_dependencies = set(
-            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
-        )
-        owned = rendered_dependencies - set(custom)
-        tm.that(rendered_dependencies, has=list(custom))
-        # The profile owns which runtime requirements are restored; the
-        # dependency conform owner (6086621bd) owns their canonical form, so the
-        # restored set must be names of the profile and a conform fixed point.
+        """Public generation retains requirement variants and injects only dev policy."""
         tm.that(
-            {u.Infra.dep_name(item) for item in owned},
-            eq={u.Infra.dep_name(item) for item in profile.runtime},
-            msg=rendered,
+            Counter(
+                Requirement(item)
+                for item in u.Tests.toml_strings_at(rendered, "project", "dependencies")
+            ),
+            eq=Counter(Requirement(item) for item in declared),
         )
         tm.that(
             u.Tests.toml_table_at(rendered, "tool", "pyrefly", "errors"),
@@ -188,41 +157,20 @@ class TestsFlextInfraCodegenRuntimeProfiles:
                 sorted(set(config.Infra.tooling.tools.pyrefly.strict_errors)), "error"
             ),
         )
+        development = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
         tm.that(
-            u.Tests.toml_table_at(rendered, "tool", "pyrefly", "errors"),
-            eq=dict.fromkeys(
-                sorted(set(config.Infra.tooling.tools.pyrefly.strict_errors)), "error"
-            ),
-        )
-        toolchain = config.Infra.codegen.toolchain
-        expected = tm.ok(
-            u.Infra.pyproject_conform(
-                '[project]\nname = "sample-member"\ndependencies = '
-                + u.Cli.toml_array(sorted(owned)).as_string()
-                + "\n",
-                workspace=tm.ok(
-                    FlextInfraWorkspaceDetector.load_workspace_spec(member),
-                ),
-                required_dev_dependencies=(),
-                uv_resolution=m.Infra.UvResolutionSpec(
-                    link_mode=toolchain.uv_link_mode,
-                    constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-                    environments=tuple(toolchain.uv_environments),
-                ),
-            ),
-        )
-        tm.that(
-            set(u.Tests.toml_strings_at(expected, "project", "dependencies")),
-            eq=owned,
+            {u.Infra.dep_name(item) for item in development},
+            has={
+                u.Infra.dep_name(item)
+                for item in config.Infra.codegen.scaffold.project.required_flext_dev
+            },
         )
         return rendered
 
     @pytest.mark.parametrize(
         "upstream",
         tuple(
-            item.upstream
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None
+            base.module for base in config.Infra.codegen.scaffold.project.config_bases
         ),
     )
     @pytest.mark.parametrize("composed", [False, True])
@@ -233,20 +181,20 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     # phase under its per-item bound (rules/workflow/gate-budget.md), never a
     # raised limit.
     @pytest.mark.slow
-    def test_declared_profile_restores_runtime_and_preserves_custom_specs(
+    def test_target_requirements_survive_runtime_rendering(
         self,
         tmp_path: Path,
         upstream: str,
         *,
         composed: bool,
     ) -> None:
-        """Real standalone and parent plans consume the same member-owned profile."""
+        """Real standalone and parent plans consume the same member-owned requirements."""
         root, member, pyproject = self._seed_member_workspace(
             tmp_path,
             upstream,
             composed=composed,
         )
-        profile, custom = self._declare_custom_dependencies(pyproject, upstream)
+        declared = self._declare_custom_dependencies(pyproject, upstream)
         request_root = root if composed else member
         before, protected = self._protected_state(
             request_root,
@@ -268,13 +216,12 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             request=request,
         )
         first = tm.ok(service.plan(request))
-        rendered = self._assert_render_restores_profile(
+        rendered = self._assert_render_retains_requirements(
             u.Tests.codegen_file_text(
                 next(item for item in first.files if item.path == pyproject),
             ),
             member,
-            profile,
-            custom,
+            declared,
         )
         tm.that(first.workspace.repository, eq=before.repository)
         tm.that(first.workspace.subprojects, eq=before.subprojects)

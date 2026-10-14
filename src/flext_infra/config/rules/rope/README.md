@@ -67,6 +67,11 @@ Generic ancestry contributes its declaration owner only when its subscription
 binding is the native Pydantic or Protocol contract; custom subscription behavior
 does not establish equivalent ancestry. Protocol admission requires an explicit
 direct Protocol base, preserving concrete implementations of existing protocols.
+Both `typing.Protocol` and `typing_extensions.Protocol` are resolved through their
+native bindings, including aliased and specialized bases. Recognized declaration
+decorators must be the decorator expression's actual callable: a native serializer
+nested inside an unknown wrapper, or a locally shadowed decorator name, does not
+admit relocation.
 
 Typing unification resolves names in concrete-syntax type positions through lexical
 bindings. `Any`, `typing.Any`, and `object` do not establish JSON or attribute-probe

@@ -1,4 +1,8 @@
-"""Real editable imports retain their physical origin while member HEAD advances."""
+"""Real editable imports retain their physical origin while member HEAD advances.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -97,7 +101,10 @@ class TestsLiveEditableProvenance:
         self,
         tmp_path: Path,
     ) -> None:
-        """The installed editable imports new committed code before gitlink promotion."""
+        """The installed editable imports new committed code.
+
+        The import succeeds before the superproject promotes the member gitlink.
+        """
         root, members = self._workspace(tmp_path)
         member = members[0]
         package = u.Infra.project_package_name(member)

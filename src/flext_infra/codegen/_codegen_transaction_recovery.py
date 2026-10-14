@@ -36,14 +36,23 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         *,
         participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        source_authority: m.Infra.CodegenSourceAuthority | None = None,
     ) -> None:
         """Initialize journal planning and recovery for one Mise artifact owner."""
         super().__init__(participant_policy)
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        if source_authority is not None and producer is not None:
+            msg = "reference staging and publication require distinct authorities"
+            raise ValueError(msg)
+        self._source_authority = source_authority
         self._producer = (
-            FlextInfraCodegenPreconditions.capture_producer()
+            r[m.Infra.CodegenPhaseAnalysis].fail(
+                "cold source authority cannot authorize project publication",
+            )
+            if source_authority is not None
+            else FlextInfraCodegenPreconditions.capture_producer()
             if producer is None
             else r[m.Infra.CodegenPhaseAnalysis].ok(producer)
         )
@@ -89,7 +98,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         phase: str | None = None,
         completed: bool = False,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-        """Derive the receipt from the exact invocation's native journal state."""
+        """Derive the receipt from the exact invocation's native journal state.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+        """
         destinations: list[Path] = []
         for entry in session.journal.entries:
             destination = FlextInfraMiseArtifactsFiles.resolve_transaction(
@@ -188,7 +201,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         root: Path,
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
-        """Archive and publish the same typed native receipt through its owner."""
+        """Archive and publish the same typed native receipt through its owner.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
         if outcome.transaction_id is None or outcome.root != root:
             return r[bool].fail("publication receipt lacks its actual scope identity")
         path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
@@ -221,7 +238,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         operation: m.Infra.CodegenPhaseOutcome | None = None,
         completed: bool = False,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-        """Compose actual native batches without reopening their settled journals."""
+        """Compose actual native batches without reopening their settled journals.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+        """
         root = request.root.expanduser().resolve()
         if not scope_roots or (
             operation is not None
@@ -295,7 +316,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         phase: c.Infra.CodegenStagedFilePhase | None = None,
         batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Persist the complete native output set without rendering or byte copies."""
+        """Persist the complete native output set without rendering or byte copies.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
+        """
         outputs = {item.path: item for item in session.journal.outputs}
         if batch_admission is not None:
             if (
