@@ -282,6 +282,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 "root metadata is not a TOML mapping",
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
+        group_names: tuple[str, ...] = tuple(groups)
         retained: t.MutableMappingKV[
             str, t.SequenceOf[str | m.Infra.DependencyGroupInclude]
         ] = {}

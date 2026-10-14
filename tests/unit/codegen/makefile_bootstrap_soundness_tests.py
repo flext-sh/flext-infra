@@ -83,7 +83,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         isolation = tmp_path / "native-tools"
         (isolation / "home").mkdir(parents=True)
-        native_env = MisePinBootstrapFixture._environment(isolation)
+        native_env = MisePinBootstrapFixture.environment(isolation)
         for project in (root, member):
             tm.ok(
                 u.Cli.run_checked(
@@ -105,7 +105,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         locks = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in lock_paths
         )
-        system_tools = MisePinBootstrapFixture._system_path_without_mise(isolation)
+        system_tools = MisePinBootstrapFixture.system_path_without_mise(isolation)
         optional_credential_provider = system_tools / "gh"
         if optional_credential_provider.is_symlink():
             optional_credential_provider.unlink()

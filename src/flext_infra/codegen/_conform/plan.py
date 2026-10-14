@@ -50,8 +50,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return verified
         return self._advanced_producer_capture(receipts)
 
+    @staticmethod
     def _expected_producer_sources(
-        self,
         producer: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[t.MappingKV[Path, m.Infra.CodegenJournalSource]]:
         """Encode the captured producer's inputs as expected journal sources.
@@ -73,8 +73,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             expected_sources[state.path] = encoded.value
         return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].ok(expected_sources)
 
+    @staticmethod
     def _matched_producer_receipts(
-        self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         producer: m.Infra.CodegenPhaseAnalysis,
         expected_sources: t.MappingKV[Path, m.Infra.CodegenJournalSource],

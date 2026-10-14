@@ -715,9 +715,9 @@ class FlextInfraModGateEngine:
         )
 
     @classmethod
-    def authored(
-        cls, report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
+    def authored[FindingT: m.Infra.ModOccurrence](
+        cls, report: m.Infra.ModOccurrenceReport[FindingT]
+    ) -> m.Infra.ModOccurrenceReport[FindingT]:
         """Return the findings mod may rewrite: a generated source is never one.
 
         A generator finding stays blocking evidence for its generator; it never
@@ -1333,7 +1333,7 @@ class FlextInfraModGateEngine:
         if verified.failure:
             return r[m.Infra.ModScanReport].from_failure(verified)
         current_paths = cls._scan_source_paths(root, targets)
-        if current_paths != set(
+        if current_paths != frozenset(
             source_states
         ) or targets != u.Infra.ast_grep_scan_targets(root, source_files=source_files):
             return r[m.Infra.ModScanReport].fail(

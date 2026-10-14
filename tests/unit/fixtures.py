@@ -174,7 +174,7 @@ def _consumer_pyproject_source(distribution: str) -> str:
         f'"{infrastructure_source}"]\n'
         "[tool.hatch.metadata]\nallow-direct-references = true\n"
         "[tool.mypy]\n"
-        '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
+        '[tool.deptry]\noptional_dependencies_dev_groups = ["dev"]\n'
     )
 
 

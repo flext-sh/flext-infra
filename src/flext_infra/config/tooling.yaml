@@ -23,7 +23,7 @@ Infra:
         ignore-words-list: crate,nd
       # Non-linter tool sections are config-owned as well.
       deptry:
-        pep621-dev-dependency-groups: [ dev ]
+        optional-dependencies-dev-groups: [ dev ]
       hatch:
         allow-direct-references: true
       markdown:

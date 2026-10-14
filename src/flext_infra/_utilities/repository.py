@@ -571,7 +571,7 @@ class FlextInfraUtilitiesRepository:
         if loaded.failure:
             return r[t.Pair[str, str]].from_failure(loaded)
         repository = loaded.value.spec.repository
-        project = repository.project if repository is not None else None
+        project = repository.project
         if project is None or project.flext_source is None:
             # Absence is an EMPTY payload, never None (flext-core result law).
             return r[t.Pair[str, str]].ok(("", ""))
@@ -1067,7 +1067,7 @@ class FlextInfraUtilitiesRepository:
             return r[str].from_failure(captured_inputs)
         inputs = captured_inputs.value
         repository = inputs.spec.repository
-        if repository is not None and repository.integration is not None:
+        if repository.integration is not None:
             return r[str].ok(repository.integration.branch)
         if declared and declared.strip():
             return r[str].ok(declared.strip())

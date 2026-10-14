@@ -475,10 +475,9 @@ class FlextInfraUtilitiesRefactor:
         return f"module-absence:{entry.catalog_digest}"
 
     @classmethod
-    def _report_occurrence_indexes(
+    def _report_occurrence_indexes[FindingT: m.Infra.ModOccurrence](
         cls,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-        | m.Infra.ModTextReport,
+        report: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
         repository_root: Path | None,
         topology: t.SequenceOf[Path],
         proven: set[tuple[str, str]],
@@ -1174,6 +1173,23 @@ class FlextInfraUtilitiesRefactor:
             artifact.path: index
             for index, artifact in enumerate(report.native_artifacts)
         }
+        references: list[m.Infra.ModScanFindingReference] = []
+        for entry in report.entries:
+            if entry.native_receipt is None:
+                msg = f"mod evidence finding lacks its native artifact: {entry.file}"
+                raise ValueError(msg)
+            references.append(
+                m.Infra.ModScanFindingReference(
+                    **entry.model_dump(exclude_computed_fields=True),
+                    source_path=(
+                        entry.source_state.path
+                        if entry.source_state is not None
+                        else None
+                    ),
+                    binding_graph=graph_ids[id(entry.binding_states)],
+                    native_artifact=artifacts[entry.native_receipt.path],
+                )
+            )
         evidence = m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             "binding_graphs": tuple(graphs),
@@ -1185,19 +1201,7 @@ class FlextInfraUtilitiesRefactor:
             "totals_by_class": class_totals,
             "totals_by_repository": dict(sorted(repository_totals.items())),
             "totals_by_rule": dict(sorted(rule_totals.items())),
-            "entries": tuple(
-                m.Infra.ModScanFindingReference(
-                    **entry.model_dump(exclude_computed_fields=True),
-                    source_path=(
-                        entry.source_state.path
-                        if entry.source_state is not None
-                        else None
-                    ),
-                    binding_graph=graph_ids[id(entry.binding_states)],
-                    native_artifact=artifacts[entry.native_receipt.path],
-                )
-                for entry in report.entries
-            ),
+            "entries": tuple(references),
         })
         content = (
             evidence.model_dump_json(

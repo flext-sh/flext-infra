@@ -69,10 +69,10 @@ class FlextInfraModReplacements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def publish(
+    def publish[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        report: m.Infra.ModOccurrenceReport[FindingT],
         *,
         exact_replacements: bool = False,
         published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,

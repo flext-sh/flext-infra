@@ -224,7 +224,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
             deltas = u.Infra.rule_deltas(
                 before,
-                after.value,
+                after,
                 options=_RuleDeltaOptions(publication_chain=tuple(published_plans)),
             )
         except ValueError as exc:
@@ -236,7 +236,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             return outcome if outcome.failure else r[t.Cli.ResultValue].fail(str(exc))
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
-            f"after={after.value.findings}; "
+            f"after={after.findings}; "
             "text phases=0 semantic callbacks=0; corpus=full",
         )
         for delta in deltas:

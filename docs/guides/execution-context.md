@@ -398,10 +398,18 @@ checkout's declarations.
 Deptry checking and dependency detection consume one capture owner. It records the
 exact settings, native process outcome, fresh report and physical production tree;
 a changed tree, reused report, missing tool or contradictory exit status fails.
+The import extractor's own coverage receipt must report a positive, unambiguous
+executed file count. Empty source trees and exclusions that prevent all execution
+therefore remain failures even when the native findings array is empty.
 Repairs receive the elected interpreter's import suppliers and its native lock
 through typed injection. Missing or ambiguous suppliers remain native findings;
 installed package names never establish applicability. The existing requirement
 strings retain their markers, extras and sources when promoted from development.
+The target's explicit contract also identifies development-only suppliers. Their
+metadata remains in the index and their native findings stay visible; an illegal
+production import requires a consumer rewire instead of a runtime declaration.
+Deptry's generated optional-group setting uses `optional_dependencies_dev_groups`;
+the deprecated key is removed by the declaration phase in the same projection.
 The fixer holds the repository mutation lease, revalidates every metadata, source,
 lock and report input, publishes only `project.dependencies` through the guarded
 TOML owner, then scans again. A residual `FINDINGS` repair receipt describes the

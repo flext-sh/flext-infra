@@ -21,27 +21,36 @@ class TestsFlextInfraModEvidenceInputs:
     @staticmethod
     @pytest.mark.parametrize(
         "declarations",
-        (
-            "def load():\n"
-            "    import first_owner as selected\n"
-            "    import second_owner as selected\n",
-            "enabled = True\n"
-            "if enabled: from first_owner import Value\n"
-            "else: import second_owner\n",
-            "def load():\n"
-            "    yield from (); import first_owner; import second_owner\n",
-        ),
+        [
+            (
+                "def load():\n"
+                "    import first_owner as selected\n"
+                "    import second_owner as selected\n"
+            ),
+            (
+                "enabled = True\n"
+                "if enabled: from first_owner import Value\n"
+                "else: import second_owner\n"
+            ),
+            (
+                "def load():\n"
+                "    yield from (); import first_owner; import second_owner\n"
+            ),
+        ],
     )
     def test_binding_snapshot_captures_all_native_import_scopes(
         mod_workspace: Path,
         declarations: str,
     ) -> None:
         """Capture conditional and rebound imports while excluding textual decoys."""
-        owners = tuple(mod_workspace / f"{name}_owner.py" for name in ("first", "second"))
+        owners = tuple(
+            mod_workspace / f"{name}_owner.py" for name in ("first", "second")
+        )
         for owner in owners:
             tm.ok(
                 u.Cli.atomic_write_text_file(
-                    owner, "class Value:\n    pass\n",
+                    owner,
+                    "class Value:\n    pass\n",
                 ),
             )
         decoy = mod_workspace / "decoy_owner.py"

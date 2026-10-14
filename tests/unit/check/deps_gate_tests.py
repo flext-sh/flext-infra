@@ -197,7 +197,9 @@ class TestsFlextInfraDepsGate:
 
     @staticmethod
     @pytest.mark.parametrize("excluded", [False, True])
-    def test_native_capture_requires_executed_sources(tmp_path: Path, *, excluded: bool) -> None:
+    def test_native_capture_requires_executed_sources(
+        tmp_path: Path, *, excluded: bool
+    ) -> None:
         """An empty tree and native exclusions cannot produce a clean receipt."""
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import os\n")
         if excluded:

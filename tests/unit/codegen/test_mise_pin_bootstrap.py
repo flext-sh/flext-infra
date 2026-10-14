@@ -40,7 +40,7 @@ class TestsFlextInfraMisePinBootstrap:
         ]
 
     @staticmethod
-    def _environment(root: Path) -> t.StrMapping:
+    def environment(root: Path) -> t.StrMapping:
         """Confine native Mise configuration, installs, state and caches.
 
         Returns:
@@ -65,7 +65,7 @@ class TestsFlextInfraMisePinBootstrap:
         }
 
     @staticmethod
-    def _system_path_without_mise(root: Path) -> Path:
+    def system_path_without_mise(root: Path) -> Path:
         """Expose real system executables with the host Mise deliberately absent.
 
         Returns:
@@ -148,7 +148,7 @@ class TestsFlextInfraMisePinBootstrap:
             u.Cli.run_checked(
                 ["mise", "trust", str(tmp_path / ".mise.toml")],
                 options=m.Cli.ProcessOptions(
-                    env=TestsFlextInfraMisePinBootstrap._environment(tmp_path),
+                    env=TestsFlextInfraMisePinBootstrap.environment(tmp_path),
                 ),
             ),
         )
@@ -161,7 +161,7 @@ class TestsFlextInfraMisePinBootstrap:
         self._project(tmp_path, git_metadata=git_metadata)
         setup = tm.ok(
             u.Tests.run_isolated_make(
-                ["setup"], cwd=tmp_path, env=self._environment(tmp_path)
+                ["setup"], cwd=tmp_path, env=self.environment(tmp_path)
             )
         )
         tm.that(u.Cli.process_succeeded(setup.outcome), eq=False)
@@ -309,7 +309,7 @@ class TestsFlextInfraMisePinBootstrap:
             )
         upgrade = tm.ok(
             u.Tests.run_isolated_make(
-                ["upg"], cwd=tmp_path, env=self._environment(tmp_path)
+                ["upg"], cwd=tmp_path, env=self.environment(tmp_path)
             )
         )
         tm.that(
@@ -360,7 +360,7 @@ class TestsFlextInfraMisePinBootstrap:
             u.Tests.run_isolated_make(
                 ["setup"],
                 cwd=tmp_path,
-                env=self._environment(tmp_path),
+                env=self.environment(tmp_path),
             ),
         )
 
@@ -391,8 +391,8 @@ class TestsFlextInfraMisePinBootstrap:
             lock, config.Infra.codegen.toolchain.mise_selector
         )
         environment = {
-            **self._environment(tmp_path),
-            "PATH": str(self._system_path_without_mise(tmp_path)),
+            **self.environment(tmp_path),
+            "PATH": str(self.system_path_without_mise(tmp_path)),
         }
         cold = tm.ok(
             u.Tests.run_isolated_make(["setup"], cwd=tmp_path, env=environment)
@@ -439,7 +439,7 @@ class TestsFlextInfraMisePinBootstrap:
         lock = u.Tests.repo_mise_lock()
         (current / "mise.lock").write_text(lock, encoding=c.DEFAULT_ENCODING)
         pin = u.Tests.pinned_mise_version(lock, selector)
-        environment = self._environment(current)
+        environment = self.environment(current)
         available = tm.ok(
             u.Cli.capture(
                 ["mise", "ls-remote", selector, pin.partition(".")[0]],
@@ -463,7 +463,7 @@ class TestsFlextInfraMisePinBootstrap:
             u.Cli.run_checked(
                 ["mise", "-C", str(previous), "lock"],
                 cwd=previous,
-                options=m.Cli.ProcessOptions(env=self._environment(previous)),
+                options=m.Cli.ProcessOptions(env=self.environment(previous)),
             ),
         )
         previous_lock = (previous / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING)
@@ -471,7 +471,7 @@ class TestsFlextInfraMisePinBootstrap:
         for project in (previous, current):
             installed = tm.ok(
                 u.Tests.run_isolated_make(
-                    ["setup"], cwd=project, env=self._environment(project)
+                    ["setup"], cwd=project, env=self.environment(project)
                 ),
             )
             tm.that(
@@ -502,7 +502,7 @@ class TestsFlextInfraMisePinBootstrap:
                 cwd=current,
                 env={
                     **environment,
-                    "PATH": str(self._system_path_without_mise(current)),
+                    "PATH": str(self.system_path_without_mise(current)),
                 },
             ),
         )

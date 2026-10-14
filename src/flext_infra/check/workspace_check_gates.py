@@ -39,16 +39,13 @@ class FlextInfraWorkspaceCheckGatesMixin:
             The resulting ``m.Infra.GateContext``.
 
         """
-        return m.Infra.GateContext(
-            repository_root=ctx.repository_root,
-            reports_dir=ctx.reports_dir / target.name,
-            apply_fixes=ctx.apply_fixes,
-            check_only=ctx.check_only,
-            fail_fast=ctx.fail_fast,
-            ruff_args=ctx.ruff_args,
-            pyright_args=ctx.pyright_args,
-            selected_files=ctx.selected_files,
-        )
+        if (
+            ctx.runtime_dependency_inputs is not None
+            and ctx.runtime_dependency_inputs.target_root != target.path
+        ):
+            msg = "dependency provenance belongs to another project"
+            raise ValueError(msg)
+        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / target.name})
 
     def _run_single_project(
         self,
@@ -261,16 +258,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 The resulting ``p.Result[m.Cli.PipelineStageResult]``.
 
             """
-            gate_ctx = m.Infra.GateContext(
-                repository_root=ctx.repository_root,
-                reports_dir=ctx.reports_dir,
-                apply_fixes=ctx.apply_fixes,
-                check_only=ctx.check_only,
-                fail_fast=ctx.fail_fast,
-                ruff_args=ctx.ruff_args,
-                pyright_args=ctx.pyright_args,
-                selected_files=ctx.selected_files,
-            )
+            gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             raw_receipt = gate_ctx.reports_dir / (
                 f"{gate_id}{config.Infra.tooling.raw_check_receipt_suffix}"

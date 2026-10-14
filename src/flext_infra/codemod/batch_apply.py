@@ -692,9 +692,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[int].ok(pending)
 
     @staticmethod
-    def validate_fix_match(
-        before: m.Infra.ModScanReport,
-        after_apply: m.Infra.ModScanReport,
+    def validate_fix_match[FindingT: m.Infra.ModOccurrence](
+        before: m.Infra.ModOccurrenceReport[FindingT],
+        after_apply: m.Infra.ModOccurrenceReport[FindingT],
     ) -> None:
         """Reject unresolved rewrites while preserving valid rule cascades.
 

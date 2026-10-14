@@ -76,6 +76,8 @@ class FlextInfraDepsGate(FlextInfraGate):
             if execution.outcome is not c.Infra.ToolOutcome.FINDINGS or scan is None:
                 return execution
             inputs = ctx.runtime_dependency_inputs
+            if inputs is None and ctx.runtime_dependency_collector is not None:
+                inputs = ctx.runtime_dependency_collector(project_dir, scan).unwrap()
             if inputs is None or inputs.python != Path(sys.executable).absolute():
                 issue = m.Infra.Issue(
                     file=str(project_dir / c.PYPROJECT_FILENAME),

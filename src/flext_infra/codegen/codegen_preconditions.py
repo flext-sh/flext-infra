@@ -37,7 +37,10 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def elected_producer_modules(
-        cls, *, nominated: t.SequenceOf[m.Infra.SourceClassReference]
+        cls,
+        repository_root: Path,
+        *,
+        nominated: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> p.Result[t.VariadicTuple[t.Pair[str, Path]]]:
         """Elect the physical closure of declared producer source dependencies.
 
@@ -47,7 +50,7 @@ class FlextInfraCodegenPreconditions:
         elected: dict[str, Path] = {}
         pending = [item.target for item in nominated]
         visited: set[Path] = set()
-        with u.Infra.open_import_project(Path.cwd()) as project:
+        with u.Infra.open_import_project(repository_root) as project:
             while pending:
                 module_name = pending.pop(0)
                 namespace = module_name.partition(".")[0]
@@ -58,6 +61,10 @@ class FlextInfraCodegenPreconditions:
                     return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(selected)
                 elected[namespace] = selected.value
                 spec = PathFinder.find_spec(namespace)
+                if spec is None:
+                    return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
+                        f"producer import has no physical election: {namespace}",
+                    )
                 qualified = namespace
                 for component in module_name.split(".")[1:]:
                     if spec.submodule_search_locations is None:
@@ -88,6 +95,9 @@ class FlextInfraCodegenPreconditions:
                     u.Infra.runtime_callable("rope.base.project", "get_no_project")(),
                     str(path),
                 )
+                if not u.Infra.file_resource(resource):
+                    msg = f"producer dependency resource is not a file: {path}"
+                    raise TypeError(msg)
                 declared = u.Infra.resolve_declared_module_imports(project, resource)
                 semantic = u.Infra.resolve_semantic_module_imports(project, resource)
                 pending.extend(dict.fromkeys((*declared.values(), *semantic.values())))
@@ -103,24 +113,20 @@ class FlextInfraCodegenPreconditions:
                 f"producer import has no physical election: {namespace}"
             )
         if spec.submodule_search_locations:
-            selected = r[Path | None].create_from_callable(
-                partial(u.Infra.declared_package_dir, namespace)
-            )
-        elif spec.origin is not None:
-            selected = r[Path | None].ok(Path(spec.origin))
-        else:
-            return result_type.fail(
-                f"producer module has no native origin: {namespace}"
-            )
-        if selected.failure:
-            return result_type.from_failure(selected)
-        if selected.value is None:
-            return result_type.fail(f"producer package root is absent: {namespace}")
-        return result_type.ok(selected.value.absolute())
+            package_dir = u.Infra.declared_package_dir(namespace)
+            if package_dir is None:
+                return result_type.fail(f"producer package root is absent: {namespace}")
+            return result_type.ok(package_dir.absolute())
+        if spec.origin is not None:
+            return result_type.ok(Path(spec.origin).absolute())
+        return result_type.fail(f"producer module has no native origin: {namespace}")
 
     @classmethod
     def capture_source_authority(
-        cls, *, nominated: t.SequenceOf[m.Infra.SourceClassReference]
+        cls,
+        repository_root: Path,
+        *,
+        nominated: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Elect physical providers and pin their code, resources and metadata.
 
@@ -132,7 +138,7 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
         names = tuple(nominated)
-        elected = cls.elected_producer_modules(nominated=names)
+        elected = cls.elected_producer_modules(repository_root, nominated=names)
         if elected.failure:
             return result_type.from_failure(elected)
         roots = dict(elected.value)
@@ -208,7 +214,7 @@ class FlextInfraCodegenPreconditions:
             )
             if measured.failure:
                 return result_type.from_failure(measured)
-            if measured.value.device is not None:
+            if measured.value.device is not None and measured.value.size is not None:
                 with u.Cli.atomic_binary_file_reader(measured.value) as reader:
                     if reader.read_range(0, measured.value.size) != state.content:
                         return result_type.fail(
@@ -221,6 +227,7 @@ class FlextInfraCodegenPreconditions:
             inputs=tuple(receipts),
             generator_trees=tuple(trees.values()),
             generator_modules=tuple(sorted(roots.items())),
+            selections=names,
         )
         authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
             observed.value, authority.inputs
@@ -281,9 +288,13 @@ class FlextInfraCodegenPreconditions:
                         f"cold producer absent input changed: {receipt.path}",
                     )
                 content = None
-            else:
+            elif receipt.size is not None:
                 with u.Cli.atomic_binary_file_reader(receipt) as reader:
                     content = reader.read_range(0, receipt.size)
+            else:
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
+                    f"cold producer pinned input has no physical size: {receipt.path}",
+                )
             states.append(
                 m.Cli.AtomicFileState.model_validate({
                     **receipt.model_dump(
@@ -296,7 +307,11 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def capture_producer(
-        cls, repository_root: Path, *, entrypoint: p.AttributeProbe
+        cls,
+        repository_root: Path,
+        *,
+        entrypoint: p.AttributeProbe,
+        collaborators: t.SequenceOf[p.AttributeProbe] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Authenticate the loaded producer against its cold physical authority."""
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
@@ -308,11 +323,17 @@ class FlextInfraCodegenPreconditions:
             FlextInfraWorkspaceNativeReference,
         )
 
-        selection = FlextInfraWorkspaceNativeReference.producer_selection(entrypoint)
+        selection = FlextInfraWorkspaceNativeReference.producer_selections(
+            entrypoint,
+            collaborators,
+        )
         if selection.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(selection)
-        names = (selection.value,)
-        cold = cls.capture_source_authority(nominated=names)
+        names = selection.value
+        cold = cls.capture_source_authority(
+            context.value.runtime_root,
+            nominated=names,
+        )
         if cold.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(cold)
         inputs = cls.authority_inputs(cold.value)
@@ -662,19 +683,18 @@ class FlextInfraCodegenPreconditions:
             )
         distribution = matches[0]
         direct_url = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-        receipt = r[m.Infra.DirectUrlReceipt | None].create_from_callable(
-            lambda: (
-                m.Infra.DirectUrlReceipt.model_validate_json(direct_url)
-                if direct_url is not None
-                else None
+        receipt: m.Infra.DirectUrlReceipt | None = None
+        if direct_url is not None:
+            parsed = r[m.Infra.DirectUrlReceipt].create_from_callable(
+                partial(m.Infra.DirectUrlReceipt.model_validate_json, direct_url)
             )
-        )
-        if receipt.failure:
-            return result_type.from_failure(receipt)
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+            receipt = parsed.value
         if (
-            receipt.value is not None
-            and receipt.value.dir_info is not None
-            and receipt.value.dir_info.editable
+            receipt is not None
+            and receipt.dir_info is not None
+            and receipt.dir_info.editable
         ):
             return result_type.ok(value=True)
         return (

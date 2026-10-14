@@ -42,6 +42,12 @@ class FlextInfraModelsWorkspace:
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             description="Cold-elected physical producer namespaces"
         )
+        selections: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = (
+            m.Field(
+                min_length=1,
+                description="Portable entrypoint, receiver and explicitly wired port roots",
+            )
+        )
         generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
             m.Field(
                 default=None,
@@ -284,66 +290,14 @@ class FlextInfraModelsWorkspace:
             ),
         ] = None
 
-    class WorkspaceOperationReceipt(m.ContractModel):
-        """Original in-process repository operation, with its observed effects."""
-
-        runtime_context: Annotated[
-            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
-            m.Field(
-                description="Authenticated installed association retained across later bootstrap failure"
-            ),
-        ] = None
-        root: Annotated[Path, m.Field(description="Repository actually attempted")]
-        executed: Annotated[bool, m.Field(description="Original operation was invoked")]
-        outcome: Annotated[
-            c.Infra.ToolOutcome | None,
-            m.Field(
-                description=(
-                    "Native operation outcome; independent of report transport"
-                ),
-            ),
+    class WorkspaceOperationReceipt(
+        m.Cli.ProcessNativeQualificationReceipt[
+            WorkspaceRuntimeContext,
+            FlextInfraModelsCheck.Issue,
+            c.Infra.ToolOutcome,
         ]
-        native_exit_code: Annotated[
-            int | None,
-            m.Field(
-                description="Observed shell exit status; absent for in-process "
-                "operations"
-            ),
-        ] = None
-        stage: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description="Original bootstrap stage reached before shell completion"
-            ),
-        ] = None
-        completed: Annotated[
-            bool | None,
-            m.Field(
-                description="Whether the original bootstrap reached its final stage"
-            ),
-        ] = None
-        applicability: Annotated[
-            str,
-            m.Field(
-                description=(
-                    "Explicit reason when declaration policy prevents execution"
-                ),
-            ),
-        ] = ""
-        files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(
-                description=(
-                    "Validated or changed paths returned by the original owner"
-                ),
-            ),
-        ] = ()
-        issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
-            m.Field(
-                description=("Native failures attributed to their actual repository"),
-            ),
-        ] = ()
+    ):
+        """Original in-process repository operation, with its observed effects."""
 
     class WorkspaceOperationTarget(m.ContractModel):
         """One discovered root and its original Git management declaration."""
@@ -365,18 +319,15 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Declared reason when inapplicable"),
         ] = ""
 
-    class WorkspaceOperationReport(m.ContractModel):
+    class WorkspaceOperationReport(
+        m.Cli.ProcessNativeQualificationReport[
+            WorkspaceRuntimeContext,
+            FlextInfraModelsCheck.Issue,
+            c.Infra.ToolOutcome,
+        ]
+    ):
         """Declared repository scope and original serial operation receipts."""
 
-        root: Annotated[Path, m.Field(description="Invoking repository root")]
-        operation: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Public operation name"),
-        ]
-        scope: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Roots discovered once before the batch"),
-        ]
         candidate_sha: Annotated[
             str | None,
             m.Field(
@@ -385,19 +336,6 @@ class FlextInfraModelsWorkspace:
                 "read",
             ),
         ] = None
-        candidate_read_exit_code: Annotated[
-            int | None,
-            m.Field(
-                description=(
-                    "Observed Git metadata read status; separate from operation "
-                    "completion"
-                ),
-            ),
-        ] = None
-        receipts: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
-            m.Field(description="Original outcomes in discovered order"),
-        ]
 
     class SubprojectLoadContext(m.ContractModel):
         """Workspace governance scope shared by every declared subproject entry."""
@@ -475,7 +413,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
         runtime: Annotated[
-            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            WorkspaceRuntimeContext | None,
             m.Field(description="Physical environment and native resolver ownership"),
         ] = None
 
@@ -541,7 +479,7 @@ class FlextInfraModelsWorkspace:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
 
         dir_info: Annotated[
-            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo | None,
+            DirectUrlDirectoryInfo | None,
             m.Field(description="Directory metadata of a local install"),
         ] = None
         url: Annotated[

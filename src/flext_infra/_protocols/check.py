@@ -75,11 +75,8 @@ class FlextInfraProtocolsCheck(Protocol):
         ) -> tuple[FlextInfraProtocolsCheck.NativeClosureCell, ...] | None: ...
 
         __name__: str
-        __module__: str | None
+        __module__: str
         __qualname__: str
-
-        @property
-        def __dict__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

@@ -108,6 +108,18 @@ class FlextInfraModelsMiseToolchain:
         mise.lock version. The probe is data; no tool has a default probe.
         """
 
+        tool: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Declared prerequisite tool key owning an external probe executable"
+            ),
+        ] = None
+        resources: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description="Exact relative installed resources authenticated before an external probe"
+            ),
+        ] = ()
         binary: Annotated[
             t.NonEmptyStr,
             m.Field(description="Executable name resolved through `mise which`"),
@@ -157,6 +169,17 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             # A malformed expression raises re.PatternError unchanged here.
             re.compile(self.pattern.replace(placeholder, "0"))
+            if self.tool is not None and not self.resources:
+                msg_0 = "external version probes require installed resources"
+                raise ValueError(msg_0)
+            for resource in self.resources:
+                parts = resource.split("/")
+                if any(
+                    not part or part in {".", ".."} or "\\" in part or "\0" in part
+                    for part in parts
+                ):
+                    msg_0 = "version probe resources require exact relative components"
+                    raise ValueError(msg_0)
             return self
 
     class MiseHttpToolOptions(_ConfigContract):
@@ -690,6 +713,17 @@ class FlextInfraModelsMiseToolchain:
                     + ", ".join(undeclared_dependencies)
                 )
                 raise ValueError(msg)
+            invalid_probes = sorted(
+                entry.name
+                for entry in self.tools
+                if entry.version_probe.tool is not None
+                and entry.version_probe.tool not in entry.depends
+            )
+            if invalid_probes:
+                raise ValueError(
+                    "external probe tools must be declared installation dependencies: "
+                    + ", ".join(invalid_probes)
+                )
             non_http = sorted(
                 entry.name
                 for entry in self.tools

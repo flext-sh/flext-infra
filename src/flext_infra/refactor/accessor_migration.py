@@ -44,13 +44,11 @@ class FlextInfraAccessorMigrationOrchestrator(
     ] = ""
 
     @property
-    @override
     def gate_names(self) -> t.StrSequence:
         """Normalized lint gate names."""
         return u.Infra.normalize_cli_values(self.gates)
 
     @property
-    @override
     def lint_tool_names(self) -> t.StrSequence:
         """Selected lint tool names resolved from gate names."""
         return u.Infra.selected_lint_tool_names(self.gate_names)
@@ -100,9 +98,10 @@ class FlextInfraAccessorMigrationOrchestrator(
         for file_report in processed.value:
             self._accumulate_lint_totals(lint_before_totals, file_report.lint_before)
             self._accumulate_lint_totals(lint_after_totals, file_report.lint_after)
-            self._accumulate_lint_totals(
-                new_lint_error_totals, file_report.new_lint_errors
-            )
+            for tool, errors in file_report.new_lint_errors.items():
+                new_lint_error_totals[tool] = new_lint_error_totals.get(tool, 0) + len(
+                    errors
+                )
         report = m.Infra.AccessorMigrationReport(
             workspace=str(self.repository_root),
             dry_run=self.effective_dry_run,

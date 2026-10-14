@@ -46,11 +46,11 @@ class FlextInfraModelsDepsToolConfig(
     class DeptryConfig(m.ArbitraryTypesModel):
         """Deptry namespace and dependency-group policy."""
 
-        pep621_dev_dependency_groups: Annotated[
+        optional_dependencies_dev_groups: Annotated[
             t.StrTuple,
             m.Field(
-                alias="pep621-dev-dependency-groups",
-                description="PEP 735 groups treated as development dependencies.",
+                alias="optional-dependencies-dev-groups",
+                description="PEP 621 optional groups treated as development dependencies.",
             ),
         ]
 

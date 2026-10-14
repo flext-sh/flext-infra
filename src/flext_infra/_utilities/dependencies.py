@@ -83,6 +83,10 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 "deptry lacks positive unambiguous native scan coverage\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
             )
+        if report_state.content is None:
+            return result_type.fail(
+                "deptry report state has no captured bytes to authenticate",
+            )
         return result_type.ok(
             m.Infra.DeptryScan(
                 scanned_files=coverage[0],
@@ -472,8 +476,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         parsed_runtime = tuple(Requirement(item) for item in runtime)
         parsed_development = tuple(Requirement(item) for item in development)
         forbidden = {
-            canonicalize_name(Requirement(item).name)
-            for item in development_only
+            canonicalize_name(Requirement(item).name) for item in development_only
         }
         unused = {
             canonicalize_name(item.module)
@@ -964,9 +967,11 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             if item.name in {"METADATA", "RECORD"}
             and item.parent.name.endswith(".dist-info")
         )
-        if {item.name for item in metadata_entries} != (
-            _EXACT_INSTALL_METADATA_NAMES
-        ) or len(metadata_entries) != _EXACT_INSTALL_METADATA_COUNT:
+        if (
+            frozenset(item.name for item in metadata_entries)
+            != (_EXACT_INSTALL_METADATA_NAMES)
+            or len(metadata_entries) != _EXACT_INSTALL_METADATA_COUNT
+        ):
             return result_type.fail(
                 "installed resource needs its exact METADATA and RECORD: "
                 f"{distribution}",

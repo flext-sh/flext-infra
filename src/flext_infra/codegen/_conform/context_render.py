@@ -534,7 +534,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _declared_dependency_facts(
         repository_root: Path,
         project: m.Infra.ProjectSpec,
-    ) -> p.Result[t.Pair[t.VariadicTuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr]]]:
+    ) -> p.Result[
+        t.Pair[t.VariadicTuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr]]
+    ]:
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies

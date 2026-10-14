@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, get_type_hints
 import pytest
 
 from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
-from tests import u
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -178,8 +177,8 @@ def member_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pat
     """
     _purge_member_modules()
     _write_member(tmp_path)
-    # Pytest accepts a path converted with str() and restores it at teardown.
-    monkeypatch.syspath_prepend(str(tmp_path / "src"))
+    # Prepend the generated member source root; monkeypatch restores it.
+    monkeypatch.setattr(sys, "path", [str(tmp_path / "src"), *sys.path])
     yield tmp_path
     _purge_member_modules()
 
