@@ -157,9 +157,24 @@ class FlextInfraCodegenPreconditions:
                     "producer namespace has ambiguous physical distribution ownership: "
                     f"{namespace}: {ownership}"
                 )
+        receipts: list[m.Cli.AtomicFileReceipt] = []
+        for state in states.values():
+            measured = u.Cli.atomic_read_binary_file_receipt(
+                state.path,
+                required=state.device is not None,
+            )
+            if measured.failure:
+                return result_type.from_failure(measured)
+            if measured.value.device is not None:
+                with u.Cli.atomic_binary_file_reader(measured.value) as reader:
+                    if reader.read_range(0, measured.value.size) != state.content:
+                        return result_type.fail(
+                            f"producer source changed while sealing authority: {state.path}",
+                        )
+            receipts.append(measured.value)
         authority = m.Infra.CodegenSourceAuthority(
             runtime=Path(sys.executable).resolve(),
-            inputs=tuple(states.values()),
+            inputs=tuple(receipts),
             generator_trees=tuple(trees.values()),
             generator_modules=elected.value,
         )
@@ -177,9 +192,15 @@ class FlextInfraCodegenPreconditions:
             return r[bool].from_failure(elected)
         if elected.value != authority.generator_modules:
             return r[bool].fail("cold producer module election changed")
-        states = FlextInfraMiseArtifactsVerification.states_current(authority.inputs)
-        if states.failure:
-            return states
+        for expected in authority.inputs:
+            observed = u.Cli.atomic_read_binary_file_receipt(
+                expected.path,
+                required=expected.device is not None,
+            )
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != expected:
+                return r[bool].fail(f"cold producer source changed: {expected.path}")
         for tree in authority.generator_trees:
             observed = u.Cli.atomic_inventory_physical_tree(tree.root.path)
             if observed.failure:
@@ -190,6 +211,37 @@ class FlextInfraCodegenPreconditions:
                 )
         return r[bool].ok(value=True)
 
+    @staticmethod
+    def authority_inputs(
+        authority: m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Read pinned payloads through the CLI receipt's authenticated descriptor."""
+        states: list[m.Cli.AtomicFileState] = []
+        for receipt in authority.inputs:
+            if receipt.device is None:
+                current = u.Cli.atomic_read_binary_file_receipt(receipt.path)
+                if current.failure:
+                    return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+                        current
+                    )
+                if current.value != receipt:
+                    return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
+                        f"cold producer absent input changed: {receipt.path}",
+                    )
+                content = None
+            else:
+                with u.Cli.atomic_binary_file_reader(receipt) as reader:
+                    content = reader.read_range(0, receipt.size)
+            states.append(
+                m.Cli.AtomicFileState.model_validate({
+                    **receipt.model_dump(
+                        include=set(m.Cli.AtomicFileState.model_fields),
+                    ),
+                    "content": content,
+                }),
+            )
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(states))
+
     @classmethod
     def capture_producer(cls) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Strengthen cold authority with the actual isolated native producer."""
@@ -198,6 +250,9 @@ class FlextInfraCodegenPreconditions:
         cold = cls.capture_source_authority()
         if cold.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(cold)
+        inputs = cls.authority_inputs(cold.value)
+        if inputs.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(inputs)
         namespaces = tuple(name for name, _ in cold.value.generator_modules)
         names = tuple(
             sorted(
@@ -211,10 +266,8 @@ class FlextInfraCodegenPreconditions:
         )
         reference = FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
-                repository_root=Path.cwd(),
-                runtime_root=Path(sys.prefix).parent,
                 modules=names,
-                inputs=cold.value.inputs,
+                inputs=inputs.value,
                 source_authority=cold.value,
             ),
         )
@@ -223,7 +276,7 @@ class FlextInfraCodegenPreconditions:
         snapshot = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=(),
-            inputs=cold.value.inputs,
+            inputs=inputs.value,
             generator_trees=cold.value.generator_trees,
             generator_modules=cold.value.generator_modules,
         )

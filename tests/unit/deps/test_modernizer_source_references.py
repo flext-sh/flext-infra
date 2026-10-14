@@ -98,6 +98,26 @@ class TestsFlextInfraModernizerSourceReferences:
         tm.that(published, has="dependencies = [\n")
         tm.that(published, has="override-dependencies = [\n")
         tm.that(published, has="constraint-dependencies = [\n")
+
+    @staticmethod
+    def _verified_migrated_document(
+        published: str,
+        requirement: str,
+        unrelated: str,
+        old_ref: str,
+        new_ref: str,
+        remote: str,
+    ) -> None:
+        """Assert the migrated document kept every backend and dependency.
+
+        Args:
+            published: The modernized pyproject text.
+            requirement: The migrated Git requirement text.
+            unrelated: The untouched second-owner requirement.
+            old_ref: The migrated source reference.
+            new_ref: The target source reference.
+            remote: The migrated Git remote URL.
+        """
         payload = u.Tests.toml_payload(published)
         declared = u.Tests.toml_mapping(payload["project"])
         tm.that(
@@ -128,6 +148,10 @@ class TestsFlextInfraModernizerSourceReferences:
         )
         tm.that(uv_source["git"], eq=remote)
         tm.that(uv_source["branch"], eq=new_ref)
+
+        self._verified_migrated_document(
+            published, requirement, unrelated, old_ref, new_ref, remote
+        )
         tm.that(uv_source["marker"], eq='sys_platform == "linux"')
         poetry = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["poetry"])
         poetry_source = u.Tests.toml_mapping(

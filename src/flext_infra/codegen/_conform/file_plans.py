@@ -21,6 +21,86 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     """Desired-state file, environment, and retirement plans."""
 
     @classmethod
+    def repository_kind_declaration_plans(
+        cls,
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        kind: c.Infra.ProjectKind,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Publish an explicit kind only into the requested target's own source.
+
+        Returns:
+            A guarded source declaration, or the original input conflict.
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        effective = inputs.spec.repository
+        if (
+            effective is not None
+            and "kind" in effective.model_fields_set
+            and effective.kind != kind
+        ):
+            return result_type.fail(
+                f"bootstrap kind conflicts with the target's effective declaration: {root}",
+            )
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        own = next((state for state in inputs.sources if state.path == layers[1]), None)
+        if own is not None and own.content is not None:
+            document = u.Infra.read_codegen_config_document(own.content)
+            if document.failure:
+                return result_type.from_failure(document)
+            declared = u.Cli.json_walk_path(
+                document.value,
+                ("Infra", "codegen", "repository", "kind"),
+            )
+            if declared is not None:
+                if declared != kind.value:
+                    return result_type.fail(
+                        f"bootstrap kind conflicts with the target's declaration: {layers[1]}",
+                    )
+                return result_type.ok(
+                    m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                        files=(),
+                        inputs=inputs.sources,
+                    )
+                )
+        values: t.JsonMapping = {"repository": {"kind": kind.value}}
+        composed = u.Infra.project_codegen_inputs(
+            root,
+            inputs,
+            projections=(
+                m.Infra.CodegenLayerProjection(
+                    path=layers[1],
+                    values={"Infra": {"codegen": dict(values)}},
+                ),
+            ),
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        if composed.value.spec.repository is None or composed.value.spec.repository.kind != kind:
+            return result_type.fail(
+                f"bootstrap kind is overridden by the target's elected layers: {root}",
+            )
+        declaration = cls._codegen_declaration_plan(
+            root,
+            layers[1],
+            values,
+            sources=inputs.sources,
+        )
+        if declaration.failure:
+            return result_type.from_failure(declaration)
+        return result_type.ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=(declaration.value,),
+                inputs=inputs.sources,
+            )
+        )
+
+    @classmethod
     def _codegen_declaration_plan(
         cls,
         root: Path,

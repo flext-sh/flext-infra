@@ -23,6 +23,7 @@ from git import GitCommandError
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
@@ -949,8 +950,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
-        from flext_infra.workspace import FlextInfraWorkspaceDetector
-
         context = FlextInfraWorkspaceDetector.resolution_context(repo_root).unwrap()
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit

@@ -144,37 +144,11 @@ class FlextInfraPyprojectModernizerRun:
         """
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
-        source_migration: m.Infra.GitSourceReferenceMigration | None = None
-        source_options = (
-            self.git_source_url_prefix,
-            self.git_source_ref_from,
-            self.git_source_ref_to,
-        )
-        if any(value is not None for value in source_options):
-            prefix, old_ref, new_ref = source_options
-            if prefix is None or old_ref is None or new_ref is None:
-                u.Cli.error(
-                    "Git reference migration requires URL prefix, source ref and "
-                    "target ref together"
-                )
-                return 2
-            if not prefix.endswith("/"):
-                u.Cli.error(
-                    "Git source URL prefix must end with '/' to preserve owner "
-                    "boundaries"
-                )
-                return 2
-            if self.rewrite_constraints:
-                u.Cli.error(
-                    "Git reference migration and runtime constraint rewriting are "
-                    "separate operations"
-                )
-                return 2
-            source_migration = m.Infra.GitSourceReferenceMigration(
-                url_prefix=prefix,
-                source_ref=old_ref,
-                target_ref=new_ref,
-            )
+        migration = self._resolved_source_migration()
+        if migration.failure:
+            u.Cli.error(migration.error or "git source migration failed")
+            return 2
+        source_migration = migration.value
         # Modernization writes only the requested repository root and its
         # declared subprojects, never siblings.
         include_root = not self.project_names or "." in self.project_names
@@ -199,23 +173,85 @@ class FlextInfraPyprojectModernizerRun:
         files = {*found.value}
         if include_root and root_pyproject.is_file():
             files.add(root_pyproject)
-        canonical_dev: t.StrSequence = (
-            ()
-            if source_migration is not None
-            else t.Infra.STR_SEQ_ADAPTER.validate_python(
-                u.Infra.canonical_dev_dependencies_from_payload(
-                    validated.value.payload
-                ),
-            )
-        )
         scanned = self._scan_documents(
             sorted(files),
             validated,
             root_pyproject,
-            canonical_dev=canonical_dev,
             dry_run=dry_run,
             source_migration=source_migration,
         )
+        return self._reported_exit(
+            scanned,
+            check_mode=check_mode,
+            dry_run=dry_run,
+            migrated=source_migration is not None,
+        )
+
+    def _resolved_source_migration(
+        self,
+    ) -> p.Result[m.Infra.GitSourceReferenceMigration | None]:
+        """Resolve the requested Git reference migration options.
+
+        Returns:
+            The resolved migration, ``None`` when none is requested, or the
+            first option validation failure.
+        """
+        result_type = r[m.Infra.GitSourceReferenceMigration | None]
+        source_options = (
+            self.git_source_url_prefix,
+            self.git_source_ref_from,
+            self.git_source_ref_to,
+        )
+        if not any(value is not None for value in source_options):
+            return result_type.ok(value=None)
+        prefix, old_ref, new_ref = source_options
+        if prefix is None or old_ref is None or new_ref is None:
+            return result_type.fail(
+                "Git reference migration requires URL prefix, source ref and "
+                "target ref together",
+            )
+        if not prefix.endswith("/"):
+            return result_type.fail(
+                "Git source URL prefix must end with '/' to preserve owner boundaries",
+            )
+        if self.rewrite_constraints:
+            return result_type.fail(
+                "Git reference migration and runtime constraint rewriting are "
+                "separate operations",
+            )
+        return result_type.ok(
+            m.Infra.GitSourceReferenceMigration(
+                url_prefix=prefix,
+                source_ref=old_ref,
+                target_ref=new_ref,
+            ),
+        )
+
+    def _reported_exit(
+        self,
+        scanned: p.Result[
+            t.Triple[
+                t.MappingKV[str, t.StrSequence],
+                t.SequenceOf[m.Infra.PyprojectDocumentState],
+                t.SequenceOf[Path],
+            ]
+        ],
+        *,
+        check_mode: bool,
+        dry_run: bool,
+        migrated: bool,
+    ) -> int:
+        """Report the scanned violations and derive the run exit code.
+
+        Args:
+            scanned: The completed document scan or its failure.
+            check_mode: Whether the run audits or checks without writing.
+            dry_run: Whether no file may be written.
+            migrated: Whether a Git reference migration owned the run.
+
+        Returns:
+            The resulting process exit code.
+        """
         if scanned.failure:
             u.Cli.error(scanned.error or "document scan failed")
             return 2
@@ -223,13 +259,9 @@ class FlextInfraPyprojectModernizerRun:
         total = self._report_violations(violations, dry_run=dry_run)
         if check_mode and total > 0:
             return 1
-        if source_migration is not None:
+        if migrated or dry_run or self.skip_check:
             return 0
-        return (
-            0
-            if dry_run or self.skip_check
-            else self._run_build_check(states, invalid_paths=invalid_paths)
-        )
+        return self._run_build_check(states, invalid_paths=invalid_paths)
 
     @staticmethod
     def _report_violations(
@@ -286,7 +318,6 @@ class FlextInfraPyprojectModernizerRun:
         root_state: p.Result[m.Infra.PyprojectDocumentState],
         root_pyproject: Path,
         *,
-        canonical_dev: t.StrSequence,
         dry_run: bool,
         source_migration: m.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[
@@ -313,6 +344,17 @@ class FlextInfraPyprojectModernizerRun:
         states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
         drift_reported = False
+        # A migration run never pins development floors: the declared set is
+        # authoritative while the reference migration rewrites Git sources.
+        canonical_dev: t.StrSequence = (
+            ()
+            if source_migration is not None or root_state.failure
+            else t.Infra.STR_SEQ_ADAPTER.validate_python(
+                u.Infra.canonical_dev_dependencies_from_payload(
+                    root_state.value.payload
+                ),
+            )
+        )
         for index, file_path in enumerate(ordered, start=1):
             u.Cli.progress(index, len(ordered), str(file_path), c.Infra.CLI_GROUP_DEPS)
             state = (
@@ -368,7 +410,6 @@ class FlextInfraPyprojectModernizerRun:
             The resulting ``int``.
 
         Raises:
-            TypeError: If a declared requirement group entry is not a string.
             ValueError: If the project table is absent or the dependency owner
                 changed between the read and the write.
 
@@ -404,6 +445,41 @@ class FlextInfraPyprojectModernizerRun:
                 or {},
             ),
         )
+        changes = self._rewritten_constraint_sections(
+            sections,
+            versions=versions,
+            internal_names=internal_names,
+        )
+        if not changes:
+            return 0
+        before = u.Cli.atomic_read_binary_file_state(
+            root_state.pyproject_path,
+            required=True,
+        ).unwrap()
+        return self._published_constraint_floors(root_state, tuple(changes), before)
+
+    @classmethod
+    def _rewritten_constraint_sections(
+        cls,
+        sections: t.SequenceOf[t.Pair[str, t.MappingKV[str, t.JsonValue]]],
+        *,
+        versions: t.MappingKV[str, str],
+        internal_names: t.StrSequence,
+    ) -> list[str]:
+        """Rewrite every declared requirement to its resolved runtime floor.
+
+        Args:
+            sections: Ordered requirement sections with their requirement
+                groups.
+            versions: Resolved dependency versions of the provisioned runtime.
+            internal_names: Workspace member names exempted from floor pins.
+
+        Returns:
+            The change notes of every rewritten requirement.
+
+        Raises:
+            TypeError: If a declared requirement group entry is not a string.
+        """
         changes: list[str] = []
         for section, groups in sections:
             for name, entries in groups.items():
@@ -429,17 +505,31 @@ class FlextInfraPyprojectModernizerRun:
                         changes.append(
                             f"{section}.{name}: {requirement} -> {rewritten}"
                         )
-        if not changes:
-            return 0
-        before = u.Cli.atomic_read_binary_file_state(
-            root_state.pyproject_path,
-            required=True,
-        ).unwrap()
+        return changes
+
+    def _published_constraint_floors(
+        self,
+        root_state: m.Infra.PyprojectDocumentState,
+        changes: t.StrSequence,
+        before: m.Cli.AtomicFileState,
+    ) -> int:
+        """Publish the rewritten requirement floors atomically.
+
+        Args:
+            root_state: Validated root document state owning the floors.
+            changes: Change notes of every rewritten requirement.
+            before: Authenticated pre-publication state of the document.
+
+        Returns:
+            The resulting process exit code.
+
+        Raises:
+            ValueError: If the dependency owner changed between the read and
+                the write.
+        """
         if before.content != root_state.original_rendered.encode(c.DEFAULT_ENCODING):
             msg = f"dependency owner changed during read: {root_state.pyproject_path}"
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
         rendered = self._render_document_state(
             root_state,
             tuple(changes),

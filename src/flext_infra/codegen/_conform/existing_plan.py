@@ -443,27 +443,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         """
         result_type = r[m.Infra.CodegenFilePlan]
-        entries = tuple(
-            entry
-            for entry in codegen.templates.entries
-            if entry.destination == destination
-            and entry.delegate == c.Infra.TemplateDelegate.RENDER
-            and target.make_profile in entry.profiles
-        )
-        if len(entries) != 1 or entries[0].source is None:
-            return result_type.fail(
-                f"{destination} requires exactly one render template for its profile",
-            )
-        managed = tuple(
-            item
-            for item in codegen.managed_file_specs
-            if item.path == Path(destination)
-        )
-        if len(managed) != 1:
-            return result_type.fail(
-                f"{destination} requires exactly one managed-file declaration",
-            )
-        template = u.Infra.codegen_templates_root(codegen) / entries[0].source
+        binding = self._bootstrap_template_binding(target, codegen, destination)
+        if binding.failure:
+            return result_type.from_failure(binding)
+        template, managed_spec = binding.value
         rendered = u.Cli.template_render_authenticated(template, context)
         if rendered.failure:
             return result_type.from_failure(rendered)
@@ -488,9 +471,51 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             target.root,
             destination,
             content,
-            mode=managed[0].mode,
+            mode=managed_spec.mode,
             source_states=captured.value,
         )
+
+    @classmethod
+    def _bootstrap_template_binding(
+        cls,
+        target: m.Infra.RepositoryConformTarget,
+        codegen: m.Infra.CodegenConfigSpec,
+        destination: str,
+    ) -> p.Result[t.Pair[Path, m.Infra.ManagedFileSpec]]:
+        """Resolve the single render template and managed spec of a destination.
+
+        Args:
+            target: The conform target whose profile selects templates.
+            codegen: The codegen configuration owning template entries.
+            destination: The bootstrap destination being planned.
+
+        Returns:
+            The authenticated template path with its managed-file spec, or a
+            failure when the destination lacks a unique binding.
+        """
+        result_type = r[t.Pair[Path, m.Infra.ManagedFileSpec]]
+        entries = tuple(
+            entry
+            for entry in codegen.templates.entries
+            if entry.destination == destination
+            and entry.delegate == c.Infra.TemplateDelegate.RENDER
+            and target.make_profile in entry.profiles
+        )
+        if len(entries) != 1 or entries[0].source is None:
+            return result_type.fail(
+                f"{destination} requires exactly one render template for its profile",
+            )
+        managed = tuple(
+            item
+            for item in codegen.managed_file_specs
+            if item.path == Path(destination)
+        )
+        if len(managed) != 1:
+            return result_type.fail(
+                f"{destination} requires exactly one managed-file declaration",
+            )
+        template = u.Infra.codegen_templates_root(codegen) / entries[0].source
+        return result_type.ok((template, managed[0]))
 
     def _plan_existing_docs_config(
         self,
@@ -1005,12 +1030,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             target,
             codegen,
             pending_artifacts,
-            completed,
         )
         if represented_set.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                 represented_set,
             )
+        completed.extend(represented_set.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
 
     @staticmethod
@@ -1067,7 +1092,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         Returns:
             Runtime-local file plans, including missing declared bindings.
         """
-        completed: list[m.Infra.CodegenFilePlan] = []
         planned = self._represent_ungoverned_artifacts(
             target
             if vscode_spec is None
@@ -1080,30 +1104,39 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 for item in codegen.managed_file_specs
                 if item.runtime_binding
             },
-            completed,
             codegen_inputs=codegen_inputs,
             migrate_tracking=True,
         )
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value)
 
     def _represent_ungoverned_artifacts(
         self,
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
         governed_by_path: t.MappingKV[Path, m.Infra.ManagedFileSpec],
-        completed: list[m.Infra.CodegenFilePlan],
         *,
         migrate_tracking: bool = False,
         codegen_inputs: m.Infra.CodegenInputs | None = None,
-    ) -> p.Result[bool]:
-        """Append a plan for every unrepresented governed artifact in the mapping.
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan every unrepresented governed artifact in the mapping.
+
+        Args:
+            target: The conform target whose root owns the artifacts.
+            codegen: The codegen configuration governing the artifacts.
+            governed_by_path: Governed artifacts keyed by repository-relative
+                path.
+            migrate_tracking: Whether runtime-local editor tracking migrates.
+            codegen_inputs: Captured codegen inputs for migration planning.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``
+            carrying one plan per represented artifact; per-artifact failures
+            are recorded and skipped.
 
         """
+        plans: list[m.Infra.CodegenFilePlan] = []
         root = target.root
         profile = target.make_profile
         vscode_spec = target.vscode_spec
@@ -1161,7 +1194,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         exception=migrated.exception,
                     )
                     continue
-                completed.extend(migrated.value)
+                plans.extend(migrated.value)
                 continue
             decided = self._decide_governed_plan(request)
             if decided.failure:
@@ -1173,8 +1206,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 continue
             decided_value, decided_present = decided.value
             if decided_present and decided_value is not None:
-                completed.append(decided_value)
-        return r[bool].ok(value=True)
+                plans.append(decided_value)
+        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     @classmethod
     def _vscode_tracking_plans(

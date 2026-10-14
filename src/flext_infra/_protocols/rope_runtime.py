@@ -358,6 +358,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         names_and_aliases: t.SequenceOf[tuple[str, str | None]]
 
+        def get_import_statement(self) -> str: ...
+
     @runtime_checkable
     class RopeFromImport(RopeImportInfo, Protocol):
         """Rope from-import marker shape."""

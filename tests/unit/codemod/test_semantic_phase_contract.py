@@ -850,7 +850,7 @@ class TestsFlextInfraSemanticPhaseContract:
             "",
         )
         path.write_text(source, encoding="utf-8")
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="require-future-annotations.yml",
             rule_id="require-future-annotations",
             repository=root.name,
@@ -859,9 +859,8 @@ class TestsFlextInfraSemanticPhaseContract:
             text=source,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
-        report = m.Infra.ModScanReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )

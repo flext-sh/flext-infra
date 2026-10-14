@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, t
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
 from tests import tm, u
 
@@ -23,10 +22,10 @@ class TestsFlextInfraBatchGateSourceDrift:
         state: m.Cli.AtomicFileState | None,
         *,
         actionable: bool,
-    ) -> m.Infra.ModScanFinding:
+    ) -> m.Infra.ModOccurrence:
         start = b'value = "before"'.index(b"before")
         offsets: t.JsonDict = {"start": start, "end": start + len(b"before")}
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file=str(path.parent / "rule.yaml"),
             rule_id="fixture-rewrite",
             repository=path.parent.name,
@@ -41,7 +40,7 @@ class TestsFlextInfraBatchGateSourceDrift:
                 if actionable
                 else c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
             ),
-            payload={"replacementOffsets": offsets, "severity": "error"},
+            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
 
     @staticmethod
@@ -63,7 +62,9 @@ class TestsFlextInfraBatchGateSourceDrift:
         path = root / "subject.py"
         path.write_bytes(b'value = "before"\n')
         entry = self._finding(path, None, actionable=False)
-        report = FlextInfraModGateEngine.recounted((entry,))
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+            entries=(entry,), files=frozenset({path})
+        )
         tm.that(report.findings, eq=1)
         tm.that(report.deferred, eq=1)
         tm.that(report.actionable, eq=0)
@@ -83,11 +84,12 @@ class TestsFlextInfraBatchGateSourceDrift:
         original = b'value = "before"\n'
         path.write_bytes(original)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-        report = FlextInfraModGateEngine.recounted(
-            (
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+            entries=(
                 self._finding(path, state, actionable=True),
                 self._finding(path, None, actionable=False),
             ),
+            files=frozenset({path}),
         )
         tm.that(report.actionable, eq=1)
         tm.that(report.deferred, eq=1)

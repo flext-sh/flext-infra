@@ -33,7 +33,7 @@ class FlextInfraImportNormalizationPhase:
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Normalize every governed project's source imports.

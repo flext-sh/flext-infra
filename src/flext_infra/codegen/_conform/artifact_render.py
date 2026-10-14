@@ -224,60 +224,25 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         result_type = r[m.Infra.CodegenArtifactComposition]
         live_path = repository_root / c.PYPROJECT_FILENAME
-        live: str | None = None
-        if live_path.is_file():
-            # Overlay reads the live text (managed merge conflicts resolved)
-            # with every owned tool table removed: those tables regenerate
-            # from the owner, so a corrupt owned table never blocks the
-            # render. The live file is never written here.
-            recovered_live = u.Infra.live_pyproject_text(
-                live_path,
-                regenerate_managed_tools=True,
-            )
-            if recovered_live.failure:
-                return result_type.from_failure(recovered_live)
-            live = recovered_live.value
-        overlaid = u.Infra.overlay_preserved(rendered, live)
+        live = cls._live_pyproject_text(repository_root)
+        if live.failure:
+            return result_type.from_failure(live)
+        overlaid = u.Infra.overlay_preserved(rendered, live.value)
         if overlaid.failure:
             return result_type.from_failure(overlaid)
         composed_rendered = overlaid.value
         source_states: list[m.Cli.AtomicFileState] = []
         if render_inputs is not None:
-            declarations: list[m.Cli.AtomicFileState] = []
-            members = (
-                tuple(
-                    member
-                    for member in render_inputs.workspace.subprojects
-                    if member.package
-                )
-                if render_inputs.workspace.repository.role
-                is c.Infra.MakeProfile.WORKSPACE
-                else ()
-            )
-            if members:
-                locked = u.Cli.atomic_read_binary_file_state(
-                    repository_root / c.Infra.UV_LOCK_FILENAME,
-                    required=False,
-                )
-                if locked.failure:
-                    return result_type.from_failure(locked)
-                source_states.append(locked.value)
-                for member in members:
-                    declaration = u.Infra.member_project_declaration(
-                        repository_root,
-                        member,
-                        lock_state=locked.value,
-                    )
-                    if declaration.failure:
-                        return result_type.from_failure(declaration)
-                    declarations.append(declaration.value)
-                    source_states.append(declaration.value)
+            collected = cls._member_declaration_states(repository_root, render_inputs)
+            if collected.failure:
+                return result_type.from_failure(collected)
+            source_states.extend(collected.value[0])
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
                 target=render_inputs.target,
                 workspace=render_inputs.workspace,
                 codegen=render_inputs.codegen,
-                member_declarations=tuple(declarations),
+                member_declarations=collected.value[1],
             )
             if conformed.failure:
                 return result_type.from_failure(conformed)
@@ -312,6 +277,90 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 source_states=tuple(source_states),
             ),
         )
+
+    @classmethod
+    def _live_pyproject_text(cls, repository_root: Path) -> p.Result[str | None]:
+        """Read the live pyproject text with owned tool tables regenerated.
+
+        Args:
+            repository_root: The repository root holding the live pyproject.
+
+        Returns:
+            The recovered live text, or ``None`` when no live file exists.
+        """
+        live_path = repository_root / c.PYPROJECT_FILENAME
+        if not live_path.is_file():
+            return r[str | None].ok(None)
+        # Overlay reads the live text (managed merge conflicts resolved)
+        # with every owned tool table removed: those tables regenerate
+        # from the owner, so a corrupt owned table never blocks the
+        # render. The live file is never written here.
+        recovered_live = u.Infra.live_pyproject_text(
+            live_path,
+            regenerate_managed_tools=True,
+        )
+        if recovered_live.failure:
+            return r[str | None].from_failure(recovered_live)
+        return r[str | None].ok(recovered_live.value)
+
+    @classmethod
+    def _member_declaration_states(
+        cls,
+        repository_root: Path,
+        render_inputs: m.Infra.CodegenRenderInputs,
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Collect workspace member declarations for pyproject conforming.
+
+        Args:
+            repository_root: The repository root holding the lock file.
+            render_inputs: The render inputs declaring the workspace role.
+
+        Returns:
+            The collected source states with their member declarations, or
+            the first read failure. The pair is empty when the repository
+            declares no workspace role or elects no packaged members.
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Cli.AtomicFileState],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        members = (
+            tuple(
+                member
+                for member in render_inputs.workspace.subprojects
+                if member.package
+            )
+            if render_inputs.workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            else ()
+        )
+        if not members:
+            return result_type.ok(((), ()))
+        locked = u.Cli.atomic_read_binary_file_state(
+            repository_root / c.Infra.UV_LOCK_FILENAME,
+            required=False,
+        )
+        if locked.failure:
+            return result_type.from_failure(locked)
+        source_states: list[m.Cli.AtomicFileState] = [locked.value]
+        declarations: list[m.Cli.AtomicFileState] = []
+        for member in members:
+            declaration = u.Infra.member_project_declaration(
+                repository_root,
+                member,
+                lock_state=locked.value,
+            )
+            if declaration.failure:
+                return result_type.from_failure(declaration)
+            declarations.append(declaration.value)
+            source_states.append(declaration.value)
+        return result_type.ok((tuple(source_states), tuple(declarations)))
 
     @classmethod
     def rendered_by_stamp(cls) -> str:
@@ -413,7 +462,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if primary is None or primary.content is None:
             return r[m.Infra.CodegenArtifactComposition].fail(
-                f"authenticated template has no captured primary source: {template_path}",
+                f"authenticated template has no captured primary source: "
+                f"{template_path}",
             )
         return self._require_rendered_content(
             rendered.value.rendered,

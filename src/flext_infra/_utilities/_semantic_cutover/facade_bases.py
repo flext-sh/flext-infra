@@ -959,7 +959,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan the class-name base for every facade the detector selected.
 

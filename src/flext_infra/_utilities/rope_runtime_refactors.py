@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Callable, Sequence
 from typing import cast
 
@@ -40,44 +39,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
                 strict=True,
             ),
         )
-
-    @classmethod
-    def patched_ast(cls, source: str) -> ast.AST:
-        """Parse the real SDK patched AST and validate its native result.
-
-        Returns:
-            The SDK AST with source-order information attached.
-
-        Raises:
-            TypeError: If the native parser does not return an AST.
-        """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "get_patched_ast",
-        )(source, sorted_children=True)
-        if not isinstance(value, ast.AST):
-            msg = "Rope patched AST parser did not return an AST"
-            raise TypeError(msg)
-        return value
-
-    @classmethod
-    def write_patched_ast(cls, tree: ast.AST) -> str:
-        """Render the real SDK patched AST without replacing its writer.
-
-        Returns:
-            The source emitted by the native patched-AST writer.
-
-        Raises:
-            TypeError: If the native writer does not return source text.
-        """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "write_ast",
-        )(tree)
-        if not isinstance(value, str):
-            msg = "Rope patched AST writer did not return source text"
-            raise TypeError(msg)
-        return value
 
     @staticmethod
     def change_set_members(

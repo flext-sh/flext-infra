@@ -40,32 +40,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"producer source module is not registered: {module_name}",
             )
         native = vars(module).get("__spec__")
-        # Third-party packages that flext-core patches at runtime (beartype's
-        # claw warehouse, ...) synthesize submodules with no cold spec: their
-        # executed form is the patch the engine owns, and a cold re-election
-        # can never match. Admit the interpreter base as their origin.
-        if (
-            native is not None
-            and native.origin is None
-            and module_name.partition(".")[0]
-            not in {"flext", "flext_core", "flext_infra", "flext_cli", "flext_api"}
-        ):
-            return r[Path].ok(Path(sys.executable).resolve())
-        if (
-            native is None
-            or modules.get(native.name) is not module
-            or (
-                native.name != module_name
-                and (
-                    native.origin not in {"built-in", "frozen"}
-                    or module_name.partition(".")[0] not in sys.stdlib_module_names
-                )
-            )
-        ):
+        if native is None or modules.get(native.name) is not module:
             return r[Path].fail(
                 f"producer module lacks its native spec: {module_name}",
             )
-        components = module_name.split(".")
+        # A registered alias shares the actual module object and its canonical
+        # spec. The isolated import validates the alias registration itself.
+        components = native.name.split(".")
         interpreter = Path(sys.executable).resolve()
         if components[0] in sys.stdlib_module_names:
             standard = Path(
@@ -558,51 +539,56 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         expected_root: Path | None = None,
         reference: m.Infra.NativeImportReference | None = None,
     ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Authenticate the selected namespace against a real isolated import epoch."""
-        from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+        """Authenticate statically, or compare an explicitly supplied isolated epoch."""
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
 
-        names = tuple(sorted(
-            name for name in tuple(modules)
-            if name == package_name or name.startswith(f"{package_name}.")
-        ))
+        names = tuple(
+            sorted(
+                name
+                for name in tuple(modules)
+                if name == package_name or name.startswith(f"{package_name}.")
+            )
+        )
         if not names:
             return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
         if reference is None:
-            cold = FlextInfraCodegenPreconditions.capture_source_authority()
-            if cold.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(cold)
-            inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
-            if inputs.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(inputs)
-            captured = FlextInfraValidateFreshImport.capture_native_reference(
-                m.Infra.NativeImportRequest(
-                    repository_root=Path.cwd(), runtime_root=Path(sys.prefix).parent,
-                    modules=names, source_authority=cold.value, inputs=inputs.value,
-                    import_roots=tuple(dict.fromkeys(
-                        root.parent for _, root in cold.value.generator_modules
-                    )),
-                ),
+            proof = FlextInfraWorkspaceNativeReference.source_proof(names)
+            if proof.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(proof)
+            source_files = proof.value
+        else:
+            if not set(names).issubset(reference.modules):
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    f"native reference does not cover selected namespace: {package_name}",
+                )
+            if reference.runtime != Path(sys.executable).resolve():
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    "native reference runtime differs",
+                )
+            observed = FlextInfraWorkspaceNativeReference.capture(reference.modules)
+            if observed.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
+            matched = FlextInfraWorkspaceNativeReference.compare(
+                observed.value,
+                reference,
             )
-            if captured.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(captured)
-            reference = captured.value
-        if not set(names).issubset(reference.modules):
-            return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                f"native reference does not cover selected namespace: {package_name}",
-            )
-        if reference.runtime != Path(sys.executable).resolve():
-            return r[t.SequenceOf[t.Triple[str, str, str]]].fail("native reference runtime differs")
+            if matched.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(matched)
+            source_files = reference.sources
         if expected_root is not None:
-            for identity, source, declaration in reference.sources:
+            for identity, source, declaration in source_files:
                 supplier = identity.partition("::")[0]
-                if (supplier == package_name or supplier.startswith(f"{package_name}.")) and not Path(
+                if (
+                    supplier == package_name or supplier.startswith(f"{package_name}.")
+                ) and not Path(
                     declaration or source,
                 ).resolve().is_relative_to(expected_root.resolve()):
                     return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                         f"producer loaded source escapes declared checkout: {identity}={declaration or source}",
                     )
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(reference.sources)
+        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
 
     @classmethod
     def validate_locked(

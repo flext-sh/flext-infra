@@ -362,6 +362,13 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+`make initialize KIND=internal_flext` supplies a declaration value to the native
+`codegen init` owner for that Makefile's target only. The owner plans the target's
+`config/codegen.yaml` through the existing guarded declaration transaction before
+rendering its Makefile. It rejects a conflicting existing kind and never broadcasts
+the root's value to members. Each member receives a separate explicit request from
+the invoking root. Omitting `KIND` consumes the target's own declaration; it never
+authorizes classification by project name or installed dependencies.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 

@@ -108,22 +108,39 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 )
                 if barrier.failure:
                     return r[T].from_failure(barrier)
-                cleaned = self._recover_prepared(prepared.plan.layout)
-                if cleaned.failure:
-                    return r[T].fail(
-                        cleaned.error or "source preview staging cleanup failed",
-                        error_code=cleaned.error_code,
-                        exception=cleaned.exception,
-                        error_data={
-                            **(cleaned.error_data or {}),
-                            "cleanup_error": cleaned.error,
-                        },
-                    )
-                return r[T].ok(value)
+                return self._cleaned_source_preview_value(prepared, value)
 
             return self.publish_prepared_locked(session, validate_prepared)
 
         return self.run_files_locked(roots, validate_locked)
+
+    def _cleaned_source_preview_value[T](
+        self,
+        prepared: m.Infra.CodegenTransactionSession,
+        value: T,
+    ) -> p.Result[T]:
+        """Recover the prepared source preview and release its captured value.
+
+        Args:
+            prepared: The prepared session owning the staging layout.
+            value: The validated value captured from the live source view.
+
+        Returns:
+            The captured value after clean recovery, or the recovery failure
+            annotated with its residual cleanup error.
+        """
+        cleaned = self._recover_prepared(prepared.plan.layout)
+        if cleaned.failure:
+            return r[T].fail(
+                cleaned.error or "source preview staging cleanup failed",
+                error_code=cleaned.error_code,
+                exception=cleaned.exception,
+                error_data={
+                    **(cleaned.error_data or {}),
+                    "cleanup_error": cleaned.error,
+                },
+            )
+        return r[T].ok(value)
 
     def _materialize_source_preview(
         self,
@@ -465,18 +482,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if self._source_authority is not None:
-            producer_current = FlextInfraCodegenPreconditions.source_authority_current(
-                self._source_authority,
-            )
-        else:
-            if self._producer.failure:
-                return result_type.from_failure(self._producer)
-            producer_current = FlextInfraCodegenPreconditions.producer_current(
-                self._producer.value,
-            )
-        if producer_current.failure:
-            return result_type.from_failure(producer_current)
+        authority = self._file_session_authority()
+        if authority.failure:
+            return result_type.from_failure(authority)
         if set(roots.values()) - self._file_leases.keys():
             return result_type.fail("file session requires every destination lease")
         transaction_id = secrets.token_hex(16)
@@ -508,6 +516,20 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 journal_state=journal_state,
             ),
         )
+
+    def _file_session_authority(self) -> p.Result[bool]:
+        """Resolve the current producer or cold source authority receipt.
+
+        Returns:
+            Whether the active authority is current, or its first failure.
+        """
+        if self._source_authority is not None:
+            return FlextInfraCodegenPreconditions.source_authority_current(
+                self._source_authority,
+            )
+        if self._producer.failure:
+            return r[bool].from_failure(self._producer)
+        return FlextInfraCodegenPreconditions.producer_current(self._producer.value)
 
     def _file_lease_mismatch(
         self,

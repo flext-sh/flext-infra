@@ -1222,6 +1222,102 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "defect",
+        ["none", "wrapped", "cached_wrapped", "partial_arguments"],
+    )
+    def test_native_c_wrapper_requires_actual_callable_topology(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Real native wrappers retain function links and reject cache-assisted forgery."""
+        package = tmp_path / "native_wrapper_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from functools import lru_cache, partial\n"
+                "def counterfeit(value='foreign'):\n"
+                "    raise AssertionError('unadmitted callable was executed')\n"
+                "@lru_cache(maxsize=None)\n"
+                "def produce(value='native'):\n"
+                "    return value\n"
+                "selected = partial(produce, value='native')\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from gc import get_referents\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('native_wrapper_provider')\n"
+            "reference = provenance.capture((module.__name__,)).unwrap()\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'wrapped':\n"
+            "    module.produce.__wrapped__ = module.counterfeit\n"
+            "elif defect == 'cached_wrapped':\n"
+            "    cache = next(item for item in get_referents(module.produce)\n"
+            "        if type(item) is dict and '__wrapped__' not in item)\n"
+            "    cache['counterfeit'] = module.counterfeit\n"
+            "    module.produce.__wrapped__ = module.counterfeit\n"
+            "elif defect == 'partial_arguments':\n"
+            "    module.selected.keywords['value'] = 'foreign'\n"
+            "observed = provenance.capture((module.__name__,))\n"
+            "if defect in {'wrapped', 'cached_wrapped'}:\n"
+            "    assert observed.failure, observed\n"
+            "else:\n"
+            "    compared = provenance.compare(observed.unwrap(), reference)\n"
+            "    assert compared.success == (defect == 'none'), compared.error\n"
+            "    if defect == 'none':\n"
+            "        assert module.selected() == 'native'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
+    def test_source_preflight_does_not_reimport_authored_effects(
+        tmp_path: Path,
+    ) -> None:
+        """Static provenance fails generated admission without replaying import effects."""
+        package = tmp_path / "import_effect_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass\n"
+                "import pathlib\n"
+                "pathlib.Path(__file__).with_name('effect').write_text('imported')\n"
+                "@dataclass\n"
+                "class Payload:\n"
+                "    value: str\n",
+            ),
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('import_effect_provider')\n"
+            "effect = pathlib.Path(module.__file__).with_name('effect')\n"
+            "assert effect.read_text() == 'imported'\n"
+            "effect.unlink()\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert observed.failure, observed\n"
+            "assert not effect.exists(), 'source admission replayed the module'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path)],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("defect", ["none", "defaults", "kwdefaults", "closure"])
     def test_installed_annotation_dataclass_retains_native_constructor_proof(
         defect: str,

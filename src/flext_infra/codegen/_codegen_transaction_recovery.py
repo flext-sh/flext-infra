@@ -38,7 +38,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
     ) -> None:
-        """Initialize journal planning and recovery for one Mise artifact owner."""
+        """Initialize journal planning and recovery for one Mise artifact owner.
+
+        Raises:
+            ValueError: If reference staging and publication share one
+                authority.
+        """
         super().__init__(participant_policy)
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
@@ -244,15 +249,13 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
         """
         root = request.root.expanduser().resolve()
-        if not scope_roots or (
-            operation is not None
-            and (
-                operation.root != root
-                or operation.surface != request.what
-                or operation.scope != request.scope
-                or operation.module != request.module
-            )
-        ):
+        mismatched = operation is not None and (
+            operation.root != root
+            or operation.surface != request.what
+            or operation.scope != request.scope
+            or operation.module != request.module
+        )
+        if not scope_roots or mismatched:
             return r[m.Infra.CodegenPhaseOutcome].fail(
                 "operation receipt differs from its actual request",
             )
@@ -335,62 +338,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             outputs.update({item.path: item for item in batch_admission.outputs})
         admitted = {item.before.path: item for item in session.published_files}
         for plan in plans:
-            actual = admitted.get(plan.path)
-            if actual is not None and actual.replacement is not None:
-                state: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
-                    actual.replacement
-                )
-            elif actual is not None:
-                absent = FlextInfraMiseArtifactsFiles.read_state(
-                    plan.path,
-                    required=False,
-                )
-                if absent.failure:
-                    return r[m.Infra.CodegenTransactionSession].from_failure(absent)
-                if absent.value.content is not None:
-                    return r[m.Infra.CodegenTransactionSession].fail(
-                        f"published deletion changed before proof: {plan.path}",
-                    )
-                state = absent.value
-            else:
-                observed = FlextInfraMiseArtifactsFiles.read_state(
-                    plan.path,
-                    required=(
-                        isinstance(plan.before, m.Cli.AtomicFileState)
-                        and plan.before.content is not None
-                    ),
-                )
-                if observed.failure:
-                    return r[m.Infra.CodegenTransactionSession].from_failure(observed)
-                expected = (
-                    m.Cli.AtomicFileState(path=plan.path)
-                    if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                    else plan.before
-                )
-                if (
-                    expected.parent_device is None
-                    and observed.value.parent_device is not None
-                ):
-                    rebound = FlextInfraMiseArtifactsVerification.bind_source_parent(
-                        expected,
-                        session.journal,
-                    )
-                    if rebound.failure:
-                        return r[m.Infra.CodegenTransactionSession].from_failure(
-                            rebound
-                        )
-                    expected = rebound.value
-                if observed.value != expected:
-                    return r[m.Infra.CodegenTransactionSession].fail(
-                        "generation output differs from its authenticated preimage: "
-                        f"{plan.path}",
-                    )
-                state = (
-                    plan.before
-                    if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                    and observed.value.parent_device is None
-                    else observed.value
-                )
+            state = FlextInfraCodegenTransactionRecovery._proof_output_state(
+                session, plan, admitted
+            )
+            if state.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(state)
             record = FlextInfraMiseArtifactsJournal.source_record(
                 "output",
                 state,
@@ -427,6 +379,90 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 }
             )
         )
+
+    @staticmethod
+    def _observed_proof_state(
+        session: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.CodegenFilePlan,
+    ) -> p.Result[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
+        """Prove one unplanned output against its authenticated preimage.
+
+        Args:
+            session: Locked transaction session binding the publication.
+            plan: The file plan requiring its proof output.
+
+        Returns:
+            The observed proof output state, or the first read, binding or
+            preimage failure.
+        """
+        result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
+        observed = FlextInfraMiseArtifactsFiles.read_state(
+            plan.path,
+            required=(
+                isinstance(plan.before, m.Cli.AtomicFileState)
+                and plan.before.content is not None
+            ),
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        expected = (
+            m.Cli.AtomicFileState(path=plan.path)
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+            else plan.before
+        )
+        if expected.parent_device is None and observed.value.parent_device is not None:
+            rebound = FlextInfraMiseArtifactsVerification.bind_source_parent(
+                expected,
+                session.journal,
+            )
+            if rebound.failure:
+                return result_type.from_failure(rebound)
+            expected = rebound.value
+        if observed.value != expected:
+            return result_type.fail(
+                "generation output differs from its authenticated preimage: "
+                f"{plan.path}",
+            )
+        return result_type.ok(
+            plan.before
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+            and observed.value.parent_device is None
+            else observed.value
+        )
+
+    @staticmethod
+    def _proof_output_state(
+        session: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.CodegenFilePlan,
+        admitted: t.MappingKV[Path, m.Infra.CodegenStagedFile],
+    ) -> p.Result[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
+        """Resolve one plan's proof output state from its published record.
+
+        Args:
+            session: Locked transaction session binding the publication.
+            plan: The file plan requiring its proof output.
+            admitted: Published files keyed by their original path.
+
+        Returns:
+            The proof output state, or the first read or preimage failure.
+        """
+        result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
+        actual = admitted.get(plan.path)
+        if actual is not None and actual.replacement is not None:
+            return result_type.ok(actual.replacement)
+        if actual is not None:
+            absent = FlextInfraMiseArtifactsFiles.read_state(
+                plan.path,
+                required=False,
+            )
+            if absent.failure:
+                return result_type.from_failure(absent)
+            if absent.value.content is not None:
+                return result_type.fail(
+                    f"published deletion changed before proof: {plan.path}",
+                )
+            return result_type.ok(absent.value)
+        return FlextInfraCodegenTransactionRecovery._observed_proof_state(session, plan)
 
     def participant_policy(
         self,

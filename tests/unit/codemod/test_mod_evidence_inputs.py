@@ -36,12 +36,17 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(report.findings, eq=1)
         finding = report.entries[0]
         tm.that(finding.text, eq=content.rstrip("\n"))
-        tm.that(finding.payload["text"], eq=finding.text)
+        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
+            native = u.Infra.mod_native_payload(finding, readers)
+        tm.that(native["text"], eq=finding.text)
         tm.that(tm.not_none(finding.source_state).content, eq=content.encode("utf-8"))
         evidence = m.Infra.ModScanEvidence.model_validate_json(
             (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
         )
-        tm.that(evidence.entries[0].payload, eq=finding.payload)
+        with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
+            restored = u.Infra.mod_native_payload(evidence.entries[0], readers)
+        tm.that(restored, eq=native)
+        tm.that(evidence.native_artifacts, eq=report.native_artifacts)
 
     @staticmethod
     @pytest.mark.slow
@@ -200,7 +205,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         shared: dict[int, tuple[m.Cli.AtomicFileState, ...]] = {}
         for original, occurrence in zip(report.entries, restored.entries, strict=True):
-            tm.that(occurrence.payload, eq=original.payload)
+            tm.that(occurrence.native_record, eq=original.native_record)
             tm.that(occurrence.source_state, eq=original.source_state)
             tm.that(occurrence.binding_states, eq=original.binding_states)
             tm.that(

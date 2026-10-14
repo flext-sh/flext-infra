@@ -10,7 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import ExitStack, contextmanager
 from itertools import chain
 from pathlib import Path
 
@@ -33,7 +34,63 @@ class FlextInfraUtilitiesRefactor:
     """
 
     @staticmethod
-    def violations_totals(report: m.Infra.ModScanReport) -> m.Infra.ViolationsTotals:
+    @contextmanager
+    def mod_native_readers(
+        artifacts: tuple[m.Cli.AtomicFileReceipt, ...],
+    ) -> Generator[t.MappingKV[Path, p.Cli.AtomicFileReader]]:
+        """Retain one authenticated descriptor per artifact for a complete consumer pass."""
+        with ExitStack() as stack:
+            readers = {
+                artifact.path: stack.enter_context(
+                    u.Cli.atomic_binary_file_reader(artifact)
+                )
+                for artifact in artifacts
+            }
+            if len(readers) != len(artifacts):
+                msg = "mod native artifact inventory has duplicate paths"
+                raise ValueError(msg)
+            yield readers
+
+    @staticmethod
+    def mod_native_payload(
+        finding: m.Infra.ModScanFinding,
+        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
+    ) -> t.JsonMapping:
+        """Hydrate one complete native record explicitly through its retained reader."""
+        receipt = finding.native_receipt
+        if receipt is None:
+            msg = "mod finding lacks its authenticated native artifact"
+            raise ValueError(msg)
+        record = finding.native_record
+        content = readers[receipt.path].read_range(record.offset, record.length)
+        if u.Cli.sha256_bytes(content) != record.sha256:
+            msg = "mod native record digest differs from its captured evidence"
+            raise ValueError(msg)
+        payload = u.Cli.json_loads(content).unwrap()
+        if not isinstance(payload, Mapping):
+            msg = "mod native record is not a JSON object"
+            raise ValueError(msg)
+        if (
+            payload.get("ruleId") != finding.rule_id
+            or payload.get("text") != finding.text
+            or payload.get("range") != finding.range
+            or payload.get("replacement") != finding.replacement
+            or payload.get("severity") != finding.severity
+            or payload.get("replacementOffsets")
+            != (
+                None
+                if finding.replacement_offsets is None
+                else finding.replacement_offsets.model_dump()
+            )
+        ):
+            msg = "mod operational fields differ from their native record"
+            raise ValueError(msg)
+        return payload
+
+    @staticmethod
+    def violations_totals(
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    ) -> m.Infra.ViolationsTotals:
         """Capture native totals without service behavior in data models.
 
         Returns:
@@ -49,7 +106,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _indexed_source_states(
-        report: m.Infra.ModScanReport,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
     ) -> dict[Path, m.Cli.AtomicFileState]:
         """Index one report's captured source states by path.
 
@@ -75,7 +132,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _admit_scan_entry(
-        entry: m.Infra.ModScanFinding | m.Infra.ModTextFinding,
+        entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
         catalog: dict[tuple[str, str], tuple[str | None, bool]],
         indexed: dict[Path, m.Cli.AtomicFileState],
     ) -> None:
@@ -175,8 +232,10 @@ class FlextInfraUtilitiesRefactor:
     @classmethod
     def _authenticated_endpoints(
         cls,
-        before: m.Infra.ModScanReport | m.Infra.ModTextReport,
-        after: m.Infra.ModScanReport | m.Infra.ModTextReport,
+        before: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        after: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
         publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
     ) -> t.Pair[
         list[dict[Path, m.Cli.AtomicFileState]],
@@ -205,7 +264,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _finding_repository(
-        entry: m.Infra.ModScanFinding | m.Infra.ModTextFinding,
+        entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
         repository_root: Path | None,
         topology: t.SequenceOf[Path],
     ) -> str:
@@ -224,7 +283,7 @@ class FlextInfraUtilitiesRefactor:
             ValueError: When a text finding lacks declared project topology
                 or falls outside it.
         """
-        if isinstance(entry, m.Infra.ModScanFinding):
+        if isinstance(entry, m.Infra.ModOccurrence):
             return entry.repository
         if repository_root is None:
             msg = "text comparison requires declared project topology"
@@ -241,7 +300,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _admit_module_absence_state(
-        entry: m.Infra.ModScanFinding,
+        entry: m.Infra.ModOccurrence,
     ) -> m.Cli.AtomicFileState:
         """Admit one module-absence finding's captured authentication.
 
@@ -262,7 +321,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _module_absence_root(
-        entry: m.Infra.ModScanFinding,
+        entry: m.Infra.ModOccurrence,
         state: m.Cli.AtomicFileState,
         repository: str,
         proven: set[tuple[str, str]],
@@ -304,7 +363,8 @@ class FlextInfraUtilitiesRefactor:
     @classmethod
     def _report_occurrence_indexes(
         cls,
-        report: m.Infra.ModScanReport | m.Infra.ModTextReport,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
         repository_root: Path | None,
         topology: t.SequenceOf[Path],
         proven: set[tuple[str, str]],
@@ -342,7 +402,7 @@ class FlextInfraUtilitiesRefactor:
             text = entry.text
             if (
                 publication_chain is not None
-                and isinstance(entry, m.Infra.ModScanFinding)
+                and isinstance(entry, m.Infra.ModOccurrence)
                 and entry.module_absence
             ):
                 state = cls._admit_module_absence_state(entry)
@@ -410,8 +470,10 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def rule_deltas(
-        before: m.Infra.ModScanReport | m.Infra.ModTextReport,
-        after: m.Infra.ModScanReport | m.Infra.ModTextReport,
+        before: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        after: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
         *,
         inventory: tuple[tuple[str, str], ...] = (),
         repository_root: Path | None = None,
@@ -438,15 +500,17 @@ class FlextInfraUtilitiesRefactor:
             ValueError: Native engines differ, a text finding lacks project
                 ownership, or the publication chain fails authentication.
         """
-        engine = "ast-grep" if isinstance(before, m.Infra.ModScanReport) else "text"
-        if isinstance(before, m.Infra.ModScanReport) != isinstance(
-            after, m.Infra.ModScanReport
+        engine = (
+            "ast-grep" if isinstance(before, m.Infra.ModOccurrenceReport) else "text"
+        )
+        if isinstance(before, m.Infra.ModOccurrenceReport) != isinstance(
+            after, m.Infra.ModOccurrenceReport
         ):
             msg = "rule comparison requires the same native engine"
             raise ValueError(msg)
         if publication_chain is not None:
-            if not isinstance(before, m.Infra.ModScanReport) or not isinstance(
-                after, m.Infra.ModScanReport
+            if not isinstance(before, m.Infra.ModOccurrenceReport) or not isinstance(
+                after, m.Infra.ModOccurrenceReport
             ):
                 msg = "semantic correspondence requires native AST findings"
                 raise ValueError(msg)
@@ -916,7 +980,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def mod_scan_inputs(
-        report: m.Infra.ModScanReport,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
     ) -> m.Infra.CodemodBindingSnapshot:
         """Union captured sources and distinct binding graphs once per operation.
 
@@ -961,6 +1025,9 @@ class FlextInfraUtilitiesRefactor:
         rule_totals = Counter(dict.fromkeys(publication.rule_ids, 0))
         class_totals = Counter(dict.fromkeys(c.Infra.ModScanFindingClass, 0))
         for entry in report.entries:
+            if entry.native_receipt is None:
+                msg = "mod evidence finding lacks its native artifact"
+                raise ValueError(msg)
             repository_totals[entry.repository] += 1
             rule_totals[entry.rule_id] += 1
             class_totals[entry.classification] += 1
@@ -978,9 +1045,14 @@ class FlextInfraUtilitiesRefactor:
         graph_ids = {
             identity: graphs[paths] for identity, paths in binding_paths.items()
         }
+        artifacts = {
+            artifact.path: index
+            for index, artifact in enumerate(report.native_artifacts)
+        }
         evidence = m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             "binding_graphs": tuple(graphs),
+            "native_artifacts": report.native_artifacts,
             "inputs": FlextInfraUtilitiesRefactor.mod_scan_inputs(report),
             "command": publication.command,
             "root": root.resolve(),
@@ -997,6 +1069,7 @@ class FlextInfraUtilitiesRefactor:
                         else None
                     ),
                     binding_graph=graph_ids[id(entry.binding_states)],
+                    native_artifact=artifacts[entry.native_receipt.path],
                 )
                 for entry in report.entries
             ),

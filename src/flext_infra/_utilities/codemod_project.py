@@ -559,13 +559,17 @@ class FlextInfraUtilitiesCodemodProject(
         snapshot: m.Infra.CodemodBindingSnapshot,
     ) -> m.Infra.CodemodSourceEpoch:
         """Decode each captured source once for the complete selected-project pass."""
-        sources = {
-            state.path: state.content.decode("utf-8")
+        contents = {
+            state.path: state.content
             for state in snapshot.states
             if state.content is not None
         }
         return m.Infra.CodemodSourceEpoch(
-            snapshot=snapshot, sources=MappingProxyType(sources)
+            snapshot=snapshot,
+            sources=MappingProxyType({
+                path: content.decode("utf-8") for path, content in contents.items()
+            }),
+            contents=MappingProxyType(contents),
         )
 
     @staticmethod
@@ -584,7 +588,7 @@ class FlextInfraUtilitiesCodemodProject(
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    live, sources, captured=epoch.snapshot
+                    live, sources, captured=epoch
                 )
             ) as project,
             project.frozen_layout(),

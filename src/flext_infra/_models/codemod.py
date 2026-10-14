@@ -76,8 +76,15 @@ class FlextInfraModelsCodemod:
         """One shared authenticated text view for an immutable capture operation."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-        snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot
-        sources: MappingProxyType[Path, str]
+        snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
+            description="Authenticated binding snapshot defining this source epoch"
+        )
+        sources: MappingProxyType[Path, str] = m.Field(
+            description="Immutable decoded text for every present captured input"
+        )
+        contents: MappingProxyType[Path, bytes] = m.Field(
+            description="Immutable original bytes for every present captured input"
+        )
 
         @m.model_validator(mode="after")
         def _validate_sources(self) -> Self:
@@ -86,13 +93,13 @@ class FlextInfraModelsCodemod:
                 for state in self.snapshot.states
                 if state.content is not None
             }
-            if self.sources.keys() != expected:
+            if self.sources.keys() != expected or self.contents.keys() != expected:
                 msg = "source epoch must contain every present captured input"
                 raise ValueError(msg)
             for state in self.snapshot.states:
-                if (
-                    state.content is not None
-                    and self.sources[state.path].encode("utf-8") != state.content
+                if state.content is not None and (
+                    self.contents[state.path] != state.content
+                    or self.sources[state.path].encode("utf-8") != state.content
                 ):
                     msg = f"source epoch differs from authenticated bytes: {state.path}"
                     raise ValueError(msg)

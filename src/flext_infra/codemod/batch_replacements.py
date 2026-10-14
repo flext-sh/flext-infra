@@ -30,7 +30,7 @@ class FlextInfraModReplacements:
 
     @staticmethod
     def generator_owned(
-        entries: t.SequenceOf[m.Infra.ModScanFinding],
+        entries: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> t.StrTuple:
         """Name the findings whose file the canonical generator owns.
 
@@ -52,7 +52,7 @@ class FlextInfraModReplacements:
     @classmethod
     def require_authored(
         cls,
-        entries: t.SequenceOf[m.Infra.ModScanFinding],
+        entries: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[bool]:
         """Refuse to write generated files: their findings are generator repairs.
 
@@ -72,7 +72,7 @@ class FlextInfraModReplacements:
     def publish(
         cls,
         root: Path,
-        report: m.Infra.ModScanReport,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         *,
         exact_replacements: bool = False,
         published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
@@ -96,7 +96,7 @@ class FlextInfraModReplacements:
         )
         if allowed.failure:
             return allowed
-        grouped: MutableMapping[Path, list[m.Infra.ModScanFinding]] = {}
+        grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
         for finding in report.entries:
             if finding.actionable:
                 grouped.setdefault(root / finding.file, []).append(finding)
@@ -129,7 +129,7 @@ class FlextInfraModReplacements:
         cls,
         root: Path,
         path: Path,
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
         *,
         exact_replacements: bool = False,
         compose_only: bool = False,
@@ -208,14 +208,14 @@ class FlextInfraModReplacements:
 
     @classmethod
     def compose(
-        cls, root: Path, report: m.Infra.ModScanReport
+        cls, root: Path, report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
         """Compose authenticated candidate bytes without admission or live effects.
 
         Returns:
             Exact syntax plans; final normalization and gates belong to convergence.
         """
-        grouped: MutableMapping[Path, list[m.Infra.ModScanFinding]] = {}
+        grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
         for finding in report.entries:
             if finding.actionable and finding.source_owner != "generator":
                 grouped.setdefault(root / finding.file, []).append(finding)
@@ -255,7 +255,7 @@ class FlextInfraModReplacements:
     @staticmethod
     def _finding_replacement(
         content: bytes,
-        finding: m.Infra.ModScanFinding,
+        finding: m.Infra.ModOccurrence,
         replacement: str,
         path: Path,
     ) -> p.Result[t.Triple[int, int, bytes]]:
@@ -265,13 +265,12 @@ class FlextInfraModReplacements:
             The resulting ``(start, end, replacement)`` replacement triple.
 
         """
-        raw_offsets = finding.payload.get("replacementOffsets")
+        offsets = finding.replacement_offsets
         raw_match = finding.range.get("byteOffset")
-        if not isinstance(raw_offsets, Mapping) or not isinstance(raw_match, Mapping):
+        if offsets is None or not isinstance(raw_match, Mapping):
             return r[t.Triple[int, int, bytes]].fail(
                 f"ast-grep finding lacks byte coordinates: {path}:{finding.rule_id}",
             )
-        offsets = m.Infra.ModReplacementOffsets.model_validate(raw_offsets)
         matched = m.Infra.ModReplacementOffsets.model_validate(raw_match)
         if not (0 <= offsets.start <= offsets.end <= len(content)) or not (
             0 <= matched.start <= matched.end <= len(content)
