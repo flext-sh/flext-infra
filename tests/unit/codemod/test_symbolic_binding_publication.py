@@ -79,17 +79,9 @@ class TestsFlextInfraSymbolicBindingPublication:
                 + "u = canonical.TestsFlextInfraUtilities\n"
             )
         elif receiver == "conditional":
-            before += (
-                "if True:\n"
-                "    utilities = canonical\n"
-                + _OWNED_CI_LINE
-            )
+            before += "if True:\n    utilities = canonical\n" + _OWNED_CI_LINE
         elif receiver == "loop":
-            before += (
-                "for utilities in (canonical,):\n"
-                "    pass\n"
-                + _OWNED_CI_LINE
-            )
+            before += "for utilities in (canonical,):\n    pass\n" + _OWNED_CI_LINE
         else:
             before += (
                 "original = utilities.TestsFlextInfraUtilities\n"

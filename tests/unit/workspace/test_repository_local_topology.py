@@ -19,6 +19,66 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
 
+    @pytest.mark.parametrize("uv_package", [None, False, True])
+    def test_packaging_ingress_retains_native_declarations_without_exports(
+        self,
+        tmp_path: Path,
+        uv_package: bool | None,
+    ) -> None:
+        """Native package flags and build backend remain distinct metadata facts."""
+        root = self._self_named_governed_root(tmp_path, "packaging")
+        manifest = root / c.PYPROJECT_FILENAME
+        payload = u.Tests.toml_payload(manifest.read_text(encoding=c.DEFAULT_ENCODING))
+        tool = u.Tests.toml_mapping(payload.get("tool", {}))
+        uv = dict(u.Tests.toml_mapping(tool.get("uv", {})))
+        if uv_package is None:
+            uv.pop("package", None)
+        else:
+            uv["package"] = uv_package
+        tm.ok(
+            u.Cli.toml_write_mapping(
+                manifest,
+                {
+                    **payload,
+                    "build-system": {
+                        "requires": ["hatchling"],
+                        "build-backend": "hatchling.build",
+                    },
+                    "tool": {**tool, "uv": uv},
+                },
+            ),
+        )
+        state = tm.ok(u.Infra.read_project_metadata_state(root))
+        tm.that(state.packaging.uv_package, eq=uv_package)
+        tm.that(state.packaging.build_backend, eq="hatchling.build")
+        tm.that(
+            u.Infra.project_package_participation(state.packaging),
+            eq=True if uv_package is None else uv_package,
+        )
+        retained = tm.ok(u.Infra.read_project_metadata_result(root))
+        tm.that(retained.model_dump(), eq=state.metadata.model_dump())
+
+    def test_repository_identity_does_not_parse_unrelated_invalid_exports(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Identity survives invalid exports while the public layout parser stays red."""
+        root = self._self_named_governed_root(tmp_path, "invalid-exports")
+        before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        metadata = tm.ok(u.Infra.read_project_metadata_result(root))
+        source = root / "src" / metadata.package_name / "api.py"
+        source.write_text(
+            '"""unterminated export documentation\n', encoding=c.DEFAULT_ENCODING
+        )
+
+        after = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(after.repository.distribution, eq=metadata.project.name)
+        tm.that(after.repository.package, eq=before.repository.package)
+        tm.that(after.repository.provider, eq=before.repository.provider)
+        with pytest.raises(SyntaxError):
+            u.Infra.layout(root)
+
     @staticmethod
     def _beads_fixture_root(tmp_path: Path, directory: str) -> Path:
         """Initialize one governed checkout carrying the canonical Beads identity.

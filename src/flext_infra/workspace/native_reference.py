@@ -31,6 +31,11 @@ from types import (
 )
 
 from flext_infra import m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournalRelocation,
+)
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
@@ -281,10 +286,26 @@ class FlextInfraWorkspaceNativeReference:
             return f"{module}::{name}"
         if type(module) in {GetSetDescriptorType, MemberDescriptorType}:
             owner = value if cls._is_class(value) else type(value)
-            if module.__objclass__ is not owner:
-                msg = "native module slot belongs to another symbolic type"
-                raise TypeError(msg)
-            return f"native-type::{name};module-slot={module.__name__}"
+            builtin_module = sys.modules.get("builtins")
+            owner_name = vars(type)["__name__"].__get__(owner, type(owner))
+            if (
+                type(builtin_module) is ModuleType
+                and vars(builtin_module).get(owner_name) is owner
+            ):
+                origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(
+                    "builtins",
+                )
+                if origin.failure:
+                    raise TypeError(origin.error)
+                return f"builtins::{name}"
+            msg = (
+                "native module descriptor has no registered interpreter owner: "
+                f"qualified={name}; "
+                f"module_type={vars(type)['__qualname__'].__get__(type(module), type(type(module)))}"
+            )
+            raise TypeError(
+                msg,
+            )
         msg = (
             "native symbolic metadata has no text or descriptor module: "
             f"qualified={name}; module_type={type(module).__name__}; "
@@ -297,10 +318,42 @@ class FlextInfraWorkspaceNativeReference:
             namespace = cls._class_namespace(receiver_owner)
             slot = namespace.get(value.__name__)
             receiver_module = namespace.get("__module__")
+            if module is None and cls._is_class(receiver) and slot is value:
+                supplier_name = vars(type)["__module__"].__get__(
+                    receiver, receiver_type
+                )
+                owner_name = vars(type)["__qualname__"].__get__(receiver, receiver_type)
+                supplier = (
+                    sys.modules.get(supplier_name)
+                    if type(supplier_name) is str
+                    else None
+                )
+                if type(supplier) is ModuleType:
+                    registered = vars(supplier)
+                    components = owner_name.split(".")
+                    for component in components[:-1]:
+                        parent = registered.get(component)
+                        if not cls._is_class(parent):
+                            break
+                        registered = cls._class_namespace(parent)
+                    else:
+                        if registered.get(components[-1]) is receiver:
+                            origin = (
+                                FlextInfraWorkspaceEnvironmentProvenance._module_source(
+                                    supplier_name
+                                )
+                            )
+                            if origin.failure:
+                                raise TypeError(origin.error)
+                            if origin.value == Path(sys.executable).resolve():
+                                return f"{supplier_name}::{owner_name}.{value.__name__}"
+            receiver_name = vars(type)["__qualname__"].__get__(
+                receiver_owner, type(receiver_owner)
+            )
             msg += (
                 f"; native_name={value.__name__}; "
                 f"receiver_kind={receiver_type.__name__}; "
-                f"receiver_owner={vars(type)['__qualname__'].__get__(receiver_owner, type(receiver_owner))}; "
+                f"receiver_owner={receiver_name}; "
                 f"receiver_module_kind={type(receiver_module).__name__}; "
                 f"slot_kind={type(slot).__name__}; slot_identity={slot is value}"
             )
@@ -849,24 +902,55 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             if type(value) is not FunctionType:
                 if type(value) is not BuiltinFunctionType:
-                    # Only genuine C-extension callables carry the native
-                    # metadata slots this proof reads; Python wrappers, bound
-                    # methods and descriptor objects are classified elsewhere.
-                    extension_types = (
-                        MethodDescriptorType,
-                        ClassMethodDescriptorType,
-                        GetSetDescriptorType,
-                        MemberDescriptorType,
+                    extension = cls._extension_callback(value)
+                    if extension.failure:
+                        return r[m.Infra.NativeImportObservation].from_failure(
+                            extension
+                        )
+                    actual_supplier, native_name, qualified = extension.value
+                    origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(
+                        actual_supplier,
                     )
-                    if type(value) not in extension_types:
-                        continue
+                    if origin.failure:
+                        return r[m.Infra.NativeImportObservation].from_failure(origin)
+                    sources.add((
+                        f"{actual_supplier}::{qualified}",
+                        str(cls._source_path(origin.value, paths)),
+                        "",
+                    ))
+                else:
+                    actual_supplier = value.__module__
+                    receiver = value.__self__
+                    if actual_supplier is None and cls._is_class(receiver):
+                        actual_supplier = vars(type)["__module__"].__get__(
+                            receiver,
+                            type(receiver),
+                        )
+                        qualified = (
+                            vars(type)["__qualname__"].__get__(receiver, type(receiver))
+                            + "."
+                            + value.__name__
+                        )
+                    elif type(actual_supplier) is str:
+                        qualified = value.__qualname__
+                    else:
+                        return r[m.Infra.NativeImportObservation].fail(
+                            f"native callback has no registered supplier: "
+                            f"binding={binding}; kind={kind}; name={value.__name__}",
+                        )
+                    native_name = value.__name__
+                    elected = FlextInfraWorkspaceEnvironmentProvenance._module_source(
+                        actual_supplier,
+                    )
+                    if elected.failure:
+                        return r[m.Infra.NativeImportObservation].from_failure(elected)
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
                         binding=binding,
                         kind=kind,
-                        supplier=value.__module__ or supplier,
-                        name=value.__name__,
-                        qualname=value.__qualname__,
+                        supplier=actual_supplier,
+                        name=native_name,
+                        qualname=qualified,
                     ),
                 )
                 continue
@@ -1041,11 +1125,6 @@ class FlextInfraWorkspaceNativeReference:
             )
         output_paths = {item.path for item in outputs}
         if outputs:
-            from flext_infra.codegen import (
-                FlextInfraMiseArtifactsFiles,
-                FlextInfraMiseArtifactsJournalRelocation,
-            )
-
             for expected in outputs:
                 state = FlextInfraMiseArtifactsFiles.read_state(
                     expected.path, required=expected.sha256 is not None
@@ -1071,9 +1150,6 @@ class FlextInfraWorkspaceNativeReference:
                 return r[bool].from_failure(current)
             if current.value != receipt:
                 return r[bool].fail(f"native source authority changed: {receipt.path}")
-        from flext_infra.codegen.codegen_preconditions import (
-            FlextInfraCodegenPreconditions,
-        )
 
         return FlextInfraCodegenPreconditions.source_trees_current(
             authority.generator_trees,
