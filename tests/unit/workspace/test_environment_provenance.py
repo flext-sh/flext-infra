@@ -1832,7 +1832,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 )
             tm.that(tuple(item.path for item in selected), eq=(Path("sample-member"),))
 
-    @pytest.mark.parametrize("layout", ["package", "namespace", "multiple"])
+    @pytest.mark.parametrize(
+        "layout", ["package", "namespace", "multiple", "hatch-sources"]
+    )
     def test_editable_path_must_expose_declared_package_sources(
         self,
         installed_artifact_consumer: Path,
@@ -1852,7 +1854,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             for source_root, name in zip(roots, package_names, strict=True):
                 package = source_root / name
                 tm.ok(u.Cli.ensure_dir(package))
-                if layout == "multiple":
+                if layout in {"multiple", "hatch-sources"}:
                     tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
                 else:
                     tm.ok(u.Cli.atomic_write_text_file(package / "portion.py", ""))
@@ -1864,6 +1866,19 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             build = u.Tests.toml_mapping(hatch.get("build", {}))
             targets = u.Tests.toml_mapping(build.get("targets", {}))
             wheel = u.Tests.toml_mapping(targets.get("wheel", {}))
+            declared_wheel = {**wheel, "packages": declarations}
+            if layout == "hatch-sources":
+                declared_wheel = {
+                    key: value
+                    for key, value in wheel.items()
+                    if key not in {"packages", "include", "sources"}
+                }
+                declared_wheel["include"] = [
+                    f"/{declaration}/**" for declaration in declarations
+                ]
+                declared_wheel["sources"] = dict(
+                    zip(declarations, package_names, strict=True)
+                )
             tm.ok(
                 u.Cli.toml_write_mapping(
                     pyproject,
@@ -1877,7 +1892,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                                     **build,
                                     "targets": {
                                         **targets,
-                                        "wheel": {**wheel, "packages": declarations},
+                                        "wheel": declared_wheel,
                                     },
                                 },
                             },

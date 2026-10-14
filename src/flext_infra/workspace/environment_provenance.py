@@ -11,6 +11,7 @@ import sys
 import sysconfig
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter
+from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules
@@ -1147,6 +1148,31 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 else relative.name
             )
             packages.append((name, target))
+        source_mapping = u.Cli.toml_mapping_child(wheel, "sources")
+        if source_mapping is not None:
+            bindings = t.Infra.STR_MAPPING_ADAPTER.validate_python(
+                source_mapping, strict=True
+            )
+            for source, destination in bindings.items():
+                destination_path = Path(destination)
+                if not destination or not all(
+                    part.isidentifier() for part in destination_path.parts
+                ):
+                    continue
+                relative = Path(source)
+                target = (expected_root / relative).resolve()
+                if (
+                    relative.is_absolute()
+                    or ".." in relative.parts
+                    or not target.is_relative_to(expected_root)
+                    or not target.is_dir()
+                ):
+                    return r[bool].fail(
+                        "editable provenance declared package path is invalid: "
+                        f"distribution={distribution} package={source}",
+                    )
+                packages.append((".".join(destination_path.parts), target))
+        packages = list(dict.fromkeys(packages))
         if not packages:
             packages.append((package_name, None))
         exposed: set[t.Pair[str, Path | None]] = set()
