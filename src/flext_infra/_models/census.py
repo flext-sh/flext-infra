@@ -116,6 +116,16 @@ class FlextInfraModelsCensus:
             str,
             m.Field(description="Normalized Rope-derived semantic fingerprint"),
         ] = ""
+        payload_fingerprint: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Diagnostic native Pydantic declaration fingerprint, retaining "
+                    "bases, fields, literal defaults, configuration, generics and "
+                    "validation/serialization code; never an equivalence proof"
+                ),
+            ),
+        ] = ""
 
     class RemovalPreviewOptions(m.ArbitraryTypesModel):
         """Gate selection and source cache shared by one removal preview batch."""
@@ -332,6 +342,16 @@ class FlextInfraModelsCensus:
         value_identical: Annotated[
             bool,
             m.Field(description="Whether all definitions have identical values"),
+        ] = False
+        semantic_candidate: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Diagnostic Pydantic declarations sharing native structure "
+                    "across names or holders; automatic cure requires independent "
+                    "identity and complete consumer proof"
+                ),
+            ),
         ] = False
 
     class DuplicateCureEdit(m.ContractModel):

@@ -150,7 +150,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     continue
                 target = view / source.path.relative_to(anchor)
                 if not target.is_relative_to(view):
-                    return r[m.Infra.NativeImportReference].fail("native source view escapes cold authority")
+                    return r[m.Infra.NativeImportReference].fail(
+                        "native source view escapes cold authority"
+                    )
                 parent = u.Cli.ensure_dir(target.parent)
                 if parent.failure:
                     return r[m.Infra.NativeImportReference].from_failure(parent)
@@ -158,7 +160,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 if before.failure:
                     return r[m.Infra.NativeImportReference].from_failure(before)
                 if source.mode is None:
-                    return r[m.Infra.NativeImportReference].fail("native source view has no source mode")
+                    return r[m.Infra.NativeImportReference].fail(
+                        "native source view has no source mode"
+                    )
                 written = u.Cli.atomic_write_binary_file_guarded(
                     before.value, source.content, permission_mode=source.mode
                 )
@@ -168,28 +172,52 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             if sealed.failure:
                 return r[m.Infra.NativeImportReference].from_failure(sealed)
             child = u.Cli.run_raw(
-                [str(runtime), *("-O",) * request.source_authority.optimize,
-                 "-B", "-X", f"pycache_prefix={Path(temporary) / 'cache'}", "-c", code],
+                [
+                    str(runtime),
+                    *("-O",) * request.source_authority.optimize,
+                    "-B",
+                    "-X",
+                    f"pycache_prefix={Path(temporary) / 'cache'}",
+                    "-c",
+                    code,
+                ],
                 cwd=view,
-                options=m.Cli.ProcessOptions(input_data=dumps({
-                    "modules": request.modules, "view": str(view), "anchor": str(anchor),
-                    "roots": tuple(str(view / root.relative_to(anchor)) for root in request.import_roots),
-                })),
+                options=m.Cli.ProcessOptions(
+                    input_data=dumps({
+                        "modules": request.modules,
+                        "view": str(view),
+                        "anchor": str(anchor),
+                        "roots": tuple(
+                            str(view / root.relative_to(anchor))
+                            for root in request.import_roots
+                        ),
+                    })
+                ),
             )
             if child.failure:
                 return r[m.Infra.NativeImportReference].from_failure(child)
             if not u.Cli.process_succeeded(child.value.outcome):
-                return r[m.Infra.NativeImportReference].fail("cold native source import failed: " + child.value.stderr)
+                return r[m.Infra.NativeImportReference].fail(
+                    "cold native source import failed: " + child.value.stderr
+                )
             after = u.Cli.atomic_inventory_physical_tree(view)
             if after.failure:
                 return r[m.Infra.NativeImportReference].from_failure(after)
             if after.value != sealed.value:
-                return r[m.Infra.NativeImportReference].fail("cold native consumer changed its immutable source view")
-            reference = m.Infra.NativeImportObservation.model_validate_json(child.value.stdout)
-            compared = FlextInfraWorkspaceNativeReference.compare(observed.value, reference)
+                return r[m.Infra.NativeImportReference].fail(
+                    "cold native consumer changed its immutable source view"
+                )
+            reference = m.Infra.NativeImportObservation.model_validate_json(
+                child.value.stdout
+            )
+            compared = FlextInfraWorkspaceNativeReference.compare(
+                observed.value, reference
+            )
             if compared.failure:
                 return r[m.Infra.NativeImportReference].from_failure(compared)
-        current = FlextInfraCodegenPreconditions.source_authority_current(request.source_authority)
+        current = FlextInfraCodegenPreconditions.source_authority_current(
+            request.source_authority
+        )
         if current.failure:
             return r[m.Infra.NativeImportReference].from_failure(current)
         return r[m.Infra.NativeImportReference].ok(

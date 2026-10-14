@@ -725,12 +725,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         for path, source in sources.items():
             if updated[path] != source:
-                updated[path] = (
-                    cls._remove_orphaned_imports(
-                        project,
-                        project.get_resource(path.relative_to(root).as_posix()),
-                        source, updated[path],
-                    )
+                updated[path] = cls._remove_orphaned_imports(
+                    project,
+                    project.get_resource(path.relative_to(root).as_posix()),
+                    source,
+                    updated[path],
                 )
         return updated
 
@@ -747,7 +746,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         before = runtime.build_string_module(project, original, resource=resource)
         after = runtime.build_string_module(project, proposed, resource=resource)
         orphaned = cls._used_import_names(project, before) - cls._used_import_names(
-            project, after,
+            project,
+            after,
         )
         if not orphaned:
             return proposed
@@ -764,7 +764,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 continue
             replacement = (
                 runtime.from_import(
-                    information.module_name, information.level, retained,
+                    information.module_name,
+                    information.level,
+                    retained,
                 )
                 if isinstance(information, p.Infra.RopeFromImport)
                 else cls._normal_import(retained)
@@ -777,7 +779,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 ),
             )
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-            resource, proposed, tuple(rewrites),
+            resource,
+            proposed,
+            tuple(rewrites),
         ).new_contents
 
     @classmethod
@@ -798,7 +802,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if binding is None:
                 continue
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
-                project, name, binding, imports=False, in_hierarchy=False,
+                project,
+                name,
+                binding,
+                imports=False,
+                in_hierarchy=False,
             )
             if any(
                 not occurrence.is_defined()
@@ -807,15 +815,25 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 used.add(name)
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         for _begin, _end, literal, scope in types.quoted_type_regions(
-            module.source_code, project, module,
+            module.source_code,
+            project,
+            module,
         ):
             used.update(cls._quoted_dependency_names(project, scope, literal) & names)
         exported = tuple(
             statement
-            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
+            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                module.source_code
+            )
             if FlextInfraUtilitiesRopeStructure.target_name(statement) == "__all__"
         )
-        for start, stop, _metadata in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(module.source_code):
+        for (
+            start,
+            stop,
+            _metadata,
+        ) in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
+            module.source_code
+        ):
             if module.source_code[start] == "#" or not any(
                 statement.start_offset <= start < stop <= statement.end_offset
                 for statement in exported

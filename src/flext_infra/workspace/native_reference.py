@@ -31,6 +31,9 @@ from types import (
 )
 
 from flext_infra import m, p, r, t, u
+from flext_infra.workspace.environment_provenance import (
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 
 class FlextInfraWorkspaceNativeReference:
@@ -142,9 +145,6 @@ class FlextInfraWorkspaceNativeReference:
                     "native partial lacks its interpreter-owned function slot",
                 )
             return result_type.ok(slot.__get__(value, native))
-        from flext_infra.workspace.environment_provenance import (
-            FlextInfraWorkspaceEnvironmentProvenance,
-        )
 
         for supplier_name in ("gc", "_functools"):
             elected = FlextInfraWorkspaceEnvironmentProvenance._module_source(
@@ -269,15 +269,6 @@ class FlextInfraWorkspaceNativeReference:
         elif type(value) in {FunctionType, BuiltinFunctionType}:
             module = value.__module__
             name = value.__qualname__
-            if (
-                module is None
-                and type(value) is BuiltinFunctionType
-                and cls._is_class(value.__self__)
-            ):
-                module = vars(type)["__module__"].__get__(
-                    value.__self__,
-                    type(value.__self__),
-                )
         elif type(value) is ModuleType:
             module, name = value.__name__, ""
         else:
@@ -299,6 +290,20 @@ class FlextInfraWorkspaceNativeReference:
             f"qualified={name}; module_type={type(module).__name__}; "
             f"value_type={type(value).__name__}"
         )
+        if type(value) is BuiltinFunctionType:
+            receiver = value.__self__
+            receiver_type = type(receiver)
+            receiver_owner = receiver if cls._is_class(receiver) else receiver_type
+            namespace = cls._class_namespace(receiver_owner)
+            slot = namespace.get(value.__name__)
+            receiver_module = namespace.get("__module__")
+            msg += (
+                f"; native_name={value.__name__}; "
+                f"receiver_kind={receiver_type.__name__}; "
+                f"receiver_owner={vars(type)['__qualname__'].__get__(receiver_owner, type(receiver_owner))}; "
+                f"receiver_module_kind={type(receiver_module).__name__}; "
+                f"slot_kind={type(slot).__name__}; slot_identity={slot is value}"
+            )
         raise TypeError(
             msg,
         )
@@ -513,31 +518,12 @@ class FlextInfraWorkspaceNativeReference:
         paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> p.Result[m.Infra.NativeImportObservation]:
         """Observe the complete native epoch without reconstructing class factories."""
-        from flext_infra.workspace.environment_provenance import (
-            FlextInfraWorkspaceEnvironmentProvenance,
-        )
-
         origins: dict[str, Path] = {}
         sources: set[t.Triple[str, str, str]] = set()
         evidence: list[m.Infra.NativeBindingEvidence] = []
         pending = []
         for name in names:
             module = sys.modules.get(name)
-            if type(module) is not ModuleType:
-                if name.partition(".")[0] not in {
-                    "flext",
-                    "flext_core",
-                    "flext_infra",
-                    "flext_cli",
-                    "flext_api",
-                }:
-                    # Third-party lazy/aliased modules (pygments.lexers, ...)
-                    # are their package's construction: this workspace's
-                    # epoch proves first-party bindings only.
-                    continue
-                return r[m.Infra.NativeImportObservation].fail(
-                    f"native reference lacks an elected module: {name}",
-                )
             origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(name)
             if origin.failure:
                 return r[m.Infra.NativeImportObservation].from_failure(origin)
@@ -874,52 +860,6 @@ class FlextInfraWorkspaceNativeReference:
                     )
                     if type(value) not in extension_types:
                         continue
-                home_module = getattr(value, "__module__", None)
-            home_root = (
-                home_module.split(".")[0]
-                if type(home_module) is str
-                else ""
-            )
-                if home_root not in {
-                    "flext",
-                    "flext_core",
-                    "flext_infra",
-                    "flext_api",
-                    "flext_cli",
-                    "ai_hub",
-                }:
-                    # Ecosystem bindings (typing_inspection, pydantic
-                    # internals, ...) are observations of third-party code:
-                    # the fleet cannot authenticate their globals and the
-                    # walk records nothing it cannot own.
-                    continue
-                    extension = cls._extension_callback(value)
-                    if extension.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(
-                            extension
-                        )
-                    actual_supplier, native_name, qualified = extension.value
-                    origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(
-                        actual_supplier,
-                    )
-                    if origin.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(origin)
-                    sources.add((
-                        f"{actual_supplier}::{qualified}",
-                        str(cls._source_path(origin.value, paths)),
-                        "",
-                    ))
-                    evidence.append(
-                        m.Infra.NativeBindingEvidence(
-                            binding=binding,
-                            kind=kind,
-                            supplier=actual_supplier,
-                            name=native_name,
-                            qualname=qualified,
-                            operands=(("native_type", cls._symbol(type(value))),),
-                        ),
-                    )
-                    continue
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
                         binding=binding,

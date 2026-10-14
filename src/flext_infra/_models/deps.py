@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import (
     FlextInfraModelsDepsToml,
     FlextInfraModelsDepsToolConfig,
@@ -24,12 +24,50 @@ from flext_infra._models.workspace import FlextInfraModelsWorkspace
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
     """Models for dependency detection and modernization reporting."""
 
+    class ProjectPackagingDeclaration(m.ContractModel):
+        """Native packaging facts retained independently of Python export health."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="ignore",
+            frozen=True,
+            populate_by_name=True,
+        )
+        uv_package: Annotated[
+            bool | None,
+            m.Field(
+                validation_alias=m.AliasPath("tool", "uv", "package"),
+                description="Explicit native UV package participation declaration",
+            ),
+        ] = None
+        build_backend: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                validation_alias=m.AliasPath("build-system", "build-backend"),
+                description="Declared native Python build backend",
+            ),
+        ] = None
+
+    class ProjectMetadataState(m.ArbitraryTypesModel):
+        """One TOML ingress retaining metadata and its native packaging declaration."""
+
+        metadata: Annotated[
+            p.ProjectMetadata,
+            m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
+        ]
+        packaging: Annotated[
+            FlextInfraModelsDeps.ProjectPackagingDeclaration,
+            m.Field(description="Packaging facts from the same parsed document"),
+        ]
+
     class RuntimeDependencyProvider(m.Value):
         """One imported package associated with an authenticated locked supplier."""
 
         modules: Annotated[
             t.StrTuple,
-            m.Field(min_length=1, description="Native import identities supplied by metadata"),
+            m.Field(
+                min_length=1,
+                description="Native import identities supplied by metadata",
+            ),
         ]
         package: Annotated[
             FlextInfraModelsWorkspace.LockedPackage,
@@ -37,11 +75,15 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         ]
         requirement: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Target-qualified PEP 508 requirement retaining its source"),
+            m.Field(
+                description="Target-qualified PEP 508 requirement retaining its source"
+            ),
         ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(min_length=1, description="Authenticated distribution metadata states"),
+            m.Field(
+                min_length=1, description="Authenticated distribution metadata states"
+            ),
         ]
 
     class RuntimeDependencyInputs(m.Value):
@@ -55,7 +97,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(min_length=1, description="Native lock and production-source input states"),
+            m.Field(
+                min_length=1,
+                description="Native lock and production-source input states",
+            ),
         ]
 
     class RuntimeDependencyPlan(m.Value):
@@ -63,15 +108,21 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
 
         before: Annotated[
             m.Cli.AtomicFileState,
-            m.Field(description="Authenticated pyproject state consumed by native deptry"),
+            m.Field(
+                description="Authenticated pyproject state consumed by native deptry"
+            ),
         ]
         dependencies: Annotated[
             t.StrTuple,
-            m.Field(description="Calculated runtime requirements, including marker variants"),
+            m.Field(
+                description="Calculated runtime requirements, including marker variants"
+            ),
         ]
         promoted: Annotated[
             t.StrTuple,
-            m.Field(description="Existing development requirements also needed at runtime"),
+            m.Field(
+                description="Existing development requirements also needed at runtime"
+            ),
         ]
         unresolved_modules: Annotated[
             t.StrTuple,
@@ -79,7 +130,9 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Every metadata, lock and source state backing this plan"),
+            m.Field(
+                description="Every metadata, lock and source state backing this plan"
+            ),
         ]
 
     class DependencyMarkerEnvironment(m.Value):

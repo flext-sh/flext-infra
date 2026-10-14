@@ -118,13 +118,16 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Native findings bound to the exact settings and report bytes."""
 
         settings: Annotated[
-            m.Cli.AtomicFileState, m.Field(description="Consumed pyproject state"),
+            m.Cli.AtomicFileState,
+            m.Field(description="Consumed pyproject state"),
         ]
         report_state: Annotated[
-            m.Cli.AtomicFileState, m.Field(description="Fresh native report state"),
+            m.Cli.AtomicFileState,
+            m.Field(description="Fresh native report state"),
         ]
         report: Annotated[
-            DeptryNativeReport, m.Field(description="Complete native findings"),
+            DeptryNativeReport,
+            m.Field(description="Complete native findings"),
         ]
 
     class GateContext(m.ContractModel):
@@ -150,7 +153,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ] = False
         runtime_dependency_inputs: Annotated[
             FlextInfraModelsDeps.RuntimeDependencyInputs | None,
-            m.Field(description="Target-runtime dependency proof injected at composition"),
+            m.Field(
+                description="Target-runtime dependency proof injected at composition"
+            ),
         ] = None
         ruff_args: Annotated[
             t.StrSequence,
