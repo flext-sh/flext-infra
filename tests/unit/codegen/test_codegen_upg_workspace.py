@@ -102,13 +102,8 @@ class TestsFlextInfraCodegenUpgWorkspace:
         custom = root / c.Infra.MAKEFILE_CUSTOM_INCLUDE
         custom.write_text(
             custom.read_text(encoding="utf-8") + "post-upg:\n"
-            '\t@set -eu; for project in "$(PROJECT_ROOT)" '
-            "$(foreach member,$(WORKSPACE_SUBPROJECTS),"
-            '"$(PROJECT_ROOT)/$(member)"); do '
-            'owner="$$($(UV) workspace dir --project "$$project")"; '
-            'test "$$owner" = "$$project"; '
-            '$(UV) lock --check --project "$$project"; '
-            "printf 'hook-native-lock-satisfied %s\\n' \"$$project\"; done\n",
+            '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
+            '\t@printf "hook-native-lock-satisfied %s\\n" "$(RUNTIME_ROOT)"\n',
             encoding="utf-8",
         )
 
@@ -146,11 +141,11 @@ class TestsFlextInfraCodegenUpgWorkspace:
             eq=True,
         )
         tm.that((checkout / ".venv").exists(), eq=False)
-        tm.that((checkout / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
-        tm.that(process.stdout, has=f"hook-native-lock-satisfied {checkout}")
+        tm.that((checkout / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.that(process.stdout, has=f"hook-native-lock-satisfied {root}")
 
         # The running Makefile does not yet declare this new Git member. Its
-        # generated successor must reconcile the new independent lock too.
+        # generated successor must include it in the containing root's lock.
         added = u.Tests.repository_ref("added-member", path=Path("added-member"))
         added_source = tmp_path / "added-origin"
         added_beads = u.Tests.beads_project(added.name)
@@ -202,7 +197,8 @@ class TestsFlextInfraCodegenUpgWorkspace:
             eq=True,
             msg=expanded.stdout + expanded.stderr,
         )
-        for project in (root, checkout, added_checkout):
-            tm.that((project / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
-            tm.that(expanded.stdout, has=f"hook-native-lock-satisfied {project}")
+        tm.that((root / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
+        tm.that(expanded.stdout, has=f"hook-native-lock-satisfied {root}")
+        for project in (checkout, added_checkout):
+            tm.that((project / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
         tm.that((added_checkout / ".venv").exists(), eq=False)

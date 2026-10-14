@@ -149,7 +149,7 @@ class FlextInfraUtilitiesManagedConflicts:
             The pyproject ManagedFileSpec. Missing declaration is a bug.
 
         """
-        for item in config.Infra.codegen.managed_files:
+        for item in config.Infra.codegen.managed_file_specs:
             if item.path.as_posix() == c.PYPROJECT_FILENAME:
                 return r[m.Infra.ManagedFileSpec].ok(item)
         return r[m.Infra.ManagedFileSpec].fail(

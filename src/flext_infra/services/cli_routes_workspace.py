@@ -13,7 +13,6 @@ from flext_infra import FlextInfraGitService, c, infra, m, p, t, u
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
-from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -87,7 +86,9 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
         """
         return FlextInfraGateRegistry.default().runtime_identity(
             gate_ids,
-            installed_identity=FlextInfraPytestRunner.installed_toolchain_identity(),
+            installed_identity=(
+                FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
+            ),
         )
 
     workspace_routes: ClassVar[
@@ -210,7 +211,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                         c.Infra.FLEET_ROUTE_NAME,
                         (
                             "Run one mutating verb in every governed member "
-                            "concurrently and publish its receipts"
+                            "in dependency order and publish its receipts"
                         ),
                         FlextInfraWorkspaceFleetVerbs,
                         FlextInfraWorkspaceFleetVerbs.execute_command,

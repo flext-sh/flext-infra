@@ -9,9 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import m, p, r, u
-
-_LOCK_FILENAME = "uv.lock"
+from flext_infra import p, r, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceLockCompleteness:
@@ -46,12 +45,10 @@ class FlextInfraWorkspaceLockCompleteness:
             The resulting ``p.Result[int]``.
 
         """
-        runtime_root = u.Infra.git_runtime_root(
-            m.Infra.GitRepoRequest(repo_root=repository_root),
-        )
-        if runtime_root.failure:
-            return r[int].from_failure(runtime_root)
-        lock_path = runtime_root.value.repository_root / _LOCK_FILENAME
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[int].from_failure(context)
+        lock_path = context.value.lock_path
         if not lock_path.is_file():
             return r[int].fail(f"{lock_path}: no committed lock; run make upg")
         return cls.validate_lock_file(lock_path)

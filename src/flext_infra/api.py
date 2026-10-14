@@ -73,13 +73,13 @@ class FlextInfra(
         if identity.failure:
             return r[bool].from_failure(identity)
         source_root = identity.value.repo_root
-        manifest = u.Cli.atomic_read_binary_file_state(
-            u.Infra.workspace_manifest_path(source_root),
-            required=True,
+        inputs = u.Infra.load_codegen_inputs(source_root)
+        if inputs.failure:
+            return r[bool].from_failure(inputs)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            source_root,
+            inputs=inputs.value,
         )
-        if manifest.failure:
-            return r[bool].from_failure(manifest)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(source_root)
         if workspace.failure:
             return r[bool].from_failure(workspace)
         return FlextInfraCandidateBootstrapService(
@@ -89,7 +89,7 @@ class FlextInfra(
             transaction=FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=source_root),
             ),
-        ).execute(source_root, workspace.value, request, manifest.value)
+        ).execute(source_root, workspace.value, request, inputs.value.sources)
 
     @override
     def rope_workspace(
@@ -362,7 +362,7 @@ class FlextInfra(
     def mod_text_candidate(
         request: m.Infra.ModTextCommand,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Replay one manifest-declared candidate using this healthy provider.
+        """Replay one repository-declared candidate using this healthy provider.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
@@ -411,9 +411,16 @@ class FlextInfra(
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return r[m.Infra.WorkspaceProjectContext].from_failure(captured)
+        runtime = FlextInfraWorkspaceDetector.resolution_context(resolved)
+        if runtime.failure:
+            return r[m.Infra.WorkspaceProjectContext].from_failure(runtime)
         if captured.value.spec.repository is None:
             return r[m.Infra.WorkspaceProjectContext].ok(
-                m.Infra.WorkspaceProjectContext(cwd=resolved, identity=identity.value),
+                m.Infra.WorkspaceProjectContext(
+                    cwd=resolved,
+                    identity=identity.value,
+                    runtime=runtime.value,
+                ),
             )
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             root,
@@ -435,6 +442,7 @@ class FlextInfra(
                 workspace=workspace.value,
                 target=target.value,
                 governed=True,
+                runtime=runtime.value,
             ),
         )
 

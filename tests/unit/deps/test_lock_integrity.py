@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import c
 from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
-from tests import tm
+from flext_infra.workspace import FlextInfraWorkspaceDetector
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,6 +21,17 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsLockIntegrity:
     """Validate committed generated lock verification through its public model."""
+
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def _repository(tmp_path: Path) -> None:
+        u.Tests.initialize_git_repo(tmp_path)
+
+    @staticmethod
+    def _write_uv_lock(root: Path, content: str) -> None:
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(root))
+        tm.ok(u.Cli.ensure_dir(context.lock_path.parent))
+        tm.ok(u.Cli.atomic_write_text_file(context.lock_path, content))
 
     @staticmethod
     def _verifier(repository_root: Path) -> FlextInfraLockIntegrityVerifier:
@@ -35,9 +49,9 @@ class TestsFlextInfraDepsLockIntegrity:
             '[tools."github:kucherenko/jscpd"]\nversion = "5.3.3"\n',
             encoding="utf-8",
         )
-        (tmp_path / c.Infra.UV_LOCK_FILENAME).write_text(
+        self._write_uv_lock(
+            tmp_path,
             'version = 1\n[[package]]\nname = "filelock"\nversion = "4.0.6"\n',
-            encoding="utf-8",
         )
         result = self._verifier(tmp_path).execute()
         tm.ok(result)
@@ -53,9 +67,9 @@ class TestsFlextInfraDepsLockIntegrity:
             'asset_pattern = "jscpd-darwin-x64.tar.gz"\n',
             encoding="utf-8",
         )
-        (tmp_path / c.Infra.UV_LOCK_FILENAME).write_text(
+        self._write_uv_lock(
+            tmp_path,
             "version = 1\n",
-            encoding="utf-8",
         )
         error = tm.fail(self._verifier(tmp_path).execute())
         tm.that(error, has=c.Infra.MISE_LOCK_FILENAME)
@@ -68,9 +82,9 @@ class TestsFlextInfraDepsLockIntegrity:
             "not toml at all\n",
             encoding="utf-8",
         )
-        (tmp_path / c.Infra.UV_LOCK_FILENAME).write_text(
+        self._write_uv_lock(
+            tmp_path,
             "version = 1\n",
-            encoding="utf-8",
         )
         error = tm.fail(self._verifier(tmp_path).execute())
         tm.that(error, has=c.Infra.MISE_LOCK_FILENAME)
@@ -79,3 +93,10 @@ class TestsFlextInfraDepsLockIntegrity:
         """A repository root without any committed generated lock fails loud."""
         error = tm.fail(self._verifier(tmp_path).execute())
         tm.that(error, has="missing committed generated lock")
+
+    def test_root_lock_does_not_replace_the_selected_view(self, tmp_path: Path) -> None:
+        """A stale legacy lock cannot turn an absent selected lock into success."""
+        for filename in (c.Infra.MISE_LOCK_FILENAME, c.Infra.UV_LOCK_FILENAME):
+            (tmp_path / filename).write_text("version = 1\n", encoding="utf-8")
+
+        tm.fail(self._verifier(tmp_path).execute(), has="missing committed generated lock")

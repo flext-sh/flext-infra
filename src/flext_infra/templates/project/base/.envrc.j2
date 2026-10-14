@@ -25,7 +25,10 @@ RUNTIME_ROOT="${RUNTIME_ROOT:-${PROJECT_ROOT}}"
 RUNTIME_ROOT="$(cd "${RUNTIME_ROOT}" && pwd -P)"
 watch_file "${PROJECT_ROOT}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/pyproject.toml"
-watch_file "${RUNTIME_ROOT}/uv.lock"
+{% for directory in (uv_resolution.local_directory, uv_resolution.standalone_directory) %}
+watch_file "${RUNTIME_ROOT}/{{ directory }}/pyproject.toml"
+watch_file "${RUNTIME_ROOT}/{{ directory }}/uv.lock"
+{% endfor %}
 watch_file "${RUNTIME_ROOT}/.mise.toml"
 watch_file "${RUNTIME_ROOT}/mise.lock"
 runtime_parent="$(cd "${RUNTIME_ROOT}/.." && pwd -P)"

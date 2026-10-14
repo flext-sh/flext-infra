@@ -26,6 +26,130 @@ class FlextInfraWorkspaceDetector(
     """Classify a repository only from files and Git facts inside that checkout."""
 
     @classmethod
+    def resolution_context(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.WorkspaceRuntimeContext]:
+        """Elect native resolution inputs without loading package metadata or members."""
+        result_type = r[m.Infra.WorkspaceRuntimeContext]
+        request = m.Infra.GitRepoRequest(repo_root=repository_root)
+        identity = u.Infra.git_show_toplevel(request)
+        if identity.failure:
+            return result_type.from_failure(identity)
+        git_root = identity.value.repository_root.resolve()
+        submitted = repository_root.expanduser().resolve()
+        project_root = next(
+            (
+                directory
+                for directory in (submitted, *submitted.parents)
+                if directory.is_relative_to(git_root)
+                and (directory / c.PYPROJECT_FILENAME).is_file()
+            ),
+            git_root,
+        )
+        runtime = u.Infra.git_repository_root(request)
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        runtime_root = runtime.value.repository_root.resolve()
+        if runtime_root == git_root:
+            scope = cls._native_resolution_scope(project_root, git_root)
+            if scope.failure:
+                return result_type.from_failure(scope)
+            if scope.value != project_root:
+                native = cls._native_resolution_owner(project_root, scope.value)
+                if native.failure:
+                    return result_type.from_failure(native)
+                runtime_root = native.value
+        inputs = u.Infra.load_codegen_inputs(runtime_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        policy = inputs.value.spec.make.uv_resolution
+        standalone = u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
+        directory = (
+            policy.standalone_directory if standalone else policy.local_directory
+        )
+        resolution_root = runtime_root / directory
+        if not resolution_root.resolve().is_relative_to(runtime_root):
+            return result_type.fail("UV resolution directory leaves its physical runtime")
+        return result_type.ok(
+            m.Infra.WorkspaceRuntimeContext(
+                project_root=project_root,
+                runtime_root=runtime_root,
+                resolution_root=resolution_root,
+                pyproject_path=resolution_root / c.PYPROJECT_FILENAME,
+                lock_path=resolution_root / c.Infra.UV_LOCK_FILENAME,
+                environment_path=runtime_root / c.Infra.ENVIRONMENT_DIRECTORY,
+                standalone=standalone,
+            ),
+        )
+
+    @staticmethod
+    def _native_resolution_scope(
+        project_root: Path,
+        git_root: Path,
+    ) -> p.Result[Path]:
+        """Authenticate the containing Git scope before native association discovery."""
+        result_type = r[Path]
+        if project_root != git_root:
+            return result_type.ok(git_root)
+        enclosing = next(
+            (
+                parent
+                for parent in project_root.parents
+                if (parent / c.PYPROJECT_FILENAME).is_file()
+            ),
+            None,
+        )
+        if enclosing is None:
+            return result_type.ok(git_root)
+        identity = u.Infra.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=enclosing),
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        scope = identity.value.repository_root.resolve()
+        if not project_root.is_relative_to(scope):
+            return result_type.fail(
+                "native association is outside its containing Git repository",
+            )
+        return result_type.ok(scope)
+
+    @staticmethod
+    def _native_resolution_owner(project_root: Path, git_root: Path) -> p.Result[Path]:
+        """Let managed UV resolve monorepo membership, including native exclusions."""
+        result_type = r[Path]
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, git_root)
+        if binary.failure:
+            return result_type.from_failure(binary)
+        discovered = u.Cli.run_raw(
+            (
+                str(binary.value),
+                "workspace",
+                "dir",
+                "--project",
+                str(project_root),
+            ),
+            cwd=project_root,
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        if discovered.failure:
+            return result_type.from_failure(discovered)
+        process = discovered.value
+        if not u.Cli.process_succeeded(process.outcome) or process.stderr.strip():
+            return result_type.fail(process.stderr or process.stdout)
+        owner = Path(process.stdout.strip())
+        if (
+            not owner.is_absolute()
+            or not owner.is_dir()
+            or not owner.resolve().is_relative_to(git_root)
+            or not project_root.is_relative_to(owner.resolve())
+        ):
+            return result_type.fail(
+                f"native UV workspace owner leaves the project's Git boundary: {owner}",
+            )
+        return result_type.ok(owner.resolve())
+
+    @classmethod
     def _resolved_beads(
         cls,
         resolved_root: Path,
@@ -642,6 +766,7 @@ class FlextInfraWorkspaceDetector(
                 project=declared_project,
                 namespace_scan_dirs=declaration.namespace_scan_dirs,
                 integration=declaration.integration,
+                candidate_bootstrap_targets=declaration.candidate_bootstrap_targets,
                 docs_audit=declaration.docs_audit,
                 subprojects=tuple(subprojects),
                 pending_subprojects=tuple(pending),

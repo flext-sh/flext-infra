@@ -438,7 +438,7 @@ class FlextInfraMiseWorkspacePlanner:
             replacement_content = config_state.value.content
             declarations = tuple(
                 item
-                for item in config.Infra.codegen.managed_files
+                for item in config.Infra.codegen.managed_file_specs
                 if item.path == Path(c.Infra.CONFIG_SPEC[0])
             )
             if len(declarations) != 1:
